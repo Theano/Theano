@@ -1,10 +1,12 @@
 from __future__ import absolute_import, print_function, division
 
 import theano
+from theano.tensor.basic import Join
 
 
 def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
-                     name="checkpointscan_fn", n_steps=None, save_every_N=10):
+                     name="checkpointscan_fn", n_steps=None, save_every_N=10,
+                     padding=True):
     """Scan function that uses less memory, but is more restrictive.
 
     In :func:`~theano.scan`, if you compute the gradient of the output
@@ -52,18 +54,22 @@ def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
 
     n_steps
         ``n_steps`` is the number of steps to iterate given as an int
-        or Theano scalar. If any of the input sequences do not have
-        enough elements, scan will raise an error. If the **value is 0**
-        the outputs will have **0 rows**. If the value is negative,
-        ``scan`` will run backwards in time. If the ``go_backwards`` flag
-        is already set and also ``n_steps`` is negative, ``scan`` will run
-        forward in time. If n_steps is not provided, ``scan`` will figure
-        out the amount of steps it should run given its input sequences.
+        or Theano scalar (> 0). If any of the input sequences do not have
+        enough elements, scan will raise an error. If n_steps is not provided,
+        ``scan`` will figure out the amount of steps it should run given its
+        input sequences.
 
     save_every_N
         ``save_every_N`` is the number of steps to go without storing
         the computations of ``scan`` (ie they will have to be recomputed
         during the gradient computation).
+
+    padding
+        If the length of the sequences is not a multiple of ``save_every_N``,
+        the sequences will be zero padded to make this version of ``scan``
+        work properly, but will also result in a memory copy. It can be
+        avoided by setting ``padding`` to False, but you need to make
+        sure the length of the sequences is a multple of ``save_every_N``.
 
     Returns
     -------
@@ -96,16 +102,33 @@ def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
     if n_steps is None:
         n_steps = sequences[0].shape[0]
 
-    # Compute the number of steps of the inner and of the outer scan
-    o_n_steps = theano.tensor.cast(n_steps / save_every_N, 'int64')
-    i_n_steps = save_every_N
+    # Compute the number of steps of the outer scan
+    o_n_steps = theano.tensor.cast(theano.tensor.ceil(n_steps / save_every_N),
+                                   'int64')
+
+    # Compute the number of steps of the inner scan
+    i_n_steps = save_every_N * theano.tensor.ones((o_n_steps,), 'int64')
+    mod = n_steps % save_every_N
+    last_n_steps = theano.tensor.switch(theano.tensor.eq(mod, 0),
+                                        save_every_N, mod)
+    i_n_steps = theano.tensor.set_subtensor(i_n_steps[-1], last_n_steps)
+
+    # Pad the sequences if needed
+    if padding:
+        # Since padding could be an empty tensor, Join returns a view of s.
+        join = Join(view=0)
+        for i, s in enumerate(sequences):
+            n = s.shape[0] % save_every_N
+            z = theano.tensor.zeros((n, s.shape[1:]), dtype=s.dtype)
+            sequences[i] = join(0, [s, z])
 
     # Establish the input variables of the outer scan
     o_sequences = [s.reshape([s.shape[0] / save_every_N, save_every_N] +
                              [s.shape[i] for i in range(1, s.ndim)],
                              s.ndim + 1) for s in sequences]
+    o_sequences.append(i_n_steps)
     new_nitsots = [i for i in outputs_info if i is None]
-    o_nonsequences = non_sequences + [i_n_steps]
+    o_nonsequences = non_sequences
 
     def outer_step(*args):
         # Separate the received arguments into their respective (seq, outputs
@@ -117,11 +140,11 @@ def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
 
         # Call the user-provided function with the proper arguments
         results, updates = theano.scan(fn=fn,
-                                       sequences=i_sequences,
+                                       sequences=i_sequences[:-1],
                                        outputs_info=i_outputs_infos,
-                                       non_sequences=i_non_sequences[:-1],
+                                       non_sequences=i_non_sequences,
                                        name=name + "_inner",
-                                       n_steps=i_non_sequences[-1])
+                                       n_steps=i_sequences[-1])
         if not isinstance(results, list):
             results = [results]
 

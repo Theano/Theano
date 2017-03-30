@@ -14,9 +14,11 @@ from theano.gof.type import CDataType
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
-from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
+                                              assert_conv_shape)
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
+from theano.tensor.nnet import bn
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 from theano.sandbox.cuda import GpuOp, dnn_available
@@ -32,7 +34,7 @@ from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
 from theano.sandbox.cuda.nnet import GpuSoftmax
 from theano.sandbox.cuda.opt_util import (alpha_merge, output_merge,
                                           pad_dims, unpad_dims)
-from theano.sandbox.cuda import gpu_seqopt, register_opt
+from theano.sandbox.cuda import gpu_seqopt, register_opt, register_inplace
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
@@ -354,26 +356,6 @@ class GpuDnnConv(DnnBase, COp):
         if self.inplace:
             self.destroy_map = {0: [2]}
 
-        # In cuDNN version older than V3, the FFT implementation and the
-        # option to time the different implementations to get the fastest
-        # are both unavailable.
-        if version() < (3000, 3000):
-            if self.algo == 'fft':
-                raise RuntimeError("cuDNN FFT convolution requires cuDNN v3")
-            elif self.algo in ['guess_once', 'guess_on_shape_change']:
-                raise RuntimeError("cuDNN selection of convolution "
-                                   "implementation based on heuristics "
-                                   "requires cuDNN v3")
-            elif self.algo in ['time_once', 'time_on_shape_change']:
-                raise RuntimeError("cuDNN convolution timing requires cuDNN "
-                                   "v3")
-
-        # The fft_tiling implementation is only available from cuDNN V4 onward
-        if version() < (4000, 4000):
-            if self.algo == 'fft_tiling':
-                raise RuntimeError("cuDNN tiled-FFT convolution requires "
-                                   "cuDNN v4 or more recent")
-
         if version() < (5000, 5000):
             if self.algo == 'winograd':
                 raise RuntimeError("cuDNN winograd convolution requires "
@@ -392,6 +374,9 @@ class GpuDnnConv(DnnBase, COp):
                 self.algo = config.dnn.conv.algo_fwd
         if not hasattr(self, 'inplace'):
             self.inplace = False
+        # Work around to reload old pickle.
+        # We need to find the new file name and reload c code.
+        self.load_c_code(["dnn_base.c", "dnn_conv_base.c", "dnn_fwd.c"])
 
     def get_op_params(self):
         if self.inplace:
@@ -656,6 +641,7 @@ class GpuDnnConvGradW(DnnBase, COp):
                 self.algo = config.dnn.conv.algo_bwd_filter
         if not hasattr(self, 'inplace'):
             self.inplace = False
+        self.load_c_code(["dnn_base.c", "dnn_conv_base.c", "dnn_gw.c"])
 
     def grad(self, inp, grads):
         img, top, output, desc, alpha, beta = inp
@@ -804,6 +790,11 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
                 DisconnectedType()(), d_alpha, d_beta)
 
     def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
+        if self.algo != 'none' and desc.owner.op.subsample != (1, 1, 1):
+            warnings.warn('cuDNN backward filter operation for 3D convolutions may produce bad results '
+                          'with certain cuDNN algorithms depending on the compute capability of your GPU '
+                          'if subsample is not (1, 1, 1). If you encounter problems, consider '
+                          'setting the theano flag "dnn.conv.algo_bwd_filter" to "none".')
         img = as_cuda_ndarray_variable(img)
         topgrad = as_cuda_ndarray_variable(topgrad)
         output = as_cuda_ndarray_variable(output)
@@ -865,13 +856,6 @@ class GpuDnnConvGradI(DnnBase, COp):
         if self.inplace:
             self.destroy_map = {0: [2]}
 
-        # The small-workspace implementation is only available from cuDNN V4
-        # onward.
-        if version() < (4000, 4000):
-            if self.algo == 'fft_tiling':
-                raise RuntimeError("cuDNN's tiled-FFT convolution requires "
-                                   "cuDNN v4 or more recent")
-
         if version() < (5000, 5000):
             if self.algo == 'winograd':
                 raise RuntimeError("cuDNN's winograd convolution requires "
@@ -890,6 +874,7 @@ class GpuDnnConvGradI(DnnBase, COp):
                 self.algo = config.dnn.conv.algo_bwd_data
         if not hasattr(self, 'inplace'):
             self.inplace = False
+        self.load_c_code(["dnn_base.c", "dnn_conv_base.c", "dnn_gi.c"])
 
     def grad(self, inp, grads):
         kerns, top, output, desc, alpha, beta = inp
@@ -1154,10 +1139,12 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
             # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
             kerns = kerns[:, :, ::-1, ::-1]
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
-        shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
-        shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
-        out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
-                              shape_i(img, 1, fgraph), shape2, shape3)
+        out_shp = (shape_i(kerns, 1, fgraph),
+                   shape_i(img, 1, fgraph),
+                   shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1,
+                   shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1)
+        out_shp = assert_conv_shape(out_shp)
+        out = gpu_alloc_empty(*out_shp)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode='cross', precision=precision)(img.shape,
                                                                       out.shape)
@@ -1171,10 +1158,12 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         img = gpu_contiguous(img)
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
-        shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
-        shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
-        out = gpu_alloc_empty(shape_i(img, 0, fgraph),
-                              shape_i(kerns, 1, fgraph), shape2, shape3)
+        out_shp = (shape_i(img, 0, fgraph),
+                   shape_i(kerns, 1, fgraph),
+                   shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1,
+                   shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1)
+        out_shp = assert_conv_shape(out_shp)
+        out = gpu_alloc_empty(*out_shp)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode, precision=precision)(out.shape,
                                                                         kerns.shape)
@@ -1192,6 +1181,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
                                        desc_op.subsample)
+    out_shp = assert_conv_shape(out_shp)
     out = gpu_alloc_empty(*out_shp)
     return GpuDnnConv(algo=algo)(img, kerns, out, desc)
 
@@ -1270,11 +1260,13 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
             # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
             kerns = kerns[:, :, ::-1, ::-1, ::-1]
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3, 4))
-        shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
-        shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
-        shape4 = shape_i(img, 4, fgraph) - shape_i(kerns, 4, fgraph) + 1
-        out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
-                              shape_i(img, 1, fgraph), shape2, shape3, shape4)
+        out_shp = (shape_i(kerns, 1, fgraph),
+                   shape_i(img, 1, fgraph),
+                   shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1,
+                   shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1,
+                   shape_i(img, 4, fgraph) - shape_i(kerns, 4, fgraph) + 1)
+        out_shp = assert_conv_shape(out_shp)
+        out = gpu_alloc_empty(*out_shp)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1),
                               conv_mode='cross', precision=precision)(img.shape,
                                                                       out.shape)
@@ -1293,6 +1285,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     out_shp = GpuDnnConv3d.get_out_shape(img.shape, kerns.shape,
                                          desc_op.border_mode,
                                          desc_op.subsample)
+    out_shp = assert_conv_shape(out_shp)
     out = gpu_alloc_empty(*out_shp)
     return GpuDnnConv3d(algo=algo)(img, kerns, out, desc)
 
@@ -1464,13 +1457,6 @@ class GpuDnnPoolDesc(GpuOp):
         self.ws = ws
         self.stride = stride
         self.pad = pad
-
-        if self.get_ndim() == 3 and version() < (3000, 3000):
-            raise RuntimeError("cuDNN 3d pooling requires cuDNN v3")
-        if (mode == 'average_exc_pad' and max(pad) > 0 and
-                version() < (4004, 4004)):
-            raise RuntimeError(
-                "cuDNN pooling mode 'average_exc_pad' requires at least v4")
 
     def get_ndim(self):
         return len(self.ws)
@@ -1687,9 +1673,6 @@ if (!CudaNdarray_is_c_contiguous(%(input)s)) {
   %(fail)s
 }
 
-if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
-  %(fail)s
-
 int win[%(nd)d];
 int pad[%(nd)d];
 int str[%(nd)d];
@@ -1725,6 +1708,15 @@ if (CudaNdarray_prep_output(&%(out)s, %(nd)s+2, %(out)s_dims) != 0)
   %(fail)s
 }
 
+// if input batch is empty, we return the empty output without calling cuDNN
+// (which will fail on zero batch size).
+// Ideally, "return success" here, but we don't have a %%(done)s, so just skip the call.
+if (CudaNdarray_DIMS(%(input)s)[0] > 0) {
+// Don't indent for keeping history
+
+if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
+  %(fail)s
+
 if (c_set_tensorNd(%(out)s, %(output_desc)s) != 0)
   %(fail)s
 
@@ -1746,6 +1738,8 @@ if (err != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err));
   %(fail)s
 }
+
+} // Closes the batchdim > 0 check.
 """ % dict(out=out, fail=sub['fail'],
            name=name, input=inputs[0],
            ws=ws, pad=pad, str=stride,
@@ -1770,7 +1764,7 @@ if (err != CUDNN_STATUS_SUCCESS) {
         return [[1], [0], [0], [0]]
 
     def c_code_cache_version(self):
-        return (8, version())
+        return (9, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -1952,13 +1946,6 @@ if (!CudaNdarray_is_c_contiguous(%(output)s)) {
   %(fail)s
 }
 
-if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
-  %(fail)s
-if (c_set_tensorNd(%(input_grad)s, %(input_grad_desc)s) != 0)
-  %(fail)s
-if (c_set_tensorNd(%(output)s, %(output_desc)s) != 0)
-  %(fail)s
-
 if (CudaNdarray_prep_output(&%(output_grad)s,
                             %(output)s->nd,
                             CudaNdarray_HOST_DIMS(%(output)s)) != 0)
@@ -1966,6 +1953,18 @@ if (CudaNdarray_prep_output(&%(output_grad)s,
   %(fail)s
 }
 
+// if input batch is empty, we return the empty output without calling cuDNN
+// (which will fail on zero batch size).
+// Ideally, "return success" here, but we don't have a %%(done)s, so just skip the call.
+if (CudaNdarray_DIMS(%(input)s)[0] > 0) {
+// Don't indent for keeping history
+
+if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
+  %(fail)s
+if (c_set_tensorNd(%(input_grad)s, %(input_grad_desc)s) != 0)
+  %(fail)s
+if (c_set_tensorNd(%(output)s, %(output_desc)s) != 0)
+  %(fail)s
 
 int win[%(nd)d];
 int pad[%(nd)d];
@@ -2013,6 +2012,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err%(name)s));
  %(fail)s
 }
+
+} // Closes the batchdim > 0 check.
 """ % dict(output_grad=out_grad,
            fail=sub['fail'], name=name,
            input=inp, input_grad=inp_grad, output=out,
@@ -2024,7 +2025,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            ws=ws, pad=pad, str=stride)
 
     def c_code_cache_version(self):
-        return (8, version())
+        return (9, version())
 
     def infer_shape(self, node, shape):
         return [shape[0]]
@@ -2057,6 +2058,7 @@ def dnn_pool(img, ws, stride=None, mode='max', pad=None):
         and right borders.
         pad_d is the number of zero-valued pixels added to each of the front
         and back borders (3D pooling only).
+
 
     .. warning:: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
@@ -2109,9 +2111,6 @@ class GpuDnnSoftmaxBase(DnnBase):
                 "ran with this code.")
         DnnBase.__init__(self)
         self.tensor_format = tensor_format
-
-        if algo == 'log' and version() < (3000, 3000):
-            raise RuntimeError("cuDNN log-softmax requires cuDNN v3")
 
         assert(algo in ('fast', 'accurate', 'log'))
         self.algo = algo
@@ -2279,7 +2278,7 @@ err%(name)s = cudnnSoftmaxForward(
     def grad(self, inp, grads):
         x, = inp
         g_sm, = grads
-        sm = self.make_node(x).outputs[0]
+        sm = self(x)
         return [GpuDnnSoftmaxGrad(
             self.tensor_format,
             self.algo,
@@ -2364,6 +2363,23 @@ class GpuDnnBatchNormBase(DnnBase):
     epsilon
         Epsilon value used in the batch normalization formula. Minimum allowed
         value is 1e-5 (imposed by cuDNN).
+    running_average_factor : float
+        Factor for updating the values or `running_mean` and `running_var`.
+        If the factor is close to one, the running averages will update quickly,
+        if the factor is close to zero it will update slowly.
+    running_mean : tensor or None
+        Previous value of the running mean. If this is given, the new value
+        ``running_mean * (1 - r_a_factor) + batch mean * r_a_factor``
+        will be returned as one of the outputs of this function.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
+    running_var : tensor or None
+        Previous value of the running variance. If this is given, the new value
+        ``running_var * (1 - r_a_factor) + (m / (m - 1)) * batch var * r_a_factor``
+        will be returned as one of the outputs of this function,
+        where `m` is the product of lengths of the averaged-over dimensions.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
     """
 
     __props__ = ('mode', 'epsilon')
@@ -2412,17 +2428,15 @@ cudnnStatus_t err%(name)s;
         result = """
 cudnnStatus_t err%(name)s;
 cudnnBatchNormMode_t mode%(name)s = %(mode)s;
-double exponentialAverageFactor%(name)s = %(exp_avg_factor)f;
 double epsilon%(name)s = %(epsilon)e;
 """ % dict(name=name,
            mode=mode,
-           exp_avg_factor=0,  # deliberately unused
            epsilon=self.epsilon)
 
         return result
 
     def c_code_cache_version(self):
-        return (3, version())
+        return (4, version())
 
 
 class GpuDnnBatchNormInference(GpuDnnBatchNormBase):
@@ -2439,7 +2453,25 @@ class GpuDnnBatchNormInference(GpuDnnBatchNormBase):
     Note: scale, bias, mean and variance must follow the same tensor layout!
     """
 
+    __props__ = ('mode', 'epsilon', 'inplace')
     tensor_descs = ['bn_input', 'bn_output', 'bn_params']
+
+    def __init__(self, mode='per-activation', epsilon=1e-4, inplace=False):
+        super(GpuDnnBatchNormInference, self).__init__(mode=mode, epsilon=epsilon)
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'inplace'):
+            self.inplace = False
+
+    def get_op_params(self):
+        params = []
+        if self.inplace:
+            params.append(('INPLACE_OUTPUT', '1'))
+        return params
 
     def infer_shape(self, node, shape):
         # output shape equals shape of x
@@ -2477,10 +2509,16 @@ if (c_set_tensorNd(%(scale)s, bn_params_%(name)s) != 0)
 }
 
 // build and prepare the output variable
+#ifdef INPLACE_OUTPUT
+  Py_XDECREF(%(outp)s);
+  %(outp)s = %(inp)s;
+  Py_INCREF(%(outp)s);
+#else
 if (CudaNdarray_prep_output(&%(outp)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(inp)s)) != 0)
 {
     %(fail)s
 }
+#endif
 
 // set output tensor descriptor from output tensor
 if (c_set_tensorNd(%(outp)s, bn_output_%(name)s) != 0)
@@ -2510,6 +2548,16 @@ err%(name)s = cudnnBatchNormalizationForwardInference(
 }
 """ % dict(name=name, inp=inp, scale=scale, bias=bias, est_mean=est_mean,
            est_var=est_var, outp=outp, fail=sub['fail'])
+
+        # add params
+        define_macros, undef_macros = self.get_c_macros(node, name, check_input=False)
+        result = """
+%(define_macros)s
+{
+    %(code)s
+}
+%(undef_macros)s
+""" % dict(code=result, define_macros=define_macros, undef_macros=undef_macros)
 
         return result
 
@@ -2554,28 +2602,98 @@ class GpuDnnBatchNorm(GpuDnnBatchNormBase):
     Note: scale and bias must follow the same tensor layout!
     """
 
+    __props__ = ('mode', 'epsilon', 'running_average_factor',
+                 'running_averages', 'inplace_running_mean',
+                 'inplace_running_var', 'inplace_output')
     tensor_descs = ['bn_input', 'bn_output', 'bn_params']
+
+    def __init__(self, mode='per-activation', epsilon=1e-4,
+                 running_average_factor=0,
+                 running_averages=False, inplace_running_mean=False,
+                 inplace_running_var=False, inplace_output=False):
+        super(GpuDnnBatchNorm, self).__init__(mode=mode, epsilon=epsilon)
+        self.running_average_factor = running_average_factor
+        self.running_averages = running_averages
+        self.inplace_output = inplace_output
+        self.inplace_running_mean = inplace_running_mean
+        self.inplace_running_var = inplace_running_var
+        self.destroy_map = {}
+        if self.inplace_output:
+            self.destroy_map[0] = [0]
+        if self.running_averages and self.inplace_running_mean:
+            self.destroy_map[3] = [3]
+        if self.running_averages and self.inplace_running_var:
+            self.destroy_map[4] = [4]
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'running_average_factor'):
+            self.running_average_factor = 0
+        if not hasattr(self, 'running_averages'):
+            self.running_averages = False
+        if not (hasattr(self, 'inplace_running_mean') and
+                hasattr(self, 'inplace_running_var') and
+                hasattr(self, 'inplace_output')):
+            self.inplace_running_mean = False
+            self.inplace_running_var = False
+            self.inplace_output = False
+            self.destroy_map = {}
+
+    def get_op_params(self):
+        params = []
+        if self.inplace_output:
+            params.append(('INPLACE_OUTPUT', '1'))
+        if self.running_averages:
+            params.append(('RUNNING_AVERAGES', '1'))
+            if self.inplace_running_mean:
+                params.append(('INPLACE_RUNNING_MEAN', '1'))
+            if self.inplace_running_var:
+                params.append(('INPLACE_RUNNING_VAR', '1'))
+        return params
 
     def infer_shape(self, node, shape):
         # first output equals shape of x
-        # second and third output equal shape of scale
-        return [shape[0], shape[1], shape[1]]
+        # other outputs equal shape of scale
+        return [shape[0]] + [shape[1]] * (len(node.outputs) - 1)
 
-    def make_node(self, x, scale, bias):
+    def make_node(self, x, scale, bias,
+                  running_mean=None, running_var=None):
+        assert x.ndim == scale.ndim == bias.ndim
+        assert x.ndim in (4, 5)
+        assert self.running_averages == (running_mean is not None) == (running_var is not None)
+        assert (running_mean is None or running_mean.ndim == x.ndim)
+        assert (running_var is None or running_var.ndim == x.ndim)
         x = as_cuda_ndarray_variable(x)
         scale = as_cuda_ndarray_variable(scale)
         bias = as_cuda_ndarray_variable(bias)
-        assert x.ndim == scale.ndim == bias.ndim
-        assert x.ndim in (4, 5)
-        return Apply(self, [x, scale, bias], [x.type(), scale.type(), scale.type()])
+        inputs = [x, scale, bias]
+        output_types = [x.type(), scale.type(), scale.type()]
+        if running_mean is not None and running_var is not None:
+            inputs.append(as_cuda_ndarray_variable(running_mean))
+            inputs.append(as_cuda_ndarray_variable(running_var))
+            output_types.append(scale.type())
+            output_types.append(scale.type())
+        return Apply(self, inputs, output_types)
 
     def c_code(self, node, name, inputs, outputs, sub):
         # super call to prepare common configuration
         result = super(GpuDnnBatchNorm, self).c_code(node, name, inputs, outputs, sub)
 
         # give sensible names to inputs and outputs
-        inp, scale, bias = inputs
-        outp, x_mean, x_invstd = outputs
+        inp, scale, bias = inputs[:3]
+        outp, x_mean, x_invstd = outputs[:3]
+        if self.running_averages:
+            running_average_factor = self.running_average_factor
+            in_running_mean = inputs[3]
+            in_running_var = inputs[4]
+            out_running_mean = outputs[3]
+            out_running_var = outputs[4]
+        else:
+            running_average_factor = 0.
+            in_running_mean = 'NULL'
+            in_running_var = 'NULL'
+            out_running_mean = 'NULL'
+            out_running_var = 'NULL'
 
         # set input tensor descriptors from input tensors
         result += """
@@ -2596,6 +2714,32 @@ if ((CudaNdarray_prep_output(&%(outp)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(inp
 {
     %(fail)s
 }
+#ifdef RUNNING_AVERAGES
+#ifdef INPLACE_RUNNING_MEAN
+  Py_XDECREF(%(out_running_mean)s);
+  CudaNdarray *running_mean%(name)s = %(in_running_mean)s;
+  Py_INCREF(running_mean%(name)s);
+#else
+  if ((CudaNdarray_prep_output(&%(out_running_mean)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(scale)s)) != 0) ||
+      (CudaNdarray_CopyFromCudaNdarray(%(out_running_mean)s, %(in_running_mean)s) != 0))
+  {
+    %(fail)s
+  }
+  CudaNdarray *running_mean%(name)s = %(out_running_mean)s;
+#endif
+#ifdef INPLACE_RUNNING_VAR
+  Py_XDECREF(%(out_running_var)s);
+  CudaNdarray *running_var%(name)s = %(in_running_var)s;
+  Py_INCREF(running_var%(name)s);
+#else
+  if ((CudaNdarray_prep_output(&%(out_running_var)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(scale)s)) != 0) ||
+      (CudaNdarray_CopyFromCudaNdarray(%(out_running_var)s, %(in_running_var)s) != 0))
+  {
+    %(fail)s
+  }
+  CudaNdarray *running_var%(name)s = %(out_running_var)s;
+#endif
+#endif
 
 // set output tensor descriptor from output tensor
 if (c_set_tensorNd(%(outp)s, bn_output_%(name)s) != 0)
@@ -2618,25 +2762,66 @@ err%(name)s = cudnnBatchNormalizationForwardTraining(
   bn_params_%(name)s,
   CudaNdarray_DEV_DATA(%(scale)s),
   CudaNdarray_DEV_DATA(%(bias)s),
-  exponentialAverageFactor%(name)s,
-  NULL,  // running mean, deliberately unused
-  NULL,  // running var, deliberately unused
+#ifdef RUNNING_AVERAGES
+  %(running_average_factor)f,
+  CudaNdarray_DEV_DATA(running_mean%(name)s),
+  CudaNdarray_DEV_DATA(running_var%(name)s),
+#else
+  0,
+  NULL,
+  NULL,
+#endif
   epsilon%(name)s,
   CudaNdarray_DEV_DATA(%(x_mean)s),
   CudaNdarray_DEV_DATA(%(x_invstd)s)
 );
 }
+#ifdef RUNNING_AVERAGES
+  %(out_running_mean)s = running_mean%(name)s;
+  %(out_running_var)s = running_var%(name)s;
+#endif
 """ % dict(name=name, inp=inp, scale=scale, bias=bias, outp=outp,
-           x_mean=x_mean, x_invstd=x_invstd, fail=sub['fail'])
+           x_mean=x_mean, x_invstd=x_invstd,
+           running_average_factor=running_average_factor,
+           in_running_mean=in_running_mean, in_running_var=in_running_var,
+           out_running_mean=out_running_mean, out_running_var=out_running_var,
+           fail=sub['fail'])
+
+        # add params
+        define_macros, undef_macros = self.get_c_macros(node, name, check_input=False)
+        result = """
+%(define_macros)s
+{
+    %(code)s
+}
+%(undef_macros)s
+""" % dict(code=result, define_macros=define_macros, undef_macros=undef_macros)
 
         return result
 
     def grad(self, inputs, grads):
-        x, scale, bias = inputs
+        x, scale, bias = inputs[:3]
         dy = grads[0]
-        _, x_mean, x_invstd = self.make_node(x, scale, bias).outputs
-        return GpuDnnBatchNormGrad(self.mode, self.epsilon)(x, dy, scale,
-                                                            x_mean, x_invstd)
+        _, x_mean, x_invstd = self(*inputs)[:3]
+        disconnected_outputs = []
+        # Optional running_mean and running_var.
+        for i in range(3, len(inputs)):
+            disconnected_outputs.append(DisconnectedType()())
+        return GpuDnnBatchNormGrad(self.mode, self.epsilon)(
+            x, dy, scale, x_mean, x_invstd) + disconnected_outputs
+
+    def connection_pattern(self, node):
+        patterns = [[True, True, True],     # x
+                    [True, True, True],     # scale
+                    [True, True, True]]     # bias
+        # Optional running_mean and running_var are only
+        # connected to their new values.
+        for i in range(3, len(node.inputs)):
+            patterns[0].append(True)
+            for pattern in patterns[1:]:
+                pattern.append(False)
+            patterns.append([False] * (i) + [True])
+        return patterns
 
 
 class GpuDnnBatchNormGrad(GpuDnnBatchNormBase):
@@ -2739,7 +2924,8 @@ err%(name)s = cudnnBatchNormalizationBackward(
 
 
 def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
-                                  epsilon=1e-4):
+                                  epsilon=1e-4, running_average_factor=0.1,
+                                  running_mean=None, running_var=None):
     """
     Performs batch normalization of the given inputs, using the mean and
     variance of the inputs.
@@ -2759,6 +2945,23 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
     epsilon : float
         Epsilon value used in the batch normalization formula. Minimum allowed
         value is 1e-5 (imposed by cuDNN).
+    running_average_factor : float
+        Factor for updating the values or `running_mean` and `running_var`.
+        If the factor is close to one, the running averages will update quickly,
+        if the factor is close to zero it will update slowly.
+    running_mean : tensor or None
+        Previous value of the running mean. If this is given, the new value
+        ``running_mean * (1 - r_a_factor) + batch mean * r_a_factor``
+        will be returned as one of the outputs of this function.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
+    running_var : tensor or None
+        Previous value of the running variance. If this is given, the new value
+        ``running_var * (1 - r_a_factor) + (m / (m - 1)) * batch var * r_a_factor``
+        will be returned as one of the outputs of this function,
+        where `m` is the product of lengths of the averaged-over dimensions.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
 
     Returns
     -------
@@ -2766,8 +2969,14 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
         Batch-normalized inputs.
     mean : tensor
         Means of `inputs` across the normalization axes.
-    stdinv : tensor
+    invstd : tensor
         Inverse standard deviations of `inputs` across the normalization axes.
+    new_running_mean : tensor
+        New value of the running mean (only if both `running_mean` and
+        `running_var` were given).
+    new_running_var : tensor
+        New value of the running variance (only if both `running_var` and
+        `running_mean` were given).
 
     Notes
     -----
@@ -2779,31 +2988,78 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
 
         axes = 0 if mode == 'per-activation' else (0, 2, 3)
         mean = inputs.mean(axes, keepdims=True)
-        stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
-        out = (inputs - mean) * gamma * stdinv + beta
+        var = inputs.var(axes, keepdims=True)
+        invstd = T.inv(T.sqrt(var + epsilon))
+        out = (inputs - mean) * gamma * invstd + beta
+
+        m = T.cast(T.prod(inputs.shape) / T.prod(mean.shape), 'float32')
+        running_mean = running_mean * (1 - running_average_factor) + \\
+                       mean * running_average_factor
+        running_var = running_var * (1 - running_average_factor) + \\
+                      (m / (m - 1)) * var * running_average_factor
 
     For 5d tensors, the axes are (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 5:
-        raise ValueError("dnn_batch_normalization_train currently supports "
-                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
                          (gamma.ndim, beta.ndim, ndim))
+    if (running_mean is None) != (running_var is None):
+        raise ValueError("running_mean and running_var must either both be "
+                         "given or both be None")
+    if running_mean is not None and running_mean.ndim != ndim:
+        raise ValueError("running_mean must be of the same dimensionality "
+                         "as inputs; got %d instead of %d" %
+                         (running_mean.ndim, ndim))
+    if running_var is not None and running_var.ndim != ndim:
+        raise ValueError("running_var must be of the same dimensionality "
+                         "as inputs; got %d instead of %d" %
+                         (running_var.ndim, ndim))
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
+
+    running_averages = (running_var is not None and running_var is not None)
 
     if ndim < 4:
         inputs = theano.tensor.shape_padright(inputs, 4 - ndim)
         gamma = theano.tensor.shape_padright(gamma, 4 - ndim)
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
-    batchnorm_op = GpuDnnBatchNorm(mode=mode, epsilon=epsilon)
-    result = tuple(batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
-                                gpu_contiguous(beta)))
+        if running_averages:
+            running_mean = theano.tensor.shape_padright(running_mean, 4 - ndim)
+            running_var = theano.tensor.shape_padright(running_var, 4 - ndim)
+    elif ndim > 5:
+        inputs_shape = inputs.shape
+        params_shape = gamma.shape
+        inputs = theano.tensor.flatten(inputs, 5)
+        gamma = theano.tensor.flatten(gamma, 5)
+        beta = theano.tensor.flatten(beta, 5)
+        if running_averages:
+            running_mean = theano.tensor.flatten(running_mean, 5)
+            running_var = theano.tensor.flatten(running_var, 5)
+
+    batchnorm_op = GpuDnnBatchNorm(mode=mode, epsilon=epsilon,
+                                   running_average_factor=running_average_factor,
+                                   running_averages=running_averages)
+    if running_averages:
+        out, mean, invstd, new_running_mean, new_running_var = batchnorm_op(
+            gpu_contiguous(inputs), gpu_contiguous(gamma),
+            gpu_contiguous(beta),
+            running_mean=gpu_contiguous(running_mean),
+            running_var=gpu_contiguous(running_var))
+        if new_running_mean.broadcastable != running_mean.broadcastable:
+            new_running_mean = tensor.patternbroadcast(new_running_mean, running_mean.broadcastable)
+        if new_running_var.broadcastable != running_var.broadcastable:
+            new_running_var = tensor.patternbroadcast(new_running_var, running_var.broadcastable)
+        result = (out, mean, invstd, new_running_mean, new_running_var)
+    else:
+        result = batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
+                              gpu_contiguous(beta))
     if ndim < 4:
         result = tuple(theano.tensor.flatten(r, ndim) for r in result)
+    elif ndim > 5:
+        result = (theano.tensor.reshape(result[0], inputs_shape),) + tuple(
+            theano.tensor.reshape(r, params_shape) for r in result[1:])
     return result
 
 
@@ -2856,9 +3112,6 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
     For 5d tensors, the axes would be (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 5:
-        raise ValueError("dnn_batch_normalization_test currently supports "
-                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
@@ -2876,12 +3129,21 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
         mean = theano.tensor.shape_padright(mean, 4 - ndim)
         var = theano.tensor.shape_padright(var, 4 - ndim)
+    elif ndim > 5:
+        inputs_shape = inputs.shape
+        inputs = theano.tensor.flatten(inputs, 5)
+        gamma = theano.tensor.flatten(gamma, 5)
+        beta = theano.tensor.flatten(beta, 5)
+        mean = theano.tensor.flatten(mean, 5)
+        var = theano.tensor.flatten(var, 5)
     batchnorm_op = GpuDnnBatchNormInference(mode=mode, epsilon=epsilon)
     result = batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
                           gpu_contiguous(beta), gpu_contiguous(mean),
                           gpu_contiguous(var))
     if ndim < 4:
         result = theano.tensor.flatten(result, ndim)
+    elif ndim > 5:
+        result = theano.tensor.reshape(result, inputs_shape)
     return result
 
 
@@ -3179,7 +3441,7 @@ if True:
     @local_optimizer([GpuElemwise, LogSoftmax])
     def local_log_softmax_dnn(node):
         # The log-softmax implementation is only available starting at cuDNN V3
-        if not dnn_available() or version() < (3000, 3000):
+        if not dnn_available():
             return
 
         if (isinstance(node.op, GpuElemwise) and
@@ -3351,3 +3613,251 @@ def local_abstractconv3d_cudnn(node):
                                subsample=node.op.subsample,
                                conv_mode=conv_mode)
         return [rval]
+
+
+@local_optimizer([bn.AbstractBatchNormTrain])
+def local_abstract_batch_norm_train_cudnn(node):
+    if not isinstance(node.op, bn.AbstractBatchNormTrain):
+        return None
+
+    x, scale, bias, epsilon, running_average_factor = node.inputs[:5]
+    running_mean = node.inputs[5] if len(node.inputs) > 5 else None
+    running_var = node.inputs[6] if len(node.inputs) > 6 else None
+
+    # input on gpu?  TODO what about the output?
+    x_on_gpu = (isinstance(x.type, CudaNdarrayType) or
+                (x.owner and isinstance(x.owner.op, HostFromGpu)))
+    if not x_on_gpu:
+        return None
+
+    # convert axes to cuDNN mode
+    axes = tuple(node.op.axes)
+    if axes == (0,):
+        mode = 'per-activation'
+    elif axes == (0,) + tuple(range(2, x.ndim)):
+        mode = 'spatial'
+    else:
+        return None
+
+    try:
+        eps = float(theano.tensor.get_scalar_constant_value(epsilon))
+    except theano.tensor.NotScalarConstantError:
+        return None
+    if eps < 1e-5:
+        return None
+    try:
+        running_average_factor = float(theano.tensor.get_scalar_constant_value(running_average_factor))
+    except theano.tensor.NotScalarConstantError:
+        return None
+
+    if not dnn_available():
+        return None
+
+    x = as_cuda_ndarray_variable(x)
+    scale = as_cuda_ndarray_variable(scale)
+    bias = as_cuda_ndarray_variable(bias)
+
+    inputs = [x, scale, bias, mode, eps, running_average_factor]
+    if running_mean is not None and running_var is not None:
+        inputs.append(running_mean)
+        inputs.append(running_var)
+
+    results = list(dnn_batch_normalization_train(*inputs))
+
+    # If the original output was on CPU, we have to transfer it
+    for i in range(len(node.outputs)):
+        if isinstance(node.outputs[i].type, tensor.TensorType):
+            results[i] = tensor.as_tensor_variable(results[i])
+    # TODO copy_stack_trace?
+    return results
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNorm], inplace=True)
+def local_gpu_batch_norm_inplace_output(node):
+    if isinstance(node.op, GpuDnnBatchNorm) and not node.op.inplace_output:
+        return GpuDnnBatchNorm(mode=node.op.mode,
+                               epsilon=node.op.epsilon,
+                               running_average_factor=node.op.running_average_factor,
+                               running_averages=node.op.running_averages,
+                               inplace_running_mean=node.op.inplace_running_mean,
+                               inplace_running_var=node.op.inplace_running_var,
+                               inplace_output=True)(*node.inputs)
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNorm], inplace=True)
+def local_gpu_batch_norm_inplace_running_mean(node):
+    if isinstance(node.op, GpuDnnBatchNorm) and node.op.running_averages and not node.op.inplace_running_mean:
+        return GpuDnnBatchNorm(mode=node.op.mode,
+                               epsilon=node.op.epsilon,
+                               running_average_factor=node.op.running_average_factor,
+                               running_averages=node.op.running_averages,
+                               inplace_running_mean=True,
+                               inplace_running_var=node.op.inplace_running_var,
+                               inplace_output=node.op.inplace_output)(*node.inputs)
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNorm], inplace=True)
+def local_gpu_batch_norm_inplace_running_var(node):
+    if isinstance(node.op, GpuDnnBatchNorm) and node.op.running_averages and not node.op.inplace_running_var:
+        return GpuDnnBatchNorm(mode=node.op.mode,
+                               epsilon=node.op.epsilon,
+                               running_average_factor=node.op.running_average_factor,
+                               running_averages=node.op.running_averages,
+                               inplace_running_mean=node.op.inplace_running_mean,
+                               inplace_running_var=True,
+                               inplace_output=node.op.inplace_output)(*node.inputs)
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNormInference], inplace=True)
+def local_gpu_batch_norm_inference_inplace(node):
+    if isinstance(node.op, GpuDnnBatchNormInference) and not node.op.inplace:
+        return [GpuDnnBatchNormInference(mode=node.op.mode,
+                                         epsilon=node.op.epsilon,
+                                         inplace=True)(*node.inputs)]
+
+
+def values_eq_approx_high_tol(a, b):
+    """
+    This fct is needed to don't have DebugMode raise useless
+    errors due to rounding error.
+
+    This happen as we reduce on the two last dimensions, so this
+    can raise the absolute error if the number of elements we
+    reduce on is significant.
+
+    """
+    return tensor.TensorType.values_eq_approx(a, b, atol=0.015)
+
+
+@local_optimizer([bn.AbstractBatchNormTrainGrad])
+def local_abstract_batch_norm_train_grad_cudnn(node):
+    if not isinstance(node.op, bn.AbstractBatchNormTrainGrad):
+        return None
+
+    x, dy, scale, x_mean, x_invstd, epsilon = node.inputs
+
+    # input on gpu?  TODO what about the output?
+    x_on_gpu = (isinstance(x.type, CudaNdarrayType) or
+                (x.owner and isinstance(x.owner.op, HostFromGpu)))
+    dy_on_gpu = (isinstance(dy.type, CudaNdarrayType) or
+                 (dy.owner and isinstance(dy.owner.op, HostFromGpu)))
+    if not (x_on_gpu or dy_on_gpu):
+        return None
+
+    # convert axes to cuDNN mode
+    axes = tuple(node.op.axes)
+    if axes == (0,):
+        mode = 'per-activation'
+    elif axes == (0,) + tuple(range(2, x.ndim)):
+        mode = 'spatial'
+    else:
+        return None
+
+    ndim = x.ndim
+    if ndim < 4:
+        x = theano.tensor.shape_padright(x, 4 - ndim)
+        dy = theano.tensor.shape_padright(dy, 4 - ndim)
+        scale = theano.tensor.shape_padright(scale, 4 - ndim)
+        x_mean = theano.tensor.shape_padright(x_mean, 4 - ndim)
+        x_invstd = theano.tensor.shape_padright(x_invstd, 4 - ndim)
+    elif ndim > 5:
+        x_shape = x.shape
+        params_shape = scale.shape
+        x = theano.tensor.flatten(x, 5)
+        dy = theano.tensor.flatten(dy, 5)
+        scale = theano.tensor.flatten(scale, 5)
+        x_mean = theano.tensor.flatten(x_mean, 5)
+        x_invstd = theano.tensor.flatten(x_invstd, 5)
+
+    try:
+        eps = float(theano.tensor.get_scalar_constant_value(epsilon))
+    except theano.tensor.NotScalarConstantError:
+        return None
+    if eps < 1e-5:
+        return None
+
+    if not dnn_available():
+        return None
+
+    x = as_cuda_ndarray_variable(x)
+    dy = as_cuda_ndarray_variable(dy)
+    scale = as_cuda_ndarray_variable(scale)
+    x_mean = as_cuda_ndarray_variable(x_mean)
+    x_invstd = as_cuda_ndarray_variable(x_invstd)
+
+    g_wrt_inputs, g_wrt_scale, g_wrt_bias = \
+        GpuDnnBatchNormGrad(mode, epsilon=eps)(x, dy, scale, x_mean, x_invstd)
+
+    if ndim < 4:
+        g_wrt_inputs = theano.tensor.flatten(g_wrt_inputs, ndim)
+        g_wrt_scale = theano.tensor.flatten(g_wrt_scale, ndim)
+        g_wrt_bias = theano.tensor.flatten(g_wrt_bias, ndim)
+    elif ndim > 5:
+        g_wrt_inputs = theano.tensor.reshape(g_wrt_inputs, x_shape)
+        g_wrt_scale = theano.tensor.reshape(g_wrt_scale, params_shape)
+        g_wrt_bias = theano.tensor.reshape(g_wrt_bias, params_shape)
+
+    # If the original output was on CPU, we have to transfer it
+    if isinstance(node.outputs[0].type, tensor.TensorType):
+        g_wrt_inputs = tensor.as_tensor_variable(g_wrt_inputs)
+    if isinstance(node.outputs[1].type, tensor.TensorType):
+        g_wrt_scale = tensor.as_tensor_variable(g_wrt_scale)
+    if isinstance(node.outputs[2].type, tensor.TensorType):
+        g_wrt_bias = tensor.as_tensor_variable(g_wrt_bias)
+    # TODO copy_stack_trace?
+
+    g_wrt_inputs.tag.values_eq_approx = values_eq_approx_high_tol
+    g_wrt_scale.tag.values_eq_approx = values_eq_approx_high_tol
+    return [g_wrt_inputs, g_wrt_scale, g_wrt_bias]
+
+
+@local_optimizer([bn.AbstractBatchNormInference])
+def local_abstract_batch_norm_inference_cudnn(node):
+    if not isinstance(node.op, bn.AbstractBatchNormInference):
+        return None
+
+    x, scale, bias, estimated_mean, estimated_variance, epsilon = node.inputs
+
+    axes = tuple(node.op.axes)
+    if axes == (0,):
+        mode = 'per-activation'
+    elif axes == (0,) + tuple(range(2, x.ndim)):
+        mode = 'spatial'
+    else:
+        return None
+
+    # input on gpu?  TODO what about the output?
+    x_on_gpu = (isinstance(x.type, CudaNdarrayType) or
+                (x.owner and isinstance(x.owner.op, HostFromGpu)))
+    if not x_on_gpu:
+        return None
+
+    try:
+        eps = float(theano.tensor.get_scalar_constant_value(epsilon))
+    except theano.tensor.NotScalarConstantError:
+        return None
+    if eps < 1e-5:
+        return None
+
+    if not dnn_available():
+        return None
+
+    x = as_cuda_ndarray_variable(x)
+    scale = as_cuda_ndarray_variable(scale)
+    bias = as_cuda_ndarray_variable(bias)
+    estimated_mean = as_cuda_ndarray_variable(estimated_mean)
+    estimated_variance = as_cuda_ndarray_variable(estimated_variance)
+
+    out = dnn_batch_normalization_test(x, scale, bias, estimated_mean, estimated_variance,
+                                       mode, eps)
+
+    # If the original output was on CPU, we have to transfer it
+    # TODO copy_stack_trace?
+    if isinstance(node.outputs[0].type, tensor.TensorType):
+        return [tensor.as_tensor_variable(out)]
+    else:
+        return [out]

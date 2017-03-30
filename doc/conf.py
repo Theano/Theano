@@ -66,7 +66,7 @@ master_doc = 'index'
 
 # General substitutions.
 project = 'Theano'
-copyright = '2008--2016, LISA lab'
+copyright = '2008--2017, LISA lab'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
@@ -74,7 +74,7 @@ copyright = '2008--2016, LISA lab'
 # The short X.Y version.
 version = '0.9'
 # The full version, including alpha/beta/rc tags.
-release = '0.9 dev'
+release = '0.9.0'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -222,11 +222,16 @@ def linkcode_resolve(domain, info):
 # Options for LaTeX output
 # ------------------------
 
-# The paper size ('letter' or 'a4').
-#latex_paper_size = 'letter'
+latex_elements = {
+    # The paper size ('letter' or 'a4').
+    #latex_paper_size = 'letter',
 
-# The font size ('10pt', '11pt' or '12pt').
-latex_font_size = '11pt'
+    # The font size ('10pt', '11pt' or '12pt').
+    'pointsize': '11pt',
+
+    # Additional stuff for the LaTeX preamble.
+    #latex_preamble = '',
+}
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, document class
@@ -244,9 +249,6 @@ latex_logo = 'images/theano_logo_allblue_200x46.png'
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
 #latex_use_parts = False
-
-# Additional stuff for the LaTeX preamble.
-#latex_preamble = ''
 
 # Documents to append as an appendix to all manuals.
 #latex_appendices = []

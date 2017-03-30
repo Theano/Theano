@@ -9,7 +9,21 @@ ProfileStats object for runtime and memory profiling.
 #
 from __future__ import absolute_import, print_function, division
 
+import atexit
+import copy
 import logging
+import operator
+import os
+import sys
+import time
+from collections import defaultdict
+from six import iteritems
+import warnings
+
+import numpy as np
+
+import theano
+from theano.gof import graph
 
 __authors__ = "James Bergstra"
 __reviewer__ = "Razvan Pascanu"
@@ -19,23 +33,12 @@ __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
-import atexit
-import copy
-import operator
-import os
-import sys
-import time
-from collections import defaultdict
-
-import numpy
-
-import theano
-from six import iteritems
-from theano.gof import graph
-
 logger = logging.getLogger('theano.compile.profiling')
 
 theano_imported_time = time.time()
+total_fct_exec_time = 0.
+total_graph_opt_time = 0.
+total_time_linker = 0.
 config = theano.config
 
 _atexit_print_list = []
@@ -47,7 +50,81 @@ def _atexit_print_fn():
     Print ProfileStat objects in _atexit_print_list to _atexit_print_file.
 
     """
-    to_sum = []
+    if config.profile:
+        to_sum = []
+
+        if config.profiling.destination == 'stderr':
+            destination_file = sys.stderr
+        elif config.profiling.destination == 'stdout':
+            destination_file = sys.stdout
+        else:
+            destination_file = open(config.profiling.destination, 'w')
+
+        # Reverse sort in the order of compile+exec time
+        for ps in sorted(_atexit_print_list,
+                         key=lambda a: a.compile_time + a.fct_call_time)[::-1]:
+            if (ps.fct_callcount >= 1 or ps.compile_time > 1 or
+                    getattr(ps, 'callcount', 0) > 1):
+                ps.summary(file=destination_file,
+                           n_ops_to_print=config.profiling.n_ops,
+                           n_apply_to_print=config.profiling.n_apply)
+                if not isinstance(ps, ScanProfileStats):
+                    to_sum.append(ps)
+            else:
+                # TODO print the name if there is one!
+                print('Skipping empty Profile')
+        if len(to_sum) > 1:
+            # Make a global profile
+            cum = copy.copy(to_sum[0])
+            msg = ("Sum of all(%d) printed profiles at exit excluding Scan op"
+                   " profile." % len(to_sum))
+            cum.message = msg
+            for ps in to_sum[1:]:
+                for attr in ["compile_time", "fct_call_time", "fct_callcount",
+                             "vm_call_time", "optimizer_time", "linker_time",
+                             "validate_time", "import_time",
+                             "linker_node_make_thunks"]:
+                    setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
+
+                # merge dictonary
+                for attr in ["apply_time", "apply_callcount",
+                             "apply_cimpl", "variable_shape", "variable_strides",
+                             "linker_make_thunk_time"]:
+                    cum_attr = getattr(cum, attr)
+                    for key, val in iteritems(getattr(ps, attr)):
+                        assert key not in cum_attr
+                        cum_attr[key] = val
+
+                if cum.optimizer_profile and ps.optimizer_profile:
+                    try:
+                        merge = cum.optimizer_profile[0].merge_profile(
+                            cum.optimizer_profile[1],
+                            ps.optimizer_profile[1])
+                        assert len(merge) == len(cum.optimizer_profile[1])
+                        cum.optimizer_profile = (cum.optimizer_profile[0], merge)
+                    except Exception as e:
+                        print(e)
+                        cum.optimizer_profile = None
+                else:
+                    cum.optimizer_profile = None
+
+            cum.summary(file=destination_file,
+                        n_ops_to_print=config.profiling.n_ops,
+                        n_apply_to_print=config.profiling.n_apply)
+
+    if config.print_global_stats:
+        print_global_stats()
+
+
+def print_global_stats():
+    """
+    Print the following stats:
+      -- Time elapsed since Theano was imported
+      -- Time spent inside Theano functions
+      -- Time spent in compiling Theano functions
+           -- on graph optimization
+           -- on linker
+    """
 
     if config.profiling.destination == 'stderr':
         destination_file = sys.stderr
@@ -56,57 +133,26 @@ def _atexit_print_fn():
     else:
         destination_file = open(config.profiling.destination, 'w')
 
-    # Reverse sort in the order of compile+exec time
-    for ps in sorted(_atexit_print_list,
-                     key=lambda a:a.compile_time + a.fct_call_time)[::-1]:
-        if ps.fct_callcount >= 1 or ps.compile_time > 1:
-            ps.summary(file=destination_file,
-                       n_ops_to_print=config.profiling.n_ops,
-                       n_apply_to_print=config.profiling.n_apply)
-            if not isinstance(ps, ScanProfileStats):
-                to_sum.append(ps)
-        else:
-            # TODO print the name if there is one!
-            print('Skipping empty Profile')
-    if len(to_sum) > 1:
-        # Make a global profile
-        cum = copy.copy(to_sum[0])
-        msg = ("Sum of all(%d) printed profiles at exit excluding Scan op"
-               " profile." % len(to_sum))
-        cum.message = msg
-        for ps in to_sum[1:]:
-            for attr in ["compile_time", "fct_call_time", "fct_callcount",
-                         "vm_call_time", "optimizer_time", "linker_time",
-                         "validate_time", "import_time",
-                         "linker_node_make_thunks"]:
-                setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
+    print('=' * 50, file=destination_file)
+    print('Global stats: ',
+          'Time elasped since Theano import = %6.3fs, '
+          'Time spent in Theano functions = %6.3fs, '
+          'Time spent compiling Theano functions: '
+          ' optimzation = %6.3fs, linker = %6.3fs ' %
+          (time.time() - theano_imported_time,
+           total_fct_exec_time,
+           total_graph_opt_time,
+           total_time_linker),
+          file=destination_file)
+    print('=' * 50, file=destination_file)
 
-            # merge dictonary
-            for attr in ["apply_time", "apply_callcount",
-                         "apply_cimpl", "variable_shape", "variable_strides",
-                         "linker_make_thunk_time"]:
-                cum_attr = getattr(cum, attr)
-                for key, val in iteritems(getattr(ps, attr)):
-                    assert key not in cum_attr
-                    cum_attr[key] = val
 
-            if cum.optimizer_profile and ps.optimizer_profile:
-                try:
-                    merge = cum.optimizer_profile[0].merge_profile(
-                        cum.optimizer_profile[1],
-                        ps.optimizer_profile[1])
-                    assert len(merge) == len(cum.optimizer_profile[1])
-                    cum.optimizer_profile = (cum.optimizer_profile[0], merge)
-                except Exception as e:
-                    print("Got an exception while merging profile")
-                    print(e)
-                    cum.optimizer_profile = None
-            else:
-                cum.optimizer_profile = None
+_profiler_printers = []
 
-        cum.summary(file=destination_file,
-                    n_ops_to_print=config.profiling.n_ops,
-                    n_apply_to_print=config.profiling.n_apply)
+
+def register_profiler_printer(fct):
+    _profiler_printers.append(fct)
+    return fct
 
 
 class ProfileStats(object):
@@ -134,7 +180,7 @@ class ProfileStats(object):
         self.apply_time = {}
         self.apply_callcount = {}
         # self.apply_cimpl = None
-        # self.messge = None
+        # self.message = None
     #
     # Note on implementation:
     # Class variables are used here so that each one can be
@@ -213,29 +259,35 @@ class ProfileStats(object):
 
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
-    def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
-        if (config.profile and
+    def __init__(self, atexit_print=True, flag_time_thunks=None,
+                 gpu_checks=True, **kwargs):
+        if (gpu_checks and
                 ((hasattr(theano, 'sandbox') and
                   hasattr(theano.sandbox, 'cuda') and
                   theano.sandbox.cuda.cuda_enabled) or (
                       hasattr(theano, 'gpuarray') and
-                      theano.gpuarray.pygpu_activated))):
-            if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
-                raise Exception(
-                    "You are running the Theano profiler with CUDA enabled."
-                    " Theano GPU ops execution is asynchronous by default."
-                    " So by default, the profile is useless."
-                    " You must set the environment variable"
-                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
-                    " synchronize the execution to get a meaningful profile.")
-        if (config.profile and
+                      theano.gpuarray.pygpu_activated)) and
+                os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1'):
+            msg = (
+                "You are running the Theano profiler with CUDA enabled."
+                " Theano GPU ops execution is asynchronous by default."
+                " So by default, the profile is useless."
+                " You must set the environment variable"
+                " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
+                " synchronize the execution to get a meaningful profile.")
+            if config.profile:
+                raise Exception(msg)
+            else:
+                warnings.warn(msg)
+
+        if (config.profile and gpu_checks and
                 hasattr(theano, 'gpuarray') and
                 theano.gpuarray.pygpu_activated and
                 not config.profiling.ignore_first_call):
-            logger.warn(
+            warnings.warn(
                 "Theano flag profiling.ignore_first_call is False."
                 " This cause bad profiling result in the new gpu"
-                " back-end, we as sometimes we compile at the first call.")
+                " back-end, as sometimes we compile at the first call.")
 
         self.apply_callcount = {}
         self.output_size = {}
@@ -440,7 +492,7 @@ class ProfileStats(object):
         hs += ['<#apply>']
         es += [' %4d  ']
 
-        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        upto_length = np.sum([len(x) for x in hs]) + len(hs)
         maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Class name>']
         es += ['%s']
@@ -522,7 +574,7 @@ class ProfileStats(object):
         hs += ['<#apply>']
         es += ['  %4d  ']
 
-        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        upto_length = np.sum([len(x) for x in hs]) + len(hs)
         maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Op name>']
         es += ['%s']
@@ -590,7 +642,7 @@ class ProfileStats(object):
         if self.variable_shape:
             hs += ['<Mflops>', '<Gflops/s>']
 
-        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        upto_length = np.sum([len(x) for x in hs]) + len(hs)
         maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Apply name>']
         es += ['%s']
@@ -691,7 +743,7 @@ class ProfileStats(object):
               file=file)
 
         for node, t in sorted(self.linker_make_thunk_time.items(),
-                                 key=operator.itemgetter(1))[::-1][:5]:
+                              key=operator.itemgetter(1))[::-1][:5]:
             print('           Node %s time %es' % (node, t),
                   file=file)
         print('', file=file)
@@ -892,7 +944,7 @@ class ProfileStats(object):
             node_list = list(node_list)
             mem_count = 0
             max_mem_count = 0
-            mem_bound = numpy.inf
+            mem_bound = np.inf
             # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
             done_set = set([])
@@ -1094,7 +1146,7 @@ class ProfileStats(object):
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
-            
+
             def compute_max_stats(running_memory, stats):
                 (max_node_memory_size,
                  max_running_max_memory_size,
@@ -1279,6 +1331,7 @@ class ProfileStats(object):
             print("-----------------", file=file)
             self.optimizer_profile[0].print_profile(file,
                                                     self.optimizer_profile[1])
+        self.print_extra(file)
         self.print_tips(file)
 
     def print_tips(self, file):
@@ -1424,6 +1477,12 @@ class ProfileStats(object):
 
         if not printed_tip:
             print("  Sorry, no tip for today.", file=file)
+
+    def print_extra(self, file):
+        params = [self.message, self.compile_time, self.fct_call_time,
+                  self.apply_time, self.apply_cimpl, self.output_size]
+        for f in _profiler_printers:
+            f(*params, file=file)
 
 
 class ScanProfileStats(ProfileStats):

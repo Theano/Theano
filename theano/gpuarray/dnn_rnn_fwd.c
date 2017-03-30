@@ -1,6 +1,6 @@
 #section support_code
 
-int dnn_rnn_fwd(cudnnRNNDescriptor_t desc,
+int dnn_rnn_fwd(cudnnRNNDescriptor_t desc, uint32_t numDirs,
                 PyGpuArrayObject *w, PyGpuArrayObject *x,
                 PyGpuArrayObject *hx, PyGpuArrayObject *cx,
                 gpudata **reserve, PyGpuArrayObject **y,
@@ -22,7 +22,7 @@ int dnn_rnn_fwd(cudnnRNNDescriptor_t desc,
   size_t seqLength = PyGpuArray_DIM(x, 0);
   size_t miniBatch = PyGpuArray_DIM(x, 1);
   size_t inputSize = PyGpuArray_DIM(x, 2);
-  size_t hiddenSizeDir = PyGpuArray_DIM(hx, 2);
+  size_t hiddenSize = PyGpuArray_DIM(hx, 2);
   size_t shape[3];
   int strs[3], dims[3];
   cudnnStatus_t err;
@@ -84,7 +84,7 @@ int dnn_rnn_fwd(cudnnRNNDescriptor_t desc,
 
   shape[0] = seqLength;
   shape[1] = miniBatch;
-  shape[2] = hiddenSizeDir;
+  shape[2] = hiddenSize * numDirs;
   if (theano_prep_output(y, 3, shape, x->ga.typecode, GA_C_ORDER, c) != 0)
     goto fail;
 

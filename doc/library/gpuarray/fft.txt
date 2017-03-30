@@ -1,8 +1,8 @@
 .. _libdoc_gpuarray_fft:
 
-==============================================
-:mod:`gpuarray.fft` -- Fast Fourier Transforms
-==============================================
+=====================================================
+:mod:`theano.gpuarray.fft` -- Fast Fourier Transforms
+=====================================================
 
 Performs Fast Fourier Transforms (FFT) on the GPU.
 

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import unittest
 
 import theano
@@ -18,14 +18,14 @@ class Test_SharedVariable(unittest.TestCase):
         else:
             assert shared(7).type == theano.tensor.lscalar, shared(7).type
         assert shared(7.0).type == theano.tensor.dscalar
-        assert shared(numpy.float32(7)).type == theano.tensor.fscalar
+        assert shared(np.float32(7)).type == theano.tensor.fscalar
 
         # test tensor constructor
-        b = shared(numpy.zeros((5, 5), dtype='int32'))
+        b = shared(np.zeros((5, 5), dtype='int32'))
         assert b.type == TensorType('int32', broadcastable=[False, False])
-        b = shared(numpy.random.rand(4, 5))
+        b = shared(np.random.rand(4, 5))
         assert b.type == TensorType('float64', broadcastable=[False, False])
-        b = shared(numpy.random.rand(5, 1, 2))
+        b = shared(np.random.rand(5, 1, 2))
         assert b.type == TensorType('float64', broadcastable=[False, False, False])
 
         assert shared([]).type == generic
@@ -52,7 +52,7 @@ class Test_SharedVariable(unittest.TestCase):
         SharedVariable(
             name='u',
             type=Tensor(broadcastable=[False], dtype='float64'),
-            value=numpy.asarray([1., 2.]),
+            value=np.asarray([1., 2.]),
             strict=False)
 
         # here the value is castable, and we're not strict about it,
@@ -90,14 +90,14 @@ class Test_SharedVariable(unittest.TestCase):
         u = SharedVariable(
             name='u',
             type=Tensor(broadcastable=[False], dtype='float64'),
-            value=numpy.asarray([1., 2.]),
+            value=np.asarray([1., 2.]),
             strict=False)
 
         # check that assignments to value are cast properly
         u.set_value([3, 4])
-        assert type(u.get_value()) is numpy.ndarray
+        assert type(u.get_value()) is np.ndarray
         assert str(u.get_value(borrow=True).dtype) == 'float64'
-        assert numpy.all(u.get_value() == [3, 4])
+        assert np.all(u.get_value() == [3, 4])
 
         # check that assignments of nonsense fail
         try:
@@ -115,31 +115,31 @@ class Test_SharedVariable(unittest.TestCase):
         def f(var, val):
             var.set_value(val)
 
-        b = shared(numpy.int64(7), strict=True)
+        b = shared(np.int64(7), strict=True)
         assert b.type == theano.tensor.lscalar
         self.assertRaises(TypeError, f, b, 8.23)
 
-        b = shared(numpy.int32(7), strict=True)
+        b = shared(np.int32(7), strict=True)
         assert b.type == theano.tensor.iscalar
         self.assertRaises(TypeError, f, b, 8.23)
 
-        b = shared(numpy.int16(7), strict=True)
+        b = shared(np.int16(7), strict=True)
         assert b.type == theano.tensor.wscalar
         self.assertRaises(TypeError, f, b, 8.23)
 
-        b = shared(numpy.int8(7), strict=True)
+        b = shared(np.int8(7), strict=True)
         assert b.type == theano.tensor.bscalar
         self.assertRaises(TypeError, f, b, 8.23)
 
-        b = shared(numpy.float64(7.234), strict=True)
+        b = shared(np.float64(7.234), strict=True)
         assert b.type == theano.tensor.dscalar
         self.assertRaises(TypeError, f, b, 8)
 
-        b = shared(numpy.float32(7.234), strict=True)
+        b = shared(np.float32(7.234), strict=True)
         assert b.type == theano.tensor.fscalar
         self.assertRaises(TypeError, f, b, 8)
 
-        b = shared(numpy.float(7.234), strict=True)
+        b = shared(np.float(7.234), strict=True)
         assert b.type == theano.tensor.dscalar
         self.assertRaises(TypeError, f, b, 8)
 
@@ -147,39 +147,39 @@ class Test_SharedVariable(unittest.TestCase):
         assert b.type == theano.tensor.dscalar
         self.assertRaises(TypeError, f, b, 8)
 
-        b = shared(numpy.zeros((5, 5), dtype='float32'))
-        self.assertRaises(TypeError, f, b, numpy.random.rand(5, 5))
+        b = shared(np.zeros((5, 5), dtype='float32'))
+        self.assertRaises(TypeError, f, b, np.random.rand(5, 5))
 
     def test_tensor_strict(self):
         def f(var, val):
             var.set_value(val)
 
-        b = shared(numpy.int64([7]), strict=True)
+        b = shared(np.int64([7]), strict=True)
         assert b.type == theano.tensor.lvector
         self.assertRaises(TypeError, f, b, 8.23)
 
-        b = shared(numpy.int32([7]), strict=True)
+        b = shared(np.int32([7]), strict=True)
         assert b.type == theano.tensor.ivector
         self.assertRaises(TypeError, f, b, 8.23)
 
-        b = shared(numpy.int16([7]), strict=True)
+        b = shared(np.int16([7]), strict=True)
         assert b.type == theano.tensor.wvector
         self.assertRaises(TypeError, f, b, 8.23)
 
-        b = shared(numpy.int8([7]), strict=True)
+        b = shared(np.int8([7]), strict=True)
         assert b.type == theano.tensor.bvector
         self.assertRaises(TypeError, f, b, 8.23)
 
-        b = shared(numpy.float64([7.234]), strict=True)
+        b = shared(np.float64([7.234]), strict=True)
         assert b.type == theano.tensor.dvector
         self.assertRaises(TypeError, f, b, 8)
 
-        b = shared(numpy.float32([7.234]), strict=True)
+        b = shared(np.float32([7.234]), strict=True)
         assert b.type == theano.tensor.fvector
         self.assertRaises(TypeError, f, b, 8)
 
-# numpy.float([7.234]) don't work
-#        b = shared(numpy.float([7.234]), strict=True)
+# np.float([7.234]) don't work
+#        b = shared(np.float([7.234]), strict=True)
 #        assert b.type == theano.tensor.dvector
 #        self.assertRaises(TypeError, f, b, 8)
 
@@ -188,8 +188,8 @@ class Test_SharedVariable(unittest.TestCase):
 #        assert b.type == theano.tensor.dvector
 #        self.assertRaises(TypeError, f, b, 8)
 
-        b = shared(numpy.zeros((5, 5), dtype='float32'))
-        self.assertRaises(TypeError, f, b, numpy.random.rand(5, 5))
+        b = shared(np.zeros((5, 5), dtype='float32'))
+        self.assertRaises(TypeError, f, b, np.random.rand(5, 5))
 
     def test_scalar_floatX(self):
 
@@ -204,37 +204,37 @@ class Test_SharedVariable(unittest.TestCase):
         def f(var, val):
             var.set_value(val)
 
-        b = shared(numpy.int64(7), allow_downcast=True)
+        b = shared(np.int64(7), allow_downcast=True)
         assert b.type == theano.tensor.lscalar
         f(b, 8.23)
         assert b.get_value() == 8
 
-        b = shared(numpy.int32(7), allow_downcast=True)
+        b = shared(np.int32(7), allow_downcast=True)
         assert b.type == theano.tensor.iscalar
         f(b, 8.23)
         assert b.get_value() == 8
 
-        b = shared(numpy.int16(7), allow_downcast=True)
+        b = shared(np.int16(7), allow_downcast=True)
         assert b.type == theano.tensor.wscalar
         f(b, 8.23)
         assert b.get_value() == 8
 
-        b = shared(numpy.int8(7), allow_downcast=True)
+        b = shared(np.int8(7), allow_downcast=True)
         assert b.type == theano.tensor.bscalar
         f(b, 8.23)
         assert b.get_value() == 8
 
-        b = shared(numpy.float64(7.234), allow_downcast=True)
+        b = shared(np.float64(7.234), allow_downcast=True)
         assert b.type == theano.tensor.dscalar
         f(b, 8)
         assert b.get_value() == 8
 
-        b = shared(numpy.float32(7.234), allow_downcast=True)
+        b = shared(np.float32(7.234), allow_downcast=True)
         assert b.type == theano.tensor.fscalar
         f(b, 8)
         assert b.get_value() == 8
 
-        b = shared(numpy.float(7.234), allow_downcast=True)
+        b = shared(np.float(7.234), allow_downcast=True)
         assert b.type == theano.tensor.dscalar
         f(b, 8)
         assert b.get_value() == 8
@@ -244,45 +244,45 @@ class Test_SharedVariable(unittest.TestCase):
         f(b, 8)
         assert b.get_value() == 8
 
-        b = shared(numpy.zeros((5, 5), dtype='float32'))
-        self.assertRaises(TypeError, f, b, numpy.random.rand(5, 5))
+        b = shared(np.zeros((5, 5), dtype='float32'))
+        self.assertRaises(TypeError, f, b, np.random.rand(5, 5))
 
     def test_tensor_floatX(self):
         def f(var, val):
             var.set_value(val)
 
-        b = shared(numpy.int64([7]), allow_downcast=True)
+        b = shared(np.int64([7]), allow_downcast=True)
         assert b.type == theano.tensor.lvector
         f(b, [8.23])
         assert b.get_value() == 8
 
-        b = shared(numpy.int32([7]), allow_downcast=True)
+        b = shared(np.int32([7]), allow_downcast=True)
         assert b.type == theano.tensor.ivector
         f(b, [8.23])
         assert b.get_value() == 8
 
-        b = shared(numpy.int16([7]), allow_downcast=True)
+        b = shared(np.int16([7]), allow_downcast=True)
         assert b.type == theano.tensor.wvector
         f(b, [8.23])
         assert b.get_value() == 8
 
-        b = shared(numpy.int8([7]), allow_downcast=True)
+        b = shared(np.int8([7]), allow_downcast=True)
         assert b.type == theano.tensor.bvector
         f(b, [8.23])
         assert b.get_value() == 8
 
-        b = shared(numpy.float64([7.234]), allow_downcast=True)
+        b = shared(np.float64([7.234]), allow_downcast=True)
         assert b.type == theano.tensor.dvector
         f(b, [8])
         assert b.get_value() == 8
 
-        b = shared(numpy.float32([7.234]), allow_downcast=True)
+        b = shared(np.float32([7.234]), allow_downcast=True)
         assert b.type == theano.tensor.fvector
         f(b, [8])
         assert b.get_value() == 8
 
-# numpy.float([7.234]) don't work
-#        b = shared(numpy.float([7.234]))
+# np.float([7.234]) don't work
+#        b = shared(np.float([7.234]))
 #        assert b.type == theano.tensor.dvector
 #        f(b,[8])
 
@@ -291,15 +291,15 @@ class Test_SharedVariable(unittest.TestCase):
 #        assert b.type == theano.tensor.dvector
 #        f(b,[8])
 
-        b = shared(numpy.asarray([7.234], dtype=theano.config.floatX),
+        b = shared(np.asarray([7.234], dtype=theano.config.floatX),
                    allow_downcast=True)
         assert b.dtype == theano.config.floatX
         f(b, [8])
         assert b.get_value() == 8
 
-        b = shared(numpy.zeros((5, 5), dtype='float32'))
-        self.assertRaises(TypeError, f, b, numpy.random.rand(5, 5))
+        b = shared(np.zeros((5, 5), dtype='float32'))
+        self.assertRaises(TypeError, f, b, np.random.rand(5, 5))
 
     def test_err_symbolic_variable(self):
         self.assertRaises(TypeError, shared, theano.tensor.ones((2, 3)))
-        shared(numpy.ones((2, 4)))
+        shared(np.ones((2, 4)))

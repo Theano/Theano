@@ -114,8 +114,8 @@ def test_conv3d(border_mode):
 # This function will also be used in theano/sandbox/cuda/tests/test_tensor_op.py,
 # which is not possible if it is decorated by @parameterized.expand
 def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._shared):
-    if ndimage is None:
-        raise SkipTest("conv3d2d tests need SciPy")
+    if ndimage is None or not theano.config.cxx:
+        raise SkipTest("conv3d2d tests need SciPy and a c++ compiler")
 
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
     Nf, Tf, C, Hf, Wf = 32, 5, 3, 5, 5

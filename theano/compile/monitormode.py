@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 # Note: this code was initially copied from the 'pyutools' package by its
 # original author, and re-licensed under Theano's license.
-import numpy
+import numpy as np
 
 import theano
 from theano.compile.mode import Mode
@@ -93,8 +93,8 @@ class MonitorMode(Mode):
 
 def detect_nan(i, node, fn):
     for output in fn.outputs:
-        if (not isinstance(output[0], numpy.random.RandomState) and
-                numpy.isnan(output[0]).any()):
+        if (not isinstance(output[0], np.random.RandomState) and
+                np.isnan(output[0]).any()):
             print('*** NaN detected ***')
             theano.printing.debugprint(node)
             print('Inputs : %s' % [input[0] for input in fn.inputs])

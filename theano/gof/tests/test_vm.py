@@ -5,7 +5,7 @@ import time
 import unittest
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 from six import itervalues
 
 from theano import function
@@ -92,7 +92,7 @@ def test_speed():
     def time_numpy():
         steps_a = 5
         steps_b = 100
-        x = numpy.asarray([2.0, 3.0], dtype=theano.config.floatX)
+        x = np.asarray([2.0, 3.0], dtype=theano.config.floatX)
 
         numpy_version(x, steps_a)
         t0 = time.time()
@@ -195,7 +195,6 @@ def test_speed_lazy():
 
 
 def test_partial_function():
-    import numpy as np
     from theano.tests import unittest_tools as utt
 
     def check_partial_function(linker_name):
@@ -209,6 +208,8 @@ def test_partial_function():
         utt.assert_allclose(f(5), np.array([32., 16., 1.7857142857142858]))
 
     check_partial_function(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
     check_partial_function('cvm')
 
 
@@ -223,6 +224,8 @@ def test_partial_function_with_output_keys():
         assert f(5, output_subset=['a'])['a'] == f(5)['a']
 
     check_partial_function_output_keys(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
     check_partial_function_output_keys('cvm')
 
 
@@ -230,7 +233,7 @@ def test_partial_function_with_updates():
 
     def check_updates(linker_name):
         x = tensor.lscalar('input')
-        y = theano.shared(numpy.asarray(1, 'int64'), name='global')
+        y = theano.shared(np.asarray(1, 'int64'), name='global')
         f = theano.function([x], [x, x + 34], updates=[(y, x + 1)], mode=Mode(
             optimizer=None, linker=linker_name))
         g = theano.function([x], [x - 6], updates=[(y, y + 3)], mode=Mode(
@@ -243,6 +246,8 @@ def test_partial_function_with_updates():
         assert y.get_value() == 10
 
     check_updates(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
     check_updates('cvm')
 
 
@@ -277,7 +282,7 @@ if run_memory_usage_tests:
     def test_leak2():
         import theano.sandbox.cuda as cuda
         for i in xrange(1000000):
-            n = numpy.asarray([2.3, 4.5], dtype='f')
+            n = np.asarray([2.3, 4.5], dtype='f')
             c = sys.getrefcount(n)
             a = cuda.CudaNdarray(n)
             a.sum()
@@ -332,7 +337,7 @@ if run_memory_usage_tests:
             f_a = function([x], a,
                            mode=Mode(optimizer=None,
                                      linker=linker()))
-            inp = numpy.random.rand(1000000)
+            inp = np.random.rand(1000000)
             for i in xrange(100):
                 f_a(inp)
             if 0:  # this doesn't seem to work, prints 0 for everything
@@ -369,7 +374,7 @@ if run_memory_usage_tests:
             f_a = function([x], a,
                            mode=Mode(optimizer=None,
                                      linker=linker()))
-            inp = numpy.random.rand(1000000)
+            inp = np.random.rand(1000000)
             for i in xrange(500):
                 f_a(inp)
         print(1)

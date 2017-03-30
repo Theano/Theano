@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy
+import warnings
 
 import theano
 from theano import Op, Apply
@@ -211,7 +212,7 @@ class MultinomialFromUniform(Op):
                 z[0][n, numpy.searchsorted(cumsum, unis_n)] += 1
 
 
-class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
+class ChoiceFromUniform(MultinomialFromUniform):
     """
     Converts samples from a uniform into sample (without replacement) from a
     multinomial.
@@ -329,6 +330,9 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
                     if (cummul > *unis_n)
                     {
                         *z_nc = m;
+                        // No need to renormalize after the last samples.
+                        if (c == (n_samples - 1))
+                            break;
                         // renormalize the nth row of pvals, reuse (cummul-*pvals_nm) to initialize the sum
                         dtype_%(pvals)s sum = cummul - *pvals_nm;
                         dtype_%(pvals)s* pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(pvals_copy, n, m);
@@ -434,7 +438,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         return Op.perform(self, node, ins, outs)
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -623,3 +627,12 @@ def local_gpu_multinomial(node):
             # The dimshuffle is on the cpu, but will be moved to the
             # gpu by an opt.
             return [gpu_from_host(ret)]
+
+
+class MultinomialWOReplacementFromUniform(ChoiceFromUniform):
+    def __init__(self, *args, **kwargs):
+        warnings.warn("MultinomialWOReplacementFromUniform is deprecated, "
+                      "use ChoiceFromUniform instead.",
+                      DeprecationWarning,
+                      stacklevel=2)
+        super(MultinomialWOReplacementFromUniform, self).__init__(*args, **kwargs)

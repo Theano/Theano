@@ -7,10 +7,17 @@ from nose.tools import assert_raises, assert_true
 
 import theano
 from theano import tensor
+from theano.configparser import change_flags
 from theano.gof.opt import check_stack_trace
 from theano.tests import unittest_tools as utt
-from theano.tensor.nnet import corr, corr3d, abstract_conv as conv
-from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet import (corr, corr3d, conv2d_transpose,
+                                abstract_conv as conv)
+from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
+                                              get_conv_gradweights_shape,
+                                              get_conv_gradinputs_shape,
+                                              check_conv_gradinputs_shape,
+                                              assert_conv_shape,
+                                              assert_shape)
 from theano.tensor.nnet.abstract_conv import AbstractConv2d
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradInputs
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
@@ -133,6 +140,205 @@ class TestGetConvOutShape(unittest.TestCase):
         self.assertTrue(test4_params == (3, 4, 6, 4, 10))
 
 
+class TestConvGradInputsShape(unittest.TestCase):
+    def test_check_shape(self):
+        for i in range(1, 20):
+            for k in range(1, 10):
+                for b in ('valid', 'half', 'full', (0, 2)):
+                    for s in (1, 2, 3):
+                        for d in (1, 2, 3):
+                            image_shape = (59, 61, i, i)
+                            kernel_shape = (67, 61, k, k)
+
+                            # compute the output that these inputs and parameters would produce
+                            computed_shape = get_conv_output_shape(
+                                image_shape, kernel_shape, b, (s, s), (d, d))
+                            # this should be accepted
+                            self.assertTrue(check_conv_gradinputs_shape(
+                                image_shape, kernel_shape, computed_shape, b, (s, s), (d, d)))
+
+                            # one or more None should also be accepted
+                            trial_shape = (None, None, computed_shape[2], None)
+                            self.assertTrue(check_conv_gradinputs_shape(
+                                image_shape, kernel_shape, trial_shape, b, (s, s), (d, d)))
+
+                            # the batch size and number of filters are important
+                            trial_shape = (1, 1, computed_shape[2], computed_shape[3])
+                            self.assertFalse(check_conv_gradinputs_shape(
+                                image_shape, kernel_shape, trial_shape, b, (s, s), (d, d)))
+
+                            # outputs that are too large or too small should be rejected
+                            for o in (-3, -2, -1, 1, 2, 3):
+                                trial_shape = (computed_shape[0], computed_shape[1],
+                                               computed_shape[2] + o, computed_shape[3] + o)
+                                self.assertFalse(check_conv_gradinputs_shape(
+                                    image_shape, kernel_shape, trial_shape, b, (s, s), (d, d)))
+
+    def test_get_shape(self):
+        for i in range(1, 20):
+            for k in range(1, 10):
+                for b in ('valid', 'half', 'full', (0, 2)):
+                    for d in (1, 2, 3):
+                        image_shape = (59, 61, i, i)
+                        kernel_shape = (67, 61, k, k)
+
+                        # compute the output that these inputs and parameters would produce
+                        output_shape = get_conv_output_shape(
+                            image_shape, kernel_shape, b, (1, 1), (d, d))
+
+                        # compute the image_shape given this output_shape
+                        computed_image_shape = get_conv_gradinputs_shape(
+                            kernel_shape, output_shape, b, (1, 1), (d, d))
+                        self.assertEqual(computed_image_shape, image_shape)
+
+                        # if subsample > 1, the shape should be None
+                        computed_image_shape = get_conv_gradinputs_shape(
+                            kernel_shape, output_shape, b, (2, 3), (d, d))
+                        image_shape_with_None = image_shape[:2] + (None, None)
+                        self.assertEqual(computed_image_shape, image_shape_with_None)
+
+                        # compute the kernel_shape given this output_shape
+                        computed_kernel_shape = get_conv_gradweights_shape(
+                            image_shape, output_shape, b, (1, 1), (d, d))
+
+                        # if border_mode == 'half', the shape should be None
+                        if b == 'half':
+                            kernel_shape_with_None = kernel_shape[:2] + (None, None)
+                            self.assertEqual(computed_kernel_shape, kernel_shape_with_None)
+                        else:
+                            self.assertEqual(computed_kernel_shape, kernel_shape)
+
+                        # if subsample > 1, the shape should be None
+                        computed_kernel_shape = get_conv_gradweights_shape(
+                            kernel_shape, output_shape, b, (2, 3), (d, d))
+                        kernel_shape_with_None = kernel_shape[:2] + (None, None)
+                        self.assertEqual(computed_kernel_shape, kernel_shape_with_None)
+
+
+class TestAssertConvShape(unittest.TestCase):
+    def test_basic(self):
+        shape = tuple(tensor.iscalar() for i in range(4))
+        f = theano.function(shape, assert_conv_shape(shape))
+
+        self.assertEqual([1, 2, 3, 4], f(1, 2, 3, 4))
+        self.assertEqual([0, 0, 1, 1], f(0, 0, 1, 1))
+        assert_raises(AssertionError, f, 3, 3, 3, 0)
+        assert_raises(AssertionError, f, 3, 3, 0, 3)
+        assert_raises(AssertionError, f, 3, 3, -1, 3)
+        assert_raises(AssertionError, f, 3, -1, 3, 3)
+        assert_raises(AssertionError, f, -1, 3, 3, 3)
+
+
+class TestAssertShape(unittest.TestCase):
+    @change_flags([("conv.assert_shape", True)])
+    def test_basic(self):
+        x = tensor.tensor4()
+        s1 = tensor.iscalar()
+        s2 = tensor.iscalar()
+        expected_shape = [None, s1, s2, None]
+        f = theano.function([x, s1, s2], assert_shape(x, expected_shape))
+
+        v = numpy.zeros((3, 5, 7, 11), dtype='float32')
+        self.assertEqual(0, numpy.sum(f(v, 5, 7)))
+
+        assert_raises(AssertionError, f, v, 5, 0)
+        assert_raises(AssertionError, f, v, 5, 9)
+        assert_raises(AssertionError, f, v, 0, 7)
+        assert_raises(AssertionError, f, v, 7, 7)
+
+    @change_flags([("conv.assert_shape", True)])
+    def test_shape_check_conv2d(self):
+        input = tensor.tensor4()
+        filters = tensor.tensor4()
+
+        out = conv.conv2d(input, filters,
+                          input_shape=(3, 5, 7, 11),
+                          filter_shape=(7, 5, 3, 3))
+        f = theano.function([input, filters], out)
+        # mismatched input_shape
+        assert_raises(AssertionError, f,
+                      numpy.zeros((3, 5, 9, 11), dtype='float32'),
+                      numpy.zeros((7, 5, 3, 3), dtype='float32'))
+        # mismatched filter_shape
+        assert_raises(AssertionError, f,
+                      numpy.zeros((3, 5, 7, 11), dtype='float32'),
+                      numpy.zeros((7, 5, 2, 2), dtype='float32'))
+
+    @change_flags([("conv.assert_shape", True)])
+    def test_shape_check_conv3d(self):
+        input = tensor.tensor5()
+        filters = tensor.tensor5()
+
+        out = conv.conv3d(input, filters,
+                          input_shape=(3, 5, 7, 11, 13),
+                          filter_shape=(7, 5, 3, 3, 3))
+        f = theano.function([input, filters], out)
+        # mismatched input_shape
+        assert_raises(AssertionError, f,
+                      numpy.zeros((3, 5, 9, 11, 13), dtype='float32'),
+                      numpy.zeros((7, 5, 3, 3, 3), dtype='float32'))
+        # mismatched filter_shape
+        assert_raises(AssertionError, f,
+                      numpy.zeros((3, 5, 7, 11, 13), dtype='float32'),
+                      numpy.zeros((7, 5, 2, 2, 2), dtype='float32'))
+
+    @change_flags([("conv.assert_shape", True)])
+    def test_shape_check_conv2d_grad_wrt_inputs(self):
+        output_grad = tensor.tensor4()
+        filters = tensor.tensor4()
+
+        out = conv.conv2d_grad_wrt_inputs(output_grad, filters,
+                                          input_shape=(None, None, 7, 11),
+                                          filter_shape=(7, 5, 3, 3))
+        f = theano.function([output_grad, filters], out)
+        # mismatched filter_shape
+        assert_raises(AssertionError, f,
+                      numpy.zeros((3, 6, 5, 9), dtype='float32'),
+                      numpy.zeros((7, 6, 3, 3), dtype='float32'))
+
+    @change_flags([("conv.assert_shape", True)])
+    def test_shape_check_conv3d_grad_wrt_inputs(self):
+        output_grad = tensor.tensor5()
+        filters = tensor.tensor5()
+
+        out = conv.conv3d_grad_wrt_inputs(output_grad, filters,
+                                          input_shape=(None, None, 7, 11, 13),
+                                          filter_shape=(7, 5, 3, 3, 3))
+        f = theano.function([output_grad, filters], out)
+        # mismatched filter_shape
+        assert_raises(AssertionError, f,
+                      numpy.zeros((3, 6, 5, 9, 11), dtype='float32'),
+                      numpy.zeros((7, 6, 3, 3, 3), dtype='float32'))
+
+    @change_flags([("conv.assert_shape", True)])
+    def test_shape_check_conv2d_grad_wrt_weights(self):
+        input = tensor.tensor4()
+        output_grad = tensor.tensor4()
+
+        out = conv.conv2d_grad_wrt_weights(input, output_grad,
+                                           filter_shape=(None, None, 3, 3),
+                                           input_shape=(3, 5, 7, 11))
+        f = theano.function([input, output_grad], out)
+        # mismatched filter_shape
+        assert_raises(AssertionError, f,
+                      numpy.zeros((3, 6, 7, 11), dtype='float32'),
+                      numpy.zeros((3, 7, 5, 9), dtype='float32'))
+
+    @change_flags([("conv.assert_shape", True)])
+    def test_shape_check_conv3d_grad_wrt_weights(self):
+        input = tensor.tensor5()
+        output_grad = tensor.tensor5()
+
+        out = conv.conv3d_grad_wrt_weights(input, output_grad,
+                                           filter_shape=(None, None, 3, 3, 3),
+                                           input_shape=(3, 5, 7, 11, 13))
+        f = theano.function([input, output_grad], out)
+        # mismatched filter_shape
+        assert_raises(AssertionError, f,
+                      numpy.zeros((3, 6, 7, 11, 13), dtype='float32'),
+                      numpy.zeros((3, 7, 5, 9, 11), dtype='float32'))
+
+
 class BaseTestConv(object):
     def get_output_shape(self, inputs_shape, filters_shape,
                          subsample, border_mode, filter_dilation):
@@ -211,7 +417,7 @@ class BaseTestConv(object):
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
-        if verify_grad:
+        if verify_grad and inputs_val.size > 0 and filters_val.size > 0 and res.size > 0:
             utt.verify_grad(conv_op(border_mode=border_mode,
                                     imshp=imshp, kshp=kshp,
                                     subsample=subsample,
@@ -277,7 +483,7 @@ class BaseTestConv(object):
                                      filter_dilation=filter_dilation)
             return conv_op(inputs_val, output_val, filters_shape[2:])
 
-        if verify_grad:
+        if verify_grad and inputs_val.size > 0 and output_val.size > 0 and res.size > 0:
             utt.verify_grad(abstract_conv_gradweight,
                             [inputs_val, output_val],
                             mode=mode, eps=1)
@@ -314,11 +520,16 @@ class BaseTestConv(object):
                           imshp=imshp, kshp=kshp,
                           filter_dilation=filter_dilation)
         c = c(filters, output, inputs_shape[2:])
-        c_ref = ref(filters, output, inputs_shape,
-                    border_mode=border_mode, subsample=subsample,
-                    conv_mode=conv_mode, filter_dilation=filter_dilation)
         f = theano.function([], c, mode=mode)
-        f_ref = theano.function([], c_ref, mode='FAST_RUN')
+
+        # ref is set to None for the inconsistent-shape tests.
+        # The reference function also raises an exception, which would
+        # mask the exception generated by the target implementation.
+        if ref is not None:
+            c_ref = ref(filters, output, inputs_shape,
+                        border_mode=border_mode, subsample=subsample,
+                        conv_mode=conv_mode, filter_dilation=filter_dilation)
+            f_ref = theano.function([], c_ref, mode='FAST_RUN')
 
         if target_op is not None:
             assert any([isinstance(n.op, target_op) for n
@@ -326,9 +537,11 @@ class BaseTestConv(object):
             if check_trace:
                 assert_true(check_stack_trace(f, ops_to_check=target_op))
 
-        res_ref = numpy.array(f_ref())
         res = numpy.array(f())
-        utt.assert_allclose(res_ref, res)
+
+        if ref is not None:
+            res_ref = numpy.array(f_ref())
+            utt.assert_allclose(res_ref, res)
 
         def abstract_conv_gradinputs(filters_val, output_val):
             conv_op = gradInputs_fn(border_mode=border_mode,
@@ -336,7 +549,7 @@ class BaseTestConv(object):
                                     filter_dilation=filter_dilation)
             return conv_op(filters_val, output_val, inputs_shape[2:])
 
-        if verify_grad:
+        if verify_grad and filters_val.size > 0 and output_val.size > 0 and res.size > 0:
             utt.verify_grad(abstract_conv_gradinputs,
                             [filters_val, output_val],
                             mode=mode, eps=1)
@@ -351,13 +564,14 @@ class BaseTestConv(object):
         for (i, f) in zip(self.inputs_shapes, self.filters_shapes):
             for provide_shape in self.provide_shape:
                 yield (self.tcase, i, f, ds, db, dflip, provide_shape)
-            for fd in self.filters_dilations:
-                for s in self.subsamples:
-                    for b in self.border_modes:
-                        yield (self.tcase, i, f, s, b, dflip,
-                               dprovide_shape, fd)
-            for flip in self.filter_flip:
-                yield (self.tcase, i, f, ds, db, flip, dprovide_shape)
+            if min(i) > 0 and min(f) > 0:
+                for fd in self.filters_dilations:
+                    for s in self.subsamples:
+                        for b in self.border_modes:
+                            yield (self.tcase, i, f, s, b, dflip,
+                                   dprovide_shape, fd)
+                for flip in self.filter_flip:
+                    yield (self.tcase, i, f, ds, db, flip, dprovide_shape)
 
 
 class BaseTestConv2d(BaseTestConv):
@@ -365,12 +579,15 @@ class BaseTestConv2d(BaseTestConv):
     def setup_class(cls):
         # This tests can run even when theano.config.blas.ldflags is empty.
         cls.inputs_shapes = [(8, 1, 6, 6), (8, 1, 8, 8), (2, 1, 7, 7),
-                             (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
+                             (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9),
+                             (0, 1, 6, 6), (1, 0, 6, 6), (1, 1, 6, 6)]
         cls.filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
-                              (1, 1, 2, 3), (4, 1, 1, 3), (4, 5, 3, 2)]
+                              (1, 1, 2, 3), (4, 1, 1, 3), (4, 5, 3, 2),
+                              (1, 1, 2, 2), (1, 0, 2, 2), (0, 1, 2, 2)]
         cls.subsamples = [(1, 1), (2, 2), (2, 4)]
         cls.default_subsamples = (1, 1)
         cls.filters_dilations = [(1, 1), (1, 2), (2, 1)]
+        cls.default_filters_dilations = (1, 1)
         cls.border_modes = ["valid", "half", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
         cls.default_border_mode = (0, 0)
         cls.filter_flip = [True, False]
@@ -378,6 +595,62 @@ class BaseTestConv2d(BaseTestConv):
         cls.provide_shape = [True, False]
         cls.default_provide_shape = True
         cls.shared = staticmethod(theano.compile.shared)
+
+    def test_gradinput_arbitrary_output_shapes(self):
+        # this computes the grad wrt inputs for an output shape
+        # that the forward convolution would not produce
+        input_shape = (2, 1, 7, 7)
+        filter_shape = (2, 1, 3, 3)
+        for output_shape in [(2, 2, 8, 8), (2, 2, 9, 9), (2, 2, 12, 12)]:
+            for border_mode in ["valid", "half", "full"]:
+                computed_shape = get_conv_output_shape(
+                    input_shape, filter_shape, border_mode, self.default_subsamples, self.default_filters_dilations)
+                # is this a valid combination?
+                if tuple(computed_shape) == output_shape:
+                    yield (self.tcase_gi,
+                           input_shape,
+                           filter_shape,
+                           output_shape,
+                           self.default_subsamples,
+                           border_mode,
+                           True,
+                           True,
+                           self.default_filters_dilations,
+                           False)
+                else:
+                    # expect an error
+                    yield (self.tcase_gi,
+                           input_shape,
+                           filter_shape,
+                           output_shape,
+                           self.default_subsamples,
+                           border_mode,
+                           True,
+                           True,
+                           self.default_filters_dilations,
+                           True)
+
+    def test_gradinput_impossible_output_shapes(self):
+        def run_for_output_offsets(image_shape, kernel_shape, s, border_mode, d):
+            # outputs that are too large or too small should be rejected
+            for o in (-3, -1, 1, 2):
+                output_shape = (1, 1, computed_shape[2] + o, computed_shape[3] + o)
+                # expect an error
+                self.tcase_gi(image_shape, kernel_shape, output_shape,
+                              (s, s), border_mode, True, True, (d, d), True)
+
+        for (i, k) in ((1, 1), (1, 2), (2, 1), (4, 2), (4, 3), (7, 3), (9, 5)):
+            for border_mode in ('valid', 'half', 'full', (0, 2)):
+                for (s, d) in ((1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (1, 3)):
+                    image_shape = (1, 1, i, i)
+                    kernel_shape = (1, 1, k, k)
+
+                    # compute the output that these inputs and parameters would produce
+                    computed_shape = get_conv_output_shape(
+                        image_shape, kernel_shape, border_mode, (s, s), (d, d))
+
+                    yield (run_for_output_offsets,
+                           image_shape, kernel_shape, s, border_mode, d)
 
     def run_fwd(self, inputs_shape, filters_shape,
                 conv_fn=conv.conv2d, conv_op=conv.AbstractConv2d,
@@ -438,6 +711,26 @@ class TestCorrConv2d(BaseTestConv2d):
                            filter_flip=flip, target_op=CorrMM_gradInputs,
                            check_trace=True, filter_dilation=fd)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+        # This tests can run even when theano.config.blas.ldflags is empty.
+        if (not theano.config.cxx or
+                theano.config.mode == "FAST_COMPILE"):
+            raise SkipTest("Need blas to test conv2d")
+        if not expect_error:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s, verify_grad=True,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip, target_op=CorrMM_gradInputs,
+                               check_trace=True, filter_dilation=fd)
+        else:
+            assert_raises(ValueError,
+                          self.run_gradinput,
+                          inputs_shape=i, filters_shape=f,
+                          output_shape=o, subsample=s, verify_grad=False,
+                          provide_shape=provide_shape, border_mode=b,
+                          filter_flip=flip, target_op=CorrMM_gradInputs,
+                          ref=None, check_trace=True, filter_dilation=fd)
+
 
 class TestAbstractConvNoOptim(BaseTestConv2d):
     @classmethod
@@ -455,6 +748,9 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         o = self.get_output_shape(i, f, s, b, fd)
         mode = theano.Mode(optimizer=None)
+
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
 
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, provide_shape=provide_shape,
@@ -474,6 +770,25 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
                            check_trace=True, filter_dilation=fd,
                            mode=mode)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+        mode = theano.Mode(optimizer=None)
+        if not expect_error:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s, verify_grad=True,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip, target_op=None,
+                               check_trace=True, filter_dilation=fd,
+                               mode=mode)
+        else:
+            assert_raises(ValueError,
+                          self.run_gradinput,
+                          inputs_shape=i, filters_shape=f,
+                          output_shape=o, subsample=s, verify_grad=False,
+                          provide_shape=provide_shape, border_mode=b,
+                          filter_flip=flip, target_op=None,
+                          check_trace=True, filter_dilation=fd,
+                          ref=None, mode=mode)
+
 
 class TestCpuConv2d(BaseTestConv2d):
     @classmethod
@@ -490,6 +805,9 @@ class TestCpuConv2d(BaseTestConv2d):
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         if fd != (1, 1):
             raise SkipTest("No dilation implementation for basic cpu ConvOp.")
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
+
         mode = self.mode
         o = self.get_output_shape(i, f, s, b, fd)
         fwd_OK = True
@@ -586,16 +904,47 @@ class TestCpuConv2d(BaseTestConv2d):
                           check_trace=True,
                           filter_dilation=fd)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+        if fd != (1, 1):
+            raise SkipTest("No dilation implementation for basic cpu ConvOp.")
+        mode = self.mode
+
+        if not flip:
+            return
+        if b not in ((0, 0), 'valid', 'full'):
+            return
+        if (not provide_shape) and (s != (1, 1)) and (b == 'full'):
+            return
+        if ((s[0] not in (1, 2)) or (s[1] not in (1, 2))) and (b == 'full'):
+            return
+
+        if not expect_error:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s,
+                               verify_grad=False, mode=mode,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip,
+                               target_op=(ConvOp, ConvTransp3D),
+                               check_trace=True,
+                               filter_dilation=fd)
+        else:
+            # we do not check for inconsistent shapes,
+            # because this older implementation does not check that
+            raise SkipTest('Inconsistent shapes are not tested for old cpu ConvOp.')
+
 
 class BaseTestConv3d(BaseTestConv):
     @classmethod
     def setup_class(cls):
         # This tests can run even when theano.config.blas.ldflags is empty.
-        cls.inputs_shapes = [(2, 1, 5, 5, 5), (1, 2, 7, 5, 6)]
-        cls.filters_shapes = [(2, 1, 2, 2, 2), (1, 2, 2, 1, 3)]
+        cls.inputs_shapes = [(2, 1, 5, 5, 5), (1, 2, 7, 5, 6),
+                             (0, 1, 5, 5, 5), (1, 0, 5, 5, 5), (1, 1, 5, 5, 5)]
+        cls.filters_shapes = [(2, 1, 2, 2, 2), (1, 2, 2, 1, 3),
+                              (1, 1, 2, 2, 2), (1, 0, 2, 2, 2), (0, 1, 2, 2, 2)]
         cls.subsamples = [(1, 1, 1), (2, 2, 2), (1, 2, 3)]
         cls.default_subsamples = (1, 1, 1)
         cls.filters_dilations = [(1, 1, 1), (1, 2, 1), (2, 1, 2)]
+        cls.default_filters_dilations = (1, 1, 1)
         cls.border_modes = ["valid", "half", "full", (0, 0, 0), (2, 2, 3)]
         cls.default_border_mode = (0, 0, 0)
         cls.filter_flip = [True, False]
@@ -603,6 +952,64 @@ class BaseTestConv3d(BaseTestConv):
         cls.provide_shape = [True, False]
         cls.default_provide_shape = True
         cls.shared = staticmethod(theano.compile.shared)
+
+    def test_gradinput_arbitrary_output_shapes(self):
+        # this computes the grad wrt inputs for an output shape
+        # that the forward convolution would not produce
+        input_shape = (2, 1, 7, 7, 7)
+        filter_shape = (1, 1, 3, 3, 3)
+        for output_shape in [(2, 1, 8, 8, 8), (2, 1, 9, 9, 9), (2, 1, 12, 12, 12)]:
+            for border_mode in ["valid", "half", "full"]:
+                # compute the output that these inputs and parameters would produce
+                computed_shape = get_conv_output_shape(
+                    input_shape, filter_shape, border_mode, self.default_subsamples, self.default_filters_dilations)
+                # is this a valid combination?
+                if tuple(computed_shape) == output_shape:
+                    yield (self.tcase_gi,
+                           input_shape,
+                           filter_shape,
+                           output_shape,
+                           self.default_subsamples,
+                           border_mode,
+                           True,
+                           True,
+                           self.default_filters_dilations,
+                           False)
+                else:
+                    # expect an error
+                    yield (self.tcase_gi,
+                           input_shape,
+                           filter_shape,
+                           output_shape,
+                           self.default_subsamples,
+                           border_mode,
+                           True,
+                           True,
+                           self.default_filters_dilations,
+                           True)
+
+    def test_gradinput_impossible_output_shapes(self):
+        def run_for_output_offsets(image_shape, kernel_shape, s, border_mode, d):
+            # outputs that are too large or too small should be rejected
+            for o in (-3, -1, 1, 2):
+                output_shape = (1, 1, computed_shape[2] + o,
+                                computed_shape[3] + o, computed_shape[4] + o)
+                # expect an error
+                self.tcase_gi(image_shape, kernel_shape, output_shape,
+                              (s, s), border_mode, True, True, (d, d), True)
+
+        for (i, k) in ((1, 1), (1, 2), (2, 1), (4, 2), (4, 3), (7, 3), (9, 5)):
+            for border_mode in ('valid', 'half', 'full', (0, 2, 1)):
+                for (s, d) in ((1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (1, 3)):
+                    image_shape = (1, 1, i, i, i)
+                    kernel_shape = (1, 1, k, k, k)
+
+                    # compute the output that these inputs and parameters would produce
+                    computed_shape = get_conv_output_shape(
+                        image_shape, kernel_shape, border_mode, (s, s, s), (d, d, d))
+
+                    yield (run_for_output_offsets,
+                           image_shape, kernel_shape, s, border_mode, d)
 
     def run_fwd(self, inputs_shape, filters_shape,
                 conv_fn=conv.conv3d, conv_op=conv.AbstractConv3d,
@@ -663,6 +1070,26 @@ class TestCorrConv3d(BaseTestConv3d):
                            filter_flip=flip, target_op=Corr3dMM_gradInputs,
                            check_trace=True, filter_dilation=fd)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1), expect_error=False):
+        # This test can run even when theano.config.blas.ldflags is empty.
+        if (not theano.config.cxx or
+                theano.config.mode == "FAST_COMPILE"):
+            raise SkipTest("Need blas to test conv3d")
+        if not expect_error:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s, verify_grad=True,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip, target_op=Corr3dMM_gradInputs,
+                               check_trace=True, filter_dilation=fd)
+        else:
+            assert_raises(ValueError,
+                          self.run_gradinput,
+                          inputs_shape=i, filters_shape=f,
+                          output_shape=o, subsample=s, verify_grad=False,
+                          provide_shape=provide_shape, border_mode=b,
+                          filter_flip=flip, target_op=Corr3dMM_gradInputs,
+                          ref=None, check_trace=True, filter_dilation=fd)
+
 
 class TestCpuConv3d(BaseTestConv3d):
     @classmethod
@@ -679,6 +1106,11 @@ class TestCpuConv3d(BaseTestConv3d):
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
         if fd != (1, 1, 1):
             raise SkipTest("No dilation implementation for basic cpu Conv3D.")
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
+        if min(i) == 0 or min(f) == 0:
+            raise SkipTest('Not tested for old cpu Conv3D.')
+
         mode = self.mode
         o = self.get_output_shape(i, f, s, b, fd)
         fwd_OK = True
@@ -761,6 +1193,30 @@ class TestCpuConv3d(BaseTestConv3d):
                           filter_flip=flip,
                           check_trace=True,
                           filter_dilation=fd)
+
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1), expect_error=False):
+        if fd != (1, 1, 1):
+            raise SkipTest("No dilation implementation for basic cpu Conv3D.")
+        mode = self.mode
+        if min(i) == 0 or min(f) == 0 or min(o) == 0:
+            raise SkipTest('Not tested for old cpu Conv3D.')
+
+        if b not in ((0, 0, 0), 'valid'):
+            return
+
+        if not expect_error:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s,
+                               verify_grad=False, mode=mode,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip,
+                               target_op=ConvTransp3D,
+                               check_trace=True,
+                               filter_dilation=fd)
+        else:
+            # we do not check for inconsistent shapes,
+            # because this older implementation does not check that
+            raise SkipTest('Inconsistent shapes are not tested for old cpu Conv3D.')
 
 
 def test_constant_shapes():
@@ -1101,3 +1557,146 @@ class TestBilinearUpsampling(unittest.TestCase):
         f_1D = theano.function([], mat_1D, mode=self.compile_mode)
         f_2D = theano.function([], mat_2D, mode=self.compile_mode)
         utt.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
+
+
+class TestConv2dTranspose(unittest.TestCase):
+    mode = None
+
+    def test_interface(self):
+        """Test conv2d_transpose wrapper.
+
+        This method tests that the order of the filter's
+        axes expected by the function produces the correct
+        output shape.
+
+        """
+        mode = self.mode
+        if theano.config.mode == "FAST_COMPILE":
+            mode = theano.compile.get_mode(
+                mode).excluding("conv_gemm").excluding("AbstractConvCheck")
+
+        output = theano.function(
+            inputs=[],
+            outputs=conv2d_transpose(input=tensor.ones((2, 2, 4, 4)),
+                                     filters=tensor.ones((2, 1, 4, 4)),
+                                     output_shape=(2, 1, 10, 10),
+                                     input_dilation=(2, 2)),
+            mode=mode)()
+        expected_output = numpy.array(
+            [[[[2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
+               [2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
+               [4, 4, 8, 8, 8, 8, 8, 8, 4, 4],
+               [4, 4, 8, 8, 8, 8, 8, 8, 4, 4],
+               [4, 4, 8, 8, 8, 8, 8, 8, 4, 4],
+               [4, 4, 8, 8, 8, 8, 8, 8, 4, 4],
+               [4, 4, 8, 8, 8, 8, 8, 8, 4, 4],
+               [4, 4, 8, 8, 8, 8, 8, 8, 4, 4],
+               [2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
+               [2, 2, 4, 4, 4, 4, 4, 4, 2, 2]]]] * 2)
+        numpy.testing.assert_equal(output, expected_output)
+
+
+class TestConv2dGrads(unittest.TestCase):
+
+    def setUp(self):
+
+        if (not theano.config.cxx or
+                theano.config.mode == "FAST_COMPILE"):
+            raise SkipTest("Need blas to test conv2d")
+
+        self.random_stream = numpy.random.RandomState(utt.fetch_seed())
+
+        self.inputs_shapes = [(8, 1, 12, 12), (1, 1, 5, 5), (1, 1, 5, 6), (1, 1, 6, 6)]
+        self.filters_shapes = [(5, 1, 2, 2), (1, 1, 3, 3)]
+
+        self.subsamples = [(1, 1), (2, 2)]
+        self.border_modes = ["valid", "full"]
+        self.filter_flip = [True, False]
+
+        self.output_grad = theano.tensor.tensor4()
+        self.output_grad_wrt = theano.tensor.tensor4()
+
+        self.x = theano.tensor.tensor4('x', theano.config.floatX)  # inputs
+        self.w = theano.tensor.tensor4('w', theano.config.floatX)  # filter weights
+
+    def test_conv2d_grad_wrt_inputs(self):
+        """Compares calculated abstract grads wrt inputs with the fwd grads
+        This method checks the outputs of conv2_grad_wrt_inputs against
+        the outputs of T.nnet.conv forward grads to make sure the
+        results are the same.
+        """
+
+        for (in_shape, fltr_shape) in zip(self.inputs_shapes, self.filters_shapes):
+            for bm in self.border_modes:
+                for ss in self.subsamples:
+                    for ff in self.filter_flip:
+                        input_val = self.random_stream.random_sample(in_shape).astype(theano.config.floatX)
+                        filter_val = self.random_stream.random_sample(fltr_shape).astype(theano.config.floatX)
+                        out_grad_shape = theano.tensor.nnet.abstract_conv.get_conv_output_shape(image_shape=in_shape,
+                                                                                                kernel_shape=fltr_shape,
+                                                                                                border_mode=bm,
+                                                                                                subsample=ss)
+                        out_grad_val = self.random_stream.random_sample(out_grad_shape).astype(theano.config.floatX)
+                        conv_out = theano.tensor.nnet.conv2d(self.x,
+                                                             filters=self.w,
+                                                             border_mode=bm,
+                                                             subsample=ss,
+                                                             input_shape=in_shape,
+                                                             filter_shape=fltr_shape,
+                                                             filter_flip=ff
+                                                             )
+                        conv_grad = theano.grad(conv_out.sum(), wrt=self.x, known_grads={conv_out: self.output_grad})
+                        f_old = theano.function([self.x, self.w, self.output_grad], conv_grad)
+
+                        conv_wrt_i_out = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_inputs(output_grad=self.output_grad_wrt,
+                                                                                                 filters=self.w,
+                                                                                                 border_mode=bm,
+                                                                                                 subsample=ss,
+                                                                                                 input_shape=in_shape,
+                                                                                                 filter_shape=fltr_shape,
+                                                                                                 filter_flip=ff
+                                                                                                 )
+                        f_new = theano.function([self.w, self.output_grad_wrt], conv_wrt_i_out)
+
+                        # check that they're equal
+                        utt.assert_allclose(f_new(filter_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))
+
+    def test_conv2d_grad_wrt_weights(self):
+        """Compares calculated abstract grads wrt weights with the fwd grads
+        This method checks the outputs of conv2_grad_wrt_weights against
+        the outputs of T.nnet.conv forward grads to make sure the
+        results are the same.
+        """
+
+        for (in_shape, fltr_shape) in zip(self.inputs_shapes, self.filters_shapes):
+            for bm in self.border_modes:
+                for ss in self.subsamples:
+                    for ff in self.filter_flip:
+                        input_val = self.random_stream.random_sample(in_shape).astype(theano.config.floatX)
+                        filter_val = self.random_stream.random_sample(fltr_shape).astype(theano.config.floatX)
+                        out_grad_shape = theano.tensor.nnet.abstract_conv.get_conv_output_shape(image_shape=in_shape,
+                                                                                                kernel_shape=fltr_shape,
+                                                                                                border_mode=bm,
+                                                                                                subsample=ss)
+                        out_grad_val = self.random_stream.random_sample(out_grad_shape).astype(theano.config.floatX)
+                        conv_out = theano.tensor.nnet.conv2d(self.x,
+                                                             filters=self.w,
+                                                             border_mode=bm,
+                                                             subsample=ss,
+                                                             input_shape=in_shape,
+                                                             filter_shape=fltr_shape,
+                                                             filter_flip=ff
+                                                             )
+                        conv_grad = theano.grad(conv_out.sum(), wrt=self.w, known_grads={conv_out: self.output_grad})
+                        f_old = theano.function([self.x, self.w, self.output_grad], conv_grad)
+
+                        conv_wrt_w_out = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_weights(self.x,
+                                                                                                  output_grad=self.output_grad_wrt,
+                                                                                                  border_mode=bm,
+                                                                                                  subsample=ss,
+                                                                                                  input_shape=in_shape,
+                                                                                                  filter_shape=fltr_shape,
+                                                                                                  filter_flip=ff
+                                                                                                  )
+                        f_new = theano.function([self.x, self.output_grad_wrt], conv_wrt_w_out)
+                        utt.assert_allclose(f_new(input_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))

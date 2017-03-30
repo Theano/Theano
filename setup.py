@@ -53,7 +53,7 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 9
 MICRO               = 0
-SUFFIX              = "dev4"  # Should be blank except for rc's, betas, etc.
+SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
@@ -161,7 +161,6 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          # 1.7.0 give too much warning related to numpy.diagonal.
           install_requires=['numpy>=1.9.1', 'scipy>=0.14', 'six>=1.9.0'],
           # pygments is a dependency for Sphinx code highlight
           extras_require={
@@ -174,7 +173,10 @@ def do_setup():
               'theano.misc': ['*.sh'],
               'theano.d3viz' : ['html/*','css/*','js/*']
           },
-          scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],
+          entry_points={
+              'console_scripts': ['theano-cache = bin.theano_cache:main',
+                                  'theano-nose = bin.theano_nose:main']
+          },
           keywords=' '.join([
               'theano', 'math', 'numerical', 'symbolic', 'blas',
               'numpy', 'gpu', 'autodiff', 'differentiation'

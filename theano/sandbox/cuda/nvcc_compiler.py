@@ -6,8 +6,6 @@ import subprocess
 import sys
 from locale import getpreferredencoding
 
-import numpy
-
 from theano import config
 from theano.compat import decode, decode_with
 from theano.configdefaults import local_bitwidth
@@ -29,6 +27,9 @@ def is_nvcc_available():
     Return True iff the nvcc compiler is found.
 
     """
+    if not config.cuda.enabled:
+        return False
+
     def set_version():
         p_out = output_subprocess_Popen([nvcc_path, '--version'])
         ver_line = decode(p_out[0]).strip().split('\n')[-1]
@@ -95,22 +96,10 @@ class NVCC_compiler(Compiler):
             os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
         flags.append('-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash)
 
-        # NumPy 1.7 Deprecate the old API. I updated most of the places
-        # to use the new API, but not everywhere. When finished, enable
-        # the following macro to assert that we don't bring new code
+        # NumPy 1.7 Deprecate the old API.
+        # The following macro asserts that we don't bring new code
         # that use the old API.
         flags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
-
-        # numpy 1.7 deprecated the following macro but the didn't
-        # existed in the past
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-        if bool(numpy_ver < [1, 7]):
-            flags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            flags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            flags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            flags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            flags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            flags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # If the user didn't specify architecture flags add them
         if not any(['-arch=sm_' in f for f in flags]):
@@ -241,7 +230,19 @@ class NVCC_compiler(Compiler):
             if python_lib not in lib_dirs:
                 lib_dirs.append(python_lib)
 
-        cppfilename = os.path.join(location, 'mod.cu')
+        if (config.nvcc.cudafe == 'heuristic' and not
+            any(marker in src_code for marker in ("__global__", "__device__",
+                                                  "__host__", "<<<",
+                                                  "nvmatrix.cuh"))):
+            # only calls existing CUDA functions, can compile much faster
+            cppfilename = os.path.join(location, 'mod.cpp')
+            src_code = ("#include <cuda.h>\n"
+                        "#include <cuda_runtime_api.h>\n" +
+                        src_code)
+        else:
+            # contains CUDA host code or device functions, needs .cu extension
+            cppfilename = os.path.join(location, 'mod.cu')
+
         with open(cppfilename, 'w') as cppfile:
 
             _logger.debug('Writing module C++ code to %s', cppfilename)

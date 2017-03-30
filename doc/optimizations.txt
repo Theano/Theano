@@ -91,7 +91,7 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         * ``f(fill(a,b), c) -> f(b, c)``
         * ``f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))``
 
-        See :func:`opt.local_fill_cut`, :func:`opt.local_fill_sink`
+        See :func:`opt.local_fill_sink`
 
     inc_subtensor serialization  
         Incrementing a small subregion of a large tensor can be done quickly

@@ -90,6 +90,10 @@ add_in_place_2 = MyOp(2, 'AddInPlace', dmap={0: [0]},
 add_in_place_3 = MyOp(2, 'AddInPlace', dmap={0: [0]},
                       destroyhandler_tolerate_aliased=[(0, 1)])
 dot = MyOp(2, 'Dot')
+multiple = MyOp(2, 'Multiple', nout=2)
+multiple_in_place_0 = MyOp(2, 'MultipleInPlace0', nout=2, dmap={0: [0]})
+multiple_in_place_1 = MyOp(2, 'MultipleInPlace1', nout=2, dmap={1: [1]})
+multiple_in_place_0_1 = MyOp(2, 'MultipleInPlace01', nout=2, dmap={0: [0], 1: [1]})
 
 
 def inputs():
@@ -433,3 +437,43 @@ def test_value_repl_2():
     consistent(g)
     g.replace(sy, transpose_view(MyConstant("abc")))
     consistent(g)
+
+
+def test_multiple_inplace():
+    # this tests issue #5223
+    # there were some problems with Ops that have more than
+    # one in-place input.
+    x, y, z = inputs()
+    # we will try to replace this op with an in-place version
+    m = multiple(x, y)
+    # this makes it impossible to run in-place on x
+    e_1 = dot(m[0], x)
+    # try to confuse the DestroyHandler: this dot Op can run
+    # before multiple and then multiple can still run in-place on y
+    e_2 = dot(y, y)
+    g = Env([x, y], [e_1, e_2], False)
+    consistent(g)
+
+    # try to work in-place on x/0 and y/1 (this should fail)
+    fail = FailureWatch()
+    OpSubOptimizer(multiple, multiple_in_place_0_1, fail).optimize(g)
+    consistent(g)
+    assert fail.failures == 1
+
+    # try to work in-place on x/0 (this should fail)
+    fail = FailureWatch()
+    OpSubOptimizer(multiple, multiple_in_place_0, fail).optimize(g)
+    consistent(g)
+    assert fail.failures == 1
+
+    # try to work in-place on y/1 (this should succeed)
+    fail = FailureWatch()
+    OpSubOptimizer(multiple, multiple_in_place_1, fail).optimize(g)
+    consistent(g)
+    assert fail.failures == 0
+
+    # try to work in-place on x/0 and y/1 (this should still fail)
+    fail = FailureWatch()
+    OpSubOptimizer(multiple_in_place_1, multiple_in_place_0_1, fail).optimize(g)
+    consistent(g)
+    assert fail.failures == 1

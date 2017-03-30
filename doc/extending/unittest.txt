@@ -333,12 +333,12 @@ type this:
 Using Random Values in Test Cases
 ---------------------------------
 
-numpy.random is often used in unit tests to initialize large data
+``numpy.random`` is often used in unit tests to initialize large data
 structures, for use as inputs to the function or module being
 tested. When doing this, it is imperative that the random number
 generator be seeded at the be beginning of each unit test. This will
 ensure that unittest behaviour is consistent from one execution to
-another (i.e always pass or always fail).
+another (i.e., always pass or always fail).
 
 Instead of using ``numpy.random.seed`` to do this, we encourage users to
 do the following:
@@ -350,45 +350,50 @@ do the following:
     class TestTensorDot(unittest.TestCase):
         def setUp(self):
             unittest_tools.seed_rng()
-            # OR ... call with an explicit seed 
-            unittest_tools.seed_rng(234234) #use only if really necessary!
+            # OR ... call with an explicit seed
+            unittest_tools.seed_rng(234234)  # use only if really necessary!
 
-The behaviour of seed_rng is as follows:
+The behaviour of ``seed_rng`` is as follows:
 
 * If an explicit seed is given, it will be used for seeding numpy's rng.
 
-* If not, it will use ``config.unittests.rseed`` (its default value is 666).
+* If not, it will use ``config.unittests.rseed`` (its default value is ``666``).
 
-* If config.unittests.rseed is set to "random", it will seed the rng with
+* If ``config.unittests.rseed`` is set to ``"random"``, it will seed the rng with
   None, which is equivalent to seeding with a random seed.
 
 
-The main advantage of using unittest_tools.seed_rng is that it allows
+The main advantage of using ``unittest_tools.seed_rng`` is that it allows
 us to change the seed used in the unitests, without having to manually
 edit all the files. For example, this allows the nightly build to run
-theano-nose repeatedly, changing the seed on every run (hence achieving
+``theano-nose`` repeatedly, changing the seed on every run (hence achieving
 a higher confidence that the variables are correct), while still
 making sure unittests are deterministic.
 
 Users who prefer their unittests to be random (when run on their local
-machine) can simply set ``config.unittests.rseed`` to 'random' (see
+machine) can simply set ``config.unittests.rseed`` to ``'random'`` (see
 :mod:`config`).
 
-Similarly, to provide a seed to numpy.random.RandomState, simply use:
+Similarly, to provide a seed to ``numpy.random.RandomState``, simply use:
 
 .. testcode::
 
     import numpy
-    
+
     rng = numpy.random.RandomState(unittest_tools.fetch_seed())
     # OR providing an explicit seed
-    rng = numpy.random.RandomState(unittest_tools.fetch_seed(1231)) #again not recommended
+    rng = numpy.random.RandomState(unittest_tools.fetch_seed(1231))  # again not recommended
 
 Note that the ability to change the seed from one nosetest to another,
 is incompatible with the method of hard-coding the baseline variables
 (against which we compare the theano outputs). These must then be
 determined "algorithmically". Although this represents more work, the
 test suite will be better because of it.
+
+To help you check that the boundaries provided to ``numpy.random`` are
+correct and your tests will pass those corner cases, you can check
+``utt.MockRandomState``. Code using ``utt.MockRandomState`` should not
+be committed, it is just a tool to help adjust the sampling range.
 
 
 Creating an Op UnitTest

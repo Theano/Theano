@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 
-import numpy
+import numpy as np
 
 import theano
 from six import string_types, iteritems
@@ -42,7 +42,7 @@ def cleanup():
                         have_npy_abi_version = False
                         have_c_compiler = False
                         for obj in flatten(key):
-                            if isinstance(obj, numpy.ndarray):
+                            if isinstance(obj, np.ndarray):
                                 # Reuse have_npy_abi_version to
                                 # force the removing of key
                                 have_npy_abi_version = False
@@ -122,7 +122,16 @@ def print_compiledir_content():
                 else:
                     types = list(set([x for x in flatten(keydata.keys)
                                       if isinstance(x, theano.gof.Type)]))
-                    table.append((dir, ops[0], types))
+                    compile_start = compile_end = float('nan')
+                    for fn in os.listdir(os.path.join(compiledir, dir)):
+                        if fn.startswith('mod.c'):
+                            compile_start = os.path.getmtime(
+                                os.path.join(compiledir, dir, fn))
+                        elif fn.endswith('.so'):
+                            compile_end = os.path.getmtime(
+                                os.path.join(compiledir, dir, fn))
+                    compile_time = compile_end - compile_start
+                    table.append((dir, ops[0], types, compile_time))
 
                 size = os.path.getsize(filename)
                 total_key_sizes += size
@@ -136,11 +145,11 @@ def print_compiledir_content():
 
     print("List of %d compiled individual ops in this theano cache %s:" % (
         len(table), compiledir))
-    print("sub directory/Op/a set of the different associated Theano type")
+    print("sub dir/compiletime/Op/set of different associated Theano types")
     table = sorted(table, key=lambda t: str(t[1]))
     table_op_class = {}
-    for dir, op, types in table:
-        print(dir, op, types)
+    for dir, op, types, compile_time in table:
+        print(dir, '%.3fs' % compile_time, op, types)
         table_op_class.setdefault(op.__class__, 0)
         table_op_class[op.__class__] += 1
 

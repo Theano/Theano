@@ -1,22 +1,24 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
+import scipy.special
 
 import theano
 from theano import scalar, gof, tensor
+from unittest import TestCase
 from theano.tests.unittest_tools import SkipTest, assert_allclose
 
 from theano.tensor.tests import test_elemwise
 
-from .config import mode_with_gpu, test_ctx_name
+from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 from .test_basic_ops import rand_gpuarray
 from ..elemwise import (GpuElemwise, GpuDimShuffle,
-                        GpuCAReduceCuda, GpuCAReduceCPY)
+                        GpuCAReduceCuda, GpuCAReduceCPY, GpuErfinv, GpuErfcinv)
 from ..type import GpuArrayType, get_context
 
 from pygpu import ndgpuarray as gpuarray
 
 
-# This is acutally a test for GpuElemwise
+# This is actually a test for GpuElemwise
 class test_gpu_Broadcast(test_elemwise.test_Broadcast):
     cop = GpuElemwise
     ctype = GpuArrayType
@@ -43,13 +45,76 @@ def test_elemwise_pow():
             output = base ** exp
             f = theano.function([base, exp], output)
 
-            base_val = numpy.random.randint(0, 5, size=10).astype(dtype_base)
-            exp_val = numpy.random.randint(0, 3, size=10).astype(dtype_exp)
+            base_val = np.random.randint(0, 5, size=10).astype(dtype_base)
+            exp_val = np.random.randint(0, 3, size=10).astype(dtype_exp)
 
             # Call the function to make sure the output is valid
             out = f(base_val, exp_val)
             expected_out = base_val ** exp_val
             assert_allclose(out, expected_out)
+
+
+class TestMathErrorFunctions(TestCase):
+    dtypes = ["float64", "float32", "float16"]
+    default_arrays = {}
+    expected_erfinv_outputs = {}
+    expected_erfcinv_outputs = {}
+
+    def setUp(self):
+        # NB: erfinv is defined in ]-1;1[, and erfcinv is defined in ]0;2[,
+        # so we just take some values in an interval that covers both domains
+        # (this will also allow to test some values outside the domains).
+        # We take [-5;5[ by default and we concatenate it 1000 times
+        # to have the GPU ops run on large data.
+        default_array = [x / 10.0 for x in range(-50, 50)] * 1000
+        for dtype in self.dtypes:
+            numpy_array = np.asarray(default_array, dtype=dtype)
+            self.default_arrays[dtype] = numpy_array
+            self.expected_erfinv_outputs[dtype] = scipy.special.erfinv(numpy_array)
+            self.expected_erfcinv_outputs[dtype] = scipy.special.erfcinv(numpy_array)
+
+    def check_gpu_scalar_op(self, theano_function, scalar_optype):
+        for node in theano_function.maker.fgraph.apply_nodes:
+            if isinstance(node.op, GpuElemwise) and isinstance(node.op.scalar_op, scalar_optype):
+                return True
+        theano.printing.debugprint(theano_function)
+        return False
+
+    def test_elemwise_erfinv(self):
+        for dtype in self.dtypes:
+            vector = theano.tensor.vector(dtype=dtype)
+            output = theano.tensor.erfinv(vector)
+            f_host = theano.function([vector], output, name='HOST/erfinv/' + dtype, mode=mode_without_gpu)
+            f_gpu = theano.function([vector], output, name='GPU/erfinv/' + dtype, mode=mode_with_gpu)
+            assert len([n for n in f_host.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
+            if not theano.config.device.startswith('opencl'):
+                assert self.check_gpu_scalar_op(f_gpu, GpuErfinv), \
+                    'Function graph does not contains scalar op "GpuErfinv".'
+            vector_val = self.default_arrays[dtype]
+            f_host(vector_val)
+            f_gpu(vector_val)
+            out_host = f_host(vector_val)
+            out_gpu = f_gpu(vector_val)
+            assert_allclose(out_host, out_gpu)
+            assert_allclose(self.expected_erfinv_outputs[dtype], out_gpu)
+
+    def test_elemwise_erfcinv(self):
+        for dtype in self.dtypes:
+            vector = theano.tensor.vector(dtype=dtype)
+            output = theano.tensor.erfcinv(vector)
+            f_host = theano.function([vector], output, name='HOST/erfcinv/' + dtype, mode=mode_without_gpu)
+            f_gpu = theano.function([vector], output, name='GPU/erfcinv/' + dtype, mode=mode_with_gpu)
+            assert len([n for n in f_host.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
+            if not theano.config.device.startswith('opencl'):
+                assert self.check_gpu_scalar_op(f_gpu, GpuErfcinv), \
+                    'Function graph does not contains scalar op "GpuErfcinv".'
+            vector_val = self.default_arrays[dtype]
+            f_host(vector_val)
+            f_gpu(vector_val)
+            out_host = f_host(vector_val)
+            out_gpu = f_gpu(vector_val)
+            assert_allclose(out_host, out_gpu)
+            assert_allclose(self.expected_erfcinv_outputs[dtype], out_gpu)
 
 
 class test_float16():
@@ -62,7 +127,7 @@ class test_float16():
         o = (cz - cz**2 +
              tensor.cast(x, 'int16') + tensor.cast(x, 'float32') +
              tensor.cast(w, 'float16') -
-             tensor.constant(numpy.float16(1.0)))
+             tensor.constant(np.float16(1.0)))
 
         theano.function([w, x, y], o, mode=mode_with_gpu)
 
@@ -89,9 +154,9 @@ class test_float16():
                              i8.astype('float32')],
                             mode=mode_with_gpu)
 
-        d1 = (numpy.random.rand(4) * 10).astype('float16')
-        d2 = (numpy.random.rand(5) * 10).astype('float32')
-        d3 = (numpy.random.rand(6) * 10).astype('int8')
+        d1 = (np.random.rand(4) * 10).astype('float16')
+        d2 = (np.random.rand(5) * 10).astype('float32')
+        d3 = (np.random.rand(6) * 10).astype('int8')
         res = f(d1, d2, d3)
 
         for i, out in enumerate(f.outputs):
@@ -272,9 +337,7 @@ class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
 
 
 def speed_reduce10():
-    import numpy
-    import theano
-    data = numpy.random.rand(1000, 1000).astype("float32")
+    data = np.random.rand(1000, 1000).astype("float32")
     m = theano.tensor.fmatrix()
     f = theano.function([m], [m.sum(axis=0), m.T.sum(axis=0)],
                         mode=mode_with_gpu)

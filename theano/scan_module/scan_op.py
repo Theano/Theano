@@ -48,14 +48,6 @@ relies on the following elements to work properly :
 """
 from __future__ import absolute_import, print_function, division
 
-__docformat__ = 'restructedtext en'
-__authors__ = ("Razvan Pascanu "
-               "Frederic Bastien "
-               "James Bergstra "
-               "Pascal Lamblin ")
-__copyright__ = "(c) 2010, Universite de Montreal"
-__contact__ = "Razvan Pascanu <r.pascanu@gmail>"
-
 import copy
 import itertools
 import logging
@@ -63,11 +55,10 @@ import time
 from collections import OrderedDict
 
 import numpy
-from six import iteritems, integer_types
+from six import iteritems, integer_types, raise_from
 from six.moves import xrange
 
 import theano
-from theano.compat import exc_message
 from theano.compile import function, In, Out
 from theano.compile.mode import AddFeatureOptimizer
 from theano import compile, config, gradient, gof, tensor
@@ -75,7 +66,7 @@ from theano.gof import PureOp, Apply
 from theano.gof.graph import io_connection_pattern
 from theano.gof.toolbox import NoOutputFromInplace
 from theano.compat import izip
-from theano.tensor import TensorType
+from theano.tensor import as_tensor_variable, TensorType
 from theano.tensor.opt import Shape_i
 from theano.gradient import grad_undefined, DisconnectedType, NullType
 from six import string_types
@@ -83,6 +74,14 @@ from theano.compile.profiling import ScanProfileStats
 
 from theano.scan_module import scan_utils
 from theano.scan_module.scan_utils import safe_new, forced_replace
+
+__docformat__ = 'restructedtext en'
+__authors__ = ("Razvan Pascanu "
+               "Frederic Bastien "
+               "James Bergstra "
+               "Pascal Lamblin ")
+__copyright__ = "(c) 2010, Universite de Montreal"
+__contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')
@@ -140,8 +139,9 @@ class Scan(PureOp):
         self.output_types = []
         idx = 0
         jdx = 0
-        tensorConstructor = lambda broadcastable, dtype: TensorType(
-            broadcastable=broadcastable, dtype=dtype)
+
+        def tensorConstructor(broadcastable, dtype):
+            return TensorType(broadcastable=broadcastable, dtype=dtype)
         if typeConstructor is None:
             typeConstructor = tensorConstructor
 
@@ -207,9 +207,10 @@ class Scan(PureOp):
         if self.info['gpu'] or self.info['gpua']:
             self._hash_inner_graph = self.info['gpu_hash']
         else:
-            tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
-                                                           self.outputs)
-            local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=False)
+            # Do the missing inputs check here to have the error early.
+            for var in theano.gof.graph.inputs(self.outputs, self.inputs):
+                if var not in self.inputs and not isinstance(var, theano.Constant):
+                    raise theano.gof.MissingInputError("ScanOp is missing an input.")
             self._cmodule_key = gof.CLinker().cmodule_key_variables(self.inputs,
                                                                     self.outputs,
                                                                     [])
@@ -348,7 +349,8 @@ class Scan(PureOp):
         assert n_outer_ins == n_inner_ins, \
             ("The number of inputs given to the inner function of scan"
              " does not match the number of inputs given to scan.")
-        new_inputs = [inputs[0]]
+        # Force the inputs to be on the CPU
+        new_inputs = [as_tensor_variable(inputs[0])]
         # assert dtype is consistent
         err_msg1 = ('When compiling the inner function of scan (the '
                     'function called by scan in each of its iterations) '
@@ -401,6 +403,36 @@ class Scan(PureOp):
                     'by using dimshuffle or shape_padleft. '
                     )
 
+        def check_broadcast(v1, v2):
+            """ Checks that the broadcast pattern of v1 and v2.
+
+            Controls that the broadcast pattern of the variable provided as
+            input to `scan` matches the broadcast pattern provided in
+            `output_info`. It raises an error when they don't match. The
+            typical case is when the user provides either the input or the
+            `output_info` (but not both) with a dimension fixed to 1,
+            which may wrongly be interpreted as broadcastable.
+
+            """
+            if (not hasattr(v1, 'broadcastable') and
+                    not hasattr(v2, 'broadcastable')):
+                return
+            msg = ("The broadcast pattern of the output of scan (%s) is "
+                   "inconsistent with the one provided in `output_info` "
+                   "(%s). The output on axis %d is `%r`, but it is `%r` on "
+                   "axis %d in `output_info`. This can happen if one of the "
+                   "dimension is fixed to 1 in the input, while it is still "
+                   "variable in the output, or vice-verca. You have to make "
+                   "them consistent, e.g. using theano.tensor."
+                   "{patternbroadcast,unbroadcast,addbroadcast}.")
+            size = min(len(v1.broadcastable), len(v2.broadcastable))
+            for n, (b1, b2) in enumerate(zip(v1.broadcastable[-size:],
+                                             v2.broadcastable[-size:])):
+                if b1 != b2:
+                    a1 = n + size - len(v1.broadcastable) + 1
+                    a2 = n + size - len(v2.broadcastable) + 1
+                    raise TypeError(msg % (v1.type, v2.type, a1, b1, b2, a2))
+
         def format(var, as_var):
             """
             This functions ensures that ``out`` has the same dtype as
@@ -428,13 +460,14 @@ class Scan(PureOp):
         argoffset = 0
         for inner_seq, outer_seq in zip(self.inner_seqs(self.inputs),
                                         self.outer_seqs(inputs)):
+            check_broadcast(outer_seq, inner_seq)
             new_inputs.append(format(outer_seq, as_var=inner_seq))
 
         argoffset += len(self.outer_seqs(inputs))
         # Check that this 3 things have the same dtype for mit_mot:
         #   - initial state of the output
-        #   - variable representing an input slice of the otuput
-        #   - variable representing an output slice of the otuput
+        #   - variable representing an input slice of the output
+        #   - variable representing an output slice of the output
         ipos = 0
         opos = 0
         inner_mitmot = self.inner_mitmot(self.inputs)
@@ -447,8 +480,8 @@ class Scan(PureOp):
             new_inputs.append(outer_mitmot)
             for k in xrange(len(itaps)):
                 if (inner_mitmot[ipos + k].type.dtype !=
-                    outer_mitmot.type.dtype or
-                    inner_mitmot[ipos + k].ndim != outer_mitmot.ndim - 1):
+                        outer_mitmot.type.dtype or
+                        inner_mitmot[ipos + k].ndim != outer_mitmot.ndim - 1):
                     raise ValueError(err_msg1 % ('initial state (outputs_info'
                                                  ' in scan nomenclature) ',
                                                  str(outer_mitmot),
@@ -487,9 +520,9 @@ class Scan(PureOp):
             new_inputs.append(outer_mitsot)
 
             for k in xrange(len(itaps)):
-                if (inner_mitsots[ipos + k].type.dtype != \
-                    outer_mitsot.type.dtype or
-                    inner_mitsots[ipos + k].ndim != outer_mitsot.ndim - 1):
+                if (inner_mitsots[ipos + k].type.dtype !=
+                        outer_mitsot.type.dtype or
+                        inner_mitsots[ipos + k].ndim != outer_mitsot.ndim - 1):
                     raise ValueError(err_msg1 % ('initial state (outputs_info'
                                                  ' in scan nomenclature) ',
                                                  str(outer_mitsot),
@@ -586,10 +619,10 @@ class Scan(PureOp):
         # in this case is just a int saying how many steps of this output we
         # need to store. This input does not have the same dtype, nor is it the same
         # type of tensor as the output, it is always a scalar int.
-        new_inputs += self.outer_nitsot(inputs)
-        for inner_nonseq, _outer_nonseq in zip(
-                            self.inner_non_seqs(self.inputs),
-                            self.outer_non_seqs(inputs)):
+        new_inputs += [as_tensor_variable(ons)
+                       for ons in self.outer_nitsot(inputs)]
+        for inner_nonseq, _outer_nonseq in zip(self.inner_non_seqs(self.inputs),
+                                               self.outer_non_seqs(inputs)):
             outer_nonseq = format(_outer_nonseq, as_var=inner_nonseq)
             new_inputs.append(outer_nonseq)
             if inner_nonseq.type != outer_nonseq.type:
@@ -601,8 +634,8 @@ class Scan(PureOp):
             # For every nit_sot input we get as input a int/uint that
             # depicts the size in memory for that sequence. This feature is
             # used by truncated BPTT and by scan space optimization
-            if (str(outer_nitsot.type.dtype)[:3] not in ('uin', 'int') or
-                outer_nitsot.ndim != 0):
+            if (str(outer_nitsot.type.dtype) not in tensor.integer_dtypes or
+                    outer_nitsot.ndim != 0):
                 raise ValueError('For output %s you need to provide a '
                                  'scalar int !', str(outer_nitsot))
         assert len(new_inputs) == len(inputs)
@@ -610,16 +643,17 @@ class Scan(PureOp):
         # The vector_seqs and vector_outs are just a workaround
         # strange NumPy behavior: vector_ndarray[int] return a NumPy
         # scalar and not a NumPy ndarray of 0 dimensions.
-        self.vector_seqs = [isinstance(seq, (tensor.TensorVariable,
-                                             tensor.TensorConstant)) and
-                            seq.ndim == 1 for seq in
-                            new_inputs[1:1 + self.n_seqs]]
-        self.vector_outs = [isinstance(arg, (tensor.TensorVariable,
-                                             tensor.TensorConstant)) and
-                            arg.ndim == 1 for arg in
-                            new_inputs[1 + self.n_seqs: (1 + self.n_seqs +
-                                                         self.n_outs)]]
-        self.vector_outs += [False] * self.n_nit_sot
+        def is_cpu_vector(s):
+            return isinstance(s.type, tensor.TensorType) and s.ndim == 1
+
+        self.vector_seqs = [
+            is_cpu_vector(seq) for seq in new_inputs[1:1 + self.n_seqs]]
+        self.vector_outs = [
+            is_cpu_vector(arg) for arg in new_inputs[
+                1 + self.n_seqs: (1 + self.n_seqs + self.n_outs)]]
+        self.vector_outs += [
+            isinstance(t.type, tensor.TensorType) and t.ndim == 0
+            for t in self.outer_nitsot_outs(self.outputs)]
 
         apply_node = Apply(self,
                            new_inputs,
@@ -630,9 +664,9 @@ class Scan(PureOp):
         # Check if we are dealing with same type of objects
         if not type(self) == type(other):
             return False
-        if not 'destroy_map' in self.info:
+        if 'destroy_map' not in self.info:
             self.info['destroy_map'] = OrderedDict()
-        if not 'destroy_map' in other.info:
+        if 'destroy_map' not in other.info:
             other.info['destroy_map'] = OrderedDict()
         keys_to_check = ['truncate_gradient', 'profile',
                          'n_seqs', 'tap_array',
@@ -675,7 +709,7 @@ class Scan(PureOp):
             self.destroy_map = OrderedDict()
         if len(self.destroy_map.keys()) > 0:
             # Check if all outputs are inplace
-            if (sorted(self.destroy_map.keys()) == \
+            if (sorted(self.destroy_map.keys()) ==
                sorted(range(self.n_mit_mot +
                             self.n_mit_sot +
                             self.n_sit_sot))):
@@ -737,9 +771,6 @@ class Scan(PureOp):
 
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
-        node_input_compute = [compute_map[r] for r in node.inputs]
-        node_output_compute = [compute_map[r] for r in node.outputs]
-        #_logger.debug('Compiling node %i of graph' % node_idx)
         # If a shared variable is the result of a ViewOp it is a clear
         # indication that we need to copy that value after the perform of
         # scan is done
@@ -776,9 +807,11 @@ class Scan(PureOp):
                         # function exectution. Also, since an update is
                         # defined, a default value must also be (this is
                         # verified by DebugMode). Use an array of size 0 but
-                        # the right ndim and dtype.
-                        default_val = numpy.zeros([0] * inp.ndim,
-                                                  dtype=inp.dtype)
+                        # the right ndim and dtype (use a shape of 1 on
+                        # broadcastable dimensions, 0 on the others).
+                        default_shape = [1 if _b else 0
+                                         for _b in inp.broadcastable]
+                        default_val = inp.type.value_zeros(default_shape)
                         wrapped_inp = In(variable=inp, value=default_val,
                                          update=self.outputs[output_idx])
                         wrapped_inputs.append(wrapped_inp)
@@ -840,8 +873,8 @@ class Scan(PureOp):
 
         profile = None
         if (theano.config.profile or
-            (isinstance(self.profile, (string_types, bool, integer_types))
-                and self.profile)):
+            (isinstance(self.profile, (string_types, bool, integer_types)) and
+             self.profile)):
             if isinstance(self.profile, string_types):
                 profile = ScanProfileStats(name=self.profile)
             else:
@@ -916,32 +949,33 @@ class Scan(PureOp):
             cython_destroy_map = numpy.asarray(cython_destroy_map,
                                                dtype='int32')
             from . import scan_perform_ext
-            p = lambda node, args, outs:\
-                scan_perform_ext.perform(self.n_shared_outs,
-                                         self.n_mit_mot_outs,
-                                         self.n_seqs,
-                                         self.n_mit_mot,
-                                         self.n_mit_sot,
-                                         self.n_sit_sot,
-                                         self.n_nit_sot,
-                                         args[0],
-                                         self.as_while,
-                                         cython_mintaps,
-                                         cython_tap_array,
-                                         cython_tap_array_len,
-                                         cython_vector_seqs,
-                                         cython_vector_outs,
-                                         cython_mit_mot_out_slices,
-                                         cython_mit_mot_out_nslices,
-                                         cython_mitmots_preallocated,
-                                         cython_inps_is_tensor,
-                                         cython_outs_is_tensor,
-                                         self.fn.fn,
-                                         self.fn,
-                                         cython_destroy_map,
-                                         args,
-                                         outs,
-                                         self, node)
+
+            def p(node, args, outs):
+                return scan_perform_ext.perform(self.n_shared_outs,
+                                                self.n_mit_mot_outs,
+                                                self.n_seqs,
+                                                self.n_mit_mot,
+                                                self.n_mit_sot,
+                                                self.n_sit_sot,
+                                                self.n_nit_sot,
+                                                args[0],
+                                                self.as_while,
+                                                cython_mintaps,
+                                                cython_tap_array,
+                                                cython_tap_array_len,
+                                                cython_vector_seqs,
+                                                cython_vector_outs,
+                                                cython_mit_mot_out_slices,
+                                                cython_mit_mot_out_nslices,
+                                                cython_mitmots_preallocated,
+                                                cython_inps_is_tensor,
+                                                cython_outs_is_tensor,
+                                                self.fn.fn,
+                                                self.fn,
+                                                cython_destroy_map,
+                                                args,
+                                                outs,
+                                                self, node)
         except (ImportError, theano.gof.cmodule.MissingGXX):
             p = self.execute
         # default arguments are stored in the closure of `rval`
@@ -1183,8 +1217,8 @@ class Scan(PureOp):
                 outs[idx][0] = args[self.seqs_arg_offset + idx]
             elif (outs[idx][0] is not None and
                   outs[idx][0].shape[1:] == args[self.seqs_arg_offset +
-                                                 idx].shape[1:]
-                  and outs[idx][0].shape[0] >= store_steps[idx]):
+                                                 idx].shape[1:] and
+                  outs[idx][0].shape[0] >= store_steps[idx]):
                 # Put in the values of the initial state
                 outs[idx][0] = outs[idx][0][:store_steps[idx]]
                 if idx > self.n_mit_mot:
@@ -1212,7 +1246,7 @@ class Scan(PureOp):
 
         i = 0
         cond = True
-        ############## THE MAIN LOOP #########################
+        # ############# THE MAIN LOOP ##############
         # for i in xrange(n_steps):
         while (i < n_steps) and cond:
             # sequences over which scan iterates
@@ -1263,7 +1297,7 @@ class Scan(PureOp):
                 for idx in xrange(self.n_outs + self.n_nit_sot -
                                   self.n_mit_mot):
                     if (store_steps[idx + self.n_mit_mot] == 1 or
-                        self.vector_outs[idx + self.n_mit_mot]):
+                            self.vector_outs[idx + self.n_mit_mot]):
                         output_storage[idx + offset].storage[0] = None
                     else:
                         _pos0 = idx + self.n_mit_mot
@@ -1434,8 +1468,22 @@ class Scan(PureOp):
                         output_reused = False
 
                     if not output_reused:
-                        outs[j][0][pos[j]] = \
-                            output_storage[offset_out + j].storage[0]
+                        try:
+                            outs[j][0][pos[j]] = \
+                                output_storage[offset_out + j].storage[0]
+                        except ValueError as e:
+                            if i == 0:
+                                # First iteration, so don't change the
+                                # error message as it can't be the
+                                # case we write about.
+                                raise
+                            ne = ValueError(
+                                "An output of the scan has changed shape. "
+                                "This may be caused by a pushout optimization."
+                                " Try adding "
+                                "'optimizer_excluding=scanOp_pushout_output' "
+                                "to your Theano flags.")
+                            raise_from(ne, e)
 
             # 5.5 Copy over the values for nit_sot outputs
             begin = end
@@ -1446,8 +1494,6 @@ class Scan(PureOp):
                     jout = j + offset_out
                     shape = (store_steps[j],) + \
                         output_storage[jout].storage[0].shape
-                    if len(output_storage[jout].storage[0].shape) == 0:
-                        self.vector_outs[j] = True
                     dtype = output_storage[jout].storage[0].dtype
                     if (outs[j][0] is None or
                             outs[j][0].shape[0] < store_steps[j] or
@@ -1497,7 +1543,7 @@ class Scan(PureOp):
         end = self.n_outs + self.n_nit_sot
         for idx in xrange(begin, end):
             if (store_steps[idx] < i - self.mintaps[idx] and
-                pos[idx] < store_steps[idx]):
+                    pos[idx] < store_steps[idx]):
 
                 pdx = pos[idx]
                 if pdx >= store_steps[idx] // 2:
@@ -1752,7 +1798,7 @@ class Scan(PureOp):
                     j_inp_idx = self.var_mappings["outer_inp_from_outer_out"][jidx]
 
                     if j_inp_idx != -1:
-                        if connection_pattern[j_inp_idx][iidx] == True:
+                        if connection_pattern[j_inp_idx][iidx] is True:
                             for k in xrange(len(connection_pattern)):
                                 if connection_pattern[k][jidx]:
                                     connection_pattern[k][iidx] = True
@@ -1917,8 +1963,7 @@ class Scan(PureOp):
         return mappings
 
     # GRAD FUNCTION
-    def grad(self, inputs, dC_douts):
-        outs = self(*inputs)
+    def L_op(self, inputs, outs, dC_douts):
         if not isinstance(outs, (list, tuple)):
             outs = [outs]
         # `grad_step` equals the number of steps the original scan node has
@@ -1942,10 +1987,8 @@ class Scan(PureOp):
         if self.truncate_gradient != -1:
             grad_steps = tensor.minimum(grad_steps, self.truncate_gradient)
 
-        rval = scan_utils.reconstruct_graph(self.inputs,
-                                            self.outputs)
-        self_inputs = rval[0]
-        self_outputs = rval[1]
+        self_inputs = self.inputs
+        self_outputs = self.outputs
         # differentiable inputs
         diff_inputs = (self.inner_seqs(self_inputs) +
                        self.inner_mitmot(self_inputs) +
@@ -1997,7 +2040,7 @@ class Scan(PureOp):
             g_y_s = known_grads.values()
 
             for g_y in g_y_s:
-                if 'int' in str(g_y.dtype):
+                if str(g_y.dtype) in tensor.integer_dtypes:
                     raise TypeError("Gradients may never be integers but g_y "
                                     "has type " + str(g_y.type))
 
@@ -2106,7 +2149,6 @@ class Scan(PureOp):
                     dc_dxts_idx += 1
         dC_dinps_t = compute_all_gradients(known_grads)
 
-
         # mask inputs that get no gradients
         for dx in xrange(len(dC_dinps_t)):
             if not dC_dinps_t[dx]:
@@ -2159,7 +2201,6 @@ class Scan(PureOp):
         outer_inp_seqs = [x[::-1] for x in inputs[1:1 + self.n_seqs]]
         for idx in xrange(self.n_mit_mot + self.n_mit_sot):
             mintap = numpy.min(self.tap_array[idx])
-            maxtap = numpy.max(self.tap_array[idx])
             if idx < self.n_mit_mot:
                 outmaxtap = numpy.max(self.mitmot_out_taps()[idx])
             else:
@@ -2205,7 +2246,7 @@ class Scan(PureOp):
 
         # Restrict the length of the outer sequences to the number of grad
         # steps
-        outer_inp_seqs = [seq[:grad_steps] for seq in outer_inp_seqs]
+        outer_inp_seqs = [s_[:grad_steps] for s_ in outer_inp_seqs]
 
         inner_inp_seqs = self.inner_seqs(self_inputs)
         inner_inp_seqs += self.inner_mitmot(self_inputs)
@@ -2215,7 +2256,6 @@ class Scan(PureOp):
         inner_inp_seqs += Xts
         # mitmot
         outer_inp_mitmot = []
-        outer_out_mitmot = []
         inner_inp_mitmot = []
         inner_out_mitmot = []
         mitmot_inp_taps = []
@@ -2496,11 +2536,10 @@ class Scan(PureOp):
                         outer_inp_seqs +
                         outer_inp_mitmot +
                         outer_inp_sitsot +
-                        [inputs[0] for x in xrange(n_nit_sot)] +
+                        [inputs[0] for _ in xrange(n_nit_sot)] +
                         self.outer_shared(inputs) +
                         self.outer_non_seqs(inputs))
 
-        inner_other_args = self_inputs[offset:]
         inner_gfn_ins = (inner_inp_seqs +
                          inner_inp_mitmot +
                          inner_inp_sitsot +
@@ -2608,13 +2647,13 @@ class Scan(PureOp):
         return gradients
 
     def R_op(self, inputs, eval_points):
-        # Step 0. Don't work on the orignal tensor variables
-        rval = scan_utils.reconstruct_graph(self.inputs,
-                                            self.outputs, '_rop')
-        self_inputs = rval[0]
-        rop_of_inputs = rval[0][:self.n_seqs + self.n_outs] + \
-            rval[0][self.n_seqs + self.n_outs + self.n_shared_outs:]
-        self_outputs = rval[1]
+        # Step 0. Prepare some shortcut variable
+        self_inputs = self.inputs
+        rop_of_inputs = (self_inputs[:self.n_seqs + self.n_outs] +
+                         self_inputs[self.n_seqs + self.n_outs +
+                                     self.n_shared_outs:])
+        self_outputs = self.outputs
+
         # Step 1. Compute the R_op of the inner function
         inner_eval_points = [scan_utils.safe_new(x, '_evalpoint')
                              for x in rop_of_inputs]
@@ -2704,7 +2743,7 @@ class Scan(PureOp):
         e = e + self.n_mit_sot
         ib = ie
         ie = ie + int(numpy.sum([len(x) for x in
-                                 self.tap_array[self.n_mit_mot: \
+                                 self.tap_array[self.n_mit_mot:
                                                 self.n_mit_mot + self.n_mit_sot]]))
         clean_eval_points = []
         for inp, evp in zip(inputs[b:e], eval_points[b:e]):
@@ -2826,42 +2865,41 @@ class Scan(PureOp):
 gof.ops_with_inner_function[Scan] = 'fn'
 
 
-# TODO: move that to the new back-end and new profiling.py print_tips
-#@theano.compile.profilemode.register_profiler_printer
-def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
-                    apply_time, apply_cimpl, message, outputs_size,
-                    other_time):
+@theano.compile.profiling.register_profiler_printer
+def profile_printer(message, compile_time, fct_call_time,
+                    apply_time, apply_cimpl, outputs_size, file):
     # Scan overhead profile
-    if any([isinstance(node.op, Scan) and v > 0 for (_, node), v in
+    if any([isinstance(node.op, Scan) and v > 0 for node, v in
             apply_time.items()]):
-        print()
-        print('Scan overhead:')
-        print ('<Scan op time(s)> <sub scan fct time(s)> <sub scan op '
-               'time(s)> <sub scan fct time(% scan op time)> <sub scan '
-               'op time(% scan op time)> <node>')
+        print('', file=file)
+        print('Scan overhead:', file=file)
+        print('<Scan op time(s)> <sub scan fct time(s)> <sub scan op '
+              'time(s)> <sub scan fct time(% scan op time)> <sub scan '
+              'op time(% scan op time)> <node>', file=file)
+
         total_super_scan_time = 0
         total_scan_fct_time = 0
         total_scan_op_time = 0
-        for (_, node), v in iteritems(apply_time):
-            if isinstance(node.op, Scan):
+        for node, v in iteritems(apply_time):
+            if isinstance(node.op, Scan) and node.op.fn.profile:
                 if v > 0:
-                    scan_fct_time = node.op.mode_instance.fn_time
-                    scan_op_time = node.op.mode_instance.local_time
+                    scan_fct_time = node.op.fn.profile.call_time
+                    scan_op_time = sum(node.op.fn.profile.apply_time.values())
                     total_super_scan_time += v
                     total_scan_fct_time += scan_fct_time
                     total_scan_op_time += scan_op_time
-                    print('    %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
+                    print('      %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
                         v,
                         scan_fct_time,
                         scan_op_time,
                         scan_fct_time / v * 100,
-                        scan_op_time / v * 100), node)
+                        scan_op_time / v * 100), node, file=file)
                 else:
                     print((' The node took 0s, so we can not '
-                           'compute the overhead'), node)
-        print('    total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
+                           'compute the overhead'), node, file=file)
+        print('total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
             total_super_scan_time,
             total_scan_fct_time,
             total_scan_op_time,
             total_scan_fct_time / total_super_scan_time * 100,
-            total_scan_op_time / total_super_scan_time * 100))
+            total_scan_op_time / total_super_scan_time * 100), file=file)

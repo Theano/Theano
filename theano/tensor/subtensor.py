@@ -1,11 +1,10 @@
 from __future__ import absolute_import, print_function, division
-from copy import copy
 import sys
 from textwrap import dedent
 import warnings
 import logging
 
-import numpy
+import numpy as np
 from six import integer_types
 from six.moves import xrange
 
@@ -13,23 +12,19 @@ import theano
 from theano.compat import izip
 from theano.gradient import DisconnectedType
 from theano import gof
-from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
+from theano.gof import Apply, hashtype, Op, Type, MethodNotDefined
 from theano.printing import pprint
 from theano import scalar as scal
 from theano.tensor.basic import alloc
 from theano.tensor.basic import (addbroadcast, clip, get_scalar_constant_value,
-                                 ARange, TensorType, NotScalarConstantError)
+                                 TensorType, NotScalarConstantError)
 from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType, NoneTypeT, make_slice
 from theano import config
 
-inplace_increment = None
 if config.cxx:
     import theano.gof.cutils  # needed to import cutils_ext
-    try:
-        from cutils_ext.cutils_ext import inplace_increment
-    except ImportError:
-        pass
+    from cutils_ext.cutils_ext import inplace_increment
 
 _logger = logging.getLogger("theano.tensor.subtensor")
 
@@ -63,7 +58,7 @@ def make_constant(args):
                 return slice(conv(a.start),
                              conv(a.stop),
                              conv(a.step))
-            elif isinstance(a, (integer_types, numpy.integer)):
+            elif isinstance(a, (integer_types, np.integer)):
                 return scal.ScalarConstant(scal.int64, a)
             else:
                 return a
@@ -360,11 +355,11 @@ class Subtensor(Op):
 
         if (isinstance(entry, gof.Variable) and
                 entry.type in tensor_types and
-                numpy.all(entry.type.broadcastable)):
+                np.all(entry.type.broadcastable)):
             return scal.get_scalar_type(entry.type.dtype)
         elif (isinstance(entry, gof.Type) and
               entry in tensor_types and
-              numpy.all(entry.broadcastable)):
+              np.all(entry.broadcastable)):
             return scal.get_scalar_type(entry.dtype)
         elif slice_ok and isinstance(entry, slice):
             a = entry.start
@@ -390,7 +385,7 @@ class Subtensor(Op):
                 slice_c = None
 
             return slice(slice_a, slice_b, slice_c)
-        elif isinstance(entry, (integer_types, numpy.integer)):
+        elif isinstance(entry, (integer_types, np.integer)):
             # Disallow the use of python scalars in idx_list
             raise TypeError("Python scalar in idx_list."
                             "Please report this error to theano-dev.")
@@ -515,8 +510,8 @@ class Subtensor(Op):
                         if start is None:
                             start = 0
                         if (p.stop is None or
-                            (isinstance(p.stop, (integer_types, numpy.integer,
-                                                 numpy.ndarray)) and
+                            (isinstance(p.stop, (integer_types, np.integer,
+                                                 np.ndarray)) and
                              p.stop > start)):
                             broadcastable.append(True)
                             continue
@@ -536,7 +531,7 @@ class Subtensor(Op):
         if len(cdata) == 1:
             cdata = cdata[0]
 
-        out[0] = numpy.asarray(x.__getitem__(cdata))
+        out[0] = np.asarray(x.__getitem__(cdata))
 
     def infer_shape(self, node, shapes):
         xshp = shapes[0]
@@ -573,7 +568,7 @@ class Subtensor(Op):
         gz, = grads
         x = inputs[0]
         rest = inputs[1:]
-        if x.dtype.find('int') != -1:
+        if x.dtype in theano.tensor.discrete_dtypes:
             first = x.zeros_like().astype(theano.config.floatX)
         else:
             # For best optimization, we let this as an inc.
@@ -686,7 +681,7 @@ class Subtensor(Op):
             return pos[1]
 
         def init_entry(entry, depth=0):
-            if isinstance(entry, (numpy.integer, integer_types)):
+            if isinstance(entry, (np.integer, integer_types)):
                 init_cmds.append(
                     "subtensor_spec[%i] = %i;" % (spec_pos(),
                                                   entry))
@@ -933,15 +928,9 @@ class Subtensor(Op):
         """ % locals()
 
         finish_view = """
-        //This is needed for NumPy 1.5, but not 1.7.2
-        PyArray_UpdateFlags(xview, NPY_ARRAY_C_CONTIGUOUS| NPY_ARRAY_F_CONTIGUOUS);
         Py_XDECREF(%(z)s);
         Py_INCREF(py_%(x)s);
-#if NPY_API_VERSION < 0x00000007
-        PyArray_BASE(xview) = py_%(x)s;
-#else
         PyArray_SetBaseObject(xview, py_%(x)s);
-#endif
         assert(py_%(x)s == (PyObject*)%(x)s);
         %(z)s = xview;
         """ % locals()
@@ -974,35 +963,43 @@ class SubtensorPrinter:
         elif isinstance(r.owner.op, Subtensor):
             idxs = r.owner.op.idx_list
             inputs = list(r.owner.inputs)
-            input = inputs.pop()
+            input = inputs.pop(0)
             sidxs = []
-            inbrack_pstate = pstate.clone(precedence=-1000)
-            for entry in idxs:
-                if isinstance(entry, integer_types):
-                    sidxs.append(str(entry))
-                elif isinstance(entry, scal.Scalar):
-                    sidxs.append(inbrack_pstate.pprinter.process(inputs.pop()))
-                elif isinstance(entry, slice):
-                    if entry.start is None or entry.start == 0:
-                        msg1 = ""
-                    else:
-                        msg1 = entry.start
+            old_precedence = getattr(pstate, 'precedence', None)
+            try:
+                pstate.precedence = -1000
 
-                    if entry.stop is None or entry.stop == sys.maxsize:
-                        msg2 = ""
-                    else:
-                        msg2 = entry.stop
+                for entry in idxs:
+                    if isinstance(entry, integer_types):
+                        sidxs.append(str(entry))
+                    elif isinstance(entry, scal.Scalar):
+                        sidxs.append(pstate.pprinter.process(inputs.pop()))
+                    elif isinstance(entry, slice):
+                        if entry.start is None or entry.start == 0:
+                            msg1 = ""
+                        else:
+                            msg1 = entry.start
 
-                    if entry.step is None:
-                        msg3 = ""
-                    else:
-                        msg3 = ":%s" % entry.step
+                        if entry.stop is None or entry.stop == sys.maxsize:
+                            msg2 = ""
+                        else:
+                            msg2 = entry.stop
 
-                    sidxs.append("%s:%s%s" % (msg1, msg2, msg3))
-            return "%s[%s]" % (pstate.pprinter.process(
-                input,
-                pstate.clone(precedence=1000)),
-                ", ".join(sidxs))
+                        if entry.step is None:
+                            msg3 = ""
+                        else:
+                            msg3 = ":%s" % entry.step
+
+                        sidxs.append("%s:%s%s" % (msg1, msg2, msg3))
+            finally:
+                pstate.precedence = old_precedence
+
+            try:
+                pstate.precedence = 1000
+                sub = pstate.pprinter.process(input, pstate)
+            finally:
+                pstate.precedence = old_precedence
+            return "%s[%s]" % (sub, ", ".join(sidxs))
         else:
             raise TypeError("Can only print Subtensor.")
 
@@ -1157,7 +1154,11 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
             inplace=inplace,
             set_instead_of_inc=set_instead_of_inc,
             tolerate_inplace_aliasing=tolerate_inplace_aliasing)
-        return x.owner.op(inner_incsubtensor, *x.owner.inputs[1:])
+        # The broadcastable pattern of inner_x may not be the same as
+        # the one of x, so we have to build a new dimshuffle here,
+        # instead of reusing x.owner.op().
+        return inner_incsubtensor.dimshuffle(x.owner.op.new_order)
+
     elif isinstance(x.owner.op, theano.tensor.Reshape):
         # This case happens when the indices are not arranged as a vector, but
         # as a higher-dimensional array. This is handled by the subtensor
@@ -1389,8 +1390,8 @@ class IncSubtensor(Op):
             op_is_set = 0
         fail = sub['fail']
         view_ndim = (node.inputs[0].ndim -
-                     numpy.sum([not isinstance(idx, slice)
-                                for idx in self.idx_list]))
+                     np.sum([not isinstance(idx, slice)
+                             for idx in self.idx_list]))
 
         copy_of_x = self.copy_of_x(x)
 
@@ -1532,8 +1533,6 @@ class IncSubtensor(Op):
                 PyArray_BYTES(%(x)s) + xview_offset, //PyArray_DATA(%(x)s),
                 PyArray_FLAGS(%(x)s),
                 NULL);
-        //This is needed for NumPy 1.5, but not 1.7.2
-        PyArray_UpdateFlags(zview, NPY_ARRAY_C_CONTIGUOUS| NPY_ARRAY_F_CONTIGUOUS);
         """ % locals()
 
     def get_helper_c_code_args(self):
@@ -1688,7 +1687,7 @@ class AdvancedSubtensor1(Op):
     def make_node(self, x, ilist):
         x_ = theano.tensor.as_tensor_variable(x)
         ilist_ = theano.tensor.as_tensor_variable(ilist)
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -1713,11 +1712,11 @@ class AdvancedSubtensor1(Op):
         # We need to check if values in i can fit in numpy.intp, because
         # if they don't, that should be an error (no array can have that
         # many elements on a 32-bit arch).
-        if i.dtype != numpy.intp:
-            i_ = theano._asarray(i, dtype=numpy.intp)
-            if not numpy.can_cast(i.dtype, numpy.intp):
+        if i.dtype != np.intp:
+            i_ = theano._asarray(i, dtype=np.intp)
+            if not np.can_cast(i.dtype, np.intp):
                 # Check if there was actually an incorrect conversion
-                if numpy.any(i != i_):
+                if np.any(i != i_):
                     raise IndexError(
                         'index contains values that are bigger '
                         'than the maximum array size on this system.', i)
@@ -1897,7 +1896,7 @@ class AdvancedIncSubtensor1(Op):
         y_ = theano.tensor.as_tensor_variable(y)
         ilist_ = theano.tensor.as_tensor_variable(ilist)
 
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -1947,7 +1946,7 @@ class AdvancedIncSubtensor1(Op):
         return compile_cutils_code()
 
     def c_code(self, node, name, input_names, output_names, sub):
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
         if bool(numpy_ver < [1, 8]):
             raise NotImplementedError
         x, y, idx = input_names
@@ -2001,8 +2000,9 @@ class AdvancedIncSubtensor1(Op):
         if self.set_instead_of_inc:
             x[idx] = y
         else:
-            increment = inplace_increment
-            if increment is None:
+            if config.cxx:
+                increment = inplace_increment
+            else:
                 increment = self.inplace_increment1d_slow
 
             increment(x, idx, y)
@@ -2084,7 +2084,7 @@ def as_index_variable(idx):
     if isinstance(idx, gof.Variable) and isinstance(idx.type, NoneTypeT):
         return idx
     idx = theano.tensor.as_tensor_variable(idx)
-    if idx.type.dtype[:3] not in ('int', 'uin'):
+    if idx.type.dtype not in theano.tensor.integer_dtypes:
         raise TypeError('index must be integers')
     return idx
 
@@ -2113,13 +2113,13 @@ def adv_index_broadcastable_pattern(a, idx):
         if isinstance(v.type, SliceType):
             return slice(None, None)
 
-        return numpy.zeros((2,) * v.ndim, int)
+        return np.zeros((2,) * v.ndim, int)
 
     newidx = tuple(map(replace_slice, idx))
 
     # 2 - True = 1; 2 - False = 2
     fakeshape = [2 - bc for bc in a.broadcastable]
-    retshape = numpy.empty(fakeshape)[newidx].shape
+    retshape = np.empty(fakeshape)[newidx].shape
     return tuple([dim == 1 for dim in retshape])
 
 
@@ -2193,12 +2193,6 @@ advanced_subtensor = AdvancedSubtensor()
 class AdvancedIncSubtensor(Op):
     """
     Increments a subtensor using advanced indexing.
-
-    Notes
-    -----
-    We need the numpy.inplace_increment() function currently
-    numpy's PR 326 to be able to make an inplace version of this op.
-
     """
 
     __props__ = ("inplace", "set_instead_of_inc")
@@ -2213,8 +2207,6 @@ class AdvancedIncSubtensor(Op):
             raise NotImplementedError('In place computation is not'
                                       ' implemented')
 
-        self.allow_legacy_perform = False
-
     def __str__(self):
         return "%s{%s, %s}" % (self.__class__.__name__,
                                "inplace=" + str(self.inplace),
@@ -2225,46 +2217,12 @@ class AdvancedIncSubtensor(Op):
         x = theano.tensor.as_tensor_variable(x)
         y = theano.tensor.as_tensor_variable(y)
 
-        op = self
-        # If we are incrementing, but the increment compiled function is not
-        # available, we need to support legacy cases.
-        if not self.set_instead_of_inc and inplace_increment is None:
-            legacy_conditions = False
-            if x.ndim == 2 and y.ndim == 1 and len(inputs) == 2:
-                ind1 = theano.tensor.as_tensor_variable(inputs[0])
-                ind2 = theano.tensor.as_tensor_variable(inputs[1])
-                if ind1.ndim == 1 and ind2.ndim == 1:
-                    if ind1.owner and isinstance(ind1.owner.op, ARange):
-                        legacy_conditions = True
-                    elif isinstance(ind1, Constant):
-                        # Make sure no index is duplicated
-                        val = ind1.value
-                        if numpy.unique(val).size == val.size:
-                            legacy_conditions = True
-                    elif ind2.owner and isinstance(ind2.owner.op, ARange):
-                        legacy_conditions = True
-                    elif isinstance(ind2, Constant):
-                        # Make sure no index is duplicated
-                        val = ind2.value
-                        if numpy.unique(val).size == val.size:
-                            legacy_conditions = True
-            if legacy_conditions:
-                op = copy(self)
-                op.allow_legacy_perform = True
-            else:
-                raise NotImplementedError(
-                    'Could not import inplace_increment, so some advanced '
-                    'indexing features are disabled. They will be '
-                    'available if you update NumPy to version 1.8 or '
-                    'later, or to the latest development version. '
-                    'You may need to clear the cache (theano-cache clear) '
-                    'afterwards.')
         new_inputs = []
         for inp in inputs:
             if isinstance(inp, (list, tuple)):
                 inp = theano.tensor.as_tensor_variable(inp)
             new_inputs.append(inp)
-        return gof.Apply(op,
+        return gof.Apply(self,
                          (x, y) + tuple(new_inputs),
                          [theano.tensor.tensor(
                              dtype=x.type.dtype,
@@ -2282,27 +2240,14 @@ class AdvancedIncSubtensor(Op):
 
         if self.set_instead_of_inc:
             out[0][inputs[2:]] = inputs[1]
-        elif inplace_increment is not None:
+        elif config.cxx:
             inplace_increment(out[0], tuple(inputs[2:]), inputs[1])
-        elif self.allow_legacy_perform:
-            out[0][inputs[2:]] += inputs[1]
         else:
             raise NotImplementedError(
-                'Could not import inplace_increment, so some advanced '
-                'indexing features are disabled. They will be '
-                'available if you update NumPy to version 1.8 or '
-                'later, or to the latest development version. '
-                'You may need to clear the cache (theano-cache clear) '
-                'afterwards.')
-
-        if (numpy.__version__ <= '1.6.1' and
-                out[0].size != numpy.uint32(out[0].size)):
-            warnings.warn(
-                'Numpy versions 1.6.1 and below have a bug preventing '
-                'advanced indexing from correctly filling arrays that '
-                'are too big (>= 2^32 elements). It is possible that '
-                'out[0] (%s), with shape %s, is not correctly filled.'
-                % (out[0], out[0].shape))
+                'Could not import inplace_increment, so advanced '
+                'indexing is disabled. '
+                'Please make sure that you have a working C++ compiler '
+                'and that config.cxx is correctly set.')
 
     def infer_shape(self, node, ishapes):
         return [ishapes[0]]

@@ -1,8 +1,9 @@
 from __future__ import absolute_import, print_function, division
 
 from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 
-import numpy
+import numpy as np
 
 from theano.tensor.nnet.tests import test_abstract_conv
 from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
@@ -49,6 +50,31 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip, target_op=GpuDnnConvGradI)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+        if not dnn_available(test_ctx_name):
+            raise SkipTest(dnn_available.msg)
+        if fd != (1, 1):
+            raise SkipTest("Doesn't have CUDNN implementation")
+        mode = mode_with_gpu
+
+        if not expect_error:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s,
+                               verify_grad=True, mode=mode,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip, target_op=GpuDnnConvGradI,
+                               filter_dilation=fd)
+        else:
+            assert_raises((RuntimeError, ValueError),
+                          self.run_gradinput,
+                          inputs_shape=i, filters_shape=f,
+                          output_shape=o, subsample=s,
+                          verify_grad=False, mode=mode,
+                          provide_shape=provide_shape, border_mode=b,
+                          filter_flip=flip, target_op=GpuDnnConvGradI,
+                          ref=None,
+                          filter_dilation=fd)
+
 
 class TestDnnConv3d(test_abstract_conv.BaseTestConv3d):
     @classmethod
@@ -81,6 +107,31 @@ class TestDnnConv3d(test_abstract_conv.BaseTestConv3d):
                            verify_grad=True, mode=mode,
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip, target_op=GpuDnnConvGradI)
+
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1), expect_error=False):
+        if not dnn_available(test_ctx_name):
+            raise SkipTest(dnn_available.msg)
+        if fd != (1, 1, 1):
+            raise SkipTest("Doesn't have CUDNN implementation")
+        mode = mode_with_gpu
+
+        if not expect_error:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s,
+                               verify_grad=True, mode=mode,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip, target_op=GpuDnnConvGradI,
+                               filter_dilation=fd)
+        else:
+            assert_raises((RuntimeError, ValueError),
+                          self.run_gradinput,
+                          inputs_shape=i, filters_shape=f,
+                          output_shape=o, subsample=s,
+                          verify_grad=False, mode=mode,
+                          provide_shape=provide_shape, border_mode=b,
+                          filter_flip=flip, target_op=GpuDnnConvGradI,
+                          ref=None,
+                          filter_dilation=fd)
 
 
 class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
@@ -115,6 +166,28 @@ class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
                            target_op=GpuCorrMM_gradInputs,
                            filter_dilation=fd)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+        mode = self.mode
+        if not expect_error:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s,
+                               verify_grad=True, mode=mode,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip,
+                               target_op=GpuCorrMM_gradInputs,
+                               filter_dilation=fd)
+        else:
+            assert_raises(ValueError,
+                          self.run_gradinput,
+                          inputs_shape=i, filters_shape=f,
+                          output_shape=o, subsample=s,
+                          verify_grad=False, mode=mode,
+                          provide_shape=provide_shape, border_mode=b,
+                          filter_flip=flip,
+                          target_op=GpuCorrMM_gradInputs,
+                          ref=None,
+                          filter_dilation=fd)
+
 
 class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
     @classmethod
@@ -148,6 +221,28 @@ class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
                            target_op=GpuCorr3dMM_gradInputs,
                            filter_dilation=fd)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1), expect_error=False):
+        mode = self.mode
+        if not expect_error:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s,
+                               verify_grad=True, mode=mode,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip,
+                               target_op=GpuCorr3dMM_gradInputs,
+                               filter_dilation=fd)
+        else:
+            assert_raises(ValueError,
+                          self.run_gradinput,
+                          inputs_shape=i, filters_shape=f,
+                          output_shape=o, subsample=s,
+                          verify_grad=False, mode=mode,
+                          provide_shape=provide_shape, border_mode=b,
+                          filter_flip=flip,
+                          target_op=GpuCorr3dMM_gradInputs,
+                          ref=None,
+                          filter_dilation=fd)
+
 
 class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
     def setUp(self):
@@ -155,5 +250,9 @@ class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
         self.filters = gpu_ftensor4()
         self.topgrad = gpu_ftensor4()
         self.constant_tensor = gpuarray.array(
-            numpy.zeros((3, 5, 7, 11), dtype='float32'),
+            np.zeros((3, 5, 7, 11), dtype='float32'),
             context=get_context(test_ctx_name))
+
+
+class TestConv2dTranspose(test_abstract_conv.TestConv2dTranspose):
+    mode = mode_with_gpu

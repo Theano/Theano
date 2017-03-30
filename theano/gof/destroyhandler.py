@@ -950,6 +950,8 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
             # add destroyed variable clients as computational dependencies
             for app in self.destroyers:
+                # keep track of clients that should run before the current Apply
+                root_clients = OrderedSet()
                 # for each destroyed input...
                 for output_idx, input_idx_list in iteritems(app.op.destroy_map):
                     destroyed_idx = input_idx_list[0]
@@ -1015,12 +1017,14 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
                     # add the rule: app must be preceded by all other Apply instances that
                     # depend on destroyed_input
-                    root_clients = OrderedSet()
                     for r in root_impact:
                         assert not [a for a, c in self.clients[r].items() if not c]
                         root_clients.update([a for a, c in self.clients[r].items() if c])
-                    root_clients.remove(app)
-                    if root_clients:
-                        rval[app] = root_clients
+
+                # app itself is a client of the destroyed inputs,
+                # but should not run before itself
+                root_clients.remove(app)
+                if root_clients:
+                    rval[app] = root_clients
 
         return rval

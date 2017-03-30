@@ -31,8 +31,8 @@ class GpuImages2Neibs(Images2Neibs, GpuOp):
         assert ten4.dtype == 'float32'
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
-        assert "int" in neib_shape.dtype
-        assert "int" in neib_step.dtype
+        assert neib_shape.dtype in tensor.integer_dtypes
+        assert neib_step.dtype in tensor.integer_dtypes
 
         return Apply(self, [ten4, neib_shape, neib_step],
                      [CudaNdarrayType(broadcastable=(False, False),

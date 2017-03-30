@@ -22,6 +22,7 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray').excluding('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpuarray')
+    mode_without_gpu.check_py_code = False
 
 
 # If using float16, cast reference input to float32

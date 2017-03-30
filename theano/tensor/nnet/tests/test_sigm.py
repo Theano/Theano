@@ -16,7 +16,7 @@ from theano.tensor.nnet.sigm import (
     compute_mul, is_1pexp, parse_mul_tree, perform_sigm_times_exp,
     register_local_1msigmoid, simplify_mul,
 )
-from theano.tensor.tests.test_basic import (makeBroadcastTester,
+from theano.tensor.tests.test_basic import (makeBroadcastTester, copymod,
                                             check_floatX, upcast_int8_nfunc,
                                             _good_broadcast_unary_normal_no_complex)
 
@@ -28,12 +28,14 @@ class T_sigmoid(unittest.TestCase):
     def test_elemwise(self):
         utt.verify_grad(sigmoid, [numpy.random.rand(3, 4)])
 
-
 SigmoidTester = makeBroadcastTester(
     op=sigmoid,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
         inputs, 1 / (1 + numpy.exp(-inputs)))),
-    good=_good_broadcast_unary_normal_no_complex,
+    good=copymod(_good_broadcast_unary_normal_no_complex,
+                 without=['uint16']),  # The reason that 'uint16' is excluted is that
+                                       # theano works well but numpy overflows resulting
+                                       # in an assertion error.
     # grad=_grad_broadcast_unary_normal,
     name='SigmoidTester',
 )
@@ -42,7 +44,8 @@ UltraFastSigmoidTester = makeBroadcastTester(
     op=ultra_fast_sigmoid,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
         inputs, 1 / (1 + numpy.exp(-inputs)))),
-    good=_good_broadcast_unary_normal_no_complex,
+    good=copymod(_good_broadcast_unary_normal_no_complex,
+                 without=['uint16']),  # numpy fucnting overflows with uint16.
     # grad=_grad_broadcast_unary_normal,
     name='UltraFastSigmoidTester',
     # This is an approx of the sigmoid. That is why we raise eps
@@ -52,7 +55,8 @@ HardSigmoidTester = makeBroadcastTester(
     op=hard_sigmoid,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
         inputs, 1 / (1 + numpy.exp(-inputs)))),
-    good=_good_broadcast_unary_normal_no_complex,
+    good=copymod(_good_broadcast_unary_normal_no_complex,
+                 without=['uint16']),  # numpy fucnting overflows with uint16.
     # grad=_grad_broadcast_unary_normal,
     name='HardSigmoidTester',
     # This is an approx of the sigmoid. That is why we raise eps
@@ -63,7 +67,9 @@ SoftplusTester = makeBroadcastTester(
     op=softplus,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
         inputs, numpy.log1p(numpy.exp(inputs)))),
-    good=dict(_good_broadcast_unary_normal_no_complex,
+    good=dict(copymod(_good_broadcast_unary_normal_no_complex,
+                      without=['uint8', 'uint16']),  # numpy fucnting overflows with uint16.
+              uint8=[numpy.arange(0, 89, dtype='uint8')],  # the range is different in new added uint8.
               int8=[numpy.arange(-127, 89, dtype='int8')]),
     # grad=_grad_broadcast_unary_normal,
     name='SoftplusTester',
@@ -250,8 +256,10 @@ class T_sigmoid_opts(unittest.TestCase):
             [x, y],
             (sigmoid(x) * sigmoid(-y) * -tensor.exp(-x) *
                 tensor.exp(x * y) * tensor.exp(y)), mode=m)
-        match(f, [sigmoid, tensor.mul, tensor.neg, tensor.exp, sigmoid,
-                  tensor.mul])
+        topo = f.maker.fgraph.toposort()
+        for op, nb in [(sigmoid, 2), (tensor.mul, 2),
+                       (tensor.neg, 1), (tensor.exp, 1)]:
+            assert sum([n.op == op for n in topo]) == nb
         # assert check_stack_trace(f, ops_to_check=[sigmoid, tensor.mul,
         #                                           tensor.exp])
 

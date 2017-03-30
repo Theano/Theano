@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 import numpy.linalg
 from numpy.testing import assert_array_almost_equal
 from numpy.testing import dec, assert_array_equal, assert_allclose
@@ -15,16 +15,9 @@ from theano.tensor.basic import _allclose
 from theano.tests.test_rop import break_op
 from theano.tests import unittest_tools as utt
 from theano import config
-from theano.tensor.slinalg import ( Cholesky,
-                                    cholesky,
-                                    CholeskyGrad,
-                                    Solve,
-                                    solve,
-                                    Eigvalsh,
-                                    EigvalshGrad,
-                                    eigvalsh,
-                                    expm,
-                                    kron)
+from theano.tensor.slinalg import (
+    Cholesky, cholesky, CholeskyGrad, Solve, solve,
+    Eigvalsh, EigvalshGrad, eigvalsh, expm, kron)
 from theano.tests.unittest_tools import attr
 
 from nose.plugins.skip import SkipTest
@@ -42,25 +35,25 @@ def check_lower_triangular(pd, ch_f):
     ch = ch_f(pd)
     assert ch[0, pd.shape[1] - 1] == 0
     assert ch[pd.shape[0] - 1, 0] != 0
-    assert numpy.allclose(numpy.dot(ch, ch.T), pd)
-    assert not numpy.allclose(numpy.dot(ch.T, ch), pd)
+    assert np.allclose(np.dot(ch, ch.T), pd)
+    assert not np.allclose(np.dot(ch.T, ch), pd)
 
 
 def check_upper_triangular(pd, ch_f):
     ch = ch_f(pd)
     assert ch[4, 0] == 0
     assert ch[0, 4] != 0
-    assert numpy.allclose(numpy.dot(ch.T, ch), pd)
-    assert not numpy.allclose(numpy.dot(ch, ch.T), pd)
+    assert np.allclose(np.dot(ch.T, ch), pd)
+    assert not np.allclose(np.dot(ch, ch.T), pd)
 
 
 def test_cholesky():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the Cholesky op.")
 
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     r = rng.randn(5, 5).astype(config.floatX)
-    pd = numpy.dot(r, r.T)
+    pd = np.dot(r, r.T)
     x = tensor.matrix()
     chol = cholesky(x)
     # Check the default.
@@ -79,20 +72,20 @@ def test_cholesky():
 def test_cholesky_grad():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the Cholesky op.")
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     r = rng.randn(5, 5).astype(config.floatX)
-    pd = numpy.dot(r, r.T)
-    eps = None
-    if config.floatX == "float64":
-        eps = 2e-8
+
+    # The dots are inside the graph since Cholesky needs separable matrices
+
     # Check the default.
-    yield (lambda: utt.verify_grad(cholesky, [pd], 3, rng, eps=eps))
+    yield (lambda: utt.verify_grad(lambda r: cholesky(r.dot(r.T)),
+                                   [r], 3, rng))
     # Explicit lower-triangular.
-    yield (lambda: utt.verify_grad(Cholesky(lower=True), [pd], 3,
-                                   rng, eps=eps))
+    yield (lambda: utt.verify_grad(lambda r: Cholesky(lower=True)(r.dot(r.T)),
+                                   [r], 3, rng))
     # Explicit upper-triangular.
-    yield (lambda: utt.verify_grad(Cholesky(lower=False), [pd], 3,
-                                   rng, eps=eps))
+    yield (lambda: utt.verify_grad(lambda r: Cholesky(lower=False)(r.dot(r.T)),
+                                   [r], 3, rng))
 
 
 @attr('slow')
@@ -100,7 +93,7 @@ def test_cholesky_and_cholesky_grad_shape():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the Cholesky op.")
 
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     x = tensor.matrix()
     for l in (cholesky(x), Cholesky(lower=True)(x), Cholesky(lower=False)(x)):
         f_chol = theano.function([x], l.shape)
@@ -114,9 +107,9 @@ def test_cholesky_and_cholesky_grad_shape():
             assert sum([node.op.__class__ == CholeskyGrad
                         for node in topo_cholgrad]) == 0
         for shp in [2, 3, 5]:
-            m = numpy.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
-            yield numpy.testing.assert_equal, f_chol(m), (shp, shp)
-            yield numpy.testing.assert_equal, f_cholgrad(m), (shp, shp)
+            m = np.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
+            yield np.testing.assert_equal, f_chol(m), (shp, shp)
+            yield np.testing.assert_equal, f_cholgrad(m), (shp, shp)
 
 
 def test_eigvalsh():
@@ -128,13 +121,13 @@ def test_eigvalsh():
     B = theano.tensor.dmatrix('b')
     f = function([A, B], eigvalsh(A, B))
 
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     a = rng.randn(5, 5)
     a = a + a.T
-    for b in [10 * numpy.eye(5, 5) + rng.randn(5, 5)]:
+    for b in [10 * np.eye(5, 5) + rng.randn(5, 5)]:
         w = f(a, b)
         refw = scipy.linalg.eigvalsh(a, b)
-        numpy.testing.assert_array_almost_equal(w, refw)
+        np.testing.assert_array_almost_equal(w, refw)
 
     # We need to test None separatly, as otherwise DebugMode will
     # complain, as this isn't a valid ndarray.
@@ -143,7 +136,7 @@ def test_eigvalsh():
     f = function([A], eigvalsh(A, B))
     w = f(a)
     refw = scipy.linalg.eigvalsh(a, b)
-    numpy.testing.assert_array_almost_equal(w, refw)
+    np.testing.assert_array_almost_equal(w, refw)
 
 
 def test_eigvalsh_grad():
@@ -151,12 +144,12 @@ def test_eigvalsh_grad():
         raise SkipTest("Scipy needed for the geigvalsh op.")
     import scipy.linalg
 
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     a = rng.randn(5, 5)
     a = a + a.T
-    b = 10 * numpy.eye(5, 5) + rng.randn(5, 5)
+    b = 10 * np.eye(5, 5) + rng.randn(5, 5)
     tensor.verify_grad(lambda a, b: eigvalsh(a, b).dot([1, 2, 3, 4, 5]),
-                       [a, b], rng=numpy.random)
+                       [a, b], rng=np.random)
 
 
 class test_Solve(utt.InferShapeTester):
@@ -168,27 +161,27 @@ class test_Solve(utt.InferShapeTester):
     def test_infer_shape(self):
         if not imported_scipy:
             raise SkipTest("Scipy needed for the Solve op.")
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
         self._compile_and_check([A, b],  # theano.function inputs
                                 [self.op(A, b)],  # theano.function outputs
                                 # A must be square
-                                [numpy.asarray(rng.rand(5, 5),
+                                [np.asarray(rng.rand(5, 5),
                                                dtype=config.floatX),
-                                 numpy.asarray(rng.rand(5, 1),
+                                 np.asarray(rng.rand(5, 1),
                                                dtype=config.floatX)],
                                 self.op_class,
                                 warn=False)
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.vector()
         self._compile_and_check([A, b],  # theano.function inputs
                                 [self.op(A, b)],  # theano.function outputs
                                 # A must be square
-                                [numpy.asarray(rng.rand(5, 5),
+                                [np.asarray(rng.rand(5, 5),
                                                dtype=config.floatX),
-                                 numpy.asarray(rng.rand(5),
+                                 np.asarray(rng.rand(5),
                                                dtype=config.floatX)],
                                 self.op_class,
                                 warn=False)
@@ -196,7 +189,7 @@ class test_Solve(utt.InferShapeTester):
     def test_solve_correctness(self):
         if not imported_scipy:
             raise SkipTest("Scipy needed for the Cholesky and Solve ops.")
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
         y = self.op(A, b)
@@ -212,23 +205,23 @@ class test_Solve(utt.InferShapeTester):
         y_upper = self.op(U, b)
         upper_solve_func = theano.function([U, b], y_upper)
 
-        b_val = numpy.asarray(rng.rand(5, 1), dtype=config.floatX)
+        b_val = np.asarray(rng.rand(5, 1), dtype=config.floatX)
 
         # 1-test general case
-        A_val = numpy.asarray(rng.rand(5, 5), dtype=config.floatX)
+        A_val = np.asarray(rng.rand(5, 5), dtype=config.floatX)
         # positive definite matrix:
-        A_val = numpy.dot(A_val.transpose(), A_val)
-        assert numpy.allclose(scipy.linalg.solve(A_val, b_val),
+        A_val = np.dot(A_val.transpose(), A_val)
+        assert np.allclose(scipy.linalg.solve(A_val, b_val),
                               gen_solve_func(A_val, b_val))
 
         # 2-test lower traingular case
         L_val = scipy.linalg.cholesky(A_val, lower=True)
-        assert numpy.allclose(scipy.linalg.solve_triangular(L_val, b_val, lower=True),
+        assert np.allclose(scipy.linalg.solve_triangular(L_val, b_val, lower=True),
                               lower_solve_func(L_val, b_val))
 
         # 3-test upper traingular case
         U_val = scipy.linalg.cholesky(A_val, lower=False)
-        assert numpy.allclose(scipy.linalg.solve_triangular(U_val, b_val, lower=False),
+        assert np.allclose(scipy.linalg.solve_triangular(U_val, b_val, lower=False),
                               upper_solve_func(U_val, b_val))
 
     def test_solve_dtype(self):
@@ -239,8 +232,8 @@ class test_Solve(utt.InferShapeTester):
                   'int8', 'int16', 'int32', 'int64',
                   'float16', 'float32', 'float64']
 
-        A_val = numpy.eye(2)
-        b_val = numpy.ones((2, 1))
+        A_val = np.eye(2)
+        b_val = np.ones((2, 1))
 
         # try all dtype combinations
         for A_dtype, b_dtype in itertools.product(dtypes, dtypes):
@@ -256,11 +249,11 @@ class test_Solve(utt.InferShapeTester):
         # ensure diagonal elements of A relatively large to avoid numerical
         # precision issues
         A_val = (rng.normal(size=(m, m)) * 0.5 +
-                 numpy.eye(m)).astype(config.floatX)
+                 np.eye(m)).astype(config.floatX)
         if A_structure == 'lower_triangular':
-            A_val = numpy.tril(A_val)
+            A_val = np.tril(A_val)
         elif A_structure == 'upper_triangular':
-            A_val = numpy.triu(A_val)
+            A_val = np.triu(A_val)
         if n is None:
             b_val = rng.normal(size=m).astype(config.floatX)
         else:
@@ -274,7 +267,7 @@ class test_Solve(utt.InferShapeTester):
     def test_solve_grad(self):
         if not imported_scipy:
             raise SkipTest("Scipy needed for the Solve op.")
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         structures = ['general', 'lower_triangular', 'upper_triangular']
         for A_structure in structures:
             lower = (A_structure == 'lower_triangular')
@@ -289,7 +282,7 @@ class test_Solve(utt.InferShapeTester):
 def test_expm():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the expm op.")
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     A = rng.randn(5, 5).astype(config.floatX)
 
     ref = scipy.linalg.expm(A)
@@ -299,14 +292,14 @@ def test_expm():
     expm_f = function([x], m)
 
     val = expm_f(A)
-    numpy.testing.assert_array_almost_equal(val, ref)
+    np.testing.assert_array_almost_equal(val, ref)
 
 
 def test_expm_grad_1():
     # with symmetric matrix (real eigenvectors)
     if not imported_scipy:
         raise SkipTest("Scipy needed for the expm op.")
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     # Always test in float64 for better numerical stability.
     A = rng.randn(5, 5)
     A = A + A.T
@@ -318,12 +311,12 @@ def test_expm_grad_2():
     # with non-symmetric matrix with real eigenspecta
     if not imported_scipy:
         raise SkipTest("Scipy needed for the expm op.")
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     # Always test in float64 for better numerical stability.
     A = rng.randn(5, 5)
     w = rng.randn(5)**2
-    A = (numpy.diag(w**0.5)).dot(A + A.T).dot(numpy.diag(w**(-0.5)))
-    assert not numpy.allclose(A, A.T)
+    A = (np.diag(w**0.5)).dot(A + A.T).dot(np.diag(w**(-0.5)))
+    assert not np.allclose(A, A.T)
 
     tensor.verify_grad(expm, [A], rng=rng)
 
@@ -332,7 +325,7 @@ def test_expm_grad_3():
     # with non-symmetric matrix (complex eigenvectors)
     if not imported_scipy:
         raise SkipTest("Scipy needed for the expm op.")
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     # Always test in float64 for better numerical stability.
     A = rng.randn(5, 5)
 
@@ -341,7 +334,7 @@ def test_expm_grad_3():
 
 class TestKron(utt.InferShapeTester):
 
-    rng = numpy.random.RandomState(43)
+    rng = np.random.RandomState(43)
 
     def setUp(self):
         super(TestKron, self).setUp()
@@ -354,7 +347,7 @@ class TestKron(utt.InferShapeTester):
         for shp0 in [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)]:
             x = tensor.tensor(dtype='floatX',
                               broadcastable=(False,) * len(shp0))
-            a = numpy.asarray(self.rng.rand(*shp0)).astype(config.floatX)
+            a = np.asarray(self.rng.rand(*shp0)).astype(config.floatX)
             for shp1 in [(6,), (6, 7), (6, 7, 8), (6, 7, 8, 9)]:
                 if len(shp0) + len(shp1) == 2:
                     continue
@@ -367,7 +360,7 @@ class TestKron(utt.InferShapeTester):
                 # so we have to add a dimension to a and flatten the result.
                 if len(shp0) + len(shp1) == 3:
                     scipy_val = scipy.linalg.kron(
-                        a[numpy.newaxis, :], b).flatten()
+                        a[np.newaxis, :], b).flatten()
                 else:
                     scipy_val = scipy.linalg.kron(a, b)
                 utt.assert_allclose(out, scipy_val)
@@ -376,7 +369,7 @@ class TestKron(utt.InferShapeTester):
         for shp0 in [(2, 3)]:
             x = tensor.tensor(dtype='floatX',
                               broadcastable=(False,) * len(shp0))
-            a = numpy.asarray(self.rng.rand(*shp0)).astype(config.floatX)
+            a = np.asarray(self.rng.rand(*shp0)).astype(config.floatX)
             for shp1 in [(6, 7)]:
                 if len(shp0) + len(shp1) == 2:
                     continue
@@ -385,4 +378,4 @@ class TestKron(utt.InferShapeTester):
                 f = function([x, y], kron(x, y))
                 b = self.rng.rand(*shp1).astype(config.floatX)
                 out = f(a, b)
-                assert numpy.allclose(out, numpy.kron(a, b))
+                assert np.allclose(out, np.kron(a, b))

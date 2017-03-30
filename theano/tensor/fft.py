@@ -25,8 +25,7 @@ class RFFTOp(gof.Op):
             s = T.as_tensor_variable(s)
         else:
             s = T.as_tensor_variable(s)
-            if (not s.dtype.startswith('int')) and \
-               (not s.dtype.startswith('uint')):
+            if s.dtype not in T.integer_dtypes:
                 raise TypeError('%s: length of the transformed axis must be'
                                 ' of type integer' % self.__class__.__name__)
         return gof.Apply(self, [a, s], [self.output_type(a)()])
@@ -82,8 +81,7 @@ class IRFFTOp(gof.Op):
             s = T.as_tensor_variable(s)
         else:
             s = T.as_tensor_variable(s)
-            if (not s.dtype.startswith('int')) and \
-               (not s.dtype.startswith('uint')):
+            if s.dtype not in T.integer_dtypes:
                 raise TypeError('%s: length of the transformed axis must be'
                                 ' of type integer' % self.__class__.__name__)
         return gof.Apply(self, [a, s], [self.output_type(a)()])

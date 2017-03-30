@@ -52,9 +52,6 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
     return 1;
   }
 
-  if (c_set_tensorNd(img, APPLY_SPECIFIC(input)) != 0)
-    return 1;
-
   cudnnPoolingMode_t mode;
   int w[3];
   int p[3];
@@ -71,16 +68,6 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
      s[i] = *((npy_intp*)PyArray_GETPTR1(stride, i));
   }
 
-#if CUDNN_VERSION >= 5000
-  err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), MODE_FLAG, CUDNN_PROPAGATE_NAN, ndims, w, p, s);
-#else
-  err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), MODE_FLAG, ndims, w, p, s);
-#endif
-
-  if (err != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError, "could not set op descriptor %s", cudnnGetErrorString(err));
-  }
-
   dims[0] = PyGpuArray_DIM(img, 0);
   dims[1] = PyGpuArray_DIM(img, 1);
   dims[2] = (PyGpuArray_DIM(img, 2) + (p[0]*2) - w[0]) / s[0] + 1;
@@ -92,8 +79,22 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
                          GA_C_ORDER, c) != 0)
     return 1;
 
+  // if input batch is empty, we return the empty output without calling cuDNN
+  // (which will fail on zero batch size).
+  if (PyGpuArray_DIM(*out, 0) == 0)
+    return 0;
+
+  if (c_set_tensorNd(img, APPLY_SPECIFIC(input)) != 0)
+    return 1;
+
   if (c_set_tensorNd(*out, APPLY_SPECIFIC(output)) != 0)
     return 1;
+
+  err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), MODE_FLAG, CUDNN_PROPAGATE_NAN, ndims, w, p, s);
+
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError, "could not set op descriptor %s", cudnnGetErrorString(err));
+  }
 
   {
     const float alphaf = 1;

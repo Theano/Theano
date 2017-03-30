@@ -399,6 +399,30 @@ class TestMergeOptimizer:
 '''
         assert strg == strref, (strg, strref)
 
+    def test_both_assert_merge_identical(self):
+        # Merge two nodes, both have assert on the same node
+        # with the same conditions.
+        x1 = T.matrix('x1')
+        x2 = T.matrix('x2')
+        e = T.dot(T.opt.assert_op(x1, (x1 > x2).all()), x2) +\
+            T.dot(T.opt.assert_op(x1, (x1 > x2).all()), x2)
+        g = FunctionGraph([x1, x2], [e])
+        MergeOptimizer().optimize(g)
+        strg = theano.printing.debugprint(g, file='str')
+        strref = '''Elemwise{add,no_inplace} [id A] ''   4
+ |dot [id B] ''   3
+ | |Assert{msg='Theano Assert failed!'} [id C] ''   2
+ | | |x1 [id D]
+ | | |All [id E] ''   1
+ | |   |Elemwise{gt,no_inplace} [id F] ''   0
+ | |     |x1 [id D]
+ | |     |x2 [id G]
+ | |x2 [id G]
+ |dot [id B] ''   3
+'''
+        # print(strg)
+        assert strg == strref, (strg, strref)
+
     def est_both_assert_merge_1(self):
         # Merge two nodes, both have assert on the same node
         # with different conditions.
@@ -547,6 +571,7 @@ class TestEquilibrium(object):
         opt.optimize(g)
         assert str(g) == '[Op2(x, y)]'
 
+    @theano.configparser.change_flags(on_opt_error='ignore')
     def test_low_use_ratio(self):
         x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))

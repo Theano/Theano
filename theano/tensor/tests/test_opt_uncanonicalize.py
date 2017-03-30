@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 
 import theano
 from theano import function, config
@@ -12,6 +12,7 @@ from theano.tensor.opt_uncanonicalize import (
     local_alloc_dimshuffle,
     local_reshape_dimshuffle,
     local_dimshuffle_alloc,
+    local_dimshuffle_subtensor,
     )
 import theano.tensor as tensor
 #from theano.tensor import matrix,max_and_argmax,MaaxAndArgmax,neg
@@ -27,7 +28,7 @@ class T_max_and_argmax(unittest.TestCase):
             'canonicalize', 'fast_run')
 
         for axis in [0, 1, -1]:
-            data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
+            data = np.asarray(np.random.rand(2, 3), dtype=config.floatX)
             n = tensor.matrix()
 
             f = function([n], tensor.max_and_argmax(n, axis)[0], mode=mode)
@@ -48,7 +49,7 @@ class T_min_max(unittest.TestCase):
             'canonicalize', 'fast_run')
 
     def test_optimization_max(self):
-        data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
+        data = np.asarray(np.random.rand(2, 3), dtype=config.floatX)
         n = tensor.matrix()
 
         for axis in [0, 1, -1]:
@@ -81,7 +82,7 @@ class T_min_max(unittest.TestCase):
             f(data)
 
     def test_optimization_min(self):
-        data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
+        data = np.asarray(np.random.rand(2, 3), dtype=config.floatX)
         n = tensor.matrix()
 
         for axis in [0, 1, -1]:
@@ -148,8 +149,7 @@ def test_local_reshape_dimshuffle():
     assert any([not isinstance(x, DimShuffle) for x in topo])
 
 
-
-def test_local_reshape_dimshuffle():
+def test_local_dimshuffle_alloc():
 
     reshape_dimshuffle = out2in(local_dimshuffle_alloc)
 
@@ -160,11 +160,50 @@ def test_local_reshape_dimshuffle():
     g = FunctionGraph([x], [out])
     reshape_dimshuffle(g)
 
-    l=theano.gof.PerformLinker()
+    l = theano.gof.PerformLinker()
     l.accept(g)
-    f=l.make_function()
+    f = l.make_function()
 
     assert f([3, 4]).ndim == 4
 
     topo = g.toposort()
     assert any([not isinstance(x, DimShuffle) for x in topo])
+
+
+def test_local_dimshuffle_subtensor():
+
+    dimshuffle_subtensor = out2in(local_dimshuffle_subtensor)
+
+    x = tensor.dtensor4('x')
+    x = tensor.patternbroadcast(x, (False, True, False, False))
+    i = tensor.iscalar('i')
+
+    out = x[:, :, 10:30, ::i].dimshuffle(0, 2, 3)
+
+    g = FunctionGraph([x, i], [out])
+    dimshuffle_subtensor(g)
+
+    topo = g.toposort()
+    assert any([not isinstance(x, DimShuffle) for x in topo])
+
+    # Test dimshuffle remove dimensions the subtensor don't "see".
+    x = tensor.tensor(broadcastable=(False, True, False), dtype='float64')
+    out = x[i].dimshuffle(1)
+
+    g = FunctionGraph([x, i], [out])
+    dimshuffle_subtensor(g)
+
+    topo = g.toposort()
+    assert any([not isinstance(x, DimShuffle) for x in topo])
+
+    # Test dimshuffle remove dimensions the subtensor don't "see" but
+    # have in between dimensions.
+    x = tensor.tensor(broadcastable=(False, True, False, True),
+                      dtype='float64')
+    out = x[i].dimshuffle(1)
+
+    f = theano.function([x, i], out)
+
+    topo = f.maker.fgraph.toposort()
+    assert any([not isinstance(x, DimShuffle) for x in topo])
+    assert f(np.random.rand(5, 1, 4, 1), 2).shape == (4,)

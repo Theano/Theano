@@ -318,12 +318,14 @@ class T_Scan(unittest.TestCase):
 
         state = theano.tensor.scalar('state')
         n_steps = theano.tensor.iscalar('nsteps')
+        # Test return_list at the same time.
         output, updates = theano.scan(f_pow2,
                                       [],
                                       state,
                                       [],
                                       n_steps=n_steps,
                                       truncate_gradient=-1,
+                                      return_list=True,
                                       go_backwards=False)
         my_f = theano.function([state, n_steps],
                                output,
@@ -337,7 +339,7 @@ class T_Scan(unittest.TestCase):
         numpy_values = numpy.array([state * (2 ** (k + 1)) for k
                                     in xrange(steps)])
         theano_values = my_f(state, steps)
-        utt.assert_allclose(numpy_values, theano_values)
+        utt.assert_allclose(numpy_values, theano_values[0])
 
     def test_subtensor_multiple_slices(self):
         # This addresses a bug reported by Matthias Zoehrer
@@ -1821,7 +1823,7 @@ class T_Scan(unittest.TestCase):
 
     def test_grad_multiple_outs_some_disconnected(self):
         final_cost = self._grad_mout_helper(100, mode_nodebug)
-        assert final_cost < 0.02
+        assert final_cost < 0.02, final_cost
 
     def test_grad_multiple_outs_some_disconnected_2(self):
         # This is to try the network in DEBUG_MODE, but not fully
@@ -1836,20 +1838,20 @@ class T_Scan(unittest.TestCase):
         n_in = 1
         n_out = 1
 
-        W_hh_v = asarrayX(rng.uniform(size=(n_hid, n_hid), low=-.01, high=.01))
-        h0_v = asarrayX(rng.uniform(size=(2, n_hid), low=-.01, high=.01))
+        W_hh_v = asarrayX(rng.uniform(size=(n_hid, n_hid), low=-1, high=1))
+        h0_v = asarrayX(rng.uniform(size=(2, n_hid), low=-1, high=1))
         b_h_v = asarrayX(rng.uniform(size=(n_hid), low=-.01, high=.01))
-        W_ih_v = asarrayX(rng.uniform(size=(n_in, n_hid), low=-.01, high=.01))
-        W_ho_v = asarrayX(rng.uniform(size=(n_hid, n_out), low=-.01, high=.01))
+        W_ih_v = asarrayX(rng.uniform(size=(n_in, n_hid), low=-1, high=1))
+        W_ho_v = asarrayX(rng.uniform(size=(n_hid, n_out), low=-1, high=1))
         b_o_v = asarrayX(rng.uniform(size=(n_out), low=-.01, high=.01))
 
         # parameters of the rnn
-        b_h = theano.shared(b_h_v)
-        h0 = theano.shared(h0_v)
-        W_ih = theano.shared(W_ih_v)
-        W_hh = theano.shared(W_hh_v)
-        W_ho = theano.shared(W_ho_v)
-        b_o = theano.shared(b_o_v)
+        b_h = theano.shared(b_h_v, name='b_h')
+        h0 = theano.shared(h0_v, name='h0')
+        W_ih = theano.shared(W_ih_v, name='W_ih')
+        W_hh = theano.shared(W_hh_v, name='W_hh')
+        W_ho = theano.shared(W_ho_v, name='W_ho')
+        b_o = theano.shared(b_o_v, name='b_o')
         params = [W_ih, W_hh, b_h, W_ho, b_o, h0]
 
         # first dimension is time
@@ -4416,16 +4418,17 @@ class T_Scan(unittest.TestCase):
                 n_steps=1,
             )
             return sum_outer + result_inner[-1]
-
+        # Also test return_list for that case.
         result_outer, _ = theano.scan(
             fn=loss_outer,
             outputs_info=tensor.as_tensor_variable(
                 numpy.asarray(0, dtype=numpy.float32)),
             non_sequences=[W],
             n_steps=n_steps,
+            return_list=True,
         )
 
-        cost = result_outer[-1]
+        cost = result_outer[0][-1]
         H = theano.gradient.hessian(cost, W)
         print(".", file=sys.stderr)
         f = theano.function([W, n_steps], H)
@@ -4480,13 +4483,10 @@ class T_Scan(unittest.TestCase):
             return tensor.dot(x, w_)
 
         ret_strict = theano.scan(_scan_loose,
-                               sequences=[],
-                               outputs_info=[x0_],
-                               n_steps=n,
-                               strict=True)
-
-        f_strict = theano.function([x0_], ret_strict[0][-1])
-        result_strict = f_strict(x0)
+                                 sequences=[],
+                                 outputs_info=[x0_],
+                                 n_steps=n,
+                                 strict=True)
 
     def test_monitor_mode(self):
         # Test that it is possible to pass an instance of MonitorMode
@@ -4953,6 +4953,9 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
         super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
 
     def setUp(self):
+        # Make sure to activate the new backend, if possible otherwise
+        # tesing this class directly will always skip.
+        import theano.gpuarray.tests.config
         # Skip the test if pygpu is not available
         if not self.gpu_backend.pygpu_activated:
             raise SkipTest('Optional package pygpu disabled')
@@ -5466,3 +5469,63 @@ def test_outputs_taps_check():
     outputs_info = {'initial': y, 'taps': [-1, -1]}
     assert_raises(ValueError, theano.scan, f, x, outputs_info)
     print('done')
+
+
+def test_default_value_broadcasted():
+    def floatx(X):
+        return numpy.asarray(X, dtype=theano.config.floatX)
+
+    def init_weights(shape, name):
+        return theano.shared(floatx(numpy.random.randn(*shape) * 0.1), name)
+
+    X = theano.tensor.matrix('X')
+    in_size = 2
+    out_size = 4
+    W_x = init_weights((in_size, out_size), "W_x")
+
+    def _active(x, pre_h):
+        x = theano.tensor.reshape(x, (1, in_size))
+        pre_h = theano.tensor.dot(x, W_x)
+        return pre_h
+
+    value, scan_updates = theano.scan(_active, sequences=X,
+                                      outputs_info=[theano.tensor.alloc(floatx(0.), 1, out_size)])
+    cost = theano.tensor.mean(value)
+    gW_x = theano.tensor.grad(cost, W_x)
+    updates = [(W_x, W_x - 0.1 * gW_x)]
+    f = theano.function([X], outputs=cost, updates=updates)
+    f(numpy.random.rand(10, in_size).astype(X.dtype))
+
+
+class TestInconsistentBroadcast(unittest.TestCase):
+
+    def test_raise_error(self):
+        x = tensor.tensor3()
+        initial_x = tensor.constant(numpy.zeros((1, 10)))
+        y, updates = theano.scan(fn=lambda x, prev_x: x + prev_x,
+                                 sequences=x,
+                                 outputs_info=[dict(initial=initial_x)])
+        # Error, because the broadcast patterns are inconsistent.
+        with self.assertRaises(TypeError):
+            gs = tensor.grad(y.sum(), x)
+
+        # No error here, because the broadcast patterns are consistent.
+        initial_x = tensor.unbroadcast(initial_x, 0, 1)
+        y, updates = theano.scan(fn=lambda x, prev_x: x + prev_x,
+                                 sequences=x,
+                                 outputs_info=[dict(initial=initial_x)])
+        gs = tensor.grad(y.sum(), x)
+
+
+class TestMissingInputError(unittest.TestCase):
+
+    @raises(theano.gof.fg.MissingInputError)
+    def test_raise_error(self):
+        c = theano.shared(0.)
+        inc = tensor.scalar('inc')
+
+        def count_up():
+            return tensor.zeros(()), {c: c + inc}
+
+        _, updates = theano.scan(count_up, n_steps=20)
+        func = theano.function(inputs=[inc], outputs=[], updates=updates)

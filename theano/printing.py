@@ -60,7 +60,7 @@ def debugprint(obj, depth=-1, print_type=False,
                used_ids=None):
     """Print a computation graph as text to stdout or a file.
 
-    :type obj: Variable, Apply, or Function instance
+    :type obj: :class:`~theano.gof.Variable`, Apply, or Function instance
     :param obj: symbolic thing to print
     :type depth: integer
     :param depth: print graph to this depth (-1 for unlimited)
@@ -863,7 +863,7 @@ def pydotprint(fct, outfile=None,
         if profile:
             time = profile.apply_time.get(node, 0)
             # second, %fct time in profiler
-            if profile.fct_callcount == 0:
+            if profile.fct_callcount == 0 or profile.fct_call_time == 0:
                 pf = 0
             else:
                 pf = time * 100 / profile.fct_call_time

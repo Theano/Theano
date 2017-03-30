@@ -1,0 +1,16 @@
+ccopy_reg
+_reconstructor
+p1
+(ctheano.gpuarray.multinomial
+GPUAMultinomialWOReplacementFromUniform
+p2
+c__builtin__
+object
+p3
+NtRp4
+(dp5
+S'odtype'
+p6
+S'float32'
+p7
+sb.

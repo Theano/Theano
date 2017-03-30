@@ -5,6 +5,639 @@
 Old Release Notes
 =================
 
+Theano 0.9.0rc4 (13th of March, 2017)
+=====================================
+
+This release extends the 0.9.0rc3 and announces the upcoming final release 0.9.
+
+Highlights (since 0.9.0rc3):
+ - Documentation updates
+ - DebugMode fixes, cache cleanup fixes and other small fixes
+
+ - New GPU back-end:
+
+   - Fixed offset error in GpuIncSubtensor
+   - Fixed indexing error in GpuAdvancedSubtensor for more than 2 dimensions
+
+A total of 5 people contributed to this release since 0.9.0rc3 and 123 since 0.8.0, see the lists below.
+
+
+Committers since 0.9.0rc3:
+ - Frederic Bastien
+ - Pascal Lamblin
+ - Arnaud Bergeron
+ - Cesar Laurent
+ - Martin Drawitsch
+
+
+Theano 0.9.0rc3 (6th of March, 2017)
+====================================
+
+This release extends the 0.9.0rc2 and announces the upcoming final release 0.9.
+
+Highlights (since 0.9.0rc2):
+ - Graph clean up and faster compilation
+ - New Theano flag conv.assert_shape to check user-provided shapes at runtime (for debugging)
+ - Fix overflow in pooling
+ - Warn if taking softmax over broadcastable dimension
+ - Removed old files not used anymore
+ - Test fixes and crash fixes
+
+ - New GPU back-end:
+
+   - Removed warp-synchronous programming, to get good results with newer CUDA drivers
+
+A total of 5 people contributed to this release since 0.9.0rc2 and 122 since 0.8.0, see the lists below.
+
+
+Committers since 0.9.0rc2:
+ - Frederic Bastien
+ - Arnaud Bergeron
+ - Pascal Lamblin
+ - Florian Bordes
+ - Jan Schlüter
+
+
+Theano 0.9.0rc2 (27th of February, 2017)
+========================================
+
+This release extends the 0.9.0rc1 and announces the upcoming final release 0.9.
+
+Highlights (since 0.9.0rc1):
+ - Fixed dnn conv grad issues
+ - Allowed pooling of empty batch
+ - Use of 64-bit indexing in sparse ops to allow matrix with more then 2\ :sup:`31`\ -1 elements.
+ - Removed old benchmark directory
+ - Crash fixes, bug fixes, warnings improvements, and documentation update
+
+A total of 9 people contributed to this release since 0.9.0rc1 and 121 since 0.8.0, see the lists below.
+
+
+Committers since 0.9.0rc1:
+ - Frederic Bastien
+ - Pascal Lamblin
+ - Steven Bocco
+ - Simon Lefrancois
+ - Lucas Beyer
+ - Michael Harradon
+ - Rebecca N. Palmer
+ - David Bau
+ - Micah Bojrab
+
+
+Theano 0.9.0rc1 (20th of February, 2017)
+========================================
+
+This release extends the 0.9.0beta1 and announces the upcoming final release 0.9.
+
+Highlights (since 0.9.0beta1):
+ - Better integration of Theano+libgpuarray packages into conda distribution
+ - Better handling of Windows end-lines into C codes
+ - Better compatibility with NumPy 1.12
+ - Faster scan optimizations
+ - Fixed broadcast checking in scan
+ - Bug fixes related to merge optimizer and shape inference
+ - many other bug fixes and improvements
+ - Updated documentation
+
+ - New GPU back-end:
+
+   - Value of a shared variable is now set inplace
+
+A total of 26 people contributed to this release since 0.9.0beta1 and 117 since 0.8.0, see the list at the bottom.
+
+Interface changes:
+ - In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
+
+Convolution updates:
+ - Implement conv2d_transpose convenience function
+
+GPU:
+ - GPUMultinomialFromUniform op now supports multiple dtypes
+
+New features:
+ - OpFromGraph now allows gradient overriding for every input
+ - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternatives otherwise
+ - Added new Theano flag cuda.enabled
+ - Added new Theano flag print_global_stats to print some global statistics (time spent) at the end
+
+Others:
+ - Split op now has C code for CPU and GPU
+ - "theano-cache list" now includes compilation times
+
+
+Committers since 0.9.0beta1:
+ - Frederic Bastien
+ - Benjamin Scellier
+ - khaotik
+ - Steven Bocco
+ - Arnaud Bergeron
+ - Pascal Lamblin
+ - Gijs van Tulder
+ - Reyhane Askari
+ - Chinnadhurai Sankar
+ - Vincent Dumoulin
+ - Alexander Matyasko
+ - Cesar Laurent
+ - Nicolas Ballas
+ - affanv14
+ - Faruk Ahmed
+ - Anton Chechetka
+ - Alexandre de Brebisson
+ - Amjad Almahairi
+ - Dimitar Dimitrov
+ - Fuchai
+ - Jan Schlüter
+ - Jonas Degrave
+ - Mathieu Germain
+ - Rebecca N. Palmer
+ - Simon Lefrancois
+ - valtron
+
+
+Theano 0.9.0beta1 (24th of January, 2017)
+=========================================
+
+This release contains a lot of bug fixes and improvements + new features, to prepare the upcoming release candidate.
+
+Highlights:
+ - Many computation and compilation speed up
+ - More numerical stability by default for some graph
+ - Jenkins (gpu tests run on PR in addition to daily buildbot)
+ - Better handling of corner cases for theano functions and graph optimizations
+ - More graph optimization (faster execution and smaller graph, so more readable)
+ - Less c code compilation
+ - Better Python 3.5 support
+ - Better numpy 1.12 support
+ - Support newer Mac and Windows version
+ - Conda packages for Mac, Linux and Windows
+ - Theano scripts now works on Windows
+ - scan with checkpoint (trade off between speed and memory usage, useful for long sequences)
+ - Added a bool dtype
+
+ - New GPU back-end:
+
+   - float16 storage
+   - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
+   - More pooling support on GPU when cuDNN isn't there
+   - ignore_border=False is now implemented for pooling
+
+
+A total of 111 people contributed to this release since 0.8.0, see the list at the bottom.
+
+
+Interface changes:
+ - New pooling interface
+ - Pooling parameters can change at run time
+ - When converting empty list/tuple, now we use floatX dtype
+ - The MRG random generator now try to infer the broadcast pattern of its output
+ - Move softsign out of sandbox to theano.tensor.nnet.softsign
+ - Roll make the shift be modulo the size of the axis we roll on
+ - Merge CumsumOp/CumprodOp into CumOp
+ - round() default to the same as NumPy: half_to_even
+
+Convolution updates:
+ - Multi-cores convolution and pooling on CPU
+ - New abstract 3d convolution interface similar to the 2d convolution interface
+ - Dilated convolution
+
+GPU:
+ - cuDNN: support versoin 5.1 and wrap batch normalization (2d and 3d) and RNN functions
+ - Multiple-GPU, synchrone update (via platoon, use NCCL)
+ - GpuAdvancedSubtensor in new back-end
+ - Gemv(matrix-vector product) speed up for special shape
+ - Support for MaxAndArgMax for some axis combination
+ - Support for solve (using cusolver), erfinv and erfcinv
+ - cublas gemv workaround when we reduce on an axis with a dimensions size of 0
+ - Warn user that some cuDNN algorithms may produce unexpected results in certain environments
+   for convolution backward filter operations
+
+New features:
+ - Add gradient of solve, tensorinv (CPU), tensorsolve (CPU) searchsorted (CPU)
+ - Add Multinomial Without Replacement
+ - conv3d2d support full and half mode (REMOVE?)
+ - Add DownsampleFactorMaxGradGrad.grad
+ - Allow partial evaluation of compiled function
+ - More Rop support
+ - Indexing support ellipsis: a[..., 3], a[1,...,3]
+ - Added theano.tensor.{tensor5,dtensor5, ...}
+ - compiledir_format support device
+ - Added new Theano flag cmodule.age_thresh_use
+
+Others:
+ - Speed up argmax only on gpu (without also needing the max)
+ - A few unfrequent bugfix
+ - More stack trace in error message
+ - Speed up cholesky grad
+ - log(sum(exp(...))) now get stability optimized
+
+Other more detailed changes:
+ - Allow more then one output to be an destructive inplace
+ - Add flag profiling.ignore_first_call, useful to profile the new gpu back-end
+ - Doc/error message fixes/updates
+ - More support of negative axis
+ - Added the keepdims parameter to the norm function
+ - Crash fixes
+ - Make scan gradient more deterministic
+ - Add support for space in path on Windows
+ - remove ProfileMode (use Theano flag profile=True instead)
+
+
+Committers since 0.8.0:
+ - Frederic Bastien
+ - Arnaud Bergeron
+ - Pascal Lamblin
+ - Ramana Subramanyam
+ - Simon Lefrancois
+ - Steven Bocco
+ - Gijs van Tulder
+ - Cesar Laurent
+ - Chiheb Trabelsi
+ - Chinnadhurai Sankar
+ - Mohammad Pezeshki
+ - Reyhane Askari
+ - Alexander Matyasko
+ - Alexandre de Brebisson
+ - Nan Rosemary Ke
+ - Pierre Luc Carrier
+ - Mathieu Germain
+ - Olivier Mastropietro
+ - khaotik
+ - Saizheng Zhang
+ - Thomas George
+ - Iulian Vlad Serban
+ - Benjamin Scellier
+ - Francesco Visin
+ - Caglar
+ - Harm de Vries
+ - Samira Shabanian
+ - Jakub Sygnowski
+ - Samira Ebrahimi Kahou
+ - Mikhail Korobov
+ - Faruk Ahmed
+ - Fei Wang
+ - Jan Schlüter
+ - Kv Manohar
+ - Jesse Livezey
+ - Kelvin Xu
+ - Matt Graham
+ - Ruslana Makovetsky
+ - Sina Honari
+ - Bryn Keller
+ - Ciyong Chen
+ - Nicolas Ballas
+ - Vitaliy Kurlin
+ - Zhouhan LIN
+ - Gokula Krishnan
+ - Kumar Krishna Agrawal
+ - Ozan Çağlayan
+ - Vincent Michalski
+ - Ray Donnelly
+ - Tim Cooijmans
+ - Vincent Dumoulin
+ - happygds
+ - mockingjamie
+ - Amjad Almahairi
+ - Christos Tsirigotis
+ - Ilya Kulikov
+ - RadhikaG
+ - Taesup (TS) Kim
+ - Ying Zhang
+ - Karthik Karanth
+ - Kirill Bobyrev
+ - Yang Zhang
+ - Yaroslav Ganin
+ - Liwei Cai
+ - Morgan Stuart
+ - Tim Gasper
+ - Xavier Bouthillier
+ - p
+ - texot
+ - Andrés Gottlieb
+ - Ben Poole
+ - Bhavishya Pohani
+ - Carl Thomé
+ - Evelyn Mitchell
+ - Fei Zhan
+ - Fábio Perez
+ - Gennadiy Tupitsin
+ - Gilles Louppe
+ - Greg Ciccarelli
+ - He
+ - Huan Zhang
+ - Jonas Degrave
+ - Kaixhin
+ - Kevin Keraudren
+ - Maltimore
+ - Marc-Alexandre Cote
+ - Marco
+ - Marius F. Killinger
+ - Maxim Kochurov
+ - Neil
+ - Nizar Assaf
+ - Rithesh Kumar
+ - Rizky Luthfianto
+ - Robin Millette
+ - Roman Ring
+ - Sander Dieleman
+ - Sebastin Santy
+ - Shawn Tan
+ - Wazeer Zulfikar
+ - Wojciech Głogowski
+ - Yann N. Dauphin
+ - gw0 [http://gw.tnode.com/]
+ - hexahedria
+ - hsintone
+ - jakirkham
+ - joncrall
+ - root
+ - superantichrist
+ - tillahoffmann
+ - wazeerzulfikar
+ - you-n-g
+
+
+Theano 0.8.2 (21th of April, 2016)
+==================================
+
+This is a point release with only the support for cudnn v5 convolution
+and minor fixes.
+
+Highlights:
+- cuDNN v5 convolution support (cuDNN v3 isn't supported anymore)
+- A few crash fixes
+
+
+Theano 0.8.1 (29th of March, 2016)
+==================================
+
+This is a point release without any new feature.
+
+It fixes compilation issues on MacOS X with the command line tools for
+XCode 7.3, which was released shortly after Theano 0.8.0.
+
+
+Theano 0.8 (21th of March, 2016)
+================================
+
+We recommend that everybody update to this version.
+
+Highlights:
+ - Python 2 and 3 support with the same code base
+ - Faster optimization
+ - Integration of cuDNN for better GPU performance
+ - Many Scan improvements (execution speed up, ...)
+ - optimizer=fast_compile moves computation to the GPU.
+ - Better convolution on CPU and GPU. (CorrMM, cudnn, 3d conv, more parameter)
+ - Interactive visualization of graphs with d3viz
+ - cnmem (better memory management on GPU)
+ - BreakpointOp
+ - Multi-GPU for data parallism via Platoon (https://github.com/mila-udem/platoon/)
+ - More pooling parameter supported
+ - Bilinear interpolation of images
+ - New GPU back-end:
+
+   * Float16 new back-end (need cuda 7.5)
+   * Multi dtypes
+   * Multi-GPU support in the same process
+
+
+A total of 141 people contributed to this release, see the list at the bottom.
+
+
+Installation:
+ - Better BLAS detection
+ - Fixes for more recent software and OS versions
+ - Support Anaconda on Windows
+
+Bug fixes:
+ - GpuJoin now supports negative axis
+ - Fix GpuCumsum for negative axis
+
+Interface Deprecation (a warning is printed):
+ - Deprecate Param class, use In instead
+
+Interface Changes:
+ - Rename DownsampleFactorMax to Pool.
+ - tensor.stack now uses the same interface as numpy.stack
+ - optimizer=fast_compile moves computation to the GPU
+ - Raise the user stack trace more frequently.
+ - Change dev version numbering to follow the PEP 440
+
+
+New Interface (reuses existing functionality):
+ - theano.tensor.nnet.relu
+ - theano.tensor.nnet.elu
+ - BatchNormalization.
+ - MaxAndArgmax support axis=None
+ - Add theano.tensor.compress (equivalent of numpy.compress)
+ - theano.tensor.signal.downsamples.max_pool_2d_same_size
+ - COp
+ - __props__
+
+New features
+ - tensor.unique
+ - map_variables
+ - erfcx
+ - mgrid, ogrid
+ - allclose
+ - BreakpointOp
+ - Make bincount work on GPU
+ - SolveOp on GPU
+ - Optional optimization remove_all_assert
+ - AllocEmpty
+ - LogSoftmax, for stability optimization when the crossentropy optimization does not apply.
+ - theano.tensor.repeat works on GPU
+ - BatchedDot on the GPU and faster on the CPU.
+ - Faster batched_tensordot and make it work on GPU.
+ - SoftmaxGrad grad
+ - 3d conv via CorrMM on the GPU
+ - CPU Max Pool support of padding and strides!=windows size
+ - theano.function() now accepts a dict for the outputs. When doing this, the function will return a dict. Helpful to keep track of which output is what.
+ - Warn for unknown or misspelled theano config variables
+ - theano.tensor.tile update (accept symbolic reps, work on GPU)
+ - scan how have a strict flag. If set to True, this make scan building faster and could make execution faster.
+ - theano.tensor.signal.conv2d(2d,2d) output 2d answer
+ - More convolution parameter supported
+ - Bilinear interpolation of images
+
+
+Speed-ups:
+ - Faster SetSubtensor on the GPU.
+ - Support more reduction pattern on the GPU.
+ - More graph optimization
+ - Faster graph optimization
+ - GpuCrossentropySoftmaxArgmax1HotWithBias
+
+
+Crash/no return fixes:
+ - Fix crash in the assert op grad
+ - Fix curand crash on Mac
+ - Multiple Fix scan crashes
+ - Finish to update all Op.grad() implementation to the new interface
+
+Others:
+ - Support ARM processor.
+ - Better tests
+ - Code clean up.
+ - Doc updates
+ - doctest and sphinx test in travis
+ - More tests tagged as slow
+ - Better same_shape implementation
+ - More op with c code to lower overhead
+ - Custom pickler for SharedVariable theano.misc.pkl_utils.{dump,load}
+ - function_dump to help us reproduce user error during compilation
+ - assert_no_cpu_op
+ - pep8, flake8
+ - Better error messages
+ - On non-default modes, reduce the number of allocation when allow_gc=False
+ - Better lock
+
+
+Committers for this dev version only:
+ - Frederic Bastien
+ - Arnaud Bergeron
+ - Pierre Luc Carrier
+ - Iban Harlouchet
+ - Pascal Lamblin
+ - Chienli Ma
+ - Tim Cooijmans
+ - Nicolas Ballas
+ - Amjad Almahairi
+ - David Warde-Farley
+ - Christof Angermueller
+ - Ziye Fan
+ - Caglar
+ - Sina Honari
+ - Roy Xue
+ - hantek
+ - Mohammad Pezeshki
+ - Melanie Ducoffe
+ - Alexandre de Brebisson
+ - Harm de Vries
+ - Samira Shabanian
+ - Alex Lamb
+ - Ramana.S
+ - Francesco Visin
+ - Saizheng Zhang
+ - Ying Zhang
+ - Jan Schlüter
+ - Xavier Bouthillier
+ - Bart van Merrienboer
+ - Cesar Laurent
+ - Iulian Vlad Serban
+ - Li Yao
+ - Sigurd Spieckermann
+ - Dmitrii Serdiuk
+ - Kelvin Xu
+ - Sebastien Jean
+ - Thomas Mesnard
+ - Seon-Wook Park
+ - Vincent Michalski
+ - Dustin Webb
+ - Mikhail Korobov
+ - Orhan Firat
+ - Olivier Mastropietro
+ - Daniel Renshaw
+ - Julien Rebetez
+ - Peng Liu
+ - Sean Lee
+ - TimSalimans
+ - Andre Holzner
+ - Gijs van Tulder
+ - Guillaume Alain
+ - Julien Demouth
+ - Markus Beissinger
+ - Mehdi Mirza
+ - Moslem Kazemi
+ - Saxenauts
+ - Søren Kaae Sønderby
+ - sentient07
+ - Anatoly Belikov
+ - Diogo Moitinho de Almeida
+ - Jakub Sygnowski
+ - Kashif Rasul
+ - Laurent Dinh
+ - Rémy Léone
+ - Taesup (TS) Kim
+ - gw0 [http://gw.tnode.com/]
+ - mronian
+ - vesis84
+ - Benni
+ - Chiheb Trabelsi
+ - JesseLivezey
+ - Marius Killinger
+ - Matt Graham
+ - Matthew Willson
+ - Piotr Frankowski
+ - Stefan Krastanov
+ - vdumoulin
+ - Adithya Ganesh
+ - Anish Shah
+ - Balázs Hidasi
+ - Colin Raffel
+ - Cory Lorenz
+ - Doug
+ - Jesse Livezey
+ - John Salvatier
+ - John Zedlewski
+ - Jonathan Ho
+ - Kaixhin
+ - Liang-Chi Hsieh
+ - Lucas Beyer
+ - Luke Metz
+ - Marc-Alexandre Cote
+ - Martin Arjovsky
+ - Matthias Kümmerer
+ - Sirisha Rambhatla
+ - briancheung
+ - cai-lw
+ - ivdorelian
+ - jan-matthis
+ - jojolalpin
+ - joncrall
+ - peterjsadowski
+ - scottsievert
+ - Étienne Simon
+ - A. Flaxman
+ - AlOa
+ - Albert Zeyer
+ - Andrea
+ - Andy Jiang
+ - Balázs
+ - Ben Poole
+ - Brian Cheung
+ - Christophe Van Gysel
+ - Claude Coulombe
+ - Clay McLeod
+ - Dario Garcia
+ - Jakob Lombacher
+ - Joao Felipe Santos
+ - John Arevalo
+ - Jonas Degrave
+ - Martin Thoma
+ - Mathieu Germain
+ - Matthew Koichi Grimes
+ - Michael Eickenberg
+ - Michael Opitz
+ - Paul Hollensen
+ - Prayag Verma
+ - Saatvik Shah
+ - Sergei Lebedev
+ - Vik Kamath
+ - Wei Ouyang
+ - Wojciech Głogowski
+ - Yi-Lin Juang
+ - Yurii Shevchuk
+ - Zach Dwiel
+ - dan
+ - eulerreich
+ - jotterbach
+ - rolf
+ - theaverageguy
+ - wuaalb
+
+
 Theano 0.7 (26th of March, 2015)
 ================================
 We recommand to everyone to upgrade to this version.

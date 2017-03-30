@@ -144,11 +144,11 @@ Could speed up and lower memory usage:
 
 Could raise memory usage but speed up computation:
 
-- :attr:`config.gpuarray.preallocate` =1  # Preallocates the GPU memory and 
-  then manages it in a smart way. Does not raise much the memory usage, but if
+- :attr:`config.gpuarray.preallocate` =1  # Preallocates the GPU memory for the new backend(:ref:`gpuarray`) 
+  and then manages it in a smart way. Does not raise much the memory usage, but if
   you are at the limit of GPU memory available you might need to specify a
   lower value. GPU only.
-- :attr:`config.lib.cnmem` =1  # Equivalent on the old backend. GPU only.
+- :attr:`config.lib.cnmem` =1  # Equivalent on the old backend (:ref:`cuda`). GPU only.
 - :attr:`config.allow_gc` =False
 - :attr:`config.optimizer_excluding` =low_memory , GPU only for now.
 

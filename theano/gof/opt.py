@@ -15,7 +15,7 @@ import time
 import warnings
 import traceback
 
-import numpy
+import numpy as np
 
 import theano
 from theano import config
@@ -228,45 +228,53 @@ class SeqOptimizer(Optimizer, list):
         nb_node_before = len(fgraph.apply_nodes)
         sub_profs = []
         nb_nodes = []
-        for optimizer in self:
-            try:
-                nb_nodes_before = len(fgraph.apply_nodes)
-                t0 = time.time()
-                sub_prof = optimizer.optimize(fgraph)
-                l.append(float(time.time() - t0))
-                sub_profs.append(sub_prof)
-                nb_nodes.append((nb_nodes_before,
-                                 len(fgraph.apply_nodes)))
-                if fgraph.profile:
-                    sub_validate_time.append(fgraph.profile.validate_time)
-            except AssertionError:
-                # do not catch Assertion failures
-                raise
-            except Exception as e:
-                if self.failure_callback:
-                    self.failure_callback(e, self, optimizer)
-                    continue
-                else:
+
+        self.pre_profile = (
+            self, l, -1, -1, nb_node_before,
+            -1, sub_profs, sub_validate_time,
+            nb_nodes, {})
+        try:
+            for optimizer in self:
+                try:
+                    nb_nodes_before = len(fgraph.apply_nodes)
+                    t0 = time.time()
+                    sub_prof = optimizer.optimize(fgraph)
+                    l.append(float(time.time() - t0))
+                    sub_profs.append(sub_prof)
+                    nb_nodes.append((nb_nodes_before,
+                                     len(fgraph.apply_nodes)))
+                    if fgraph.profile:
+                        sub_validate_time.append(fgraph.profile.validate_time)
+                except AssertionError:
+                    # do not catch Assertion failures
                     raise
+                except Exception as e:
+                    if self.failure_callback:
+                        self.failure_callback(e, self, optimizer)
+                        continue
+                    else:
+                        raise
+        finally:
 
-        if fgraph.profile:
-            validate_time = fgraph.profile.validate_time - validate_before
-            callbacks_time = {}
-            for k, v in iteritems(fgraph.execute_callbacks_times):
-                if k in callbacks_before:
-                    t = v - callbacks_before[k]
-                    if t > 0:
-                        callbacks_time[k] = t
-                else:
-                    callbacks_time[k] = v
-        else:
-            validate_time = None
-            callbacks_time = {}
-
-        callback_time = fgraph.execute_callbacks_time - callback_before
-        return (self, l, validate_time, callback_time, nb_node_before,
+            if fgraph.profile:
+                validate_time = fgraph.profile.validate_time - validate_before
+                callbacks_time = {}
+                for k, v in iteritems(fgraph.execute_callbacks_times):
+                    if k in callbacks_before:
+                        t = v - callbacks_before[k]
+                        if t > 0:
+                            callbacks_time[k] = t
+                    else:
+                        callbacks_time[k] = v
+            else:
+                validate_time = None
+                callbacks_time = {}
+            callback_time = fgraph.execute_callbacks_time - callback_before
+            self.pre_profile = (
+                self, l, validate_time, callback_time, nb_node_before,
                 len(fgraph.apply_nodes), sub_profs, sub_validate_time,
                 nb_nodes, callbacks_time)
+        return self.pre_profile
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
@@ -607,14 +615,24 @@ class MergeFeature(object):
         # properly.
         # The clients should at least contain `node` itself!
         if node.inputs:
-            assert len(node.inputs[0].clients) > 0
-            assert (node, 0) in node.inputs[0].clients
+            # Take the smallest clients list. Some ops like elemwise
+            # have optimization that put constant as the first inputs.
+            # As constant have in general more clients than other type of nodes
+            # using always inputs[0] make us look at more nodes.
+            # Always pick the smallest clints list between inputs 0
+            # and -1 speed up optimization.
 
-            merge_candidates = [c for (c, i) in node.inputs[0].clients
-                                if c in self.nodes_seen]
+            if len(node.inputs[0].clients) < len(node.inputs[-1].clients):
+                clients = node.inputs[0].clients
+            else:
+                clients = node.inputs[-1].clients
+            assert len(clients) > 0
+
+            merge_candidates = [c for c, i in clients if c in self.nodes_seen]
 
             # Put all clients of Assert inputs (if exist) into merge_candidates
             # TODO: Deactivated for now as this cause cycle in the graph.
+            # (There is a second deactivation part below.)
             for i in []:  # node.inputs:
                 if i.owner and isinstance(i.owner.op,
                                           theano.tensor.opt.Assert):
@@ -647,13 +665,19 @@ class MergeFeature(object):
 
             # Get input list of the candidate with assert removed
             cand_inputs_assert_removed = []
-            for i in candidate.inputs:
+            # TODO: Deactivated while Assert merging is disabled. (See above and below.)
+            for i in []:  # candidate.inputs:
                 if i.owner and isinstance(i.owner.op,
                                           theano.tensor.opt.Assert):
                     cand_has_assert = True
                     cand_inputs_assert_removed.append(i.owner.inputs[0])
                 else:
                     cand_inputs_assert_removed.append(i)
+
+            # TODO: Remove this when Assert merging is re-enabled. (See above.)
+            # Without Assert merging we can still look for identical Asserts,
+            # so we should not treat Asserts separately for now.
+            cand_inputs_assert_removed = candidate.inputs
 
             # Get input list of the node with assert removed
             if node_has_assert:
@@ -851,13 +875,29 @@ class MergeOptimizer(Optimizer):
                                 hasattr(c.op, 'destroy_map')]) > 1:
                             continue
 
+                if len(pairs) == 1 and pairs[0][0].type != pairs[0][1].type:
+                    res = pairs[0][0].type.convert_variable(pairs[0][1])
+
+                    # Since the fgraph.replace only checks the convert_variable
+                    # in one way, we change the order in the case that
+                    # convert_variable will not be successful.
+                    if not res:
+                        pairs = [(pairs[0][1], pairs[0][0])]
+
                 try:
-                    fgraph.replace_all_validate(pairs, 'MergeOptimizer')
+                    # If all Constants, no need to call validate.
+                    # Only need to check one of the var of each pairs.
+                    # If it is a Constant, the other must also be a Constant as we merge them.
+                    if all([isinstance(old, graph.Constant) for old, new in pairs]):
+                        fgraph.replace_all(pairs, 'MergeOptimizer')
+                    else:
+                        fgraph.replace_all_validate(pairs, 'MergeOptimizer')
                 except InconsistencyError:
                     success = False
                     nb_fail += 1
                     fgraph.merge_feature.blacklist.append(
                         (pairs[0][0].owner, pairs[0][1].owner))
+
                 if success:
                     nb_merged += len(pairs)
                     if isinstance(pairs[0][0], graph.Constant):
@@ -1384,6 +1424,41 @@ class LocalOptGroup(LocalOptimizer):
             opt.add_requirements(fgraph)
 
 
+class GraphToGPULocalOptGroup(LocalOptGroup):
+    """This is the equivalent of LocalOptGroup for GraphToGPU.
+
+    The main different is the function signature of the local
+    optimizer that use the GraphToGPU signature and not the normal
+    LocalOptimizer signature.
+
+    apply_all_opts=True is not supported
+
+    """
+    def __init__(self, *optimizers, **kwargs):
+        super(GraphToGPULocalOptGroup, self).__init__(*optimizers, **kwargs)
+        assert self.apply_all_opts is False
+
+    def transform(self, op, context_name, inputs, outputs):
+        if len(self.opts) == 0:
+            return
+        fgraph = outputs[0].fgraph
+        opts = self.track_map[type(op)] + self.track_map[op] + self.track_map[None]
+        for opt in opts:
+            opt_start = time.time()
+            new_repl = opt.transform(op, context_name, inputs, outputs)
+            opt_finish = time.time()
+            if self.profile:
+                self.time_opts[opt] += opt_start - opt_finish
+                self.process_count[opt] += 1
+            if not new_repl:
+                continue
+            if self.profile:
+                self.node_created[opt] += len(graph.ops(fgraph.variables, new_repl))
+                self.applied_true[opt] += 1
+
+            return new_repl
+
+
 class OpSub(LocalOptimizer):
     """
 
@@ -1653,8 +1728,7 @@ class PatternSub(LocalOptimizer):
                     u = u.merge(expr, v)
             elif (isinstance(pattern, (integer_types, float)) and
                     isinstance(expr, graph.Constant)):
-                if numpy.all(
-                        theano.tensor.constant(pattern).value == expr.value):
+                if np.all(theano.tensor.constant(pattern).value == expr.value):
                     return u
                 else:
                     return retry_with_equiv()
@@ -2015,13 +2089,7 @@ class TopoOptimizer(NavigatorOptimizer):
             if node is not current_node:
                 q.append(node)
 
-        def pruner(node):
-            if node is not current_node:
-                try:
-                    q.remove(node)
-                except ValueError:
-                    pass
-        u = self.attach_updater(fgraph, importer, pruner,
+        u = self.attach_updater(fgraph, importer, None,
                                 name=getattr(self, 'name', None))
         nb = 0
         try:
@@ -2031,6 +2099,8 @@ class TopoOptimizer(NavigatorOptimizer):
                     node = q.pop()
                 else:
                     node = q.popleft()
+                if node not in fgraph.apply_nodes:
+                    continue
                 current_node = node
                 nb += self.process_node(fgraph, node)
             loop_t = time.time() - t0
@@ -2143,17 +2213,13 @@ class OpKeyOptimizer(NavigatorOptimizer):
                 if node.op == op:
                     q.append(node)
 
-        def pruner(node):
-            if node is not current_node and node.op == op:
-                try:
-                    q.remove(node)
-                except ValueError:
-                    pass
-        u = self.attach_updater(fgraph, importer, pruner,
+        u = self.attach_updater(fgraph, importer, None,
                                 name=getattr(self, 'name', None))
         try:
             while q:
                 node = q.pop()
+                if node not in fgraph.apply_nodes:
+                    continue
                 current_node = node
                 self.process_node(fgraph, node)
         finally:
@@ -2388,25 +2454,20 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 if node is not current_node:
                     q.append(node)
 
-            def pruner(node):
-                if node is not current_node:
-                    try:
-                        q.remove(node)
-                    except ValueError:
-                        pass
             chin = None
             if self.tracks_on_change_inputs:
                 def chin(node, i, r, new_r, reason):
                     if node is not current_node and not isinstance(node, str):
                         q.append(node)
-            u = self.attach_updater(fgraph, importer, pruner,
+            u = self.attach_updater(fgraph, importer, None,
                                     chin=chin,
                                     name=getattr(self, 'name', None))
             try:
                 while q:
                     node = q.pop()
+                    if node not in fgraph.apply_nodes:
+                        continue
                     current_node = node
-
                     for lopt in (self.local_optimizers_all +
                                  self.local_optimizers_map.get(type(node.op), []) +
                                  self.local_optimizers_map.get(node.op, [])):
@@ -2473,10 +2534,14 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         end_nb_nodes = len(fgraph.apply_nodes)
 
         if max_use_abort:
-            _logger.error("EquilibriumOptimizer max'ed out by '%s'" % opt_name +
-                          ". You can safely raise the current threshold of " +
-                          "%f with the theano flag 'optdb.max_use_ratio'." %
-                          config.optdb.max_use_ratio)
+            msg = ("EquilibriumOptimizer max'ed out by '%s'" % opt_name +
+                   ". You can safely raise the current threshold of " +
+                   "%f with the theano flag 'optdb.max_use_ratio'." %
+                   config.optdb.max_use_ratio)
+            if theano.config.on_opt_error == 'raise':
+                raise AssertionError(msg)
+            else:
+                _logger.error(msg)
         fgraph.remove_feature(change_tracker)
         assert len(loop_process_count) == len(loop_timing)
         assert len(loop_process_count) == len(global_opt_timing)

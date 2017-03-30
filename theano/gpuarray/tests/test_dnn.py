@@ -1,9 +1,10 @@
 from __future__ import absolute_import, print_function, division
 import logging
+from collections import OrderedDict
 
 from nose.plugins.skip import SkipTest
 from nose_parameterized import parameterized
-import numpy
+import numpy as np
 from itertools import product, chain
 
 import theano
@@ -12,6 +13,8 @@ import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet import bn
 
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
@@ -22,6 +25,10 @@ from . import test_nnet
 from .rnn_support import Model, GRU, LSTM, WrapperLayer
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
+
+mode_with_gpu = mode_with_gpu.including()
+# Globally disabled for mode_without_gpu
+mode_with_gpu.check_py_code = False
 
 
 # If using float16, set CUDNN precision to float32
@@ -37,7 +44,7 @@ def test_dnn_conv_desc_merge():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     kern_shp = T.as_tensor_variable(
-        numpy.asarray([3, 1, 2, 2]).astype('int64'))
+        np.asarray([3, 1, 2, 2]).astype('int64'))
     desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2),
                                conv_mode='conv')(kern_shp)
     desc2 = dnn.GpuDnnConvDesc(border_mode='full', subsample=(1, 1),
@@ -68,8 +75,8 @@ def test_dnn_conv_merge():
     o1 = dnn.dnn_conv(img, kern)
     o2 = dnn.dnn_conv(img, kern)
     f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
-    d1, d2 = f(numpy.random.rand(*img_shp).astype(theano.config.floatX),
-               numpy.random.rand(*kern_shp).astype(theano.config.floatX))
+    d1, d2 = f(np.random.rand(*img_shp).astype(theano.config.floatX),
+               np.random.rand(*kern_shp).astype(theano.config.floatX))
     topo = f.maker.fgraph.toposort()
     assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnConv)]) == 1
 
@@ -95,6 +102,8 @@ def test_dnn_conv_inplace():
     """
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     img_shp = [2, 5, 6, 8]
     kern_shp = [3, 5, 5, 6]
     img = T.tensor4('img')
@@ -109,8 +118,8 @@ def test_dnn_conv_inplace():
     o1 = dnn.dnn_conv(img, kern, conv_mode='conv')
     o2 = dnn.dnn_conv(img, kern, conv_mode='cross')
     f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
-    d1, d2 = f(numpy.random.rand(*img_shp).astype(theano.config.floatX),
-               numpy.random.rand(*kern_shp).astype(theano.config.floatX))
+    d1, d2 = f(np.random.rand(*img_shp).astype(theano.config.floatX),
+               np.random.rand(*kern_shp).astype(theano.config.floatX))
     topo = f.maker.fgraph.toposort()
     convs = [n for n in topo if isinstance(n.op, dnn.GpuDnnConv)]
     assert len(convs) == 2
@@ -143,6 +152,7 @@ def test_dnn_conv_inplace():
 def test_pooling():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     # 'average_exc_pad' is disabled for versions < 4004
     if dnn.version(raises=False) < 4004:
@@ -188,7 +198,7 @@ def test_pooling():
                             (1, 3, 99, 99),
                             (32, 1, 147, 197),
                             ]:
-                    data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX)
+                    data = np.random.normal(0, 1, shp).astype(theano.config.floatX)
                     a = f_cpu(data).__array__()
                     b = f_gpu(data).__array__()
                     utt.assert_allclose(a, b)
@@ -196,7 +206,7 @@ def test_pooling():
         # Test the grad
         for shp in [(1, 1, 2, 2),
                     (1, 1, 3, 3)]:
-            data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
+            data = np.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
 
             ws = 2
             stride = 2
@@ -234,10 +244,12 @@ def test_pooling():
 def test_pooling_with_tensor_vars():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     x = T.tensor4()
-    ws = theano.shared(numpy.array([2, 2], dtype='int32'))
-    stride = theano.shared(numpy.array([1, 1], dtype='int32'))
-    pad = theano.shared(numpy.array([0, 0], dtype='int32'))
+    ws = theano.shared(np.array([2, 2], dtype='int32'))
+    stride = theano.shared(np.array([1, 1], dtype='int32'))
+    pad = theano.shared(np.array([0, 0], dtype='int32'))
     mode = 'max'
 
     def fn(x):
@@ -250,7 +262,7 @@ def test_pooling_with_tensor_vars():
 
     for shp in [(1, 1, 2, 2),
                 (1, 1, 3, 3)]:
-        data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
+        data = np.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
         theano.tests.unittest_tools.verify_grad(
             fn, [data], mode=mode_with_gpu)
 
@@ -274,10 +286,10 @@ def test_pooling_with_tensor_vars():
     for shp in [(1, 10, 100, 100),
                 (1, 3, 99, 99),
                 (32, 1, 147, 197)]:
-        data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX)
+        data = np.random.normal(0, 1, shp).astype(theano.config.floatX)
 
         # Change the window size dynamically
-        ws.set_value(numpy.array([i, i]).astype('int32'))
+        ws.set_value(np.array([i, i]).astype('int32'))
         a = f_gpu(data).__array__()
         b = f_cpu(data).__array__()
         utt.assert_allclose(a, b)
@@ -288,6 +300,7 @@ def test_pooling3d():
     # 3d pooling requires version 3 or newer.
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 3000:
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     # We force the FAST_RUN as we don't want the reference to run in DebugMode.
     mode_without_gpu_ref = theano.compile.mode.get_mode(
@@ -335,11 +348,11 @@ def test_pooling3d():
                             (1, 3, 99, 99, 29),
                             (2, 1, 147, 97, 37),
                             ]:
-                    data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX)
+                    data = np.random.normal(0, 1, shp).astype(theano.config.floatX)
                     a = f_cpu(data).__array__()
                     b = f_gpu(data).__array__()
                     utt.assert_allclose(a, b,
-                                        atol=numpy.finfo(theano.config.floatX).eps)
+                                        atol=np.finfo(theano.config.floatX).eps)
 
         # Test the grad
         for shp in [(1, 1, 2, 2, 2),
@@ -349,7 +362,7 @@ def test_pooling3d():
                     (1, 1, 4, 3, 3),
                     (1, 1, 4, 4, 4),
                     (1, 1, 5, 5, 5)]:
-            data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
+            data = np.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
 
             ws = 2
             stride = 2
@@ -376,6 +389,7 @@ def test_pooling3d():
 def test_pooling_opt():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     # 2D pooling
     x = T.matrix()
@@ -389,7 +403,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10), dtype=theano.config.floatX))
+    f(np.zeros((10, 10), dtype=theano.config.floatX))
 
     # gradient of 2D pooling
     f = theano.function(
@@ -402,7 +416,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, dnn.GpuDnnPoolGrad)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10), dtype=theano.config.floatX))
+    f(np.zeros((10, 10), dtype=theano.config.floatX))
 
     # Test sum pooling
     f = theano.function(
@@ -413,7 +427,7 @@ def test_pooling_opt():
 
     assert any([isinstance(n.op, dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
-    data = numpy.random.rand(10, 10).astype(theano.config.floatX)
+    data = np.random.rand(10, 10).astype(theano.config.floatX)
     f(data)
 
     # 3D pooling
@@ -428,7 +442,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10, 10), dtype=theano.config.floatX))
+    f(np.zeros((10, 10, 10), dtype=theano.config.floatX))
 
     # gradient of 3D pooling
     f = theano.function(
@@ -441,7 +455,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, dnn.GpuDnnPoolGrad)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10, 10), dtype=theano.config.floatX))
+    f(np.zeros((10, 10, 10), dtype=theano.config.floatX))
 
 
 def test_pooling_opt_arbitrary_dimensions():
@@ -450,6 +464,7 @@ def test_pooling_opt_arbitrary_dimensions():
 
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     # 'average_exc_pad' is disabled for versions < 4004
     if dnn.version(raises=False) < 4004:
@@ -462,7 +477,7 @@ def test_pooling_opt_arbitrary_dimensions():
             # create input shape: non-pooling dimensions
             # followed by 2 or 3 pooling dimensions
             shp = tuple(range(2, 2 + n_non_pool_dims)) + tuple(range(5, 5 + len(ws)))
-            data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX)
+            data = np.random.normal(0, 1, shp).astype(theano.config.floatX)
             input = gpuarray_shared_constructor(data)
 
             for mode in modes:
@@ -493,6 +508,24 @@ def test_pooling_opt_arbitrary_dimensions():
                 # check for similarity
                 utt.assert_allclose(res_gpu[0], res_cpu[0])
                 utt.assert_allclose(res_gpu[1], res_cpu[1])
+
+
+def test_pooling_empty_batch():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    img_shp = (0, 5, 6, 8)
+    img = T.ftensor4('img')
+
+    o = dnn.dnn_pool(img, (2, 2), (2, 2))
+    f = theano.function([img], o, mode=mode_with_gpu)
+    d = f(np.random.rand(*img_shp).astype('float32'))
+    assert d.shape == (0, 5, 3, 4)
+
+    g = T.grad(T.sum(o), wrt=img)
+    f = theano.function([img], g, mode=mode_with_gpu)
+    d = f(np.random.rand(*img_shp).astype('float32'))
+    # Not sure what to assert, it should just pass, that's all.
+    assert d.shape == (0, 5, 6, 8)
 
 
 def test_dnn_tag():
@@ -542,8 +575,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
         t = T.tensor4('t')
-        rand_tensor = numpy.asarray(
-            numpy.random.rand(5, 4, 3, 2),
+        rand_tensor = np.asarray(
+            np.random.rand(5, 4, 3, 2),
             dtype=theano.config.floatX
         )
         self._compile_and_check(
@@ -572,11 +605,11 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
-        img_val = numpy.asarray(img_val, dtype=theano.config.floatX)
-        kern_vals = numpy.asarray(kern_vals, dtype=theano.config.floatX)
+        img_val = np.asarray(img_val, dtype=theano.config.floatX)
+        kern_vals = np.asarray(kern_vals, dtype=theano.config.floatX)
 
         for subsample in subsamples:
-            out_vals = numpy.zeros(
+            out_vals = np.zeros(
                 dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
                                              border_mode=border_mode,
                                              subsample=subsample),
@@ -603,14 +636,11 @@ class TestDnnInferShapes(utt.InferShapeTester):
                                         [conv_modes[0]])),
                           testcase_func_name=utt.custom_name_func)
     def test_conv(self, algo, border_mode, conv_mode):
-        if algo == 'winograd' and dnn.version(raises=False) < 5000:
-            raise SkipTest(dnn.dnn_available.msg)
-
         self._test_conv(T.tensor4('img'),
                         T.tensor4('kerns'),
                         T.tensor4('out'),
-                        numpy.random.rand(7, 2, 8, 4),
-                        numpy.random.rand(8, 2, 4, 3),
+                        np.random.rand(7, 2, 8, 4),
+                        np.random.rand(8, 2, 4, 3),
                         border_mode,
                         conv_mode,
                         [(1, 1), (2, 2)],
@@ -621,63 +651,57 @@ class TestDnnInferShapes(utt.InferShapeTester):
         self._test_conv(T.tensor5('img'),
                         T.tensor5('kerns'),
                         T.tensor5('out'),
-                        numpy.random.rand(10, 2, 6, 4, 11),
-                        numpy.random.rand(8, 2, 4, 3, 1),
+                        np.random.rand(10, 2, 6, 4, 11),
+                        np.random.rand(8, 2, 4, 3, 1),
                         border_mode,
                         conv_mode,
                         [(1, 1, 1), (2, 2, 2)],
                         'none')
 
-    def _test_conv_gradw(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsample):
+    def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsample):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
-        img_val = numpy.asarray(
-            img_val,
+        topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
+                                              border_mode, subsample)
+
+        img_val = np.asarray(
+            np.random.rand(*img_shape),
             dtype=theano.config.floatX
         )
-        kern_vals = numpy.asarray(
-            kern_vals,
+        topgrad_vals = np.asarray(
+            np.random.rand(*topgrad_shape),
             dtype=theano.config.floatX
         )
 
-        temp_img = img.dimshuffle(1, 0, 2, 3)
-        temp_kerns = kerns
-        if conv_mode == 'conv':
-            temp_kerns = temp_kerns[:, :, ::-1, ::-1]
-        temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
-        shape = (
-            kern_vals.shape[1], img_val.shape[1],
-            img_val.shape[2] - kern_vals.shape[2] + 1,
-            img_val.shape[3] - kern_vals.shape[3] + 1
-        )
-        out_vals = numpy.zeros(shape, dtype=theano.config.floatX)
+        kerns_vals = np.zeros(kerns_shape, dtype=theano.config.floatX)
+        kerns_shape = theano.shared(np.asarray(kerns_shape))
         desc = dnn.GpuDnnConvDesc(
             border_mode=border_mode,
             subsample=subsample,
             conv_mode=conv_mode,
             precision=set_precision(theano.config.floatX)
-        )(out.shape)
+        )(kerns_shape)
         conv_grad_w = dnn.GpuDnnConvGradW()(
-            temp_img,
-            temp_kerns,
-            out,
+            img,
+            topgrad,
+            kerns,
             desc,
         )
         self._compile_and_check(
-            [temp_img, temp_kerns, out],
+            [img, topgrad, kerns],
             [conv_grad_w],
-            [img_val, kern_vals, out_vals],
+            [img_val, topgrad_vals, kerns_vals],
             dnn.GpuDnnConvGradW
         )
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv_gradw(self, border_mode, conv_mode):
         self._test_conv_gradw(T.tensor4('img'),
+                              T.tensor4('topgrad'),
                               T.tensor4('kerns'),
-                              T.tensor4('out'),
-                              numpy.random.rand(2, 5, 6, 8),
-                              numpy.random.rand(2, 1, 5, 6),
+                              (5, 2, 6, 13),
+                              (1, 2, 3, 7),
                               border_mode,
                               conv_mode,
                               (1, 1))
@@ -688,12 +712,12 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.tensor4('img')
         kerns = T.tensor4('kerns')
         out = T.tensor4('out')
-        kern_vals = numpy.asarray(
-            numpy.random.rand(13, 14, 15, 16),
+        kern_vals = np.asarray(
+            np.random.rand(13, 14, 15, 16),
             dtype=theano.config.floatX
         )
-        out_vals = numpy.asarray(
-            numpy.random.rand(3, 13, 5, 6),
+        out_vals = np.asarray(
+            np.random.rand(3, 13, 5, 6),
             dtype=theano.config.floatX
         )
 
@@ -707,7 +731,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 out_vals.shape[2] + kern_vals.shape[2] - 1,
                 out_vals.shape[3] + kern_vals.shape[3] - 1
             )
-            img_vals = numpy.zeros(shape, dtype=theano.config.floatX)
+            img_vals = np.zeros(shape, dtype=theano.config.floatX)
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
                 subsample=params[1],
@@ -731,8 +755,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
         img = T.tensor4('img')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
         )
 
@@ -758,8 +782,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
         img = T.tensor5('img')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
         )
 
@@ -787,16 +811,16 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.tensor4('img')
         img_grad = T.tensor4('img_grad')
         out = T.tensor4('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
         )
-        img_grad_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        img_grad_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
         )
-        out_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        out_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
         )
 
@@ -826,16 +850,16 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.tensor5('img')
         img_grad = T.tensor5('img_grad')
         out = T.tensor5('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
         )
-        img_grad_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        img_grad_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
         )
-        out_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        out_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
         )
 
@@ -877,6 +901,8 @@ def test_dnn_conv_border_mode():
 def test_dnn_conv_alpha_output_merge():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     img = T.tensor4()
     kern = T.tensor4()
     out = T.tensor4()
@@ -888,16 +914,16 @@ def test_dnn_conv_alpha_output_merge():
     iw = 8
     kh = 2
     kw = 6
-    img_val = numpy.random.random((b, c, ih, iw)).astype(theano.config.floatX)
-    kern_val = numpy.random.random((f, c, kh, kw)).astype(theano.config.floatX)
-    out_val = numpy.random.random((b, f, ih - kh + 1,
-                                   iw - kw + 1)).astype(theano.config.floatX)
+    img_val = np.random.random((b, c, ih, iw)).astype(theano.config.floatX)
+    kern_val = np.random.random((f, c, kh, kw)).astype(theano.config.floatX)
+    out_val = np.random.random((b, f, ih - kh + 1,
+                                iw - kw + 1)).astype(theano.config.floatX)
 
     conv = dnn.dnn_conv(img, kern)
     gw = theano.grad(conv.sum(), kern)
     gi = theano.grad(conv.sum(), img)
 
-    lr = numpy.asarray(0.05, dtype=theano.config.floatX)
+    lr = np.asarray(0.05, dtype=theano.config.floatX)
 
     fr = lr * (conv + out)
     wr = kern + lr * gw
@@ -940,6 +966,8 @@ def test_dnn_conv_alpha_output_merge():
 def test_dnn_conv_grad():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     b = 1
     c = 4
     f = 3
@@ -947,10 +975,10 @@ def test_dnn_conv_grad():
     iw = 8
     kh = 2
     kw = 2
-    img_val = numpy.random.random((b, c, ih, iw)).astype(theano.config.floatX)
-    kern_val = numpy.random.random((f, c, kh, kw)).astype(theano.config.floatX)
-    out_val = numpy.random.random((b, f, ih - kw + 1,
-                                   iw - kw + 1)).astype(theano.config.floatX)
+    img_val = np.random.random((b, c, ih, iw)).astype(theano.config.floatX)
+    kern_val = np.random.random((f, c, kh, kw)).astype(theano.config.floatX)
+    out_val = np.random.random((b, f, ih - kw + 1,
+                                iw - kw + 1)).astype(theano.config.floatX)
 
     def dconv(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
@@ -980,7 +1008,6 @@ def get_conv3d_test_cases():
     test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1)],
                    [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2)],
                    [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3)],
-                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
                    [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
                    # Test with 1x1x1 filters
                    [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1)],
@@ -1013,12 +1040,13 @@ def test_conv3d_fwd():
 
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
 
-        inputs_val = numpy.random.random(inputs_shape).astype(theano.config.floatX)
-        filters_val = numpy.random.random(filters_shape).astype(theano.config.floatX)
+        inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
+        filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
 
         # Scale down the input values to prevent very large absolute errors
         # due to float rounding
@@ -1067,12 +1095,13 @@ def test_conv3d_bwd():
 
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
 
-        inputs_val = numpy.random.random(inputs_shape).astype(theano.config.floatX)
-        filters_val = numpy.random.random(filters_shape).astype(theano.config.floatX)
+        inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
+        filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
 
         inputs = theano.shared(inputs_val)
         filters = theano.shared(filters_val)
@@ -1126,6 +1155,26 @@ def test_version():
     assert isinstance(dnn.version(), int)
 
 
+def test_nvcc_compiler_bindir_and_flags():
+    # This tests if the options nvcc.compiler_bindir and nvcc.flags from
+    # the old sandbox.cuda backend are not passed to the g++ compiler in
+    # the new backend. (Regression test for issues GH-4978 and GH-5373.)
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    old_nvcc_compiler_bindir = theano.config.nvcc.compiler_bindir
+    old_nvcc_flags = theano.config.nvcc.flags
+    try:
+        theano.config.nvcc.compiler_bindir = "/usr/bin"
+        theano.config.nvcc.flags = "--cuda"
+        # compiling should still work, which means that the options
+        # have not been passed to the compiler
+        ret, msg = dnn._dnn_check_compile()
+        assert ret, msg
+    finally:
+        theano.config.nvcc.compiler_bindir = old_nvcc_compiler_bindir
+        theano.config.nvcc.flags = old_nvcc_flags
+
+
 class test_SoftMax(test_nnet.test_SoftMax):
     gpu_op = dnn.GpuDnnSoftmax
     gpu_grad_op = dnn.GpuDnnSoftmaxGrad
@@ -1136,7 +1185,24 @@ class test_SoftMax(test_nnet.test_SoftMax):
             raise SkipTest(dnn.dnn_available.msg)
 
     def test_softmax_shape_0(self):
-        raise SkipTest("Cudnn doesn't support 0 shapes")
+        dims = (2, 0, 4, 5)
+        data = np.arange(
+            np.product(dims),
+            dtype=theano.config.floatX
+        ).reshape(dims)
+
+        # Verify the forward op
+        x_gpu = T.tensor4('x_gpu')
+        f_gpu = dnn.GpuDnnSoftmax('accurate', 'channel')(x_gpu)
+        f_gpu = theano.function([x_gpu], f_gpu, mode=self.mode)
+        assert f_gpu(data).shape == dims
+
+        # Verify the gradient op
+        dy_gpu = T.tensor4('dy_gpu')
+        sm_gpu = T.tensor4('sm_gpu')
+        f_grad_gpu = dnn.GpuDnnSoftmaxGrad('accurate', 'channel')(dy_gpu, sm_gpu)
+        f_grad_gpu = theano.function([dy_gpu, sm_gpu], f_grad_gpu, mode=self.mode)
+        assert f_grad_gpu(data, data).shape == dims
 
     def test_softmax_f16(self):
         x = T.matrix('x', 'float16')
@@ -1148,22 +1214,22 @@ class test_SoftMax(test_nnet.test_SoftMax):
         )
 
         def cmp(n, m, f, f_gpu):
-            data = numpy.random.random((n, m)).astype('float16')
-            gdata = numpy.asarray(data)[:, :, None, None]
+            data = np.random.random((n, m)).astype('float16')
+            gdata = np.asarray(data)[:, :, None, None]
 
             out = f(data)
-            gout = numpy.asarray(f_gpu(gdata))[:, :, 0, 0]
+            gout = np.asarray(f_gpu(gdata))[:, :, 0, 0]
             utt.assert_allclose(out, gout)
 
         self._test_softmax(x, x_gpu, f_z, f_gpu, cmp)
 
     def test_softmax_grad(self):
         def cmp(n, m, f, f_gpu):
-            data = numpy.arange(n * m, dtype=theano.config.floatX).reshape(n, m)
-            gdata = numpy.asarray(data)[:, :, None, None]
+            data = np.arange(n * m, dtype=theano.config.floatX).reshape(n, m)
+            gdata = np.asarray(data)[:, :, None, None]
 
             out = f(data)
-            gout = numpy.asarray(f_gpu(gdata))[:, :, 0, 0]
+            gout = np.asarray(f_gpu(gdata))[:, :, 0, 0]
             utt.assert_allclose(out, gout)
 
         x = T.matrix('x')
@@ -1176,11 +1242,11 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         # Verify the grad operation
         dims = (2, 3, 4, 5)
-        gdata = numpy.arange(
-            numpy.product(dims),
+        gdata = np.arange(
+            np.product(dims),
             dtype=theano.config.floatX
         ).reshape(dims)
-        T.verify_grad(f_gpu, [gdata], rng=numpy.random,
+        T.verify_grad(f_gpu, [gdata], rng=np.random,
                       mode=mode_with_gpu)
 
         # Verify that the CPU and GPU implementations return the same results
@@ -1207,7 +1273,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
             mode=mode_with_gpu
         )
         sorted_f = f.maker.fgraph.toposort()
-        val = numpy.random.rand(5).astype(theano.config.floatX)
+        val = np.random.rand(5).astype(theano.config.floatX)
         out_dnn = f(val)
         assert(len([i
                     for i in sorted_f
@@ -1297,11 +1363,11 @@ class test_SoftMax(test_nnet.test_SoftMax):
                         (2, 3, 4, 66000)]
 
         for inp_shape in input_shapes:
-            input_val = numpy.random.normal(0, 1, inp_shape).astype(theano.config.floatX)
+            input_val = np.random.normal(0, 1, inp_shape).astype(theano.config.floatX)
 
             out = f(input_val)
-            expected_out = numpy.log(numpy.exp(input_val) /
-                                     numpy.exp(input_val).sum(1)[:, None, :, :])
+            expected_out = np.log(np.exp(input_val) /
+                                  np.exp(input_val).sum(1)[:, None, :, :])
 
             utt.assert_allclose(out, expected_out)
 
@@ -1329,7 +1395,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         assert dnn_softmax_nodes[0].op.algo == "log"
 
         # Compare the output of the function with the reference function
-        inp = numpy.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
+        inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
         utt.assert_allclose(f(inp), f_ref(inp))
 
         # Build the first graph and ensure that the optimization is applied
@@ -1342,121 +1408,409 @@ class test_SoftMax(test_nnet.test_SoftMax):
         assert dnn_softmax_nodes[0].op.algo == "log"
 
         # Compare the output of the function with the reference function
-        inp = numpy.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
+        inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
         utt.assert_allclose(f(inp), f_ref(inp))
 
 
 def test_dnn_batchnorm_train():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    if dnn.version(raises=False) < 5000:
-        raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
+    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
+
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
-            x, scale, bias = (vartype(n) for n in ('x', 'scale', 'bias'))
+        for vartype in (tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+            x, scale, bias, running_mean, running_var = (vartype(n)
+                                                         for n in ('x', 'scale', 'bias',
+                                                                   'running_mean',
+                                                                   'running_var'))
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
+            running_average_factor = 0.3
 
-            # forward pass
-            out, x_mean, x_invstd = dnn.dnn_batch_normalization_train(
-                x, scale, bias, mode, eps)
+            # forward pass, direct interface
+            out_gpu, x_mean_gpu, x_invstd_gpu, \
+                out_running_mean_gpu, out_running_var_gpu = \
+                dnn.dnn_batch_normalization_train(x, scale, bias, mode, eps,
+                                                  running_average_factor,
+                                                  running_mean, running_var)
+            # forward pass, abstract interface
+            out_abstract, x_mean_abstract, x_invstd_abstract, \
+                out_running_mean_abstract, out_running_var_abstract = \
+                bn.batch_normalization_train(x, scale, bias, mode, eps,
+                                             running_average_factor,
+                                             running_mean, running_var)
             # reference forward pass
             if mode == 'per-activation':
                 axes = (0,)
             elif mode == 'spatial':
                 axes = (0,) + tuple(range(2, ndim))
-            x_mean2 = x.mean(axis=axes, keepdims=True)
-            x_invstd2 = T.inv(T.sqrt(x.var(axis=axes, keepdims=True) + eps))
-            scale2 = T.addbroadcast(scale, *axes)
-            bias2 = T.addbroadcast(bias, *axes)
-            out2 = (x - x_mean2) * (scale2 * x_invstd2) + bias2
+            x_mean_ref = x.mean(axis=axes, keepdims=True)
+            x_var_ref = x.var(axis=axes, keepdims=True)
+            x_invstd_ref = T.inv(T.sqrt(x_var_ref + eps))
+            scale_ref = T.addbroadcast(scale, *axes)
+            bias_ref = T.addbroadcast(bias, *axes)
+            m = T.cast(T.prod(x.shape) / T.prod(scale.shape), theano.config.floatX)
+            out_ref = (x - x_mean_ref) * (scale_ref * x_invstd_ref) + bias_ref
+            out_running_mean_ref = running_mean * (1 - running_average_factor) + \
+                x_mean_ref * running_average_factor
+            out_running_var_ref = running_var * (1 - running_average_factor) + \
+                (m / (m - 1)) * x_var_ref * running_average_factor
             # backward pass
             dy = vartype('dy')
-            grads = T.grad(None, wrt=[x, scale, bias], known_grads={out: dy})
+            grads_gpu = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
+            grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_abstract: dy})
             # reference backward pass
-            grads2 = T.grad(None, wrt=[x, scale, bias], known_grads={out2: dy})
+            grads_ref = T.grad(None, wrt=[x, scale, bias], known_grads={out_ref: dy})
             # compile
-            f = theano.function([x, scale, bias, dy],
-                                [out, x_mean, x_invstd, out2, x_mean2, x_invstd2] +
-                                grads + grads2, mode=mode_with_gpu)
+            f_gpu = theano.function([x, scale, bias, running_mean, running_var, dy],
+                                    [out_gpu, x_mean_gpu, x_invstd_gpu,
+                                     out_running_mean_gpu, out_running_var_gpu] + grads_gpu,
+                                    mode=mode_with_gpu)
+            f_abstract = theano.function([x, scale, bias, running_mean, running_var, dy],
+                                         [out_abstract, x_mean_abstract, x_invstd_abstract,
+                                          out_running_mean_abstract, out_running_var_abstract] +
+                                         grads_abstract,
+                                         mode=mode_with_gpu)
+            f_ref = theano.function([x, scale, bias, running_mean, running_var, dy],
+                                    [out_ref, x_mean_ref, x_invstd_ref,
+                                     out_running_mean_ref, out_running_var_ref] + grads_ref,
+                                    mode=mode_without_gpu)
+            # check if the abstract Ops have been replaced
+            assert any([isinstance(n.op, dnn.GpuDnnBatchNorm) for n
+                        in f_abstract.maker.fgraph.toposort()])
+            assert any([isinstance(n.op, dnn.GpuDnnBatchNormGrad) for n
+                        in f_abstract.maker.fgraph.toposort()])
+            assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                              bn.AbstractBatchNormInference,
+                                              bn.AbstractBatchNormTrainGrad)) for n
+                            in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((5, 10, 30, 40, 10), (4, 3, 1, 1, 1), (1, 1, 5, 5, 5)):
+            for data_shape in ((5, 10, 30, 4, 10, 5), (4, 3, 1, 1, 1, 1), (2, 3, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                outputs = f(X, Scale, Bias, Dy)
+                X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Running_mean = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Running_var = np.random.randn(*param_shape).astype(theano.config.floatX)
+                outputs_gpu = f_gpu(X, Scale, Bias, Running_mean, Running_var, Dy)
+                outputs_abstract = f_abstract(X, Scale, Bias, Running_mean, Running_var, Dy)
+                outputs_ref = f_ref(X, Scale, Bias, Running_mean, Running_var, Dy)
                 # compare outputs
-                utt.assert_allclose(outputs[0], outputs[0 + 3])  # out
-                utt.assert_allclose(outputs[1], outputs[1 + 3])  # mean
-                utt.assert_allclose(outputs[2], outputs[2 + 3])  # invstd
+                utt.assert_allclose(outputs_gpu[0], outputs_ref[0])  # out
+                utt.assert_allclose(outputs_gpu[1], outputs_ref[1])  # mean
+                utt.assert_allclose(outputs_gpu[2], outputs_ref[2])  # invstd
+                utt.assert_allclose(outputs_gpu[3], outputs_ref[3])  # running_mean
+                utt.assert_allclose(np.nan_to_num(outputs_gpu[4]),
+                                    np.nan_to_num(outputs_ref[4]))  # running_var
+                utt.assert_allclose(outputs_abstract[0], outputs_ref[0])  # out
+                utt.assert_allclose(outputs_abstract[1], outputs_ref[1])  # mean
+                utt.assert_allclose(outputs_abstract[2], outputs_ref[2])  # invstd
+                utt.assert_allclose(outputs_abstract[3], outputs_ref[3])  # running_mean
+                utt.assert_allclose(np.nan_to_num(outputs_abstract[4]),
+                                    np.nan_to_num(outputs_ref[4]))  # running_var
                 # compare gradients
-                utt.assert_allclose(outputs[6], outputs[6 + 3], atol=1e-4)  # dx
-                utt.assert_allclose(outputs[7], outputs[7 + 3], rtol=2e-4, atol=1e-4)  # dscale
-                utt.assert_allclose(outputs[8], outputs[8 + 3])  # dbias
+                utt.assert_allclose(outputs_gpu[5], outputs_ref[5], atol=2e-4)  # dx
+                utt.assert_allclose(outputs_gpu[6], outputs_ref[6], rtol=4e-4, atol=1e-4)  # dscale
+                utt.assert_allclose(outputs_gpu[7], outputs_ref[7])  # dbias
+                utt.assert_allclose(outputs_abstract[5], outputs_ref[5], atol=2e-4)  # dx
+                utt.assert_allclose(outputs_abstract[6], outputs_ref[6], rtol=4e-4, atol=1e-4)  # dscale
+                utt.assert_allclose(outputs_abstract[7], outputs_ref[7])  # dbias
+
+
+def test_dnn_batchnorm_train_without_running_averages():
+    # compile and run batch_normalization_train without running averages
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
+    x, scale, bias, dy = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias'), T.tensor4('dy')
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+
+    # forward pass
+    out_gpu, x_mean_gpu, x_invstd_gpu = \
+        dnn.dnn_batch_normalization_train(x, scale, bias, 'per-activation')
+    out_abstract, x_mean_abstract, x_invstd_abstract = \
+        bn.batch_normalization_train(x, scale, bias, 'per-activation')
+    # backward pass
+    grads_gpu = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
+    grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_abstract: dy})
+    # compile
+    f_gpu = theano.function([x, scale, bias, dy],
+                            [out_gpu, x_mean_gpu, x_invstd_gpu] +
+                            grads_gpu,
+                            mode=mode_with_gpu)
+    f_abstract = theano.function([x, scale, bias, dy],
+                                 [out_abstract, x_mean_abstract, x_invstd_abstract] +
+                                 grads_abstract,
+                                 mode=mode_with_gpu)
+    # check if the abstract Ops have been replaced
+    assert any([isinstance(n.op, dnn.GpuDnnBatchNorm)
+                for n in f_abstract.maker.fgraph.toposort()])
+    assert any([isinstance(n.op, dnn.GpuDnnBatchNormGrad)
+                for n in f_abstract.maker.fgraph.toposort()])
+    assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                      bn.AbstractBatchNormInference,
+                                      bn.AbstractBatchNormTrainGrad))
+                    for n in f_abstract.maker.fgraph.toposort()])
+    # run
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+    f_gpu(X, Scale, Bias, Dy)
+    f_abstract(X, Scale, Bias, Dy)
+
+
+def test_without_dnn_batchnorm_train_without_running_averages():
+    # compile and run batch_normalization_train without running averages
+    # But disable cudnn and make sure it run on the GPU.
+    utt.seed_rng()
+
+    x, scale, bias, dy = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias'), T.tensor4('dy')
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+
+    # forward pass
+    out_abstract, x_mean_abstract, x_invstd_abstract = \
+        bn.batch_normalization_train(x, scale, bias, 'per-activation')
+    # backward pass
+    grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_abstract: dy})
+    # compile
+    f_abstract = theano.function([x, scale, bias, dy],
+                                 [out_abstract, x_mean_abstract, x_invstd_abstract] +
+                                 grads_abstract,
+                                 mode=mode_with_gpu.excluding('cudnn'))
+    # check if the abstract Ops have been replaced
+    assert not any([isinstance(n.op, dnn.GpuDnnBatchNorm)
+                    for n in f_abstract.maker.fgraph.toposort()])
+    assert not any([isinstance(n.op, dnn.GpuDnnBatchNormGrad)
+                    for n in f_abstract.maker.fgraph.toposort()])
+    assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                      bn.AbstractBatchNormInference,
+                                      bn.AbstractBatchNormTrainGrad))
+                    for n in f_abstract.maker.fgraph.toposort()])
+    assert any([isinstance(n.op, dnn.GpuElemwise)
+                for n in f_abstract.maker.fgraph.toposort()])
+    # run
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+    f_abstract(X, Scale, Bias, Dy)
+
+
+def test_dnn_batchnorm_train_inplace():
+    # test inplace_running_mean and inplace_running_var
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
+    x, scale, bias = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias')
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+    running_mean = gpuarray_shared_constructor(
+        np.random.randn(*param_shape).astype(theano.config.floatX),
+        broadcastable=(True, False, False, False))
+    running_var = gpuarray_shared_constructor(
+        np.random.randn(*param_shape).astype(theano.config.floatX),
+        broadcastable=(True, False, False, False))
+
+    # forward pass
+    out, x_mean, x_invstd, new_running_mean, new_running_var = \
+        dnn.dnn_batch_normalization_train(x, scale, bias, 'per-activation',
+                                          epsilon=5e-3, running_average_factor=0.3,
+                                          running_mean=running_mean, running_var=running_var)
+    # update running averages
+    updates = OrderedDict()
+    updates[running_mean] = new_running_mean
+    updates[running_var] = new_running_var
+    # compile
+    f = theano.function([x, scale, bias],
+                        [out, x_mean, x_invstd],
+                        updates=updates,
+                        mode=mode_with_gpu)
+    # check for the inplace settings
+    nodes = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnBatchNorm)]
+    assert len(nodes) == 1
+    assert nodes[0].op.inplace_running_mean
+    assert nodes[0].op.inplace_running_var
+    assert nodes[0].op.inplace_output
+    # run
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+    f(X, Scale, Bias)
 
 
 def test_batchnorm_inference():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    if dnn.version(raises=False) < 5000:
-        raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
+    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
+
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
             x, scale, bias, mean, var = (vartype(n)
                                          for n in ('x', 'scale', 'bias', 'mean', 'var'))
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
 
-            # forward pass
-            out = dnn.dnn_batch_normalization_test(x, scale, bias, mean,
-                                                   var, mode, eps)
+            # forward pass, direct interface
+            out_gpu = dnn.dnn_batch_normalization_test(x, scale, bias, mean,
+                                                       var, mode, eps)
+            # forward pass, abstract interface
+            out_abstract = bn.batch_normalization_test(x, scale, bias, mean,
+                                                       var, mode, eps)
             # reference forward pass
             if mode == 'per-activation':
                 axes = (0,)
             elif mode == 'spatial':
                 axes = (0,) + tuple(range(2, ndim))
-            scale2, bias2, mean2, var2 = (T.addbroadcast(t, *axes)
-                                          for t in (scale, bias, mean, var))
-            out2 = (x - mean2) * (scale2 / T.sqrt(var2 + eps)) + bias2
+            scale_ref, bias_ref, mean_ref, var_ref = (T.addbroadcast(t, *axes)
+                                                      for t in (scale, bias, mean, var))
+            out_ref = (x - mean_ref) * (scale_ref / T.sqrt(var_ref + eps)) + bias_ref
             # backward pass
             dy = vartype('dy')
-            grads = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out: dy})
+            grads_gpu = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_gpu: dy})
+            grads_abstract = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_abstract: dy})
             # reference backward pass
-            grads2 = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out2: dy})
+            grads_ref = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_ref: dy})
             # compile
-            f = theano.function([x, scale, bias, mean, var, dy],
-                                [out, out2] + grads + grads2, mode=mode_with_gpu)
+            f_gpu = theano.function([x, scale, bias, mean, var, dy],
+                                    [out_gpu] + grads_gpu, mode=mode_with_gpu)
+            f_abstract = theano.function([x, scale, bias, mean, var, dy],
+                                         [out_abstract] + grads_abstract, mode=mode_with_gpu)
+            f_ref = theano.function([x, scale, bias, mean, var, dy],
+                                    [out_ref] + grads_ref)
+            # check if the abstract Ops have been replaced
+            assert any([isinstance(n.op, dnn.GpuDnnBatchNormInference) for n
+                        in f_abstract.maker.fgraph.toposort()])
+            assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                              bn.AbstractBatchNormInference,
+                                              bn.AbstractBatchNormTrainGrad)) for n
+                            in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((10, 20, 30, 40, 10), (4, 3, 1, 1, 1), (1, 1, 5, 5, 5)):
+            for data_shape in ((10, 2, 30, 4, 10, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Var = numpy.random.rand(*param_shape).astype(theano.config.floatX)
-                outputs = f(X, Scale, Bias, Mean, Var, Dy)
+                X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Mean = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Var = np.random.rand(*param_shape).astype(theano.config.floatX)
+                outputs_gpu = f_gpu(X, Scale, Bias, Mean, Var, Dy)
+                outputs_abstract = f_abstract(X, Scale, Bias, Mean, Var, Dy)
+                outputs_ref = f_ref(X, Scale, Bias, Mean, Var, Dy)
                 # compare outputs
-                utt.assert_allclose(outputs[0], outputs[1])  # out
+                utt.assert_allclose(outputs_gpu[0], outputs_ref[0])  # out
+                utt.assert_allclose(outputs_abstract[0], outputs_ref[0])  # out
                 # compare gradients
-                utt.assert_allclose(outputs[2], outputs[2 + 5], atol=4e-5)  # dx
-                utt.assert_allclose(outputs[3], outputs[3 + 5], atol=4e-5)  # dscale
-                utt.assert_allclose(outputs[4], outputs[4 + 5])  # dbias
-                utt.assert_allclose(outputs[5], outputs[5 + 5])  # dmean
-                utt.assert_allclose(outputs[6], outputs[6 + 5], rtol=2e-3, atol=4e-5)  # dvar
+                utt.assert_allclose(outputs_gpu[1], outputs_ref[1], atol=4e-5)  # dx
+                utt.assert_allclose(outputs_gpu[2], outputs_ref[2], atol=4e-5)  # dscale
+                utt.assert_allclose(outputs_gpu[3], outputs_ref[3])  # dbias
+                utt.assert_allclose(outputs_gpu[4], outputs_ref[4])  # dmean
+                utt.assert_allclose(outputs_gpu[5], outputs_ref[5], rtol=2e-3, atol=4e-5)  # dvar
+                utt.assert_allclose(outputs_abstract[1], outputs_ref[1], atol=4e-5)  # dx
+                utt.assert_allclose(outputs_abstract[2], outputs_ref[2], atol=4e-5)  # dscale
+                utt.assert_allclose(outputs_abstract[3], outputs_ref[3])  # dbias
+                utt.assert_allclose(outputs_abstract[4], outputs_ref[4])  # dmean
+                utt.assert_allclose(outputs_abstract[5], outputs_ref[5], rtol=2e-3, atol=4e-5)  # dvar
+
+
+def test_batchnorm_inference_inplace():
+    # test inplace
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
+    x, scale, bias, mean, var = (T.tensor4(n) for n in ('x', 'scale', 'bias', 'mean', 'var'))
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+
+    out = dnn.dnn_batch_normalization_test(x, scale, bias, mean, var)
+    f = theano.function([x, scale, bias, mean, var], [out], mode=mode_with_gpu)
+
+    # check for the inplace settings
+    nodes = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnBatchNormInference)]
+    assert len(nodes) == 1
+    assert nodes[0].op.inplace
+
+    # run
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Mean = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Var = np.random.rand(*param_shape).astype(theano.config.floatX)
+    f(X, Scale, Bias, Mean, Var)
+
+
+def test_dnn_batchnorm_valid_and_invalid_axes():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix):
+        x, scale, bias, mean, var, dy = (vartype(n)
+                                         for n in ('x', 'scale', 'bias', 'mean', 'var', 'dy'))
+        ndim = x.ndim
+
+        # supported: per-activation and spatial
+        valid_axes_lists = ((0,), (0,) + tuple(range(2, ndim)))
+        # not supported: an axes list without 0 and including 1
+        invalid_axes_lists = (tuple(range(1, ndim)),)
+        for axes in valid_axes_lists + invalid_axes_lists:
+            # forward pass, abstract interface
+            out_train, x_mean, x_invstd = bn.batch_normalization_train(
+                x, scale, bias, axes)
+            out_test = bn.batch_normalization_test(
+                x, scale, bias, mean, var, axes)
+            # backward pass
+            dy = vartype('dy')
+            grads_train = T.grad(None, wrt=[x, scale, bias], known_grads={out_train: dy})
+            grads_test = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_test: dy})
+            # compile
+            f = theano.function([x, scale, bias, mean, var, dy],
+                                [out_train, x_mean, x_invstd, out_test] +
+                                grads_train + grads_test,
+                                mode=mode_with_gpu)
+
+            if axes in valid_axes_lists:
+                # check if the abstract Ops have been replaced by the cuDNN Ops
+                assert any([isinstance(n.op, dnn.GpuDnnBatchNorm) for n
+                            in f.maker.fgraph.toposort()])
+                assert any([isinstance(n.op, dnn.GpuDnnBatchNormGrad) for n
+                            in f.maker.fgraph.toposort()])
+                assert any([isinstance(n.op, dnn.GpuDnnBatchNormInference) for n
+                            in f.maker.fgraph.toposort()])
+                assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                                  bn.AbstractBatchNormInference,
+                                                  bn.AbstractBatchNormTrainGrad)) for n
+                                in f.maker.fgraph.toposort()])
+            else:
+                # check if the abstract Ops have been replaced, but not by the cuDNN Ops
+                assert not any([isinstance(n.op, (dnn.GpuDnnBatchNorm,
+                                                  dnn.GpuDnnBatchNormGrad,
+                                                  bn.AbstractBatchNormTrain,
+                                                  bn.AbstractBatchNormInference,
+                                                  bn.AbstractBatchNormTrainGrad)) for n
+                                in f.maker.fgraph.toposort()])
 
 
 def test_dnn_rnn_gru():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     # test params
     input_dim = 32
     hidden_dim = 16
@@ -1472,7 +1826,7 @@ def test_dnn_rnn_gru():
     rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'gru')
     psize = rnnb.get_param_size([batch_size, input_dim])
     params_cudnn = gpuarray_shared_constructor(
-        numpy.zeros((psize,), dtype=theano.config.floatX))
+        np.zeros((psize,), dtype=theano.config.floatX))
 
     model = Model()
     last_layer = WrapperLayer(X)
@@ -1527,9 +1881,9 @@ def test_dnn_rnn_gru():
     ref_grad_fns = [ref_grad_fn, ref2_grad_fn, ref3_grad_fn]
     cudnn_grad_fns = [cudnn_grad_fn, cudnn2_grad_fn, cudnn3_grad_fn]
 
-    x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
-    y_val = numpy.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
-    h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    x_val = np.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    y_val = np.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
+    h0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
     ref_out = ref_fn(x_val, h0_val)
     cudnn_out = cudnn_fn(x_val, h0_val)
@@ -1555,7 +1909,64 @@ def test_dnn_rnn_gru():
                 utt.assert_allclose(ref_grad_layer[j], g)
 
 
+def test_dnn_rnn_gru_bidi():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
+    # test params
+    input_dim = 32
+    hidden_dim = 16
+    batch_size = 2
+    depth = 3
+    timesteps = 5
+
+    # test code
+    X = T.tensor3('X')
+    Y = T.tensor3('Y')
+    h0 = T.tensor3('h0')
+
+    rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'gru', direction_mode='bidirectional')
+    psize = rnnb.get_param_size([batch_size, input_dim])
+    params_cudnn = gpuarray_shared_constructor(
+        np.random.random((psize,)).astype(theano.config.floatX))
+
+    def funcs(out, params, hy=None):
+        cost = 0
+        if out:
+            cost += T.mean((Y - out)**2)
+        if hy:
+            cost += T.mean(hy**2)
+        grad = T.grad(cost, [X, h0] + params)
+        grad_fn = theano.function([X, Y, h0], grad, mode=mode_with_gpu,
+                                  on_unused_input='ignore')
+        return grad_fn
+
+    y, hy = rnnb.apply(params_cudnn, X, h0)
+
+    cudnn_fn = theano.function([X, h0], y, mode=mode_with_gpu)
+
+    cudnn_grad_fn = funcs(y, [params_cudnn])
+    cudnn2_grad_fn = funcs(y, [params_cudnn], hy)
+    cudnn3_grad_fn = funcs(None, [params_cudnn], hy)
+
+    cudnn_grad_fns = [cudnn_grad_fn, cudnn2_grad_fn, cudnn3_grad_fn]
+
+    x_val = np.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    y_val = np.random.random((timesteps, batch_size, 2 * hidden_dim)).astype(theano.config.floatX)
+    h0_val = np.random.random((2 * depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+
+    cudnn_fn(x_val, h0_val)
+
+    for cudnn_grad_fn in cudnn_grad_fns:
+        cudnn_grad_fn(x_val, y_val, h0_val)
+
+
 def test_dnn_rnn_lstm():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     # test params
     input_dim = 32
     hidden_dim = 16
@@ -1572,7 +1983,7 @@ def test_dnn_rnn_lstm():
     rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'lstm')
     psize = rnnb.get_param_size([batch_size, input_dim])
     params_cudnn = gpuarray_shared_constructor(
-        numpy.zeros((psize,), dtype=theano.config.floatX))
+        np.zeros((psize,), dtype=theano.config.floatX))
 
     model = Model()
     last_layer = WrapperLayer(X)
@@ -1601,10 +2012,10 @@ def test_dnn_rnn_lstm():
     cudnn_fn, cudnn_grad_fn = funcs(rnnb.apply(params_cudnn, X, h0, c0)[0],
                                     [params_cudnn])
 
-    x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
-    y_val = numpy.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
-    h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
-    c0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    x_val = np.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    y_val = np.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
+    h0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    c0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
     ref_out = ref_fn(x_val, h0_val, c0_val)
     cudnn_out = cudnn_fn(x_val, h0_val, c0_val)
@@ -1631,6 +2042,10 @@ def test_dnn_rnn_lstm():
 
 
 def test_dnn_rnn_lstm_grad_c():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     # test params
     input_dim = 32
     hidden_dim = 16
@@ -1647,7 +2062,7 @@ def test_dnn_rnn_lstm_grad_c():
     rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'lstm')
     psize = rnnb.get_param_size([batch_size, input_dim])
     params_cudnn = gpuarray_shared_constructor(
-        numpy.zeros((psize,), dtype=theano.config.floatX))
+        np.zeros((psize,), dtype=theano.config.floatX))
 
     model = Model()
     last_layer = WrapperLayer(X)
@@ -1678,10 +2093,10 @@ def test_dnn_rnn_lstm_grad_c():
     ref_grad_fn = funcs(ref_cy, model.get_params())
     cudnn_grad_fn = funcs(cy, [params_cudnn])
 
-    x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
-    cy_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
-    h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
-    c0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    x_val = np.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    cy_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    h0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    c0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
     ref_grads = ref_grad_fn(x_val, cy_val, h0_val, c0_val)
     cudnn_grads = cudnn_grad_fn(x_val, cy_val, h0_val, c0_val)

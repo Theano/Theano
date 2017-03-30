@@ -37,6 +37,9 @@ class TestCorr3D(utt.InferShapeTester):
         :param image_shape: The constant shape info passed to corr3dMM.
         :param filter_shape: The constant shape info passed to corr3dMM.
         """
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx for this test")
+
         N_image_shape = [T.get_scalar_constant_value(T.as_tensor_variable(x))
                          for x in image_shape]
         N_filter_shape = [T.get_scalar_constant_value(T.as_tensor_variable(x))
@@ -276,6 +279,9 @@ class TestCorr3D(utt.InferShapeTester):
         """
         Checks dtype upcast for Corr3dMM methods.
         """
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx for this test")
+
         def rand(shape, dtype='float64'):
             r = numpy.asarray(numpy.random.rand(*shape), dtype=dtype)
             return r * 2 - 1
@@ -302,6 +308,8 @@ class TestCorr3D(utt.InferShapeTester):
     def test_infer_shape_forward(self):
         if theano.config.mode == "FAST_COMPILE":
             raise SkipTest("Corr3dMM don't work in FAST_COMPILE")
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx for this test")
 
         def rand(*shape):
             r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
@@ -333,6 +341,8 @@ class TestCorr3D(utt.InferShapeTester):
     def test_infer_shape_gradW(self):
         if theano.config.mode == "FAST_COMPILE":
             raise SkipTest("Corr3dMM don't work in FAST_COMPILE")
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx for this test")
 
         def rand(*shape):
             r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
@@ -372,6 +382,8 @@ class TestCorr3D(utt.InferShapeTester):
     def test_infer_shape_gradI(self):
         if theano.config.mode == "FAST_COMPILE":
             raise SkipTest("Corr3dMM don't work in FAST_COMPILE")
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx for this test")
 
         def rand(*shape):
             r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')

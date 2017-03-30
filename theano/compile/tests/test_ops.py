@@ -9,7 +9,6 @@ from theano.tests import unittest_tools as utt
 from theano import function
 import theano
 from theano.tensor import dmatrix, dvector
-from numpy import allclose
 from theano.compile import as_op
 import pickle
 
@@ -34,7 +33,7 @@ class OpDecoratorTests(utt.InferShapeTester):
         r = fn([[1.5, 5], [2, 2]])
         r0 = np.array([1.5, 7.5, 15., 30.])
 
-        assert allclose(r, r0), (r, r0)
+        assert np.allclose(r, r0), (r, r0)
 
     def test_2arg(self):
         x = dmatrix('x')
@@ -50,7 +49,7 @@ class OpDecoratorTests(utt.InferShapeTester):
         r = fn([[1.5, 5], [2, 2]], [1, 100, 2, 200])
         r0 = np.array([2.5, 107.5, 17., 230.])
 
-        assert allclose(r, r0), (r, r0)
+        assert np.allclose(r, r0), (r, r0)
 
     def test_infer_shape(self):
         x = dmatrix('x')

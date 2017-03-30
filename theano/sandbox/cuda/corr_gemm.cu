@@ -333,8 +333,15 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
     const int dil_kH = (kH - 1) * dilH + 1;
     const int dil_kW = (kW - 1) * dilW + 1;
     // top: (batchSize, nFilters, topHeight, topWidth)
-    const int topHeight = (bottomHeight + 2*padH - dil_kH) / dH + 1;
-    const int topWidth  = (bottomWidth + 2*padW - dil_kW) / dW + 1;
+    const int topHeightNoDH = (bottomHeight + 2*padH - dil_kH);
+    const int topWidthNoDW  = (bottomWidth + 2*padW - dil_kW);
+    // the above values might be negative so we need to use Python-like
+    // flooring integer division to be compatible with get_conv_output.
+    // note: this macro implements Python's // for negative x only
+#define _CONV_FLOORDIV_X(x,y) ((x < 0) ? (- ((-x) / y) - (((-x) % y) == 0 ? 0 : 1)) : (x / y))
+    const int topHeight = _CONV_FLOORDIV_X(topHeightNoDH, dH) + 1;
+    const int topWidth  = _CONV_FLOORDIV_X(topWidthNoDW, dW) + 1;
+#undef _CONV_FLOORDIV
     if (batchSize != CudaNdarray_HOST_DIMS(top)[0] ||
             nFilters != CudaNdarray_HOST_DIMS(top)[1] ||
             topHeight != CudaNdarray_HOST_DIMS(top)[2] ||
@@ -377,6 +384,19 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
     CudaNdarray *output;
     if (direction == 0) {  // forward pass
         output = top;
+        if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+            cudaError_t err = cudaMemset(output->devdata, 0,
+                                         CudaNdarray_SIZE(output) * sizeof(real));
+            if (err != cudaSuccess) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "GpuCorrMM could not fill the output with zeros: %s",
+                             cudaGetErrorString(err));
+                Py_DECREF(col);
+                return NULL;
+            }
+            Py_DECREF(col);
+            return output;
+        }
         // valid correlation: im2col, then gemm
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
@@ -445,6 +465,19 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
     }
     else if (direction == 1) {  // backprop wrt. weights
         output = weight;
+        if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+            cudaError_t err = cudaMemset(output->devdata, 0,
+                                         CudaNdarray_SIZE(output) * sizeof(real));
+            if (err != cudaSuccess) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "GpuCorrMM grad wrt. weights could not fill the output with zeros: %s",
+                             cudaGetErrorString(err));
+                Py_DECREF(col);
+                return NULL;
+            }
+            Py_DECREF(col);
+            return output;
+        }
         // valid convolution: im2col, then gemm
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
@@ -513,6 +546,19 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
     }
     else if (direction == 2) {  // backprop wrt. inputs
         output = bottom;
+        if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+            cudaError_t err = cudaMemset(output->devdata, 0,
+                                         CudaNdarray_SIZE(output) * sizeof(real));
+            if (err != cudaSuccess) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "GpuCorrMM grad wrt. inputs could not fill the output with zeros: %s",
+                             cudaGetErrorString(err));
+                Py_DECREF(col);
+                return NULL;
+            }
+            Py_DECREF(col);
+            return output;
+        }
         // full convolution: gemm, then col2im
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {

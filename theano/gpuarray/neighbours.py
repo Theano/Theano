@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 from theano import Op, Apply, config
 from theano.tensor.nnet.neighbours import Images2Neibs
@@ -38,8 +38,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         assert ten4.ndim == 4
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
-        assert "int" in neib_shape.dtype
-        assert "int" in neib_step.dtype
+        assert neib_shape.dtype in T.integer_dtypes
+        assert neib_step.dtype in T.integer_dtypes
 
         return Apply(self, [ten4, neib_shape, neib_step],
                      [GpuArrayType(broadcastable=(False, False),
@@ -256,8 +256,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         dtype_neib_shape = node.inputs[1].dtype
         dtype_neib_step = node.inputs[2].dtype
         dtype_z = node.outputs[0].dtype
-        itemsize_ten4 = numpy.dtype(dtype_ten4).itemsize
-        itemsize_z = numpy.dtype(dtype_z).itemsize
+        itemsize_ten4 = np.dtype(dtype_ten4).itemsize
+        itemsize_z = np.dtype(dtype_z).itemsize
         typecode_z = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         ten4, neib_shape, neib_step = inp
         z, = out
@@ -470,7 +470,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                      (void *)&stride_Z1,
                                      (void *)%(z)s->ga.data,
                                      (void *)&%(z)s->ga.offset};
-            err = GpuKernel_call(fptr, 3, threads_per_block, n_blocks, 0, kernel_params);
+            err = GpuKernel_call(fptr, 3, n_blocks, threads_per_block, 0, kernel_params);
             %(err_check)s
             %(sync)s
         } // END NESTED SCOPE

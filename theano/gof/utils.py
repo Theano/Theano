@@ -1,10 +1,9 @@
 from __future__ import absolute_import, print_function, division
-from collections import OrderedDict
 import linecache
 import sys
 import traceback
 
-import numpy
+import numpy as np
 from six import iteritems, integer_types, string_types, with_metaclass
 from six.moves import StringIO
 
@@ -162,7 +161,7 @@ class MetaObject(type):
         if props is not None:
             if not isinstance(props, tuple):
                 raise TypeError("__props__ has to be a tuple")
-            if not all(isinstance(p, str) for p in props):
+            if not all(isinstance(p, string_types) for p in props):
                 raise TypeError("elements of __props__ have to be strings")
 
             def _props(self):
@@ -504,6 +503,8 @@ def hist(coll):
     return counts
 
 
+@deprecated("theano.gof.utils",
+            msg="Use a_theano_variable.auto_name instead")
 def give_variables_names(variables):
     """
     Gives unique names to an iterable of variables. Modifies input.
@@ -560,8 +561,8 @@ else:
         try:
             return hashlib.md5(msg).hexdigest()
         except TypeError:
-            assert isinstance(msg, numpy.ndarray)
-            return hashlib.md5(numpy.getbuffer(msg)).hexdigest()
+            assert isinstance(msg, np.ndarray)
+            return hashlib.md5(np.getbuffer(msg)).hexdigest()
 
 
 def hash_from_file(file_path):
@@ -569,37 +570,6 @@ def hash_from_file(file_path):
     Return the MD5 hash of a file.
 
     """
-    return hash_from_code(open(file_path, 'rb').read())
-
-
-def hash_from_dict(d):
-    """
-    Work around the fact that dict are not hashable in python.
-
-    This request that all object have a sorted order that depend only
-    on the key of the object. We support only integer/float/string keys.
-
-    Also, we transform values that are list into tuple as list are not
-    hashable.
-
-    Notes
-    -----
-    Special case for OrderedDict, it use the order of the dict,
-    so the key don't need to be sortable.
-
-    """
-    if isinstance(d, OrderedDict):
-        items = list(iteritems(d))
-    else:
-        items = list(d.items())
-        items.sort()
-    first_part = [k for k, v in items]
-    second_part = []
-    for k, v in items:
-        assert isinstance(k, (string_types, integer_types, float))
-        if isinstance(v, (tuple, list)):
-            second_part += [tuple(v)]
-        else:
-            second_part += [v]
-    tuple_items = tuple(first_part + second_part + [d.__class__])
-    return hash(tuple_items)
+    with open(file_path, 'rb') as f:
+        file_content = f.read()
+    return hash_from_code(file_content)

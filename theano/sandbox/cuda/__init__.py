@@ -12,7 +12,7 @@ import warnings
 import theano
 from theano.compat import get_unbound_function
 from theano.compile import optdb
-from theano.gof import EquilibriumDB, SequenceDB
+from theano.gof import EquilibriumDB, SequenceDB, TopoOptimizer
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
 from theano import config
@@ -36,6 +36,17 @@ def register_opt(*tags, **kwargs):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
         gpu_optimizer.register(name, local_opt, 'fast_run', 'fast_compile',
                                'gpu', *tags, **kwargs)
+        return local_opt
+    return f
+
+
+def register_inplace(*tags, **kwargs):
+    def f(local_opt):
+        name = (kwargs and kwargs.pop('name')) or local_opt.__name__
+        optdb.register(
+            name, TopoOptimizer(
+                local_opt, failure_callback=TopoOptimizer.warn_inplace),
+            60, 'fast_run', 'inplace', 'gpu', *tags)
         return local_opt
     return f
 
@@ -271,6 +282,8 @@ def dnn_available():
     if dnn_available.avail is None and not cuda_available:
         dnn_available.msg = "CUDA not available"
         dnn_available.avail = False
+    elif config.dnn.enabled == "no_check":
+        raise RuntimeException("The old gpu back-end do not support the flag dnn.enabled=no_check")
     elif dnn_available.avail is None:
         dev = active_device_number()
         if device_properties(dev)['major'] < 3:
@@ -488,6 +501,10 @@ def use(device,
 
     """
     global cuda_enabled, cuda_initialization_error_message
+    _logger.warn("The cuda backend is deprecated and will be removed in "
+                 "the next release (v0.10).  Please switch to the gpuarray backend. "
+                 "You can get more information about how to switch at this "
+                 "URL:\n https://github.com/Theano/Theano/wiki/Converting-to-the-new-gpu-back-end%28gpuarray%29\n")
     if force and not cuda_available and device.startswith('gpu'):
         if not nvcc_compiler.is_nvcc_available():
             raise EnvironmentError("You forced the use of gpu device '%s', but"

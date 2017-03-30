@@ -2,18 +2,18 @@ from __future__ import absolute_import, print_function, division
 
 import time
 
-import numpy
+import numpy as np
 
 import theano
 
 y = theano.tensor.fvector()
-x = theano.shared(numpy.zeros(1, dtype='float32'))
+x = theano.shared(np.zeros(1, dtype='float32'))
 f1 = theano.function([y], updates={x: y})
-f2 = theano.function([], theano.sandbox.cuda.host_from_gpu(x))
+f2 = theano.function([], x.transfer('cpu'))
 print(f1.maker.fgraph.toposort())
 print(f2.maker.fgraph.toposort())
 for i in [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]:
-    o = numpy.zeros(i, dtype='float32')
+    o = np.zeros(i, dtype='float32')
     t0 = time.time()
     f1(o)
     t1 = time.time()

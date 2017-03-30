@@ -151,6 +151,8 @@ class DisconnectedType(theano.gof.type.Type):
 
     def __str__(self):
         return 'DisconnectedType'
+
+
 disconnected_type = DisconnectedType()
 
 
@@ -173,7 +175,7 @@ def Rop(f, wrt, eval_points):
                described by `f`
     :type eval_points: Variable or list of Variables
                        evalutation points for each of the variables in `wrt`
-    :rtype: Variable or list/tuple of Variables depending on type of f
+    :rtype: :class:`~theano.gof.Variable` or list/tuple of Variables depending on type of f
     :return: symbolic expression such that
         R_op[i] = sum_j ( d f[i] / d wrt[j]) eval_point[j]
         where the indices in that expression are magic multidimensional
@@ -240,7 +242,7 @@ def Rop(f, wrt, eval_points):
             elif inp.owner is None:
                 try:
                     local_eval_points.append(inp.zeros_like())
-                except:
+                except Exception:
                     # None should be used for non-differentiable
                     # arguments, like for example random states
                     local_eval_points.append(None)
@@ -320,7 +322,7 @@ def Lop(f, wrt, eval_points, consider_constant=None,
     :type eval_points: Variable or list of Variables
                         evalutation points for each of the variables in `f`
 
-    :rtype: Variable or list/tuple of Variables depending on type of f
+    :rtype: :class:`~theano.gof.Variable` or list/tuple of Variables depending on type of f
     :return: symbolic expression such that
         L_op[i] = sum_i ( d f[i] / d wrt[j]) eval_point[i]
         where the indices in that expression are magic multidimensional
@@ -372,10 +374,10 @@ def grad(cost, wrt, consider_constant=None,
 
     Parameters
     ----------
-    cost : scalar (0-dimensional) tensor variable or None
+    cost : :class:`~theano.gof.Variable` scalar (0-dimensional) tensor variable or None
         Value with respect to which we are differentiating.  May be
         `None` if known_grads is provided.
-    wrt : variable or list of variables
+    wrt : :class:`~theano.gof.Variable` or list of Variables
         term[s] for which we want gradients
     consider_constant : list of variables
         expressions not to backpropagate through
@@ -646,7 +648,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
       to the variables in `end` (they are used as known_grad in
       theano.grad).
 
-    :type cost: scalar (0-dimensional) variable
+    :type cost: :class:`~theano.gof.Variable` scalar (0-dimensional) variable
     :param cost:
       Additional costs for which to compute the gradients.  For
       example, these could be weight decay, an l1 constraint, MSE,
@@ -1199,58 +1201,56 @@ def _populate_grad_dict(var_to_app_to_idx,
                         is_zero = _is_zero(term)
                         assert is_zero in ['yes', 'no', 'maybe']
                         if is_zero == 'maybe':
-                            msg = "%s.grad returned %s of type %s for input"
-                            msg += " %d. This input's only connections to "
-                            msg += "the cost through this op are via "
-                            msg += "integer-valued outputs so it should be "
-                            msg += "NullType, DisconnectedType, or some form "
-                            msg += "of zeros. It is not NullType or "
-                            msg += "DisconnectedType and theano can't "
-                            msg += "simplify it to a constant, so it's not "
-                            msg += "verifiably zeros."
+                            msg = ("%s.grad returned %s of type %s for input"
+                                   " %d. This input's only connections to "
+                                   "the cost through this op are via "
+                                   "integer-valued outputs so it should be "
+                                   "NullType, DisconnectedType, or some form "
+                                   "of zeros. It is not NullType or "
+                                   "DisconnectedType and theano can't "
+                                   "simplify it to a constant, so it's not "
+                                   "verifiably zeros.")
 
-                            msg = msg % (str(node.op), str(term),
-                                         str(type(term)), i)
+                            msg %= (node.op, term, type(term), i)
 
-                        if is_zero == 'no':
-                            msg = "%s.grad returned %s of type %s for input"
-                            msg += " %d. Since this input is only connected "
-                            msg += "to integer-valued outputs, it should "
-                            msg += "evaluate to zeros, but it evaluates to"
-                            msg += "%s."
+                        elif is_zero == 'no':
+                            msg = ("%s.grad returned %s of type %s for input"
+                                   " %d. Since this input is only connected "
+                                   "to integer-valued outputs, it should "
+                                   "evaluate to zeros, but it evaluates to"
+                                   "%s.")
 
-                            msg % (node.op, term, type(term), i,
-                                   theano.get_scalar_constant_value(term))
+                            msg %= (node.op, term, type(term), i,
+                                    theano.get_scalar_constant_value(term))
 
                             raise ValueError(msg)
 
             # Check that op.connection_pattern matches the connectivity
             # logic driving the op.grad method
-            for i, packed in enumerate(zip(inputs, input_grads,
-                                           inputs_connected)):
-                ipt, ig, connected = packed
+            for i, (ipt, ig, connected) in enumerate(
+                zip(inputs, input_grads, inputs_connected)
+            ):
                 actually_connected = \
                     not isinstance(ig.type, DisconnectedType)
 
                 if actually_connected and not connected:
-                    msg = "%s.grad returned %s of type %s for input %d."
-                    msg += " Expected DisconnectedType instance based on "
-                    msg += " the output of the op's connection_pattern "
-                    msg += "method."
-                    msg = msg % (str(node.op), str(ig), str(ig.type), i)
+                    msg = ("%s.grad returned %s of type %s for input %d."
+                           " Expected DisconnectedType instance based on "
+                           " the output of the op's connection_pattern "
+                           "method.")
+                    msg %= (str(node.op), str(ig), str(ig.type), i)
                     raise TypeError(msg)
 
-                if connected and not actually_connected:
-                    msg = "%s.grad returned DisconnectedType for input"
-                    msg += " %d."
-                    msg = msg % (str(node.op), i)
+                elif connected and not actually_connected:
+                    msg = "%s.grad returned DisconnectedType for input %d."
+                    msg %= (str(node.op), i)
                     if hasattr(node.op, 'connection_pattern'):
-                        msg += ' Its connection_pattern method does not'
-                        msg += ' allow this.'
+                        msg += (' Its connection_pattern method does not'
+                                ' allow this.')
                         raise TypeError(msg)
                     else:
-                        msg += ' You may want to implement a '
-                        msg += 'connection_pattern method for it.'
+                        msg += (' You may want to implement a '
+                                'connection_pattern method for it.')
                         warnings.warn(msg)
 
             # cache the result
@@ -1339,7 +1339,7 @@ def _float_ones_like(x):
     if dtype not in tensor.float_dtypes:
         dtype = theano.config.floatX
 
-    return tensor.ones_like(x, dtype=dtype)
+    return x.ones_like(dtype=dtype)
 
 
 class numeric_grad(object):
@@ -1712,6 +1712,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
             if max_abs_err > abs_tol and max_rel_err > rel_tol:
 
                 raise verify_grad.E_grad(max_arg, max_err_pos,
+                                         analytic_grad[max_arg].shape,
+                                         analytic_grad[max_arg].flatten()[max_err_pos],
+                                         num_grad.gf[max_arg].flatten()[max_err_pos],
                                          max_abs_err, max_rel_err,
                                          abs_tol, rel_tol)
 
@@ -1727,10 +1730,14 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
 class GradientError(Exception):
     """This error is raised when a gradient is calculated, but incorrect."""
-    def __init__(self, arg, err_pos, abs_err, rel_err, abs_tol, rel_tol):
+    def __init__(self, arg, err_pos, shape, val1, val2,
+                 abs_err, rel_err, abs_tol, rel_tol):
         Exception.__init__(self)  # to be compatible with python2.4
         self.arg = arg
         self.err_pos = err_pos
+        self.shape = shape
+        self.val1 = val1
+        self.val2 = val2
         self.abs_err = abs_err
         self.rel_err = rel_err
         self.abs_tol = abs_tol
@@ -1741,13 +1748,17 @@ class GradientError(Exception):
         args_msg = ", ".join(str(a) for a in self.args)
         return """\
 GradientError: numeric gradient and analytic gradient exceed tolerance:
-        At position %i of argument %i,
+        At position %i of argument %i with shape %s,
+            val1 = %f      ,  val2 = %f
             abs. error = %f,  abs. tolerance = %f
             rel. error = %f,  rel. tolerance = %f
 Exception args: %s""" % (self.err_pos, self.arg,
+                         self.shape,
+                         self.val1, self.val2,
                          self.abs_err, self.abs_tol,
                          self.rel_err, self.rel_tol,
                          args_msg)
+
 
 verify_grad.E_grad = GradientError
 
@@ -1994,6 +2005,7 @@ class DisconnectedGrad(ViewOp):
     def connection_pattern(self, node):
         return [[False]]
 
+
 disconnected_grad_ = DisconnectedGrad()
 
 
@@ -2062,3 +2074,35 @@ def grad_clip(x, lower_bound, upper_bound):
 
     """
     return GradClip(lower_bound, upper_bound)(x)
+
+
+class GradScale(ViewOp):
+    def __init__(self, multiplier):
+        self.multiplier = multiplier
+
+    def grad(self, args, g_outs):
+        return [self.multiplier * g_out for g_out in g_outs]
+
+
+def grad_scale(x, multiplier):
+    """
+    This op scale or inverse the gradient in the backpropagation.
+
+    :param x: the variable we want its gradient inputs scale
+    :param multiplier: scale of the gradient
+
+    :examples:
+
+        x = theano.tensor.fscalar()
+        fx = theano.tensor.sin(x)
+
+        fp = theano.tensor.grad(fx, wrt=x)
+        fprime = theano.function([x], fp)
+        print(fprime(2))#-0.416
+
+        f_inverse=grad_scale(fx,-1.)
+        fpp = theano.tensor.grad(f_inverse, wrt=x)
+        fpprime = theano.function([x], fpp)
+        print(fpprime(2))#0.416
+    """
+    return GradScale(multiplier)(x)

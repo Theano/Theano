@@ -30,7 +30,7 @@ c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
 
   for (unsigned int _i = nd; _i > 0; _i--) {
     unsigned int i = _i - 1;
-    strs[i] = PyGpuArray_STRIDE(var, i) ?
+    strs[i] = (PyGpuArray_DIM(var, i) != 1 && PyGpuArray_STRIDE(var, i)) ?
       PyGpuArray_STRIDE(var, i)/ds : default_stride;
     default_stride *= PyGpuArray_DIM(var, i);
     dims[i] = PyGpuArray_DIM(var, i);
@@ -115,11 +115,7 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
   if (nd < 3)
     nd = 3;
 
-#if CUDNN_VERSION >= 5000
     err = cudnnSetFilterNdDescriptor(desc, dt, CUDNN_TENSOR_NCHW, nd, dims);
-#else
-    err = cudnnSetFilterNdDescriptor(desc, dt, nd, dims);
-#endif
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,

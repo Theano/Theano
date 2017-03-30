@@ -17,7 +17,7 @@ from six import iteritems, integer_types
 from six.moves import xrange
 
 
-import numpy
+import numpy as np
 
 
 def register_view_op_c_code(type, code, version=()):
@@ -338,8 +338,8 @@ class Shape_i(gof.Op):
     def __init__(self, i):
         # As i will be used in the hash and that ndarray are not hashable,
         # we need to convert it to an int as it is hashable.
-        if isinstance(i, numpy.ndarray):
-            assert "int" in str(i.dtype)
+        if isinstance(i, np.ndarray):
+            assert i.dtype in theano.tensor.integer_dtypes
         assert i == int(i)
         i = int(i)
         self.i = i
@@ -665,11 +665,11 @@ class Rebroadcast(gof.Op):
         items = sorted(axis)
         self.axis = OrderedDict(items)
         for axis, broad in iteritems(self.axis):
-            if not isinstance(axis, (numpy.integer, integer_types)):
+            if not isinstance(axis, (np.integer, integer_types)):
                 raise TypeError("Rebroadcast needs integer axes. "
                                 "Got {}".format(axis))
 
-            if not isinstance(broad, (numpy.bool_, bool)):
+            if not isinstance(broad, (np.bool_, bool)):
                 raise TypeError("Rebroadcast needs bool for new broadcast "
                                 "pattern. Got {}".format(broad))
 
@@ -826,7 +826,7 @@ class SpecifyShape(gof.Op):
             x = theano.tensor.as_tensor_variable(x)
         shape = theano.tensor.as_tensor_variable(shape)
         assert shape.ndim == 1
-        assert "int" in shape.dtype
+        assert shape.dtype in theano.tensor.integer_dtypes
         if isinstance(shape, theano.tensor.TensorConstant):
             assert shape.data.size == x.ndim
         return gof.Apply(self, [x, shape], [x.type()])
@@ -835,8 +835,8 @@ class SpecifyShape(gof.Op):
         x, shape = inp
         out, = out_
         assert x.ndim == shape.size
-        assert numpy.all(x.shape == shape), ("got shape", x.shape,
-                                             "expected", shape)
+        assert np.all(x.shape == shape), ("got shape", x.shape,
+                                          "expected", shape)
         out[0] = x
 
     def infer_shape(self, node, shapes):

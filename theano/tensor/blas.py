@@ -317,7 +317,7 @@ class Ger(Op):
         y = T.as_tensor_variable(y)
         x = T.as_tensor_variable(x)
         alpha = T.as_tensor_variable(alpha)
-        if len(set([A.dtype, alpha.dtype, x.dtype, y.dtype])) != 1:
+        if not(A.dtype == x.dtype == y.dtype == alpha.dtype):
             raise TypeError('ger requires matching dtypes',
                             (A.dtype, alpha.dtype, x.dtype, y.dtype))
         if alpha.ndim != 0:
@@ -852,9 +852,6 @@ class Gemm(GemmRelated):
                 (self, len(inputs)))
         z, a, x, y, b = inputs
 
-        # For the consistency check we don't want z to be a cached constant.
-        if getattr(z, 'cached', False):
-            z = copy.copy(z)
         zr, xr, yr = [set(view_roots(i)) for i in (z, x, y)]
 
         # We want the gemm to be inplace. When this op is inplace, it
@@ -867,10 +864,11 @@ class Gemm(GemmRelated):
         # think there is another mechanism that would prevent this,
         # but I don't what to modify old code and have chance to break
         # something.
-        if zr.intersection(xr):
-            raise InconsistencyError(Gemm.E_z_uniq, (z, x))
-        if zr.intersection(yr):
-            raise InconsistencyError(Gemm.E_z_uniq, (z, y))
+        if self.inplace:
+            if zr.intersection(xr):
+                raise InconsistencyError(Gemm.E_z_uniq, (z, x))
+            if zr.intersection(yr):
+                raise InconsistencyError(Gemm.E_z_uniq, (z, y))
 
         if z.ndim != 2:
             raise TypeError(Gemm.E_rank, z)
@@ -1076,7 +1074,7 @@ def _as_scalar(res, dtype=None):
             rval = res.dimshuffle()
         else:
             rval = res
-        if rval.type.dtype[:3] in ('int', 'uin'):
+        if rval.type.dtype in theano.tensor.integer_dtypes:
             # We check that the upcast of res and dtype won't change dtype.
             # If dtype is float64, we will cast int64 to float64.
             # This is valid when res is a scalar used as input to a dot22
@@ -2151,11 +2149,13 @@ class BatchedDot(Op):
         # generate contiguity condition
         def contiguous(var, ndim):
             strides = "PyArray_STRIDES(%s)" % var
+            if ndim == 1:
+                return "{strides}[0] == type_size".format(strides=strides)
             return " && ".join([
                 " && ".join("{strides}[{i}] > 0 && {strides}[{i}] % type_size == 0"
-                            .format(strides=strides, i=i) for i in range(ndim)),
+                            .format(strides=strides, i=i) for i in range(1, ndim)),
                 "(%s)" % " || ".join("{strides}[{i}] == type_size"
-                                     .format(strides=strides, i=i) for i in range(ndim)),
+                                     .format(strides=strides, i=i) for i in range(1, ndim)),
             ])
 
         x_ndim, y_ndim, z_ndim = node.inputs[0].ndim, node.inputs[1].ndim, node.outputs[0].ndim
@@ -2309,7 +2309,7 @@ class BatchedDot(Op):
 
     def c_code_cache_version(self):
         from theano.tensor.blas_headers import blas_header_version
-        return (1, blas_header_version())
+        return (3, blas_header_version())
 
     def grad(self, inp, grads):
         x, y = inp

@@ -20,7 +20,7 @@ import platform
 import distutils.sysconfig
 import warnings
 
-import numpy.distutils  # TODO: TensorType should handle this
+import numpy.distutils
 
 import theano
 from theano.compat import PY3, decode, decode_iter
@@ -189,7 +189,7 @@ static struct PyModuleDef moduledef = {{
 
     def add_support_code(self, code):
         assert not self.finalized
-        if code not in self.support_code:  # TODO: KLUDGE
+        if code and code not in self.support_code:  # TODO: KLUDGE
             self.support_code.append(code)
 
     def add_function(self, fn):
@@ -337,7 +337,11 @@ def module_name_from_dir(dirname, err=True, files=None):
 
     """
     if files is None:
-        files = os.listdir(dirname)
+        try:
+            files = os.listdir(dirname)
+        except OSError as e:
+            if e.errno == 2 and not err:  # No such file or directory
+                return None
     names = [file for file in files
              if file.endswith('.so') or file.endswith('.pyd')]
     if len(names) == 0 and not err:
@@ -669,7 +673,7 @@ class ModuleCache(object):
         if do_refresh:
             self.refresh()
 
-    age_thresh_use = 60 * 60 * 24 * 24    # 24 days
+    age_thresh_use = config.cmodule.age_thresh_use  # default 24 days
     """
     The default age threshold (in seconds) for cache files we want to use.
 
@@ -1241,7 +1245,8 @@ class ModuleCache(object):
 
         self.time_spent_in_check_key += time.time() - start_time
 
-    age_thresh_del = 60 * 60 * 24 * 31  # 31 days
+    # default 31 days
+    age_thresh_del = config.cmodule.age_thresh_use + 60 * 60 * 24 * 7
     age_thresh_del_unversioned = 60 * 60 * 24 * 7  # 7 days
     """
     The default age threshold for `clear_old` (in seconds).
@@ -1442,7 +1447,15 @@ class ModuleCache(object):
                     # If it don't exist, use any file in the directory.
                     if path is None:
                         path = os.path.join(self.dirname, filename)
-                        files = os.listdir(path)
+                        try:
+                            files = os.listdir(path)
+                        except OSError as e:
+                            if e.errno == 2:  # No such file or directory
+                                # if it don't exist anymore, it mean
+                                # the clean up was already done by
+                                # someone else, so nothing to do about
+                                # it.
+                                continue
                         if files:
                             path = os.path.join(path, files[0])
                         else:
@@ -1884,11 +1897,6 @@ class GCC_compiler(Compiler):
             for f in cxxflags:
                 # If the user give an -march=X parameter, don't add one ourself
                 if ((f.startswith("--march=") or f.startswith("-march="))):
-                    _logger.warn(
-                        "WARNING: your Theano flags `gcc.cxxflags` specify"
-                        " an `-march=X` flags.\n"
-                        "         It is better to let Theano/g++ find it"
-                        " automatically, but we don't do it now")
                     detect_march = False
                     GCC_compiler.march_flags = []
                     break
@@ -1934,12 +1942,10 @@ class GCC_compiler(Compiler):
                                 "CXXFLAGS=" in line or
                                 "-march=native" in line):
                             continue
-                        elif "-march=" in line:
-                            selected_lines.append(line.strip())
-                        elif "-mtune=" in line:
-                            selected_lines.append(line.strip())
-                        elif "-target-cpu" in line:
-                            selected_lines.append(line.strip())
+                        for reg in ["-march=", "-mtune=",
+                                    "-target-cpu", "-mabi="]:
+                            if reg in line:
+                                selected_lines.append(line.strip())
                     lines = list(set(selected_lines))  # to remove duplicate
 
                 return lines
@@ -2130,23 +2136,10 @@ class GCC_compiler(Compiler):
         if march_flags and GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
 
-        # NumPy 1.7 Deprecate the old API. I updated most of the places
-        # to use the new API, but not everywhere. When finished, enable
-        # the following macro to assert that we don't bring new code
+        # NumPy 1.7 Deprecate the old API.
+        # The following macro asserts that we don't bring new code
         # that use the old API.
         cxxflags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-
-        # numpy 1.7 deprecated the following macro but the new one didn't
-        # existed in the past
-        if bool(numpy_ver < [1, 7]):
-            cxxflags.append("-DNPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
-            cxxflags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            cxxflags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            cxxflags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            cxxflags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            cxxflags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            cxxflags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # Platform-specific flags.
         # We put them here, rather than in compile_str(), so they en up
@@ -2308,14 +2301,37 @@ class GCC_compiler(Compiler):
         status = p_out[2]
 
         if status:
-            print('===============================')
+            tf = tempfile.NamedTemporaryFile(
+                mode='w',
+                prefix='theano_compilation_error_',
+                delete=False
+            )
+            # gcc put its messages to stderr, so we add ours now
+            tf.write('===============================\n')
             for i, l in enumerate(src_code.split('\n')):
-                # gcc put its messages to stderr, so we add ours now
-                print('%05i\t%s' % (i + 1, l), file=sys.stderr)
-            print('===============================')
-            print_command_line_error()
+                tf.write('%05i\t%s\n' % (i + 1, l))
+            tf.write('===============================\n')
+            tf.write("Problem occurred during compilation with the "
+                     "command line below:\n")
+            tf.write(' '.join(cmd))
             # Print errors just below the command line.
-            print(compile_stderr)
+            tf.write(compile_stderr)
+            tf.close()
+            print('\nYou can find the C code in this temporary file: ' + tf.name)
+            not_found_libraries = re.findall('-l["."-_a-zA-Z0-9]*', compile_stderr)
+            for nf_lib in not_found_libraries:
+                print('library ' + nf_lib[2:] + ' is not found.')
+                if re.search('-lPYTHON["."0-9]*', nf_lib, re.IGNORECASE):
+                    py_string = re.search('-lpython["."0-9]*', nf_lib, re.IGNORECASE).group()[8:]
+                    if py_string != '':
+                        print(
+                            'Check if package python-dev ' + py_string + ' or python-devel ' + py_string + ' is installed.'
+                        )
+                    else:
+                        print(
+                            'Check if package python-dev or python-devel is installed.'
+                        )
+
             # We replace '\n' by '. ' in the error message because when Python
             # prints the exception, having '\n' in the text makes it more
             # difficult to read.

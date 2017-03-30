@@ -1,9 +1,11 @@
 from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 import logging
 import os
 import sys
 
 from nose.plugins.skip import SkipTest
+from nose_parameterized import parameterized
 from itertools import chain, product
 import six.moves.cPickle as pickle
 from six import StringIO
@@ -16,6 +18,8 @@ import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet import bn
 import theano.sandbox.cuda.dnn as dnn
 from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
 from theano.sandbox.cuda import float32_shared_constructor as shared
@@ -34,6 +38,8 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+    mode_with_gpu.check_py_code = False
+    mode_without_gpu.check_py_code = False
 
 
 def test_dnn_conv_desc_merge():
@@ -540,6 +546,22 @@ def test_pooling_opt_arbitrary_dimensions():
                 utt.assert_allclose(res_gpu[1], res_cpu[1])
 
 
+def test_pooling_empty_batch():
+    img_shp = (0, 5, 6, 8)
+    img = T.ftensor4('img')
+
+    o = dnn.dnn_pool(img, (2, 2), (2, 2))
+    f = theano.function([img], o, mode=mode_with_gpu)
+    d = f(numpy.random.rand(*img_shp).astype('float32'))
+    assert d.shape == (0, 5, 3, 4)
+
+    g = T.grad(T.sum(o), wrt=img)
+    f = theano.function([img], g, mode=mode_with_gpu)
+    d = f(numpy.random.rand(*img_shp).astype('float32'))
+    # Not sure what to assert, it should just pass, that's all.
+    assert d.shape == (0, 5, 6, 8)
+
+
 class test_DnnSoftMax(test_nnet.test_SoftMax):
     gpu_op = dnn.GpuDnnSoftmax
     gpu_grad_op = dnn.GpuDnnSoftmaxGrad
@@ -728,36 +750,76 @@ def test_batchnorm_train():
         raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
+    tensor6 = T.TensorType('float32', (False,) * 6)
+
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
-            x, scale, bias = (vartype(n) for n in ('x', 'scale', 'bias'))
+        for vartype in (tensor6, T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
+            x, scale, bias, running_mean, running_var = (vartype(n)
+                                                         for n in ('x', 'scale', 'bias',
+                                                                   'running_mean',
+                                                                   'running_var'))
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
+            running_average_factor = 0.3
 
-            # forward pass
-            out, x_mean, x_invstd = cuda.dnn.dnn_batch_normalization_train(
-                x, scale, bias, mode, eps)
+            # forward pass, direct interface
+            out_gpu, x_mean_gpu, x_invstd_gpu, \
+                out_running_mean_gpu, out_running_var_gpu = \
+                dnn.dnn_batch_normalization_train(x, scale, bias, mode, eps,
+                                                  running_average_factor,
+                                                  running_mean, running_var)
+            # forward pass, abstract interface
+            out_abstract, x_mean_abstract, x_invstd_abstract, \
+                out_running_mean_abstract, out_running_var_abstract = \
+                bn.batch_normalization_train(x, scale, bias, mode, eps,
+                                             running_average_factor,
+                                             running_mean, running_var)
             # reference forward pass
             if mode == 'per-activation':
                 axes = (0,)
             elif mode == 'spatial':
                 axes = (0,) + tuple(range(2, ndim))
-            x_mean2 = x.mean(axis=axes, keepdims=True)
-            x_invstd2 = T.inv(T.sqrt(x.var(axis=axes, keepdims=True) + eps))
-            scale2 = T.addbroadcast(scale, *axes)
-            bias2 = T.addbroadcast(bias, *axes)
-            out2 = (x - x_mean2) * (scale2 * x_invstd2) + bias2
+            x_mean_ref = x.mean(axis=axes, keepdims=True)
+            x_var_ref = x.var(axis=axes, keepdims=True)
+            x_invstd_ref = T.inv(T.sqrt(x_var_ref + eps))
+            scale_ref = T.addbroadcast(scale, *axes)
+            bias_ref = T.addbroadcast(bias, *axes)
+            m = T.cast(T.prod(x.shape) / T.prod(scale.shape), 'float32')
+            out_ref = (x - x_mean_ref) * (scale_ref * x_invstd_ref) + bias_ref
+            out_running_mean_ref = running_mean * (1 - running_average_factor) + \
+                x_mean_ref * running_average_factor
+            out_running_var_ref = running_var * (1 - running_average_factor) + \
+                (m / (m - 1)) * x_var_ref * running_average_factor
             # backward pass
             dy = vartype('dy')
-            grads = T.grad(None, wrt=[x, scale, bias], known_grads={out: dy})
+            grads_gpu = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
+            grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_abstract: dy})
             # reference backward pass
-            grads2 = T.grad(None, wrt=[x, scale, bias], known_grads={out2: dy})
+            grads_ref = T.grad(None, wrt=[x, scale, bias], known_grads={out_ref: dy})
             # compile
-            f = theano.function([x, scale, bias, dy],
-                                [out, x_mean, x_invstd, out2, x_mean2, x_invstd2] +
-                                grads + grads2, mode=mode_with_gpu)
+            f_gpu = theano.function([x, scale, bias, running_mean, running_var, dy],
+                                    [out_gpu, x_mean_gpu, x_invstd_gpu,
+                                     out_running_mean_gpu, out_running_var_gpu] + grads_gpu,
+                                    mode=mode_with_gpu)
+            f_abstract = theano.function([x, scale, bias, running_mean, running_var, dy],
+                                         [out_abstract, x_mean_abstract, x_invstd_abstract,
+                                          out_running_mean_abstract, out_running_var_abstract] +
+                                         grads_abstract,
+                                         mode=mode_with_gpu)
+            f_ref = theano.function([x, scale, bias, running_mean, running_var, dy],
+                                    [out_ref, x_mean_ref, x_invstd_ref,
+                                     out_running_mean_ref, out_running_var_ref] + grads_ref)
+            # check if the abstract Ops have been replaced
+            assert any([isinstance(n.op, dnn.GpuDnnBatchNorm) for n
+                        in f_abstract.maker.fgraph.toposort()])
+            assert any([isinstance(n.op, dnn.GpuDnnBatchNormGrad) for n
+                        in f_abstract.maker.fgraph.toposort()])
+            assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                              bn.AbstractBatchNormInference,
+                                              bn.AbstractBatchNormTrainGrad)) for n
+                            in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((5, 10, 30, 40, 10), (4, 3, 1, 1, 1), (1, 1, 5, 5, 5)):
+            for data_shape in ((5, 2, 30, 4, 10, 5), (4, 3, 1, 1, 1, 1), (2, 3, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
@@ -765,15 +827,124 @@ def test_batchnorm_train():
                 Dy = -1 + 2 * numpy.random.randn(*data_shape).astype('float32')
                 Scale = numpy.random.randn(*param_shape).astype('float32')
                 Bias = numpy.random.randn(*param_shape).astype('float32')
-                outputs = f(X, Scale, Bias, Dy)
+                Running_mean = numpy.random.randn(*param_shape).astype('float32')
+                Running_var = numpy.random.randn(*param_shape).astype('float32')
+                outputs_gpu = f_gpu(X, Scale, Bias, Running_mean, Running_var, Dy)
+                outputs_abstract = f_abstract(X, Scale, Bias, Running_mean, Running_var, Dy)
+                outputs_ref = f_ref(X, Scale, Bias, Running_mean, Running_var, Dy)
                 # compare outputs
-                utt.assert_allclose(outputs[0], outputs[0 + 3])  # out
-                utt.assert_allclose(outputs[1], outputs[1 + 3])  # mean
-                utt.assert_allclose(outputs[2], outputs[2 + 3])  # invstd
+                utt.assert_allclose(outputs_gpu[0], outputs_ref[0])  # out
+                utt.assert_allclose(outputs_gpu[1], outputs_ref[1])  # mean
+                utt.assert_allclose(outputs_gpu[2], outputs_ref[2])  # invstd
+                utt.assert_allclose(outputs_gpu[3], outputs_ref[3])  # running_mean
+                utt.assert_allclose(numpy.nan_to_num(outputs_gpu[4]),
+                                    numpy.nan_to_num(outputs_ref[4]))  # running_var
+                utt.assert_allclose(outputs_abstract[0], outputs_ref[0])  # out
+                utt.assert_allclose(outputs_abstract[1], outputs_ref[1])  # mean
+                utt.assert_allclose(outputs_abstract[2], outputs_ref[2])  # invstd
+                utt.assert_allclose(outputs_abstract[3], outputs_ref[3])  # running_mean
+                utt.assert_allclose(numpy.nan_to_num(outputs_abstract[4]),
+                                    numpy.nan_to_num(outputs_ref[4]))  # running_var
                 # compare gradients
-                utt.assert_allclose(outputs[6], outputs[6 + 3], atol=1e-4)  # dx
-                utt.assert_allclose(outputs[7], outputs[7 + 3], rtol=2e-4, atol=1e-4)  # dscale
-                utt.assert_allclose(outputs[8], outputs[8 + 3])  # dbias
+                utt.assert_allclose(outputs_gpu[5], outputs_ref[5], atol=2e-4)  # dx
+                utt.assert_allclose(outputs_gpu[6], outputs_ref[6], rtol=4e-4, atol=1e-4)  # dscale
+                utt.assert_allclose(outputs_gpu[7], outputs_ref[7])  # dbias
+                utt.assert_allclose(outputs_abstract[5], outputs_ref[5], atol=2e-4)  # dx
+                utt.assert_allclose(outputs_abstract[6], outputs_ref[6], rtol=4e-4, atol=1e-4)  # dscale
+                utt.assert_allclose(outputs_abstract[7], outputs_ref[7])  # dbias
+
+
+def test_dnn_batchnorm_train_without_running_averages():
+    # compile and run batch_normalization_train without running averages
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    if cuda.dnn.version() < (5000, 5000):
+        raise SkipTest("batch normalization requires cudnn v5+")
+    utt.seed_rng()
+
+    x, scale, bias, dy = T.ftensor4('x'), T.ftensor4('scale'), T.ftensor4('bias'), T.ftensor4('dy')
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+
+    # forward pass
+    out_gpu, x_mean_gpu, x_invstd_gpu = \
+        dnn.dnn_batch_normalization_train(x, scale, bias, 'per-activation')
+    out_abstract, x_mean_abstract, x_invstd_abstract = \
+        bn.batch_normalization_train(x, scale, bias, 'per-activation')
+    # backward pass
+    grads_gpu = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
+    grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
+    # compile
+    f_gpu = theano.function([x, scale, bias, dy],
+                            [out_gpu, x_mean_gpu, x_invstd_gpu] +
+                            grads_gpu,
+                            mode=mode_with_gpu)
+    f_abstract = theano.function([x, scale, bias, dy],
+                                 [out_abstract, x_mean_abstract, x_invstd_abstract] +
+                                 grads_abstract,
+                                 mode=mode_with_gpu)
+    # check if the abstract Ops have been replaced
+    assert any([isinstance(n.op, dnn.GpuDnnBatchNorm)
+                for n in f_abstract.maker.fgraph.toposort()])
+    assert any([isinstance(n.op, dnn.GpuDnnBatchNormGrad)
+                for n in f_abstract.maker.fgraph.toposort()])
+    assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                      bn.AbstractBatchNormInference,
+                                      bn.AbstractBatchNormTrainGrad))
+                    for n in f_abstract.maker.fgraph.toposort()])
+    # run
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+    Dy = -1 + 2 * numpy.random.randn(*data_shape).astype('float32')
+    Scale = numpy.random.randn(*param_shape).astype('float32')
+    Bias = numpy.random.randn(*param_shape).astype('float32')
+    f_gpu(X, Scale, Bias, Dy)
+    f_abstract(X, Scale, Bias, Dy)
+
+
+def test_dnn_batchnorm_train_inplace():
+    # test inplace_running_mean and inplace_running_var
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    if cuda.dnn.version() < (5000, 5000):
+        raise SkipTest("batch normalization requires cudnn v5+")
+    utt.seed_rng()
+
+    x, scale, bias = T.ftensor4('x'), T.ftensor4('scale'), T.ftensor4('bias')
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+    running_mean = shared(
+        numpy.random.randn(*param_shape).astype('float32'),
+        broadcastable=(True, False, False, False))
+    running_var = shared(
+        numpy.random.randn(*param_shape).astype('float32'),
+        broadcastable=(True, False, False, False))
+
+    # forward pass
+    out, x_mean, x_invstd, new_running_mean, new_running_var = \
+        dnn.dnn_batch_normalization_train(x, scale, bias, 'per-activation',
+                                          epsilon=5e-3, running_average_factor=0.3,
+                                          running_mean=running_mean, running_var=running_var)
+    # update running averages
+    updates = OrderedDict()
+    updates[running_mean] = new_running_mean
+    updates[running_var] = new_running_var
+    # compile
+    f = theano.function([x, scale, bias],
+                        [out, x_mean, x_invstd],
+                        updates=updates,
+                        mode=mode_with_gpu)
+    # check for the inplace settings
+    nodes = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnBatchNorm)]
+    assert len(nodes) == 1
+    assert nodes[0].op.inplace_running_mean
+    assert nodes[0].op.inplace_running_var
+    assert nodes[0].op.inplace_output
+    # run
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+    Scale = numpy.random.randn(*param_shape).astype('float32')
+    Bias = numpy.random.randn(*param_shape).astype('float32')
+    f(X, Scale, Bias)
 
 
 def test_batchnorm_inference():
@@ -783,35 +954,51 @@ def test_batchnorm_inference():
         raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
+    tensor6 = T.TensorType('float32', (False,) * 6)
+
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
-            x, scale, bias, mean, var = (vartype(n) for n in ('x', 'scale',
-                                                              'bias', 'mean',
-                                                              'var'))
+        for vartype in (tensor6, T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
+            x, scale, bias, mean, var = (vartype(n)
+                                         for n in ('x', 'scale', 'bias', 'mean', 'var'))
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
 
-            # forward pass
-            out = cuda.dnn.dnn_batch_normalization_test(x, scale, bias, mean,
-                                                        var, mode, eps)
+            # forward pass, direct interface
+            out_gpu = dnn.dnn_batch_normalization_test(x, scale, bias, mean,
+                                                       var, mode, eps)
+            # forward pass, abstract interface
+            out_abstract = bn.batch_normalization_test(x, scale, bias, mean,
+                                                       var, mode, eps)
             # reference forward pass
             if mode == 'per-activation':
                 axes = (0,)
             elif mode == 'spatial':
                 axes = (0,) + tuple(range(2, ndim))
-            scale2, bias2, mean2, var2 = (T.addbroadcast(t, *axes)
-                                          for t in (scale, bias, mean, var))
-            out2 = (x - mean2) * (scale2 / T.sqrt(var2 + eps)) + bias2
+            scale_ref, bias_ref, mean_ref, var_ref = (T.addbroadcast(t, *axes)
+                                                      for t in (scale, bias, mean, var))
+            out_ref = (x - mean_ref) * (scale_ref / T.sqrt(var_ref + eps)) + bias_ref
             # backward pass
             dy = vartype('dy')
-            grads = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out: dy})
+            grads_gpu = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_gpu: dy})
+            grads_abstract = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_abstract: dy})
             # reference backward pass
-            grads2 = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out2: dy})
+            grads_ref = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_ref: dy})
             # compile
-            f = theano.function([x, scale, bias, mean, var, dy],
-                                [out, out2] + grads + grads2, mode=mode_with_gpu)
+            f_gpu = theano.function([x, scale, bias, mean, var, dy],
+                                    [out_gpu] + grads_gpu, mode=mode_with_gpu)
+            f_abstract = theano.function([x, scale, bias, mean, var, dy],
+                                         [out_abstract] + grads_abstract, mode=mode_with_gpu)
+            f_ref = theano.function([x, scale, bias, mean, var, dy],
+                                    [out_ref] + grads_ref)
+            # check if the abstract Ops have been replaced
+            assert any([isinstance(n.op, dnn.GpuDnnBatchNormInference) for n
+                        in f_abstract.maker.fgraph.toposort()])
+            assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                              bn.AbstractBatchNormInference,
+                                              bn.AbstractBatchNormTrainGrad)) for n
+                            in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((5, 10, 30, 40, 10), (4, 3, 1, 1, 1), (1, 1, 5, 5, 5)):
+            for data_shape in ((10, 2, 15, 4, 6, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
@@ -821,15 +1008,106 @@ def test_batchnorm_inference():
                 Bias = numpy.random.randn(*param_shape).astype('float32')
                 Mean = numpy.random.randn(*param_shape).astype('float32')
                 Var = numpy.random.rand(*param_shape).astype('float32')
-                outputs = f(X, Scale, Bias, Mean, Var, Dy)
+                outputs_gpu = f_gpu(X, Scale, Bias, Mean, Var, Dy)
+                outputs_abstract = f_abstract(X, Scale, Bias, Mean, Var, Dy)
+                outputs_ref = f_ref(X, Scale, Bias, Mean, Var, Dy)
                 # compare outputs
-                utt.assert_allclose(outputs[0], outputs[1])  # out
+                utt.assert_allclose(outputs_gpu[0], outputs_ref[0])  # out
+                utt.assert_allclose(outputs_abstract[0], outputs_ref[0])  # out
                 # compare gradients
-                utt.assert_allclose(outputs[2], outputs[2 + 5], atol=4e-5)  # dx
-                utt.assert_allclose(outputs[3], outputs[3 + 5], atol=4e-5)  # dscale
-                utt.assert_allclose(outputs[4], outputs[4 + 5])  # dbias
-                utt.assert_allclose(outputs[5], outputs[5 + 5])  # dmean
-                utt.assert_allclose(outputs[6], outputs[6 + 5], rtol=2e-3, atol=4e-5)  # dvar
+                utt.assert_allclose(outputs_gpu[1], outputs_ref[1], atol=4e-5)  # dx
+                utt.assert_allclose(outputs_gpu[2], outputs_ref[2], atol=4e-5)  # dscale
+                utt.assert_allclose(outputs_gpu[3], outputs_ref[3])  # dbias
+                utt.assert_allclose(outputs_gpu[4], outputs_ref[4])  # dmean
+                utt.assert_allclose(outputs_gpu[5], outputs_ref[5], rtol=2e-3, atol=4e-5)  # dvar
+                utt.assert_allclose(outputs_abstract[1], outputs_ref[1], atol=4e-5)  # dx
+                utt.assert_allclose(outputs_abstract[2], outputs_ref[2], atol=4e-5)  # dscale
+                utt.assert_allclose(outputs_abstract[3], outputs_ref[3])  # dbias
+                utt.assert_allclose(outputs_abstract[4], outputs_ref[4])  # dmean
+                utt.assert_allclose(outputs_abstract[5], outputs_ref[5], rtol=2e-3, atol=4e-5)  # dvar
+
+
+def test_batchnorm_inference_inplace():
+    # test inplace
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    if cuda.dnn.version() < (5000, 5000):
+        raise SkipTest("batch normalization requires cudnn v5+")
+    utt.seed_rng()
+
+    x, scale, bias, mean, var = (T.ftensor4(n) for n in ('x', 'scale', 'bias', 'mean', 'var'))
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+
+    out = dnn.dnn_batch_normalization_test(x, scale, bias, mean, var)
+    f = theano.function([x, scale, bias, mean, var], [out], mode=mode_with_gpu)
+
+    # check for the inplace settings
+    nodes = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnBatchNormInference)]
+    assert len(nodes) == 1
+    assert nodes[0].op.inplace
+
+    # run
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+    Scale = numpy.random.randn(*param_shape).astype('float32')
+    Bias = numpy.random.randn(*param_shape).astype('float32')
+    Mean = numpy.random.randn(*param_shape).astype('float32')
+    Var = numpy.random.rand(*param_shape).astype('float32')
+    f(X, Scale, Bias, Mean, Var)
+
+
+def test_dnn_batchnorm_valid_and_invalid_axes():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    if cuda.dnn.version() < (5000, 5000):
+        raise SkipTest("batch normalization requires cudnn v5+")
+
+    for vartype in (T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix):
+        x, scale, bias, mean, var, dy = (vartype(n)
+                                         for n in ('x', 'scale', 'bias', 'mean', 'var', 'dy'))
+        ndim = x.ndim
+
+        # supported: per-activation and spatial
+        valid_axes_lists = ((0,), (0,) + tuple(range(2, ndim)))
+        # not supported: an axes list without 0 and including 1
+        invalid_axes_lists = (tuple(range(1, ndim)),)
+        for axes in valid_axes_lists + invalid_axes_lists:
+            # forward pass, abstract interface
+            out_train, x_mean, x_invstd = bn.batch_normalization_train(
+                x, scale, bias, axes)
+            out_test = bn.batch_normalization_test(
+                x, scale, bias, mean, var, axes)
+            # backward pass
+            dy = vartype('dy')
+            grads_train = T.grad(None, wrt=[x, scale, bias], known_grads={out_train: dy})
+            grads_test = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_test: dy})
+            # compile
+            f = theano.function([x, scale, bias, mean, var, dy],
+                                [out_train, x_mean, x_invstd, out_test] +
+                                grads_train + grads_test,
+                                mode=mode_with_gpu)
+
+            if axes in valid_axes_lists:
+                # check if the abstract Ops have been replaced by the cuDNN Ops
+                assert any([isinstance(n.op, dnn.GpuDnnBatchNorm) for n
+                            in f.maker.fgraph.toposort()])
+                assert any([isinstance(n.op, dnn.GpuDnnBatchNormGrad) for n
+                            in f.maker.fgraph.toposort()])
+                assert any([isinstance(n.op, dnn.GpuDnnBatchNormInference) for n
+                            in f.maker.fgraph.toposort()])
+                assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                                  bn.AbstractBatchNormInference,
+                                                  bn.AbstractBatchNormTrainGrad)) for n
+                                in f.maker.fgraph.toposort()])
+            else:
+                # check if the abstract Ops have been replaced, but not by the cuDNN Ops
+                assert not any([isinstance(n.op, (dnn.GpuDnnBatchNorm,
+                                                  dnn.GpuDnnBatchNormGrad,
+                                                  bn.AbstractBatchNormTrain,
+                                                  bn.AbstractBatchNormInference,
+                                                  bn.AbstractBatchNormTrainGrad)) for n
+                                in f.maker.fgraph.toposort()])
 
 
 def test_dnn_tag():
@@ -979,98 +1257,104 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 dnn.GpuDnnConv3d
             )
 
-    def test_conv_gradw(self):
+    def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsample):
         if not dnn.dnn_available():
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor4('img')
-        kerns = T.ftensor4('kerns')
-        out = T.ftensor4('out')
+
+        topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
+                                              border_mode, subsample)
+
         img_val = numpy.asarray(
-            numpy.random.rand(2, 5, 6, 8),
-            dtype='float32'
+            numpy.random.rand(*img_shape),
+            dtype="float32"
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(2, 1, 5, 6),
-            dtype='float32'
+        topgrad_vals = numpy.asarray(
+            numpy.random.rand(*topgrad_shape),
+            dtype="float32"
         )
 
-        for params in product(
-            ['valid', 'full', 'half'],
-            [(1, 1)],  # strides besides (1, 1)
-            ['conv', 'cross']
-        ):
-            temp_img = img.dimshuffle(1, 0, 2, 3)
-            temp_kerns = kerns
-            if params[2] == 'conv':
-                temp_kerns = temp_kerns[:, :, ::-1, ::-1]
-            temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
-            shape = (
-                kern_vals.shape[1], img_val.shape[1],
-                img_val.shape[2] - kern_vals.shape[2] + 1,
-                img_val.shape[3] - kern_vals.shape[3] + 1
-            )
-            out_vals = numpy.zeros(shape, dtype='float32')
-            desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2]
-            )(temp_img.shape, out.shape)
-            conv_grad_w = dnn.GpuDnnConvGradW()(
-                temp_img,
-                temp_kerns,
-                out,
-                desc,
-            )
-            self._compile_and_check(
-                [temp_img, temp_kerns, out],
-                [conv_grad_w],
-                [img_val, kern_vals, out_vals],
-                dnn.GpuDnnConvGradW
-            )
+        kerns_vals = numpy.zeros(kerns_shape, dtype="float32")
+        kerns_shape = theano.shared(numpy.asarray(kerns_shape))
+        topgrad_shape = theano.shared(numpy.asarray(topgrad_shape))
+        desc = dnn.GpuDnnConvDesc(
+            border_mode=border_mode,
+            subsample=subsample,
+            conv_mode=conv_mode
+        )(topgrad_shape, kerns_shape)
+        conv_grad_w = dnn.GpuDnnConvGradW()(
+            img,
+            topgrad,
+            kerns,
+            desc,
+        )
+        self._compile_and_check(
+            [img, topgrad, kerns],
+            [conv_grad_w],
+            [img_val, topgrad_vals, kerns_vals],
+            dnn.GpuDnnConvGradW
+        )
 
-    def test_conv3d_gradw(self):
+    border_modes = ['valid', 'full', 'half']
+    conv_modes = ['conv', 'cross']
+
+    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    def test_conv_gradw(self, border_mode, conv_mode):
+        self._test_conv_gradw(T.ftensor4('img'),
+                              T.ftensor4('topgrad'),
+                              T.ftensor4('kerns'),
+                              (5, 2, 6, 13),
+                              (1, 2, 3, 7),
+                              border_mode,
+                              conv_mode,
+                              (1, 1))
+
+    def _test_conv3d_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsample):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
             raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
-        img = T.ftensor5('img')
-        kerns = T.ftensor5('kerns')
-        out = T.ftensor5('out')
+
+        topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
+                                              border_mode, subsample)
+
         img_val = numpy.asarray(
-            numpy.random.rand(9, 2, 4, 8, 13),
-            dtype='float32'
+            numpy.random.rand(*img_shape),
+            dtype="float32"
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(11, 2, 3, 1, 4),
-            dtype='float32'
+        topgrad_vals = numpy.asarray(
+            numpy.random.rand(*topgrad_shape),
+            dtype="float32"
         )
 
-        for params in product(
-            ['valid', 'full', 'half'],
-            [(1, 1, 1), (2, 2, 2)],
-            ['conv', 'cross']
-        ):
-            out_vals = numpy.zeros(
-                dnn.GpuDnnConv3d.get_out_shape(img_val.shape, kern_vals.shape,
-                                               border_mode=params[0],
-                                               subsample=params[1]),
-                dtype='float32')
+        kerns_vals = numpy.zeros(kerns_shape, dtype="float32")
+        kerns_shape = theano.shared(numpy.asarray(kerns_shape))
+        topgrad_shape = theano.shared(numpy.asarray(topgrad_shape))
+        desc = dnn.GpuDnnConvDesc(
+            border_mode=border_mode,
+            subsample=subsample,
+            conv_mode=conv_mode
+        )(topgrad_shape, kerns_shape)
+        conv_grad_w = dnn.GpuDnnConv3dGradW()(
+            img,
+            topgrad,
+            kerns,
+            desc,
+        )
+        self._compile_and_check(
+            [img, topgrad, kerns],
+            [conv_grad_w],
+            [img_val, topgrad_vals, kerns_vals],
+            dnn.GpuDnnConv3dGradW
+        )
 
-            desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2]
-            )(img.shape, out.shape)
-            conv_grad_w = dnn.GpuDnnConv3dGradW()(
-                img,
-                out,
-                kerns,
-                desc,
-            )
-            self._compile_and_check(
-                [img, out, kerns],
-                [conv_grad_w],
-                [img_val, out_vals, kern_vals],
-                dnn.GpuDnnConv3dGradW
-            )
+    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    def test_conv3d_gradw(self, border_mode, conv_mode):
+        self._test_conv3d_gradw(T.ftensor5('img'),
+                                T.ftensor5('topgrad'),
+                                T.ftensor5('kerns'),
+                                (5, 2, 6, 13, 21),
+                                (1, 2, 3, 7, 9),
+                                border_mode,
+                                conv_mode,
+                                (1, 1, 1))
 
     def test_conv_gradi(self):
         if not dnn.dnn_available():
@@ -1545,7 +1829,6 @@ def get_conv3d_test_cases():
     test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1)],
                    [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2)],
                    [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3)],
-                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
                    [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
                    # Test with 1x1x1 filters
                    [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1)],

@@ -14,13 +14,14 @@ revisited later when all the intermediate part are on the GPU.
 """
 from __future__ import absolute_import, print_function, division
 import logging
+import warnings
 import numpy
 from six.moves import xrange
 
 import theano
 from theano import gof
 from theano import scalar
-from theano.tensor import extra_ops
+from theano.tensor import extra_ops, as_tensor_variable
 from theano.gof.opt import copy_stack_trace
 from theano.tensor import basic as tensor, subtensor, opt, elemwise
 from theano.tensor.type import (values_eq_approx_remove_inf,
@@ -99,15 +100,14 @@ class SoftmaxWithBias(gof.Op):
         # data type matches.
         output_storage[0][0] = e_x.astype(x_dtype, copy=False)
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, b = inp
         g_sm, = grads
 
         if isinstance(g_sm.type, DisconnectedType):
             return [DisconnectedType()(), DisconnectedType()()]
 
-        sm = softmax_with_bias(x, b)
-        dx = softmax_grad(g_sm, sm)
+        dx = softmax_grad(g_sm, outputs[0])
         db = tensor.sum(dx, axis=0)
         return dx, db
 
@@ -439,18 +439,17 @@ class Softmax(gof.Op):
         sm = e_x / e_x.sum(axis=1)[:, None]
         output_storage[0][0] = sm
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, = inp
         g_sm, = grads
-        sm = softmax_op(x)
-        return [softmax_grad(g_sm, sm)]
+        return [softmax_grad(g_sm, outputs[0])]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
         # is the same as the grad
         if None in eval_points:
             return [None]
-        return self.grad(inputs, eval_points)
+        return self.L_op(inputs, [self(*inputs)], eval_points)
 
     def infer_shape(self, node, shape):
         return shape
@@ -802,6 +801,9 @@ def softmax_graph(c):
 
 
 def softmax(c):
+    c = as_tensor_variable(c)
+    if c.broadcastable[-1]:
+        warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
     return softmax_op(c)
 
 
@@ -1056,7 +1058,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             db_terms.append(db)
 
         if not isinstance(g_sm.type, DisconnectedType):
-            dx, db = softmax_with_bias.grad((x, b), (g_sm, ))
+            dx, db = softmax_with_bias.L_op((x, b), [softmax_with_bias(x, b)], (g_sm, ))
             dx_terms.append(dx)
             db_terms.append(db)
 
@@ -2181,7 +2183,7 @@ def relu(x, alpha=0):
     ----------
     x : symbolic tensor
         Tensor to compute the activation function for.
-    alpha : scalar or tensor, optional
+    alpha : `scalar or tensor, optional`
         Slope for negative input, usually between 0 and 1. The default value
         of 0 will lead to the standard rectifier, 1 will lead to
         a linear activation function, and any value in between will give a

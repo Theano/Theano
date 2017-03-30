@@ -9,7 +9,7 @@ import copy
 import logging
 
 # Third-party imports
-import numpy
+import numpy as np
 
 # Theano imports
 from theano.gof import Container, Variable, generic, utils
@@ -120,6 +120,27 @@ class SharedVariable(Variable):
         Changes to this value will be visible to all functions using
         this SharedVariable.
 
+        Notes
+        -----
+        Set_value will work in-place on the GPU, if
+        the following conditions are met:
+
+            * The destination on the GPU must be c_contiguous.
+            * The source is on the CPU.
+            * The old value must have the same dtype as the new value
+              (which is a given for now, since only float32 is
+              supported).
+            * The old and new value must have the same shape.
+            * The old value is being completely replaced by the new
+              value (not partially modified, e.g. by replacing some
+              subtensor of it).
+
+        It is also worth mentioning that, for efficient transfer to the GPU,
+        Theano will make the new data ``c_contiguous``. This can require an
+        extra copy of the data on the host.
+
+        The inplace on gpu memory work when borrow is either True or False.
+
         """
         if borrow:
             self.container.value = new_value
@@ -162,7 +183,7 @@ class SharedVariable(Variable):
         # implemented at all, but with a more explicit error message to help
         # Theano users figure out the root of the problem more easily.
         value = self.get_value(borrow=True)
-        if isinstance(value, numpy.ndarray):
+        if isinstance(value, np.ndarray):
             # Array probably had an unknown dtype.
             msg = ("a Numpy array with dtype: '%s'. This data type is not "
                    "currently recognized by Theano tensors: please cast "
@@ -206,7 +227,7 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     This function iterates over constructor functions to find a
     suitable SharedVariable subclass.  The suitable one is the first
     constructor that accept the given value.  See the documentation of
-    :func:`shared_constructor` for the definition of a contructor
+    :func:`shared_constructor` for the definition of a constructor
     function.
 
     This function is meant as a convenient default.  If you want to use a

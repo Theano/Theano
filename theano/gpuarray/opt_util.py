@@ -1,17 +1,17 @@
 from __future__ import absolute_import, print_function, division
 from functools import wraps
 
-import numpy
+import numpy as np
 
 from theano import tensor, scalar as scal, Constant
 from theano.gof import local_optimizer
 from theano.tensor import (DimShuffle, get_scalar_constant_value,
                            NotScalarConstantError)
 
-from .basic_ops import GpuFromHost, HostFromGpu, GpuAllocEmpty, GpuReshape, gpu_alloc_empty
+from .basic_ops import GpuFromHost, HostFromGpu, GpuAllocEmpty, GpuReshape
 from .elemwise import GpuDimShuffle, GpuElemwise
 
-_one = scal.constant(numpy.asarray(1.0, dtype='float32'))
+_one = scal.constant(np.asarray(1.0, dtype='float32'))
 
 
 def grab_cpu_scalar(v, nd):
@@ -324,7 +324,7 @@ def inplace_allocempty(op, idx):
             if (alloc.owner and
                     isinstance(alloc.owner.op, GpuAllocEmpty) and
                     len(alloc.clients) > 1):
-                alloc_op = gpu_alloc_empty(alloc.owner.op.context_name, dtype=alloc.owner.op.dtype)
+                alloc_op = GpuAllocEmpty(alloc.owner.op.dtype, alloc.owner.op.context_name)
                 inputs[idx] = alloc_op(*alloc.owner.inputs)
             return maker(node, inputs)
         return opt

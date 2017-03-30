@@ -220,6 +220,36 @@ The ``compute_test_value`` mechanism works as follows:
   This feature is currently incompatible with ``Scan`` and also with ops
   which do not implement a ``perform`` method.
 
+It is also possible to override variables ``__repr__`` method to have them return tag.test_value.
+
+.. testsetup:: printtestvalue
+
+   import theano
+   import theano.tensor as T
+
+               
+.. testcode:: printtestvalue
+
+   x = T.scalar('x')
+   # Assigning test value
+   x.tag.test_value = 42
+
+   # Enable test value printing
+   theano.config.print_test_value = True
+   print(x.__repr__())
+
+   # Disable test value printing
+   theano.config.print_test_value = False
+   print(x.__repr__())
+
+Running the code above returns the following output:
+
+.. testoutput:: printtestvalue
+
+   x
+   array(42.0)
+   x
+
 
 "How do I Print an Intermediate Value in a Function?"
 -----------------------------------------------------

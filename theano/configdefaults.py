@@ -19,6 +19,7 @@ from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  TheanoConfigParser, THEANO_FLAGS_DICT)
 from theano.misc.cpucount import cpuCount
 from theano.misc.windows import call_subprocess_Popen, output_subprocess_Popen
+from theano.compat import maybe_add_to_os_environ_pathlist
 
 
 _logger = logging.getLogger('theano.configdefaults')
@@ -125,6 +126,20 @@ AddConfigVar(
     BoolParam(False, allow_override=False),
     in_c_key=False)
 
+AddConfigVar(
+    'conv.assert_shape',
+    "If True, AbstractConv* ops will verify that user-provided"
+    " shapes match the runtime shapes (debugging option,"
+    " may slow down compilation)",
+    BoolParam(False),
+    in_c_key=False)
+
+AddConfigVar(
+    'print_global_stats',
+    "Print some global statistics (time spent) at the end",
+    BoolParam(False),
+    in_c_key=False)
+
 
 class ContextsParam(ConfigParam):
     def __init__(self):
@@ -192,6 +207,12 @@ AddConfigVar(
     StrParam(default_cuda_root),
     in_c_key=False)
 
+AddConfigVar(
+    'cuda.enabled',
+    'If false, C code in old backend is not compiled.',
+    BoolParam(True),
+    in_c_key=False)
+
 
 def filter_nvcc_flags(s):
     assert isinstance(s, str)
@@ -226,6 +247,16 @@ AddConfigVar('nvcc.fastmath',
              # if theano.sandbox.cuda is loaded or not.
              in_c_key=False)
 
+AddConfigVar('nvcc.cudafe',
+             "If 'always' (the default), cudafe will be called for every GPU"
+             " Op compilation. If 'heuristic', it will only be called if the"
+             " source code appears to contain CUDA code. This can speed up"
+             " compilation and importing theano, but might fail to compile"
+             " some custom GPU Ops.",
+             EnumStr('always', 'heuristic'),
+             # Not needed in c key, does not affect the compilation result.
+             in_c_key=False)
+
 AddConfigVar('gpuarray.sync',
              """If True, every op will make sure its work is done before
                 returning.  Setting this to True will slow down execution,
@@ -239,7 +270,7 @@ AddConfigVar('gpuarray.preallocate',
              preallocates that fraction of the total GPU memory.  If 1
              or greater it will preallocate that amount of memory (in
              megabytes).""",
-             FloatParam(0),
+             FloatParam(0, allow_override=False),
              in_c_key=False)
 
 AddConfigVar('gpuarray.sched',
@@ -383,8 +414,9 @@ AddConfigVar('dnn.enabled',
              "'auto', use cuDNN if available, but silently fall back"
              " to not using it if not present."
              " If True and cuDNN can not be used, raise an error."
-             " If False, disable cudnn",
-             EnumStr("auto", "True", "False"),
+             " If False, disable cudnn even if present."
+             " If no_check, assume present and the version between header and library match (so less compilation at context init)",
+             EnumStr("auto", "True", "False", "no_check"),
              in_c_key=False)
 
 # This flag determines whether or not to raise error/warning message if
@@ -417,6 +449,19 @@ try:
     rc = call_subprocess_Popen(['g++', '-v'])
 except OSError:
     rc = 1
+
+# Anaconda on Windows has mingw-w64 packages including GCC, but it may not be on PATH.
+if rc != 0:
+    if sys.platform == "win32":
+        mingw_w64_gcc = os.path.join(os.path.dirname(sys.executable), "Library", "mingw-w64", "bin", "g++")
+        try:
+            rc = call_subprocess_Popen([mingw_w64_gcc, '-v'])
+            if rc == 0:
+                maybe_add_to_os_environ_pathlist('PATH', os.path.dirname(mingw_w64_gcc))
+        except OSError:
+            rc = 1
+        if rc != 0:
+            _logger.warning("g++ not available, if using conda: `conda install m2w64-toolchain`")
 
 if rc != 0:
     param = ""
@@ -474,10 +519,8 @@ else:
                  "Default linker used if the theano flags mode is Mode",
                  EnumStr('vm', 'py', 'vm_nogc'),
                  in_c_key=False)
-    try:
+    if type(config).cxx.is_default:
         # If the user provided an empty value for cxx, do not warn.
-        theano.configparser.fetch_val_for_key('cxx')
-    except KeyError:
         _logger.warning(
             'g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '
@@ -680,7 +723,7 @@ AddConfigVar('warn.ignore_bug_before',
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
              EnumStr('0.7', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
-                     '0.7', '0.8', '0.8.1', '0.8.2',
+                     '0.7', '0.8', '0.8.1', '0.8.2', '0.9',
                      allow_override=False),
              in_c_key=False)
 
@@ -783,6 +826,13 @@ AddConfigVar('warn.inc_set_subtensor1',
               'one vector or matrix of ints).'),
              BoolParam(warn_default('0.7')),
              in_c_key=False)
+
+AddConfigVar('warn.round',
+             "Round changed its default from Seed to use for randomized unit tests. "
+             "Special value 'random' means using a seed of None.",
+             BoolParam(warn_default('0.9')),
+             in_c_key=False)
+
 
 AddConfigVar(
     'compute_test_value',
@@ -1092,7 +1142,7 @@ AddConfigVar('optdb.position_cutoff',
 
 AddConfigVar('optdb.max_use_ratio',
              'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-             FloatParam(5),
+             FloatParam(8),
              in_c_key=False)
 
 AddConfigVar('gcc.cxxflags',
@@ -1129,9 +1179,17 @@ AddConfigVar('cmodule.preload_cache',
              BoolParam(False, allow_override=False),
              in_c_key=False)
 
+AddConfigVar('cmodule.age_thresh_use',
+             "In seconds. The time after which "
+             "Theano won't reuse a compile c module.",
+             # 24 days
+             IntParam(60 * 60 * 24 * 24, allow_override=False),
+             in_c_key=False)
+
 
 def default_blas_ldflags():
     global numpy
+    warn_record = []
     try:
         if (hasattr(numpy.distutils, '__config__') and
                 numpy.distutils.__config__):
@@ -1237,37 +1295,38 @@ def default_blas_ldflags():
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
 
-        # Anaconda
-        if "Anaconda" in sys.version or "Continuum" in sys.version:
-            # If the "mkl-service" conda package (available
-            # through Python package "mkl") is installed and
-            # importable, then the libraries (installed by conda
-            # package "mkl-rt") are actually available.  Using
-            # "conda install mkl" will install both, as well as
-            # optimized versions of numpy and scipy.
-            try:
-                import mkl  # noqa
-            except ImportError as e:
-                _logger.info('Conda mkl is not available: %s', e)
+        # MKL
+        # If mkl can be imported then use it. On conda:
+        # "conda install mkl-service" installs the Python wrapper and
+        # the low-level C libraries as well as optimised version of
+        # numpy and scipy.
+        try:
+            import mkl  # noqa
+        except ImportError as e:
+            if any([m for m in ('conda', 'Continuum') if m in sys.version]):
+                warn_record.append(('install mkl with `conda install mkl-service`: %s', e))
+        else:
+            # This branch is executed if no exception was raised
+            if sys.platform == "win32":
+                lib_path = [os.path.join(sys.prefix, 'Library', 'bin')]
+                flags = ['-L"%s"' % lib_path]
             else:
-                # This branch is executed if no exception was raised
-                if sys.platform == "win32":
-                    lib_path = os.path.join(sys.prefix, 'DLLs')
-                    flags = ['-L"%s"' % lib_path]
-                else:
-                    lib_path = blas_info.get('library_dirs', [])[0]
-                    flags = ['-L%s' % lib_path]
-                flags += ['-l%s' % l for l in ["mkl_core",
-                                               "mkl_intel_thread",
-                                               "mkl_rt"]]
-                res = try_blas_flag(flags)
-                if res:
-                    return res
-                flags.extend(['-Wl,-rpath,' + l for l in
-                              blas_info.get('library_dirs', [])])
-                res = try_blas_flag(flags)
-                if res:
-                    return res
+                lib_path = blas_info.get('library_dirs', [])
+                flags = []
+                if lib_path:
+                    flags = ['-L%s' % lib_path[0]]
+            flags += ['-l%s' % l for l in ["mkl_core",
+                                           "mkl_intel_thread",
+                                           "mkl_rt"]]
+            res = try_blas_flag(flags)
+            if res:
+                return res
+            flags.extend(['-Wl,-rpath,' + l for l in
+                          blas_info.get('library_dirs', [])])
+            res = try_blas_flag(flags)
+            if res:
+                maybe_add_to_os_environ_pathlist('PATH', lib_path[0])
+                return res
 
         # to support path that includes spaces, we need to wrap it with double quotes on Windows
         path_wrapper = "\"" if os.name == 'nt' else ""
@@ -1288,6 +1347,13 @@ def default_blas_ldflags():
         if res:
             return res
 
+        # If we are using conda and can't reuse numpy blas, then doing
+        # the fallback and test -lblas could give slow computation, so
+        # warn about this.
+        for warn in warn_record:
+            _logger.warning(*warn)
+        del warn_record
+
         # Some environment don't have the lib dir in LD_LIBRARY_PATH.
         # So add it.
         ret.extend(['-Wl,-rpath,' + l for l in
@@ -1296,13 +1362,10 @@ def default_blas_ldflags():
         if res:
             return res
 
-        # Try to add the anaconda lib directory to runtime loading of lib.
-        # This fix some case with Anaconda 2.3 on Linux.
-        # Newer Anaconda still have this problem but only have
-        # Continuum in sys.version.
-        if (("Anaconda" in sys.version or
-             "Continuum" in sys.version) and
-                "linux" in sys.platform):
+        # Add sys.prefix/lib to the runtime search path. On
+        # non-system installations of Python that use the
+        # system linker, this is generally neccesary.
+        if sys.platform in ("linux", "darwin"):
             lib_path = os.path.join(sys.prefix, 'lib')
             ret.append('-Wl,-rpath,' + lib_path)
             res = try_blas_flag(ret)

@@ -18,6 +18,7 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.sandbox.cuda import cuda_available
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
+import theano.gpuarray.tests.config
 
 if cuda_available:
     from theano.sandbox.cuda import float32_shared_constructor
@@ -627,6 +628,37 @@ def test_uniform():
                   allow_01=True, inputs=input)
 
 
+def test_broadcastable():
+    R = MRG_RandomStreams(234, use_cuda=False)
+    x = tensor.matrix()
+    size1 = (10, 1)
+    size2 = (x.shape[0], 1)
+    pvals_1 = numpy.random.uniform(0, 1, size=size1)
+    pvals_1 = pvals_1 / sum(pvals_1)
+    pvals_2 = R.uniform(size=size2)
+    pvals_2 = pvals_2 / tensor.sum(pvals_2)
+
+    for distribution in [R.uniform, R.binomial, R.multinomial, R.multinomial_wo_replacement, R.normal]:
+        # multinomial or multinomial_wo_replacement does not support "size" argument,
+        # the sizes of them are implicitly defined with "pvals" argument.
+        if distribution in [R.multinomial, R.multinomial_wo_replacement]:
+            # check when all dimensions are constant
+            uu = distribution(pvals=pvals_1)
+            assert uu.broadcastable == (False, True)
+
+            # check when some dimensions are theano variables
+            uu = distribution(pvals=pvals_2)
+            assert uu.broadcastable == (False, True)
+        else:
+            # check when all dimensions are constant
+            uu = distribution(size=size1)
+            assert uu.broadcastable == (False, True)
+
+            # check when some dimensions are theano variables
+            uu = distribution(size=size2)
+            assert uu.broadcastable == (False, True)
+
+
 @attr('slow')
 def test_binomial():
     # TODO: test size=None, ndim=X
@@ -1146,6 +1178,16 @@ def test_overflow_gpu_new_backend():
              (numpy.int32(2), numpy.int32(2**10), numpy.int32(2**10))]
     rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
 
+
+def test_validate_input_types_gpuarray_backend():
+    from theano.sandbox.rng_mrg import mrg_uniform
+    from theano.gpuarray.type import gpuarray_shared_constructor
+    from theano.configparser import change_flags
+
+    with change_flags(compute_test_value="raise"):
+        rstate = numpy.zeros((7, 6), dtype="int32")
+        rstate = gpuarray_shared_constructor(rstate)
+        mrg_uniform.new(rstate, ndim=None, dtype="float32", size=(3,))
 
 if __name__ == "__main__":
     rng = MRG_RandomStreams(numpy.random.randint(2147462579))

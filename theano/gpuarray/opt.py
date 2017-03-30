@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import copy
-import numpy
+import numpy as np
 import logging
 import pdb
 import time
@@ -13,13 +13,16 @@ from theano import tensor, scalar, gof, config
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
+                        LocalGroupDB,
                         SequenceDB, Optimizer, DB, toolbox, graph)
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
 from theano.scalar.basic import Scalar, Pow, Cast
+from theano.scalar.basic_scipy import Erfinv, Erfcinv
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
+from theano.tensor.nnet import bn
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
@@ -30,6 +33,7 @@ from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv3d_gradWeights,
                                               AbstractConv3d_gradInputs)
 import theano.tensor.signal.pool as pool
+import theano.tensor.slinalg as slinalg
 
 from theano.tests.breakpoint import PdbBreakpoint
 
@@ -40,14 +44,14 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
-                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty,
-                        gpu_alloc, gpu_from_host)
+                        GpuEye, gpu_join, GpuJoin)
 from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemm_no_inplace, gpugemm_inplace,
                    gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace,
                    GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
-                   GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights,
+                   GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
+from .pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad, GpuMaxPoolRop,
                    GpuDownsampleFactorMaxGradGrad)
 from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
                           gpu_sparse_block_outer,
@@ -56,9 +60,9 @@ from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
 from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_crossentropy_softmax_argmax_1hot_with_bias,
                    gpu_softmax_with_bias, gpu_softmax)
-
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
-                       GpuCAReduceCPY, gpu_ca_reduce_cuda)
+                       GpuCAReduceCPY, gpu_erfinv, gpu_erfcinv,
+                       max_inputs_to_GpuElemwise)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor,
                         GpuAdvancedSubtensor1,
@@ -66,6 +70,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
+from .linalg import (GpuCusolverSolve, cusolver_available)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -129,7 +134,10 @@ def register_opt2(tracks, *tags, **kwargs):
     '''
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
-        opt = theano.gof.local_optimizer(tracks)(local_opt)
+        if isinstance(local_opt, theano.gof.DB):
+            opt = local_opt
+        else:
+            opt = theano.gof.local_optimizer(tracks)(local_opt)
         gpu_optimizer2.register(name, opt, 'fast_run', 'gpuarray', *tags)
         return local_opt
     return f
@@ -155,14 +163,14 @@ gpu_optimizer.register('local_remove_all_assert',
 
 def safe_to_gpu(x, ctx_name):
     if isinstance(x.type, tensor.TensorType):
-        return gpu_from_host(ctx_name)(x)
+        return GpuFromHost(ctx_name)(x)
     else:
         return x
 
 
 def safe_to_cpu(x):
     if isinstance(x.type, GpuArrayType):
-        return host_from_gpu(x)
+        return x.transfer('cpu')
     else:
         return x
 
@@ -184,7 +192,8 @@ def op_lifter(OP, cuda_only=False):
                 context_name = None
                 # We replace if any input is a host_from_gpu
                 for i in node.inputs:
-                    if i.owner and i.owner.op == host_from_gpu:
+                    if (i.owner and i.owner.op == host_from_gpu and
+                            move_to_gpu(i)):
                         context_name = i.owner.inputs[0].type.context_name
                         replace = True
                         break
@@ -206,7 +215,8 @@ def op_lifter(OP, cuda_only=False):
                 if (not replace or
                         (cuda_only and
                          get_context(context_name).kind != b'cuda') or
-                        any(["complex" in i.dtype for i in node.inputs])):
+                        any(["complex" in getattr(i, 'dtype', "")
+                             for i in node.inputs])):
                     return False
 
                 # tag the inputs with the context in case
@@ -224,7 +234,7 @@ def op_lifter(OP, cuda_only=False):
                     elif isinstance(new_op, (tuple, list)):
                         return [safe_to_cpu(o) for o in new_op]
                     else:  # suppose it is a variable on the GPU
-                        return [host_from_gpu(new_op)]
+                        return [new_op.transfer('cpu')]
             return False
         local_opt.__name__ = maker.__name__
         return local_optimizer(OP)(local_opt)
@@ -257,7 +267,7 @@ class InputToGpuOptimizer(Optimizer):
                 continue
 
             try:
-                new_input = host_from_gpu(gpu_from_host(target)(input))
+                new_input = GpuFromHost(target)(input).transfer('cpu')
                 fgraph.replace_validate(input, new_input,
                                         "InputToGpuOptimizer")
             except TypeError:
@@ -436,7 +446,7 @@ class GraphToGPU(Optimizer):
 
         print(blanc, "  time io_toposort %.3fs" % toposort_timing, file=stream)
 
-        s = sum([v for k, v in time_opts.iteritems()])
+        s = sum(time_opts.values())
         print(blanc, "Total time taken by local optimizers %.3fs " % s, file=stream)
 
         count_opt = []
@@ -534,7 +544,7 @@ def local_cut_gpu_transfers(node):
 
         # gpub ->
         if isinstance(n2.op, GpuToGpu):
-            return [host_from_gpu(n2.inputs[0])]
+            return [n2.inputs[0].transfer('cpu')]
 
     # ? -> gpua -> gpub
     elif isinstance(node.op, GpuToGpu):
@@ -583,19 +593,19 @@ def local_gpua_alloc2(node):
         return
     if (isinstance(node.op, tensor.Alloc) and
         all(c != 'output' and
-            c.op == tensor.join and
+            isinstance(c.op, tensor.Join) and
             all(i.owner and
                 i.owner.op in [host_from_gpu, tensor.alloc]
                 for i in c.inputs[1:])
             for c, idx in node.outputs[0].clients)):
-        return [host_from_gpu(gpu_alloc(None)(*node.inputs))]
+        return [GpuAlloc(None)(*node.inputs).transfer('cpu')]
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Alloc])
 @register_opt2([tensor.Alloc], 'fast_compile')
-def local_gpua_alloc(op, context_name, inputs, outputs):
-    return gpu_alloc(context_name)
+def local_gpuaalloc(op, context_name, inputs, outputs):
+    return GpuAlloc(context_name)(*inputs)
 
 
 @register_opt('fast_compile')
@@ -604,7 +614,7 @@ def local_gpua_alloc(op, context_name, inputs, outputs):
 def local_gpua_alloc_empty(op, context_name, inputs, outputs):
     # We use _props_dict() to make sure that the GPU op know all the
     # CPU op props.
-    return gpu_alloc_empty(context_name, **op._props_dict())
+    return GpuAllocEmpty(context_name=context_name, **op._props_dict())(*inputs)
 
 
 @register_opt()
@@ -614,8 +624,8 @@ def local_gpualloc_memset_0(node):
         inp = node.inputs[0]
         if (isinstance(inp, GpuArrayConstant) and
                 inp.data.size == 1 and
-                (numpy.asarray(inp.data) == 0).all()):
-            new_op = gpu_alloc(node.op.context_name, memset_0=True)
+                (np.asarray(inp.data) == 0).all()):
+            new_op = GpuAlloc(node.op.context_name, memset_0=True)
             return [new_op(*node.inputs)]
 
 
@@ -624,9 +634,9 @@ def local_gpualloc_memset_0(node):
 def local_gpua_alloc_empty_to_zeros(node):
     if isinstance(node.op, GpuAllocEmpty):
         context_name = infer_context_name(*node.inputs)
-        z = numpy.asarray(0, dtype=node.outputs[0].dtype)
-        return [gpu_alloc(context_name)(as_gpuarray_variable(z, context_name),
-                                        *node.inputs)]
+        z = np.asarray(0, dtype=node.outputs[0].dtype)
+        return [GpuAlloc(context_name)(as_gpuarray_variable(z, context_name),
+                                       *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.
@@ -692,6 +702,29 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         name = 'Gpu' + name
     if len(outputs) > 1:
         return
+
+    have_cuda = False
+    have_opencl = False
+    if inputs and isinstance(inputs[0].type, GpuArrayType):
+        kind = inputs[0].type.context.kind
+        if kind.startswith(b'opencl'):
+            have_opencl = True
+        elif kind.startswith(b'cuda'):
+            have_cuda = True
+    opname = False
+    if isinstance(scal_op, Erfinv):
+        opname = 'erfinv'
+        if have_cuda:
+            scal_op = gpu_erfinv
+    elif isinstance(scal_op, Erfcinv):
+        opname = 'erfcinv'
+        if have_cuda:
+            scal_op = gpu_erfcinv
+    if opname:
+        if have_opencl:
+            _logger.warning('Function "%s" is not supported with OpenCL. Use "device=cuda" instead.' % opname)
+        if not have_cuda:
+            return None
     res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)
@@ -720,26 +753,37 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         # cpu.
         gpu_output = res(*new_inputs)
         return [gpu_output]
+    elif op.scalar_op in (scalar.add, scalar.mul):
+        max_nb_inputs = max_inputs_to_GpuElemwise(outputs)
+        if max_nb_inputs > 1:
+            while len(inputs) > max_nb_inputs:
+                inputs = inputs[:-max_nb_inputs] + [res(*inputs[-max_nb_inputs:])]
+        return res(*inputs)
     else:
         return res
 
 
-def max_inputs_to_GpuElemwise(node):
-    ptr_size = 8
-    int_size = 4
+def split_huge_add_or_mul(node):
+    """
+    For add and mul, it can happen that we have too much input
+    That will make nvcc fail compilation of our current code.
+    We don't want node in the graph that can't execute
+    as this break DebugMode.
 
-    # we take the limit from CUDA for now
-    argument_limit = 232
-    ndim = node.inputs[0].type.ndim
-    # number of elements and shape
-    size_param_mandatory = (int_size * (ndim + 1)) + \
-        (ptr_size + int_size * ndim) * len(node.outputs)
+    This should not happen for other GpuElemwise as their is only the fusion
+    that can generate op with too much input and it check for that.
 
-    nb_bytes_avail = argument_limit - size_param_mandatory
-    nb_bytes_per_input = ptr_size + ndim * int_size
-    max_nb_inputs = nb_bytes_avail // nb_bytes_per_input
-
-    return max_nb_inputs
+    """
+    if node.op.scalar_op in (scalar.add, scalar.mul):
+        max_nb_inputs = max_inputs_to_GpuElemwise(node)
+        if max_nb_inputs <= 1 and len(node.inputs) > 1:
+            return False
+        while len(node.inputs) > max_nb_inputs:
+            inner_op = []
+            for i in range(0, len(node.inputs), max_nb_inputs):
+                inner_op.append(node.op(*node.inputs[i: i + max_nb_inputs]))
+            node = node.op(*inner_op).owner
+    return node
 
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
     GpuElemwise,
@@ -800,7 +844,7 @@ def local_gpua_shape_graph(op, context_name, inputs, outputs):
 
 
 def gpu_print_wrapper(op, cnda):
-    op.old_op.global_fn(op.old_op, numpy.asarray(cnda))
+    op.old_op.global_fn(op.old_op, np.asarray(cnda))
 
 
 @register_opt('fast_compile')
@@ -873,7 +917,7 @@ def local_gpu_pdbbreakpoint_op(node):
         new_outputs = []
         for i in range(len(new_op_outputs)):
             if input_transfered[i]:
-                new_outputs.append(host_from_gpu(new_op_outputs[i]))
+                new_outputs.append(new_op_outputs[i].transfer('cpu'))
             else:
                 new_outputs.append(new_op_outputs[i])
 
@@ -891,7 +935,7 @@ def local_gpua_lazy_ifelse(op, context_name, inputs, outputs):
     c = inputs[0]
     inps = []
     for v in inputs[1:]:
-        if isinstance(v.type, tensor.TensorType):
+        if isinstance(v.type, tensor.TensorType) and move_to_gpu(v):
             inps.append(as_gpuarray_variable(v, context_name))
         else:
             inps.append(v)
@@ -938,7 +982,7 @@ def local_gpua_subtensor(op, context_name, inputs, outputs):
                         for n, _ in outputs[0].clients]):
                     return
                 else:
-                    return [host_from_gpu(gpu_x.owner.op(outputs[0]))]
+                    return [gpu_x.owner.op(outputs[0]).transfer('cpu')]
 
     return GpuSubtensor(op.idx_list)
 
@@ -1008,9 +1052,14 @@ def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
     set_instead_of_inc = op.set_instead_of_inc
 
     compute_capability = int(context.bin_id[-2])
-
-    if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2 or
-            x.type.dtype != y.type.dtype):
+    if compute_capability >= 2 and x.ndim == 1 and y.ndim == 0:
+        x = x.dimshuffle(0, 'x')
+        y = y.dimshuffle('x', 'x')
+        ret = GpuAdvancedIncSubtensor1_dev20(
+            set_instead_of_inc=set_instead_of_inc)(x, y, ilist)
+        ret = GpuDimShuffle(ret.type.broadcastable, [0])(ret)
+        return ret
+    elif compute_capability < 2 or x.ndim != 2 or y.ndim != 2:
         return GpuAdvancedIncSubtensor1(
             set_instead_of_inc=set_instead_of_inc)
     else:
@@ -1114,6 +1163,8 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.Gemv, tensor.blas_c.CGemv])
 @register_opt2([tensor.blas.Gemv], 'fast_compile')
 def local_gpua_gemv(op, context_name, inputs, outputs):
+    if inputs[0].dtype not in ['float32', 'float64']:
+        return
     if op.inplace:
         return gpugemv_inplace
     else:
@@ -1124,6 +1175,8 @@ def local_gpua_gemv(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.Gemm])
 @register_opt2([tensor.blas.Gemm], 'fast_compile')
 def local_gpua_gemm(op, context_name, inputs, outputs):
+    if inputs[0].dtype not in ['float16', 'float32', 'float64']:
+        return
     if op.inplace:
         return gpugemm_inplace
     else:
@@ -1134,9 +1187,12 @@ def local_gpua_gemm(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.BatchedDot])
 @register_opt2([tensor.blas.BatchedDot], 'fast_compile')
 def local_gpua_gemmbatch(op, context_name, inputs, outputs):
+    if inputs[0].dtype not in ['float32', 'float64']:
+        return
     a, b = inputs
     c = tensor.AllocEmpty(a.dtype)(a.shape[0], a.shape[1], b.shape[2])
-    return gpugemmbatch_no_inplace(c, 1.0, a, b, 0.0)
+    return gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=a.dtype),
+                                   a, b, np.asarray(0.0, dtype=a.dtype))
 
 
 @register_opt()
@@ -1167,6 +1223,8 @@ def local_gpua_gemmbatch_output_merge(node, *inputs):
 @op_lifter([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer])
 @register_opt2([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer], 'fast_compile')
 def local_gpua_ger(op, context_name, inputs, outputs):
+    if inputs[0].dtype not in ['float32', 'float64']:
+        return
     return GpuGer(inplace=op.destructive)
 
 
@@ -1184,7 +1242,7 @@ def local_gpua_dot22scalar(op, context_name, inputs, outputs):
     x, y, a = inputs
     x = as_gpuarray_variable(x, context_name)
     y = as_gpuarray_variable(y, context_name)
-    z = gpu_alloc_empty(context_name, dtype=x.dtype)(x.shape[0], y.shape[1])
+    z = GpuAllocEmpty(x.dtype, context_name)(x.shape[0], y.shape[1])
     return [gpugemm_no_inplace(z, a, x, y, 0)]
 
 
@@ -1594,6 +1652,99 @@ def local_gpua_lift_abstractconv_graph(op, context_name, inputs, outputs):
     return [op(*inps)]
 
 
+def local_gpu_pool(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+    inp, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+
+    op = GpuPool(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        ret_padded = op(inp_padded, ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
+pool_db = LocalGroupDB()
+pool_db2 = LocalGroupDB(local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
+pool_db2.__name__ = "pool_db2"
+lifter = op_lifter([pool.Pool])(local_gpu_pool)
+pool_db.register("local_gpu_pool", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_pool",
+                  local_optimizer([pool.Pool])(local_gpu_pool),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
+register_opt('fast_compile', name='pool_db')(pool_db)
+register_opt2([pool.Pool], 'fast_compile', name='pool_db2')(pool_db2)
+
+
+def local_gpu_max_pool_grad(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+
+    inp, out, out_grad, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
+
+    op = GpuMaxPoolGrad(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, out, out_grad, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        out_padded = pad_dims(out, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = op(inp_padded, out_padded, out_grad_padded,
+                        ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
+lifter = op_lifter([pool.MaxPoolGrad])(local_gpu_max_pool_grad)
+pool_db.register("local_gpu_max_pool_grad", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_max_pool_grad",
+                  local_optimizer([pool.MaxPoolGrad])(local_gpu_max_pool_grad),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
+
+
+def local_gpu_average_pool_grad(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+
+    inp, out_grad, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
+
+    op = GpuAveragePoolGrad(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, out_grad, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = op(inp_padded, out_grad_padded,
+                        ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
+lifter = op_lifter([pool.AveragePoolGrad])(local_gpu_average_pool_grad)
+pool_db.register("local_gpu_average_pool_grad", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_average_pool_grad",
+                  local_optimizer([pool.AveragePoolGrad])(local_gpu_average_pool_grad),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
+
+
 @register_opt()
 @op_lifter([pool.DownsampleFactorMaxGradGrad])
 @register_opt2([pool.DownsampleFactorMaxGradGrad])
@@ -1620,6 +1771,29 @@ def local_gpu_downsample_factor_max_grad_grad(op, ctx_name, inputs, outputs):
         return unpad_dims(ret_padded, inp, 2, nd)
 
 
+@register_opt()
+@op_lifter([pool.MaxPoolRop])
+@register_opt2([pool.MaxPoolRop])
+def local_gpu_max_pool_rop(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+    inp, eval_inp, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    eval_inp = gpu_contiguous(as_gpuarray_variable(eval_inp, ctx_name))
+
+    op = GpuMaxPoolRop(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, eval_inp, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        eval_inp_padded = pad_dims(eval_inp, 2, nd)
+        ret_padded = op(inp_padded, eval_inp_padded, ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
+
+
 @register_opt("low_memory")
 @local_optimizer([GpuCAReduceCuda])
 def local_gpu_elemwise_careduce(node):
@@ -1638,10 +1812,10 @@ def local_gpu_elemwise_careduce(node):
             isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)):
         op = node.op
         inp = node.inputs[0].owner.inputs[0]
-        return [gpu_ca_reduce_cuda(scalar_op=op.scalar_op,
-                                   axis=op.axis,
-                                   reduce_mask=op.reduce_mask,
-                                   pre_scalar_op=scalar.basic.sqr)(inp)]
+        return [GpuCAReduceCuda(scalar_op=op.scalar_op,
+                                axis=op.axis,
+                                reduce_mask=op.reduce_mask,
+                                pre_scalar_op=scalar.basic.sqr)(inp)]
 
 
 @local_optimizer(None)
@@ -1797,6 +1971,16 @@ def local_gpu_argmax(op, context_name, inputs, outputs):
     return argmax
 
 
+# solve
+@register_opt('fast_compile')
+@op_lifter([slinalg.Solve])
+@register_opt2([theano.tensor.slinalg.Solve], 'fast_compile')
+def local_gpu_solve(op, context_name, inputs, outputs):
+    if not cusolver_available:
+        return
+    return GpuCusolverSolve()
+
+
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.
 optdb.register('gpua_scanOp_make_inplace',
@@ -1815,9 +1999,8 @@ abstractconv_groupopt = theano.gof.optdb.LocalGroupDB()
 abstractconv_groupopt.__name__ = "gpuarray_abstractconv_opts"
 register_opt('fast_compile')(abstractconv_groupopt)
 
-# cuDNN is first, but only registered if cuDNN is available.
-# (we import these opts here instead of at the top of this file
-# to avoid a circular dependency problem with dnn)
+# We import these opts here instead of at the top of this file
+# to avoid a circular dependency problem with dnn
 from .dnn import (local_abstractconv_cudnn, local_abstractconv_gw_cudnn,
                   local_abstractconv_gi_cudnn)     # noqa: 402
 abstractconv_groupopt.register('local_abstractconv_dnn',
@@ -1856,3 +2039,56 @@ abstractconv_groupopt.register('local_abstractconv3d_gradinputs',
                                local_abstractconv3d_gradinputs_gemm, 30,
                                'conv_gemm',
                                'gpuarray', 'fast_compile', 'fast_run')
+
+
+# Register cuDNN batch normalization implementation
+
+# We import these opts here instead of at the top of this file
+# to avoid a circular dependency problem with dnn
+from .dnn import (local_abstract_batch_norm_train_cudnn,
+                  local_abstract_batch_norm_train_grad_cudnn,
+                  local_abstract_batch_norm_inference_cudnn)     # noqa: 402
+
+abstract_batch_norm_groupopt = theano.gof.optdb.LocalGroupDB()
+abstract_batch_norm_groupopt.__name__ = "gpuarray_batchnorm_opts"
+register_opt('fast_compile')(abstract_batch_norm_groupopt)
+
+abstract_batch_norm_db = LocalGroupDB()
+abstract_batch_norm_db2 = LocalGroupDB(
+    local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
+abstract_batch_norm_db2.__name__ = "abstract_batch_norm_db2"
+register_opt('fast_compile', name='abstract_batch_norm_db')(
+    abstract_batch_norm_db)
+register_opt2([bn.AbstractBatchNormTrain,
+               bn.AbstractBatchNormTrainGrad,
+               bn.AbstractBatchNormInference],
+              'fast_compile', name='abstract_batch_norm_db2')(
+    abstract_batch_norm_db2)
+
+for op, fct, cpu in [(bn.AbstractBatchNormTrain,
+                      local_abstract_batch_norm_train_cudnn,
+                      bn.local_abstract_batch_norm_train),
+                     (bn.AbstractBatchNormTrainGrad,
+                      local_abstract_batch_norm_train_grad_cudnn,
+                      bn.local_abstract_batch_norm_train_grad),
+                     (bn.AbstractBatchNormInference,
+                      local_abstract_batch_norm_inference_cudnn,
+                      bn.local_abstract_batch_norm_inference)]:
+    lifter = op_lifter([op])(fct)
+    abstract_batch_norm_db.register(fct.__name__,
+                                    lifter,
+                                    'gpuarray', 'fast_compile', 'fast_run',
+                                    'cudnn', 'batchnorm_dnn',
+                                    position=1)
+    abstract_batch_norm_db2.register(fct.__name__,
+                                     local_optimizer([op])(fct),
+                                     'gpuarray', 'fast_compile', 'fast_run',
+                                     'cudnn', 'batchnorm_dnn',
+                                     position=1)
+    # cpu is a normal optimization. We can't register it in
+    # GraphToGPU.  So for now, only add it to the slower EQ phase.  If
+    # there is no cuDNN, we still want to move it to the GPU now with
+    # a Theano graph so to have this graph on the GPU.
+    abstract_batch_norm_db.register(cpu.__name__, cpu,
+                                    'gpuarray', 'fast_compile', 'fast_run',
+                                    position='last')

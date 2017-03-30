@@ -4,7 +4,7 @@ import pickle
 import unittest
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 
 from theano import (
     sparse,
@@ -212,7 +212,7 @@ class TestToposort:
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(r3, r4)
         all = io_toposort([r1, r2, r3, r4], o0.outputs + o1.outputs)
-        assert all == [o1, o0]
+        assert all == [o1, o0] or all == [o0, o1]
 
     def test_4(self):
         """Test inputs and outputs mixed together in a chain graph"""
@@ -340,13 +340,26 @@ class TestAutoName:
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
 
     def test_constant(self):
+        # Make sure the value we will use for the test aren't yet in the cache.
+        r1 = tensor.constant(1.5)
+        del tensor.constant_cache[r1.signature()]
+        r1 = tensor.constant(1.6)
+        del tensor.constant_cache[r1.signature()]
+
         # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = tensor.constant(1.5)
         r2 = tensor.constant(1.5)
-        assert r1.auto_name == "auto_" + str(autoname_id)
-        assert r2.auto_name == "auto_" + str(autoname_id + 1)
+        assert r1.auto_name == "auto_" + str(autoname_id), (
+            r1.auto_name, "auto_" + str(autoname_id))
+        # We reuse the same variable
+        assert r2.auto_name == "auto_" + str(autoname_id), (
+            r2.auto_name, "auto_" + str(autoname_id))
+        assert r1 is r2
+
+        r3 = tensor.constant(1.6)
+        assert r3.auto_name == "auto_" + str(autoname_id + 1)
 
     def test_tensorvariable(self):
         # Get counter value
@@ -355,7 +368,7 @@ class TestAutoName:
         r1 = tensor.TensorType(dtype='int32', broadcastable=())('myvar')
         r2 = tensor.TensorVariable(tensor.TensorType(dtype='int32',
                                                      broadcastable=()))
-        r3 = shared(numpy.random.randn(3, 4))
+        r3 = shared(np.random.randn(3, 4))
         assert r1.auto_name == "auto_" + str(autoname_id)
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
         assert r3.auto_name == "auto_" + str(autoname_id + 2)

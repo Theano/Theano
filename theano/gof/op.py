@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 
 import inspect
 import logging
-import numpy
+import numpy as np
 import os
 import re
 import sys
@@ -19,7 +19,7 @@ import theano
 from theano import config
 
 import theano.gof.cc
-from six import itervalues
+from six import itervalues, PY3
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler
@@ -33,6 +33,17 @@ __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 __docformat__ = "restructuredtext en"
 
 _logger = logging.getLogger('theano.gof.op.Op')
+
+
+# Open file in "universal newline mode".
+# In Python 2, this is done by calling open(..., 'U'), but this is
+# deprected in Python 3 (where we would need to pass "newline=None",
+# which is the default).
+if PY3:
+    _open_u = open
+else:
+    def _open_u(file):
+        return open(file, 'U')
 
 
 class CLinkerObject(object):
@@ -916,7 +927,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         fail and we try again 'py', prepare_node will be called twice.
         """
 
-        if impl is None or impl == 'c':
+        if (impl is None and theano.config.cxx) or impl == 'c':
             self.prepare_node(node, storage_map=storage_map,
                               compute_map=compute_map, impl='c')
             try:
@@ -1216,8 +1227,8 @@ def apply_meth(tag):
             code = self.code_sections[tag]
 
             define_macros, undef_macros = self.get_c_macros(node, name)
-            return os.linesep.join(['', define_macros, code,
-                                    undef_macros])
+            return '\n'.join(['', define_macros, code,
+                              undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_' + tag, type(self), type(self).__name__)
@@ -1270,10 +1281,11 @@ class COp(Op):
         if not isinstance(func_files, list):
             func_files = [func_files]
 
-        self.func_files = [self.get_path(f) for f in func_files]
         self.func_name = func_name
-
-        self.load_c_code()
+        # Keep the original name. If we reload old pickle, we want to
+        # find the new path and new version of the file in Theano.
+        self.func_files = func_files
+        self.load_c_code(func_files)
 
         if len(self.code_sections) == 0:
             raise ValueError("No sections where defined in C files")
@@ -1288,13 +1300,15 @@ class COp(Op):
                 raise ValueError('Cannot have an "op_code_cleanup" section '
                                  'and specify the func_name')
 
-    def load_c_code(self):
+    def load_c_code(self, func_files):
         """
         Loads the c code to perform the Op
         """
+        func_files = [self.get_path(f) for f in func_files]
         self.func_codes = []
-        for func_file in self.func_files:
-            with open(func_file, 'r') as f:
+        for func_file in func_files:
+            # U (universal) will convert all new lines format to \n.
+            with _open_u(func_file) as f:
                 self.func_codes.append(f.read())
 
         # If both the old section markers and the new section markers are
@@ -1336,7 +1350,7 @@ class COp(Op):
                 if split[0].strip() != '':
                     raise ValueError('Stray code before first #section '
                                      'statement (in file %s): %s' %
-                                     (self.func_files[i], split[0]))
+                                     (func_files[i], split[0]))
 
                 # Separate the code into the proper sections
                 n = 1
@@ -1344,7 +1358,7 @@ class COp(Op):
                     if split[n] not in self.SECTIONS:
                         raise ValueError(
                             "Unknown section type (in file %s): %s" %
-                            (self.func_files[i], split[n]))
+                            (func_files[i], split[n]))
                     if split[n] not in self.code_sections:
                         self.code_sections[split[n]] = ""
                     self.code_sections[split[n]] += split[n + 1]
@@ -1352,7 +1366,7 @@ class COp(Op):
 
             else:
                 raise ValueError("No valid section marker was found in file "
-                                 "%s" % self.func_files[i])
+                                 "%s" % func_files[i])
 
     def get_op_params(self):
         """
@@ -1428,7 +1442,7 @@ class COp(Op):
                     (macro_name, macro_value))
                 undef_macros.append(undef_template % macro_name)
 
-                d = numpy.dtype(v.dtype)
+                d = np.dtype(v.dtype)
 
                 macro_name = "TYPENUM_" + vname
                 macro_value = d.num
@@ -1455,7 +1469,7 @@ class COp(Op):
             define_macros.append(define_template % (n, v))
             undef_macros.append(undef_template % (n,))
 
-        return os.linesep.join(define_macros), os.linesep.join(undef_macros)
+        return '\n'.join(define_macros), '\n'.join(undef_macros)
 
     def _lquote_macro(self, txt):
         res = []
@@ -1463,7 +1477,7 @@ class COp(Op):
         for l in spl[:-1]:
             res.append(l + ' \\')
         res.append(spl[-1])
-        return os.linesep.join(res)
+        return '\n'.join(res)
 
     def get_sub_macros(self, sub):
         define_macros = []
@@ -1475,7 +1489,7 @@ class COp(Op):
             define_macros.append("#define PARAMS %s" % (sub['params'],))
             undef_macros.append("#undef PARAMS")
 
-        return os.linesep.join(define_macros), os.linesep.join(undef_macros)
+        return '\n'.join(define_macros), '\n'.join(undef_macros)
 
     def get_io_macros(self, inputs, outputs):
         define_macros = []
@@ -1500,9 +1514,9 @@ class COp(Op):
             def_macros, undef_macros = self.get_c_macros(node, name)
             def_sub, undef_sub = self.get_sub_macros(sub)
 
-            return os.linesep.join(['', def_macros, def_sub,
-                                    op_code,
-                                    undef_sub, undef_macros])
+            return '\n'.join(['', def_macros, def_sub,
+                              op_code,
+                              undef_sub, undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_init_code_struct', type(self), type(self).__name__)
@@ -1540,9 +1554,9 @@ class COp(Op):
                 def_sub, undef_sub = self.get_sub_macros(sub)
                 def_io, undef_io = self.get_io_macros(inp, out)
 
-                return os.linesep.join([def_macros, def_sub, def_io,
-                                        op_code,
-                                        undef_io, undef_sub, undef_macros])
+                return '\n'.join([def_macros, def_sub, def_io,
+                                  op_code,
+                                  undef_io, undef_sub, undef_macros])
             else:
                 raise utils.MethodNotDefined(
                     'c_code', type(self), type(self).__name__)
@@ -1558,9 +1572,9 @@ class COp(Op):
             def_sub, undef_sub = self.get_sub_macros(sub)
             def_io, undef_io = self.get_io_macros(inputs, outputs)
 
-            return os.linesep.join([def_macros, def_sub, def_io,
-                                    op_code,
-                                    undef_io, undef_sub, undef_macros])
+            return '\n'.join([def_macros, def_sub, def_io,
+                              op_code,
+                              undef_io, undef_sub, undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_code_cleanup', type(self), type(self).__name__)

@@ -86,7 +86,7 @@ def random_lil(shape, dtype, nnz):
         idx = np.random.randint(1, huge+1, size=2) % shape
         value = np.random.rand()
         # if dtype *int*, value will always be zeros!
-        if "int" in dtype:
+        if dtype in theano.sparse.integer_dtypes:
             value = int(value * 100)
         # The call to tuple is needed as scipy 0.13.1 do not support
         # ndarray with lenght 2 as idx tuple.
@@ -1572,12 +1572,13 @@ class UsmmTests(unittest.TestCase):
                 # Usmm is tested at the same time in debugmode
                 # Check if the optimization local_usmm and local_usmm_csx is
                 # applied
-                assert isinstance(topo[0].op,
-                                  theano.sparse.basic.CSMProperties)
-                assert isinstance(topo[1].op, theano.tensor.DimShuffle)
-                assert isinstance(topo[2].op, theano.tensor.Subtensor)
-                assert topo[3].op == theano.tensor.neg
-                assert isinstance(topo[4].op, UsmmCscDense)
+                def check_once(x):
+                    assert sum([isinstance(n.op, x) for n in topo]) == 1
+                check_once(theano.sparse.basic.CSMProperties)
+                check_once(theano.tensor.DimShuffle)
+                check_once(theano.tensor.Subtensor)
+                check_once(UsmmCscDense)
+                check_once(theano.tensor.Elemwise)
                 if inplace:
                     assert topo[4].op.inplace
             elif not fast_compile:
@@ -2965,7 +2966,8 @@ TruncTester = elemwise_checker(
     sparse.trunc,
     np.trunc,
     test_dtypes=[m for m in sparse.all_dtypes
-                 if not m in sparse.complex_dtypes])
+                 if not m in sparse.complex_dtypes],
+    grad_test=False)
 
 
 SqrTester = elemwise_checker(
@@ -3166,6 +3168,20 @@ class SamplingDotTester(utt.InferShapeTester):
 
         tested = f(*self.a)
         x, y, p = self.a
+        expected = p.multiply(np.dot(x, y.T))
+
+        utt.assert_allclose(as_ndarray(expected), tested.toarray())
+        assert tested.format == 'csr'
+        assert tested.dtype == expected.dtype
+
+    def test_negative_stride(self):
+        f = theano.function(
+            self.x,
+            sampling_dot(*self.x))
+
+        a2 = [self.a[0][::-1,:], self.a[1][:,::-1], self.a[2]]
+        tested = f(*a2)
+        x, y, p = a2
         expected = p.multiply(np.dot(x, y.T))
 
         utt.assert_allclose(as_ndarray(expected), tested.toarray())

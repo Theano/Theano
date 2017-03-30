@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 
 import theano
 import theano.typed_list
@@ -14,8 +14,8 @@ from theano import In
 
 # took from tensors/tests/test_basic.py
 def rand_ranged_matrix(minimum, maximum, shape):
-    return numpy.asarray(numpy.random.rand(*shape) * (maximum - minimum) +
-                         minimum, dtype=theano.config.floatX)
+    return np.asarray(np.random.rand(*shape) * (maximum - minimum) +
+                      minimum, dtype=theano.config.floatX)
 
 
 class test_inplace(unittest.TestCase):
@@ -34,7 +34,7 @@ class test_inplace(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x, y]), [y, x]))
+        self.assertTrue(np.array_equal(f([x, y]), [y, x]))
 
     def test_append_inplace(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -52,7 +52,7 @@ class test_inplace(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], y), [x, y]))
+        self.assertTrue(np.array_equal(f([x], y), [x, y]))
 
     def test_extend_inplace(self):
         mySymbolicMatricesList1 = TypedListType(T.TensorType(
@@ -72,7 +72,7 @@ class test_inplace(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], [y]), [x, y]))
+        self.assertTrue(np.array_equal(f([x], [y]), [x, y]))
 
     def test_insert_inplace(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -92,7 +92,7 @@ class test_inplace(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1,
+        self.assertTrue(np.array_equal(f([x], np.asarray(1,
                         dtype='int64'), y), [x, y]))
 
     def test_remove_inplace(self):
@@ -110,7 +110,7 @@ class test_inplace(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x, y], y), [x]))
+        self.assertTrue(np.array_equal(f([x, y], y), [x]))
 
 
 def test_constant_folding():

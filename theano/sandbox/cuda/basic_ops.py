@@ -4,7 +4,6 @@ import logging
 import sys
 import warnings
 import numpy
-from six import iteritems
 from six.moves import StringIO, xrange
 
 import theano
@@ -2665,7 +2664,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     def make_node(self, x, ilist):
         x_ = as_cuda_ndarray_variable(x)
         ilist_ = tensor.as_tensor_variable(ilist)
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -2782,7 +2781,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
 
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -2976,7 +2975,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
 
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -3599,7 +3598,7 @@ class GpuJoin(tensor.Join, GpuOp):
 gpu_join = GpuJoin()
 
 
-class GpuSplit(tensor.Split, GpuOp):
+class GpuSplit(gof.HideC, tensor.Split, GpuOp):
     def make_node(self, x, axis, splits):
         x = as_cuda_ndarray_variable(x)
         node = tensor.Split.make_node(self, x, axis, splits)
@@ -4090,59 +4089,6 @@ def tensor4(name=None, dtype=None):
                            broadcastable=(False, False, False, False))
     return type(name)
 ftensor4 = CudaNdarrayType(dtype='float32', broadcastable=(False,) * 4)
-
-
-# TODO: move that to the new back-end and new profiling.py print_tips
-# @theano.compile.profilemode.register_profiler_printer
-def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
-                    apply_time, apply_cimpl, message, outputs_size,
-                    other_time):
-    if any([x[1].op.__class__.__name__.lower().startswith("gpu")
-            for x in apply_time.keys()]):
-        local_time = sum(apply_time.values())
-        print()
-        print('Some info useful for gpu:')
-
-        cpu = 0
-        gpu = 0
-        trans = 0
-        for (_, node), t in iteritems(apply_time):
-            if isinstance(node.op.__class__.__name__,
-                          (HostFromGpu, GpuFromHost)):
-                trans += t
-            elif node.op.__class__.__name__.lower().startswith("gpu"):
-                gpu += t
-            else:
-                cpu += t
-        print()
-        print("    Spent %.3fs(%.3f%%) in cpu Op, %.3fs(%.3f%%) in gpu Op and %.3fs(%.3f%%) transfert Op" % (
-            cpu, cpu / local_time * 100, gpu, gpu / local_time * 100,
-            trans, trans / local_time * 100))
-
-        print()
-        print("    Theano function input that are float64")
-        print("    <fct name> <input name> <input type> <str input>")
-        for fct in fct_call:
-            for i in fct.input_storage:
-                if hasattr(i.type, 'dtype') and i.type.dtype == 'float64':
-                    print('        ', fct.name, i.name, i.type, i)
-
-        print()
-        print("    List of apply that don't have float64 as input but have float64 in outputs")
-        print("    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)")
-        print('    <Apply> <Apply position> <fct name> <inputs type> <outputs type>')
-        for fct in fct_call:
-            for idx, node in enumerate(fct.maker.fgraph.toposort()):
-                if (any(hasattr(i, 'dtype') and i.dtype == 'float64'
-                        for i in node.outputs) and
-                    not any(hasattr(i, 'dtype') and i.dtype == 'float64'
-                            for i in node.inputs)):
-
-                    print('        ', str(node), idx, fct.name, end=' ')
-                    print(str([getattr(i, 'dtype', None)
-                               for i in node.inputs]), end=' ')
-                    print(str([getattr(i, 'dtype', None)
-                               for i in node.outputs]))
 
 
 class GpuEye(GpuOp):

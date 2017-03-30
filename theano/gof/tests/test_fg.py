@@ -3,6 +3,8 @@ import os
 import pickle
 import unittest
 
+from nose.plugins.skip import SkipTest
+
 import theano
 from theano.compat import PY3
 from theano.gof import CachedConstantError, FunctionGraph
@@ -32,6 +34,8 @@ class TFunctionGraph(unittest.TestCase):
         # In the past, we where removing some not used variable from
         # fgraph.variables event if the apply had other output used in
         # the graph. This caused a crash.
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx for this test")
 
         # This test run the pickle that reproduce this case.
         with open(os.path.join(os.path.dirname(__file__),
