@@ -1613,19 +1613,20 @@ class GpuEye(GpuKernelBase, Op):
 
     def gpu_kernels(self, node, name):
         code = """
-KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m, ga_int k) {
-    ga_int col_off = max(k, (ga_int) 0);
-    ga_int row_off = -min(k, (ga_int) 0);
-    ga_size nb = (ga_size) min(n - row_off, m - col_off);
-    nb = max(nb, (ga_size) 0);
-    for (ga_size i = LID_0; i < nb; i += LDIM_0) {
-        a[(i + row_off)*m + i + col_off] = %(write_a)s(1);
+KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m, ga_long k) {
+    ga_long col_off = max(k, (ga_long) 0);
+    ga_long row_off = -min(k, (ga_long) 0);
+    if (row_off < n && col_off < m) {
+        ga_size nb = (ga_size) min(n - row_off, m - col_off);
+        for (ga_size i = LID_0; i < nb; i += LDIM_0) {
+            a[(i + row_off)*m + i + col_off] = %(write_a)s(1);
+        }
     }
 }""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype),
             name=name, write_a=write_w(self.dtype))
         return [Kernel(
                 code=code, name="eye",
-                params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE, np.int32],
+                params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE, 'int64'],
                 flags=Kernel.get_flags(self.dtype),
                 objvar='k_eye_' + name)]
 
@@ -1640,7 +1641,7 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m, ga_int k) {
         s = """
         size_t dims[2] = {0, 0};
         size_t ls, gs;
-        int k;
+        long k;
         int err;
 
         dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
