@@ -1,12 +1,11 @@
 from __future__ import absolute_import, print_function, division
-import numpy as np
 
 from theano import Op, Apply, config
+from theano.gof import ParamsType
 from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor as T
 
 try:
-    import pygpu
     from pygpu import gpuarray
 except ImportError:
     pass
@@ -14,7 +13,7 @@ except ImportError:
 from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
                         infer_context_name)
 from .opt import register_opt2, op_lifter, register_opt
-from .type import GpuArrayType
+from .type import GpuArrayType, gpu_context_type
 
 
 class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
@@ -22,13 +21,10 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
     Images2Neibs for the GPU.
 
     """
-    def __init__(self, mode='valid'):
-        if mode not in ['valid', 'ignore_borders', 'wrap_centered']:
-            raise NotImplementedError("Only the mode valid, ignore_borders"
-                                      " and wrap_centered"
-                                      " have been implemented for the op"
-                                      " GpuImages2Neibs")
-        self.mode = mode
+    params_type = ParamsType(mode=Images2Neibs.params_type, context=gpu_context_type)
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=GpuKernelBase.get_params(self, node))
 
     def make_node(self, ten4, neib_shape, neib_step):
         ten4 = as_gpuarray_variable(ten4, infer_context_name(ten4))
@@ -47,7 +43,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                    context_name=ten4.type.context_name)()])
 
     def c_code_cache_version(self):
-        return (11,)
+        return (17,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -58,13 +54,15 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         flags = Kernel.get_flags(dtype_ten4, dtype_z)
         type_ten4 = gpuarray.dtype_to_ctype(dtype_ten4)
         type_z = gpuarray.dtype_to_ctype(dtype_z)
-        mode = self.mode
+        mode_constants = self.params_type.get_type('mode').c_support_code()
         kernels = []
         kname = "k_multi_warp_less"
         k_var = "k_multi_warp_less_" + nodename
         code = """
-// a version that uses less registers but doesn't work in all cases.
+        // a version that uses less registers but doesn't work in all cases.
+        %(mode_constants)s
         KERNEL void %(kname)s(
+            const ga_int mode,
             const ga_int nb_batch,
             const ga_int nb_stack,
             const ga_int height,
@@ -107,7 +105,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                             ga_int i = LID_1;     // loop over c
                             {
                                 ga_int ten4_2 = i + a * step_x;
-                                if("%(mode)s"=="wrap_centered"){
+                                if (mode == MODE_WRAP_CENTERED) {
                                     ten4_2 -= wrap_centered_idx_shift_x;
                                     if ( ten4_2 < 0 )
                                         ten4_2 += height;
@@ -117,7 +115,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                 ga_int j = LID_0;  // loop over d
                                 {
                                     ga_int ten4_3 = j + b * step_y;
-                                    if("%(mode)s"=="wrap_centered"){
+                                    if (mode == MODE_WRAP_CENTERED) {
                                         ten4_3 -= wrap_centered_idx_shift_y;
                                         if ( ten4_3 < 0 )
                                             ten4_3 += width;
@@ -136,8 +134,9 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                 }
                             }
             }
-        }""" % locals()
+        }""" % dict(kname=kname, type_ten4=type_ten4, type_z=type_z, mode_constants=mode_constants)
         params = [
+            'intc',
             'intc', 'intc', 'intc', 'intc', 'intc', 'intc',
             'intc', 'intc', 'intc', 'intc',
             'uintp', 'uintp', 'uintp', 'uintp',
@@ -151,7 +150,9 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         kname = "k_multi_warp"
         k_var = "k_multi_warp_" + nodename
         code = """
+        %(mode_constants)s
         KERNEL void %(kname)s(
+            const ga_int mode,
             const ga_int nb_batch,
             const ga_int nb_stack,
             const ga_int height,
@@ -195,7 +196,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                             for (ga_int i = LID_1; i < c; i+=LDIM_1)
                             {
                                 ga_int ten4_2 = i + a * step_x;
-                                if("%(mode)s"=="wrap_centered"){
+                                if (mode == MODE_WRAP_CENTERED) {
                                     ten4_2 -= wrap_centered_idx_shift_x;
                                     if ( ten4_2 < 0 )
                                         ten4_2 += height;
@@ -206,7 +207,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                 for (ga_int j = LID_0; j < d; j+=LDIM_0)
                                 {
                                     ga_int ten4_3 = j + b * step_y;
-                                    if("%(mode)s"=="wrap_centered"){
+                                    if (mode == MODE_WRAP_CENTERED) {
                                         ten4_3 -= wrap_centered_idx_shift_y;
                                         if ( ten4_3 < 0 )
                                             ten4_3 += width;
@@ -226,8 +227,9 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                             }
             }
         }
-        """ % locals()
+        """ % dict(kname=kname, type_ten4=type_ten4, type_z=type_z, mode_constants=mode_constants)
         params = [
+            'intc',
             'intc', 'intc', 'intc', 'intc', 'intc', 'intc',
             'intc', 'intc', 'intc', 'intc',
             'uintp', 'uintp', 'uintp', 'uintp',
@@ -249,18 +251,6 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         """
 
     def c_code(self, node, name, inp, out, sub):
-        dtype_ten4 = node.inputs[0].dtype
-        dtype_neib_shape = node.inputs[1].dtype
-        dtype_neib_step = node.inputs[2].dtype
-        dtype_z = node.outputs[0].dtype
-        itemsize_ten4 = np.dtype(dtype_ten4).itemsize
-        itemsize_z = np.dtype(dtype_z).itemsize
-        typecode_z = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
-        ten4, neib_shape, neib_step = inp
-        z, = out
-        fail = sub['fail']
-        ctx = sub['params']
-        mode = self.mode
         err_check = """
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
@@ -268,16 +258,23 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                              GpuKernel_error(fptr, err));
                 %(fail)s;
             }
-        """ % locals()
+        """ % dict(fail=sub['fail'])
         sync = ""
         if config.gpuarray.sync:
             sync = """
             err = GpuArray_sync(&%(z)s->ga);
             %(err_check)s
-            """ % locals()
+            """ % dict(z=out[0], err_check=err_check)
+        # NB: To reduce C code variability:
+        # For itemsize_ten4, I use GpuArray_ITEMSIZE(&ten4->ga) instead of np.dtype(node.inputs[0].dtype).itemsize
+        # For itemsize_z, I use itemsize_ten4, as ten4 and z have same type properties (deduced from make_node)
+        # For typecode_z, I use ten4->ga.typecode (for same reason as above)
         return """
         int grid_c = -1;
         int grid_d = -1;
+        size_t itemsize_ten4 = GpuArray_ITEMSIZE(&%(ten4)s->ga);
+        size_t itemsize_z = itemsize_ten4;
+        int typecode_z = %(ten4)s->ga.typecode;
 
         {
             if (PyGpuArray_NDIM(%(ten4)s) != 4)
@@ -310,10 +307,10 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             const npy_intp step_y = (npy_intp) *(npy_%(dtype_neib_step)s*)
                                          PyArray_GETPTR1(%(neib_step)s, 1);
 
-            if ( "%(mode)s" == "wrap_centered") {
+            if (%(params)s->mode == MODE_WRAP_CENTERED) {
                 if (c%%2!=1 || d%%2!=1){
                     PyErr_Format(PyExc_TypeError,
-        "GpuImages2Neibs: in mode wrap_centered need patch with odd shapes");
+                                 "GpuImages2Neibs: in mode wrap_centered need patch with odd shapes");
                     %(fail)s;
                 }
                 if ( PyGpuArray_DIMS(%(ten4)s)[2] < c ||
@@ -334,7 +331,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                      (size_t)step_y);
 
 
-            }else if ( "%(mode)s" == "valid") {
+            } else if (%(params)s->mode == MODE_VALID) {
                 if ( ((PyGpuArray_DIMS(%(ten4)s))[2] < c) ||
                      ((((PyGpuArray_DIMS(%(ten4)s))[2]-c) %% step_x)!=0))
                 {
@@ -359,14 +356,14 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                 grid_c = 1+(((PyGpuArray_DIMS(%(ten4)s))[2]-c)/step_x);
                 //number of patch in width
                 grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]-d)/step_y);
-            }else if ( "%(mode)s" == "ignore_borders") {
+            } else if (%(params)s->mode == MODE_IGNORE_BORDERS) {
                 //number of patch in height
                 grid_c = 1+(((PyGpuArray_DIMS(%(ten4)s))[2]-c)/step_x);
                 //number of patch in width
                 grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]-d)/step_y);
-            }else{
+            } else {
                 PyErr_Format(PyExc_TypeError,
-                             "GpuImages2Neibs:: unknown mode '%(mode)s'");
+                             "GpuImages2Neibs:: unknown mode %%d", %(params)s->mode);
                  %(fail)s;
             }
 
@@ -385,8 +382,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                 size_t dims[2];
                 dims[0] = z_dim0;
                 dims[1] = z_dim1;
-                %(z)s = pygpu_empty(2, dims, %(typecode_z)s,
-                                    GA_C_ORDER, %(ctx)s, Py_None);
+                %(z)s = pygpu_empty(2, dims, typecode_z,
+                                    GA_C_ORDER, %(params)s->context, Py_None);
                 if (!%(z)s)
                 {
                     PyErr_SetString(PyExc_MemoryError, "GpuImages2Neibs:"
@@ -399,6 +396,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
 
         { // NESTED SCOPE
 
+            const int mode = %(params)s->mode;
             const int nb_batch = PyGpuArray_DIMS(%(ten4)s)[0];
             const int nb_stack = PyGpuArray_DIMS(%(ten4)s)[1];
             const int height = PyGpuArray_DIMS(%(ten4)s)[2];
@@ -416,7 +414,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             size_t threads_per_block[3] = {d, c, 1};
             //get the max threads per blocks
             size_t max_threads_dim;
-            int err = gpucontext_property(%(ctx)s->ctx, GA_CTX_PROP_MAXLSIZE, &max_threads_dim);
+            int err = gpucontext_property(%(params)s->context->ctx, GA_CTX_PROP_MAXLSIZE, &max_threads_dim);
             if (err != GA_NO_ERROR){
                 PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_threads_dims");
                 %(fail)s;
@@ -444,14 +442,19 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             }else{
                 fptr = &k_multi_warp_%(name)s;
             }
-            // printf("%%zu %%zu %%zu %%zu %%zu %%zu %%zu\\n", max_threads_dim, threads_per_block[0], threads_per_block[1], threads_per_block[2], n_blocks[0], n_blocks[1], n_blocks[2]);
-            size_t stride_A0 = PyGpuArray_STRIDES(%(ten4)s)[0] / %(itemsize_ten4)s;
-            size_t stride_A1 = PyGpuArray_STRIDES(%(ten4)s)[1] / %(itemsize_ten4)s;
-            size_t stride_A2 = PyGpuArray_STRIDES(%(ten4)s)[2] / %(itemsize_ten4)s;
-            size_t stride_A3 = PyGpuArray_STRIDES(%(ten4)s)[3] / %(itemsize_ten4)s;
-            size_t stride_Z0 = PyGpuArray_STRIDES(%(z)s)[0] / %(itemsize_z)s;
-            size_t stride_Z1 = PyGpuArray_STRIDES(%(z)s)[1] / %(itemsize_z)s;
-            void *kernel_params[] = {(void *)&nb_batch,
+            /*
+            printf("%%zu %%zu %%zu %%zu %%zu %%zu %%zu\\n",
+                   max_threads_dim, threads_per_block[0], threads_per_block[1], threads_per_block[2],
+                   n_blocks[0], n_blocks[1], n_blocks[2]);
+            */
+            size_t stride_A0 = PyGpuArray_STRIDES(%(ten4)s)[0] / itemsize_ten4;
+            size_t stride_A1 = PyGpuArray_STRIDES(%(ten4)s)[1] / itemsize_ten4;
+            size_t stride_A2 = PyGpuArray_STRIDES(%(ten4)s)[2] / itemsize_ten4;
+            size_t stride_A3 = PyGpuArray_STRIDES(%(ten4)s)[3] / itemsize_ten4;
+            size_t stride_Z0 = PyGpuArray_STRIDES(%(z)s)[0] / itemsize_z;
+            size_t stride_Z1 = PyGpuArray_STRIDES(%(z)s)[1] / itemsize_z;
+            void *kernel_params[] = {(void *)&mode,
+                                     (void *)&nb_batch,
                                      (void *)&nb_stack,
                                      (void *)&height, (void *)&width,
                                      (void *)&c, (void *)&d,
@@ -471,11 +474,18 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             %(err_check)s
             %(sync)s
         } // END NESTED SCOPE
-        """ % locals()
+        """ % dict(ten4=inp[0], neib_shape=inp[1], neib_step=inp[2], z=out[0],
+                   dtype_neib_shape=node.inputs[1].dtype,
+                   dtype_neib_step=node.inputs[2].dtype,
+                   err_check=err_check,
+                   sync=sync,
+                   name=name,
+                   params=sub['params'],
+                   fail=sub['fail'])
 
-    def perform(self, node, inp, out, ctx):
+    def perform(self, node, inp, out, params):
         # Disable the perform method from the CPU version
-        Op.perform(self, node, inp, out, ctx)
+        Op.perform(self, node, inp, out, params)
 
 
 @register_opt('fast_compile')
