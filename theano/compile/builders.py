@@ -2,9 +2,10 @@
 from __future__ import absolute_import, division, print_function
 from functools import reduce, partial
 from collections import OrderedDict
+import logging
 
 import theano
-from theano import gof
+from theano import gof, config
 from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared, optdb
@@ -13,6 +14,7 @@ from theano.gof.graph import io_connection_pattern
 from theano.gof.null_type import NullType
 from theano.gradient import DisconnectedType
 
+_logger = logging.getLogger('theano.compile.builders')
 
 class OpFromGraph(gof.Op):
     """
@@ -226,15 +228,31 @@ class OpFromGraph(gof.Op):
         if 'updates' in kwargs or 'givens' in kwargs:
             raise TypeError('updates and givens are not allowed here')
         self.is_inline = inline
+        if config.optimizer != 'None':
+            device = config.device
+            if device.startswith('cpu') or device.startswith('gpu'):
+                device = device[:3]
+            elif device.startswith('cuda') or device.startswith('opencl'):
+                device = None
+            elif not inline:
+                _logger.warn(
+                    'OpFromGraph: unknown device %s,'
+                    ' computation might not be performed on that device without inline=True')
+            replace = [(i, i.transfer(device).type()) for i in inputs]
+            outputs = [o.transfer(device) for o in outputs]
+        else:
+            # we don't want extra transfer when optimizer==None
+            replace = []
+
         # To correctly support shared variables the inner fct should
         # not see them. Otherwise there is a problem with the gradient.
         self.shared_inputs = [var for var in gof.graph.inputs(outputs)
                               if isinstance(var, SharedVariable)]
         shared_vars = [var.type() for var in self.shared_inputs]
 
+        replace.extend(list(izip(self.shared_inputs, shared_vars)))
         new = rebuild_collect_shared(outputs, inputs=inputs + shared_vars,
-                                     replace=dict(izip(
-                                         self.shared_inputs, shared_vars)),
+                                     replace=dict(replace),
                                      copy_inputs_over=False)
         (local_inputs, local_outputs,
          [clone_d, update_d, update_expr, shared_inputs]) = new
