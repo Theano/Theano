@@ -52,8 +52,8 @@ class Images2Neibs(Op):
     def __init__(self, mode='valid'):
         implemented_modes = self.params_type.get_aliases()
         if mode not in implemented_modes:
-            raise NotImplementedError("Only modes %s have been implemented for Images2Neibs"
-                                      % ', '.join(implemented_modes))
+            raise NotImplementedError("Only modes %s have been implemented for %s"
+                                      % (', '.join(implemented_modes), type(self).__name__))
         self.mode = mode
 
     def __str__(self):
