@@ -20,7 +20,7 @@ except ImportError:
 
 
 class _operators(tensor.basic._tensor_py_operators):
-    dtype = property(lambda s: 'float32')
+    dtype = property(lambda s: s.type.dtype)
     broadcastable = property(lambda s: s.type.broadcastable)
     ndim = property(lambda s: s.type.ndim)
 

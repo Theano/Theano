@@ -1223,16 +1223,32 @@ static PyMethodDef module_methods[] = {
 };
 
 
-/*
- * Module initialization function.
- */
+#if PY_MAJOR_VERSION == 3
+static struct PyModuleDef mkl_ndarray_moduledef = 
+{
+    PyModuleDef_HEAD_INIT,
+    "mkl_ndarray",
+    "MKL implementation of a numpy ndarray-like object.",
+    -1,
+    module_methods
+};
+
 PyMODINIT_FUNC
-initmkl_ndarray(void) {
+PyInit_mkl_ndarray(void)
+#else
+PyMODINIT_FUNC
+initmkl_ndarray(void)
+#endif
+{
     import_array();
     PyObject* m = NULL;
 
     if (PyType_Ready(&MKLNdarrayType) < 0) {
+#if PY_MAJOR_VERSION == 3
+        return NULL;
+#else
         return;
+#endif
     }
 
     // add attribute to MKLNdarrayType
@@ -1240,12 +1256,23 @@ initmkl_ndarray(void) {
     // by MKLNdarray.float32 or MKLNdarray.float64
     PyDict_SetItemString(MKLNdarrayType.tp_dict, "float32", PyInt_FromLong(MKL_FLOAT32));
     PyDict_SetItemString(MKLNdarrayType.tp_dict, "float64", PyInt_FromLong(MKL_FLOAT64));
-
-    m = Py_InitModule3("mkl_ndarray", module_methods, "MKL implementation of a ndarray object.");
+#if PY_MAJOR_VERSION == 3
+    m = PyModule_Create(&mkl_ndarray_moduledef);
+#else
+    m = Py_InitModule3("mkl_ndarray", module_methods, "MKL implementation of a numpy ndarray-like object.");
+#endif
     if (m == NULL) {
+#if PY_MAJOR_VERSION == 3
+        return NULL;
+#else
         return;
+#endif
     }
     Py_INCREF(&MKLNdarrayType);
     PyModule_AddObject(m, "MKLNdarray", (PyObject*)&MKLNdarrayType);
+#if PY_MAJOR_VERSION == 3
+    return m;
+#else
     return;
+#endif
 }
