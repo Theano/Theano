@@ -266,6 +266,11 @@ class NVCC_compiler(Compiler):
                     preargs1.append('-Xlinker')
                     preargs1.append(pa[4:])
                 continue
+            if pa.startswith('-std='):
+                # MSVC doesn't have this flag
+                if sys.platform != 'win32':
+                    preargs1.append(pa)
+                continue
             for pattern in ['-O', '-arch=', '-ccbin=', '-G', '-g', '-I',
                             '-L', '--fmad', '--ftz', '--maxrregcount',
                             '--prec-div', '--prec-sqrt', '--use_fast_math',

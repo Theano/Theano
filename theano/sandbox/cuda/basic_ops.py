@@ -3461,8 +3461,22 @@ class GpuJoin(tensor.Join, GpuOp):
         PyObject *start, *stop;
         start = NULL;
         stop = NULL;
-
         """ % locals()
+
+        cdna_map = dict((cdna, i) for i, cdna in enumerate(gof.utils.uniq(inputs[1:])))
+        str += """
+        int shapes[%d][nd];
+        struct { 
+            CudaNdarray* const ptr;
+            int const shape_idx;
+        } const inputs[] = {
+        """ % len(cdna_map)
+        for i, cdna in enumerate(inputs[1:]):
+            cdna_idx = cdna_map[cdna]
+            if i > 0:
+                str += ",\n\t\t"
+            str += "{%(cdna)s, %(cdna_idx)d}" % locals()
+        str += "};"
 
         # Test negative axis
         str += """
@@ -3471,7 +3485,6 @@ class GpuJoin(tensor.Join, GpuOp):
                          "Join axis %%d out of bounds [0, %%d)", axis, nd);
             %(fail)s
         }
-
         if( axis < 0 ){
             axis = axis + nd;
         }
@@ -3480,13 +3493,7 @@ class GpuJoin(tensor.Join, GpuOp):
         # getting the shapes of all the involved tensors (input[1:])
         # + check: all input tensors have same shape as final out
         # except for "axis" dimension
-        # shape_%(cdna)s[nd] is initialized before, to prevent following
-        # error: jump to label __label_9 crosses initialization of
-        # shape_%(cdna)s[nd]
-        for i, cdna in enumerate(gof.utils.uniq(inputs[1:])):
-            str += """
-            int shape_%(cdna)s[nd];
-            """ % locals()
+
         str += """
         if(-1 == axis && PyErr_Occurred()){
             %(fail)s;
@@ -3495,19 +3502,17 @@ class GpuJoin(tensor.Join, GpuOp):
         if(full_slice == NULL){
             %(fail)s;
         }
-
-        for(int i = 0; i<nd; i+=1)
-        {
-            shape_%(input_1)s[i] = CudaNdarray_HOST_DIMS(%(input_1)s)[i];
-            shape_out[i] = shape_%(input_1)s[i];
-        }
+        std::copy_n(CudaNdarray_HOST_DIMS(%(input_1)s), nd, shapes[0]);
+        std::copy_n(shapes[0], nd, shape_out);
         """ % locals()
+
         for i, cdna in enumerate(gof.utils.uniq(inputs[2:])):
+            cdna_idx = cdna_map[cdna]
             str += """
+            std::copy_n(CudaNdarray_HOST_DIMS(%(cdna)s), nd, shapes[%(cdna_idx)d]);
             for(int i = 0; i<nd; i+=1)
             {
-                shape_%(cdna)s[i] = CudaNdarray_HOST_DIMS(%(cdna)s)[i];
-                if((i!=axis) && (shape_%(cdna)s[i]!=shape_out[i]))
+                if((i!=axis) && (shapes[%(cdna_idx)d][i]!=shape_out[i]))
                 {
                     PyErr_Format(
                         PyExc_ValueError,
@@ -3520,8 +3525,10 @@ class GpuJoin(tensor.Join, GpuOp):
             """ % locals()
 
         # computing the new shape for the out tensors
-        for i, cdna in enumerate(inputs[1:]):
-            str += "\t\twidth_sum += CudaNdarray_HOST_DIMS(%(cdna)s)[axis];\n" % locals()
+        str += """
+        for (auto it : inputs)
+            width_sum += shapes[it.shape_idx][axis];
+        """
         str += "\t\tshape_out[axis] = width_sum;\n"
 
         # preparing the output array + init of the necessary variables
@@ -3532,19 +3539,19 @@ class GpuJoin(tensor.Join, GpuOp):
             %(fail)s;
         }
         """ % locals()
+
         # start copying the data into the new out tensors
-        for i, cdna in enumerate(inputs[1:]):
-            str += """
-            sum += shape_%(cdna)s[axis];
+        str += """
+        for (auto it : inputs) 
+        {
+            sum += shapes[it.shape_idx][axis];
             stop = PyInt_FromLong(sum);
             slice_tuple = PyTuple_New(nd);
-            if(slice_tuple == NULL){
-                %(fail)s;
-            }
             section_slice = PySlice_New(start, stop, NULL);
-            if(section_slice == NULL){
+            if(slice_tuple == NULL || section_slice == NULL){
                 %(fail)s;
             }
+ 
             for(int i=0; i<nd; i++)
             {
                 if(i!=axis)
@@ -3569,9 +3576,8 @@ class GpuJoin(tensor.Join, GpuOp):
             }
             Py_CLEAR(slice_tuple);
             Py_CLEAR(section_slice);
-
             errorcode = CudaNdarray_CopyFromCudaNdarray(
-                (CudaNdarray*)out_sub, %(cdna)s);
+                (CudaNdarray*)out_sub, it.ptr);
             if(errorcode != 0)
             {
                 Py_XDECREF(start);
@@ -3584,7 +3590,8 @@ class GpuJoin(tensor.Join, GpuOp):
             Py_XDECREF(start);
             start = stop;
             stop = NULL;
-            """ % locals()
+        }
+        """ % locals()
 
         str += """
             Py_XDECREF(start);
@@ -3593,7 +3600,10 @@ class GpuJoin(tensor.Join, GpuOp):
         return str
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
+
+    def c_compile_args(self):
+        return ["-std=c++11"]
 
 gpu_join = GpuJoin()
 
