@@ -234,7 +234,8 @@ def gpu_alloc_expected(x, *shp):
 
 GpuAllocTester = makeTester(
     name="GpuAllocTester",
-    op=alloc,
+    # The +1 is there to allow the lift to the GPU.
+    op=lambda *args: alloc(*args) + 1,
     gpu_op=GpuAlloc(test_ctx_name),
     cases=dict(
         correct01=(rand(), np.int32(7)),

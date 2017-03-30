@@ -105,7 +105,7 @@ class t_gemm(TestCase):
     def test0a(self):
         Gemm.debug = True
         try:
-            g = gemm_inplace([1.], 1., [1.], [1.], 1.)
+            g = gemm_no_inplace([1.], 1., [1.], [1.], 1.)
         except TypeError as e:
             if exc_message(e) is Gemm.E_rank:
                 return
