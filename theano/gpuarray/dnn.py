@@ -130,12 +130,12 @@ def _dnn_check_version():
     v = version()
     if v < 5000:
         return False, "cuDNN version is too old. Update to v5, was %d." % v
-    # 5200 should not print warning with cudnn 5.1 final.
-    if v >= 5200:
+    # 6100 should not print warning with cudnn 6.0 GA.
+    if v >= 6100:
         warnings.warn("Your cuDNN version is more recent than "
                       "Theano. If you encounter problems, try "
                       "updating Theano or downgrading cuDNN to "
-                      "version 5.1.")
+                      "version 6.0.")
     return True, None
 
 

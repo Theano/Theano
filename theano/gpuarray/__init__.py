@@ -112,7 +112,8 @@ def init_dev(dev, name=None):
               (name, dev, context.devname, pcibusid),
               file=sys.stderr)
     pygpu_activated = True
-
+    cuda_available = True
+    
 # This maps things like 'cuda0' to the context object on that device.
 init_dev.devmap = {}
 

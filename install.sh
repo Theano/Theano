@@ -36,3 +36,9 @@ cd ${THIS_DIR} \
 
 echo "=== Finished installing Theano."
 
+echo "=== Installing Lasagne..."
+
+cd ${THIS_DIR}/qa/third_party/lasagne && ${SUDO} pip install --no-deps -e . || exit 1
+
+echo "=== Finished installing Lasagne."
+

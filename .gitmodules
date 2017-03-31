@@ -4,11 +4,11 @@
 	branch = master
 [submodule "third_party/lasagne"]
 	path = qa/third_party/lasagne
-	url = https://github.com/Lasagne/Lasagne.git
+	url = ../../bfomitchev/lasagne
 	branch = master
 [submodule "third_party/pylearn2"]
 	path = qa/third_party/pylearn2
-	url = https://github.com/lisa-lab/pylearn2.git
+	url = ../../bfomitchev/pylearn2.git
 	branch = master
 [submodule "libgpuarray"]
 	path = libgpuarray
