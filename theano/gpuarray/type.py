@@ -209,8 +209,23 @@ class GpuArrayType(Type):
         return get_context(self.context_name)
 
     def __repr__(self):
-        return "GpuArrayType<%s>(%s, %s)" % (self.context_name, self.dtype,
-                                             self.broadcastable)
+        # Inspired from TensorType.
+        if self.name:
+            return self.name
+        else:
+            b = self.broadcastable
+            named_broadcastable = {tuple(): 'scalar',
+                                   (False,): 'vector',
+                                   (False, True): 'col',
+                                   (True, False): 'row',
+                                   (False, False): 'matrix'}
+            if b in named_broadcastable:
+                bcast = named_broadcastable[b]
+            elif any(b):
+                bcast = str(b)
+            else:
+                bcast = '%iD' % len(b)
+            return "GpuArrayType<%s>(%s, %s)" % (self.context_name, self.dtype, bcast)
 
     def filter(self, data, strict=False, allow_downcast=None):
         return self.filter_inplace(data, None, strict=strict,
