@@ -16,6 +16,7 @@ from theano.gradient import DisconnectedType
 
 _logger = logging.getLogger('theano.compile.builders')
 
+
 class OpFromGraph(gof.Op):
     """
     This creates an ``Op`` from inputs and outputs lists of variables.
@@ -228,20 +229,24 @@ class OpFromGraph(gof.Op):
         if 'updates' in kwargs or 'givens' in kwargs:
             raise TypeError('updates and givens are not allowed here')
         self.is_inline = inline
+
         if config.optimizer != 'None':
+            def safe_transfer(v, d):
+                return v.transfer(d) if hasattr(v, 'transfer') else v
             device = config.device
             if device.startswith('cpu') or device.startswith('gpu'):
                 device = device[:3]
             elif device.startswith('cuda') or device.startswith('opencl'):
-                device = None
+                from theano.gpuarray.basic_ops import infer_context_name
+                device = infer_context_name(*inputs)
             elif not inline:
                 _logger.warn(
-                    'OpFromGraph: unknown device %s,'
-                    ' computation might not be performed on that device without inline=True')
-            replace = [(i, i.transfer(device).type()) for i in inputs]
-            outputs = [o.transfer(device) for o in outputs]
+                    'OpFromGraph: inner computation might not be '
+                    'performed on device %s without inline=True', device)
+            replace = [(i, safe_transfer(i, device).type()) for i in inputs]
+            outputs = [safe_transfer(o, device) for o in outputs]
         else:
-            # we don't want extra transfer when optimizer==None
+            # We don't want extra transfer when optimizer==None
             replace = []
 
         # To correctly support shared variables the inner fct should
@@ -267,8 +272,8 @@ class OpFromGraph(gof.Op):
         self.inputs = inputs
         self.outputs = outputs
         self.kwargs = kwargs
-        self.input_types = [inp.type for inp in inputs]
-        self.output_types = [out.type for out in outputs]
+        self.input_types = [inp.type for inp in local_inputs]
+        self.output_types = [out.type for out in local_outputs]
         self.set_grad_overrides(grad_overrides)
         self.set_rop_overrides(rop_overrides)
 
@@ -652,6 +657,7 @@ def inline_ofg_expansion(node):
         op.local_outputs, {
             u: v for u, v in izip(
                 node.op.local_inputs, node.inputs)})
+
 
 # We want to run this before the first merge optimizer
 # and before the first scan optimizer.
