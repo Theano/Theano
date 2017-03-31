@@ -101,6 +101,7 @@ def print_compiledir_content():
 
     compiledir = theano.config.compiledir
     table = []
+    table_op_class = {}
     more_than_one_ops = 0
     zeros_op = 0
     big_key_files = []
@@ -115,6 +116,10 @@ def print_compiledir_content():
                 keydata = pickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
+                # Whatever the case, we count compilations for OP classes.
+                for op_class in set([op.__class__ for op in ops]):
+                    table_op_class.setdefault(op_class, 0)
+                    table_op_class[op_class] += 1
                 if len(ops) == 0:
                     zeros_op += 1
                 elif len(ops) > 1:
@@ -147,14 +152,11 @@ def print_compiledir_content():
         len(table), compiledir))
     print("sub dir/compiletime/Op/set of different associated Theano types")
     table = sorted(table, key=lambda t: str(t[1]))
-    table_op_class = {}
     for dir, op, types, compile_time in table:
         print(dir, '%.3fs' % compile_time, op, types)
-        table_op_class.setdefault(op.__class__, 0)
-        table_op_class[op.__class__] += 1
 
     print()
-    print(("List of %d individual compiled Op classes and "
+    print(("List of %d compiled Op classes and "
            "the number of times they got compiled" % len(table_op_class)))
     table_op_class = sorted(iteritems(table_op_class), key=lambda t: t[1])
     for op_class, nb in table_op_class:
