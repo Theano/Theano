@@ -1,0 +1,231 @@
+--- theano/sandbox/cuda/basic_ops.py
++++ theano/sandbox/cuda/basic_ops.py
+@@ -1081,40 +1081,20 @@ class GpuCAReduce(GpuOp):
+                                                'buf[i]', sub, False) + """
+             }
+             buf[threadNum] = myresult;
+-        /*Comment this optimization as it don't work on Fermi GPU.
+-        TODO: find why it don't work or put the GPU compute capability into the version
+-            // no sync because only one warp is running
+-            if(threadCount >32)
+-            {"""
+-        for num in [16, 8, 4, 2, 1]:
+-            current_version += self._assign_reduce(node, name,
+-                                                   'buf[threadNum]',
+-                                                   'buf[threadNum+%d]' % num,
+-                                                   sub, False)
+-        current_version += """
+-                if (threadNum == 0)
+-                {
+-                    %(z_pos)s = buf[0];
+-                }
+-
+-            }
+-            else */
+-            if (threadNum < 16)
+-            {
+-                //reduce so that threadNum 0 has the reduction of everything
+-                """
++        }
++        __syncthreads();
++        //reduce so that threadNum 0 has the reduction of everything
++        """
+         for num in [16, 8, 4, 2, 1]:
+-            this_if = "if (threadNum + %d < threadCount) " % num + \
++            this_if = "if (threadNum < %d && threadNum + %d < threadCount) " % (num, num) + \
+                 self._assign_reduce(node, name,
+                                     'buf[threadNum]', 'buf[threadNum+%d]' % num,
+                                     sub, False)
+-            current_version += this_if
++            current_version += this_if + "__syncthreads();"
+         current_version += """
+-                if (threadNum == 0)
+-                {
+-                    %(z_pos)s = buf[0];
+-                }
+-            }
++        if (threadNum == 0)
++        {
++            %(z_pos)s = buf[0];
+         }
+         """
+ 
+--- theano/sandbox/cuda/cuda_ndarray.cu
++++ theano/sandbox/cuda/cuda_ndarray.cu
+@@ -4783,19 +4783,22 @@ static __global__ void kernel_reduce_sum_1011(
+             mysum += buf[i];
+         }
+         buf[threadNum] = mysum;
+-        if (threadNum < 16)
+-        {
+-            //reduce so that threadNum 0 has the sum of everything
+-            if(threadNum + 16 < threadCount) buf[threadNum] += buf[threadNum+16];
+-            if(threadNum + 8 < threadCount) buf[threadNum] += buf[threadNum+8];
+-            if(threadNum + 4 < threadCount) buf[threadNum] += buf[threadNum+4];
+-            if(threadNum + 2 < threadCount) buf[threadNum] += buf[threadNum+2];
+-            if(threadNum + 1 < threadCount) buf[threadNum] += buf[threadNum+1];
+-            if (threadNum == 0)
+-            {
+-                Z[blockIdx.x*sZ0] = buf[0];
+-            }
+-        }
++    }
++    __syncthreads();
++    //reduce so that threadNum 0 has the sum of everything
++    if(threadNum < 16 && threadNum + 16 < threadCount) buf[threadNum] += buf[threadNum+16];
++    __syncthreads();
++    if(threadNum < 16 && threadNum + 8 < threadCount) buf[threadNum] += buf[threadNum+8];
++    __syncthreads();
++    if(threadNum < 16 && threadNum + 4 < threadCount) buf[threadNum] += buf[threadNum+4];
++    __syncthreads();
++    if(threadNum < 16 && threadNum + 2 < threadCount) buf[threadNum] += buf[threadNum+2];
++    __syncthreads();
++    if(threadNum < 16 && threadNum + 1 < threadCount) buf[threadNum] += buf[threadNum+1];
++    __syncthreads();
++    if (threadNum == 0)
++    {
++        Z[blockIdx.x*sZ0] = buf[0];
+     }
+ }
+ /**
+--- third_party/pycuda/pycuda/reduction.py
++++ third_party/pycuda/pycuda/reduction.py
+@@ -123,17 +123,35 @@ def get_reduction_module(out_type, block_size,
+             __syncthreads();
+           #endif
+
+-          if (tid < 32)
+-          {
+-            // 'volatile' required according to Fermi compatibility guide 1.2.2
+-            volatile out_type *smem = sdata;
+-            if (BLOCK_SIZE >= 64) smem[tid] = REDUCE(smem[tid], smem[tid + 32]);
+-            if (BLOCK_SIZE >= 32) smem[tid] = REDUCE(smem[tid], smem[tid + 16]);
+-            if (BLOCK_SIZE >= 16) smem[tid] = REDUCE(smem[tid], smem[tid + 8]);
+-            if (BLOCK_SIZE >= 8)  smem[tid] = REDUCE(smem[tid], smem[tid + 4]);
+-            if (BLOCK_SIZE >= 4)  smem[tid] = REDUCE(smem[tid], smem[tid + 2]);
+-            if (BLOCK_SIZE >= 2)  smem[tid] = REDUCE(smem[tid], smem[tid + 1]);
+-          }
++          #if (BLOCK_SIZE >= 64)
++            if (tid < 32) { sdata[tid] = REDUCE(sdata[tid], sdata[tid + 32]); }
++            __syncthreads();
++          #endif
++
++          #if (BLOCK_SIZE >= 32)
++            if (tid < 16) { sdata[tid] = REDUCE(sdata[tid], sdata[tid + 16]); }
++            __syncthreads();
++          #endif
++
++          #if (BLOCK_SIZE >= 16)
++            if (tid < 8) { sdata[tid] = REDUCE(sdata[tid], sdata[tid + 8]); }
++            __syncthreads();
++          #endif
++
++          #if (BLOCK_SIZE >= 8)
++            if (tid < 4) { sdata[tid] = REDUCE(sdata[tid], sdata[tid + 4]); }
++            __syncthreads();
++          #endif
++
++          #if (BLOCK_SIZE >= 4)
++            if (tid < 2) { sdata[tid] = REDUCE(sdata[tid], sdata[tid + 2]); }
++            __syncthreads();
++          #endif
++
++          #if (BLOCK_SIZE >= 2)
++            if (tid < 1) { sdata[tid] = REDUCE(sdata[tid], sdata[tid + 1]); }
++            //__syncthreads();  // don't need to sync only one thread with itself
++          #endif
+
+           if (tid == 0) out[blockIdx.x] = sdata[0];
+         }
+
+--- third_party/pycuda/pycuda/compyte/ndarray/gen_reduction.py
++++ third_party/pycuda/pycuda/compyte/ndarray/gen_reduction.py
+@@ -391,75 +391,22 @@ class GpuSum(object):
+                 mysum += buf[i];
+             }
+             buf[threadNum] = mysum;
+-            if (threadNum < 16)
+-            {
+-                //reduce so that threadNum 0 has the sum of everything
+-                if(threadNum + 16 < threadCount)
+-                    buf[threadNum] += buf[threadNum+16];
+-                if(threadNum + 8 < threadCount)
+-                    buf[threadNum] += buf[threadNum+8];
+-                if(threadNum + 4 < threadCount)
+-                    buf[threadNum] += buf[threadNum+4];
+-                if(threadNum + 2 < threadCount)
+-                    buf[threadNum] += buf[threadNum+2];
+-                if(threadNum + 1 < threadCount)
+-                    buf[threadNum] += buf[threadNum+1];
+-                if (threadNum == 0)
+-                {
+-                    %(z_pos)s = buf[0];
+-                }
+-            }
+         }
+-        """ % locals()
+-        return """
+-        __syncthreads(); // some kernel do multiple reduction.
+-        buf[threadNum] = mysum;
+         __syncthreads();
+-
+-        // rest of function is handled by one warp
+-        if (threadNum < warpSize)
++        //reduce so that threadNum 0 has the sum of everything
++        if(threadNum < 16 && threadNum + 16 < threadCount) buf[threadNum] += buf[threadNum+16];
++        __syncthreads();
++        if(threadNum < 16 && threadNum + 8 < threadCount) buf[threadNum] += buf[threadNum+8];
++        __syncthreads();
++        if(threadNum < 16 && threadNum + 4 < threadCount) buf[threadNum] += buf[threadNum+4];
++        __syncthreads();
++        if(threadNum < 16 && threadNum + 2 < threadCount) buf[threadNum] += buf[threadNum+2];
++        __syncthreads();
++        if(threadNum < 16 && threadNum + 1 < threadCount) buf[threadNum] += buf[threadNum+1];
++        __syncthreads();
++        if (threadNum == 0)
+         {
+-            //round up all the partial sums into the first `warpSize` elements
+-            for (int i = threadNum + warpSize; i < threadCount; i += warpSize)
+-            {
+-                mysum += buf[i];
+-            }
+-            buf[threadNum] = mysum;
+-/*Comment this optimization as it don't work on Fermi GPU.
+-TODO: find why it don't work or put the GPU compute capability into the version
+-            // no sync because only one warp is running
+-            if(threadCount >32)
+-            {
+-                buf[threadNum] += buf[threadNum+16];
+-                buf[threadNum] += buf[threadNum+8];
+-                buf[threadNum] += buf[threadNum+4];
+-                buf[threadNum] += buf[threadNum+2];
+-                buf[threadNum] += buf[threadNum+1];
+-                if (threadNum == 0)
+-                {
+-                    %(z_pos)s = buf[0];
+-                }
+-
+-            }
+-            else */
+-            if (threadNum < 16)
+-            {
+-                //reduce so that threadNum 0 has the sum of everything
+-                if(threadNum + 16 < threadCount)
+-                    buf[threadNum] += buf[threadNum+16];
+-                if(threadNum + 8 < threadCount)
+-                    buf[threadNum] += buf[threadNum+8];
+-                if(threadNum + 4 < threadCount)
+-                    buf[threadNum] += buf[threadNum+4];
+-                if(threadNum + 2 < threadCount)
+-                    buf[threadNum] += buf[threadNum+2];
+-                if(threadNum + 1 < threadCount)
+-                    buf[threadNum] += buf[threadNum+1];
+-                if (threadNum == 0)
+-                {
+-                    %(z_pos)s = buf[0];
+-                }
+-            }
++            %(z_pos)s = buf[0];
+         }
+         """ % locals()
+ 

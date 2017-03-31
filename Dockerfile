@@ -28,6 +28,9 @@ LABEL com.nvidia.build.ref="${NVIDIA_BUILD_REF}"
 WORKDIR /opt/theano
 COPY . .
 
+RUN patch -p0 < bug1893551.patch && rm bug1893551.patch
+RUN patch -p0 < bug1897733.patch && rm bug1897733.patch
+
 RUN MAKEFLAGS="-j$(nproc)" \
     PREFIX=/usr/local \
     ./install.sh 

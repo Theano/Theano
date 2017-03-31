@@ -1,0 +1,15 @@
+--- third_party/pycuda/src/wrapper/wrap_cudadrv.cpp
++++ third_party/pycuda/src/wrapper/wrap_cudadrv.cpp
+@@ -975,10 +975,12 @@ BOOST_PYTHON_MODULE(_driver)
+     ;
+ 
+   py::enum_<CUjit_target>("jit_target")
++#if CUDAPP_CUDA_VERSION <= 8000
+     .value("COMPUTE_10", CU_TARGET_COMPUTE_10)
+     .value("COMPUTE_11", CU_TARGET_COMPUTE_11)
+     .value("COMPUTE_12", CU_TARGET_COMPUTE_12)
+     .value("COMPUTE_13", CU_TARGET_COMPUTE_13)
++#endif
+ #if CUDAPP_CUDA_VERSION >= 3000
+     .value("COMPUTE_20", CU_TARGET_COMPUTE_20)
+ #endif
