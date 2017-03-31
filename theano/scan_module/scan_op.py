@@ -2198,7 +2198,7 @@ class Scan(PureOp):
                 dC_dinps_t[dx + self.n_seqs] += dC_dXtm1
         # Construct scan op
         # Seqs
-        outer_inp_seqs = [x[:grad_steps][::-1] for x in inputs[1:1 + self.n_seqs]]
+        outer_inp_seqs = [x[grad_steps - 1::-1] for x in inputs[1:1 + self.n_seqs]]
         for idx in xrange(self.n_mit_mot + self.n_mit_sot):
             mintap = np.min(self.tap_array[idx])
             if idx < self.n_mit_mot:
@@ -2216,7 +2216,7 @@ class Scan(PureOp):
             x[:-1][::-1] for x in self.outer_sitsot_outs(outs)]
         for x in self.outer_nitsot_outs(dC_douts):
             if not isinstance(x.type, DisconnectedType):
-                outer_inp_seqs.append(x[:grad_steps][::-1])
+                outer_inp_seqs.append(x[grad_steps - 1::-1])
 
         if hasattr(inputs[0].tag, 'test_value'):
             # Here we tests that the new scan input sequence all have
@@ -2236,7 +2236,7 @@ class Scan(PureOp):
                             grad_steps.tag.test_value)
             for x in self.outer_nitsot_outs(outs):
                 if hasattr(x[::-1].tag, 'test_value'):
-                    assert (x[:grad_steps][::-1].tag.test_value.shape[0] ==
+                    assert (x[grad_steps - 1::-1].tag.test_value.shape[0] ==
                             grad_steps.tag.test_value)
         outer_inp_seqs += [x[::-1][:np.min(taps)]
                            for taps, x in zip(self.mitsot_taps(),
@@ -2536,7 +2536,8 @@ class Scan(PureOp):
                         outer_inp_seqs +
                         outer_inp_mitmot +
                         outer_inp_sitsot +
-                        [grad_steps for _ in xrange(n_nit_sot)] +
+                        [grad_steps if self.as_while else inputs[0]
+                         for _ in xrange(n_nit_sot)] +
                         self.outer_shared(inputs) +
                         self.outer_non_seqs(inputs))
 
@@ -2635,7 +2636,7 @@ class Scan(PureOp):
 
         start = len(gradients)
         gradients += [DisconnectedType()()
-                      for x in xrange(self.n_nit_sot)]
+                      for _ in xrange(self.n_nit_sot)]
         begin = end
 
         end = begin + n_sitsot_outs

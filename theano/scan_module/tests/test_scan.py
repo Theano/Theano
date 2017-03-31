@@ -5529,3 +5529,25 @@ class TestMissingInputError(unittest.TestCase):
 
         _, updates = theano.scan(count_up, n_steps=20)
         func = theano.function(inputs=[inc], outputs=[], updates=updates)
+
+
+class TestGradUntil(unittest.TestCase):
+
+    def test_grad_until(self):
+        x = tensor.vector(name='x')
+        until = tensor.scalar(name='until', dtype='int64')
+        r, _ = theano.scan(lambda x, u: (x * x,
+                                         theano.scan_module.until(x > u)),
+                           sequences=x,
+                           non_sequences=[until])
+        g = theano.grad(r.sum(), x)
+        f = theano.function([x, until], [r, g])
+        x_num = numpy.arange(15, dtype=theano.config.floatX)
+        theano_sequence, theano_gradient = f(x_num, 5)
+
+        numpy_sequence = numpy.arange(7, dtype=theano.config.floatX)
+        z = numpy.zeros(8, dtype=theano.config.floatX)
+        numpy_gradient = numpy.concatenate([numpy_sequence, z], axis=0)
+
+        utt.assert_allclose(theano_sequence, numpy_sequence**2)
+        utt.assert_allclose(theano_gradient, 2 * numpy_gradient)
