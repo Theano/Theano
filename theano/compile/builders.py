@@ -239,7 +239,7 @@ class OpFromGraph(gof.Op):
             elif device.startswith('cuda') or device.startswith('opencl'):
                 from theano.gpuarray.basic_ops import infer_context_name
                 device = infer_context_name(*inputs)
-            elif not inline:
+            else:
                 _logger.warn(
                     'OpFromGraph: inner computation might not be '
                     'performed on device %s without inline=True', device)
