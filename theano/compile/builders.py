@@ -230,7 +230,7 @@ class OpFromGraph(gof.Op):
             raise TypeError('updates and givens are not allowed here')
         self.is_inline = inline
 
-        if config.optimizer != 'None':
+        if config.optimizer != 'None' and not inline:
             def safe_transfer(v, d):
                 return v.transfer(d) if hasattr(v, 'transfer') else v
             device = config.device
