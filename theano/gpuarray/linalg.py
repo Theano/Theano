@@ -16,8 +16,10 @@ from numpy.linalg.linalg import LinAlgError
 
 try:
     import pygpu
+    from pygpu.basic import triu, tril
+    pygpu_available = True
 except ImportError:
-    pass
+    pygpu_available = False
 
 cusolver_available = False
 try:
@@ -61,44 +63,6 @@ def attach_cusolver_handle_to_context(ctx):
     if handle is None:
         with ctx:
             ctx.cusolver_handle = cusolver.cusolverDnCreate()
-
-
-def tril(A, ctx):
-    tmpl = Template("""
-    KERNEL void tril(GLOBAL_MEM ga_float *a, ga_uint N) {
-        unsigned int idx = blockIdx.y*blockDim.x*gridDim.x+
-                           blockIdx.x*blockDim.x+threadIdx.x;
-        unsigned int ix = idx/${cols};
-        unsigned int iy = idx%${cols};
-        if (idx < N) {
-            if (ix < iy)
-                a[idx] = 0.0;
-        }
-    }
-    """)
-    src = tmpl.substitute(cols=A.shape[0])
-    spec = [GpuArray, 'uint32']
-    k = GpuKernel(src, "tril", spec, context=ctx)
-    return k(A, A.shape[0] * A.shape[1], n=A.shape[0])
-
-
-def triu(A, ctx):
-    tmpl = Template("""
-    KERNEL void triu(GLOBAL_MEM ga_float *a, ga_uint N) {
-        unsigned int idx = blockIdx.y*blockDim.x*gridDim.x+
-                           blockIdx.x*blockDim.x+threadIdx.x;
-        unsigned int ix = idx/${cols};
-        unsigned int iy = idx%${cols};
-        if (idx < N) {
-            if (ix > iy)
-                a[idx] = 0.0;
-        }
-    }
-    """)
-    src = tmpl.substitute(cols=A.shape[0])
-    spec = [GpuArray, 'uint32']
-    k = GpuKernel(src, "triu", spec, context=ctx)
-    return k(A, A.shape[0] * A.shape[1], n=A.shape[0])
 
 
 class GpuCusolverSolve(Op):
@@ -288,9 +252,12 @@ class GpuCholesky(Op):
     def make_node(self, inp):
         if not cusolver_available:
             raise RuntimeError('CUSOLVER is not available and '
-                               'GpuCusolverSolve Op can not be constructed.')
+                               'GpuCholesky Op can not be constructed.')
         if skcuda.__version__ <= '0.5.1':
             warnings.warn('The GpuSolve op requires scikit-cuda > 0.5.1 to work with CUDA 8')
+        if not pygpu_available:
+            raise RuntimeError('Missing pygpu or triu/tril functions.'
+                               'Try updating libgpuarray?')
         context_name = basic_ops.infer_context_name(inp)
 
         inp = basic_ops.as_gpuarray_variable(inp, context_name)
@@ -367,9 +334,9 @@ class GpuCholesky(Op):
         # upper or lower triangle unchanged, so we need to put zeros outside
         # the triangle
         # Note : we should probably check for c or f order in triu instead of here
-        if self.lower and L.flags['C_CONTIGUOUS'] or (not self.lower and L.flags['F_CONTIGUOUS']):
-            tril(L, context)
+        if self.lower:
+            tril(L)
         else:
-            triu(L, context)
+            triu(L)
 
         outputs[0][0] = L
