@@ -2,10 +2,6 @@
 	path = qa/third_party/convnet-benchmarks
 	url = https://github.com/soumith/convnet-benchmarks
 	branch = master
-[submodule "third_party/lasagne"]
-	path = third_party/lasagne
-	url = ../../bfomitchev/lasagne.git
-	branch = master
 [submodule "third_party/pylearn2"]
 	path = qa/third_party/pylearn2
 	url = https://github.com/lisa-lab/pylearn2.git
