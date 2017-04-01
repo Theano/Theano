@@ -38,7 +38,7 @@ echo "=== Finished installing Theano."
 
 echo "=== Installing Lasagne..."
 
-cd ${THIS_DIR}/third_party/lasagne && ${SUDO} pip install --no-deps -e . || exit 1
+cd ${THIS_DIR}/third_party/Lasagne && ${SUDO} pip install --no-deps -e . || exit 1
 
 echo "=== Finished installing Lasagne."
 

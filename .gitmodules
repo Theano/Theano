@@ -19,3 +19,6 @@
 [submodule "third_party/lasagne"]
 	path = third_party/lasagne
 	url = git@nvdl.githost.io:bfomitchev/lasagne.git
+[submodule "third_party/Lasagne"]
+	path = third_party/Lasagne
+	url = ../../bfomitchev/lasagne.git
