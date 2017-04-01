@@ -1599,8 +1599,6 @@ class GpuEye(GpuKernelBase, Op):
                              broadcastable=(False, False),
                              context_name=self.context_name)
 
-        # k != 0 isn't implemented on the GPU yet.
-        # assert tensor.get_scalar_constant_value(k) == 0
         return Apply(self, [n, m, k], [otype()])
 
     def infer_shape(self, node, in_shapes):
