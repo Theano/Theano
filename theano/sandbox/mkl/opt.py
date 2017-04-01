@@ -89,14 +89,9 @@ class CutMKLDataConversionChain(Optimizer):
                         if isinstance(inp.owner, gof.Apply) and inp.owner.op.__class__.__name__ in list_u2i_back:
                             for inpOP in list(inp.owner.inputs):
                                 if isinstance(inpOP.owner, gof.Apply) and inpOP.owner.op.__class__.__name__ in list_backward:
-                                    # FIXME, concateGrad Op, has multiple ouputs, so we can't hard code outputs[0] here
-                                    # otherwise, it will always reuse outputs[0], while keep others others dangling!!!
-                                    #fgraph.replace_validate(out, inpOP.owner.outputs[0])
                                     fgraph.replace_validate(out, inpOP)
                 # forward
                 if node.op.__class__.__name__ in list_u2i:
-                    # FIXME, concate Op hase multiple inputs, U2IConcate Op is a multiple inputs/outputs
-                    # So, can't hard code outputs[0] here.
                     out = node.outputs[0]
                     for inp in node.inputs:
                         if isinstance(inp.owner, gof.Apply) and inp.owner.op.__class__.__name__ in list_i2u:
