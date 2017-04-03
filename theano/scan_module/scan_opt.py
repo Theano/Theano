@@ -54,7 +54,7 @@ import logging
 import copy
 from sys import maxsize
 from collections import OrderedDict
-import numpy
+import numpy as np
 
 import theano
 from theano import tensor, scalar
@@ -636,7 +636,7 @@ class PushOutSeqScan(gof.Optimizer):
                     if out in op.inner_mitsot_outs(ls):
                         odx = op.inner_mitsot_outs(ls).index(out)
                         inp = op.outer_mitsot(node)[odx]
-                        st = abs(numpy.min(op.mitsot_taps()))
+                        st = abs(np.min(op.mitsot_taps()))
                         y = tensor.set_subtensor(inp[st:], _y)
                     elif out in op.inner_sitsot_outs(ls):
                         odx = op.inner_sitsot_outs(ls).index(out)
@@ -1373,7 +1373,7 @@ class ScanSaveMem(gof.Optimizer):
                         # TODO: Simplify the number of steps needed.
                         # FB: This need good testing, left to later.
                         #     call get_scalar_constant_value()? it can
-                        # return python/numpy scalar or numpy.ndarray
+                        # return python/numpy scalar or np.ndarray
                         # currently.
                         # pval = pre_greedy_local_optimizer(list_opt_slice,
                         #                                  pval)
