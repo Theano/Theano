@@ -269,10 +269,13 @@ class GammaLn(UnaryScalarOp):
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
-        if node.inputs[0].type in float_types:
-            return """%(z)s =
-                lgamma(%(x)s);""" % locals()
-        raise NotImplementedError('only floating point is implemented')
+        # no c code for complex
+        # [u]int* will be casted to float64 before computation
+        if x.type in complex_types:
+            raise NotImplementedError(
+                'gammaln complex c code is not implemented')
+        return """%(z)s =
+            lgamma(%(x)s);""" % locals()
 gammaln = GammaLn(upgrade_to_float, name='gammaln')
 
 
