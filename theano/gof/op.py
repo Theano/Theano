@@ -801,13 +801,14 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def get_params(self, node):
         if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.Wrapper):
             wrapper = self.params_type
-            if all(hasattr(self, field) for field in wrapper.fields):
-                wrap_dict = dict()
-                for i in range(wrapper.length):
-                    field = wrapper.fields[i]
-                    _type = wrapper.types[i]
-                    wrap_dict[field] = _type.filter(getattr(self, field), strict=False, allow_downcast=True)
-                return theano.gof.Wrap(wrapper, **wrap_dict)
+            if not all(hasattr(self, field) for field in wrapper.fields):
+                raise AttributeError('%s: missing attributes for Wrapper parameter.' % type(self).__name__)
+            wrap_dict = dict()
+            for i in range(wrapper.length):
+                field = wrapper.fields[i]
+                _type = wrapper.types[i]
+                wrap_dict[field] = _type.filter(getattr(self, field), strict=False, allow_downcast=True)
+            return theano.gof.Wrap(wrapper, **wrap_dict)
         raise theano.gof.utils.MethodNotDefined('get_params')
 
     def prepare_node(self, node, storage_map, compute_map, impl):
