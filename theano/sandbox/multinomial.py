@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import warnings
 
 import theano
@@ -172,7 +172,7 @@ class MultinomialFromUniform(Op):
             raise ValueError("unis.shape[0] != pvals.shape[0] * n_samples",
                              unis.shape[0], pvals.shape[0], n_samples)
         if z[0] is None or z[0].shape != pvals.shape:
-            z[0] = numpy.zeros(pvals.shape, dtype=node.outputs[0].dtype)
+            z[0] = np.zeros(pvals.shape, dtype=node.outputs[0].dtype)
         else:
             z[0].fill(0)
 
@@ -209,7 +209,7 @@ class MultinomialFromUniform(Op):
                 # have the same answer as the c code as in the c code
                 # the cumul is in double precission.
                 cumsum = pvals[n].cumsum(dtype='float64')
-                z[0][n, numpy.searchsorted(cumsum, unis_n)] += 1
+                z[0][n, np.searchsorted(cumsum, unis_n)] += 1
 
 
 class ChoiceFromUniform(MultinomialFromUniform):
@@ -380,8 +380,8 @@ class ChoiceFromUniform(MultinomialFromUniform):
         else:
             odtype = self.odtype
         if (z[0] is None or
-                not numpy.all(z[0].shape == [pvals.shape[0], n_samples])):
-            z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype=odtype)
+                not np.all(z[0].shape == [pvals.shape[0], n_samples])):
+            z[0] = -1 * np.ones((pvals.shape[0], n_samples), dtype=odtype)
 
         nb_multi = pvals.shape[0]
         nb_outcomes = pvals.shape[1]
