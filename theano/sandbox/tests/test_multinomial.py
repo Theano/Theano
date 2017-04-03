@@ -4,7 +4,7 @@ import sys
 from six import reraise
 
 from nose.plugins.skip import SkipTest
-import numpy as np as np as np as np
+import numpy as np
 
 import theano
 from theano import config, function, tensor
