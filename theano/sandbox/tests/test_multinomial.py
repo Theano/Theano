@@ -4,7 +4,7 @@ import sys
 from six import reraise
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np as np as np as np
 
 import theano
 from theano import config, function, tensor
@@ -40,9 +40,9 @@ def test_n_samples_1():
 
     f = function([p, u, n], m, allow_input_downcast=True)
 
-    numpy.random.seed(12345)
+    np.random.seed(12345)
     for i in [1, 5, 10, 100, 1000, 10000]:
-        uni = numpy.random.rand(2 * i).astype(config.floatX)
+        uni = np.random.rand(2 * i).astype(config.floatX)
         res = f([[1.0, 0.0], [0.0, 1.0]], uni, i)
         utt.assert_allclose(res, [[i * 1.0, 0.0], [0.0, i * 1.0]])
 
@@ -55,17 +55,17 @@ def test_n_samples_2():
 
     f = function([p, u, n], m, allow_input_downcast=True)
 
-    numpy.random.seed(12345)
+    np.random.seed(12345)
     for i in [1, 5, 10, 100, 1000]:
-        uni = numpy.random.rand(i).astype(config.floatX)
-        pvals = numpy.random.randint(1, 1000, (1, 1000)).astype(config.floatX)
+        uni = np.random.rand(i).astype(config.floatX)
+        pvals = np.random.randint(1, 1000, (1, 1000)).astype(config.floatX)
         pvals /= pvals.sum(1)
         res = f(pvals, uni, i)
         assert res.sum() == i
 
     for i in [1, 5, 10, 100, 1000]:
-        uni = numpy.random.rand(i).astype(config.floatX)
-        pvals = numpy.random.randint(
+        uni = np.random.rand(i).astype(config.floatX)
+        pvals = np.random.randint(
             1, 1000000, (1, 1000000)).astype(config.floatX)
         pvals /= pvals.sum(1)
         res = f(pvals, uni, i)
@@ -104,8 +104,8 @@ def test_n_samples_compatibility():
             raise
 
         f = theano.function([X], samples)
-        res = f(numpy.random.randn(20, 10))
-        assert numpy.all(res.sum(axis=1) == 1)
+        res = f(np.random.randn(20, 10))
+        assert np.all(res.sum(axis=1) == 1)
 
 
 def test_multinomial_0():
@@ -160,9 +160,9 @@ def test_multinomial_large():
             assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
                         for node in f.maker.fgraph.toposort()])
 
-        pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+        pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
         pval = pval / pval.sum(axis=1)[:, None]
-        uval = numpy.ones_like(pval[:, 0]) * 0.5
+        uval = np.ones_like(pval[:, 0]) * 0.5
         mval = f(pval, uval)
 
         assert mval.shape == pval.shape
@@ -175,7 +175,7 @@ def test_multinomial_large():
         else:
             raise NotImplementedError(config.cast_policy)
         utt.assert_allclose(mval.sum(axis=1), 2)
-        asdf = numpy.asarray([0, 0, 2, 0]) + 0 * pval
+        asdf = np.asarray([0, 0, 2, 0]) + 0 * pval
         utt.assert_allclose(mval, asdf)  # broadcast over all rows
     run_with_c(body)
     if cuda.cuda_available:
@@ -216,9 +216,9 @@ def test_gpu_opt():
     f = function([p, u], m_gpu, allow_input_downcast=True, mode=get_mode(True))
     assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
                 for node in f.maker.fgraph.toposort()])
-    pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+    pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
-    uval = numpy.ones_like(pval[:, 0]) * 0.5
+    uval = np.ones_like(pval[:, 0]) * 0.5
     f(pval, uval)
 
     # Test with a row, it was failing in the past.
@@ -230,7 +230,7 @@ def test_gpu_opt():
     f = function([r, u], m_gpu, allow_input_downcast=True, mode=get_mode(True))
     assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
                 for node in f.maker.fgraph.toposort()])
-    pval = numpy.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
+    pval = np.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
-    uval = numpy.ones_like(pval[:, 0]) * 0.5
+    uval = np.ones_like(pval[:, 0]) * 0.5
     f(pval, uval)
