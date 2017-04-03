@@ -12,7 +12,7 @@ import os
 import sys
 import warnings
 
-import numpy
+import numpy as np
 
 import theano
 from theano import config
@@ -103,7 +103,7 @@ except ImportError:
                 # During scan cython development, it is helpful to keep the old interface, to don't manually edit the c file each time.
                 preargs.remove('-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION')
             else:
-                numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+                numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
                 # Add add some macro to lower the number of edit
                 # needed to the c file.
                 if bool(numpy_ver >= [1, 7]):
