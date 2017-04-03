@@ -15,7 +15,7 @@ import numpy as np
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 from nose.tools import raises
-from np.testing import dec
+from numpy.testing import dec
 
 import theano
 import theano.sandbox.rng_mrg
