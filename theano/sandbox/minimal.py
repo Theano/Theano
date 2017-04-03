@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 
 import unittest
 
-import numpy
+import numpy as np
 
 from theano import gof, tensor, function
 from theano.tests import unittest_tools as utt
@@ -39,11 +39,11 @@ class Minimal(gof.Op):
         # but do not modify any of the arguments [inplace].
         print("perform got %i arguments" % len(inputs))
 
-        print("Max of input[0] is ", numpy.max(inputs[0]))
+        print("Max of input[0] is ", np.max(inputs[0]))
 
         # return some computed value.
         # do not return something that is aliased to one of the inputs.
-        output[0] = numpy.asarray(0, dtype='int64')
+        output[0] = np.asarray(0, dtype='int64')
 
 minimal = Minimal()
 
@@ -55,7 +55,7 @@ minimal = Minimal()
 
 class T_minimal(unittest.TestCase):
     def setUp(self):
-        self.rng = numpy.random.RandomState(utt.fetch_seed(666))
+        self.rng = np.random.RandomState(utt.fetch_seed(666))
 
     def test0(self):
         A = tensor.matrix()
@@ -66,6 +66,6 @@ class T_minimal(unittest.TestCase):
         print('built')
 
         Aval = self.rng.randn(5, 5)
-        bval = numpy.arange(5, dtype=float)
+        bval = np.arange(5, dtype=float)
         f(Aval, bval)
         print('done')
