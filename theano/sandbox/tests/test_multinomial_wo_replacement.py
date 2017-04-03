@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import os
 from theano import config, function, tensor
 from theano.compat import PY3
@@ -24,25 +24,25 @@ class test_OP(unittest.TestCase):
 
         n_elements = 1000
         all_indices = range(n_elements)
-        numpy.random.seed(12345)
+        np.random.seed(12345)
         expected = [
-            numpy.asarray([[931, 318, 185, 209, 559]]),
-            numpy.asarray([[477, 887, 2, 717, 333, 665, 159, 559, 348, 136]]),
-            numpy.asarray([[546, 28, 79, 665, 295, 779, 433, 531, 411, 716, 244, 234, 70, 88, 612, 639, 383, 335,
+            np.asarray([[931, 318, 185, 209, 559]]),
+            np.asarray([[477, 887, 2, 717, 333, 665, 159, 559, 348, 136]]),
+            np.asarray([[546, 28, 79, 665, 295, 779, 433, 531, 411, 716, 244, 234, 70, 88, 612, 639, 383, 335,
                             451, 100, 175, 492, 848, 771, 559, 214, 568, 596, 370, 486, 855, 925, 138, 300, 528, 507,
                             730, 199, 882, 357, 58, 195, 705, 900, 66, 468, 513, 410, 816, 672]])]
 
         for i in [5, 10, 50, 100, 500, n_elements]:
-            uni = numpy.random.rand(i).astype(config.floatX)
-            pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+            uni = np.random.rand(i).astype(config.floatX)
+            pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
             pvals /= pvals.sum(1)
             res = f(pvals, uni, i)
             for ii in range(len(expected)):
                 if expected[ii].shape == res.shape:
                     assert (expected[ii] == res).all()
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             assert len(res) == i
-            assert numpy.all(numpy.in1d(numpy.unique(res), all_indices)), res
+            assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
         """
@@ -58,9 +58,9 @@ class test_OP(unittest.TestCase):
 
         n_elements = 100
         n_selected = 200
-        numpy.random.seed(12345)
-        uni = numpy.random.rand(n_selected).astype(config.floatX)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        uni = np.random.rand(n_selected).astype(config.floatX)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         self.assertRaises(ValueError, f, pvals, uni, n_selected)
 
@@ -79,18 +79,18 @@ class test_OP(unittest.TestCase):
         n_elements = 100
         n_selected = 10
         mean_rtol = 0.0005
-        numpy.random.seed(12345)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        avg_pvals = numpy.zeros((n_elements,), dtype=config.floatX)
+        avg_pvals = np.zeros((n_elements,), dtype=config.floatX)
 
         for rep in range(10000):
-            uni = numpy.random.rand(n_selected).astype(config.floatX)
+            uni = np.random.rand(n_selected).astype(config.floatX)
             res = f(pvals, uni, n_selected)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             avg_pvals[res] += 1
         avg_pvals /= avg_pvals.sum()
-        avg_diff = numpy.mean(abs(avg_pvals - pvals))
+        avg_diff = np.mean(abs(avg_pvals - pvals))
         assert avg_diff < mean_rtol, avg_diff
 
 
@@ -110,14 +110,14 @@ class test_function(unittest.TestCase):
 
         n_elements = 1000
         all_indices = range(n_elements)
-        numpy.random.seed(12345)
+        np.random.seed(12345)
         for i in [5, 10, 50, 100, 500, n_elements]:
-            pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+            pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
             pvals /= pvals.sum(1)
             res = f(pvals, i)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             assert len(res) == i
-            assert numpy.all(numpy.in1d(numpy.unique(res), all_indices)), res
+            assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
         """
@@ -134,8 +134,8 @@ class test_function(unittest.TestCase):
 
         n_elements = 100
         n_selected = 200
-        numpy.random.seed(12345)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         self.assertRaises(ValueError, f, pvals, n_selected)
 
@@ -155,17 +155,17 @@ class test_function(unittest.TestCase):
         n_elements = 100
         n_selected = 10
         mean_rtol = 0.0005
-        numpy.random.seed(12345)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        avg_pvals = numpy.zeros((n_elements,), dtype=config.floatX)
+        avg_pvals = np.zeros((n_elements,), dtype=config.floatX)
 
         for rep in range(10000):
             res = f(pvals, n_selected)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             avg_pvals[res] += 1
         avg_pvals /= avg_pvals.sum()
-        avg_diff = numpy.mean(abs(avg_pvals - pvals))
+        avg_diff = np.mean(abs(avg_pvals - pvals))
         assert avg_diff < mean_rtol
 
     def test_unpickle_legacy_op(self):
