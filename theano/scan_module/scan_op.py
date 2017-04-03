@@ -904,7 +904,7 @@ class Scan(PureOp):
             cython_mintaps = np.asarray(self.mintaps, dtype='int32')
             cython_tap_array_len = \
                 np.asarray([len(x) for x in self.tap_array],
-                              dtype='int32')
+                           dtype='int32')
             if len(self.tap_array) == 0:
                 d1 = 0
             else:
@@ -916,30 +916,30 @@ class Scan(PureOp):
                     cython_tap_array[_d0, _d1] = self.tap_array[_d0][_d1]
             cython_mit_mot_out_nslices = \
                 np.asarray([len(x) for x in self.mit_mot_out_slices],
-                              dtype='int32')
+                           dtype='int32')
             if len(self.mit_mot_out_slices) == 0:
                 d1 = 0
             else:
                 d1 = np.max(cython_mit_mot_out_nslices)
             d0 = len(self.mit_mot_out_slices)
             cython_mit_mot_out_slices = np.zeros((d0, d1),
-                                                    dtype='int32')
+                                                 dtype='int32')
             for _d0 in xrange(d0):
                 for _d1 in xrange(cython_mit_mot_out_nslices[_d0]):
                     cython_mit_mot_out_slices[_d0, _d1] = \
                         self.mit_mot_out_slices[_d0][_d1]
 
             cython_vector_seqs = np.asarray(self.vector_seqs,
-                                               dtype='int32')
+                                            dtype='int32')
             cython_vector_outs = np.asarray(self.vector_outs,
-                                               dtype='int32')
+                                            dtype='int32')
             cython_mitmots_preallocated = np.asarray(self.mitmots_preallocated,
-                                                        dtype='int32')
+                                                     dtype='int32')
 
             cython_inps_is_tensor = np.asarray(self.inps_is_tensor,
-                                                  dtype='int32')
+                                               dtype='int32')
             cython_outs_is_tensor = np.asarray(self.outs_is_tensor,
-                                                  dtype='int32')
+                                               dtype='int32')
 
             if hasattr(self, 'destroy_map'):
                 cython_destroy_map = [x in self.destroy_map
@@ -947,7 +947,7 @@ class Scan(PureOp):
             else:
                 cython_destroy_map = [0 for x in xrange(len(node.outputs))]
             cython_destroy_map = np.asarray(cython_destroy_map,
-                                               dtype='int32')
+                                            dtype='int32')
             from . import scan_perform_ext
 
             def p(node, args, outs):
@@ -2727,7 +2727,7 @@ class Scan(PureOp):
         e = e + self.n_mit_mot
         ib = ie
         ie = ie + int(np.sum([len(x) for x in
-                                 self.tap_array[:self.n_mit_mot]]))
+                              self.tap_array[:self.n_mit_mot]]))
         clean_eval_points = []
         for inp, evp in zip(inputs[b:e], eval_points[b:e]):
             if evp is not None:
@@ -2743,8 +2743,8 @@ class Scan(PureOp):
         e = e + self.n_mit_sot
         ib = ie
         ie = ie + int(np.sum([len(x) for x in
-                                 self.tap_array[self.n_mit_mot:
-                                                self.n_mit_mot + self.n_mit_sot]]))
+                              self.tap_array[self.n_mit_mot:
+                                             self.n_mit_mot + self.n_mit_sot]]))
         clean_eval_points = []
         for inp, evp in zip(inputs[b:e], eval_points[b:e]):
             if evp is not None:
@@ -2796,7 +2796,7 @@ class Scan(PureOp):
 
         # Outputs
         n_mit_mot_outs = int(np.sum([len(x) for x in
-                                        self.mit_mot_out_slices]))
+                                     self.mit_mot_out_slices]))
         info['n_mit_mot_outs'] = n_mit_mot_outs * 2
         b = 0
         e = n_mit_mot_outs
