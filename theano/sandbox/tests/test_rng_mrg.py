@@ -1,12 +1,9 @@
 from __future__ import absolute_import, print_function, division
-import copy
 import os
 import sys
 import time
 import unittest
-import functools
 
-from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 import numpy as np
 from six.moves import xrange
@@ -245,8 +242,8 @@ def test_uniform():
     # TODO: test ndim!=size.ndim
     # TODO: test bad seed
     # TODO: test size=Var, with shape that change from call to call
-    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
-            mode == 'Mode' and config.linker in ['py']):
+    if (config.mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+            config.mode == 'Mode' and config.linker in ['py']):
         sample_size = (10, 100)
         steps = 50
     else:
@@ -266,8 +263,6 @@ def test_uniform():
 
         # TEST CPU IMPLEMENTATION
         # The python and C implementation are tested with DebugMode
-        # print ''
-        # print 'ON CPU with size=(%s):' % str(size)
         x = tensor.matrix()
         R = MRG_RandomStreams(234)
         # Note: we specify `nstreams` to avoid a warning.
@@ -276,15 +271,10 @@ def test_uniform():
         # warning using the warning module.
         u = R.uniform(size=size,
                       nstreams=rng_mrg.guess_n_streams(size, warn=False))
-        f = theano.function(var_input, u, mode=mode)
+        f = theano.function(var_input, u)
         assert any([isinstance(node.op, theano.sandbox.rng_mrg.mrg_uniform)
                     for node in f.maker.fgraph.toposort()])
-        # theano.printing.debugprint(f)
-        cpu_out = f(*input)
-
-        # print 'CPU: random?[:10], random?[-10:]'
-        # print cpu_out[0, 0:10]
-        # print cpu_out[-1, -10:]
+        f(*input)
 
         # Increase the number of steps if sizes implies only a few samples
         if np.prod(const_size) < 10:
@@ -293,12 +283,10 @@ def test_uniform():
             steps_ = steps
         basictest(f, steps_, const_size, prefix='mrg cpu', inputs=input)
 
-        # print ''
-        # print 'ON CPU w Numpy with size=(%s):' % str(size)
         RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
         uu = RR.uniform(size=size)
-        ff = theano.function(var_input, uu, mode=mode)
+        ff = theano.function(var_input, uu)
         # It's not our problem if numpy generates 0 or 1
         basictest(ff, steps_, const_size, prefix='numpy',
                   allow_01=True, inputs=input)
@@ -345,8 +333,8 @@ def test_binomial():
     # we test size in a tuple of int and a tensor.shape.
     # we test the param p with int.
 
-    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
-            mode == 'Mode' and config.linker in ['py']):
+    if (config.mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+            config.mode == 'Mode' and config.linker in ['py']):
         sample_size = (10, 50)
         steps = 50
         rtol = 0.02
@@ -373,8 +361,8 @@ def test_binomial():
 def t_binomial(mean, size, const_size, var_input, input, steps, rtol):
     R = MRG_RandomStreams(234)
     u = R.binomial(size=size, p=mean)
-    f = theano.function(var_input, u, mode=mode)
-    out = f(*input)
+    f = theano.function(var_input, u)
+    f(*input)
 
     # Increase the number of steps if sizes implies only a few samples
     if np.prod(const_size) < 10:
@@ -388,7 +376,7 @@ def t_binomial(mean, size, const_size, var_input, input, steps, rtol):
     RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
     uu = RR.binomial(size=size, p=mean)
-    ff = theano.function(var_input, uu, mode=mode)
+    ff = theano.function(var_input, uu)
     # It's not our problem if numpy generates 0 or 1
     basictest(ff, steps_, const_size, prefix='numpy', allow_01=True,
               inputs=input, target_avg=mean, mean_rtol=rtol)
@@ -399,8 +387,8 @@ def test_normal0():
 
     steps = 50
     std = 2.
-    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
-            mode == 'Mode' and config.linker in ['py']):
+    if (config.mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+            config.mode == 'Mode' and config.linker in ['py']):
         sample_size = (25, 30)
         default_rtol = .02
     else:
@@ -435,17 +423,13 @@ def test_normal0():
         ((2,), (2,), [], [], -5., default_rtol, 0.02),
         ((3,), (3,), [], [], -5., default_rtol, 0.02),
             ]:
-        # print ''
-        # print 'ON CPU:'
 
         R = MRG_RandomStreams(234)
         # Note: we specify `nstreams` to avoid a warning.
         n = R.normal(size=size, avg=avg, std=std,
                      nstreams=rng_mrg.guess_n_streams(size, warn=False))
-        f = theano.function(var_input, n, mode=mode)
-        # theano.printing.debugprint(f)
-        out = f(*input)
-        # print 'random?[:10]\n', out[0, 0:10]
+        f = theano.function(var_input, n)
+        f(*input)
 
         # Increase the number of steps if size implies only a few samples
         if np.prod(const_size) < 10:
@@ -458,8 +442,6 @@ def test_normal0():
 
         sys.stdout.flush()
 
-        # print ''
-        # print 'ON CPU w NUMPY:'
         RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
         nn = RR.normal(size=size, avg=avg, std=std)
@@ -497,42 +479,30 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals, n_samples,
 
 def test_multinomial():
     steps = 100
-    mode_ = mode
-    if mode == 'FAST_COMPILE':
-        mode_ = 'FAST_RUN'
 
-    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
-            mode == 'Mode' and config.linker in ['py']):
+    if (config.mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+            config.mode == 'Mode' and config.linker in ['py']):
         sample_size = (49, 5)
     else:
         sample_size = (450, 6)
-    mode_ = theano.compile.mode.get_mode(mode_)
-    # print ''
-    # print 'ON CPU:'
 
     pvals = np.asarray(np.random.uniform(size=sample_size))
     pvals = np.apply_along_axis(lambda row: row / np.sum(row), 1, pvals)
     R = MRG_RandomStreams(234)
     # Note: we specify `nstreams` to avoid a warning.
     m = R.multinomial(pvals=pvals, dtype=config.floatX, nstreams=30 * 256)
-    f = theano.function([], m, mode=mode_)
-    # theano.printing.debugprint(f)
-    out = f()
+    f = theano.function([], m)
+    f()
     basic_multinomialtest(f, steps, sample_size, pvals, n_samples=1,
                           prefix='mrg ')
 
 
 def test_multinomial_n_samples():
-    mode_ = mode
-    if mode == 'FAST_COMPILE':
-        mode_ = 'FAST_RUN'
-
-    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
-            mode == 'Mode' and config.linker in ['py']):
+    if (config.mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+            config.mode == 'Mode' and config.linker in ['py']):
         sample_size = (49, 5)
     else:
         sample_size = (450, 6)
-    mode_ = theano.compile.mode.get_mode(mode_)
 
     pvals = np.asarray(np.random.uniform(size=sample_size))
     pvals = np.apply_along_axis(lambda row: row / np.sum(row), 1, pvals)
@@ -541,7 +511,7 @@ def test_multinomial_n_samples():
     for n_samples, steps in zip([5, 10, 100, 1000], [20, 10, 1, 1]):
         m = R.multinomial(pvals=pvals, n=n_samples,
                           dtype=config.floatX, nstreams=30 * 256)
-        f = theano.function([], m, mode=mode_)
+        f = theano.function([], m)
         basic_multinomialtest(f, steps, sample_size, pvals,
                               n_samples, prefix='mrg ')
         sys.stdout.flush()

@@ -9,7 +9,6 @@ import numpy as np
 import theano
 from theano import config, function, tensor
 from theano.sandbox import multinomial
-from theano.compile.mode import get_default_mode
 import theano.tests.unittest_tools as utt
 from theano.compat import PY3
 from theano.misc.pkl_utils import CompatUnpickler
@@ -127,7 +126,7 @@ def test_multinomial_large():
     p = tensor.fmatrix()
     u = tensor.fvector()
     m = multinomial.MultinomialFromUniform('auto')(p, u)
-    f = function([p, u], m * 2, allow_input_downcast=True, mode=mode)
+    f = function([p, u], m * 2, allow_input_downcast=True)
 
     pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]

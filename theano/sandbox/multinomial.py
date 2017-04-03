@@ -5,10 +5,9 @@ import warnings
 import theano
 from theano import Op, Apply
 import theano.tensor as T
-from theano.gof import local_optimizer
-from theano.tensor import NotScalarConstantError, get_scalar_constant_value
 from theano.scalar import as_scalar
 import copy
+
 
 class MultinomialFromUniform(Op):
     # TODO : need description for parameter 'odtype'
