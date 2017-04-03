@@ -4,7 +4,7 @@ Provides Ops for FFT and DCT.
 """
 
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import numpy.fft
 
 from six.moves import xrange
@@ -126,13 +126,13 @@ def dct_matrix(rows, cols, unitary=True):
     This algorithm is adapted from Dan Ellis' Rastmat spec2cep.m, lines 15-20.
 
     """
-    rval = numpy.zeros((rows, cols))
-    col_range = numpy.arange(cols)
-    scale = numpy.sqrt(2.0 / cols)
+    rval = np.zeros((rows, cols))
+    col_range = np.arange(cols)
+    scale = np.sqrt(2.0 / cols)
     for i in xrange(rows):
-        rval[i] = numpy.cos(
-            i * (col_range * 2 + 1) / (2.0 * cols) * numpy.pi) * scale
+        rval[i] = np.cos(
+            i * (col_range * 2 + 1) / (2.0 * cols) * np.pi) * scale
 
     if unitary:
-        rval[0] *= numpy.sqrt(0.5)
+        rval[0] *= np.sqrt(0.5)
     return rval
