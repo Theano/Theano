@@ -45,8 +45,8 @@ utt.seed_rng()
 # 7 substreams for each stream
 # 5 samples drawn from each substream
 java_samples = np.loadtxt(os.path.join(os.path.split(theano.__file__)[0],
-                                          'sandbox',
-                                          'samples_MRG31k3p_12_7_5.txt'))
+                                       'sandbox',
+                                       'samples_MRG31k3p_12_7_5.txt'))
 
 
 def test_deterministic():
@@ -143,7 +143,7 @@ def test_consistency_cpu_serial():
         stream_rstate = curr_rstate.copy()
         for j in range(n_substreams):
             rstate = theano.shared(np.array([stream_rstate.copy()],
-                                               dtype='int32'))
+                                            dtype='int32'))
             new_rstate, sample = rng_mrg.mrg_uniform.new(rstate, ndim=None,
                                                          dtype=config.floatX,
                                                          size=(1,))
@@ -242,7 +242,7 @@ def test_consistency_GPU_serial():
             # HACK - we transfer these int32 to the GPU memory as float32
             # (reinterpret_cast)
             tmp_float_buf = np.frombuffer(substream_rstate.data,
-                                             dtype='float32')
+                                          dtype='float32')
             # Transfer to device
             rstate = float32_shared_constructor(tmp_float_buf)
 
@@ -379,7 +379,7 @@ def test_consistency_GPUA_serial():
         stream_rstate = curr_rstate.copy()
         for j in range(n_substreams):
             substream_rstate = np.array([stream_rstate.copy()],
-                                           dtype='int32')
+                                        dtype='int32')
             # Transfer to device
             rstate = gpuarray_shared_constructor(substream_rstate)
 
@@ -615,7 +615,7 @@ def test_uniform():
             basictest(f, steps_, const_size, prefix='mrg  gpu', inputs=input)
 
             np.testing.assert_array_almost_equal(cpu_out, gpu_out,
-                                                    decimal=6)
+                                                 decimal=6)
 
         # print ''
         # print 'ON CPU w Numpy with size=(%s):' % str(size)
@@ -723,7 +723,7 @@ def t_binomial(mean, size, const_size, var_input, input, steps, rtol):
                   inputs=input, allow_01=True,
                   target_avg=mean, mean_rtol=rtol)
         np.testing.assert_array_almost_equal(out, gpu_out,
-                                                decimal=6)
+                                             decimal=6)
 
     RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
@@ -766,7 +766,7 @@ def test_normal0():
          -5., default_rtol, default_rtol),
         (sample_size, sample_size, [], [],
          np.arange(np.prod(sample_size),
-                      dtype='float32').reshape(sample_size),
+                   dtype='float32').reshape(sample_size),
          10. * std / np.sqrt(steps), default_rtol),
         # test empty size (scalar)
         ((), (), [], [], -5., default_rtol, 0.02),
