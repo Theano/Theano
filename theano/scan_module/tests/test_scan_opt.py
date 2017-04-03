@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import unittest
 
 import theano
@@ -18,7 +18,7 @@ class TestGaussNewton(unittest.TestCase):
     This test case is based on code by Sigurd Spieckermann.
     """
     def setUp(self):
-        self.rng = numpy.random.RandomState(utt.fetch_seed())
+        self.rng = np.random.RandomState(utt.fetch_seed())
 
     def _run(self, num_features, num_timesteps, batch_size, mode):
         # determine shapes of inputs and targets depending on the batch size
@@ -58,8 +58,8 @@ class TestGaussNewton(unittest.TestCase):
         W_hy = theano.shared(
             (0.01 * self.rng.uniform(size=(10, 1))).astype(config.floatX),
             borrow=True)
-        b_h = theano.shared(numpy.zeros(10).astype(config.floatX), borrow=True)
-        b_y = theano.shared(numpy.zeros(1).astype(config.floatX), borrow=True)
+        b_h = theano.shared(np.zeros(10).astype(config.floatX), borrow=True)
+        b_y = theano.shared(np.zeros(1).astype(config.floatX), borrow=True)
 
         params = [W_xh, W_hh, W_hy, b_h, b_y]
 
@@ -171,8 +171,8 @@ class TestPushOutScanOutputDot(object):
 
         # Ensure that the function compiled with the optimization produces
         # the same results as the function compiled without
-        v_value = numpy.random.random((4)).astype(config.floatX)
-        m_value = numpy.random.random((4, 5)).astype(config.floatX)
+        v_value = np.random.random((4)).astype(config.floatX)
+        m_value = np.random.random((4, 5)).astype(config.floatX)
 
         output_opt = f_opt(v_value, m_value)
         output_no_opt = f_no_opt(v_value, m_value)
@@ -217,8 +217,8 @@ class TestPushOutScanOutputDot(object):
 
         # Ensure that the function compiled with the optimization produces
         # the same results as the function compiled without
-        a_value = numpy.random.random((3, 4)).astype(config.floatX)
-        b_value = numpy.random.random((4, 5)).astype(config.floatX)
+        a_value = np.random.random((3, 4)).astype(config.floatX)
+        b_value = np.random.random((4, 5)).astype(config.floatX)
 
         output_opt = f_opt(a_value, b_value)
         output_no_opt = f_no_opt(a_value, b_value)
@@ -263,8 +263,8 @@ class TestPushOutScanOutputDot(object):
 
         # Ensure that the function compiled with the optimization produces
         # the same results as the function compiled without
-        a_value = numpy.random.random((3, 4)).astype(config.floatX)
-        b_value = numpy.random.random((4, 5)).astype(config.floatX)
+        a_value = np.random.random((3, 4)).astype(config.floatX)
+        b_value = np.random.random((4, 5)).astype(config.floatX)
 
         output_opt = f_opt(a_value, b_value)
         output_no_opt = f_no_opt(a_value, b_value)
@@ -296,7 +296,7 @@ class TestPushOutSumOfDot():
         dim = 5
 
         # Weight matrices
-        U = theano.shared(numpy.random.normal(size=(dim, dim),
+        U = theano.shared(np.random.normal(size=(dim, dim),
                                               scale=0.0001).astype(config.floatX))
         U.name = 'U'
         V = theano.shared(U.get_value())
@@ -306,7 +306,7 @@ class TestPushOutSumOfDot():
 
         # Variables and their values
         x = T.tensor3('x')
-        x_value = numpy.random.normal(size=(seq_len, batch_size, dim),
+        x_value = np.random.normal(size=(seq_len, batch_size, dim),
                                       scale=0.0001).astype(config.floatX)
 
         ri = T.tensor3('ri')
@@ -315,7 +315,7 @@ class TestPushOutSumOfDot():
         zi = T.tensor3('zi')
         zi_value = x_value
 
-        init = T.alloc(numpy.cast[config.floatX](0), batch_size, dim)
+        init = T.alloc(np.cast[config.floatX](0), batch_size, dim)
         def rnn_step1(
                 # sequences
                 x, ri, zi,
@@ -375,8 +375,8 @@ class TestPushOutSumOfDot():
         input2 = T.tensor3()
         input3 = T.tensor3()
 
-        W = theano.shared(numpy.random.normal(size=(4, 5))).astype(config.floatX)
-        U = theano.shared(numpy.random.normal(size=(6, 7))).astype(config.floatX)
+        W = theano.shared(np.random.normal(size=(4, 5))).astype(config.floatX)
+        U = theano.shared(np.random.normal(size=(6, 7))).astype(config.floatX)
 
         def inner_fct(seq1, seq2, seq3, previous_output):
             temp1 = T.dot(seq1, W) + seq3
@@ -384,7 +384,7 @@ class TestPushOutSumOfDot():
             dot_output = T.dot(temp1, temp2)
             return previous_output + dot_output
 
-        init = T.as_tensor_variable(numpy.random.normal(size=(3, 7)))
+        init = T.as_tensor_variable(np.random.normal(size=(3, 7)))
 
         # Compile the function twice, once with the optimization and once
         # without
@@ -410,9 +410,9 @@ class TestPushOutSumOfDot():
         # TODO
 
         # Compare the outputs of the 2 functions
-        input1_value = numpy.random.random((2, 3, 4)).astype(config.floatX)
-        input2_value = numpy.random.random((2, 5, 6)).astype(config.floatX)
-        input3_value = numpy.random.random((2, 3, 5)).astype(config.floatX)
+        input1_value = np.random.random((2, 3, 4)).astype(config.floatX)
+        input2_value = np.random.random((2, 5, 6)).astype(config.floatX)
+        input3_value = np.random.random((2, 3, 5)).astype(config.floatX)
 
         output_opt = f_opt(input1_value, input2_value, input3_value)
         output_no_opt = f_no_opt(input1_value, input2_value, input3_value)
