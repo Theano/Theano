@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import functools
 
-import numpy
+import numpy as np
 
 import theano
 from theano import tensor
@@ -26,13 +26,13 @@ def test_consistency_GPUA_serial():
     n_substreams = 7
 
     samples = []
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
 
     for i in range(n_streams):
         stream_rstate = curr_rstate.copy()
         for j in range(n_substreams):
-            substream_rstate = numpy.array([stream_rstate.copy()],
-                                           dtype='int32')
+            substream_rstate = np.array([stream_rstate.copy()],
+                                        dtype='int32')
             # Transfer to device
             rstate = gpuarray_shared_constructor(substream_rstate)
 
@@ -60,8 +60,8 @@ def test_consistency_GPUA_serial():
         # next stream
         curr_rstate = rng_mrg.ff_2p134(curr_rstate)
 
-    samples = numpy.array(samples).flatten()
-    assert(numpy.allclose(samples, java_samples))
+    samples = np.array(samples).flatten()
+    assert(np.allclose(samples, java_samples))
 
 
 def test_consistency_GPUA_parallel():
@@ -74,14 +74,14 @@ def test_consistency_GPUA_parallel():
     n_substreams = 7  # 7 samples will be drawn in parallel
 
     samples = []
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
 
     for i in range(n_streams):
         stream_samples = []
         rstate = [curr_rstate.copy()]
         for j in range(1, n_substreams):
             rstate.append(rng_mrg.ff_2p72(rstate[-1]))
-        rstate = numpy.asarray(rstate)
+        rstate = np.asarray(rstate)
         rstate = gpuarray_shared_constructor(rstate)
 
         new_rstate, sample = rng_mrg.GPUA_mrg_uniform.new(rstate, ndim=None,
@@ -102,13 +102,13 @@ def test_consistency_GPUA_parallel():
             s = f()
             stream_samples.append(s)
 
-        samples.append(numpy.array(stream_samples).T.flatten())
+        samples.append(np.array(stream_samples).T.flatten())
 
         # next stream
         curr_rstate = rng_mrg.ff_2p134(curr_rstate)
 
-    samples = numpy.array(samples).flatten()
-    assert(numpy.allclose(samples, java_samples))
+    samples = np.array(samples).flatten()
+    assert(np.allclose(samples, java_samples))
 
 
 def test_GPUA_full_fill():
@@ -140,11 +140,11 @@ def test_overflow_gpu_new_backend():
     from theano.gpuarray.type import gpuarray_shared_constructor
     seed = 12345
     n_substreams = 7
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
     rstate = [curr_rstate.copy()]
     for j in range(1, n_substreams):
         rstate.append(rng_mrg.ff_2p72(rstate[-1]))
-    rstate = numpy.asarray(rstate)
+    rstate = np.asarray(rstate)
     rstate = gpuarray_shared_constructor(rstate)
     fct = functools.partial(rng_mrg.GPUA_mrg_uniform.new, rstate,
                             ndim=None, dtype='float32')
@@ -155,8 +155,8 @@ def test_overflow_gpu_new_backend():
     sizes = [(2**5, ), (2**5, 2**5), (2**5, 2**5, 2**5)]
     rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
     # should support int32 sizes
-    sizes = [(numpy.int32(2**10), ),
-             (numpy.int32(2), numpy.int32(2**10), numpy.int32(2**10))]
+    sizes = [(np.int32(2**10), ),
+             (np.int32(2), np.int32(2**10), np.int32(2**10))]
     rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
 
 
@@ -166,6 +166,6 @@ def test_validate_input_types_gpuarray_backend():
     from theano.configparser import change_flags
 
     with change_flags(compute_test_value="raise"):
-        rstate = numpy.zeros((7, 6), dtype="int32")
+        rstate = np.zeros((7, 6), dtype="int32")
         rstate = gpuarray_shared_constructor(rstate)
         mrg_uniform.new(rstate, ndim=None, dtype="float32", size=(3,))
