@@ -54,7 +54,7 @@ import logging
 import time
 from collections import OrderedDict
 
-import numpy
+import numpy as np
 from six import iteritems, integer_types, raise_from
 from six.moves import xrange
 
@@ -193,7 +193,7 @@ class Scan(PureOp):
         self.info['name'] = self.name
 
         # Pre-computing some values to speed up perform
-        self.mintaps = [numpy.min(x) for x in self.tap_array]
+        self.mintaps = [np.min(x) for x in self.tap_array]
         self.mintaps += [0 for x in xrange(self.n_nit_sot)]
         self.seqs_arg_offset = 1 + self.n_seqs
         self.shared_arg_offset = (self.seqs_arg_offset +
@@ -336,7 +336,7 @@ class Scan(PureOp):
                           the inner function)
 
         """
-        assert numpy.all(isinstance(i, gof.Variable) for i in inputs)
+        assert np.all(isinstance(i, gof.Variable) for i in inputs)
         # Check that the number of inputs to the Scan node corresponds to
         # the number of inputs of the inner function of scan
         n_outer_ins = len(inputs) - len(self.outer_nitsot(inputs)) - 1
@@ -901,53 +901,53 @@ class Scan(PureOp):
         try:
             if impl == 'py':
                 raise theano.gof.cmodule.MissingGXX
-            cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
+            cython_mintaps = np.asarray(self.mintaps, dtype='int32')
             cython_tap_array_len = \
-                numpy.asarray([len(x) for x in self.tap_array],
-                              dtype='int32')
+                np.asarray([len(x) for x in self.tap_array],
+                           dtype='int32')
             if len(self.tap_array) == 0:
                 d1 = 0
             else:
-                d1 = numpy.max(cython_tap_array_len)
+                d1 = np.max(cython_tap_array_len)
             d0 = len(self.tap_array)
-            cython_tap_array = numpy.zeros((d0, d1), dtype='int32')
+            cython_tap_array = np.zeros((d0, d1), dtype='int32')
             for _d0 in xrange(d0):
                 for _d1 in xrange(cython_tap_array_len[_d0]):
                     cython_tap_array[_d0, _d1] = self.tap_array[_d0][_d1]
             cython_mit_mot_out_nslices = \
-                numpy.asarray([len(x) for x in self.mit_mot_out_slices],
-                              dtype='int32')
+                np.asarray([len(x) for x in self.mit_mot_out_slices],
+                           dtype='int32')
             if len(self.mit_mot_out_slices) == 0:
                 d1 = 0
             else:
-                d1 = numpy.max(cython_mit_mot_out_nslices)
+                d1 = np.max(cython_mit_mot_out_nslices)
             d0 = len(self.mit_mot_out_slices)
-            cython_mit_mot_out_slices = numpy.zeros((d0, d1),
-                                                    dtype='int32')
+            cython_mit_mot_out_slices = np.zeros((d0, d1),
+                                                 dtype='int32')
             for _d0 in xrange(d0):
                 for _d1 in xrange(cython_mit_mot_out_nslices[_d0]):
                     cython_mit_mot_out_slices[_d0, _d1] = \
                         self.mit_mot_out_slices[_d0][_d1]
 
-            cython_vector_seqs = numpy.asarray(self.vector_seqs,
-                                               dtype='int32')
-            cython_vector_outs = numpy.asarray(self.vector_outs,
-                                               dtype='int32')
-            cython_mitmots_preallocated = numpy.asarray(self.mitmots_preallocated,
-                                                        dtype='int32')
+            cython_vector_seqs = np.asarray(self.vector_seqs,
+                                            dtype='int32')
+            cython_vector_outs = np.asarray(self.vector_outs,
+                                            dtype='int32')
+            cython_mitmots_preallocated = np.asarray(self.mitmots_preallocated,
+                                                     dtype='int32')
 
-            cython_inps_is_tensor = numpy.asarray(self.inps_is_tensor,
-                                                  dtype='int32')
-            cython_outs_is_tensor = numpy.asarray(self.outs_is_tensor,
-                                                  dtype='int32')
+            cython_inps_is_tensor = np.asarray(self.inps_is_tensor,
+                                               dtype='int32')
+            cython_outs_is_tensor = np.asarray(self.outs_is_tensor,
+                                               dtype='int32')
 
             if hasattr(self, 'destroy_map'):
                 cython_destroy_map = [x in self.destroy_map
                                       for x in xrange(len(node.outputs))]
             else:
                 cython_destroy_map = [0 for x in xrange(len(node.outputs))]
-            cython_destroy_map = numpy.asarray(cython_destroy_map,
-                                               dtype='int32')
+            cython_destroy_map = np.asarray(cython_destroy_map,
+                                            dtype='int32')
             from . import scan_perform_ext
 
             def p(node, args, outs):
@@ -2200,9 +2200,9 @@ class Scan(PureOp):
         # Seqs
         outer_inp_seqs = [x[::-1] for x in inputs[1:1 + self.n_seqs]]
         for idx in xrange(self.n_mit_mot + self.n_mit_sot):
-            mintap = numpy.min(self.tap_array[idx])
+            mintap = np.min(self.tap_array[idx])
             if idx < self.n_mit_mot:
-                outmaxtap = numpy.max(self.mitmot_out_taps()[idx])
+                outmaxtap = np.max(self.mitmot_out_taps()[idx])
             else:
                 outmaxtap = 0
             seq = outs[idx]
@@ -2226,7 +2226,7 @@ class Scan(PureOp):
             # that.
             for taps, x in zip(self.mitsot_taps(),
                                self.outer_mitsot_outs(outs)):
-                mintap = numpy.min(taps)
+                mintap = np.min(taps)
                 if hasattr(x[::-1][:mintap], 'test_value'):
                     assert (x[::-1][:mintap].tag.test_value.shape[0] ==
                             inputs[0].tag.test_value)
@@ -2238,7 +2238,7 @@ class Scan(PureOp):
                 if hasattr(x[::-1].tag, 'test_value'):
                     assert (x[::-1].tag.test_value.shape[0] ==
                             inputs[0].tag.test_value)
-        outer_inp_seqs += [x[::-1][:numpy.min(taps)]
+        outer_inp_seqs += [x[::-1][:np.min(taps)]
                            for taps, x in zip(self.mitsot_taps(),
                                               self.outer_mitsot_outs(outs))]
         outer_inp_seqs += [x[::-1][:-1] for x in self.outer_sitsot_outs(outs)]
@@ -2726,8 +2726,8 @@ class Scan(PureOp):
         b = e
         e = e + self.n_mit_mot
         ib = ie
-        ie = ie + int(numpy.sum([len(x) for x in
-                                 self.tap_array[:self.n_mit_mot]]))
+        ie = ie + int(np.sum([len(x) for x in
+                              self.tap_array[:self.n_mit_mot]]))
         clean_eval_points = []
         for inp, evp in zip(inputs[b:e], eval_points[b:e]):
             if evp is not None:
@@ -2742,9 +2742,9 @@ class Scan(PureOp):
         b = e
         e = e + self.n_mit_sot
         ib = ie
-        ie = ie + int(numpy.sum([len(x) for x in
-                                 self.tap_array[self.n_mit_mot:
-                                                self.n_mit_mot + self.n_mit_sot]]))
+        ie = ie + int(np.sum([len(x) for x in
+                              self.tap_array[self.n_mit_mot:
+                                             self.n_mit_mot + self.n_mit_sot]]))
         clean_eval_points = []
         for inp, evp in zip(inputs[b:e], eval_points[b:e]):
             if evp is not None:
@@ -2795,8 +2795,8 @@ class Scan(PureOp):
         inner_other = self_inputs[ie:] + inner_eval_points[ib:]
 
         # Outputs
-        n_mit_mot_outs = int(numpy.sum([len(x) for x in
-                                        self.mit_mot_out_slices]))
+        n_mit_mot_outs = int(np.sum([len(x) for x in
+                                     self.mit_mot_out_slices]))
         info['n_mit_mot_outs'] = n_mit_mot_outs * 2
         b = 0
         e = n_mit_mot_outs
