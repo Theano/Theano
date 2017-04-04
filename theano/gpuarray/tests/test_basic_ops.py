@@ -428,6 +428,13 @@ def test_gpueye():
         # N > M, k != 0
         yield check, dtype, 5, 3, 1
         yield check, dtype, 5, 3, -1
+        # k > M, -k > N, k > M, k > N
+        yield check, dtype, 5, 3, 3
+        yield check, dtype, 3, 5, 3
+        yield check, dtype, 5, 3, -3
+        yield check, dtype, 3, 5, -3
+        yield check, dtype, 5, 3, 6
+        yield check, dtype, 3, 5, -6
 
 
 def test_hostfromgpu_shape_i():
