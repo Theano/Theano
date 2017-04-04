@@ -1662,14 +1662,13 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m, ga_ssize k) {
         row_off = (size_t) (k < 0?-k:0);
         if (row_off < dims[0] && col_off < dims[1]) {
             err = eye_call(1, &gs, &ls, 0, %(z)s->ga.data, dims[0], dims[1], k);
-        }
-
-        if (err != GA_NO_ERROR) {
-            PyErr_Format(PyExc_RuntimeError,
-                         "gpuarray error: kEye: %%s. n%%lu, m=%%lu.",
-                         GpuKernel_error(&%(kname)s, err),
-                         (unsigned long)dims[0], (unsigned long)dims[1]);
-            %(fail)s;
+            if (err != GA_NO_ERROR) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "gpuarray error: kEye: %%s. n%%lu, m=%%lu.",
+                             GpuKernel_error(&%(kname)s, err),
+                             (unsigned long)dims[0], (unsigned long)dims[1]);
+                %(fail)s;
+            }
         }
 
         if(%(sync)d)
@@ -1679,5 +1678,4 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m, ga_ssize k) {
         return s
 
     def c_code_cache_version(self):
-        # return (7,)
-        return
+        return (7,)
