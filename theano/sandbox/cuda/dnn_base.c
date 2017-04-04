@@ -54,7 +54,9 @@ c_set_filterNd(CudaNdarray *var, cudnnFilterDescriptor_t desc) {
     return -1;
   }
   int dim = CudaNdarray_NDIM(var);
-  cudnnStatus_t err = cudnnSetFilterNdDescriptor_v4(desc,
+  
+  /* double and half not supported */
+  cudnnStatus_t err = cudnnSetFilterNdDescriptor(desc,
                                                     CUDNN_DATA_FLOAT,
                                                     CUDNN_TENSOR_NCHW,
                                                     dim,

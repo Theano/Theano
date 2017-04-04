@@ -13,6 +13,8 @@ ldflags=
 
 [dnn]
 enabled=True
+# conv.algo_fwd=time_on_shape_change
+# conv.algo_bwd=time_on_shape_change
 
 #### Configure the new 'gpuarray' backend
 ## Preallocate space for the new gpuarray backend
