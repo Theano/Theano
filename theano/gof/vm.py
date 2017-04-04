@@ -207,6 +207,7 @@ class VM(object):
         if hasattr(self, 'variable_shape'):
             profile.variable_shape = self.variable_shape.copy()
             profile.variable_strides = self.variable_strides.copy()
+            profile.variable_offset = self.variable_offset.copy()
 
         if hasattr(self, 'node_executed_order'):
             profile.node_executed_order = self.node_executed_order[:]
@@ -342,6 +343,7 @@ class Stack(VM):
         self.storage_map = storage_map
         self.variable_shape = {}  # Variable -> shape
         self.variable_strides = {}  # Variable -> strides
+        self.variable_offset = {}  # Variable -> offset
         self.compute_map = compute_map
         self.node_idx = node_idx = {}
         self.callback = callback
@@ -445,6 +447,8 @@ class Stack(VM):
                   data[0].is_c_contiguous()):
                 st = "c"
             self.variable_strides[var] = st
+            off = getattr(data[0], 'offset', '')
+            self.variable_offset[var] = off
 
         while apply_stack:
             # Make sure something happened last time round.  This is
@@ -506,6 +510,8 @@ class Stack(VM):
                                       data[0].is_c_contiguous()):
                                     st = "c"
                                 self.variable_strides[var] = st
+                                off = getattr(o[0], 'offset', '')
+                                self.variable_offset[var] = off
                     except Exception:
                         link.raise_with_op(
                             current_apply,
@@ -614,6 +620,8 @@ class Stack(VM):
                                   data[0].is_c_contiguous()):
                                 st = "c"
                             self.variable_strides[var] = st
+                            off = getattr(o[0], 'offset', '')
+                            self.variable_offset[var] = off
 
                     input_index = []
 
