@@ -1513,7 +1513,7 @@ class MRG_RandomStreams(object):
 
         shape = p[:, 0].shape * size
         unis = self.uniform(size=shape, ndim=1, nstreams=nstreams)
-        op = multinomial.ChoiceFromUniform(dtype)
+        op = multinomial.ChoiceFromUniform(odtype=dtype)
         return op(p, unis, as_tensor_variable(size))
 
     def multinomial_wo_replacement(self, size=None, n=1, pvals=None,

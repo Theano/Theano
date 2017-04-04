@@ -242,11 +242,17 @@ class GPUAChoiceFromUniform(GpuKernelBase, Op):
 
     """
 
-    __props__ = ("odtype",)
+    __props__ = ("odtype", "replace")
 
-    def __init__(self, odtype):
+    def __init__(self, odtype, replace=False):
         Op.__init__(self)
         self.odtype = odtype
+        self.replace = replace
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if "replace" not in state:
+            self.replace = False
 
     def get_params(self, node):
         return node.outputs[0].type.context
@@ -282,6 +288,7 @@ class GPUAChoiceFromUniform(GpuKernelBase, Op):
         return Apply(self, [pvals, unis, as_scalar(n)], [out])
 
     def gpu_kernels(self, node, name):
+        replace = int(self.replace)
         code = """
 KERNEL void k_multi_warp_multinomial_wor(
     const ga_size nb_multi,
@@ -318,23 +325,29 @@ KERNEL void k_multi_warp_multinomial_wor(
                     global_outs[n * outs_col_stride +
                                 c * outs_row_stride] = m;
 
-                    global_pvals_copy[m * pvals_col_stride + n * pvals_row_stride] = 0.0;
-                    cummul -= pvals_nm;
+                    if (! %(replace)s )
+                    {
+                        global_pvals_copy[m * pvals_col_stride + n * pvals_row_stride] = 0.0;
+                        cummul -= pvals_nm;
+                    }
                     done = true;
                 }
             }
             // No need to renormalize after the last samples.
             if (c == (n_samples - 1))
                 break;
-            // parallel renormalize the multinomial
-            for (ga_int k = LID_1; k < nb_outcomes; k+=LDIM_1)
+            if (! %(replace)s )
             {
-                global_pvals_copy[k * pvals_col_stride + n * pvals_row_stride] /= cummul;
+                // parallel renormalize the multinomial
+                for (ga_int k = LID_1; k < nb_outcomes; k+=LDIM_1)
+                {
+                    global_pvals_copy[k * pvals_col_stride + n * pvals_row_stride] /= cummul;
+                }
             }
         }
     }
 }
-"""
+""" % {"replace": replace}
         return [Kernel(
             code=code, name="k_multi_warp_multinomial_wor",
             params=[pygpu.gpuarray.SIZE,
