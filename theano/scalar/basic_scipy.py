@@ -271,11 +271,17 @@ class GammaLn(UnaryScalarOp):
         z, = out
         # no c code for complex
         # [u]int* will be casted to float64 before computation
-        if x.type in complex_types:
+        if node.inputs[0].type in complex_types:
             raise NotImplementedError(
                 'gammaln complex c code is not implemented')
-        return """%(z)s =
-            lgamma(%(x)s);""" % locals()
+        # For some reason, on the GPU, uint64 inputs don't get casted
+        # automatically to float64. This make the compilation crash
+        dtype = ""
+        if node.outputs[0].dtype == 'float64':
+            dtype = "(double)"
+        elif node.outputs[0].dtype == 'float32':
+            dtype = "(float)"
+        return """%(z)s = lgamma(%(dtype)s%(x)s);""" % locals()
 gammaln = GammaLn(upgrade_to_float, name='gammaln')
 
 
