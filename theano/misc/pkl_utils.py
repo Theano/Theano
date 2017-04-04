@@ -27,11 +27,6 @@ from theano.compat import PY3
 from six import string_types
 from theano.compile.sharedvalue import SharedVariable
 
-try:
-    import pygpu
-except ImportError:
-    pygpu = None
-
 __docformat__ = "restructuredtext en"
 __authors__ = "Pascal Lamblin"
 __copyright__ = "Copyright 2013, Universite de Montreal"
@@ -204,10 +199,17 @@ class PersistentNdarrayID(object):
 
 class PersistentGpuArrayID(PersistentNdarrayID):
     def __call__(self, obj):
+        from theano.gpuarray.type import _name_for_ctx
+        try:
+            import pygpu
+        except ImportError:
+            pygpu = None
+
         if (pygpu and
                 isinstance(obj, pygpu.gpuarray.GpuArray)):
             if id(obj) not in self.seen:
                 def write_array(f):
+                    pickle.dump(f, _name_for_ctx(obj.context), 2)
                     np.lib.format.write_array(f, np.asarray(obj))
                 name = self._resolve_name(obj)
                 zipadd(write_array, self.zip_file, name)
@@ -282,24 +284,28 @@ class PersistentNdarrayLoad(object):
         self.cache = {}
 
     def __call__(self, persid):
+        from theano.gpuarray.type import get_context
         array_type, name = persid.split('.')
 
         if name in self.cache:
             return self.cache[name]
         ret = None
-        array = np.lib.format.read_array(self.zip_file.open(name))
         if array_type == 'gpuarray':
+            with self.zip_file.open(name) as f:
+                ctx_name = pickle.load(f)
+                array = np.lib.format.read_array(f)
             if config.experimental.unpickle_gpu_on_cpu:
                 # directly return numpy array
                 warnings.warn("config.experimental.unpickle_gpu_on_cpu is set "
                               "to True. Unpickling GpuArray as numpy.ndarray")
                 ret = array
             elif pygpu:
-                ret = pygpu.array(array)
+                ret = pygpu.array(array, context=get_context(ctx_name))
             else:
                 raise ImportError("pygpu not found. Cannot unpickle GpuArray")
         else:
-            ret = array
+            with self.zip_file.open(name) as f:
+                ret = np.lib.format.read_array(f)
         self.cache[name] = ret
         return ret
 

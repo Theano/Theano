@@ -94,8 +94,8 @@ test_shared_options = makeSharedTester(
     test_internal_type_=lambda a: isinstance(a, pygpu.gpuarray.GpuArray),
     theano_fct_=theano.tensor.exp,
     ref_fct_=np.exp,
-    cast_value_=lambda v: pygpu.asarray(v, context=get_context(test_ctx_name),
-                                        cls=pygpu._array.ndgpuarray),
+    cast_value_=lambda v: pygpu.array(v, context=get_context(test_ctx_name),
+                                      cls=pygpu._array.ndgpuarray),
     name='test_shared_options')
 
 
@@ -113,6 +113,6 @@ test_shared_options2 = makeSharedTester(
     test_internal_type_=lambda a: isinstance(a, pygpu.gpuarray.GpuArray),
     theano_fct_=theano.tensor.exp,
     ref_fct_=np.exp,
-    cast_value_=lambda v: pygpu.asarray(v, context=get_context(test_ctx_name),
-                                        cls=pygpu._array.ndgpuarray),
+    cast_value_=lambda v: pygpu.array(v, context=get_context(test_ctx_name),
+                                      cls=pygpu._array.ndgpuarray),
     name='test_shared_options2')

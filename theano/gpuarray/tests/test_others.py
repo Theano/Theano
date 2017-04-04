@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 from .config import test_ctx_name, mode_with_gpu
 
+from ..basic_ops import (HostFromGpu, GpuFromHost)
 from ..type import (get_context, GpuArrayType, GpuArraySharedVariable,
                     gpuarray_shared_constructor)
 
@@ -10,12 +11,13 @@ import numpy as np
 from theano.misc.tests.test_may_share_memory import may_share_memory_core
 from theano.misc.pkl_utils import dump, load
 
-from theano.tensor.tests.test_opt import test_fusion as t_fusion
+from  theano.tensor.tests import test_opt
 
 
-class test_fusion(t_fusion):
+class test_fusion(test_opt.test_fusion):
     mode = mode_with_gpu
-    shared = gpuarray_shared_constructor
+    _shared = staticmethod(gpuarray_shared_constructor)
+    topo_exclude = (GpuFromHost, HostFromGpu)
 
 
 def test_may_share_memory():

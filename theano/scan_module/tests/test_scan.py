@@ -44,12 +44,10 @@ if theano.config.mode == 'FAST_COMPILE':
     mode_with_opt = theano.compile.mode.get_mode('FAST_RUN')
 else:
     mode_with_opt = theano.compile.mode.get_default_mode()
-mode_with_gpu = mode_with_opt.including('gpu', 'scan')
 if theano.config.mode in ('DEBUG_MODE', 'DebugMode'):
     mode_nodebug = theano.compile.mode.get_mode('FAST_RUN')
 else:
     mode_nodebug = mode_with_opt
-mode_with_gpu_nodebug = mode_nodebug.including('gpu', 'scan')
 
 
 type_eps = {'float64': 1e-7,

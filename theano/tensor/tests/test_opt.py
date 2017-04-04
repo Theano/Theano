@@ -908,7 +908,8 @@ def test_const_type_in_mul_canonizer():
 
 class test_fusion(unittest.TestCase):
     mode = copy.copy(compile.mode.get_default_mode())
-    _shared = shared
+    _shared = staticmethod(shared)
+    topo_exclude = ()
 
     def do(self, mode, shared_fn, shp, nb_repeat=1, assert_len_topo=True, slice=None):
         """
@@ -1121,10 +1122,6 @@ class test_fusion(unittest.TestCase):
                 t1 = time.time()
                 out = out.get_value()
 
-            # print "CASE2/3", f.maker.fgraph.toposort()
-            # print 'CASE2/3', f.maker.fgraph
-            # print 'CASE2/3', f.maker.fgraph.toposort()[3].op.scalar_op.fgraph
-
             times[id] = t1 - t0
             atol = 1e-8
             if out_dtype == 'float32':
@@ -1135,7 +1132,8 @@ class test_fusion(unittest.TestCase):
                 print(out)
                 print(answer * nb_repeat)
             topo = f.maker.fgraph.toposort()
-            topo_ = topo
+            topo_ = [n for n in topo
+                     if not isinstance(n.op, self.topo_exclude)]
             if assert_len_topo:
                 if not len(topo_) == nb_elemwise:
                     fail3.append((id, topo_, nb_elemwise))
@@ -1274,9 +1272,10 @@ class test_fusion(unittest.TestCase):
 
         x, y, z = dmatrices('xyz')
         f = theano.function([x, y, z], tensor.dot(x, y) + x + y + z, mode=mode)
-        topo = f.maker.fgraph.toposort()
+        topo = [n for n in f.maker.fgraph.toposort()
+                if not isinstance(n.op, self.topo_exclude)]
         assert len(topo) == 2
-        assert f.maker.fgraph.toposort()[-1].op.inplace_pattern
+        assert topo[-1].op.inplace_pattern
         f(np.random.random((5, 5)), np.random.random((5, 5)),
             np.random.random((5, 5)))
 
