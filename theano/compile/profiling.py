@@ -89,6 +89,7 @@ def _atexit_print_fn():
                 # merge dictonary
                 for attr in ["apply_time", "apply_callcount",
                              "apply_cimpl", "variable_shape", "variable_strides",
+                             "variable_offset",
                              "linker_make_thunk_time"]:
                     cum_attr = getattr(cum, attr)
                     for key, val in iteritems(getattr(ps, attr)):
@@ -229,6 +230,10 @@ class ProfileStats(object):
     # Variable -> strides
     #
 
+    variable_offset = {}
+    # Variable -> offset
+    #
+
     optimizer_time = 0.0
     # time spent optimizing graph (FunctionMaker.__init__)
 
@@ -295,6 +300,7 @@ class ProfileStats(object):
         self.apply_cimpl = {}
         self.variable_shape = {}
         self.variable_strides = {}
+        self.variable_offset = {}
         if flag_time_thunks is None:
             self.flag_time_thunks = config.profiling.time_thunks
         else:
@@ -697,15 +703,21 @@ class ProfileStats(object):
             for idx, var in enumerate(a.inputs):
                 sh = self.variable_shape.get(var, 'no shape')
                 st = self.variable_strides.get(var, 'no strides')
+                off = self.variable_offset.get(var, '')
+                if off != '':
+                    off = ", offset=%s" % off
                 dtype = getattr(var, 'dtype', 'no dtype')
-                print("    input %d: dtype=%s, shape=%s, strides=%s " % (
-                    idx, dtype, sh, st), file=file)
+                print("    input %d: dtype=%s, shape=%s, strides=%s%s" % (
+                    idx, dtype, sh, st, off), file=file)
             for idx, var in enumerate(a.outputs):
                 sh = self.variable_shape.get(var, 'no shape')
                 st = self.variable_strides.get(var, 'no strides')
+                off = self.variable_offset.get(var, '')
+                if off != '':
+                    off = ", offset=%s" % off
                 dtype = getattr(var, 'dtype', 'no dtype')
-                print("    output %d: dtype=%s, shape=%s, strides=%s " % (
-                    idx, dtype, sh, st), file=file)
+                print("    output %d: dtype=%s, shape=%s, strides=%s%s" % (
+                    idx, dtype, sh, st, off), file=file)
             # Same as before, this I've sacrificied some information making
             # the output more readable
         print('   ... (remaining %i Apply instances account for '

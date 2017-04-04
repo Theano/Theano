@@ -711,18 +711,15 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
             have_opencl = True
         elif kind.startswith(b'cuda'):
             have_cuda = True
-    opname = False
-    if isinstance(scal_op, Erfinv):
-        opname = 'erfinv'
-        if have_cuda:
-            scal_op = gpu_erfinv
-    elif isinstance(scal_op, Erfcinv):
-        opname = 'erfcinv'
-        if have_cuda:
-            scal_op = gpu_erfcinv
-    if opname:
+    convert = {Erfinv: gpu_erfinv,
+               Erfcinv: gpu_erfcinv}
+
+    if scal_op.__class__ in convert:
+        scal_op = convert[scal_op.__class__]
         if have_opencl:
-            _logger.warning('Function "%s" is not supported with OpenCL. Use "device=cuda" instead.' % opname)
+            _logger.warning(
+                'Function "%s" is not supported with OpenCL. Use "device=cuda" instead.' %
+                scal_op)
         if not have_cuda:
             return None
     res = GpuElemwise(scal_op, name=name,

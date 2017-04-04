@@ -97,7 +97,9 @@ def init_dev(dev, name=None):
         # Initialise the blas kernels.  We do this after the
         # preallocation to not fragment the heap accidentally.
         tmp = pygpu.empty((2, 2), dtype='float32', context=context)
-        pygpu.blas.gemm(0, tmp, tmp, 0, tmp, overwrite_c=True)
+        if dev.startswith('cuda'):
+            # In OpenCL, BLAS isn't always available
+            pygpu.blas.gemm(0, tmp, tmp, 0, tmp, overwrite_c=True)
         del tmp
     else:
         context = init_dev.devmap[dev]

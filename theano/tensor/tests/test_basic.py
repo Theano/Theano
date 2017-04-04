@@ -1807,7 +1807,8 @@ _good_broadcast_unary_gammaln = dict(
     empty=(np.asarray([], dtype=config.floatX),),
     int=(randint_ranged(1, 10, (2, 3)),),
     uint8=(randint_ranged(1, 6, (2, 3)).astype('uint8'),),
-    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),))
+    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),),
+    uint64=(randint_ranged(1, 10, (2, 3)).astype('uint64'),))
 _grad_broadcast_unary_gammaln = dict(
     # smaller range as our grad method does not estimate it well enough.
     normal=(rand_ranged(1e-1, 8, (2, 3)),),)
