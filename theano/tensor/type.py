@@ -373,7 +373,6 @@ class TensorType(Type):
 
     def __repr__(self):
         return str(self)
-        # "TensorType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub, check_input=True):
         """
