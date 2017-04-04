@@ -19,7 +19,7 @@ from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
 from theano.scalar.basic import Scalar, Pow, Cast
-from theano.scalar.basic_scipy import Erfinv, Erfcinv, GammaLn
+from theano.scalar.basic_scipy import Erfinv, Erfcinv
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet import bn
@@ -61,7 +61,7 @@ from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_crossentropy_softmax_argmax_1hot_with_bias,
                    gpu_softmax_with_bias, gpu_softmax)
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
-                       GpuCAReduceCPY, gpu_erfinv, gpu_erfcinv, gpu_gammaln,
+                       GpuCAReduceCPY, gpu_erfinv, gpu_erfcinv,
                        max_inputs_to_GpuElemwise)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor,
@@ -712,8 +712,7 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         elif kind.startswith(b'cuda'):
             have_cuda = True
     convert = {Erfinv: gpu_erfinv,
-               Erfcinv: gpu_erfcinv,
-               GammaLn: gpu_gammaln}
+               Erfcinv: gpu_erfcinv}
 
     if scal_op.__class__ in convert:
         scal_op = convert[scal_op.__class__]

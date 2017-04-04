@@ -8,7 +8,7 @@ from six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
 from theano.scalar import Scalar, Composite
 from theano.tensor.elemwise import (Elemwise, DimShuffle, CAReduceDtype)
-from theano.scalar.basic_scipy import Erfinv, Erfcinv, GammaLn
+from theano.scalar.basic_scipy import Erfinv, Erfcinv
 from theano.scalar.basic import upgrade_to_float_no_complex, complex_types
 
 try:
@@ -2491,13 +2491,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kernels.append(Kernel(code=sio.getvalue(), name=kname,
                                   params=params, flags=flags, objvar=k_var))
         return kernels
-
-
-class GpuGammaLn(GammaLn):
-
-    def c_headers(self):
-        return ['math_functions.h']
-gpu_gammaln = GpuGammaLn(upgrade_to_float_no_complex, name='gpu_gammaln')
 
 
 class GpuErfinv(Erfinv):
