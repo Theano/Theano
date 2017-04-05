@@ -502,28 +502,32 @@ class Softmax(gof.Op):
 
     """
 
-    nin = 1
+    nin = 2
     nout = 1
     __props__ = ()
 
-    def make_node(self, x):
+    def make_node(self, x, axis=-1):
         x = tensor.as_tensor_variable(x)
+        axis = tensor.as_tensor_variable(axis)
+        if axis.type.dtype not in tensor.int_dtypes:
+            raise ValueError('axis must be an integer. Got ', axis.type)
         # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
-        return Apply(self, [x], [x.type()])
+        return Apply(self, [x, axis], [x.type()])
 
     def perform(self, node, input_storage, output_storage):
-        x, = input_storage
+        x, ax = input_storage
         # Apply softmax on the last dimension
-        e_x = numpy.exp(x - x.max(axis=-1, keepdims=True))
-        sm = e_x / e_x.sum(axis=-1, keepdims=True)
+        e_x = numpy.exp(x - x.max(axis=ax, keepdims=True))
+        sm = e_x / e_x.sum(axis=ax, keepdims=True)
         output_storage[0][0] = sm
 
     def L_op(self, inp, outputs, grads):
-        x, = inp
+        x, axis = inp
         g_sm, = grads
-        return [softmax_grad(g_sm, outputs[0])]
+        axis_grad = theano.gradient.grad_undefined(self, 1, axis)
+        return [softmax_grad(g_sm, outputs[0], axis), axis_grad]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
@@ -533,7 +537,7 @@ class Softmax(gof.Op):
         return self.L_op(inputs, [self(*inputs)], eval_points)
 
     def infer_shape(self, node, shape):
-        return shape
+        return [shape[0]]
 
     def c_headers(self):
         return ['<iostream>', '<cmath>']
@@ -550,6 +554,7 @@ class Softmax(gof.Op):
         init_decl = """
             npy_intp* shape_x = PyArray_DIMS(%(x)s);
             npy_int ndim_x = PyArray_NDIM(%(x)s);
+            npy_int axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
 
             // Check input types
             if ((PyArray_TYPE(%(x)s) != NPY_DOUBLE) &&
@@ -559,7 +564,19 @@ class Softmax(gof.Op):
                     %(fail)s;
                     }
 
-            npy_int shape_not_equal, i;
+            // Check if the axis is valid
+            if(axis > ndim_x - 1 || axis < -1){
+                PyErr_SetString(PyExc_ValueError,
+                "Argmax, bad axis argument");
+                %(fail)s
+            }
+
+            if(axis == -1)
+            {
+                axis = ndim_x - 1;
+            }
+
+            npy_int shape_not_equal;
             shape_not_equal = 0;
             //If the memory is already allowed
             if(NULL != %(sm)s)
@@ -590,17 +607,16 @@ class Softmax(gof.Op):
 
         begin_row_loop = """
             // Use numpy iterator
-            npy_int last_axis, num_data, stride_x, stride_sm;
-            last_axis = ndim_x - 1;
+            npy_int num_data, stride_x, stride_sm;
             // Get numpy iterator
             PyArrayIterObject *it_x, *it_sm;
-            it_x = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(x)s, &last_axis);
-            it_sm = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(sm)s, &last_axis);
+            it_x = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(x)s, &axis);
+            it_sm = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(sm)s, &axis);
             // Compute the stride on the selected dimension
-            stride_x = PyArray_STRIDE(%(x)s, last_axis)/sizeof(dtype_%(x)s);;
-            stride_sm = PyArray_STRIDE(%(sm)s, last_axis)/sizeof(dtype_%(sm)s);
+            stride_x = PyArray_STRIDE(%(x)s, axis)/sizeof(dtype_%(x)s);;
+            stride_sm = PyArray_STRIDE(%(sm)s, axis)/sizeof(dtype_%(sm)s);
             // Get the shape on the specified dimension
-            num_data = shape_x[last_axis];
+            num_data = shape_x[axis];
             // Go through the array
             dtype_%(sm)s *sm_i;
             dtype_%(x)s *x_i;
@@ -669,7 +685,11 @@ class Softmax(gof.Op):
             """ % locals()
 
             inside_row_loop = """
+            if(stride_sm == 1){
                 %(inside_row_loop_contig)s
+            }else{
+                %(inside_row_loop)s
+            }
             """ % locals()
         except theano.gof.utils.MethodNotDefined:
             pass
@@ -682,15 +702,15 @@ class Softmax(gof.Op):
         return (init_decl, begin_row_loop, inside_row_loop, end_row_loop)
 
     def c_code(self, node, name, inp, out, sub):
-        x, = inp
+        x, axis = inp
         sm, = out
         code_template = ''.join(self.c_code_template(
             node.inputs[0].type.dtype_specs()[1]))
         return code_template % dict(locals(), **sub)
 
-    @staticmethod
-    def c_code_cache_version():
-        return (4,)
+    # @staticmethod
+    # def c_code_cache_version():
+    #    return (5,)
 
 softmax_op = Softmax()
 
