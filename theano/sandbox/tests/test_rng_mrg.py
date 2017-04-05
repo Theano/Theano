@@ -687,7 +687,7 @@ def test_overflow_cpu():
     rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=False)
 
 
-def test_udefined_grad():
+def test_undefined_grad():
     srng = MRG_RandomStreams(seed=1234)
 
     # checking uniform distribution
