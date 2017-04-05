@@ -323,51 +323,55 @@ class SoftmaxGrad(gof.Op):
     Gradient wrt x of the Softmax Op.
     """
 
-    nin = 2
+    nin = 3
     nout = 1
     __props__ = ()
 
-    def make_node(self, dy, sm):
+    def make_node(self, dy, sm, axis=-1):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
+        axis = tensor.as_tensor_variable(axis)
+        if axis.type.dtype not in tensor.int_dtypes:
+            raise ValueError('axis must be an integer. Got ', axis.type)
         if dy.type.dtype not in tensor.float_dtypes:
             raise ValueError('dy must be tensor of floats. Got ', dy.type)
-        return Apply(self, [dy, sm], [sm.type()])
+        return Apply(self, [dy, sm, axis], [sm.type()])
 
     def perform(self, node, input_storage, output_storage):
-        dy, sm = input_storage
+        dy, sm, ax = input_storage
         if (dy.shape != sm.shape):
             raise ValueError('dy and the softmax output should have the same shape.')
         dx = numpy.zeros_like(sm)
         # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
         dy_times_sm = dy * sm
-        dx = dy_times_sm - (numpy.sum(dy_times_sm, axis=-1, keepdims=True) * sm)
+        dx = dy_times_sm - (numpy.sum(dy_times_sm, axis=ax, keepdims=True) * sm)
         output_storage[0][0] = dx
 
     def grad(self, inp, grads):
-        dy, sm = inp
+        dy, sm, ax = inp
         g, = grads
-        tmp = g + tensor.neg(tensor.sum(g * sm, axis=-1, keepdims=True))
+        tmp = g + tensor.neg(tensor.sum(g * sm, axis=ax.eval(), keepdims=True))
         g_dy = tmp * sm
-        tmp2 = tensor.sum(dy * sm, axis=-1, keepdims=True)
+        tmp2 = tensor.sum(dy * sm, axis=ax.eval(), keepdims=True)
         g_sm = tmp * dy - g * tmp2
-        return g_dy, g_sm
+        g_ax = theano.gradient.grad_undefined(self, 2, ax)
+        return g_dy, g_sm, g_ax
 
     def infer_shape(self, node, shape):
         return [shape[1]]
 
-    def c_code_cache_version(self):
-        return (4,)
+    #def c_code_cache_version(self):
+    #    return (5,)
 
     def c_code(self, node, name, inp, out, sub):
-        dy, sm = inp
+        dy, sm, axis = inp
         dx, = out
         return '''
-            npy_intp* input_shape = PyArray_DIMS(%(sm)s);
             npy_int ndim_sm = PyArray_NDIM(%(sm)s);
             npy_int ndim_dy = PyArray_NDIM(%(dy)s);
             npy_intp* shape_sm = PyArray_DIMS(%(sm)s);
             npy_intp* shape_dy = PyArray_DIMS(%(dy)s);
+            npy_int axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
 
             // Check input type
             if ((PyArray_TYPE(%(dy)s) != NPY_DOUBLE) &&
@@ -392,6 +396,17 @@ class SoftmaxGrad(gof.Op):
                     PyErr_SetString(PyExc_ValueError, "Sm and dy should have the same number of dimension.");
                     %(fail)s;
                 }
+
+            // Check if the axis is valid
+            if(axis > PyArray_NDIM(%(sm)s)-1 || axis < -1){
+                PyErr_SetString(PyExc_ValueError,
+                "Argmax, bad axis argument");
+                %(fail)s
+            }
+            if(axis == -1)
+            {
+                axis = PyArray_NDIM(%(sm)s) - 1;
+            }
 
             // Check the shapes of sm and dy
             npy_int shape_not_equal;
@@ -436,19 +451,18 @@ class SoftmaxGrad(gof.Op):
                 }
 
             // Use numpy iterator
-            npy_int last_axis, num_data, stride_dx, stride_sm, stride_dy;
-            last_axis = ndim_sm - 1;
+            npy_int num_data, stride_dx, stride_sm, stride_dy;
             // Get numpy iterator
             PyArrayIterObject *it_dx, *it_sm, *it_dy;
-            it_dx = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(dx)s, &last_axis);
-            it_sm = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(sm)s, &last_axis);
-            it_dy = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(dy)s, &last_axis);
+            it_dx = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(dx)s, &axis);
+            it_sm = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(sm)s, &axis);
+            it_dy = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(dy)s, &axis);
             // Compute the stride on the selected dimension
-            stride_dx = PyArray_STRIDE(%(dx)s, last_axis)/sizeof(dtype_%(dx)s);;
-            stride_sm = PyArray_STRIDE(%(sm)s, last_axis)/sizeof(dtype_%(sm)s);
-            stride_dy = PyArray_STRIDE(%(dy)s, last_axis)/sizeof(dtype_%(dy)s);
+            stride_dx = PyArray_STRIDE(%(dx)s, axis)/sizeof(dtype_%(dx)s);;
+            stride_sm = PyArray_STRIDE(%(sm)s, axis)/sizeof(dtype_%(sm)s);
+            stride_dy = PyArray_STRIDE(%(dy)s, axis)/sizeof(dtype_%(dy)s);
             // Get the shape on the specified dimension
-            num_data = shape_sm[last_axis];
+            num_data = shape_sm[axis];
             // Go through the array
             dtype_%(dx)s *dx_i;
             dtype_%(sm)s *sm_i;
