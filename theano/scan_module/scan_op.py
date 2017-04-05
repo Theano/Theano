@@ -2201,6 +2201,7 @@ class Scan(PureOp):
         # Construct scan op
         # Seqs
         if self.as_while:
+            # equivalent to x[:n_steps][::-1]
             outer_inp_seqs = [x[n_steps - 1::-1] for x in inputs[1:1 + self.n_seqs]]
         else:
             outer_inp_seqs = [x[::-1] for x in inputs[1:1 + self.n_seqs]]
@@ -2222,6 +2223,7 @@ class Scan(PureOp):
         for x in self.outer_nitsot_outs(dC_douts):
             if not isinstance(x.type, DisconnectedType):
                 if self.as_while:
+                    # equivalent to x[:n_steps][::-1]
                     outer_inp_seqs.append(x[n_steps - 1::-1])
                 else:
                     outer_inp_seqs.append(x[::-1])
@@ -2232,20 +2234,25 @@ class Scan(PureOp):
             # fct add and we want to keep it for all Scan op.  This is
             # used in T_Scan.test_grad_multiple_outs_taps to test
             # that.
+            if self.as_while:
+                n = n_steps.tag.test_value
+            else:
+                n = inputs[0].tag.test_value
             for taps, x in zip(self.mitsot_taps(),
                                self.outer_mitsot_outs(outs)):
                 mintap = np.min(taps)
                 if hasattr(x[::-1][:mintap], 'test_value'):
-                    assert (x[::-1][:mintap].tag.test_value.shape[0] ==
-                            grad_steps.tag.test_value)
+                    assert (x[::-1][:mintap].tag.test_value.shape[0] == n)
             for x in self.outer_sitsot_outs(outs):
                 if hasattr(x[::-1][:-1].tag, 'test_value'):
-                    assert (x[::-1][:-1].tag.test_value.shape[0] ==
-                            grad_steps.tag.test_value)
+                    assert (x[::-1][:-1].tag.test_value.shape[0] == n)
             for x in self.outer_nitsot_outs(outs):
                 if hasattr(x[::-1].tag, 'test_value'):
-                    assert (x[grad_steps - 1::-1].tag.test_value.shape[0] ==
-                            grad_steps.tag.test_value)
+                    if self.as_while:
+                        assert (x[n_steps - 1::-1].tag.test_value.shape[0] ==
+                                n)
+                    else:
+                        assert (x[::-1].tag.test_value.shape[0] == n)
         outer_inp_seqs += [x[::-1][:np.min(taps)]
                            for taps, x in zip(self.mitsot_taps(),
                                               self.outer_mitsot_outs(outs))]

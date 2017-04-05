@@ -5535,7 +5535,7 @@ class TestGradUntil(unittest.TestCase):
 
     def setUp(self):
         self.x = tensor.vector(name='x')
-        self.until = tensor.scalar(name='until', dtype='int64')
+        self.threshold = tensor.scalar(name='threshold', dtype='int64')
         self.seq = np.arange(15, dtype=theano.config.floatX)
         self.numpy_output = self.seq[:7]**2
         z = np.zeros(8, dtype=theano.config.floatX)
@@ -5545,9 +5545,9 @@ class TestGradUntil(unittest.TestCase):
         r, _ = theano.scan(lambda x, u: (x * x,
                                          theano.scan_module.until(x > u)),
                            sequences=self.x,
-                           non_sequences=[self.until])
+                           non_sequences=[self.threshold])
         g = theano.grad(r.sum(), self.x)
-        f = theano.function([self.x, self.until], [r, g])
+        f = theano.function([self.x, self.threshold], [r, g])
         theano_output, theano_gradient = f(self.seq, 5)
 
         utt.assert_allclose(theano_output, self.numpy_output)
@@ -5558,10 +5558,10 @@ class TestGradUntil(unittest.TestCase):
         r, _ = theano.scan(lambda x, u: (x * x,
                                          theano.scan_module.until(x > u)),
                            sequences=self.x,
-                           non_sequences=[self.until],
+                           non_sequences=[self.threshold],
                            truncate_gradient=n)
         g = theano.grad(r.sum(), self.x)
-        f = theano.function([self.x, self.until], [r, g])
+        f = theano.function([self.x, self.threshold], [r, g])
         theano_output, theano_gradient = f(self.seq, 5)
 
         self.numpy_gradient[:7 - n] = 0
