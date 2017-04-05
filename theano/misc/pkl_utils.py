@@ -209,7 +209,7 @@ class PersistentGpuArrayID(PersistentNdarrayID):
                 isinstance(obj, pygpu.gpuarray.GpuArray)):
             if id(obj) not in self.seen:
                 def write_array(f):
-                    pickle.dump(f, _name_for_ctx(obj.context), 2)
+                    pickle.dump(_name_for_ctx(obj.context), f, 2)
                     np.lib.format.write_array(f, np.asarray(obj))
                 name = self._resolve_name(obj)
                 zipadd(write_array, self.zip_file, name)
@@ -285,6 +285,7 @@ class PersistentNdarrayLoad(object):
 
     def __call__(self, persid):
         from theano.gpuarray.type import get_context
+        from theano.gpuarray import pygpu
         array_type, name = persid.split('.')
 
         if name in self.cache:

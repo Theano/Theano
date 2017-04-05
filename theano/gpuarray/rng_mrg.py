@@ -9,21 +9,35 @@ from __future__ import absolute_import, print_function, division
 
 import numpy
 
+from theano import Apply, tensor
 from theano.gof import local_optimizer
 from theano.sandbox.rng_mrg import mrg_uniform_base, mrg_uniform
 from theano.tensor import as_tensor_variable, get_vector_length
 
-from theano.gpuarray.basic_ops import GpuKernelBase, Kernel, infer_context_name
-from theano.gpuarray.type import GpuArrayType
-from theano.gpuarray.fp16_help import write_w
-from theano.gpuarray.opt import (register_opt as register_gpua,
-                                 register_opt2,
-                                 host_from_gpu as host_from_gpua)
+from .basic_ops import (GpuKernelBase, Kernel, infer_context_name,
+                        host_from_gpu, as_gpuarray_variable)
+from .type import GpuArrayType
+from .fp16_help import write_w
+from .opt import register_opt, register_opt2
 
 
 class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
     # GpuArray version
     _f16_ok = True
+
+    def make_node(self, rstate, size):
+        # error checking slightly redundant here, since
+        # this op should not be called directly.
+        #
+        # call through MRG_RandomStreams instead.
+        broad = []
+        for i in range(self.output_type.ndim):
+                broad.append(tensor.extract_constant(size[i]) == 1)
+        output_type = self.output_type.clone(broadcastable=broad)()
+        rstate = as_gpuarray_variable(rstate, infer_context_name(rstate))
+        return Apply(self,
+                     [rstate, size],
+                     [rstate.type(), output_type])
 
     def get_params(self, node):
         return node.inputs[0].type.context
@@ -283,10 +297,10 @@ def local_gpua_mrg_graph(op, context_name, inputs, outputs):
                                     op.output_type.ndim,
                                     op.output_type.dtype,
                                     inputs[1])
-        return [outs[0], host_from_gpua(outs[1])]
+        return [outs[0], host_from_gpu(outs[1])]
 
 
-@register_gpua('fast_compile')
+@register_opt('fast_compile')
 @local_optimizer([mrg_uniform])
 def local_gpua_mrg(node):
     context_name = infer_context_name(*node.inputs)

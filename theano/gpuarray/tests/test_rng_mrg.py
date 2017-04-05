@@ -10,8 +10,9 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.sandbox.tests.test_rng_mrg import java_samples, rng_mrg_overflow
 from theano.tests import unittest_tools as utt
 
-from theano.gpuarray.tests.config import mode_with_gpu as mode
-from theano.gpuarray.type import gpuarray_shared_constructor
+from .config import mode_with_gpu as mode
+from ..type import gpuarray_shared_constructor
+from ..rng_mrg import GPUA_mrg_uniform
 
 utt.seed_rng()
 
@@ -36,10 +37,10 @@ def test_consistency_GPUA_serial():
             # Transfer to device
             rstate = gpuarray_shared_constructor(substream_rstate)
 
-            new_rstate, sample = rng_mrg.GPUA_mrg_uniform.new(rstate,
-                                                              ndim=None,
-                                                              dtype='float32',
-                                                              size=(1,))
+            new_rstate, sample = GPUA_mrg_uniform.new(rstate,
+                                                      ndim=None,
+                                                      dtype='float32',
+                                                      size=(1,))
             rstate.default_update = new_rstate
 
             # Not really necessary, just mimicking
@@ -84,9 +85,9 @@ def test_consistency_GPUA_parallel():
         rstate = np.asarray(rstate)
         rstate = gpuarray_shared_constructor(rstate)
 
-        new_rstate, sample = rng_mrg.GPUA_mrg_uniform.new(rstate, ndim=None,
-                                                          dtype='float32',
-                                                          size=(n_substreams,))
+        new_rstate, sample = GPUA_mrg_uniform.new(rstate, ndim=None,
+                                                  dtype='float32',
+                                                  size=(n_substreams,))
         rstate.default_update = new_rstate
 
         # Not really necessary, just mimicking
@@ -125,9 +126,9 @@ def test_GPUA_full_fill():
     f_cpu = theano.function([], uni)
 
     rstate_gpu = gpuarray_shared_constructor(R.state_updates[-1][0].get_value())
-    new_rstate, sample = rng_mrg.GPUA_mrg_uniform.new(rstate_gpu, ndim=None,
-                                                      dtype='float32',
-                                                      size=size)
+    new_rstate, sample = GPUA_mrg_uniform.new(rstate_gpu, ndim=None,
+                                              dtype='float32',
+                                              size=size)
     rstate_gpu.default_update = new_rstate
     f_gpu = theano.function([], sample)
 
@@ -146,7 +147,7 @@ def test_overflow_gpu_new_backend():
         rstate.append(rng_mrg.ff_2p72(rstate[-1]))
     rstate = np.asarray(rstate)
     rstate = gpuarray_shared_constructor(rstate)
-    fct = functools.partial(rng_mrg.GPUA_mrg_uniform.new, rstate,
+    fct = functools.partial(GPUA_mrg_uniform.new, rstate,
                             ndim=None, dtype='float32')
     # should raise error as the size overflows
     sizes = [(2**31, ), (2**32, ), (2**15, 2**16,), (2, 2**15, 2**15)]

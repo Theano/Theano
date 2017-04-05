@@ -72,7 +72,7 @@ def test_consistency_randomstreams():
             stream_samples.append(s)
         stream_samples = np.array(stream_samples)
         stream_samples = stream_samples.T.flatten()
-    samples.append(stream_samples)
+        samples.append(stream_samples)
 
     samples = np.array(samples).flatten()
     assert(np.allclose(samples, java_samples))
@@ -665,7 +665,6 @@ def rng_mrg_overflow(sizes, fct, mode, should_raise_error):
     for size in sizes:
         y = fct(size=size)
         f = theano.function([], y, mode=mode)
-        theano.printing.debugprint(f)
         if should_raise_error:
             assert_raises(ValueError, f)
         else:
