@@ -6,7 +6,7 @@ from theano.gof import Op, COp, Apply
 from theano import Generic
 from theano.scalar import Scalar
 from theano.tensor import TensorType
-from theano.gof import Wrapper, Wrap
+from theano.gof import ParamsType, Params
 from theano import tensor
 from theano.tests import unittest_tools as utt
 
@@ -18,9 +18,9 @@ generic_type = Generic()
 # A test op to compute `y = a*x^2 + bx + c` for any tensor x, with a, b, c as op params.
 class QuadraticOpFunc(Op):
     __props__ = ('a', 'b', 'c')
-    params_type = Wrapper(a=tensor_type_0d,
-                          b=scalar_type,
-                          c=generic_type)
+    params_type = ParamsType(a=tensor_type_0d,
+                             b=scalar_type,
+                             c=generic_type)
 
     def __init__(self, a, b, c):
         self.a = a
@@ -93,9 +93,9 @@ class QuadraticOpFunc(Op):
 # Same op as above, but implemented as a COp (with C code in an external file).
 class QuadraticCOpFunc(COp):
     __props__ = ('a', 'b', 'c')
-    params_type = Wrapper(a=tensor_type_0d,
-                          b=scalar_type,
-                          c=generic_type)
+    params_type = ParamsType(a=tensor_type_0d,
+                             b=scalar_type,
+                             c=generic_type)
 
     def __init__(self, a, b, c):
         super(QuadraticCOpFunc, self).__init__('test_quadratic_function.c',
@@ -114,71 +114,71 @@ class QuadraticCOpFunc(COp):
         y[0] = coefficients.a * (x**2) + coefficients.b * x + coefficients.c
 
 
-class TestWrapper(TestCase):
+class TestParamsType(TestCase):
 
-    def test_hash_and_eq_wrap(self):
-        wp1 = Wrapper(a=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
-                      npy_scalar=TensorType('float64', tuple()))
-        wp2 = Wrapper(a=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
-                      npy_scalar=TensorType('float64', tuple()))
-        w1 = Wrap(wp1, a=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
-        w2 = Wrap(wp2, a=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
+    def test_hash_and_eq_params(self):
+        wp1 = ParamsType(a=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
+                         npy_scalar=TensorType('float64', tuple()))
+        wp2 = ParamsType(a=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
+                         npy_scalar=TensorType('float64', tuple()))
+        w1 = Params(wp1, a=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
+        w2 = Params(wp2, a=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         assert w1 == w2
         assert not (w1 != w2)
         assert hash(w1) == hash(w2)
         # Changing attributes names only (a -> other_name).
-        wp2_other = Wrapper(other_name=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
-                            npy_scalar=TensorType('float64', tuple()))
-        w2 = Wrap(wp2_other, other_name=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
+        wp2_other = ParamsType(other_name=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
+                               npy_scalar=TensorType('float64', tuple()))
+        w2 = Params(wp2_other, other_name=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         assert w1 != w2
         # Changing attributes values only (now a=2).
-        w2 = Wrap(wp2, a=2, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
+        w2 = Params(wp2, a=2, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         assert w1 != w2
         # Changing NumPy array values (5 -> -5).
-        w2 = Wrap(wp2, a=1, array=numpy.asarray([1, 2, 4, -5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
+        w2 = Params(wp2, a=1, array=numpy.asarray([1, 2, 4, -5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         assert w1 != w2
 
-    def test_hash_and_eq_wrapper(self):
-        w1 = Wrapper(a1=TensorType('int64', (False, False)),
-                     a2=TensorType('int64', (False, True, False, False, True)),
-                     a3=Generic())
-        w2 = Wrapper(a1=TensorType('int64', (False, False)),
-                     a2=TensorType('int64', (False, True, False, False, True)),
-                     a3=Generic())
+    def test_hash_and_eq_params_type(self):
+        w1 = ParamsType(a1=TensorType('int64', (False, False)),
+                        a2=TensorType('int64', (False, True, False, False, True)),
+                        a3=Generic())
+        w2 = ParamsType(a1=TensorType('int64', (False, False)),
+                        a2=TensorType('int64', (False, True, False, False, True)),
+                        a3=Generic())
         assert w1 == w2
         assert not (w1 != w2)
         assert hash(w1) == hash(w2)
         assert w1.name == w2.name
         # Changing attributes names only.
-        w2 = Wrapper(a1=TensorType('int64', (False, False)),
-                     other_name=TensorType('int64', (False, True, False, False, True)),  # a2 -> other_name
-                     a3=Generic())
+        w2 = ParamsType(a1=TensorType('int64', (False, False)),
+                        other_name=TensorType('int64', (False, True, False, False, True)),  # a2 -> other_name
+                        a3=Generic())
         assert w1 != w2
         # Changing attributes types only.
-        w2 = Wrapper(a1=TensorType('int64', (False, False)),
-                     a2=Generic(),  # changing class
-                     a3=Generic())
+        w2 = ParamsType(a1=TensorType('int64', (False, False)),
+                        a2=Generic(),  # changing class
+                        a3=Generic())
         assert w1 != w2
         # Changing attributes types characteristics only.
-        w2 = Wrapper(a1=TensorType('int64', (False, True)),  # changing broadcasting
-                     a2=TensorType('int64', (False, True, False, False, True)),
-                     a3=Generic())
+        w2 = ParamsType(a1=TensorType('int64', (False, True)),  # changing broadcasting
+                        a2=TensorType('int64', (False, True, False, False, True)),
+                        a3=Generic())
         assert w1 != w2
 
-    def test_wrapper_filtering(self):
+    def test_params_type_filtering(self):
         shape_tensor5 = (1, 2, 2, 3, 2)
         size_tensor5 = shape_tensor5[0] * shape_tensor5[1] * shape_tensor5[2] * shape_tensor5[3] * shape_tensor5[4]
         random_tensor = numpy.random.normal(size=size_tensor5).reshape(shape_tensor5)
 
-        w = Wrapper(a1=TensorType('int32', (False, False)),
-                    a2=TensorType('float64', (False, False, False, False, False)),
-                    a3=Generic())
+        w = ParamsType(a1=TensorType('int32', (False, False)),
+                       a2=TensorType('float64', (False, False, False, False, False)),
+                       a3=Generic())
 
-        # With a value that does not match the wrapper.
-        o = Wrap(w,
-                 a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int64'),
-                 a2=random_tensor.astype('float32'),
-                 a3=2000)
+        # With a value that does not match the params type.
+        o = Params(w,
+                   a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int64'),
+                   a2=random_tensor.astype('float32'),
+                   a3=2000)
         # should fail (o.a1 is not int32, o.a2 is not float64)
         self.assertRaises(TypeError, w.filter, o, True)
         # should fail (o.a1 is not int32, o.a2 is not float64, and downcast is disallowed)
@@ -186,31 +186,31 @@ class TestWrapper(TestCase):
         # Should pass.
         w.filter(o, strict=False, allow_downcast=True)
 
-        # With a value that matches the wrapper.
-        o1 = Wrap(w,
-                  a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
-                  a2=random_tensor.astype('float64'),
-                  a3=2000)
+        # With a value that matches the params type.
+        o1 = Params(w,
+                    a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
+                    a2=random_tensor.astype('float64'),
+                    a3=2000)
         # All should pass.
         w.filter(o1, strict=True)
         w.filter(o1, strict=False, allow_downcast=False)
         w.filter(o1, strict=False, allow_downcast=True)
 
         # Check values_eq and values_eq_approx.
-        o2 = Wrap(w,
-                  a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
-                  a2=random_tensor.astype('float64'),
-                  a3=2000)
+        o2 = Params(w,
+                    a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
+                    a2=random_tensor.astype('float64'),
+                    a3=2000)
         assert w.values_eq(o1, o2)
         assert w.values_eq_approx(o1, o2)
 
         # Check value_eq_approx.
         # NB: I don't know exactly which kind of differences is rejected by values_eq but accepted by values_eq_approx.
         # So, I just play a little with float values.
-        o3 = Wrap(w,
-                  a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
-                  a2=(random_tensor.astype('float32') * 10 / 2.2 * 2.19999999999 / 10).astype('float64'),
-                  a3=2000.0 - 0.00000000000000001)
+        o3 = Params(w,
+                    a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
+                    a2=(random_tensor.astype('float32') * 10 / 2.2 * 2.19999999999 / 10).astype('float64'),
+                    a3=2000.0 - 0.00000000000000001)
         assert w.values_eq_approx(o1, o3)
 
     def test_op_params(self):

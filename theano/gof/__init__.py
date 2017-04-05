@@ -80,7 +80,7 @@ from theano.gof.type import \
 from theano.gof.utils import \
     hashtype, object2, MethodNotDefined
 
-from theano.gof.wrapper import Wrapper, Wrap
+from theano.gof.params_type import ParamsType, Params
 
 import theano
 
