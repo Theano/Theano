@@ -9,11 +9,12 @@ from theano import config
 from theano.compile import DeepCopyOp
 from theano.misc.pkl_utils import CompatUnpickler
 
-from theano.tensor.tests.test_sharedvar import makeSharedTester
+# Disabled for now
+# from theano.tensor.tests.test_sharedvar import makeSharedTester
 
 from .config import test_ctx_name
 from .test_basic_ops import rand_gpuarray
-from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
+from ..type import GpuArrayType, gpuarray_shared_constructor
 
 import pygpu
 

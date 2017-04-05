@@ -11,7 +11,7 @@ import numpy as np
 from theano.misc.tests.test_may_share_memory import may_share_memory_core
 from theano.misc.pkl_utils import dump, load
 
-from  theano.tensor.tests import test_opt
+from theano.tensor.tests import test_opt
 
 
 class test_fusion(test_opt.test_fusion):
