@@ -5536,10 +5536,10 @@ class TestGradUntil(unittest.TestCase):
     def setUp(self):
         self.x = tensor.vector(name='x')
         self.until = tensor.scalar(name='until', dtype='int64')
-        self.seq = numpy.arange(15, dtype=theano.config.floatX)
+        self.seq = np.arange(15, dtype=theano.config.floatX)
         self.numpy_output = self.seq[:7]**2
-        z = numpy.zeros(8, dtype=theano.config.floatX)
-        self.numpy_gradient = 2 * numpy.concatenate([self.seq[:7], z], axis=0)
+        z = np.zeros(8, dtype=theano.config.floatX)
+        self.numpy_gradient = 2 * np.concatenate([self.seq[:7], z], axis=0)
 
     def test_grad_until(self):
         r, _ = theano.scan(lambda x, u: (x * x,
