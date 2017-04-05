@@ -304,6 +304,7 @@ class Psi(UnaryScalarOp):
 
             #ifndef ga_double
             #define ga_double double
+            #endif
 
             #ifndef _PSIFUNCDEFINED
             #define _PSIFUNCDEFINED

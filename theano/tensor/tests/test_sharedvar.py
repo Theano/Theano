@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
 import unittest
-import warnings
+from functools import update_wrapper
 
 import theano
 from theano import tensor
@@ -25,7 +25,6 @@ def makeSharedTester(shared_constructor_,
                      theano_fct_,
                      ref_fct_,
                      cast_value_=np.asarray,
-                     name=None,
                      ):
     """
     This is a generic fct to allow reusing the same test function
@@ -197,9 +196,7 @@ def makeSharedTester(shared_constructor_,
             assert not np.allclose(self.ref_fct(x), total_func())
 
         def test_get_value(self):
-            """
-            Test that get_value return the same type as what was gived when creating the shared variable
-            """
+            # Test that get_value returns a ndarray
             dtype = self.dtype
             if dtype is None:
                 dtype = theano.config.floatX
@@ -209,10 +206,9 @@ def makeSharedTester(shared_constructor_,
             x_cast = self.cast_value(x_orig)
             if self.shared_constructor_accept_ndarray:
                 x_shared = self.shared_constructor(x_orig, borrow=False)
-                assert isinstance(x_shared.get_value(), x_orig.__class__)
-
-            x_shared = self.shared_constructor(x_cast, borrow=False)
-            assert isinstance(x_shared.get_value(), x_cast.__class__)
+            else:
+                x_shared = self.shared_constructor(x_cast, borrow=False)
+            assert isinstance(x_shared.get_value(), x_orig.__class__)
 
         def test_set_value(self):
             dtype = self.dtype
@@ -573,14 +569,11 @@ def makeSharedTester(shared_constructor_,
                     assert not x_shared.type.values_eq(x, y)
                     assert not x_shared.type.values_eq_approx(x, y)
 
-    assert name is not None
-    SharedTester.__name__ = name
-    if hasattr(SharedTester, '__qualname__'):
-        SharedTester.__qualname__ = name
+    def f(cls):
+        return update_wrapper(SharedTester, cls, updated=())
+    return f
 
-    return SharedTester
-
-test_shared_options = makeSharedTester(
+@makeSharedTester(
     shared_constructor_=tensor._shared,
     dtype_=theano.config.floatX,
     get_value_borrow_true_alias_=True,
@@ -593,8 +586,9 @@ test_shared_options = makeSharedTester(
     test_internal_type_=lambda a: isinstance(a, np.ndarray),
     theano_fct_=lambda a: a*2,
     ref_fct_=lambda a: np.asarray((a*2)),
-    cast_value_=np.asarray,
-    name='test_shared_options')
+    cast_value_=np.asarray)
+class test_shared_options(object):
+    pass
 
 
 def test_scalar_shared_options():
