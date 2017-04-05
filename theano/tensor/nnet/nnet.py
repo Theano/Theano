@@ -1107,7 +1107,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
     """
 
-    nin = 3
+    nin = 4
     nout = 3
     __props__ = ()
 
@@ -1118,6 +1118,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         x = tensor.as_tensor_variable(x)
         b = tensor.as_tensor_variable(b)
         y_idx = tensor.as_tensor_variable(y_idx)
+        axis = tensor.constant(-1)
         if x.type.ndim != 2 \
                 or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('x must be 2-d tensor of floats', x.type)
@@ -1134,7 +1135,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 #        nll = TensorType(x.dtype, y.broadcastable)
         sm = x.type()
         am = y_idx.type()
-        return Apply(self, [x, b, y_idx], [nll, sm, am])
+        return Apply(self, [x, b, y_idx, axis], [nll, sm, am])
 
     def perform(self, node, input_storage, output_storage):
         """
@@ -1153,7 +1154,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 = -x[t] + m + log( sum_j(exp(x[j] - m)))
 
         """
-        x, b, y_idx = input_storage
+        x, b, y_idx, ax = input_storage
         if b.shape[0] != x.shape[1]:
             raise ValueError('b must have same number of columns as x')
         if y_idx.shape[0] != x.shape[0]:
@@ -1187,7 +1188,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         output_storage[2][0] = am
 
     def infer_shape(self, node, shapes):
-        x_shp, b_shp, idx_shp = shapes
+        x_shp, b_shp, idx_shp, ax_shp = shapes
         nll_shp = (x_shp[0],)
         sm_shp = x_shp
         am_shp = idx_shp
@@ -1197,10 +1198,11 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
         return [[True, True, True],  # x
                 [True, True, True],  # b
-                [False, False, True]]  # y_idx
+                [False, False, True], # y_idx
+                [False, False, False]]  # y_idx
 
     def grad(self, inp, grads):
-        x, b, y_idx = inp
+        x, b, y_idx, ax = inp
         g_nll, g_sm, g_am = grads
 
         dx_terms = []
@@ -1215,7 +1217,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             db_terms.append(db)
 
         if not isinstance(g_sm.type, DisconnectedType):
-            dx, db = softmax_with_bias.L_op((x, b), [softmax_with_bias(x, b)], (g_sm, ))
+            dx, db, d_ax = softmax_with_bias.L_op((x, b, ax), [softmax_with_bias(x, b, ax)], (g_sm, ))
             dx_terms.append(dx)
             db_terms.append(db)
 
@@ -1233,7 +1235,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             return rval
 
         return [fancy_sum(terms) for terms in
-                [dx_terms, db_terms, d_idx_terms]]
+                [dx_terms, db_terms, d_idx_terms]] + [DisconnectedType()()]
 
     def c_headers(self):
         return ['<iostream>', '<cmath>']
@@ -1280,6 +1282,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 %(fail)s;
             }
         }
+
         if ((NULL == %(am)s)
             || (PyArray_DIMS(%(am)s)[0] != PyArray_DIMS(%(y_idx)s)[0]))
         {
@@ -1293,6 +1296,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 %(fail)s;
             }
         }
+        int i;
+        i = 0;
                 """,
                 begin_row_loop,
                 """
@@ -1307,19 +1312,20 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 PyErr_SetString(PyExc_ValueError, "y_i value out of bounds");
                 %(fail)s;
             }
-            nll_i[0] = - x_i[y_i*Sx]
-                       - b_i[y_i*Sb]
+            nll_i[0] = - x_i[y_i* stride_x]
+                       - b_i[y_i* stride_b]
                        + row_max
                        + log(sum);
             am_i[0] = row_max_j;
+            i++;
                 """,
                 end_row_loop)
 
-    def c_code_cache_version(self):
-        return (5,) + SoftmaxWithBias.c_code_cache_version()
+    #def c_code_cache_version(self):
+    #    return (5,) + SoftmaxWithBias.c_code_cache_version()
 
     def c_code(self, node, name, inp, out, sub):
-        x, b, y_idx = inp
+        x, b, y_idx, axis = inp
         nll, sm, am = out
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
