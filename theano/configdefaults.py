@@ -1478,10 +1478,10 @@ AddConfigVar('compile.wait',
              IntParam(5, lambda i: i > 0, allow_override=False),
              in_c_key=False)
 
-AddConfigVar('disbale_cycle_detection',
+AddConfigVar('cycle_detection',
              """If true it disables the cycle detection in graph.
              """,
-             BoolParam(False),
+             StrParam('topo'),
              in_c_key=False)
 
 
