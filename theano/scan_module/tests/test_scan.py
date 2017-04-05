@@ -5533,21 +5533,37 @@ class TestMissingInputError(unittest.TestCase):
 
 class TestGradUntil(unittest.TestCase):
 
+    def setUp(self):
+        self.x = tensor.vector(name='x')
+        self.until = tensor.scalar(name='until', dtype='int64')
+        self.seq = numpy.arange(15, dtype=theano.config.floatX)
+        self.numpy_output = self.seq[:7]**2
+        z = numpy.zeros(8, dtype=theano.config.floatX)
+        self.numpy_gradient = 2 * numpy.concatenate([self.seq[:7], z], axis=0)
+
     def test_grad_until(self):
-        x = tensor.vector(name='x')
-        until = tensor.scalar(name='until', dtype='int64')
         r, _ = theano.scan(lambda x, u: (x * x,
                                          theano.scan_module.until(x > u)),
-                           sequences=x,
-                           non_sequences=[until])
-        g = theano.grad(r.sum(), x)
-        f = theano.function([x, until], [r, g])
-        x_num = numpy.arange(15, dtype=theano.config.floatX)
-        theano_sequence, theano_gradient = f(x_num, 5)
+                           sequences=self.x,
+                           non_sequences=[self.until])
+        g = theano.grad(r.sum(), self.x)
+        f = theano.function([self.x, self.until], [r, g])
+        theano_output, theano_gradient = f(self.seq, 5)
 
-        numpy_sequence = numpy.arange(7, dtype=theano.config.floatX)
-        z = numpy.zeros(8, dtype=theano.config.floatX)
-        numpy_gradient = numpy.concatenate([numpy_sequence, z], axis=0)
+        utt.assert_allclose(theano_output, self.numpy_output)
+        utt.assert_allclose(theano_gradient, self.numpy_gradient)
 
-        utt.assert_allclose(theano_sequence, numpy_sequence**2)
-        utt.assert_allclose(theano_gradient, 2 * numpy_gradient)
+    def test_grad_until_and_truncate(self):
+        n = 3
+        r, _ = theano.scan(lambda x, u: (x * x,
+                                         theano.scan_module.until(x > u)),
+                           sequences=self.x,
+                           non_sequences=[self.until],
+                           truncate_gradient=n)
+        g = theano.grad(r.sum(), self.x)
+        f = theano.function([self.x, self.until], [r, g])
+        theano_output, theano_gradient = f(self.seq, 5)
+
+        self.numpy_gradient[:7 - n] = 0
+        utt.assert_allclose(theano_output, self.numpy_output)
+        utt.assert_allclose(theano_gradient, self.numpy_gradient)
