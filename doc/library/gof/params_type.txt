@@ -1,4 +1,4 @@
-.. _libdoc_gof_wrapper:
+.. _libdoc_gof_params_type:
 
 ============================================================
 :mod:`theano.gof.params_type` -- Wrapper class for op params
