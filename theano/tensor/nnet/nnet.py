@@ -1650,7 +1650,7 @@ def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
                 nll, = node.outputs
                 sm, one_of_n = node.inputs
                 if sm.owner and sm.owner.op == softmax_with_bias:
-                    x, b = sm.owner.inputs
+                    x, b, ax = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(
                         x, b, one_of_n)
                     fgraph.replace_all_validate(
@@ -1689,7 +1689,7 @@ def crossentropy_to_crossentropy_with_softmax(fgraph):
                 nll, = node.outputs
                 sm, one_of_n = node.inputs
                 if sm.owner and sm.owner.op == softmax_op:
-                    x, = sm.owner.inputs
+                    x = sm.owner.inputs[0]
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(
                         x, tensor.zeros_like(x[0]), one_of_n)
                     fgraph.replace_all_validate(
@@ -1697,7 +1697,7 @@ def crossentropy_to_crossentropy_with_softmax(fgraph):
                         reason="crossentropy_to_crossentropy_with_softmax")
                     return True
                 if sm.owner and sm.owner.op == softmax_with_bias:
-                    x, b = sm.owner.inputs
+                    x, b, ax = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x, b,
                                                                                          one_of_n)
                     fgraph.replace_all_validate(
@@ -1722,7 +1722,7 @@ optdb.register('crossentropy_to_crossentropy_with_softmax',
 @gof.local_optimizer([softmax_grad])
 def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
     if node.op == softmax_grad:
-        g_coding_dist, coding_dist = node.inputs
+        g_coding_dist, coding_dist, ax = node.inputs
         if (g_coding_dist.owner and
                 g_coding_dist.owner.op == crossentropy_categorical_1hot_grad):
             g_nll, coding_dist, true_one_of_n = g_coding_dist.owner.inputs
@@ -1757,12 +1757,12 @@ def local_argmax_pushdown(node):
         # TODO: Make a list/set of monotonic ops...
         if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp,
                                       tensor.log, tensor.tanh, sigmoid):
-            pre_x, = x.owner.inputs
+            pre_x = x.owner.inputs[0]
             ret = tensor.max_and_argmax(pre_x, axis)
             copy_stack_trace(x_max, ret)
             return ret
         if x.owner and x.owner.op == softmax_with_bias:
-            pre_x, pre_bias = x.owner.inputs
+            pre_x, pre_bias, pres_ax = x.owner.inputs
             ret = tensor.max_and_argmax(pre_x +
                                         tensor.DimShuffle(
                                             pre_bias.broadcastable,
@@ -1855,7 +1855,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
             assert sm_w_bias[0].owner.op == softmax_with_bias
-            x_var, b_var = sm_w_bias[0].owner.inputs
+            x_var, b_var, ax_var = sm_w_bias[0].owner.inputs
         else:
             x_var = sm.owner.inputs[0]
             b_var = tensor.zeros_like(x_var[0])
@@ -1888,7 +1888,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
             assert sm_w_bias[0].owner.op == softmax_with_bias
-            x_var, b_var = sm_w_bias[0].owner.inputs
+            x_var, b_var, ax_var = sm_w_bias[0].owner.inputs
         else:
             x_var = sm.owner.inputs[0]
     else:
@@ -2087,7 +2087,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 @gof.local_optimizer([softmax_with_bias])
 def graph_merge_softmax_with_crossentropy_softmax(node):
     if node.op == softmax_with_bias:
-        x, b = node.inputs
+        x, b, ax = node.inputs
         for x_client in x.clients:
             if x_client[0].op == crossentropy_softmax_argmax_1hot_with_bias:
                 big_client = x_client[0]
