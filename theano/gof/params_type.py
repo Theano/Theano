@@ -85,9 +85,9 @@ class Params(dict):
         from theano.scalar import Scalar
         # You must create a ParamsType first:
         params_type = ParamsType(attr1=Scalar('int32'),
-                                 key2=Scalar('float32'), 
+                                 key2=Scalar('float32'),
                                  field3=Scalar('int64'))
-        # Then you can create a Params object with 
+        # Then you can create a Params object with
         # the params type defined above and values for attributes.
         params = Params(params_type, attr1=1, key2=2.0, field3=3)
         print(params.attr1, params.key2, params.field3)
