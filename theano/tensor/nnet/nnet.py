@@ -923,7 +923,7 @@ def local_logsoftmax_grad(node):
     Note: only grad is affected
     """
     if (isinstance(node.op, SoftmaxGrad) and
-        len(node.inputs) == 2 and
+        len(node.inputs) == 3 and
         node.inputs[0].owner is not None and
         node.inputs[0].owner.op == tensor.true_div and
         len(node.inputs[0].owner.inputs) >= 2 and
@@ -939,11 +939,12 @@ def local_logsoftmax_grad(node):
                        subtensor.AdvancedIncSubtensor))):
         # get parameters from unoptimized op
         sm = node.inputs[0].owner.inputs[1]
+        axis = node.inputs[2]
         # sm_input = node.inputs[1].owner.inputs[0]
         grads = node.inputs[0].owner.inputs[0]
         if grads.broadcastable[1] and not sm.broadcastable[1]:
             grads = tensor.alloc(grads, grads.shape[0], sm.shape[1])
-        ret = grads - tensor.sum(grads, axis=1, keepdims=True) * sm
+        ret = grads - tensor.sum(grads, axis=axis.eval(), keepdims=True) * sm
         ret.tag.values_eq_approx = values_eq_approx_remove_nan
         copy_stack_trace(node.outputs[0], ret)
         return [ret]
@@ -975,7 +976,7 @@ def local_softmax_with_bias(node):
 
     """
     if node.op == softmax_op:
-        x, = node.inputs
+        x = node.inputs[0]
         if x.owner and x.owner.op == tensor.add:
             vectors = []
             non_vectors = []
