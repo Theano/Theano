@@ -374,6 +374,9 @@ class TensorType(Type):
     def __repr__(self):
         return str(self)
 
+    def c_element_type(self):
+        return self.dtype_specs()[1]
+
     def c_declare(self, name, sub, check_input=True):
         """
         Override `CLinkerType.c_declare`.

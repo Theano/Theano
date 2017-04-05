@@ -80,6 +80,8 @@ from theano.gof.type import \
 from theano.gof.utils import \
     hashtype, object2, MethodNotDefined
 
+from theano.gof.params_type import ParamsType, Params
+
 import theano
 
 if theano.config.cmodule.preload_cache:
