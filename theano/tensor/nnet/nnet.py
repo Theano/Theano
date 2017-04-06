@@ -887,7 +887,7 @@ class LogSoftmax(gof.Op):
 
     @staticmethod
     def c_code_cache_version():
-         return (3,)
+        return (3,)
 
 logsoftmax_op = LogSoftmax()
 
@@ -1201,7 +1201,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
         return [[True, True, True],  # x
                 [True, True, True],  # b
-                [False, False, True], # y_idx
+                [False, False, True],  # y_idx
                 [False, False, False]]  # y_idx
 
     def grad(self, inp, grads):
