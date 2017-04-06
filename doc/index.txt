@@ -22,7 +22,10 @@ News
 ====
 
 * Removed support for the old (device=gpu) backend.  Use the new
-  backend (device=cuda) for gpu computing.
+  backend (device=cuda) for gpu computing.  See `Converting to the new
+  gpu back end(gpuarray)
+  <https://github.com/Theano/Theano/wiki/Converting-to-the-new-gpu-back-end%28gpuarray%29>`_
+  for help with conversion.
 
 * 2017/03/20: Release of Theano 0.9.0. Everybody is encouraged to update.
 
@@ -278,4 +281,3 @@ StackOverflow, follow their guidance for `answering questions <http://stackoverf
 
 .. _LISA: http://www.iro.umontreal.ca/~lisa
 .. _University of Montreal: http://www.umontreal.ca
-

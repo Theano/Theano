@@ -219,8 +219,8 @@ be costly.  Here are a few tips to ensure fast and efficient use of GPU memory a
   *Solution*: make sure that the value
   you assign to a GpuArraySharedVariable is *already*  *C-contiguous*.
 
-(Further information on the current implementation of the GPU version of ``set_value()`` can be found
-here: :ref:`libdoc_gpuarray_var`)
+(Further information on the current implementation of the GPU version
+of ``set_value()`` can be found here: :ref:`libdoc_gpuarray_type`)
 
 .. _borrowfunction:
 
