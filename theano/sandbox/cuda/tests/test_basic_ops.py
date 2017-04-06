@@ -1029,7 +1029,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
         use CudaNdarrayTakeFrom are handled correctly
 
         """
-        rand = numpy.random.rand
+
         # The variable fast is used to set the member perform_using_take of
         # the Op.  It is only useful for testing that we use the fast
         # version when we should. Users should not use it.
@@ -1066,7 +1066,8 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
             if size_needed >= theano.sandbox.cuda.mem_info()[0]:
                 # print "skip", shape
                 continue
-            data = rand(*shape)
+
+            data = numpy.random.rand(*shape)
             data = numpy.asarray(data, dtype=self.dtype)
             n = self.shared(data, borrow=True)
 

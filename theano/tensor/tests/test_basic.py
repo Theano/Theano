@@ -32,7 +32,7 @@ from theano.tensor import (_shared, wvector, bvector,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange,
-        clip, constant, default, diag, diagonal, dot, batched_dot,
+        clip, constant, default, dot, batched_dot,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
@@ -45,7 +45,7 @@ from theano.tensor import (_shared, wvector, bvector,
         tile, patternbroadcast, Eye, Shape, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean,
-        itensor3, Tile, switch, ExtractDiag, AllocDiag,
+        itensor3, Tile, switch, ExtractDiag, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
         swapaxes, choose, Choose, NoneConst, AllocEmpty,
@@ -107,11 +107,13 @@ def eval_outputs(outputs):
 
 
 def get_numeric_subclasses(cls=numpy.number, ignore=None):
-    # Return subclasses of `cls` in the numpy scalar hierarchy.
-    #
-    # We only return subclasses that correspond to unique data types.
-    # The hierarchy can be seen here:
-    #     http://docs.scipy.org/doc/numpy/reference/arrays.scalars.html
+    """
+    Return subclasses of `cls` in the numpy scalar hierarchy.
+
+    We only return subclasses that correspond to unique data types.
+    The hierarchy can be seen here:
+        http://docs.scipy.org/doc/numpy/reference/arrays.scalars.html
+    """
     if ignore is None:
         ignore = []
     rval = []
@@ -129,26 +131,28 @@ def get_numeric_subclasses(cls=numpy.number, ignore=None):
 
 def get_numeric_types(with_int=True, with_float=True, with_complex=False,
                       only_theano_types=True):
-    # Return numpy numeric data types.
-    #
-    # :param with_int: Whether to include integer types.
-    #
-    # :param with_float: Whether to include floating point types.
-    #
-    # :param with_complex: Whether to include complex types.
-    #
-    # :param only_theano_types: If True, then numpy numeric data types that are
-    # not supported by Theano are ignored (i.e. those that are not declared in
-    # scalar/basic.py).
-    #
-    # :returns: A list of unique data type objects. Note that multiple data types
-    # may share the same string representation, but can be differentiated through
-    # their `num` attribute.
-    #
-    # Note that when `only_theano_types` is True we could simply return the list
-    # of types defined in the `scalar` module. However with this function we can
-    # test more unique dtype objects, and in the future we may use it to
-    # automatically detect new data types introduced in numpy.
+    """
+    Return numpy numeric data types.
+
+    :param with_int: Whether to include integer types.
+
+    :param with_float: Whether to include floating point types.
+
+    :param with_complex: Whether to include complex types.
+
+    :param only_theano_types: If True, then numpy numeric data types that are
+    not supported by Theano are ignored (i.e. those that are not declared in
+    scalar/basic.py).
+
+    :returns: A list of unique data type objects. Note that multiple data types
+    may share the same string representation, but can be differentiated through
+    their `num` attribute.
+
+    Note that when `only_theano_types` is True we could simply return the list
+    of types defined in the `scalar` module. However with this function we can
+    test more unique dtype objects, and in the future we may use it to
+    automatically detect new data types introduced in numpy.
+    """
     if only_theano_types:
         theano_types = [d.dtype for d in theano.scalar.all_types]
     rval = []
@@ -178,8 +182,10 @@ def get_numeric_types(with_int=True, with_float=True, with_complex=False,
 
 
 def _numpy_checker(x, y):
-    # Checks if x.data and y.data have the same contents.
-    # Used in DualLinker to compare C version with Python version.
+    """
+    Checks if x.data and y.data have the same contents.
+    Used in DualLinker to compare C version with Python version.
+    """
     x, y = x[0], y[0]
     if (x.dtype != y.dtype or x.shape != y.shape
         or numpy.any(numpy.abs(x - y) > 1e-10)):
@@ -187,9 +193,10 @@ def _numpy_checker(x, y):
 
 
 def safe_make_node(op, *inputs):
-    # Emulate the behaviour of make_node when op is a function.
-    #
-    # Normally op in an instead of the Op class.
+    """ Emulate the behaviour of make_node when op is a function.
+
+    Normally op in an instead of the Op class.
+    """
     node = op(*inputs)
     if isinstance(node, list):
         return node[0].owner
@@ -198,15 +205,16 @@ def safe_make_node(op, *inputs):
 
 
 def upcast_float16_ufunc(fn):
-    # Decorator that enforces computation is not done in float16 by NumPy.
-    #
-    # Some ufuncs in NumPy will compute float values on int8 and uint8
-    # in half-precision (float16), which is not enough, and not compatible
-    # with the C code.
-    #
-    # :param fn: numpy ufunc
-    # :returns: function similar to fn.__call__, computing the same
-    #     value with a minimum floating-point precision of float32
+    """Decorator that enforces computation is not done in float16 by NumPy.
+
+    Some ufuncs in NumPy will compute float values on int8 and uint8
+    in half-precision (float16), which is not enough, and not compatible
+    with the C code.
+
+    :param fn: numpy ufunc
+    :returns: function similar to fn.__call__, computing the same
+        value with a minimum floating-point precision of float32
+    """
     def ret(*args, **kwargs):
         out_dtype = numpy.find_common_type(
             [a.dtype for a in args], [numpy.float16])
@@ -220,14 +228,15 @@ def upcast_float16_ufunc(fn):
 
 
 def upcast_int8_nfunc(fn):
-    # Decorator that upcasts input of dtype int8 to float32.
-    #
-    # This is so that floating-point computation is not carried using
-    # half-precision (float16), as some NumPy functions do.
-    #
-    # :param fn: function computing a floating-point value from inputs
-    # :returns: function similar to fn, but upcasting its uint8 and int8
-    #     inputs before carrying out the computation.
+    """Decorator that upcasts input of dtype int8 to float32.
+
+    This is so that floating-point computation is not carried using
+    half-precision (float16), as some NumPy functions do.
+
+    :param fn: function computing a floating-point value from inputs
+    :returns: function similar to fn, but upcasting its uint8 and int8
+        inputs before carrying out the computation.
+    """
     def ret(*args, **kwargs):
         args = list(args)
         for i, a in enumerate(args):
@@ -243,8 +252,10 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                bad_runtime=None, grad=None, mode=None, grad_rtol=None,
                eps=1e-10, skip=False, test_memmap=True, check_name=True,
                grad_eps=None):
-    # :param check_name:
-    #     Use only for tester that aren't in Theano.
+    """
+    :param check_name:
+        Use only for tester that aren't in Theano.
+    """
     if checks is None:
         checks = {}
     if good is None:
@@ -544,7 +555,7 @@ def rand(*shape):
 
 
 def rand_nonzero(shape, eps=3e-4):
-    # Like rand, but the absolute value has to be at least eps
+    """Like rand, but the absolute value has to be at least eps"""
     # covers [0, 1)
     r = numpy.asarray(test_rng.rand(*shape), dtype=config.floatX)
     # covers [0, (1 - eps) / 2) U [(1 + eps) / 2, 1)
@@ -691,15 +702,17 @@ _grad_broadcast_binary_normal = dict(
 
 
 def check_floatX(inputs, rval):
-    # :param inputs: Inputs to a function that returned `rval` with these inputs.
-    #
-    # :param rval: Value returned by a function with inputs set to `inputs`.
-    #
-    # :returns: Either `rval` unchanged, or `rval` cast in float32. The idea is
-    # that when a numpy function would have returned a float64, Theano may prefer
-    # to return a float32 instead when `config.cast_policy` is set to
-    # 'numpy+floatX' and config.floatX to 'float32', and there was no float64
-    # input.
+    """
+    :param inputs: Inputs to a function that returned `rval` with these inputs.
+
+    :param rval: Value returned by a function with inputs set to `inputs`.
+
+    :returns: Either `rval` unchanged, or `rval` cast in float32. The idea is
+    that when a numpy function would have returned a float64, Theano may prefer
+    to return a float32 instead when `config.cast_policy` is set to
+    'numpy+floatX' and config.floatX to 'float32', and there was no float64
+    input.
+    """
     if (isinstance(rval, numpy.ndarray) and
         rval.dtype == 'float64' and
         config.cast_policy == 'numpy+floatX'
@@ -835,8 +848,9 @@ MulInplaceTester = makeBroadcastTester(op=inplace.mul_inplace,
 
 
 def copymod(dct, without=None, **kwargs):
-    # Return dct but with the keys named by args removed, and with
-    # kwargs added.
+    """Return dct but with the keys named by args removed, and with
+    kwargs added.
+    """
     if without is None:
         without = []
     rval = copy(dct)
@@ -914,10 +928,11 @@ if config.floatX == 'float32':
 
 
 def _numpy_true_div(x, y):
-    # Performs true division, and cast the result in the type we expect.
-    #
-    # We define that function so we can use it in TrueDivTester.expected,
-    # because simply calling numpy.true_divide could cause a dtype mismatch.
+    """Performs true division, and cast the result in the type we expect.
+
+    We define that function so we can use it in TrueDivTester.expected,
+    because simply calling numpy.true_divide could cause a dtype mismatch.
+    """
     out = numpy.true_divide(x, y)
     # Use floatX as the result of int / int
     if x.dtype in tensor.discrete_dtypes and y.dtype in tensor.discrete_dtypes:
@@ -2287,8 +2302,10 @@ class ApplyDefaultTestOp(theano.Op):
 
 
 class TestAsTensorVariable(unittest.TestCase):
-    # Unit test for ensuring that as_tensor_variable handles Apply objects
-    # correctly and removes leading broadcastable dimensions when possible.
+    """
+    Unit test for ensuring that as_tensor_variable handles Apply objects
+    correctly and removes leading broadcastable dimensions when possible.
+    """
     def setUp(self):
         self.x = tensor.scalar('x')
 
@@ -3055,7 +3072,9 @@ class T_max_and_argmax(unittest.TestCase):
             assert tuple(v) == numpy.max(data, np_axis).shape
 
     def test_arg_grad(self):
-        # The test checks that the gradient of argmax(x).sum() is 0
+        """
+        The test checks that the gradient of argmax(x).sum() is 0
+        """
 
         x = matrix()
         cost = argmax(x, axis=0).sum()
@@ -3068,14 +3087,15 @@ class T_max_and_argmax(unittest.TestCase):
         n = as_tensor_variable(data)
 
         def safe_verify_grad(func, data):
-            # Wrapper around 'verify_grad' that picks a proper value for epsilon.
-            #
-            # This is needed because 'verify_grad' may fail when its epsilon is
-            # too large, due to the fact the argmax is not continuous.
-            # We make sure epsilon is less than the minimum absolute value found
-            # in the matrix of pairwise differences between all elements in the
-            # data. This way, the argmax will not change when adding epsilon.
-            
+            """
+            Wrapper around 'verify_grad' that picks a proper value for epsilon.
+
+            This is needed because 'verify_grad' may fail when its epsilon is
+            too large, due to the fact the argmax is not continuous.
+            We make sure epsilon is less than the minimum absolute value found
+            in the matrix of pairwise differences between all elements in the
+            data. This way, the argmax will not change when adding epsilon.
+            """
             # 'data' is a one-element list.
             data_tensor, = data
             # Flatten it into a 1D vector.
@@ -3092,7 +3112,9 @@ class T_max_and_argmax(unittest.TestCase):
             utt.verify_grad(func, data, eps=eps)
 
         def check_grad_max(data, max_grad_data, axis=None):
-            # Why this is needed? verify_grad is not enough?
+            """
+            Why this is needed? verify_grad is not enough?
+            """
             # This works only for axis in [0, None].
             assert axis in [0, None]
             z = numpy.zeros_like(data)
@@ -3142,7 +3164,9 @@ class T_max_and_argmax(unittest.TestCase):
             safe_verify_grad(lambda v: max_and_argmax(v, axis=i)[1], [data])
 
     def test_preserve_broadcastable(self):
-        # Ensure the original broadcastable flags are preserved by Max/Argmax.
+        """
+        Ensure the original broadcastable flags are preserved by Max/Argmax.
+        """
         x = tensor.matrix().dimshuffle('x', 0, 'x', 1, 'x')
         y = x.max(axis=1)
         assert y.type.broadcastable == (True, True, False, True)
@@ -3482,10 +3506,12 @@ class T_min_max(unittest.TestCase):
         check_grad_min(data, eval_outputs(grad(min(n.flatten()), n)))
 
     def _grad_list(self):
-        # Test the gradient when we have multiple axis at the same time.
-        #
-        # This not implemented, so we disable the test. See ticket:
-        # http://www.assembla.com/spaces/theano/tickets/511
+        """
+        Test the gradient when we have multiple axis at the same time.
+
+        This not implemented, so we disable the test. See ticket:
+        http://www.assembla.com/spaces/theano/tickets/511
+        """
         data = rand(2, 3)
         n = as_tensor_variable(data)
         for fct in [max_and_argmax, max, min]:
@@ -3513,8 +3539,10 @@ class T_outer(unittest.TestCase):
                 assert_allclose(o, numpy.outer(v1, v2))
 
     def test_grad(self):
-        # Test the combined graph of the graph of outer
-        # with broadcastable dimensions, just in case.
+        """
+        Test the combined graph of the graph of outer
+        with broadcastable dimensions, just in case.
+        """
         for shp0, shp1 in [((1,), (2,)),
                            ((3,), (1,)),
                            ((1,), (1,)),
@@ -3554,7 +3582,9 @@ class T_GetVectorLength(unittest.TestCase):
 
 
 class T_Join_and_Split(unittest.TestCase):
-    # Split is tested by each verify_grad method.
+    """
+    Split is tested by each verify_grad method.
+    """
     def setUp(self):
         Join.debug = False
         utt.seed_rng()
@@ -3623,9 +3653,9 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertTrue((out == want).all())
 
     def test_stack_scalar_make_vector(self):
-        # Test that calling stack() on scalars instantiates MakeVector,
-        # not Join. Test that the floatX dtype stay floatX, not downcasted
-        # to int64
+        """Test that calling stack() on scalars instantiates MakeVector,
+        not Join. Test that the floatX dtype stay floatX, not downcasted
+        to int64"""
         a = tensor.scalar('a', dtype=self.floatX)
         b = tensor.scalar('b', dtype=self.floatX)
         s = stack([a, b, a, b])
@@ -3639,8 +3669,8 @@ class T_Join_and_Split(unittest.TestCase):
         assert f.maker.fgraph.outputs[0].dtype == self.floatX
 
     def test_stack_scalar_make_vector_dtype(self):
-        # Test that calling stack() on scalars instantiates MakeVector,
-        # event when the scalar don't have the same dtype.
+        '''Test that calling stack() on scalars instantiates MakeVector,
+        event when the scalar don't have the same dtype.'''
         a = tensor.iscalar('a')
         b = tensor.lscalar('b')
         s = stack([a, b, a, b])
@@ -3653,8 +3683,8 @@ class T_Join_and_Split(unittest.TestCase):
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
     def test_stack_scalar_make_vector_constant(self):
-        # Test that calling stack() on scalars instantiates MakeVector,
-        # event when the scalar are simple int type.
+        '''Test that calling stack() on scalars instantiates MakeVector,
+        event when the scalar are simple int type.'''
         a = tensor.iscalar('a')
         b = tensor.lscalar('b')
         # test when the constant is the first element.
@@ -3669,8 +3699,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
     def test_stack_new_interface(self):
-        # Test the new numpy-like interface: stack(tensors, axis=0).
-
+        """Test the new numpy-like interface: stack(tensors, axis=0)."""
         # Testing against old interface
         warnings.simplefilter('always', DeprecationWarning)
         a = tensor.imatrix('a')
@@ -3762,8 +3791,8 @@ class T_Join_and_Split(unittest.TestCase):
         assert numpy.allclose(Hb_v, 0.)
 
     def test_join_concatenate_one_element(self):
-        # Fast test of concatenate as this is an alias for join.
-        # also test that we remove the Join op if there is only 1 input
+        ''' Fast test of concatenate as this is an alias for join.
+        also test that we remove the Join op if there is only 1 input'''
         m = tensor.fmatrix()
         c = tensor.concatenate([m])
         f = theano.function(inputs=[m], outputs=[c],
@@ -3946,7 +3975,7 @@ class T_Join_and_Split(unittest.TestCase):
                         mode=self.mode)
 
     def test_join_matrixV(self):
-        # variable join axis
+        """variable join axis"""
         v = numpy.array([[.1, .2, .3], [.4, .5, .6]], dtype=self.floatX)
         a = self.shared(v)
         b = as_tensor_variable(v)
@@ -3972,7 +4001,7 @@ class T_Join_and_Split(unittest.TestCase):
         utt.verify_grad(lambda a, b: join(1, a, b), [v, 2 * v], mode=self.mode)
 
     def test_join_matrixV_negative_axis(self):
-        # variable join negative axis
+        """variable join negative axis"""
         v = numpy.array([[.1, .2, .3], [.4, .5, .6]], dtype=self.floatX)
         a = self.shared(v)
         b = as_tensor_variable(v)
@@ -3998,7 +4027,7 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertRaises(IndexError, f, -3)
 
     def test_join_matrixC_negative_axis(self):
-        # constant join negative axis
+        """constant join negative axis"""
         v = numpy.array([[.1, .2, .3], [.4, .5, .6]], dtype=self.floatX)
         a = self.shared(v)
         b = as_tensor_variable(v)
@@ -4047,9 +4076,11 @@ class T_Join_and_Split(unittest.TestCase):
         assert numpy.allclose(f(4, 5), [5, 9, 4])
 
     def test_broadcastable_flag_assignment_mixed_otheraxes(self):
-        # Test that the broadcastable flags for the output of
-        # a join operation on non-join axes are True if one or
-        # more inputs is broadcastable on that dimension.
+        """
+        Test that the broadcastable flags for the output of
+        a join operation on non-join axes are True if one or
+        more inputs is broadcastable on that dimension.
+        """
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(1, 4, 1).astype(self.floatX)
         b_val = rng.rand(1, 3, 1).astype(self.floatX)
@@ -4086,9 +4117,11 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertRaises(ValueError, f)
 
     def test_broadcastable_flag_assignment_mixed_thisaxes(self):
-        # Test that the broadcastable flag of the join axis
-        # is False when some inputs are broadcastable on that
-        # dimension.
+        """
+        Test that the broadcastable flag of the join axis
+        is False when some inputs are broadcastable on that
+        dimension.
+        """
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(2, 4, 1).astype(self.floatX)
         b_val = rng.rand(1, 4, 1).astype(self.floatX)
@@ -4118,9 +4151,11 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertRaises(TypeError, f, a_val, bad_b_val)
 
     def test_broadcastable_flags_all_broadcastable_on_joinaxis(self):
-        # Test that joining together several inputs which are all
-        # broadcastable on the join dimension results in the output
-        # being non-broadcastable on the join dimension.
+        """
+        Test that joining together several inputs which are all
+        broadcastable on the join dimension results in the output
+        being non-broadcastable on the join dimension.
+        """
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(1, 4, 1).astype(self.floatX)
         b_val = rng.rand(1, 4, 1).astype(self.floatX)
@@ -4310,12 +4345,13 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertRaises(ValueError, f)
 
 def test_join_inplace():
-    # Test join to work inplace.
-    #
-    # This function tests the case when several elements are passed to the
-    # join function but all except one of them are empty. In this case join
-    # should work inplace and the output should be the view of the non-empty
-    # element.
+    """Test join to work inplace.
+
+    This function tests the case when several elements are passed to the
+    join function but all except one of them are empty. In this case join
+    should work inplace and the output should be the view of the non-empty
+    element.
+    """
     s = tensor.lscalar()
     x = tensor.vector('x')
     z = tensor.zeros((s,))
@@ -4334,12 +4370,13 @@ def test_join_inplace():
 
 
 def test_join_oneInput():
-    # Test join when only 1 input is given.
-    #
-    # This functions tests the case when concatenate is called
-    # on an array of tensors but the array has only one element.
-    # In this case, we would like to avoid the computational
-    # overhead of concatenation of one element.
+    """Test join when only 1 input is given.
+
+    This functions tests the case when concatenate is called
+    on an array of tensors but the array has only one element.
+    In this case, we would like to avoid the computational
+    overhead of concatenation of one element.
+    """
     x_0 = theano.tensor.fmatrix()
     x_1 = theano.tensor.fmatrix()
     x_2 = theano.tensor.fvector()
@@ -4352,13 +4389,15 @@ def test_join_oneInput():
 
 
 class test_comparison(unittest.TestCase):
-    # Test <, >, <=, >=, == and !=
-    #
-    # Test that we can do the comparison with different
-    # combination of tensor(shared and constant variable) with
-    # ndarray. ndarray cmp tensor was crashing.  In a NumPy PR (should
-    # be in the release 1.8 of NumPy), it will work.  So we assert it
-    # work(futur behavior) or raise an error(current NumPy release).
+    """Test <, >, <=, >=, == and !=
+
+     Test that we can do the comparison with different
+     combination of tensor(shared and constant variable) with
+     ndarray. ndarray cmp tensor was crashing.  In a NumPy PR (should
+     be in the release 1.8 of NumPy), it will work.  So we assert it
+     work(futur behavior) or raise an error(current NumPy release).
+
+    """
     def setUp(self):
         utt.seed_rng()
         self.mode = None
@@ -4773,7 +4812,7 @@ class test_matinv(unittest.TestCase):
         return ssd0, ssd
 
     def test_reciprocal(self):
-        # Matrix reciprocal by gradient descent
+        """Matrix reciprocal by gradient descent"""
         ssd0, ssd = self.mat_reciprocal(3)
 
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
@@ -5159,13 +5198,13 @@ class test_grad(unittest.TestCase):
             return self.gval0, self.gval1
 
     def test_1param(self):
-        # grad: Test passing a single variable param
+        """grad: Test passing a single variable param"""
         o = test_grad.O()
         a1 = o.make_node()
         self.assertTrue(o.gval0 is tensor.grad(a1.outputs[0], a1.inputs[0]))
 
     def test_Nparam(self):
-        # grad: Test passing multiple variable params
+        """grad: Test passing multiple variable params"""
         o = test_grad.O()
         a1 = o.make_node()
         g0, g1 = grad(a1.outputs[0], a1.inputs)
@@ -5174,12 +5213,12 @@ class test_grad(unittest.TestCase):
         self.assertTrue(o.gval1 is g1)
 
     def test_grad_keep_type(self):
-        # Tests that the theano grad method returns a list if it is passed a list
-        # and a single variable if it is passed a single variable.
-        # pylearn2 depends on theano behaving this way. This functionality has been
-        # added three times and erroneously removed twice. If you do anything that
-        # requires changing this test or making it fail you are almost certainly
-        # making a common mistake, NOT fixing something.
+        """Tests that the theano grad method returns a list if it is passed a list
+        and a single variable if it is passed a single variable.
+        pylearn2 depends on theano behaving this way. This functionality has been
+        added three times and erroneously removed twice. If you do anything that
+        requires changing this test or making it fail you are almost certainly
+        making a common mistake, NOT fixing something. """
 
         X = tensor.matrix()
         y = X.sum()
@@ -5193,7 +5232,7 @@ class test_grad(unittest.TestCase):
         assert not isinstance(G, list)
 
     def test_1None_rval(self):
-        # grad: Test returning a single zero value from grad
+        """grad: Test returning a single zero value from grad"""
         o = test_grad.O()
         a1 = o.make_node()
         g = grad(a1.outputs[0], a1.outputs[1],
@@ -5203,7 +5242,7 @@ class test_grad(unittest.TestCase):
         self.assertRaises(TypeError, grad, a1.outputs[0], 'wtf')
 
     def test_NNone_rval(self):
-        # grad: Test returning some zero value from grad
+        """grad: Test returning some zero value from grad"""
         o = test_grad.O()
         a1 = o.make_node()
         g0, g1, g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')],
@@ -5214,7 +5253,7 @@ class test_grad(unittest.TestCase):
         self.assertTrue(g2.owner.inputs[1].data == 0)
 
     def test_zero_gradient_shape(self):
-        # Ensure that a zero gradient has the proper shape.
+        """Ensure that a zero gradient has the proper shape."""
         x = dmatrix()
         f = theano.function([x], grad(dscalar(), x,
                                       disconnected_inputs='ignore'))
@@ -5223,7 +5262,7 @@ class test_grad(unittest.TestCase):
         self.assertTrue(a.shape == f(a).shape)  # With proper shape.
 
     def test_cost_is_scalar(self):
-        # grad: Test that a non-scalar cost raises a TypeError
+        '''grad: Test that a non-scalar cost raises a TypeError'''
         s = scalar()
         v = vector()
         m = matrix()
@@ -5237,7 +5276,8 @@ class T_op_cache(unittest.TestCase):
         utt.seed_rng()
 
     def test0(self):
-        # trigger bug in ticket #162
+        """trigger bug in ticket #162
+        """
         lr = constant(0.011)
         v = matrix()
         v.name = 'v'
@@ -5527,10 +5567,11 @@ def test_flatten_outdim_invalid():
 
 
 def test_is_flat():
-    # tests is_flat method for constant and symbolic variables,
-    # as well as reshaped constant and symbolic variables on the
-    # given outdim
-    
+    """
+    tests is_flat method for constant and symbolic variables,
+    as well as reshaped constant and symbolic variables on the
+    given outdim
+    """
     # Constant variable
     assert tensor.is_flat(tensor.as_tensor_variable(numpy.zeros((10))))
     assert tensor.is_flat(tensor.as_tensor_variable(numpy.zeros((10, 10, 10))),
@@ -5721,7 +5762,7 @@ class TestARange(unittest.TestCase):
         utt.seed_rng()
 
     def test_Op_integers(self):
-        # Test behaviour of ARange Op on integer inputs
+        """Test behaviour of ARange Op on integer inputs"""
         start, stop, step = iscalars('start', 'stop', 'step')
         out = ARange(start.type.dtype)(start, stop, step)
         f = function([start, stop, step], out)
@@ -5734,7 +5775,7 @@ class TestARange(unittest.TestCase):
         assert numpy.all(f(0, 0, 1) == numpy.arange(0, 0, 1))
 
     def test_integers(self):
-        # Test arange constructor, on integer outputs
+        """Test arange constructor, on integer outputs"""
         start, stop, step = iscalars('start', 'stop', 'step')
         out = arange(start, stop, step)
         f = function([start, stop, step], out)
@@ -5754,7 +5795,7 @@ class TestARange(unittest.TestCase):
         assert numpy.all(f(0, 0, 1) == numpy.arange(0, 0, 1))
 
     def test_float32(self):
-        # Test arange constructor, on float32 outputs
+        """Test arange constructor, on float32 outputs"""
         start, stop, step = fscalars('start', 'stop', 'step')
         out = arange(start, stop, step)
         f = function([start, stop, step], out)
@@ -5788,7 +5829,7 @@ class TestARange(unittest.TestCase):
             assert numpy.all(f_val == expected_val)
 
     def test_float64(self):
-        # Test arange constructor, on float64 outputs
+        """Test arange constructor, on float64 outputs"""
         start, stop, step = dscalars('start', 'stop', 'step')
         out = arange(start, stop, step)
         f = function([start, stop, step], out)
@@ -5811,7 +5852,7 @@ class TestARange(unittest.TestCase):
             assert numpy.all(f_val == expected_val)
 
     def test_default_step(self):
-        # Test that arange constructor uses the correct default step
+        """Test that arange constructor uses the correct default step"""
         start, stop = iscalars('start', 'stop')
         out = arange(start, stop)
         f = function([start, stop], out)
@@ -5839,7 +5880,7 @@ class TestARange(unittest.TestCase):
         assert numpy.all(df(-0.7, 5.3) == numpy.arange(-0.7, 5.3))
 
     def test_default_start(self):
-        # Test that arange constructor uses the correct default start
+        """Test that arange constructor uses the correct default start"""
         stop = iscalar('stop')
         out = arange(stop)
         f = function([stop], out)
@@ -5875,7 +5916,7 @@ class TestARange(unittest.TestCase):
             assert numpy.all(ff(fstop_v32) == numpy.arange(fstop_v))
 
     def test_upcast(self):
-        # Test that arange computes output type adequately
+        """Test that arange computes output type adequately"""
         if config.cast_policy == 'custom':
             assert arange(iscalar()).dtype == 'int64'
             assert arange(fscalar()).dtype == fscalar().dtype
@@ -5947,8 +5988,8 @@ class TestARange(unittest.TestCase):
             raise NotImplementedError(config.cast_policy)
 
     def test_dtype_cache(self):
-        # Checks that the same Op is returned on repeated calls to arange
-        # using the same dtype, but not for different dtypes.
+        """Checks that the same Op is returned on repeated calls to arange
+        using the same dtype, but not for different dtypes."""
 
         start, stop, step = iscalars('start', 'stop', 'step')
         out1 = arange(start, stop, step)
@@ -6086,7 +6127,7 @@ class TestInversePermutation(unittest.TestCase):
         utt.seed_rng()
 
     def test_dim1(self):
-        # Test the inversion of one permutation (int vector)
+        """Test the inversion of one permutation (int vector)"""
         p = ivector()
         inv = inverse_permutation(p)
         assert inv.dtype == p.dtype
@@ -6104,7 +6145,7 @@ class TestInversePermutation(unittest.TestCase):
         assert numpy.all(inv_val[p_val] == numpy.arange(10))
 
     def test_dim2(self):
-        # Test the inversion of several permutations at a time
+        """Test the inversion of several permutations at a time"""
         # Each row of p is a different permutation to inverse
         p = imatrix()
         inv = inverse_permutation(p)
@@ -6130,7 +6171,7 @@ class TestPermuteRowElements(unittest.TestCase):
         utt.seed_rng()
 
     def test_1_1(self):
-        # Test PermuteRowElements(vector, vector)
+        """Test PermuteRowElements(vector, vector)"""
         input = dvector()
         p = ivector()
         out = permute_row_elements(input, p)
@@ -6147,12 +6188,12 @@ class TestPermuteRowElements(unittest.TestCase):
 
         # Verify gradient
         def permute_fixed(s_input):
-            # Auxiliary op defined to get rid of gradient wrt p_val
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
             return permute_row_elements(s_input, p_val)
         utt.verify_grad(permute_fixed, [input_val])
 
     def test_2_1(self):
-        # Test broadcasting in PermuteRowElements(matrix, vector)
+        """Test broadcasting in PermuteRowElements(matrix, vector)"""
         input = matrix()
         p = ivector()
         out = permute_row_elements(input, p)
@@ -6169,12 +6210,12 @@ class TestPermuteRowElements(unittest.TestCase):
 
         # Verify gradient
         def permute_fixed(s_input):
-            # Auxiliary op defined to get rid of gradient wrt p_val
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
             return permute_row_elements(s_input, p_val)
         utt.verify_grad(permute_fixed, [input_val])
 
     def test_2_2(self):
-        # Test PermuteRowElements(matrix, matrix)
+        """Test PermuteRowElements(matrix, matrix)"""
         input = matrix()
         p = imatrix()
         out = permute_row_elements(input, p)
@@ -6194,13 +6235,13 @@ class TestPermuteRowElements(unittest.TestCase):
 
         # Verify gradient
         def permute_fixed(s_input):
-            # Auxiliary op defined to get rid of gradient wrt p_val
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
             return permute_row_elements(s_input, p_val)
         utt.verify_grad(permute_fixed, [input_val])
 
     def test_1_2(self):
-        # Test PermuteRowElements(vector, matrix)
-        # Different permutations will be applied to the same input vector
+        """Test PermuteRowElements(vector, matrix)
+        Different permutations will be applied to the same input vector"""
         input = vector()
         p = imatrix()
         out = permute_row_elements(input, p)
@@ -6218,14 +6259,14 @@ class TestPermuteRowElements(unittest.TestCase):
 
         # Verify gradient
         def permute_fixed(s_input):
-            # Auxiliary op defined to get rid of gradient wrt p_val
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
             return permute_row_elements(s_input, p_val)
         utt.verify_grad(permute_fixed, [input_val])
 
     def test_3b_2(self):
-        # Test permute_row_elements on a more complex broadcasting pattern:
-        # input.type.broadcastable = (False, True, False),
-        # p.type.broadcastable = (False, False).
+        """Test permute_row_elements on a more complex broadcasting pattern:
+        input.type.broadcastable = (False, True, False),
+        p.type.broadcastable = (False, False)."""
 
         input = TensorType('floatX', (False, True, False))()
         p = imatrix()
@@ -6246,15 +6287,17 @@ class TestPermuteRowElements(unittest.TestCase):
 
         # Verify gradient
         def permute_fixed(s_input):
-            # Auxiliary op defined to get rid of gradient wrt p_val
+            """Auxiliary op defined to get rid of gradient wrt p_val"""
             return permute_row_elements(s_input, p_val)
         utt.verify_grad(permute_fixed, [input_val])
 
 
 class test_tensordot(unittest.TestCase):
     def TensorDot(self, axes):
-        # Since tensordot is no longer an op, mimic the old op signature
-        # to allow easy use of verify_grad.
+        """
+        Since tensordot is no longer an op, mimic the old op signature
+        to allow easy use of verify_grad.
+        """
         return lambda a, b: tensordot(a, b, axes)
 
     def setUp(self):
@@ -6522,7 +6565,7 @@ def test_var():
 
 class T_sum(unittest.TestCase):
     def test_sum_overflow(self):
-        # Ensure that overflow errors are a little bit harder to get
+        """Ensure that overflow errors are a little bit harder to get"""
         a = Tensor(dtype='int8', broadcastable=[False])()
         f = function([a], sum(a))
         assert f([1] * 300) == 300
@@ -6579,7 +6622,7 @@ def test_autocast():
 
 
 def _test_autocast_custom():
-    # Called from `test_autocast`.
+    """Called from `test_autocast`."""
     assert config.cast_policy == 'custom'
     orig_autocast = autocast_float.dtypes
 
@@ -6648,7 +6691,7 @@ def _test_autocast_custom():
 
 
 def _test_autocast_numpy():
-    # Called from `test_autocast`.
+    """Called from `test_autocast`."""
     assert config.cast_policy == 'numpy'
     # Go through some typical scalar values.
 
@@ -6667,7 +6710,7 @@ def _test_autocast_numpy():
 
 
 def _test_autocast_numpy_floatX():
-    # Called from `test_autocast`.
+    """Called from `test_autocast`."""
     assert config.cast_policy == 'numpy+floatX'
     backup_floatX = config.floatX
 
@@ -6701,11 +6744,15 @@ def _test_autocast_numpy_floatX():
 
 
 class test_arithmetic_cast(unittest.TestCase):
-    # Test output types of basic arithmeric operations (* / + - //).
-    #
-    # We only test the behavior for `config.cast_policy` set to either 'numpy' or
-    # 'numpy+floatX': the 'custom' behavior is (at least partially) tested in
-    # `_test_autocast_custom`.
+
+    """
+    Test output types of basic arithmeric operations (* / + - //).
+
+    We only test the behavior for `config.cast_policy` set to either 'numpy' or
+    'numpy+floatX': the 'custom' behavior is (at least partially) tested in
+    `_test_autocast_custom`.
+    """
+
     def test_arithmetic_cast(self):
         backup_config = config.cast_policy
         dtypes = get_numeric_types(with_complex=True)
@@ -6888,8 +6935,10 @@ class test_broadcast(unittest.TestCase):
         self.assertRaises(ValueError, f)
 
     def test_unbroadcast_addbroadcast(self):
-        # test that the unbroadcast fct don't insert not needed broadcast
-        # and fuse consecutive Rebroadcast op
+        """
+        test that the unbroadcast fct don't insert not needed broadcast
+        and fuse consecutive Rebroadcast op
+        """
 
         x = matrix()
         assert unbroadcast(x, 0) is x
@@ -6980,9 +7029,11 @@ def test_len():
 
 
 def test_mod():
-    # We add this test as not all language and C implementation give the same
-    # sign to the result. This check that the c_code of `Mod` is implemented
-    # as Python. That is what we want.
+    """
+    We add this test as not all language and C implementation give the same
+    sign to the result. This check that the c_code of `Mod` is implemented
+    as Python. That is what we want.
+    """
     x, y = fscalars('xy')
     fn = gof.DualLinker().accept(
             gof.FunctionGraph([x, y], [x % y])).make_function()
@@ -6994,7 +7045,9 @@ def test_mod():
 
 
 def test_divmod():
-    # Confirm that divmod is equivalent to the python version.
+    """
+    Confirm that divmod is equivalent to the python version.
+    """
     x, y = fscalars('xy')
     d, r = divmod(x, y)
     fn = gof.DualLinker().accept(
@@ -7009,18 +7062,21 @@ def test_divmod():
 
 
 def test_mod_compile():
-    # This test generate an Elemwise of Composite as:
-    #     Elemwise{
-    #         Composite{
-    #             Composite{
-    #                 Composite{
-    #                     Composite{mod,EQ},
-    #                     Switch},
-    #                 mul},
-    #             add}}
-    #
-    # The c_code generated is not compiling as of 30 June 2010. I fix the
-    # compilation in the same commit.
+    """
+    This test generate an Elemwise of Composite as:
+        Elemwise{
+            Composite{
+                Composite{
+                    Composite{
+                        Composite{mod,EQ},
+                        Switch},
+                    mul},
+                add}}
+
+    The c_code generated is not compiling as of 30 June 2010. I fix the
+    compilation in the same commit.
+    """
+
     x = tensor.vector()
     y = tensor.vector()
     shape = x.shape
@@ -7219,9 +7275,12 @@ class T_get_scalar_constant_value(unittest.TestCase):
 
 
 class T_as_tensor_variable(unittest.TestCase):
-    # We test that ticket #649 stay fixed.
-    # We should not allow as_tensor_variable to accept True or False
-    # But it should upcast an ndarray of bool to uint8
+    """
+    We test that ticket #649 stay fixed.
+    We should not allow as_tensor_variable to accept True or False
+    But it should upcast an ndarray of bool to uint8
+    """
+
     def test_bool(self):
         self.assertRaises(TypeError, as_tensor_variable, True)
         self.assertRaises(TypeError, as_tensor_variable, False)
@@ -7250,7 +7309,8 @@ class T_as_tensor_variable(unittest.TestCase):
 
 
 class test_complex_mod(unittest.TestCase):
-    # Make sure % fails on complex numbers.
+    """Make sure % fails on complex numbers."""
+
     def test_fail(self):
         x = vector(dtype='complex64')
         try:
@@ -7261,7 +7321,10 @@ class test_complex_mod(unittest.TestCase):
 
 
 class test_size(unittest.TestCase):
-    # Ensure the `size` attribute of tensors behaves as in numpy.
+    """
+    Ensure the `size` attribute of tensors behaves as in numpy.
+    """
+
     def test_matrix(self):
         x = tensor.matrix()
         y = numpy.zeros((5, 7), dtype=config.floatX)
@@ -7284,113 +7347,29 @@ class test_size(unittest.TestCase):
         assert y.size == function([], x.size)()
 
 
-class test_diag(unittest.TestCase):
-    # Test that tensor.diag has the same behavior as numpy.diag.
-    # numpy.diag has two behaviors:
-    #
-    # (1) when given a vector, it returns a matrix with that vector as the
-    # diagonal.
-    # (2) when given a matrix, returns a vector which is the diagonal of the
-    # matrix.
-    #
-    # (1) and (2) are tested by test_alloc_diag and test_extract_diag
-    # respectively.
-    #
-    # test_diag test makes sure that linalg.diag instantiates
-    # the right op based on the dimension of the input.
-    def __init__(self, name, mode=None, shared=tensor._shared,
-                 floatX=None, type=tensor.TensorType):
-        self.mode = mode
-        self.shared = shared
-        if floatX is None:
-            floatX = config.floatX
-        self.floatX = floatX
-        self.type = type
-        super(test_diag, self).__init__(name)
-
-    def test_diag(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-
-        # test vector input
-        x = theano.tensor.vector()
-        g = diag(x)
-        assert isinstance(g.owner.op, AllocDiag)
-        f = theano.function([x], g)
-        for shp in [5, 0, 1]:
-            m = rng.rand(shp).astype(self.floatX)
-            v = numpy.diag(m)
-            r = f(m)
-            # The right matrix is created
-            assert (r == v).all()
-
-        # Test matrix input
-        xx = self.shared(rng.rand(3, 5))
-        g = diag(xx)
-        assert isinstance(g.owner.op, ExtractDiag)
-        f = theano.function([], g)
-        for shp in [(5, 3), (3, 5), (5, 1), (1, 5), (5, 0), (0, 5),
-                    (1, 0), (0, 1)]:
-            m = rng.rand(*shp).astype(self.floatX)
-            xx.set_value(m)
-            v = numpy.diag(m)
-            r = f()
-            # The right matrix is created
-            assert (r == v).all()
-        
-        # Test scalar input
-        xx = theano.tensor.scalar()
-        numpy.testing.assert_raises(ValueError, diag, xx)
-
-    def test_infer_shape(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-
-        x = theano.tensor.vector()
-        g = diag(x)
-        f = theano.function([x], g.shape)
-        topo = f.maker.fgraph.toposort()
-        if config.mode != 'FAST_COMPILE':
-            assert numpy.sum(
-                [isinstance(node.op, AllocDiag) for node in topo]) == 0
-        for shp in [5, 0, 1]:
-            m = rng.rand(shp).astype(self.floatX)
-            assert (f(m) == numpy.diag(m).shape).all()
-
-        x = theano.tensor.matrix()
-        g = diag(x)
-        f = theano.function([x], g.shape)
-        topo = f.maker.fgraph.toposort()
-        if config.mode != 'FAST_COMPILE':
-            assert numpy.sum(
-                [isinstance(node.op, ExtractDiag) for node in topo]) == 0
-        for shp in [(5, 3), (3, 5), (5, 1), (1, 5), (5, 0), (0, 5),
-                    (1, 0), (0, 1)]:
-            m = rng.rand(*shp).astype(self.floatX)
-            assert (f(m) == numpy.diag(m).shape).all()
-
-    def test_diag_grad(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        x = rng.rand(5)
-        tensor.verify_grad(diag, [x], rng=rng)
-        x = rng.rand(5, 3)
-        tensor.verify_grad(diag, [x], rng=rng)
-
-
 class test_numpy_assumptions(unittest.TestCase):
-    # Verify that some assumptions Theano makes on Numpy's behavior still hold.
+    """
+    Verify that some assumptions Theano makes on Numpy's behavior still hold.
+    """
+
     def test_ndarray_copy(self):
-        # A copy or deepcopy of the ndarray type should not create a new object.
-        #
-        # This is because Theano makes some comparisons of the form:
-        #     if type(x) is numpy.ndarray
+        """
+        A copy or deepcopy of the ndarray type should not create a new object.
+
+        This is because Theano makes some comparisons of the form:
+            if type(x) is numpy.ndarray
+        """
         assert copy(numpy.ndarray) is numpy.ndarray
         assert deepcopy(numpy.ndarray) is numpy.ndarray
 
     def test_dtype_equality(self):
-        # Ensure dtype string comparisons are consistent.
-        #
-        # Theano often uses string representations of dtypes (e.g. 'float32'). We
-        # need to make sure that comparing the string representations is the same
-        # as comparing the dtype objects themselves.
+        """
+        Ensure dtype string comparisons are consistent.
+
+        Theano often uses string representations of dtypes (e.g. 'float32'). We
+        need to make sure that comparing the string representations is the same
+        as comparing the dtype objects themselves.
+        """
         dtypes = get_numeric_types(with_complex=True)
         # Perform all pairwise comparisons of dtypes, making sure comparing
         # their string representation yields the same result.
@@ -7483,8 +7462,8 @@ class TestSpecifyShape(unittest.TestCase):
         return None
 
     def test_bad_shape(self):
-        # Test that at run time we raise an exception when the shape
-        # is not the one specified
+        """ Test that at run time we raise an exception when the shape
+        is not the one specified"""
         specify_shape = SpecifyShape()
 
         x = vector()
@@ -7510,7 +7489,7 @@ class TestSpecifyShape(unittest.TestCase):
             self.assertRaises(AssertionError, f, xval)
 
     def test_bad_number_of_shape(self):
-        # Test that the number of dimensions provided is good
+        """ Test that the number of dimensions provided is good"""
         specify_shape = SpecifyShape()
 
         x = vector()
@@ -7626,11 +7605,11 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], ExtractDiag)
 
-        # AllocDiag
+        # Diag
         advec = dvector()
         advec_val = rand(4)
-        self._compile_and_check([advec], [AllocDiag()(advec)],
-                                [advec_val], AllocDiag)
+        self._compile_and_check([advec], [Diag()(advec)],
+                                [advec_val], Diag)
 
         # Shape
         # 'opt.Makevector' precludes optimizer from disentangling
@@ -8089,7 +8068,9 @@ def test_norm():
 
 class test_ptp(unittest.TestCase):
     def test_scalar(self):
-        # Should return 0 for all scalar
+        """
+        Should return 0 for all scalar
+        """
         x = scalar('x')
         p = ptp(x)
         f = theano.function([x], p)
