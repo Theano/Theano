@@ -368,6 +368,7 @@ KERNEL void k_multi_warp_multinomial_wor(
     def c_code(self, node, name, inp, outputs, sub):
         pvals, unis, n = inp
         out, = outputs
+        replace = int(self.replace)
         fail = sub['fail']
         ctx = sub['params']
         sync = bool(config.gpuarray.sync)
@@ -470,7 +471,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         nb_threads2[1] = 1;
         // If we can't schedule enough threads parallelize the renormalization.
         // I do this because we don't always use those extra threads.
-        if (nb_threads * nb_blocks < 2048)
+        if ((nb_threads * nb_blocks < 2048) && %(replace)d )
             nb_threads2[1] = 1024 / nb_threads;
 
         nb_blocks2[0] = nb_blocks;

@@ -221,9 +221,9 @@ class ChoiceFromUniform(MultinomialFromUniform):
 
     __props__ = ("replace",)
 
-    def __init__(self, replace=False, *args, **kwargs):
+    def __init__(self, odtype, replace=False, *args, **kwargs):
         self.replace = replace
-        super(ChoiceFromUniform, self).__init__(*args, **kwargs)
+        super(ChoiceFromUniform, self).__init__(odtype=odtype, *args, **kwargs)
 
     def __setstate__(self, state):
         self.__dict__.update(state)
