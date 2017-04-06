@@ -2169,9 +2169,26 @@ square = sqr
 
 
 def cov(a):
-    X -= X.mean(axis=1, keepdims=1)
-    c = X.dot(X.T)
-    return c/(X.shape[1]-1)
+    """Calculate the covariance matrix.
+    Covariance indicates the level to which two variables vary together.
+    If we examine N-dimensional samples, :math:`X = [x_1, x_2, ... x_N]^T`,
+    then the covariance matrix element :math:`C_{ij}` is the covariance of
+    :math:`x_i` and :math:`x_j`. The element :math:`C_{ii}` is the variance
+    of :math:`x_i`.
+    ----------
+    a : array_like
+        A 2-D array containing multiple variables and observations.
+        Each row of `a` represents a variable, and each column is 
+        observations of all those variables. 
+        
+    Returns
+    -------
+    out : The covariance matrix of the variables.
+    """
+        
+    a -= a.mean(axis=1, keepdims=1)
+    c = a.dot(a.T)
+    return c/(a.shape[1]-1)
 
 @_scal_elemwise
 def sqrt(a):

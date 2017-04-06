@@ -8173,7 +8173,7 @@ def test_norm():
 
 def test_cov():
     x = theano.tensor.matrix('x')
-    c = T.cov(x)
+    c = theano.tensor.cov(x)
     f = theano.function([x], c)
     
     data = np.asarray(np.random.rand(3,5),dtype=config.floatX)
