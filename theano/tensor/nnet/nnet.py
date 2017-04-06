@@ -105,7 +105,7 @@ class SoftmaxWithBias(gof.Op):
 
         dx = softmax_grad(g_sm, outputs[0], ax)
         db = tensor.sum(dx, axis=0)
-        g_ax = theano.gradient.grad_undefined(self, 2, ax)
+        g_ax = DisconnectedType()()
         return dx, db, g_ax
 
     def infer_shape(self, node, shape):
@@ -311,9 +311,9 @@ class SoftmaxWithBias(gof.Op):
             node.inputs[0].type.dtype_specs()[1]))
         return code_template % dict(locals(), **sub)
 
-    #@staticmethod
-    #def c_code_cache_version():
-    #    return (8,)
+    @staticmethod
+    def c_code_cache_version():
+        return (9,)
 
 softmax_with_bias = SoftmaxWithBias()
 
@@ -335,6 +335,10 @@ class SoftmaxGrad(gof.Op):
             raise ValueError('axis must be an integer. Got ', axis.type)
         if dy.type.dtype not in tensor.float_dtypes:
             raise ValueError('dy must be tensor of floats. Got ', dy.type)
+        if dy.ndim == 1:
+            dy = tensor.shape_padleft(dy, n_ones=1)
+        if sm.ndim == 1:
+            sm = tensor.shape_padleft(sm, n_ones=1)
         return Apply(self, [dy, sm, axis], [sm.type()])
 
     def perform(self, node, input_storage, output_storage):
@@ -354,14 +358,14 @@ class SoftmaxGrad(gof.Op):
         g_dy = tmp * sm
         tmp2 = tensor.sum(dy * sm, axis=ax.eval(), keepdims=True)
         g_sm = tmp * dy - g * tmp2
-        g_ax = theano.gradient.grad_undefined(self, 2, ax)
+        g_ax = DisconnectedType()()
         return g_dy, g_sm, g_ax
 
     def infer_shape(self, node, shape):
         return [shape[1]]
 
-    #def c_code_cache_version(self):
-    #    return (5,)
+    def c_code_cache_version(self):
+        return (6,)
 
     def c_code(self, node, name, inp, out, sub):
         dy, sm, axis = inp
@@ -526,8 +530,7 @@ class Softmax(gof.Op):
     def L_op(self, inp, outputs, grads):
         x, axis = inp
         g_sm, = grads
-        axis_grad = theano.gradient.grad_undefined(self, 1, axis)
-        return [softmax_grad(g_sm, outputs[0], axis), axis_grad]
+        return [softmax_grad(g_sm, outputs[0], axis), DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
@@ -708,9 +711,9 @@ class Softmax(gof.Op):
             node.inputs[0].type.dtype_specs()[1]))
         return code_template % dict(locals(), **sub)
 
-    # @staticmethod
-    # def c_code_cache_version():
-    #    return (5,)
+    @staticmethod
+    def c_code_cache_version():
+        return (6,)
 
 softmax_op = Softmax()
 
@@ -882,9 +885,9 @@ class LogSoftmax(gof.Op):
             node.inputs[0].type.dtype_specs()[1]))
         return code_template % dict(locals(), **sub)
 
-    # @staticmethod
-    # def c_code_cache_version():
-    #     return (2,)
+    @staticmethod
+    def c_code_cache_version():
+         return (3,)
 
 logsoftmax_op = LogSoftmax()
 
@@ -1321,8 +1324,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 """,
                 end_row_loop)
 
-    #def c_code_cache_version(self):
-    #    return (5,) + SoftmaxWithBias.c_code_cache_version()
+    def c_code_cache_version(self):
+        return (6,) + SoftmaxWithBias.c_code_cache_version()
 
     def c_code(self, node, name, inp, out, sub):
         x, b, y_idx, axis = inp
@@ -1340,7 +1343,7 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
 
     """
 
-    nin = 3
+    nin = 4
     nout = 1
     __props__ = ()
 
@@ -1348,6 +1351,7 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
         y_idx = tensor.as_tensor_variable(y_idx)
+        axis = tensor.constant(-1)
         if (dy.type.ndim > 1 or
                 dy.type.dtype not in tensor.float_dtypes):
             raise ValueError('dy must be {0,1}-d tensor of floats', dy.type)
@@ -1357,10 +1361,10 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
         if (y_idx.type.ndim != 1 or
                 y_idx.type.dtype not in tensor.discrete_dtypes):
             raise ValueError('y_idx must be 1-d tensor of [u]ints', y_idx.type)
-        return Apply(self, [dy, sm, y_idx], [sm.type()])
+        return Apply(self, [dy, sm, y_idx, axis], [sm.type()])
 
     def perform(self, node, input_storage, output_storage):
-        dy, sm, y_idx = input_storage
+        dy, sm, y_idx, axis = input_storage
         if any(y_idx < 0):
             raise ValueError("y_i value out of bounds")
         dx = numpy.zeros_like(sm)
@@ -1377,7 +1381,7 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
         return [shapes[1]]
 
     def grad(self, inp, grads):
-        dy, sm, y_idx = inp
+        dy, sm, y_idx, ax = inp
         g_dx, = grads
         # TODO: currently we do not compute the gradient w.r.t. dy, because
         # advanced indexing is not working yet. When it works, do it to avoid
@@ -1389,13 +1393,14 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
                 sm, tensor.fill(dy, -1), y_idx_range, y_idx), axis=1)
         g_sm = dy.dimshuffle(0, 'x') * g_dx
         g_y_idx = grad_not_implemented(self, 2, y_idx)
-        return [g_dy, g_sm, g_y_idx]
+        g_ax = grad_not_implemented(self, 3, ax)
+        return [g_dy, g_sm, g_y_idx, g_ax]
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def c_code(self, node, name, inp, out, sub):
-        dnll, sm, y_idx = inp
+        dnll, sm, y_idx, axis = inp
         dx, = out
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         return """
@@ -1643,7 +1648,6 @@ def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
     from several nodes at once.
 
     """
-
     def search_make_one_sub():
         for node in fgraph.toposort():
             if node.op == crossentropy_categorical_1hot:
@@ -1879,7 +1883,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
     sm = None
     try:
-        d_sm, sm = node.inputs
+        d_sm, sm, ax = node.inputs
     except Exception:
         return
 
@@ -2111,7 +2115,7 @@ def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
 
     """
     if isinstance(node.op, CrossentropySoftmax1HotWithBiasDx):
-        dy, sm, y_idx = node.inputs
+        dy, sm, y_idx, ax = node.inputs
 
         # Those cases are directly handled by the internal broadcasting of the
         # `CrossentropySoftmax1HotWithBiasDx` op.
