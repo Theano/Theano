@@ -2168,6 +2168,11 @@ def sqr(a):
 square = sqr
 
 
+def cov(a):
+    X -= X.mean(axis=1, keepdims=1)
+    c = X.dot(X.T)
+    return c/(X.shape[1]-1)
+
 @_scal_elemwise
 def sqrt(a):
     """square root of a"""

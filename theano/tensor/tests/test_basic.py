@@ -8171,6 +8171,25 @@ def test_norm():
     f = theano.function([x], n)
     assert np.allclose(f([1, 1]), np.sqrt(2))
 
+def test_cov():
+    x = theano.tensor.matrix('x')
+    c = T.cov(x)
+    f = theano.function([x], c)
+    
+    data = np.asarray(np.random.rand(3,5),dtype=config.floatX)
+    assert np.allclose(f(data), np.cov(data))
+    
+    data = np.asarray(np.random.rand(5,3),dtype=config.floatX)
+    assert np.allclose(f(data), np.cov(data))
+    
+    data = np.asarray(np.random.rand(10,10),dtype=config.floatX)
+    assert np.allclose(f(data), np.cov(data))
+    
+    data = np.asarray(np.random.rand(2,2),dtype=config.floatX)
+    assert np.allclose(f(data), np.cov(data))
+    
+    data = np.asarray(np.random.rand(1,2),dtype=config.floatX)
+    assert np.allclose(f(data), np.cov(data))
 
 class test_ptp(unittest.TestCase):
     def test_scalar(self):
