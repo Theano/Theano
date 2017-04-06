@@ -204,7 +204,7 @@ class SoftmaxWithBias(gof.Op):
 
         begin_row_loop = """
             // Use numpy iterator
-            npy_int num_data, stride_x, stride_sm, stride_b;
+            npy_int num_sm_classes, stride_x, stride_sm, stride_b;
             // Get numpy iterator
             PyArrayIterObject *it_x, *it_sm;
             it_x = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(x)s, &axis);
@@ -215,7 +215,7 @@ class SoftmaxWithBias(gof.Op):
             stride_b = PyArray_STRIDE(%(b)s, 0)/sizeof(dtype_%(b)s);
 
             // Get the shape on the specified dimension
-            num_data = shape_x[axis];
+            num_sm_classes = shape_x[axis];
             // Go through the array
             dtype_%(sm)s *sm_i;
             dtype_%(x)s *x_i;
@@ -231,7 +231,7 @@ class SoftmaxWithBias(gof.Op):
                     dtype_%(sm)s row_max = x_i[0] + b_i[0];
                     size_t row_max_j = 0;
                     // Get the maximum value on this dimenson
-                    for (j = 1; j < num_data; ++j)
+                    for (j = 1; j < num_sm_classes; ++j)
                     {
                         dtype_%(sm)s row_ij = x_i[j * stride_x] +  b_i[j * stride_b];
                         row_max_j = (row_ij > row_max) ? j : row_max_j;
@@ -241,7 +241,7 @@ class SoftmaxWithBias(gof.Op):
 
         inside_row_loop = """
         // Substract the max and take the exponential
-        for (j = 0; j < num_data; ++j)
+        for (j = 0; j < num_sm_classes; ++j)
         {
             dtype_%(sm)s row_ij = x_i[j * stride_x] + b_i[j * stride_b];
             dtype_%(sm)s sm_ij = exp(row_ij - row_max);
@@ -252,7 +252,7 @@ class SoftmaxWithBias(gof.Op):
         // cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
         // Then divide by the sum of the elements
         double sum_inv = 1.0 / sum;
-        for (j = 0; j < num_data; ++j)
+        for (j = 0; j < num_sm_classes; ++j)
         {
             sm_i[j * stride_sm] *= sum_inv;
             // std::cout << "Col: " << sm_i[j];
@@ -261,10 +261,10 @@ class SoftmaxWithBias(gof.Op):
 
         # Get the vectorized version of exp if it exist
         try:
-            vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype, "num_data", "sm_i", "sm_i")
+            vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype, "num_sm_classes", "sm_i", "sm_i")
             inside_row_loop_contig = """
             // Substract the max
-            for (j = 0; j < num_data; ++j)
+            for (j = 0; j < num_sm_classes; ++j)
             {
                 sm_i[j * stride_sm] = (x_i[j * stride_x] + b_i[j * stride_b]) - row_max;
             }
@@ -273,7 +273,7 @@ class SoftmaxWithBias(gof.Op):
             %(vec_exp)s;
 
             // Compute the sum of exponentials
-            for (j = 0; j < num_data; ++j)
+            for (j = 0; j < num_sm_classes; ++j)
             {
                 sum += sm_i[j * stride_sm];
                 }
@@ -281,7 +281,7 @@ class SoftmaxWithBias(gof.Op):
             // Then normalize each element
             //cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
             double sum_inv = 1.0 / sum;
-            for (j = 0; j < num_data; ++j)
+            for (j = 0; j < num_sm_classes; ++j)
             {
                 sm_i[j * stride_sm] *= sum_inv;
                 }
@@ -455,7 +455,7 @@ class SoftmaxGrad(gof.Op):
                 }
 
             // Use numpy iterator
-            npy_int num_data, stride_dx, stride_sm, stride_dy;
+            npy_int num_sm_classes, stride_dx, stride_sm, stride_dy;
             // Get numpy iterator
             PyArrayIterObject *it_dx, *it_sm, *it_dy;
             it_dx = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(dx)s, &axis);
@@ -466,7 +466,7 @@ class SoftmaxGrad(gof.Op):
             stride_sm = PyArray_STRIDE(%(sm)s, axis)/sizeof(dtype_%(sm)s);
             stride_dy = PyArray_STRIDE(%(dy)s, axis)/sizeof(dtype_%(dy)s);
             // Get the shape on the specified dimension
-            num_data = shape_sm[axis];
+            num_sm_classes = shape_sm[axis];
             // Go through the array
             dtype_%(dx)s *dx_i;
             dtype_%(sm)s *sm_i;
@@ -478,12 +478,12 @@ class SoftmaxGrad(gof.Op):
                 dy_i = (dtype_%(dy)s *) PyArray_ITER_DATA(it_dy);
 
                 double sum_dy_times_sm = 0.;
-                for (size_t j = 0; j < num_data; ++j)
+                for (size_t j = 0; j < num_sm_classes; ++j)
                 {
                     dx_i[j] = dy_i[j] * sm_i[j];
                     sum_dy_times_sm += dx_i[j];
                 }
-                for (size_t j = 0; j < num_data; ++j)
+                for (size_t j = 0; j < num_sm_classes; ++j)
                 {
                     dx_i[j] -= sum_dy_times_sm * sm_i[j];
                 }
@@ -610,7 +610,7 @@ class Softmax(gof.Op):
 
         begin_row_loop = """
             // Use numpy iterator
-            npy_int num_data, stride_x, stride_sm;
+            npy_int num_sm_classes, stride_x, stride_sm;
             // Get numpy iterator
             PyArrayIterObject *it_x, *it_sm;
             it_x = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(x)s, &axis);
@@ -619,7 +619,7 @@ class Softmax(gof.Op):
             stride_x = PyArray_STRIDE(%(x)s, axis)/sizeof(dtype_%(x)s);;
             stride_sm = PyArray_STRIDE(%(sm)s, axis)/sizeof(dtype_%(sm)s);
             // Get the shape on the specified dimension
-            num_data = shape_x[axis];
+            num_sm_classes = shape_x[axis];
             // Go through the array
             dtype_%(sm)s *sm_i;
             dtype_%(x)s *x_i;
@@ -632,7 +632,7 @@ class Softmax(gof.Op):
                     sm_i = (dtype_%(sm)s *) PyArray_ITER_DATA(it_sm);
                     dtype_%(sm)s row_max = x_i[0];
                     // Get the maximum value on this dimenson
-                    for (j = 1; j < num_data; ++j)
+                    for (j = 1; j < num_sm_classes; ++j)
                     {
                         dtype_%(sm)s row_ij = x_i[j * stride_x];
                         row_max = (row_ij > row_max) ? row_ij : row_max;
@@ -642,7 +642,7 @@ class Softmax(gof.Op):
 
         inside_row_loop = """
         // Substract the max and take the exponential
-        for (j = 0; j < num_data; ++j)
+        for (j = 0; j < num_sm_classes; ++j)
         {
             dtype_%(sm)s row_ij = x_i[j * stride_x];
             dtype_%(sm)s sm_ij = exp(row_ij - row_max);
@@ -653,7 +653,7 @@ class Softmax(gof.Op):
         // cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
         // Then divide by the sum of the elements
         double sum_inv = 1.0 / sum;
-        for (j = 0; j < num_data; ++j)
+        for (j = 0; j < num_sm_classes; ++j)
         {
             sm_i[j * stride_sm] *= sum_inv;
             // std::cout << "Col: " << sm_i[j];
@@ -661,10 +661,10 @@ class Softmax(gof.Op):
         """
         # Get the vectorized version of exp if it exist
         try:
-            vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype, "num_data", "sm_i", "sm_i")
+            vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype, "num_sm_classes", "sm_i", "sm_i")
             inside_row_loop_contig = """
             // Substract the max
-            for (j = 0; j < num_data; ++j)
+            for (j = 0; j < num_sm_classes; ++j)
             {
                 sm_i[j * stride_sm] = x_i[j * stride_x] - row_max;
                 }
@@ -673,7 +673,7 @@ class Softmax(gof.Op):
             %(vec_exp)s;
 
             // Compute the sum of exponentials
-            for (j = 0; j < num_data; ++j)
+            for (j = 0; j < num_sm_classes; ++j)
             {
                 sum += sm_i[j * stride_sm];
                 }
@@ -681,7 +681,7 @@ class Softmax(gof.Op):
             // Then normalize each element
             //cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
             double sum_inv = 1.0 / sum;
-            for (j = 0; j < num_data; ++j)
+            for (j = 0; j < num_sm_classes; ++j)
             {
                 sm_i[j * stride_sm] *= sum_inv;
                 }
@@ -825,7 +825,7 @@ class LogSoftmax(gof.Op):
 
         begin_row_loop = """
             // Use numpy iterator
-            npy_int num_data, stride_x, stride_sm;
+            npy_int num_sm_classes, stride_x, stride_sm;
             // Get numpy iterator
             PyArrayIterObject *it_x, *it_sm;
             it_x = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(x)s, &axis);
@@ -834,7 +834,7 @@ class LogSoftmax(gof.Op):
             stride_x = PyArray_STRIDE(%(x)s, axis)/sizeof(dtype_%(x)s);;
             stride_sm = PyArray_STRIDE(%(sm)s, axis)/sizeof(dtype_%(sm)s);
             // Get the shape on the specified dimension
-            num_data = shape_x[axis];
+            num_sm_classes = shape_x[axis];
             // Go through the array
             dtype_%(sm)s *sm_i;
             dtype_%(x)s *x_i;
@@ -847,7 +847,7 @@ class LogSoftmax(gof.Op):
                     sm_i = (dtype_%(sm)s *) PyArray_ITER_DATA(it_sm);
                     dtype_%(sm)s row_max = x_i[0];
                     // Get the maximum value on this dimenson
-                    for (j = 1; j < num_data; ++j)
+                    for (j = 1; j < num_sm_classes; ++j)
                     {
                         dtype_%(sm)s row_ij = x_i[j * stride_x];
                         row_max = (row_ij > row_max) ? row_ij : row_max;
@@ -857,7 +857,7 @@ class LogSoftmax(gof.Op):
         inside_row_loop = """
               // Compute xdev and sum(exp(xdev), axis=1)
               double xdev_exp_row_sum = 0.0;
-              for (j = 0; j < num_data; j++)
+              for (j = 0; j < num_sm_classes; j++)
               {
                   // use sm_i to temporary store xdev
                   sm_i[j * stride_sm] = (dtype_%(sm)s) (x_i[j * stride_x] - row_max);
@@ -866,7 +866,7 @@ class LogSoftmax(gof.Op):
 
               // Write sm = xdev - log(sum(exp(xdev), axis=1))
               xdev_exp_row_sum = log(xdev_exp_row_sum);
-              for (j = 0; j < num_data; ++j)
+              for (j = 0; j < num_sm_classes; ++j)
               {
                   sm_i[j * stride_sm] -= (dtype_%(sm)s) xdev_exp_row_sum;
               }
