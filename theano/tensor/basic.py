@@ -4746,7 +4746,7 @@ class Reshape(Op):
     def __init__(self, ndim, name=None):
         self.ndim = ndim
         if ndim < 0:
-             raise ValueError("The output dimensions after reshape must be 0 or greater")
+            raise ValueError("The output dimensions after reshape must be 0 or greater")
         assert name is None, 'name attribute for Reshape has been deprecated'
 
     def __str__(self):
