@@ -471,7 +471,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         nb_threads2[1] = 1;
         // If we can't schedule enough threads parallelize the renormalization.
         // I do this because we don't always use those extra threads.
-        if ((nb_threads * nb_blocks < 2048) && %(replace)d )
+        if ((nb_threads * nb_blocks < 2048) && ! %(replace)d )
             nb_threads2[1] = 1024 / nb_threads;
 
         nb_blocks2[0] = nb_blocks;
