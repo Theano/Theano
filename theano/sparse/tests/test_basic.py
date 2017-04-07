@@ -3186,7 +3186,7 @@ class SamplingDotTester(utt.InferShapeTester):
 
 
 import theano.tensor.tests.test_sharedvar
-test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
+@theano.tensor.tests.test_sharedvar.makeSharedTester(
     shared_constructor_=theano.sparse.shared,
     dtype_='float64',
     get_value_borrow_true_alias_=True,
@@ -3200,8 +3200,9 @@ test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     theano_fct_=lambda a: dense_from_sparse(a * 2.),
     ref_fct_=lambda a: np.asarray((a * 2).todense()),
     cast_value_=scipy.sparse.csr_matrix,
-    name='test_shared_options',
 )
+class test_shared_options(object):
+    pass
 
 
 if __name__ == '__main__':
