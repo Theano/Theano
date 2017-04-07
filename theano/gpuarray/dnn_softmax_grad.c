@@ -46,7 +46,7 @@ if (APPLY_SPECIFIC(dx) != NULL)
 int APPLY_SPECIFIC(softmax_grad)(PyGpuArrayObject *dy,
                                  PyGpuArrayObject *sm,
                                  PyGpuArrayObject **dx,
-                                 cudnnHandle_t _handle) {
+                                 PARAMS_TYPE* wrapper) {
   PyGpuContextObject *c = dy->context;
   cudnnStatus_t err;
 
@@ -97,9 +97,9 @@ int APPLY_SPECIFIC(softmax_grad)(PyGpuArrayObject *dy,
     cuda_wait((*dx)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
     err = cudnnSoftmaxBackward(
-      _handle,
-      SOFTMAX_ALGO,
-      SOFTMAX_MODE,
+      wrapper->handle,
+      wrapper->algo,
+      wrapper->mode,
       alpha,
       APPLY_SPECIFIC(sm),
       PyGpuArray_DEV_DATA(sm),
