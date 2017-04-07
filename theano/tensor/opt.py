@@ -4380,6 +4380,7 @@ def local_useless_reshape(node):
         else:
             shape_feature = getattr(node.fgraph, 'shape_feature', None)
 
+        nb_m1 = 0
         shape_match = [False] * input.ndim
         for dim in xrange(input.ndim):
             outshp_i = output_shape_is[dim]
@@ -4403,9 +4404,15 @@ def local_useless_reshape(node):
                         continue
 
             # Match 1 if input.broadcastable[dim] is True
-            if (input.broadcastable[dim] and
-                    extract_constant(outshp_i, only_process_constants=1) == 1):
+            cst_outshp_i = extract_constant(outshp_i, only_process_constants=1)
+            if input.broadcastable[dim] and cst_outshp_i == 1:
                 shape_match[dim] = True
+                continue
+
+            # Match -1
+            if cst_outshp_i == -1:
+                shape_match[dim] = True
+                nb_m1 += 1
                 continue
 
             # Match shape_of[input][dim] or its constant equivalent
@@ -4417,7 +4424,7 @@ def local_useless_reshape(node):
                     shape_match[dim] = True
                     continue
 
-        if all(shape_match):
+        if all(shape_match) and nb_m1 <= 1:
             return [input]
 
         # TODO later: if all the shapes except one match, we may want to

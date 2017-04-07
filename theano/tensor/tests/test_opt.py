@@ -6475,6 +6475,21 @@ class Test_local_useless_reshape(unittest.TestCase):
         topo = f2.maker.fgraph.toposort()
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
 
+    def test_m1(self):
+            x = theano.tensor.matrix('x')
+            r = x.reshape((x.shape[0], -1))
+
+            m0 = theano.compile.get_default_mode()
+            m1 = m0.including('local_useless_reshape')
+            f1 = theano.function([x], r, mode=m1)
+            topo = f1.maker.fgraph.toposort()
+            assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+            m2 = m1.excluding('ShapeOpt')
+            f2 = theano.function([x], r, mode=m2)
+            topo = f2.maker.fgraph.toposort()
+            assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
 
 class Test_local_reshape_to_dimshuffle(unittest.TestCase):
     def setUp(self):

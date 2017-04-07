@@ -92,7 +92,8 @@ def test_flatten():
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]
 
-    f = theano.function([m], m.flatten(ndim=2), mode=mode_with_gpu)
+    f = theano.function([m], m.flatten(ndim=2),
+                        mode=mode_with_gpu.excluding("local_useless_reshape"))
     val = np.random.rand(10, 11).astype("float32")
     res = f(val)
     utt.assert_allclose(res, val)
