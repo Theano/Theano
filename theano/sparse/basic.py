@@ -2419,7 +2419,7 @@ def mul(x, y):
     Returns
     -------
     A sparse matrix
-        `x` + `y`
+        `x` * `y`
 
     Notes
     -----
