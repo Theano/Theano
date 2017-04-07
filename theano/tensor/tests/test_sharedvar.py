@@ -214,9 +214,10 @@ def makeSharedTester(shared_constructor_,
             x_cast = self.cast_value(x_orig)
             if self.shared_constructor_accept_ndarray:
                 x_shared = self.shared_constructor(x_orig, borrow=False)
-            else:
-                x_shared = self.shared_constructor(x_cast, borrow=False)
-            assert isinstance(x_shared.get_value(), x_orig.__class__)
+                assert isinstance(x_shared.get_value(), x_orig.__class__)
+
+            x_shared = self.shared_constructor(x_cast, borrow=False)
+            assert isinstance(x_shared.get_value(), x_cast.__class__)
 
         def test_set_value(self):
             dtype = self.dtype
