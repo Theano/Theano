@@ -103,6 +103,8 @@ def test_conv3d(border_mode):
     if ndimage is None or not theano.config.cxx:
         raise SkipTest("conv3d2d tests need SciPy and a c++ compiler")
 
+    mode = theano.compile.mode.get_default_mode('FAST_RUN')
+
     shared = theano.tensor._shared
 
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
@@ -125,7 +127,8 @@ def test_conv3d(border_mode):
                  border_mode=border_mode)
 
     newconv3d = theano.function([], [],
-                                updates={s_output: out})
+                                updates={s_output: out},
+                                mode=mode)
 
     check_diagonal_subtensor_view_traces(newconv3d)
     t0 = time.time()
@@ -136,6 +139,7 @@ def test_conv3d(border_mode):
     gnewconv3d = theano.function([], [],
                                  updates=[(s_filters, gfilters),
                                           (s_signals, gsignals)],
+                                 mode=mode,
                                  name='grad')
     check_diagonal_subtensor_view_traces(gnewconv3d)
 
@@ -149,7 +153,7 @@ def test_conv3d(border_mode):
     signals = numpy.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
     filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
     utt.verify_grad(lambda s, f: conv3d(s, f, border_mode=border_mode),
-                    [signals, filters], eps=1e-1)
+                    [signals, filters], eps=1e-1, mode=mode)
 
     # Additional Test that covers the case of patched implementation for filter with Tf=1
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
@@ -172,7 +176,8 @@ def test_conv3d(border_mode):
                  border_mode=border_mode)
 
     newconv3d = theano.function([], [],
-                                updates={s_output: out})
+                                updates={s_output: out},
+                                mode=mode)
 
     t0 = time.time()
     newconv3d()
@@ -182,6 +187,7 @@ def test_conv3d(border_mode):
     gnewconv3d = theano.function([], [],
                                  updates=[(s_filters, gfilters),
                                           (s_signals, gsignals)],
+                                 mode=mode,
                                  name='grad')
 
     t0 = time.time()
@@ -194,4 +200,4 @@ def test_conv3d(border_mode):
     signals = numpy.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
     filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
     utt.verify_grad(lambda s, f: conv3d(s, f, border_mode=border_mode),
-                    [signals, filters], eps=1e-1)
+                    [signals, filters], eps=1e-1, mode=mode)
