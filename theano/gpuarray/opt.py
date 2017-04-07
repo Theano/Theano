@@ -751,16 +751,12 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         gpu_output = res(*new_inputs)
         return [gpu_output]
     elif op.scalar_op in (scalar.add, scalar.mul):
-        max_nb_inputs = max_inputs_to_GpuElemwise(outputs)
-        if max_nb_inputs > 1:
-            while len(inputs) > max_nb_inputs:
-                inputs = inputs[:-max_nb_inputs] + [res(*inputs[-max_nb_inputs:])]
-        return res(*inputs)
+        return split_huge_add_or_mul(outputs[0].owner, res).outputs
     else:
         return res
 
 
-def split_huge_add_or_mul(node):
+def split_huge_add_or_mul(node, op=None):
     """
     For add and mul, it can happen that we have too much input
     That will make nvcc fail compilation of our current code.
@@ -771,16 +767,19 @@ def split_huge_add_or_mul(node):
     that can generate op with too much input and it check for that.
 
     """
+    if op is None:
+        op = node.op
     if node.op.scalar_op in (scalar.add, scalar.mul):
         max_nb_inputs = max_inputs_to_GpuElemwise(node)
         if max_nb_inputs <= 1 and len(node.inputs) > 1:
             return False
-        while len(node.inputs) > max_nb_inputs:
-            inner_op = []
-            for i in range(0, len(node.inputs), max_nb_inputs):
-                inner_op.append(node.op(*node.inputs[i: i + max_nb_inputs]))
-            node = node.op(*inner_op).owner
-    return node
+        else:
+            while len(node.inputs) > max_nb_inputs:
+                inner_op = []
+                for i in range(0, len(node.inputs), max_nb_inputs):
+                    inner_op.append(op(*node.inputs[i: i + max_nb_inputs]))
+                node = node.op(*inner_op).owner
+    return op(*node.inputs).owner
 
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
     GpuElemwise,
