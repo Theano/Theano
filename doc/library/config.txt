@@ -431,6 +431,7 @@ import theano and print the config variable, as in:
         automatically to get more memory. But this can cause
         fragmentation, see note above.
 
+
 .. attribute:: config.gpuarray.sched
 
     String value: ``'default'``, ``'multi'``, ``'single'``
@@ -460,6 +461,13 @@ import theano and print the config variable, as in:
     In the future when true multi-stream is enabled in libgpuarray,
     this may change.  If you want to make sure to have optimal
     performance, check both options.
+
+
+.. attribute:: config.gpuarray.cache_path
+
+   String value
+
+   Directory to cache pre-compiled kernels for the gpuarray backend.
 
 
 .. attribute:: linker
