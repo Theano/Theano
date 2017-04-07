@@ -28,8 +28,8 @@ KERNEL void max_pool2d_rop_kernel(const ga_size nthreads,
     wstart = max(wstart, 0);
 
     const ga_size offset = (n*channels + c) * height * width;
-    const DTYPE_INPUT_0* x_slice = x + offset;
-    const DTYPE_INPUT_1* ex_slice = ex + offset;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_1* ex_slice = ex + offset;
     DTYPE_OUTPUT_0 maxval = x_slice[hstart*width + wstart];
     DTYPE_OUTPUT_0 collector = ex_slice[hstart*width + wstart];
 
@@ -79,8 +79,8 @@ KERNEL void max_pool3d_rop_kernel(const ga_size nthreads,
     wstart = max(wstart, 0);
 
     const ga_size offset = (n*channels + c) * depth * height * width;
-    const DTYPE_INPUT_0* x_slice = x + offset;
-    const DTYPE_INPUT_1* ex_slice = ex + offset;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_1* ex_slice = ex + offset;
     DTYPE_OUTPUT_0 maxval = x_slice[(dstart*height + hstart)*width + wstart];
     DTYPE_OUTPUT_0 collector = ex_slice[(dstart*height + hstart)*width + wstart];
 

@@ -24,7 +24,7 @@ KERNEL void ave_pool2d_grad_kernel(const ga_size nthreads,
     const ga_size pwend = min((w + pad_w) / stride_w + 1, pooled_width);
 
     const ga_size offset = (n*channels + c) * pooled_height * pooled_width;
-    const DTYPE_INPUT_1* gz_slice = gz + offset;
+    GLOBAL_MEM const DTYPE_INPUT_1* gz_slice = gz + offset;
     DTYPE_OUTPUT_0 collector = 0;
 
     for (ga_size ph=phstart; ph < phend; ++ph) {
@@ -75,7 +75,7 @@ KERNEL void ave_pool3d_grad_kernel(const ga_size nthreads,
     const ga_size pwend = min((w + pad_w) / stride_w + 1, pooled_width);
 
     const ga_size offset = (n*channels + c) * pooled_depth * pooled_height * pooled_width;
-    const DTYPE_INPUT_1* gz_slice = gz + offset;
+    GLOBAL_MEM const DTYPE_INPUT_1* gz_slice = gz + offset;
     DTYPE_OUTPUT_0 collector = 0;
 
     for (ga_size pd=pdstart; pd < pdend; ++pd) {

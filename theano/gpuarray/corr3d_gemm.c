@@ -56,10 +56,10 @@ KERNEL void dilated_im3d2col_kernel(const ga_size n,
     const ga_size h_offset = h_col * stride_h - pad_h;
     const ga_size w_offset = w_col * stride_w - pad_w;
     const ga_size d_offset = d_col * stride_d - pad_d;
-    DTYPE_INPUT_0 * data_col_ptr = data_col;
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col_ptr = data_col;
     data_col_ptr += c_col * (height_col * width_col * depth_col) +
       h_col * (width_col * depth_col) + w_col * depth_col + d_col;
-    const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
     data_im_ptr += c_im * (height * width * depth) +
       h_offset * (width * depth) + w_offset * depth + d_offset;
     for (ga_size i = 0; i < kernel_h; ++i) {

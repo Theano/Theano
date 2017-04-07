@@ -18,15 +18,15 @@ KERNEL void max_pool2d_kernel(const ga_size nthreads,
     const ga_size ph = (index / pooled_width) % pooled_height;
     const ga_size c = (index / pooled_width / pooled_height) % channels;
     const ga_size n = (index / pooled_width / pooled_height / channels);
-    ga_int hstart = static_cast<ga_int>(ph*stride_h) - static_cast<ga_int>(pad_h);
+    ga_int hstart = (ga_int)(ph*stride_h) - (ga_int)(pad_h);
     const ga_size hend = min(hstart + kernel_h, height);
-    ga_int wstart = static_cast<ga_int>(pw*stride_w) - static_cast<ga_int>(pad_w);
+    ga_int wstart = (ga_int)(pw*stride_w) - (ga_int)(pad_w);
     const ga_size wend = min(wstart + kernel_w, width);
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
 
     const ga_size offset = (n*channels + c) * height * width;
-    const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
     DTYPE_OUTPUT_0 maxval = x_slice[hstart*width + wstart];
 
     for (ga_size h=hstart; h < hend; ++h) {
@@ -62,18 +62,18 @@ KERNEL void max_pool3d_kernel(const ga_size nthreads,
     const ga_size pd = (index / pooled_width / pooled_height) % pooled_depth;
     const ga_size c = (index / pooled_width / pooled_height / pooled_depth) % channels;
     const ga_size n = (index / pooled_width / pooled_height / pooled_depth / channels);
-    ga_int dstart = static_cast<ga_int>(pd*stride_d) - static_cast<ga_int>(pad_d);
+    ga_int dstart = (ga_int)(pd*stride_d) - (ga_int)(pad_d);
     const ga_size dend = min(dstart + kernel_d, depth);
-    ga_int hstart = static_cast<ga_int>(ph*stride_h) - static_cast<ga_int>(pad_h);
+    ga_int hstart = (ga_int)(ph*stride_h) - (ga_int)(pad_h);
     const ga_size hend = min(hstart + kernel_h, height);
-    ga_int wstart = static_cast<ga_int>(pw*stride_w) - static_cast<ga_int>(pad_w);
+    ga_int wstart = (ga_int)(pw*stride_w) - (ga_int)(pad_w);
     const ga_size wend = min(wstart + kernel_w, width);
     dstart = max(dstart, 0);
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
 
     const ga_size offset = (n*channels + c) * depth * height * width;
-    const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
     DTYPE_OUTPUT_0 maxval = x_slice[(dstart*height + hstart)*width + wstart];
 
     for (ga_size d=dstart; d < dend; ++d) {
@@ -109,9 +109,9 @@ KERNEL void ave_pool2d_kernel(const ga_size nthreads,
     const ga_size ph = (index / pooled_width) % pooled_height;
     const ga_size c = (index / pooled_width / pooled_height) % channels;
     const ga_size n = (index / pooled_width / pooled_height / channels);
-    ga_int hstart = static_cast<ga_int>(ph*stride_h) - static_cast<ga_int>(pad_h);
+    ga_int hstart = (ga_int)(ph*stride_h) - (ga_int)(pad_h);
     ga_size hend = min(hstart + kernel_h, height + pad_h);
-    ga_int wstart = static_cast<ga_int>(pw*stride_w) - static_cast<ga_int>(pad_w);
+    ga_int wstart = (ga_int)(pw*stride_w) - (ga_int)(pad_w);
     ga_size wend = min(wstart + kernel_w, width + pad_w);
     ga_size pool_size;
     if (inc_pad) {
@@ -126,7 +126,7 @@ KERNEL void ave_pool2d_kernel(const ga_size nthreads,
     }
 
     const ga_size offset = (n*channels + c) * height * width;
-    const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
     DTYPE_OUTPUT_0 collector = 0;
 
     for (ga_size h=hstart; h < hend; ++h) {
@@ -165,11 +165,11 @@ KERNEL void ave_pool3d_kernel(const ga_size nthreads,
     const ga_size pd = (index / pooled_width / pooled_height) % pooled_depth;
     const ga_size c = (index / pooled_width / pooled_height / pooled_depth) % channels;
     const ga_size n = (index / pooled_width / pooled_height / pooled_depth / channels);
-    ga_int dstart = static_cast<ga_int>(pd*stride_d) - static_cast<ga_int>(pad_d);
+    ga_int dstart = (ga_int)(pd*stride_d) - (ga_int)(pad_d);
     ga_size dend = min(dstart + kernel_d, depth + pad_d);
-    ga_int hstart = static_cast<ga_int>(ph*stride_h) - static_cast<ga_int>(pad_h);
+    ga_int hstart = (ga_int)(ph*stride_h) - (ga_int)(pad_h);
     ga_size hend = min(hstart + kernel_h, height + pad_h);
-    ga_int wstart = static_cast<ga_int>(pw*stride_w) - static_cast<ga_int>(pad_w);
+    ga_int wstart = (ga_int)(pw*stride_w) - (ga_int)(pad_w);
     ga_size wend = min(wstart + kernel_w, width + pad_w);
     ga_size pool_size;
     if (inc_pad) {
@@ -186,7 +186,7 @@ KERNEL void ave_pool3d_kernel(const ga_size nthreads,
     }
 
     const ga_size offset = (n*channels + c) * depth * height * width;
-    const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
     DTYPE_OUTPUT_0 collector = 0;
 
     for (ga_size d=dstart; d < dend; ++d) {

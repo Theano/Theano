@@ -26,8 +26,8 @@ KERNEL void max_pool2d_grad_grad_kernel(const ga_size nthreads,
 
     const ga_size offset = (n*channels + c) * height * width;
 
-    const DTYPE_INPUT_0* x_slice = x + offset;
-    const DTYPE_INPUT_2* gx_slice = gx + offset;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_2* gx_slice = gx + offset;
     DTYPE_OUTPUT_0 gradient = 0;
 
     for (ga_size h=hstart; h < hend; ++h) {
@@ -74,8 +74,8 @@ KERNEL void max_pool3d_grad_grad_kernel(const ga_size nthreads,
 
     const ga_size offset = (n*channels + c) * depth * height * width;
 
-    const DTYPE_INPUT_0* x_slice = x + offset;
-    const DTYPE_INPUT_2* gx_slice = gx + offset;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_2* gx_slice = gx + offset;
     DTYPE_OUTPUT_0 gradient = 0;
 
     for (ga_size d=dstart; d < dend; ++d) {

@@ -53,9 +53,9 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
     const ga_size c_col = c_im * kernel_h * kernel_w;
     const ga_size h_offset = h_col * stride_h - pad_h;
     const ga_size w_offset = w_col * stride_w - pad_w;
-    DTYPE_INPUT_0 * data_col_ptr = data_col;
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col_ptr = data_col;
     data_col_ptr += (c_col * height_col + h_col) * width_col + w_col;
-    const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
     data_im_ptr += (c_im * height + h_offset) * width + w_offset;
     for (ga_size i = 0; i < kernel_h; ++i) {
       for (ga_size j = 0; j < kernel_w; ++j) {
@@ -90,9 +90,9 @@ KERNEL void im2col_kernel(const ga_size n,
     const ga_size c_col = c_im * kernel_h * kernel_w;
     const ga_size h_offset = h_col * stride_h - pad_h;
     const ga_size w_offset = w_col * stride_w - pad_w;
-    DTYPE_INPUT_0 * data_col_ptr = data_col;
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col_ptr = data_col;
     data_col_ptr += (c_col * height_col + h_col) * width_col + w_col;
-    const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
     data_im_ptr += (c_im * height + h_offset) * width + w_offset;
     for (ga_size i = 0; i < kernel_h; ++i) {
       for (ga_size j = 0; j < kernel_w; ++j) {
