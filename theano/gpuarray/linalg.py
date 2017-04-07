@@ -284,8 +284,6 @@ class GpuCholesky(Op):
         # Input matrix.
         A = inputs[0]
 
-        assert(len(A.shape) == 2)
-
         l, n = A.shape
         if l != n:
             raise ValueError('A must be a square matrix')
@@ -333,7 +331,6 @@ class GpuCholesky(Op):
         # cusolver leaves the elements in the matrix outside the considered
         # upper or lower triangle unchanged, so we need to put zeros outside
         # the triangle
-        # Note : we should probably check for c or f order in triu instead of here
         if self.lower:
             tril(L)
         else:
