@@ -1590,6 +1590,8 @@ class numeric_grad(object):
         errs = []
         abs_errs = []
         rel_errs = []
+        import pdb
+        pdb.set_trace()
 
         abs_rel_errs = self.abs_rel_errors(g_pt)
         for abs_err, rel_err in abs_rel_errs:

@@ -472,7 +472,8 @@ class GpuRoIPoolOp(CGpuKernelBase):
         h = self.pooled_h
         w = self.pooled_w
         channels = data_shape[1]
-        out_shape = [batch_size, num_rois, channels, h * w]
+        out_shape = [num_rois, channels, h, w]
+
         return [out_shape, out_shape]
 
     def grad(self, inp, grads):

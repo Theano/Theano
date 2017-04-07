@@ -1166,34 +1166,34 @@ def numpy_roi_pool(image_val, pool_height, pool_width, roi, spatial_scale):
     num_roi = roi.shape[0]
     maxval_coordinates = []
     max_vals = []
-    for b_in in range(batch_size):
-        for i in range(num_roi):
-            x_start = numpy.floor((roi[i, 0] * spatial_scale) + 0.5)
-            y_start = numpy.floor((roi[i, 1] * spatial_scale) + 0.5)
-            x_end = numpy.floor((roi[i, 2] * spatial_scale) + 0.5)
-            y_end = numpy.floor((roi[i, 3] * spatial_scale) + 0.5)
+    for i in range(num_roi):
+        batch_choice = int(roi[i, 0])
+        x_start = np.floor((roi[i, 1] * spatial_scale) + 0.5)
+        y_start = np.floor((roi[i, 2] * spatial_scale) + 0.5)
+        x_end = np.floor((roi[i, 3] * spatial_scale) + 0.5)
+        y_end = np.floor((roi[i, 4] * spatial_scale) + 0.5)
 
-            roi_height = max(y_end - y_start + 1, 1)
-            roi_width = max(x_end - x_start + 1, 1)
-            row_length = roi_width / pool_width
-            col_length = roi_height / pool_height
+        roi_height = max(y_end - y_start + 1, 1)
+        roi_width = max(x_end - x_start + 1, 1)
+        row_length = roi_width / pool_width
+        col_length = roi_height / pool_height
 
-            for cn in range(channels):
-                for jy in range(pool_height):
-                    for ix in range(pool_width):
-                        x1 = int(numpy.floor(x_start + ix * row_length))
-                        x2 = int(numpy.ceil(x1 + row_length))
-                        y1 = int(numpy.floor(y_start + jy * col_length))
-                        y2 = int(numpy.ceil(y1 + col_length))
-                        interest_region = image_val[b_in, cn, y1:y2, x1:x2]
-                        m_val = numpy.max(interest_region)
-                        max_vals.append(m_val)
-                        argmax = numpy.unravel_index(numpy.argmax(interest_region), interest_region.shape)
-                        maxloc = argmax[1] + x1 + (argmax[0] + y1) * im_width
-                        maxval_coordinates.append(maxloc)
+        for cn in range(channels):
+            for jy in range(pool_height):
+                for ix in range(pool_width):
+                    x1 = int(np.floor(x_start + ix * row_length))
+                    x2 = int(np.ceil(x1 + row_length))
+                    y1 = int(np.floor(y_start + jy * col_length))
+                    y2 = int(np.ceil(y1 + col_length))
+                    interest_region = image_val[batch_choice, cn, y1:y2, x1:x2]
+                    m_val = np.max(interest_region)
+                    max_vals.append(m_val)
+                    argmax = np.unravel_index(np.argmax(interest_region), interest_region.shape)
+                    maxloc = argmax[1] + x1 + (argmax[0] + y1) * im_width
+                    maxval_coordinates.append(maxloc)
     # Reshaped as (batch_index, num_roi, channels, pool_h * pool_w)
-    max_vals = numpy.reshape(numpy.asarray(max_vals), (batch_size, num_roi, channels, pool_height * pool_width))
-    maxval_coordinates = numpy.reshape(numpy.asarray(maxval_coordinates), (batch_size, num_roi, channels, pool_height * pool_width))
+    max_vals = np.reshape(np.asarray(max_vals), (num_roi, channels, int(pool_height), int(pool_width)))
+    maxval_coordinates = np.reshape(np.asarray(maxval_coordinates), (num_roi, channels, int(pool_height), int(pool_width)))
     return max_vals, maxval_coordinates
 
 
@@ -1204,7 +1204,7 @@ class TestRoIPool(utt.InferShapeTester):
         self.op_class = RoIPoolOp
 
     def test_basic(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         t_data = tensor.ftensor4()
         t_rois = tensor.fmatrix()
         image_shapes = ((1, 3, 16, 16), (1, 3, 16, 20), (1, 3, 20, 16),
@@ -1215,19 +1215,18 @@ class TestRoIPool(utt.InferShapeTester):
         # The difference in shape is because the first element is batch index in
         # theano implementation
         # The value 7 is used in Fast RCNN network
-        roi_theano = numpy.asarray([[0., 0., 0., 1., 1.], [0., 0., 0., 2., 2.], [0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32')
-        roi_numpy = numpy.asarray([[0., 0., 1., 1.], [0., 0., 2., 2.], [0., 0., 3., 3.], [0., 0., 7., 7.]], dtype='float32')
+        roi_theano = np.asarray([[0., 0., 0., 1., 1.], [0., 0., 0., 2., 2.], [0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32')
         pool_widths = [2, 3, 4]
         pool_heights = [2, 3, 4]
         spatial_scales = [0.5, 1.0, 1.5]
 
         for im_shp in image_shapes:
             for pool_h, pool_w, sp_scale in zip(pool_heights, pool_widths, spatial_scales):
-                random_image = rng.rand(*im_shp).astype(numpy.single) * 40.0
-                maxvals_np, maxloc_np = numpy_roi_pool(random_image, pool_h, pool_w, roi_numpy, sp_scale)
+                random_image = rng.rand(*im_shp).astype('float32') * 60.0
+                maxvals_np, maxloc_np = numpy_roi_pool(random_image, pool_h, pool_w, roi_theano, sp_scale)
                 roi_op = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)
                 t_outs = roi_op(t_data, t_rois)
-                func = theano.function([t_data, t_rois], t_outs)
+                func = theano.function([t_data, t_rois], t_outs, allow_input_downcast=True)
                 maxvals_theano, maxloc_theano = func(random_image, roi_theano)
                 utt.assert_allclose(maxvals_np, maxvals_theano)
                 utt.assert_allclose(maxloc_np, maxloc_theano)
@@ -1236,15 +1235,17 @@ class TestRoIPool(utt.InferShapeTester):
                     out, argmax = RoIPoolOp(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)(input, roi_theano)
                     return out
 
+                print("Passing " + str(pool_h))
                 utt.verify_grad(mp, [random_image])
+                print("Passing " + str(pool_h))
 
     def test_infer_shape(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         t_data = tensor.dtensor4()
         t_rois = tensor.dmatrix()
-        roi_theano = numpy.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32')
+        roi_theano = np.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32')
         image_shape = (2, 3, 20, 32)
-        random_image = rng.rand(*image_shape).astype(numpy.single)
+        random_image = rng.rand(*image_shape).astype(np.single)
 
         self._compile_and_check([t_data, t_rois],
                                 self.op_class(2, 2, 1.0)(t_data, t_rois),

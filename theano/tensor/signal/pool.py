@@ -2510,10 +2510,10 @@ class RoIPoolOp(gof.COp):
         max_vals = []
         for b_in in range(batch_size):
             for i in range(num_roi):
-                x_start = numpy.floor((roi[i, 1] * spatial_scale) + 0.5)
-                y_start = numpy.floor((roi[i, 2] * spatial_scale) + 0.5)
-                x_end = numpy.floor((roi[i, 3] * spatial_scale) + 0.5)
-                y_end = numpy.floor((roi[i, 4] * spatial_scale) + 0.5)
+                x_start = np.floor((roi[i, 1] * spatial_scale) + 0.5)
+                y_start = np.floor((roi[i, 2] * spatial_scale) + 0.5)
+                x_end = np.floor((roi[i, 3] * spatial_scale) + 0.5)
+                y_end = np.floor((roi[i, 4] * spatial_scale) + 0.5)
 
                 roi_height = max(y_end - y_start + 1, 1)
                 roi_width = max(x_end - x_start + 1, 1)
@@ -2523,18 +2523,18 @@ class RoIPoolOp(gof.COp):
                 for cn in range(n_channels):
                     for jy in range(pool_height):
                         for ix in range(pool_width):
-                            x1 = int(numpy.floor(x_start + ix * row_length))
-                            x2 = int(numpy.ceil(x1 + row_length))
-                            y1 = int(numpy.floor(y_start + jy * col_length))
-                            y2 = int(numpy.ceil(y1 + col_length))
+                            x1 = int(np.floor(x_start + ix * row_length))
+                            x2 = int(np.ceil(x1 + row_length))
+                            y1 = int(np.floor(y_start + jy * col_length))
+                            y2 = int(np.ceil(y1 + col_length))
                             interest_region = image_data[b_in, cn, y1:y2, x1:x2]
-                            max_vals.append(numpy.max(interest_region))
-                            argmax = numpy.unravel_index(numpy.argmax(interest_region), interest_region.shape)
+                            max_vals.append(np.max(interest_region))
+                            argmax = np.unravel_index(np.argmax(interest_region), interest_region.shape)
                             maxloc = argmax[1] + x1 + (argmax[0] + y1) * image_width
                             maxval_coordinates.append(maxloc)
         # Reshaped as (batch_index, num_roi, channels, pool_h * pool_w)
-        max_vals = numpy.reshape(numpy.array(max_vals), (batch_size, num_roi, n_channels, pool_height * pool_width))
-        maxval_coordinates = numpy.reshape(numpy.array(maxval_coordinates), (batch_size, num_roi, n_channels, pool_height * pool_width))
+        max_vals = np.reshape(np.array(max_vals), (batch_size, num_roi, n_channels, pool_height * pool_width))
+        maxval_coordinates = np.reshape(np.array(maxval_coordinates), (batch_size, num_roi, n_channels, pool_height * pool_width))
         top_data[0] = max_vals
         argmax_data[0] = maxval_coordinates
 
@@ -2546,7 +2546,7 @@ class RoIPoolOp(gof.COp):
         h = self.pooled_h
         w = self.pooled_w
         channels = data_shape[1]
-        out_shape = [batch_size, num_rois, channels, h * w]
+        out_shape = [num_rois, channels, h, w]
         return [out_shape, out_shape]
 
     def grad(self, inp, grads):
@@ -2606,14 +2606,14 @@ class RoIPoolGradOp(gof.COp):
         image_width = image_data.shape[3]
         assert image_data.ndim == 4
         assert roi.ndim == 2
-        gx[0] = numpy.zeros(image_data.shape)
+        gx[0] = np.zeros(image_data.shape)
         gxx = gx[0]
         for b_in in range(batch_size):
             for i in range(num_roi):
-                x_start = numpy.floor((roi[i, 1] * spatial_scale) + 0.5)
-                y_start = numpy.floor((roi[i, 2] * spatial_scale) + 0.5)
-                x_end = numpy.floor((roi[i, 3] * spatial_scale) + 0.5)
-                y_end = numpy.floor((roi[i, 4] * spatial_scale) + 0.5)
+                x_start = np.floor((roi[i, 1] * spatial_scale) + 0.5)
+                y_start = np.floor((roi[i, 2] * spatial_scale) + 0.5)
+                x_end = np.floor((roi[i, 3] * spatial_scale) + 0.5)
+                y_end = np.floor((roi[i, 4] * spatial_scale) + 0.5)
 
                 roi_height = max(y_end - y_start + 1, 1)
                 roi_width = max(x_end - x_start + 1, 1)
@@ -2630,19 +2630,19 @@ class RoIPoolGradOp(gof.COp):
                             if not in_roi:
                                 continue
                             bottom_index = (jy * image_width) + ix
-                            x1 = int(numpy.floor((ix - x_start) / row_length))
-                            x2 = int(numpy.ceil((ix - x_start + 1) / row_length))
-                            y1 = int(numpy.floor((jy - y_start) / col_length))
-                            y2 = int(numpy.ceil((jy - y_start + 1) / col_length))
+                            x1 = int(np.floor((ix - x_start) / row_length))
+                            x2 = int(np.ceil((ix - x_start + 1) / row_length))
+                            y1 = int(np.floor((jy - y_start) / col_length))
+                            y2 = int(np.ceil((jy - y_start + 1) / col_length))
 
                             interest_region = argmax[b_in, i, cn, x1 + int(pool_width) * y1:x2 + int(pool_width) * y2]
 
-                            mp_index = numpy.where(interest_region == bottom_index)[0]
+                            mp_index = np.where(interest_region == bottom_index)[0]
                             if mp_index.size == 0:
                                 continue
 
                             # incrementing cause it was extracted from sliced array
-                            mp_index = numpy.add(mp_index, x1 + (pool_width * y1))
+                            mp_index = np.add(mp_index, x1 + (pool_width * y1))
                             gxxx[bottom_index] += channel_grad[mp_index].sum()
 
     def grad(self, inp, grads):
