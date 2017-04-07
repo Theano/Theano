@@ -1262,6 +1262,7 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
 
             reshaped_x = x.reshape(tensor.stack(new_in_shp))
             gpu_reshaped_x = as_gpuarray_variable(reshaped_x, context_name)
+            gvar = greduce(gpu_reshaped_x)
             # We need to have the make node called, otherwise the mask can
             # be None
             reshaped_gpu_inputs = [gpu_reshaped_x]
