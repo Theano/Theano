@@ -246,10 +246,10 @@ class ParamsType(Type):
         if enum_types:
             # We don't want same enum names in different enum types.
             if sum(len(t) for t in enum_types) != len(set(k for t in enum_types for k in t)):
-                raise AttributeError('Wrapper: found different enum types with common constant names.')
+                raise AttributeError('ParamsType: found different enum types with common constant names.')
             # We don't want same aliases in different enum types.
             if sum(len(t.aliases) for t in enum_types) != len(set(alias for t in enum_types for alias in t.aliases)):
-                raise AttributeError('Wrapper: found different enum types with common constant aliases.')
+                raise AttributeError('ParamsType: found different enum types with common constant aliases.')
             # We map each enum name to the enum type in which it is defined.
             # We will then use this dict to find enum value when looking for enum name in Wrapper object directly.
             self.__const_to_enum = {enum_name: enum_type for enum_type in enum_types for enum_name in enum_type}
@@ -518,11 +518,21 @@ class ParamsType(Type):
         sub = {'fail': '{this->setErrorOccurred(); return;}'}
         struct_name = self.name
         struct_name_defined = struct_name.upper()
+        c_support_code_set = set()
+        c_support_code_list = []
         c_declare_list = []
         c_init_list = []
         c_cleanup_list = []
         c_extract_list = []
         for attribute_name, type_instance in zip(self.fields, self.types):
+
+            try:
+                c_support_code_current = type_instance.c_support_code()
+                if c_support_code_current not in c_support_code_set:
+                    c_support_code_list.append(c_support_code_current)
+                    c_support_code_set.add(c_support_code_current)
+            except MethodNotDefined:
+                pass
 
             c_declare_list.append(type_instance.c_declare(attribute_name, sub))
 
@@ -539,6 +549,7 @@ class ParamsType(Type):
                 'extract_code': type_instance.c_extract(attribute_name, sub)
             })
 
+        support_code = '\n'.join(c_support_code_list)
         struct_declare = '\n'.join(c_declare_list)
         struct_init = '\n'.join(c_init_list)
         struct_cleanup = '\n'.join(c_cleanup_list)
@@ -559,6 +570,7 @@ class ParamsType(Type):
             [('case %d: extract_%s(object); break;' % (i, self.fields[i])) for i in range(self.length)])
         )
         return """
+        %(support_code)s
         #ifndef %(struct_name_defined)s
         #define %(struct_name_defined)s
         struct %(struct_name)s {
@@ -598,12 +610,13 @@ class ParamsType(Type):
             }
         };
         #endif
-        """ % dict(struct_name_defined=struct_name_defined, struct_name=struct_name, struct_declare=struct_declare,
+        """ % dict(support_code=support_code,
+                   struct_name_defined=struct_name_defined, struct_name=struct_name, struct_declare=struct_declare,
                    struct_init=struct_init, struct_cleanup=struct_cleanup, struct_extract=struct_extract,
                    struct_extract_method=struct_extract_method)
 
     def c_code_cache_version(self):
-        return ((1, 7), tuple(t.c_code_cache_version() for t in self.types))
+        return ((1, 8), tuple(t.c_code_cache_version() for t in self.types))
 
     # As this struct has constructor and destructor, it could be instanciated on stack,
     # but current implementations of C ops will then pass the instance by value at functions,
