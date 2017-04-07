@@ -18,7 +18,7 @@ class test_OP(unittest.TestCase):
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.ChoiceFromUniform('auto')(p, u, n)
+        m = multinomial.ChoiceFromUniform(odtype='auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -52,7 +52,7 @@ class test_OP(unittest.TestCase):
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.ChoiceFromUniform('auto')(p, u, n)
+        m = multinomial.ChoiceFromUniform(odtype='auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -72,7 +72,7 @@ class test_OP(unittest.TestCase):
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.ChoiceFromUniform('auto')(p, u, n)
+        m = multinomial.ChoiceFromUniform(odtype='auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 

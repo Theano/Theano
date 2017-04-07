@@ -219,6 +219,17 @@ class ChoiceFromUniform(MultinomialFromUniform):
 
     """
 
+    __props__ = ("replace",)
+
+    def __init__(self, odtype, replace=False, *args, **kwargs):
+        self.replace = replace
+        super(ChoiceFromUniform, self).__init__(odtype=odtype, *args, **kwargs)
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if "replace" not in state:
+            self.replace = False
+
     def make_node(self, pvals, unis, n=1):
         pvals = T.as_tensor_variable(pvals)
         unis = T.as_tensor_variable(unis)
@@ -239,6 +250,7 @@ class ChoiceFromUniform(MultinomialFromUniform):
     def c_code(self, node, name, ins, outs, sub):
         (pvals, unis, n) = ins
         (z,) = outs
+        replace = int(self.replace)
         if self.odtype == 'auto':
             t = "NPY_INT64"
         else:
@@ -333,20 +345,23 @@ class ChoiceFromUniform(MultinomialFromUniform):
                         // No need to renormalize after the last samples.
                         if (c == (n_samples - 1))
                             break;
-                        // renormalize the nth row of pvals, reuse (cummul-*pvals_nm) to initialize the sum
-                        dtype_%(pvals)s sum = cummul - *pvals_nm;
-                        dtype_%(pvals)s* pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(pvals_copy, n, m);
-                        *pvals_nm = 0.;
-                        for (int k = m; k < nb_outcomes; ++k)
+                        if (! %(replace)s )
                         {
-                            sum = sum + *pvals_n;
-                            pvals_n++;
-                        }
-                        pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(pvals_copy, n, 0);
-                        for (int k = 0; k < nb_outcomes; ++k)
-                        {
-                            *pvals_n = *pvals_n / sum;
-                            pvals_n++;
+                            // renormalize the nth row of pvals, reuse (cummul-*pvals_nm) to initialize the sum
+                            dtype_%(pvals)s sum = cummul - *pvals_nm;
+                            dtype_%(pvals)s* pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(pvals_copy, n, m);
+                            *pvals_nm = 0.;
+                            for (int k = m; k < nb_outcomes; ++k)
+                            {
+                                sum = sum + *pvals_n;
+                                pvals_n++;
+                            }
+                            pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(pvals_copy, n, 0);
+                            for (int k = 0; k < nb_outcomes; ++k)
+                            {
+                                *pvals_n = *pvals_n / sum;
+                                pvals_n++;
+                            }
                         }
                         break;
                     }
@@ -398,8 +413,9 @@ class ChoiceFromUniform(MultinomialFromUniform):
                         z[0][n, c] = m
                         # set to zero and re-normalize so that it's not
                         # selected again
-                        pvals[n, m] = 0.
-                        pvals[n] /= pvals[n].sum()
+                        if not self.replace:
+                            pvals[n, m] = 0.
+                            pvals[n] /= pvals[n].sum()
                         break
 
 
