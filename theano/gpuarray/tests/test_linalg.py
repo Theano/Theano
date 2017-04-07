@@ -126,19 +126,19 @@ class TestGpuCholesky(unittest.TestCase):
         chol_A = cholesky_op(A)
         return theano.function([A], chol_A, accept_inplace=inplace, mode=mode_with_gpu)
 
-    def compare_gpu_cholesky_to_numpy(self, A_val, lower=True, inplace=False):
-        # Helper function to compare op output to numpy.cholesky output. 
-        chol_A_val = numpy.linalg.cholesky(A_val)
+    def compare_gpu_cholesky_to_np(self, A_val, lower=True, inplace=False):
+        # Helper function to compare op output to np.cholesky output. 
+        chol_A_val = np.linalg.cholesky(A_val)
         if not lower:
             chol_A_val = chol_A_val.T
         fn = self.get_gpu_cholesky_func(lower, inplace)
         res = fn(A_val)
-        chol_A_res = numpy.array(res)
+        chol_A_res = np.array(res)
         utt.assert_allclose(chol_A_res, chol_A_val)
 
     def test_invalid_input_fail_non_square(self):
         # Invalid Cholesky input test with non-square matrix as input. 
-        A_val = numpy.random.normal(size=(3, 2)).astype("float32")
+        A_val = np.random.normal(size=(3, 2)).astype("float32")
         fn = self.get_gpu_cholesky_func(True, False)
         self.assertRaises(ValueError, fn, A_val)
 
@@ -161,32 +161,32 @@ class TestGpuCholesky(unittest.TestCase):
         # make sure all diagonal elements are positive so positive-definite
         for lower in [True, False]:
             for inplace in [True, False]:
-                A_val = numpy.diag(numpy.random.uniform(size=5).astype("float32") + 1)
-                self.compare_gpu_cholesky_to_numpy(A_val, lower=lower, inplace=inplace)
+                A_val = np.diag(np.random.uniform(size=5).astype("float32") + 1)
+                self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
 
     def test_dense_chol_lower(self):
         # Dense matrix input lower-triangular Cholesky test. 
         for lower in [True, False]:
             for inplace in [True, False]:
-                M_val = numpy.random.normal(size=(3, 3)).astype("float32")
+                M_val = np.random.normal(size=(3, 3)).astype("float32")
                 # A = M.dot(M) will be positive definite for all non-singular M
                 A_val = M_val.dot(M_val.T)
-                self.compare_gpu_cholesky_to_numpy(A_val, lower=lower, inplace=inplace)
+                self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
 
     def test_invalid_input_fail_non_symmetric(self):
         # Invalid Cholesky input test with non-symmetric input.
         #    (Non-symmetric real input must also be non-positive definite).
         A_val = None
         while True:
-            A_val = numpy.random.normal(size=(3, 3)).astype("float32")
-            if not numpy.allclose(A_val, A_val.T):
+            A_val = np.random.normal(size=(3, 3)).astype("float32")
+            if not np.allclose(A_val, A_val.T):
                 break
         fn = self.get_gpu_cholesky_func(True, False)
         self.assertRaises(LinAlgError, fn, A_val)
 
     def test_invalid_input_fail_negative_definite(self):
         # Invalid Cholesky input test with negative-definite input. 
-        M_val = numpy.random.normal(size=(3, 3)).astype("float32")
+        M_val = np.random.normal(size=(3, 3)).astype("float32")
         # A = -M.dot(M) will be negative definite for all non-singular M
         A_val = -M_val.dot(M_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
