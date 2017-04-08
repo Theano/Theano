@@ -15,7 +15,7 @@ from copy import deepcopy
 from theano.compat import izip
 import logging
 
-import numpy
+import numpy as np
 
 import theano.tensor
 from theano.tensor import TensorType
@@ -259,7 +259,7 @@ class IfElse(Op):
                             if self.as_view:
                                 storage_map[out][0] = val
                             # Work around broken numpy deepcopy
-                            elif type(val) in (numpy.ndarray, numpy.memmap):
+                            elif type(val) in (np.ndarray, np.memmap):
                                 storage_map[out][0] = val.copy()
                             else:
                                 storage_map[out][0] = deepcopy(val)
@@ -276,7 +276,7 @@ class IfElse(Op):
                             # improves
                             # Work around broken numpy deepcopy
                             val = storage_map[f][0]
-                            if type(val) in (numpy.ndarray, numpy.memmap):
+                            if type(val) in (np.ndarray, np.memmap):
                                 storage_map[out][0] = val.copy()
                             else:
                                 storage_map[out][0] = deepcopy(val)
