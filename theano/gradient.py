@@ -1563,8 +1563,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     Example:
         >>> verify_grad(theano.tensor.tanh,
-        ...             (numpy.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
-        ...             rng=numpy.random)
+        ...             (np.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
+        ...             rng=np.random)
 
     Raises an Exception if the difference between the analytic gradient and
     numerical gradient (computed through the Finite Difference Method) of a
