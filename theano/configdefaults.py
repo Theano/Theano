@@ -225,6 +225,11 @@ def filter_nvcc_flags(s):
             " nvcc.flags value is '%s'" % s)
     return ' '.join(flags)
 
+AddConfigVar('gcc.libraries',
+             "Extra libraries to link with",
+             StrParam(""),
+             in_c_key=False)
+
 AddConfigVar('nvcc.flags',
              "Extra compiler flags for nvcc",
              ConfigParam("", filter_nvcc_flags),
