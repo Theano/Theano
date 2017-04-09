@@ -646,6 +646,48 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
     return (PyObject *)rval;
 }
 
+PyObject * CudaNdarray_As_Buffer(CudaNdarray * self, PyObject *args)
+{
+    int size=0;    
+    int offset=0;
+
+    if (args && !PyArg_ParseTuple(args, "ii", &size, &offset))
+        return NULL;
+
+    //printf("offset = %d size = %d\n", offset,size);
+
+    //check unified addressing  
+    
+    int device;
+    cudaError_t err =cudaGetDevice (&device);
+
+    if (cudaSuccess != err)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                         "Can't get the device being used.");
+        return NULL;
+    }
+
+    cudaDeviceProp prop;
+    cudaError_t err2 = cudaGetDeviceProperties(&prop,device);
+    
+    if (cudaSuccess != err2)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                         "Can't get properties of device %d.", device);
+        return NULL;
+    }
+
+    if (prop.unifiedAddressing != 1)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                         "Device %d does not share a unified address space with the host.", device);
+        return NULL;
+    }
+    
+    return (PyObject *)(PyBuffer_FromReadWriteMemory((void *) (self->devdata + offset), size));
+}
+
 // TODO-- we have two functions here, ZEROS and Zeros.
 // ZEROS is meant to be called just from C code (you don't need to pass it PyObject * s)
 // but this naming is very weird, makes it look like a macro
@@ -1428,6 +1470,9 @@ static PyMethodDef CudaNdarray_methods[] =
     {"__deepcopy__",
         (PyCFunction)CudaNdarray_DeepCopy, METH_O,
         "Create a copy of this object"},
+    {"as_buffer",
+        (PyCFunction)CudaNdarray_As_Buffer, METH_VARARGS,
+        "Get a buffer pointer from the CudaNdarray to be used in GPU memory transfer"},
     {"zeros",
         (PyCFunction)CudaNdarray_Zeros, METH_STATIC | METH_O,
         "Create a new CudaNdarray with specified shape, filled with zeros."},
