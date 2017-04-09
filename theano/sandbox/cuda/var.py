@@ -1,11 +1,13 @@
 from __future__ import absolute_import, print_function, division
 import copy
+import copy_reg
+import warnings
 
 import numpy
 
 import theano
 from theano import Variable, Constant
-from theano import tensor
+from theano import config, tensor
 from theano.compile import SharedVariable
 
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -196,3 +198,45 @@ def float32_shared_constructor(value, name=None, strict=False,
     rval.get_value_return_ndarray = get_value_return_ndarray
 
     return rval
+
+
+def CudaNdarraySharedVariable_unpickler(*npa):
+    if (config.experimental.unpickle_shared_gpu_on_cpu and
+        config.device == 'cpu'):
+        # directly return numpy array
+        if not config.experimental.unpickle_gpu_on_cpu:
+            raise Exception(
+                "When unpickling with unpickle_shared_gpu_on_cpu, "
+                "unpickle_gpu_on_cpu must be also True. Otherwise, "
+                "there could be aliasing problems between shared variables.")
+        warnings.warn(
+            "config.experimental.unpickle_shared_gpu_on_cpu is set to True."
+            " Unpickling CudaNdarraySharedVariable as TensorSharedVariable."
+        )
+        cls = theano.tensor.sharedvar.TensorSharedVariable
+        type = theano.tensor.TensorType(
+            dtype=npa[1].dtype, broadcastable=npa[1].broadcastable)
+        return cls(name=npa[0],
+                   type=type,
+                   value=numpy.asarray(npa[2].data),
+                   strict=None)
+    # Mimic what the normal unpickler would do.
+    return CudaNdarraySharedVariable(name=npa[0],
+                                     type=npa[1],
+                                     value=None,
+                                     strict=None,
+                                     container=npa[2])
+
+copy_reg.constructor(CudaNdarraySharedVariable_unpickler)
+
+
+def CudaNdarraySharedVariable_pickler(sh_var):
+    return (CudaNdarraySharedVariable_unpickler,
+            (sh_var.name,
+             sh_var.type,
+             sh_var.container))
+
+
+copy_reg.pickle(CudaNdarraySharedVariable,
+                CudaNdarraySharedVariable_pickler,
+                CudaNdarraySharedVariable_unpickler)
