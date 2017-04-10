@@ -337,3 +337,7 @@ class GpuCholesky(Op):
             triu(L)
 
         outputs[0][0] = L
+
+
+def gpu_cholesky(A, lower=True):
+    return GpuCholesky(lower)(A)

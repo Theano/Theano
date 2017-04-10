@@ -158,9 +158,9 @@ class TestGpuCholesky(unittest.TestCase):
 
     def test_diag_chol(self):
         # Diagonal matrix input Cholesky test. 
-        # make sure all diagonal elements are positive so positive-definite
         for lower in [True, False]:
             for inplace in [True, False]:
+                # make sure all diagonal elements are positive so positive-definite
                 A_val = np.diag(np.random.uniform(size=5).astype("float32") + 1)
                 self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
 
