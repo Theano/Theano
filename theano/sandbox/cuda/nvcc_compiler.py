@@ -128,6 +128,9 @@ class NVCC_compiler(Compiler):
                 flags.append('-arch=sm_' + str(p['major']) +
                              str(p['minor']))
 
+        # Needed for glibc 2.23
+        flags.append('-D_FORCE_INLINES')
+
         return flags
 
     @staticmethod
