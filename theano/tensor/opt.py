@@ -3413,7 +3413,7 @@ def local_incsubtensor_of_zeros(node):
 @register_canonicalize
 @register_specialize
 @gof.local_optimizer([IncSubtensor])
-def incsubtensor_of_zeros_to_setsubtensor(node):
+def local_incsubtensor_of_zeros_to_setsubtensor(node):
     """
     IncSubtensor(zeros, x, ...) -> SetSubtensor(zeros, x, ...)
     """
