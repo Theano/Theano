@@ -465,7 +465,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.gpuarray.cache_path
 
-   String value
+   Default: ``config.compiledir``/gpuarray_kernels
 
    Directory to cache pre-compiled kernels for the gpuarray backend.
 
