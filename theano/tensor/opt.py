@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
-"""
-Tensor optimizations addressing the ops in basic.py.
+""" Tensor optimizations addressing the ops in basic.py.
 """
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
@@ -3409,6 +3408,24 @@ def local_incsubtensor_of_zeros(node):
                 return [x]
         except NotScalarConstantError:
             return
+
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([IncSubtensor])
+def local_incsubtensor_of_zeros_to_setsubtensor(node):
+    """
+    IncSubtensor(zeros, x, ...) -> SetSubtensor(zeros, x, ...)
+    """
+    if (isinstance(node.op, (IncSubtensor)) and not node.op.set_instead_of_inc):
+        x = node.inputs[0]
+
+        if isinstance(x, T.Constant) and not np.any(x.data):
+            return [IncSubtensor(node.op.idx_list,
+                                 node.op.inplace,
+                                 set_instead_of_inc=True,
+                                 destroyhandler_tolerate_aliased=node.op.destroyhandler_tolerate_aliased,
+                                 )(*node.inputs)]
 
 
 @register_canonicalize('local_setsubtensor_of_allocs')

@@ -3001,6 +3001,37 @@ class Test_alloc_zero(unittest.TestCase):
         assert np.all([not isinstance(n.op, tensor.IncSubtensor)
                        for n in f.maker.fgraph.toposort()])
 
+    def test_incsubtensor_x_zeros(self):
+        x = tensor.constant(np.asarray(np.zeros((4, 4)),
+                                       dtype=config.floatX))
+        y = tensor.matrix()
+        z = tensor.inc_subtensor(x[:4], y)
+        f = theano.function([y], z)
+        inc_nodes = [n for n in f.maker.fgraph.toposort()
+                     if isinstance(n.op, tensor.IncSubtensor)]
+
+        assert(len(inc_nodes) == 1)
+        node_is_set_instead_of_inc = inc_nodes[0].op.set_instead_of_inc
+        mode = theano.config.mode
+        assert((mode != "FAST_COMPILE" and node_is_set_instead_of_inc) or
+               (mode == "FAST_COMPILE" and not node_is_set_instead_of_inc))
+        test_X = np.random.random((4, 4)).astype(config.floatX)
+        utt.assert_allclose(f(test_X), test_X)
+
+        # also check the flag doesn't get set if first input is not zeros:
+        not_all_zeros = np.zeros((4, 4))
+        not_all_zeros[1, 0] = 0.001
+        x = tensor.constant(np.asarray(not_all_zeros, dtype=config.floatX))
+        y = tensor.matrix()
+        z = tensor.inc_subtensor(x[:4], y)
+        f = theano.function([y], z)
+        inc_nodes = [n for n in f.maker.fgraph.toposort()
+                     if isinstance(n.op, tensor.IncSubtensor)]
+        assert(len(inc_nodes) == 1)
+        assert(inc_nodes[0].op.set_instead_of_inc is False)
+        test_X = np.random.random((4, 4)).astype(config.floatX)
+        utt.assert_allclose(f(test_X), test_X + not_all_zeros)
+
     def test_advancedincsubtensor1_allocs0(self):
         x = tensor.matrix()
         y = tensor.matrix()
