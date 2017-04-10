@@ -1627,7 +1627,12 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m, ga_ssize k) {
                 objvar='k_eye_' + name)]
 
     def c_code(self, node, name, inp, out, sub):
-        n, m, k = inp
+        if len(inp) == 2:
+            n, m = inp
+            k = 0
+        elif len(inp) == 3:
+            n, m, k = inp
+
         z, = out
         fail = sub['fail']
         ctx = sub['params']
