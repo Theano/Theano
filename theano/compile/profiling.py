@@ -829,8 +829,8 @@ class ProfileStats(object):
                 new allocation.
 
             """
+            from theano.sandbox.cuda import CudaNdarrayType
             from theano.gpuarray import GpuArrayType
-
             # Initial Mem info values [CPU, GPU]
             node_memory_size = [0, 0]
             running_memory_size = [0, 0]
@@ -880,7 +880,7 @@ class ProfileStats(object):
                 # allocated by the node
                 idx2 = 0
                 for out in node.outputs:
-                    if isinstance(out.type, GpuArrayType):
+                    if isinstance(out.type, (CudaNdarrayType, GpuArrayType)):
                         cg = 1
                     else:
                         cg = 0
@@ -922,7 +922,7 @@ class ProfileStats(object):
                 for ins in set(node.inputs):
                     assert not (ins in view_of and viewed_by[ins])
                     # we trac the original var, so this shouldn't happen
-                    if isinstance(ins.type, GpuArrayType):
+                    if isinstance(ins.type, (CudaNdarrayType, GpuArrayType)):
                         cg = 1
                     else:
                         cg = 0
