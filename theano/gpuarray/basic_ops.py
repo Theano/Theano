@@ -15,6 +15,7 @@ from theano.tensor.basic import (
 
 from theano.gof import HideC, COp, ParamsType
 from theano.gof.utils import MethodNotDefined
+from theano.gof.opt import with_stack_trace
 
 from collections import deque
 
@@ -75,11 +76,11 @@ def as_gpuarray_variable(x, context_name):
 
         # If we couldn't deal with transfers, then maybe it's a tensor
         if isinstance(x.type, tensor.TensorType):
-            return GpuFromHost(context_name)(x)
+            return with_stack_trace(x, GpuFromHost(context_name)(x))
 
     # Try _as_GpuArrayVariable if possible
     if hasattr(x, '_as_GpuArrayVariable'):
-        return x._as_GpuArrayVariable(context_name)
+        return with_stack_trace(x, x._as_GpuArrayVariable(context_name))
 
     # If it didn't work try for a constant
     ctx = get_context(context_name)
@@ -88,13 +89,13 @@ def as_gpuarray_variable(x, context_name):
         if x.context.ptr != ctx.ptr:
             x = x.transfer(ctx)
 
-    x = gpuarray.asarray(x, context=ctx)
+    x = with_stack_trace(x, gpuarray.asarray(x, context=ctx))
 
     bcast = [(s == 1) for s in x.shape]
-    return GpuArrayConstant(GpuArrayType(dtype=x.dtype,
-                                         broadcastable=bcast,
-                                         context_name=context_name),
-                            x)
+    return with_stack_trace(x, GpuArrayConstant(GpuArrayType(dtype=x.dtype,
+                                                             broadcastable=bcast,
+                                                             context_name=context_name),
+                                                x))
 
 
 def infer_context_name(*vars):

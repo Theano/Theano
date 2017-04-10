@@ -15,7 +15,7 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         LocalGroupDB,
                         SequenceDB, Optimizer, DB, toolbox, graph)
-from theano.gof.opt import LocalMetaOptimizer, copy_stack_trace
+from theano.gof.opt import LocalMetaOptimizer, copy_stack_trace, with_stack_trace
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -421,6 +421,8 @@ class GraphToGPU(Optimizer):
 
             if isinstance(new_ops, theano.Op):
                 outputs = new_ops(*[mapping[i] for i in node.inputs], return_list=True)
+                for old_output, new_output in zip(node.outputs, outputs):
+                    copy_stack_trace(old_output, new_output)
             elif not new_ops:
                 newnode = node.clone_with_new_inputs([mapping.get(i) for i in node.inputs])
                 outputs = newnode.outputs
@@ -461,7 +463,7 @@ class GraphToGPU(Optimizer):
                         new_o.owner.inputs[0].type == o.type):
                     new_o = new_o.owner.inputs[0]
                 else:
-                    new_o = safe_to_cpu(new_o)
+                    new_o = with_stack_trace(o, safe_to_cpu(new_o))
             new_nodes.append(new_o)
         fgraph.replace_all_validate(zip(fgraph.outputs, new_nodes),
                                     reason=self.__class__.__name__)
@@ -692,8 +694,6 @@ def local_gpu_contiguous_gpu_contiguous(node):
     if isinstance(node.op, GpuContiguous):
         inp = node.inputs[0]
         if inp.owner and isinstance(inp.owner.op, GpuContiguous):
-            if not getattr(inp.tag, 'trace', None):
-                copy_stack_trace(node.outputs[0], inp)
             return [inp]
 
 
@@ -1220,7 +1220,7 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
             op.scalar_op, axis=op.axis,
             dtype=odtype,
             acc_dtype=adtype)
-        gvar = greduce(x)
+        gvar = with_stack_trace(outputs, greduce(x))
         # We need to have the make node called, otherwise the mask can
         # be None
         if (op2 is GpuCAReduceCPY or
@@ -1260,22 +1260,27 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
                 dtype=getattr(op, 'dtype', outputs[0].dtype),
                 acc_dtype=getattr(op, 'acc_dtype', None))
 
-            reshaped_x = x.reshape(tensor.stack(new_in_shp))
-            gpu_reshaped_x = as_gpuarray_variable(reshaped_x, context_name)
-            gvar = greduce(gpu_reshaped_x)
+            reshaped_x = with_stack_trace(
+                outputs, x.reshape(tensor.stack(new_in_shp)))
+            gpu_reshaped_x = with_stack_trace(
+                outputs, as_gpuarray_variable(reshaped_x, context_name))
+            gvar = with_stack_trace(outputs, greduce(gpu_reshaped_x))
             # We need to have the make node called, otherwise the mask can
             # be None
             reshaped_gpu_inputs = [gpu_reshaped_x]
             if greduce.supports_c_code(reshaped_gpu_inputs):
-                reduce_reshaped_x = greduce(gpu_reshaped_x)
+                reduce_reshaped_x = with_stack_trace(
+                    outputs, greduce(gpu_reshaped_x))
 
                 if reduce_reshaped_x.ndim != outputs[0].ndim:
                     out_shp = []
                     for i in range(x.ndim):
                         if i not in op.axis:
                             out_shp.append(shape_i(x, i))
-                    unreshaped_reduce = GpuReshape(len(out_shp))(reduce_reshaped_x,
-                                                                 tensor.stack(out_shp))
+                    unreshaped_reduce = with_stack_trace(
+                        outputs, GpuReshape(len(out_shp))(
+                            reduce_reshaped_x,
+                            tensor.stack(out_shp)))
                 else:
                     unreshaped_reduce = reduce_reshaped_x
                 return [unreshaped_reduce]
@@ -2398,7 +2403,8 @@ def local_gpu_elemwise_careduce(node):
         props = node.op._props_dict()
         props["pre_scalar_op"] = scalar.basic.sqr
         out = GpuCAReduceCuda(**props)(inp)
-        return [out]
+        return with_stack_trace(
+            node.outputs, out)
 
 
 @local_optimizer(None)

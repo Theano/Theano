@@ -14,7 +14,7 @@ import theano.gpuarray
 from .. import basic_ops
 from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
 from ..basic_ops import (
-    GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, host_from_gpu)
+    GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, HostFromGpu, host_from_gpu)
 from ..blas import GpuGemm
 from ..elemwise import (
     GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise, Elemwise, max_inputs_to_GpuElemwise)
@@ -27,6 +27,16 @@ import unittest
 from theano.tensor.nnet import abstract_conv
 from theano.gpuarray import dnn, blas
 
+
+def _check_stack_trace(thing):
+    def _ops_to_check(op):
+        if not isinstance(op, theano.gof.Op):
+            op = op.op # assume node
+        return not isinstance(op, (theano.compile.ops.Shape_i,
+                                   theano.ifelse.IfElse,
+                                   GpuFromHost, HostFromGpu,
+                                   GpuElemwise))
+    return check_stack_trace(thing, ops_to_check=_ops_to_check)
 
 def test_local_assert():
     x = theano.tensor.fmatrix()
@@ -71,8 +81,8 @@ def test_local_gpu_contiguous_gpu_contiguous():
                      if isinstance(node.op, basic_ops.GpuContiguous)])
     assert 1 == len([node for node in f2.maker.fgraph.toposort()
                      if isinstance(node.op, basic_ops.GpuContiguous)])
-    assert check_stack_trace(f1, ops_to_check='all')
-    assert check_stack_trace(f2, ops_to_check='all')
+    assert _check_stack_trace(f1)
+    assert _check_stack_trace(f2)
 
 
 def test_local_gpu_contiguous():
@@ -82,7 +92,7 @@ def test_local_gpu_contiguous():
     assert 1 == len([node for node in f.maker.fgraph.toposort()
                      if isinstance(node.op, basic_ops.GpuContiguous)])
     f([[2.]])
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 
 def test_flatten():
@@ -100,7 +110,7 @@ def test_flatten():
     assert res.shape == val.flatten().shape
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     f = theano.function([m], m.flatten(ndim=2),
                         mode=mode_with_gpu.excluding("local_useless_reshape"))
@@ -110,7 +120,7 @@ def test_flatten():
     assert res.shape == val.shape
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     m = theano.tensor.tensor3()
     f = theano.function([m], m.flatten(ndim=2), mode=mode_with_gpu)
@@ -120,7 +130,7 @@ def test_flatten():
     assert res.shape == val.reshape(10, -1).shape
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 
 def test_reduce():
@@ -133,7 +143,7 @@ def test_reduce():
         f = theano.function([m], getattr(m, method)(axis=0,
                                                     **param),
                             mode=mode_with_gpu)
-        assert check_stack_trace(f, ops_to_check='all')
+        assert _check_stack_trace(f)
         val = np.random.rand(10, 11).astype("float32")
         res = f(val)
         utt.assert_allclose(res, getattr(val, method)(axis=0))
@@ -165,7 +175,7 @@ def test_local_gpualloc_memset_0():
     assert len(topo) == 1
     assert isinstance(topo[0].op, theano.tensor.Alloc)
     assert (np.asarray(f(6)) == 0).all()
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test with 0 from CPU op.
     # Should be transfered as it is used by another op.
@@ -175,7 +185,7 @@ def test_local_gpualloc_memset_0():
     assert len(topo) == 3
     assert isinstance(topo[0].op, GpuAlloc)
     assert (np.asarray(f(6)) == 0).all()
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test with 0
     a = GpuAlloc(test_ctx_name)(z, i)
@@ -184,7 +194,7 @@ def test_local_gpualloc_memset_0():
     assert len(topo) == 1
     assert isinstance(topo[0].op, GpuAlloc) and topo[0].op.memset_0
     assert (np.asarray(f(6)) == 0).all()
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test with 1
     a = GpuAlloc(test_ctx_name)(o, i)
@@ -194,7 +204,7 @@ def test_local_gpualloc_memset_0():
     assert isinstance(topo[0].op, GpuAlloc)
     assert not topo[0].op.memset_0
     assert (np.asarray(f(6)) == 1).all()
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test with 1, 1
     a = GpuAlloc(test_ctx_name)(ones, i)
@@ -204,7 +214,7 @@ def test_local_gpualloc_memset_0():
     assert isinstance(topo[0].op, GpuAlloc)
     assert not topo[0].op.memset_0
     assert (np.asarray(f(2)) == 1).all()
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 
 def test_local_gpualloc_empty():
@@ -220,7 +230,7 @@ def test_local_gpualloc_empty():
     assert isinstance(topo[0].op, theano.tensor.AllocEmpty)
     # This return not initilized data, so we can only check the shape
     assert f(3).shape == (3,)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test with vector
     # Should be moved
@@ -231,7 +241,7 @@ def test_local_gpualloc_empty():
     assert isinstance(topo[0].op, GpuAllocEmpty)
     # This return not initilized data, so we can only check the shape
     assert f(3).shape == (3,)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test with matrix
     a = tensor.AllocEmpty('float32')(i, ii)
@@ -241,7 +251,7 @@ def test_local_gpualloc_empty():
     assert isinstance(topo[0].op, GpuAllocEmpty)
     # This return not initilized data, so we can only check the shape
     assert f(3, 4).shape == (3, 4)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 
 def test_rebroadcast():
@@ -259,7 +269,7 @@ def test_rebroadcast():
 
     assert isinstance(rebr.inputs[0].type, GpuArrayType)
     assert isinstance(rebr.outputs[0].type, GpuArrayType)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 class TestSpecifyShape(test_basic.TestSpecifyShape):
     mode = mode_with_gpu
@@ -284,7 +294,7 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
                             theano.ifelse.ifelse(cond, x.mean(), x.sum()),
                             mode=mode_with_gpu)
         assert f(np.float32([1, 2, 3]), 0) == 6
-        assert check_stack_trace(f, ops_to_check='all')
+        assert _check_stack_trace(f)
 
         x = tensor.vector()
         cond = tensor.scalar()
@@ -292,7 +302,7 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
                             theano.ifelse.ifelse(cond, x.mean(), x.sum()),
                             mode=mode_with_gpu)
         assert f(np.float32([1, 2, 3]), 0) == 6
-        assert check_stack_trace(f, ops_to_check='all')
+        assert _check_stack_trace(f)
 
     def test_lifter_with_shared_var(self):
         x = tensor.lscalar('x')
@@ -315,7 +325,7 @@ def test_print_op():
     assert isinstance(topo[1].op, theano.printing.Print)
     assert isinstance(topo[2].op, GpuElemwise)
     assert topo[3].op == host_from_gpu
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
     f(np.random.random((5, 5)).astype('float32'))
 
 
@@ -336,7 +346,7 @@ def test_pdbbreakpoint_op():
     topo = f.maker.fgraph.toposort()
     assert isinstance(topo[-2].op, GpuElemwise)
     assert topo[-1].op == host_from_gpu
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 
 def test_local_gpu_elemwise_careduce():
@@ -346,7 +356,7 @@ def test_local_gpu_elemwise_careduce():
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 3
     assert topo[1].op.pre_scalar_op == theano.scalar.sqr
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
     data = np.random.rand(3, 4).astype(theano.config.floatX)
     utt.assert_allclose(f(data), (data * data).sum())
 
@@ -355,7 +365,7 @@ def test_local_gpu_elemwise_careduce():
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 3
     assert topo[1].op.pre_scalar_op == theano.scalar.sqr
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
     utt.assert_allclose(f(data), (data * data).sum(axis=1))
 
 
@@ -374,7 +384,7 @@ def test_local_lift_dot22scalar():
     y_val = np.random.random((3, 4)).astype(theano.config.floatX)
     a_val = 0.5
     utt.assert_allclose(f_cpu(x_val, y_val, a_val), f_gpu(x_val, y_val, a_val))
-    assert check_stack_trace(f_gpu, ops_to_check='all')
+    assert _check_stack_trace(f_gpu)
 
 
 def test_local_gpu_subtensor():
@@ -384,7 +394,7 @@ def test_local_gpu_subtensor():
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test graph input.
     t = tensor.fmatrix()
@@ -392,7 +402,7 @@ def test_local_gpu_subtensor():
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test multiple use of the input
     # We want the subtensor to be on the GPU to prevent multiple transfer.
@@ -401,7 +411,7 @@ def test_local_gpu_subtensor():
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
     assert any([isinstance(node.op, GpuSubtensor) for node in topo])
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test multiple use of the input + input as output
     # We want the subtensor to be on the GPU to prevent multiple transfer.
@@ -410,7 +420,7 @@ def test_local_gpu_subtensor():
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
     assert any([isinstance(node.op, GpuSubtensor) for node in topo])
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test shared forced on CPU end we do computation on the output of
     # the subtensor.
@@ -423,7 +433,7 @@ def test_local_gpu_subtensor():
     # If it where just a little bit smarter, it could wrongly move it to the GPU.
     # If it where super smart, it would know it should not move it to the GPU.
     assert any([isinstance(node.op, tensor.Elemwise) for node in topo])
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 
 def test_local_gpu_elemwise():
@@ -445,7 +455,7 @@ def test_local_gpu_elemwise():
     assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
     assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
     utt.assert_allclose(f(a_v, b_v, c_v), a_v + b_v + c_v)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Now test with the composite already on the cpu before we move it
     # to the gpu
@@ -459,7 +469,7 @@ def test_local_gpu_elemwise():
     assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
     assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
     utt.assert_allclose(f(a_v, b_v, c_v), a_v + b_v + c_v)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     return  # Not yet implemeted
     # Test multiple output
@@ -477,7 +487,7 @@ def test_local_gpu_elemwise():
     utt.assert_allclose(out[0], a_v)
     utt.assert_allclose(out[1], c_v)
     utt.assert_allclose(out[2], b_v)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test multiple output
     out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s, a_s * b_s])
@@ -489,7 +499,7 @@ def test_local_gpu_elemwise():
     out = f(a_v, b_v, c_v)
     utt.assert_allclose(out[0], a_v + b_v)
     utt.assert_allclose(out[1], a_v * c_v)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
     # Test non-contiguous input
     c = gpuarray_shared_constructor(np.asarray(c_v, dtype='float32'))
@@ -498,7 +508,7 @@ def test_local_gpu_elemwise():
     out = f(a_v, b_v)
     utt.assert_allclose(out[0], a_v[::2] + b_v[::2])
     utt.assert_allclose(out[1], a_v[::2] * c_v[::2])
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 
 def test_many_arg_elemwise():
@@ -575,7 +585,7 @@ def test_local_lift_abstractconv_gpu_shape():
         b = tensor.ftensor4()
         c = tensor.nnet.abstract_conv.AbstractConv2d_gradWeights()(a, b, s)
         f = theano.function([s, a, b], c, mode=mode_with_gpu)
-        assert check_stack_trace(f, ops_to_check='all')
+        assert _check_stack_trace(f)
     finally:
         theano.config.on_opt_error = prev
 
@@ -606,7 +616,7 @@ def test_local_assert_no_cpu_op():
     try:
         theano.config.assert_no_cpu_op = 'ignore'
         f = theano.function([], out, mode=mode_local_assert)
-        assert check_stack_trace(f, ops_to_check='all')
+        assert _check_stack_trace(f)
     finally:
         theano.config.assert_no_cpu_op = old
 
@@ -618,7 +628,7 @@ def test_no_complex():
     stft_out = tensor.exp(width_var * freq_var) * signal_var
     f = theano.function([width_var, freq_var, signal_var], stft_out,
                         mode=mode_with_gpu)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 
 @utt.assertFailure_fast
@@ -637,7 +647,7 @@ def test_local_lift_solve():
     A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
     b_val = np.random.uniform(-0.4, 0.4, (5, 3)).astype("float32")
     utt.assert_allclose(f_cpu(A_val, b_val), f_gpu(A_val, b_val))
-    assert check_stack_trace(f_gpu, ops_to_check='all')
+    assert _check_stack_trace(f_gpu)
 
 
 def test_gpu_solve_not_inplace():
@@ -703,7 +713,7 @@ def test_local_gpua_advanced_incsubtensor():
     w = tensor.set_subtensor(w[tensor.eq(y, 1.0).nonzero()], 100)
     w = tensor.set_subtensor(w[tensor.eq(y, -1.0).nonzero()], 0)
     f = theano.function([target], w)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert _check_stack_trace(f)
 
 
 def test_batched_dot_lifter():

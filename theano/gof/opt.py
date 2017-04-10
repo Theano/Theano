@@ -2948,6 +2948,34 @@ def copy_stack_trace(from_var, to_var):
         to_var.tag.trace = getattr(to_var.tag, 'trace', []) + tr
 
 
+def with_stack_trace(from_var, to_var):
+    """
+    Copies the stack trace from one or more tensor variables to
+    one or more tensor variables and returns the destination variables.
+
+    Parameters
+    ----------
+    from_var
+        Tensor variable or list of tensor variables to copy stack traces from.
+    to_var
+        Tensor variable or list of tensor variables to copy stack traces to.
+
+    Returns
+    -------
+    tensor variable or list of tensor variables
+        `to_var`, augmented with the stack traces from `from_var`.
+
+    Notes
+    -----
+    The stacktrace is assumed to be of the form of a list of lists
+    of tuples. Each tuple contains the filename, line number, function name
+    and so on. Each list of tuples contains the truples belonging to a
+    particular variable.
+
+    """
+    copy_stack_trace(from_var, to_var)
+    return to_var
+
 def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
     """
     This function checks if the outputs of specific ops of a compiled graph
