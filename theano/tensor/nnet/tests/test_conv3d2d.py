@@ -103,7 +103,10 @@ def test_conv3d(border_mode):
     if ndimage is None or not theano.config.cxx:
         raise SkipTest("conv3d2d tests need SciPy and a c++ compiler")
 
-    mode = theano.compile.mode.get_default_mode('FAST_RUN')
+    if theano.config.mode == 'FAST_COMPILE':
+        mode = theano.compile.mode.get_mode('FAST_RUN')
+    else:
+        mode = theano.compile.mode.get_default_mode()
 
     shared = theano.tensor._shared
 
