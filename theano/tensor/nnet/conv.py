@@ -757,7 +757,7 @@ class ConvOp(OpenMPOp):
 
         if z[0] is None or z[0].shape != (bsize, nkern,) + fulloutshp:
             z[0] = np.zeros((bsize, nkern,) + fulloutshp,
-                               dtype=img2d.dtype)
+                            dtype=img2d.dtype)
         zz = z[0]
 
         stacklen = imshp[0]
@@ -778,7 +778,7 @@ class ConvOp(OpenMPOp):
             rstride = int(np.ceil(kshp_logical[0] / float(kshp[0])))
             cstride = int(np.ceil(kshp_logical[1] / float(kshp[1])))
             buf = np.zeros((nkern, stacklen) +
-                              self.kshp_logical, dtype=filtersflipped.dtype)
+                           self.kshp_logical, dtype=filtersflipped.dtype)
             if self.kshp_logical_top_aligned:
                 roffset = coffset = 0
             else:
@@ -809,8 +809,8 @@ class ConvOp(OpenMPOp):
         if False:
             if False and self.out_mode == "full":
                 img2d2 = np.zeros((bsize, stacklen,
-                                      imshp[1] + 2 * kshp[0] - 2,
-                                      imshp[2] + 2 * kshp[1] - 2))
+                                   imshp[1] + 2 * kshp[0] - 2,
+                                   imshp[2] + 2 * kshp[1] - 2))
                 img2d2[:, :, kshp[0] - 1:kshp[0] - 1 + imshp[1],
                        kshp[1] - 1:kshp[1] - 1 + imshp[2]] = img2d
                 img2d = img2d2
