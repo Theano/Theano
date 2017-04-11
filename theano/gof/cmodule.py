@@ -750,6 +750,9 @@ class ModuleCache(object):
             if subdirs_elem == 'lock_dir':
                 continue
             root = os.path.join(self.dirname, subdirs_elem)
+            # Don't delete the gpuarray kernel cache
+            if root == config.gpuarray.cache_path:
+                continue
             key_pkl = os.path.join(root, 'key.pkl')
             if key_pkl in self.loaded_key_pkl:
                 continue
