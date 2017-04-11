@@ -386,7 +386,7 @@ def computeR(W, b, d, H, Rshape=None):
     # print "video size: "+str((videoHeight, videoWidth, videoDur))
 
     R = np.zeros((batchSize, videoHeight,
-                videoWidth, videoDur, inputChannels), dtype=H.dtype)
+                 videoWidth, videoDur, inputChannels), dtype=H.dtype)
 
     # R[i,j,r,c,t] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} sum_{tc,tk | ...} sum_k W[k, j, rk, ck, tk] * H[i,k,rc,cc,tc]
     for i in xrange(0, batchSize):
