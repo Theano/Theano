@@ -120,14 +120,14 @@ class TestGpuCholesky(unittest.TestCase):
         utt.seed_rng()
 
     def get_gpu_cholesky_func(self, lower=True, inplace=False):
-        # Helper function to compile function from GPU Cholesky op. 
+        # Helper function to compile function from GPU Cholesky op.
         A = theano.tensor.matrix("A", dtype="float32")
         cholesky_op = GpuCholesky(lower=lower, inplace=inplace)
         chol_A = cholesky_op(A)
         return theano.function([A], chol_A, accept_inplace=inplace, mode=mode_with_gpu)
 
     def compare_gpu_cholesky_to_np(self, A_val, lower=True, inplace=False):
-        # Helper function to compare op output to np.cholesky output. 
+        # Helper function to compare op output to np.cholesky output.
         chol_A_val = np.linalg.cholesky(A_val)
         if not lower:
             chol_A_val = chol_A_val.T
@@ -137,27 +137,27 @@ class TestGpuCholesky(unittest.TestCase):
         utt.assert_allclose(chol_A_res, chol_A_val)
 
     def test_invalid_input_fail_non_square(self):
-        # Invalid Cholesky input test with non-square matrix as input. 
+        # Invalid Cholesky input test with non-square matrix as input.
         A_val = np.random.normal(size=(3, 2)).astype("float32")
         fn = self.get_gpu_cholesky_func(True, False)
         self.assertRaises(ValueError, fn, A_val)
 
     def test_invalid_input_fail_vector(self):
-        # Invalid Cholesky input test with vector as input. 
+        # Invalid Cholesky input test with vector as input.
         def invalid_input_func():
             A = theano.tensor.vector("A", dtype="float32")
             GpuCholesky(lower=True, inplace=False)(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_invalid_input_fail_tensor3(self):
-        # Invalid Cholesky input test with 3D tensor as input. 
+        # Invalid Cholesky input test with 3D tensor as input.
         def invalid_input_func():
             A = theano.tensor.tensor3("A", dtype="float32")
             GpuCholesky(lower=True, inplace=False)(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_diag_chol(self):
-        # Diagonal matrix input Cholesky test. 
+        # Diagonal matrix input Cholesky test.
         for lower in [True, False]:
             for inplace in [True, False]:
                 # make sure all diagonal elements are positive so positive-definite
@@ -165,7 +165,7 @@ class TestGpuCholesky(unittest.TestCase):
                 self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
 
     def test_dense_chol_lower(self):
-        # Dense matrix input lower-triangular Cholesky test. 
+        # Dense matrix input lower-triangular Cholesky test.
         for lower in [True, False]:
             for inplace in [True, False]:
                 M_val = np.random.normal(size=(3, 3)).astype("float32")
@@ -185,10 +185,9 @@ class TestGpuCholesky(unittest.TestCase):
         self.assertRaises(LinAlgError, fn, A_val)
 
     def test_invalid_input_fail_negative_definite(self):
-        # Invalid Cholesky input test with negative-definite input. 
+        # Invalid Cholesky input test with negative-definite input.
         M_val = np.random.normal(size=(3, 3)).astype("float32")
         # A = -M.dot(M) will be negative definite for all non-singular M
         A_val = -M_val.dot(M_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
         self.assertRaises(LinAlgError, fn, A_val)
-

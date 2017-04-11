@@ -1975,7 +1975,7 @@ def local_gpu_solve(op, context_name, inputs, outputs):
 def local_gpu_cholesky(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
-    return GpuCholesky()
+    return GpuCholesky(lower=op.lower, inplace=op.destructive)
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.

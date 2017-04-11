@@ -8,9 +8,6 @@ from theano import Op
 
 from theano.gpuarray import basic_ops, GpuArrayType
 
-from pygpu.gpuarray import GpuKernel, GpuArray
-from string import Template
-
 import numpy as np
 from numpy.linalg.linalg import LinAlgError
 
