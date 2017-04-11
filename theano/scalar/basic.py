@@ -4025,7 +4025,6 @@ class Composite(ScalarOp):
         self.prepare_node_called = set()
         self.init_fgraph()
         self.init_py_impls()
-        assert self._c_code
 
 
 class Compositef32(object):
