@@ -620,7 +620,7 @@ def computeH(V, W, b, d):
     outputDur = int((vidDur - filterDur) / dt) + 1
 
     H = np.zeros((batchSize, outputHeight,
-                outputWidth, outputDur, outputChannels), dtype=V.dtype)
+                 outputWidth, outputDur, outputChannels), dtype=V.dtype)
 
     # H[i,j,x,y,t] = b_j + sum_k sum_l sum_m sum_z W[j,z,k,l,m] V[i,z, dx*x+k,dy*y+l,dt*t+m]
     for i in xrange(0, H.shape[0]):
