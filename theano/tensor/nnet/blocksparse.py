@@ -209,7 +209,7 @@ class SparseBlockOuter(Op):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
                     o[xIdx[b, i], yIdx[b, j]] += np.outer(x[b, i],
-                                                             y[b, j, :])
+                                                          y[b, j, :])
         out_[0][0] = o
 
 
