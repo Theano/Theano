@@ -621,7 +621,7 @@ class LogSoftmax(gof.Op):
         x, = input_storage
         xdev = x - x.max(axis=1)[:, None]
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=1,
-                               keepdims=True))
+                            keepdims=True))
         output_storage[0][0] = lsm
 
     def grad(self, inp, grads):
