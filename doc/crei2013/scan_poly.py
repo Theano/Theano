@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 import theano.tensor as tt
@@ -19,6 +19,6 @@ polynomial = components.sum()
 calculate_polynomial = theano.function(inputs=[coefficients, x],
                                        outputs=polynomial)
 
-test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
+test_coeff = np.asarray([1, 0, 2], dtype=np.float32)
 print(calculate_polynomial(test_coeff, 3))
 # 19.0

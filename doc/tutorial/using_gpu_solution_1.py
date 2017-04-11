@@ -7,13 +7,13 @@
 
 
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano
 import theano.tensor as tt
 
 theano.config.floatX = 'float32'
 
-rng = numpy.random
+rng = np.random
 
 N = 400
 feats = 784
@@ -25,7 +25,7 @@ training_steps = 10000
 x = theano.shared(D[0], name="x")
 y = theano.shared(D[1], name="y")
 w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
-b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
+b = theano.shared(np.asarray(0., dtype=theano.config.floatX), name="b")
 x.tag.test_value = D[0]
 y.tag.test_value = D[1]
 #print "Initial model:"
