@@ -708,6 +708,8 @@ second dimension
 
         nd = len(inputs[0].type.broadcastable)  # this is the same for everyone
 
+        cache = {}  # Cache the node creation to speed up the merge opt.
+
         def transform(r):
             # From a graph of ScalarOps, make a graph of Broadcast ops.
             if isinstance(r.type, (NullType, DisconnectedType)):
@@ -727,9 +729,14 @@ second dimension
                                              dtype=r.type.dtype)
                 return DimShuffle((), ['x'] * nd)(res)
 
-            new_r = Elemwise(node.op, {})(
-                *[transform(ipt) for ipt in node.inputs])
-            return new_r
+            if node in cache:
+                new_r = cache[node]
+            else:
+                new_r = Elemwise(node.op, {})(
+                    *[transform(ipt) for ipt in node.inputs], return_list=True)
+                cache[node] = new_r
+            idx = node.outputs.index(r)
+            return new_r[idx]
         ret = []
         for scalar_igrad, ipt in izip(scalar_igrads, inputs):
             if scalar_igrad is None:

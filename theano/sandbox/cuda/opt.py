@@ -367,11 +367,15 @@ def local_gpu_elemwise_1(node):
 
             if all([i.dtype == 'float32' for i in elemwise_node.inputs]):
                 gpu_elemwise = new_op(*[as_cuda_ndarray_variable(i)
-                                        for i in elemwise_node.inputs])
-                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
+                                        for i in elemwise_node.inputs],
+                                      return_list=True)
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise[0].owner)
                 if not gpu_elemwise:
                     return False
-                return [gpu_elemwise.outputs[0]]
+                if (max_inputs_to_GpuElemwise(node) <
+                        len(gpu_elemwise.inputs)):
+                    return False
+                return gpu_elemwise.outputs
     return False
 
 

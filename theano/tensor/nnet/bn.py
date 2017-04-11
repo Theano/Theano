@@ -22,7 +22,9 @@ class BNComposite(Composite):
         std = theano.scalar.Scalar(dtype=dtype).make_variable()
         gamma = theano.scalar.Scalar(dtype=dtype).make_variable()
         beta = theano.scalar.Scalar(dtype=dtype).make_variable()
+
         o = add(mul(true_div(sub(x, mean), std), gamma), beta)
+
         inputs = [x, mean, std, gamma, beta]
         outputs = [o]
         super(BNComposite, self).__init__(inputs, outputs)
