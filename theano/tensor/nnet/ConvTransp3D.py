@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy as N
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -385,8 +385,8 @@ def computeR(W, b, d, H, Rshape=None):
 
     # print "video size: "+str((videoHeight, videoWidth, videoDur))
 
-    R = N.zeros((batchSize, videoHeight,
-                videoWidth, videoDur, inputChannels), dtype=H.dtype)
+    R = np.zeros((batchSize, videoHeight,
+                 videoWidth, videoDur, inputChannels), dtype=H.dtype)
 
     # R[i,j,r,c,t] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} sum_{tc,tk | ...} sum_k W[k, j, rk, ck, tk] * H[i,k,rc,cc,tc]
     for i in xrange(0, batchSize):
@@ -399,12 +399,12 @@ def computeR(W, b, d, H, Rshape=None):
                     for t in xrange(0, videoDur):
                         R[i, r, c, t, j] = b[j]
 
-                        ftc = max([0, int(N.ceil(
+                        ftc = max([0, int(np.ceil(
                             float(t - filterDur + 1) / float(dt)))])
-                        fcc = max([0, int(N.ceil(
+                        fcc = max([0, int(np.ceil(
                             float(c - filterWidth + 1) / float(dc)))])
 
-                        rc = max([0, int(N.ceil(
+                        rc = max([0, int(np.ceil(
                             float(r - filterHeight + 1) / float(dr)))])
                         while rc < outputHeight:
                             rk = r - rc * dr
@@ -423,7 +423,7 @@ def computeR(W, b, d, H, Rshape=None):
                                     if tk < 0:
                                         break
 
-                                    R[i, r, c, t, j] += N.dot(
+                                    R[i, r, c, t, j] += np.dot(
                                         W[:, rk, ck, tk, j], H[i, rc, cc, tc, :])
 
                                     tc += 1
