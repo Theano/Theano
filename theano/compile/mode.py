@@ -106,7 +106,7 @@ class AddDestroyHandler(gof.Optimizer):
                              "how was this output left unprotected against "
                              "destructive operations?"
                              % o)
-            except gof.InconsistencyError:
+	    except gof.InconsistencyError as e:
                 # This output is already impossible to destroy.
                 # No guard necessary
                 pass

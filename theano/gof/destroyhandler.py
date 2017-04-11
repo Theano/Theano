@@ -780,7 +780,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         delattr(self.fgraph, 'destroy_handler')
         self.fgraph = None
 
-    def fast_destroy(self, app):
+    def fast_destroy(self, app, reason):
         """
         Do the check for only 1 level.
 
@@ -794,14 +794,13 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         dm = getattr(app.op, 'destroy_map', None)
         if not dm:
             return
-        inputs = list(set(itertools.
-                          chain.from_iterable(dm.values())))   # list of app's destroyed inputs
+        inputs = set(itertools.chain.from_iterable(dm.values()))   # list of app's destroyed inputs
         for inp_idx in inputs:
             inp = app.inputs[inp_idx]
             if inp.owner:
                 if len(inp.clients) > 1:
                     self.fail_validate = theano.gof.InconsistencyError(
-                        "Destroyed variable has more than one client")
+                        "Destroyed variable has more than one client. " + str(reason))
                 else:
                     app2 = inp.owner
                     inp_idx2 = app2.outputs.index(inp)
@@ -809,9 +808,9 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     v = getattr(app2, 'view_map', {}).get(inp_idx2, [])
                     dv = d + v
                     assert len(dv) <= 1
-                    if len(v) > 0:
+                    if len(dv) > 0:
                         self.fail_validate = theano.gof.InconsistencyError(
-                            "Destroyed variable has destroy_map")
+                            "Destroyed variable has destroy_map or view_map. " + str(reason))
 
     def on_import(self, fgraph, app, reason):
         """
@@ -828,7 +827,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         if getattr(app.op, 'destroy_map', {}):
             self.destroyers.add(app)
             if config.cycle_detection == 'fast':
-                self.fast_destroy(app)
+                self.fast_destroy(app, reason)
 
         # add this symbol to the forward and backward maps
         for o_idx, i_idx_list in iteritems(getattr(app.op, 'view_map', {})):
@@ -930,7 +929,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     self.view_o.setdefault(new_r, OrderedSet()).add(output)
 
             if config.cycle_detection == 'fast':
-                self.fast_destroy(app)
+                self.fast_destroy(app, reason)
         self.stale_droot = True
 
     def validate(self, fgraph):
@@ -947,10 +946,14 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                 if self.fail_validate:
                     err = self.fail_validate
                     self.fail_validate = False
-                    raise err
-            ords = self.orderings(fgraph)
-            if _contains_cycle(fgraph, ords):
-                raise InconsistencyError("Dependency graph contains cycles")
+                    for n in fgraph.apply_nodes:
+                        self.fast_destroy(n, 'validate')
+                    if self.fail_validate:
+                        raise err
+            else:
+                ords = self.orderings(fgraph)
+                if _contains_cycle(fgraph, ords):
+                    raise InconsistencyError("Dependency graph contains cycles")
         else:
             # James's Conjecture:
             # If there are no destructive ops, then there can be no cycles.
