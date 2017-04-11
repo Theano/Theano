@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 
 import warnings
 
-import numpy
+import numpy as np
 
 import theano
 from theano import config, gof, printing, scalar
@@ -41,8 +41,8 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return 1.0 / (1.0 + numpy.exp(-x, sig='f'))
-        return 1.0 / (1.0 + numpy.exp(-x))
+            return 1.0 / (1.0 + np.exp(-x, sig='f'))
+        return 1.0 / (1.0 + np.exp(-x))
 
     def impl(self, x):
         return ScalarSigmoid.st_impl(x)
@@ -134,8 +134,8 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         This method was used to generate the graph: sigmoid_prec.png in the doc.
 
         """
-        data = numpy.arange(-15, 15, .1)
-        val = 1 / (1 + numpy.exp(-data))
+        data = np.arange(-15, 15, .1)
+        val = 1 / (1 + np.exp(-data))
 
         def hard_sigmoid(x):
             return theano.tensor.nnet.hard_sigmoid(x)
@@ -330,8 +330,8 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.log1p(numpy.exp(x, sig='f'))
-        return numpy.log1p(numpy.exp(x))
+            return np.log1p(np.exp(x, sig='f'))
+        return np.log1p(np.exp(x))
 
     def impl(self, x):
         return ScalarSoftplus.static_impl(x)
@@ -399,7 +399,7 @@ def _is_1(expr):
     """
     try:
         v = opt.get_scalar_constant_value(expr)
-        return numpy.allclose(v, 1)
+        return np.allclose(v, 1)
     except tensor.NotScalarConstantError:
         return False
 
@@ -457,7 +457,7 @@ def is_1pexp(t, only_process_constants=True):
                     scal_sum = scalars[0]
                     for s in scalars[1:]:
                         scal_sum = scal_sum + s
-                    if numpy.allclose(scal_sum, 1):
+                    if np.allclose(scal_sum, 1):
                         return False, maybe_exp.owner.inputs[0]
                 # Before 7987b51 there used to be a bug where *any* constant
                 # was considered as if it was equal to 1, and thus this
@@ -569,7 +569,7 @@ def is_neg(var):
         for idx, mul_input in enumerate(apply.inputs):
             try:
                 constant = opt.get_scalar_constant_value(mul_input)
-                is_minus_1 = numpy.allclose(constant, -1)
+                is_minus_1 = np.allclose(constant, -1)
             except NotScalarConstantError:
                 is_minus_1 = False
             if is_minus_1:
@@ -968,7 +968,7 @@ def local_inv_1_plus_exp(node):
             # scalar_inputs are potentially dimshuffled and fill'd scalars
             if len(nonconsts) == 1:
                 if nonconsts[0].owner and nonconsts[0].owner.op == tensor.exp:
-                    if scalars and numpy.allclose(numpy.sum(scalars), 1):
+                    if scalars and np.allclose(np.sum(scalars), 1):
                         out = opt._fill_chain(
                             sigmoid(
                                 tensor.neg(nonconsts[0].owner.inputs[0])),
@@ -999,7 +999,7 @@ def local_1msigmoid(node):
                 val_l = opt.get_scalar_constant_value(sub_l)
             except Exception:
                 return
-            if numpy.allclose(numpy.sum(val_l), 1):
+            if np.allclose(np.sum(val_l), 1):
                 out = sigmoid(-sub_r.owner.inputs[0])
                 copy_stack_trace([sub_r, node.outputs[0]], out)
                 return [out]
