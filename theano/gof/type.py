@@ -920,7 +920,8 @@ class EnumType(Type, dict):
         return a == b
 
     def values_eq_approx(self, a, b):
-        return float(a) == float(b)
+        # For an enum, it does not have a meaning to be approx equal.
+        return self.values_eq(a, b)
 
     pyint_compat_code = """
     #if PY_MAJOR_VERSION >= 3
