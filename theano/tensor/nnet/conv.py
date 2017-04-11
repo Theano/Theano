@@ -12,7 +12,7 @@ from __future__ import absolute_import, print_function, division
 
 import logging
 
-import numpy
+import numpy as np
 from six.moves import xrange
 import warnings
 
@@ -756,7 +756,7 @@ class ConvOp(OpenMPOp):
                 (1, 1))[2:]
 
         if z[0] is None or z[0].shape != (bsize, nkern,) + fulloutshp:
-            z[0] = numpy.zeros((bsize, nkern,) + fulloutshp,
+            z[0] = np.zeros((bsize, nkern,) + fulloutshp,
                                dtype=img2d.dtype)
         zz = z[0]
 
@@ -767,17 +767,17 @@ class ConvOp(OpenMPOp):
 
         if self.imshp != self.imshp_logical:
             # assuming that to get from imshp to imshp logical we insert zeros in missing spots
-            rstride = int(numpy.ceil(imshp_logical[1] / float(imshp[1])))
-            cstride = int(numpy.ceil(imshp_logical[2] / float(imshp[2])))
-            buf = numpy.zeros((bsize,) + imshp_logical, dtype=img2d.dtype)
+            rstride = int(np.ceil(imshp_logical[1] / float(imshp[1])))
+            cstride = int(np.ceil(imshp_logical[2] / float(imshp[2])))
+            buf = np.zeros((bsize,) + imshp_logical, dtype=img2d.dtype)
             buf[:, :, ::rstride, ::cstride] = img2d
             img2d = buf
             del buf, rstride, cstride
 
         if kshp != kshp_logical:
-            rstride = int(numpy.ceil(kshp_logical[0] / float(kshp[0])))
-            cstride = int(numpy.ceil(kshp_logical[1] / float(kshp[1])))
-            buf = numpy.zeros((nkern, stacklen) +
+            rstride = int(np.ceil(kshp_logical[0] / float(kshp[0])))
+            cstride = int(np.ceil(kshp_logical[1] / float(kshp[1])))
+            buf = np.zeros((nkern, stacklen) +
                               self.kshp_logical, dtype=filtersflipped.dtype)
             if self.kshp_logical_top_aligned:
                 roffset = coffset = 0
@@ -796,7 +796,7 @@ class ConvOp(OpenMPOp):
         bval = _bvalfromboundary('fill')
 
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            warnings.simplefilter('ignore', np.ComplexWarning)
             for b in xrange(bsize):
                 for n in xrange(nkern):
                     zz[b, n, ...].fill(0)
@@ -808,7 +808,7 @@ class ConvOp(OpenMPOp):
 
         if False:
             if False and self.out_mode == "full":
-                img2d2 = numpy.zeros((bsize, stacklen,
+                img2d2 = np.zeros((bsize, stacklen,
                                       imshp[1] + 2 * kshp[0] - 2,
                                       imshp[2] + 2 * kshp[1] - 2))
                 img2d2[:, :, kshp[0] - 1:kshp[0] - 1 + imshp[1],
@@ -873,7 +873,7 @@ class ConvOp(OpenMPOp):
             tmp_node = theano.tensor.nnet.conv3D(
                 V=shuffled_inputs,
                 W=shuffled_kerns,
-                b=theano.tensor.alloc(numpy.asarray(0, dtype=kerns.dtype),
+                b=theano.tensor.alloc(np.asarray(0, dtype=kerns.dtype),
                                       kerns.shape[0]),
                 d=(self.dx, self.dy, 1))
             node = theano.tensor.addbroadcast(
@@ -1260,17 +1260,17 @@ if(%(value)s != %(expected)s){
         if all_shape:
             d["self_kshp_logical_r"] = self.kshp_logical[0]
             d["self_kshp_logical_c"] = self.kshp_logical[1]
-            d["self_kshp_logical_stride_r"] = int(numpy.ceil(
+            d["self_kshp_logical_stride_r"] = int(np.ceil(
                 self.kshp_logical[0] / float(self.kshp[0])))
-            d["self_kshp_logical_stride_c"] = int(numpy.ceil(
+            d["self_kshp_logical_stride_c"] = int(np.ceil(
                 self.kshp_logical[1] / float(self.kshp[1])))
             d["self_imshp_logical_r"] = self.imshp_logical[1]
             # numpy.B. 1  not 0
             d["self_imshp_logical_c"] = self.imshp_logical[2]
             # numpy.B. 2  not 1
-            d["self_imshp_logical_stride_r"] = int(numpy.ceil(
+            d["self_imshp_logical_stride_r"] = int(np.ceil(
                 self.imshp_logical[1] / float(self.imshp[1])))
-            d["self_imshp_logical_stride_c"] = int(numpy.ceil(
+            d["self_imshp_logical_stride_c"] = int(np.ceil(
                 self.imshp_logical[2] / float(self.imshp[2])))
             if not self.imshp[0] == 1:
                 d["affectation"] = "+="
