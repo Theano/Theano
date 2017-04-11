@@ -1613,9 +1613,9 @@ class AbstractConv(BaseAbstractConv):
             pad = tuple(int(mode[i]) for i in range(self.convdim))
             mode = "valid"
             new_img = np.zeros((img.shape[0], img.shape[1]) +
-                                  tuple(img.shape[i + 2] + 2 * pad[i]
-                                        for i in range(self.convdim)),
-                                  dtype=img.dtype)
+                               tuple(img.shape[i + 2] + 2 * pad[i]
+                                     for i in range(self.convdim)),
+                               dtype=img.dtype)
             new_img[(slice(None), slice(None)) +
                     tuple(slice(pad[i], img.shape[i + 2] + pad[i])
                           for i in range(self.convdim))] = img
@@ -1833,9 +1833,9 @@ class AbstractConv_gradWeights(BaseAbstractConv):
 
             mode = "valid"
             new_img = np.zeros((img.shape[0], img.shape[1]) +
-                                  tuple(img.shape[i + 2] + 2 * pad[i]
-                                        for i in range(self.convdim)),
-                                  dtype=img.dtype)
+                               tuple(img.shape[i + 2] + 2 * pad[i]
+                                     for i in range(self.convdim)),
+                               dtype=img.dtype)
             new_img[(slice(None), slice(None)) +
                     tuple(slice(pad[i], img.shape[i + 2] + pad[i])
                           for i in range(self.convdim))] = img
