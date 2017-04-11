@@ -2420,7 +2420,7 @@ def elu(x, alpha=1):
         "Fast and Accurate Deep Network Learning by
         Exponential Linear Units (ELUs)" <http://arxiv.org/abs/1511.07289>`.
     """
-    return tensor.switch(x > 0, x, alpha * (tensor.exp(x) - 1))
+    return tensor.switch(x > 0, x, alpha * tensor.expm1(x))
 
 
 class ScalarSoftsign(theano.scalar.UnaryScalarOp):
