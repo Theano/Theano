@@ -267,11 +267,8 @@ class ProfileStats(object):
     def __init__(self, atexit_print=True, flag_time_thunks=None,
                  gpu_checks=True, **kwargs):
         if (gpu_checks and
-                ((hasattr(theano, 'sandbox') and
-                  hasattr(theano.sandbox, 'cuda') and
-                  theano.sandbox.cuda.cuda_enabled) or (
-                      hasattr(theano, 'gpuarray') and
-                      theano.gpuarray.pygpu_activated)) and
+            (hasattr(theano, 'gpuarray') and
+             theano.gpuarray.pygpu_activated) and
                 os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1'):
             msg = (
                 "You are running the Theano profiler with CUDA enabled."
@@ -290,9 +287,9 @@ class ProfileStats(object):
                 theano.gpuarray.pygpu_activated and
                 not config.profiling.ignore_first_call):
             warnings.warn(
-                "Theano flag profiling.ignore_first_call is False."
-                " This cause bad profiling result in the new gpu"
-                " back-end, as sometimes we compile at the first call.")
+                "Theano flag profiling.ignore_first_call is False. "
+                "This cause bad profiling result in the gpu "
+                "back-end, as sometimes we compile at the first call.")
 
         self.apply_callcount = {}
         self.output_size = {}
@@ -514,8 +511,8 @@ class ProfileStats(object):
             tot += t
             ftot = tot * 100 / local_time
             # Remove the useless start and end of the class name:
-            # "<class 'theano.sandbox.cuda.blas.GpuDot22'>" ->
-            #  "theano.sandbox.cuda.blas.GpuDot22"
+            # "<class 'theano.gpuarray.blas.GpuDot22'>" ->
+            #  "theano.gpuarray.blas.GpuDot22"
             class_name = str(a)[8:-2][:maxlen]
             print(format_str % (f, ftot, t, t / nb_call,
                                 impl, nb_call,
@@ -832,7 +829,8 @@ class ProfileStats(object):
                 new allocation.
 
             """
-            from theano.sandbox.cuda import CudaNdarrayType
+            from theano.gpuarray import GpuArrayType
+
             # Initial Mem info values [CPU, GPU]
             node_memory_size = [0, 0]
             running_memory_size = [0, 0]
@@ -882,7 +880,7 @@ class ProfileStats(object):
                 # allocated by the node
                 idx2 = 0
                 for out in node.outputs:
-                    if isinstance(out.type, CudaNdarrayType):
+                    if isinstance(out.type, GpuArrayType):
                         cg = 1
                     else:
                         cg = 0
@@ -924,7 +922,7 @@ class ProfileStats(object):
                 for ins in set(node.inputs):
                     assert not (ins in view_of and viewed_by[ins])
                     # we trac the original var, so this shouldn't happen
-                    if isinstance(ins.type, CudaNdarrayType):
+                    if isinstance(ins.type, GpuArrayType):
                         cg = 1
                     else:
                         cg = 0
@@ -1257,16 +1255,6 @@ class ProfileStats(object):
 
             print("---", file=file)
 
-        if (hasattr(theano, 'sandbox') and
-            hasattr(theano.sandbox, 'cuda') and
-            hasattr(theano.sandbox.cuda, 'cuda_ndarray') and
-            hasattr(theano.sandbox.cuda.cuda_ndarray.cuda_ndarray,
-                    'theano_allocated')):
-            cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
-            _, gpu_max = cuda_ndarray.theano_allocated()
-            print("    Max Memory allocated on the GPU (for all functions): "
-                  "%dKB" % int(round(gpu_max / 1024.)), file=file)
-
         print("", file=file)
         if len(fct_memory) > 1:
             print("    This list is based on all functions in the profile",
@@ -1469,7 +1457,6 @@ class ProfileStats(object):
                 printed_tip = True
 
         # tip 7
-        import theano.sandbox.cuda as cuda
         from theano.tensor.nnet import LogSoftmax
         import theano.tensor.signal.pool as pool
         import theano.gpuarray
@@ -1477,12 +1464,12 @@ class ProfileStats(object):
         for a in self.apply_time:
             node = a
             if (isinstance(node.op, pool.Pool)):
-                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
+                if not theano.gpuarray.dnn.dnn_present():
                     print("Install CuDNN to do pooling faster"
                           "this allows the operation to run on GPU")
                     printed_tip = True
             if (isinstance(node.op, LogSoftmax)):
-                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
+                if not theano.gpuarray.dnn.dnn_present():
                     print("Install CuDNN to do LogSoftmax faster"
                           "this allows the operation to run on GPU")
                     printed_tip = True

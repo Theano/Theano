@@ -4534,45 +4534,6 @@ def local_reshape_lift(node):
         return [re]
 
 
-if 0:
-    # TODO: Test that this optimziation works.
-    # TODO: Once it works, copy over stacktrace appropriately.
-    @register_canonicalize
-    @gof.local_optimizer([T.Reshape])
-    def local_scalar_reshape(node):
-        """Eliminate reshape Ops whose inputs and outputs are scalars """
-        if isinstance(node.op, T.Reshape):
-            x, shp = node.inputs
-            if x.ndim == 0 and T.get_vector_length(shp) == 0:
-                return [x]
-
-if 0:
-    # TODO: Finish writing and testing this optimization.  The idea is
-    #       that if we can prove the output to this sum has a
-    #       zero-size dimension, then it can be replaced by an
-    #       appropriately typed and broadcasted zero.
-    # TODO: Remember to take into account the new sum dtype argument if this
-    #       optimization is enabled.
-    # TODO: Once it works, copy over stacktrace appropriately.
-    @register_canonicalize
-    @gof.local_optimizer([T.Sum])
-    def local_sum_over_empty(node):
-        if isinstance(node.op, T.Sum):
-            # This optimization needs ShapeOpt and fgraph.shape_feature
-            if not hasattr(node.fgraph, 'shape_feature'):
-                return
-            y, = node.outputs
-            y_shape = node.fgraph.shape_feature.shape_of[y]
-
-            def tmp(thing):
-                try:
-                    return T.get_scalar_constant_value(thing,
-                                                       only_process_constants=True)
-                except (TypeError, ValueError) as e:
-                    print(e, thing.owner.inputs[0])
-                    return None
-            print('LOCAL SUM EMPTY', [tmp(s) for s in y_shape])
-
 ##################
 # Middleman cuts #
 ##################
@@ -4680,23 +4641,6 @@ class Canonizer(gof.LocalOptimizer):
         # internal data nodes all have the dtype of the 'input'
         # argument. The leaf-Variables of the graph covered by the
         # recursion may be of any Variable type.
-
-        if 0:
-            # UPDATE: This logic makes it impossible to recognize some
-            # important patterns (e.g. variants on the x/x) and it is
-            # screwing up the RBM free energy gradient.
-            # TODO: review this
-            if len(input.clients) > 1:
-                # this logic is too conservative, but doing it is
-                # better than not doing it.
-                #
-                # we don't want to canonize a subgraph that we will
-                # need to compute anyway for the other clients.
-
-                # This check is too conservative because if the other
-                # clients are also in the subgraph we are canonizing,
-                # then we should [probably?] recurse anyway.
-                return [input], []
 
         if input.owner is None or input.owner.op not in [
                 self.main, self.inverse, self.reciprocal]:

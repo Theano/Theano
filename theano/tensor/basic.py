@@ -107,22 +107,6 @@ def __oplist_tag(thing, tag):
     thing.__oplist_tags = tags
 
 
-if 0:
-    # this starts to feel like we're enumerating all the types
-    # the one place where this is used we should also allow for sparse
-    # variables
-    # - JB 20100226
-    def as_cuda_or_tensor_variable(x, name=None, ndim=None):
-        """
-        Do the same as_tensor_variable,
-        but do not transfer the value on the gpu.
-        """
-        if hasattr(x, '_as_CudaNdarrayVariable'):
-            # TODO: pass name and ndim arguments
-            return x._as_CudaNdarrayVariable()
-        return as_tensor_variable(x, name, ndim)
-
-
 def as_tensor_variable(x, name=None, ndim=None):
     """Return `x`, transformed into a `TensorType`.
 

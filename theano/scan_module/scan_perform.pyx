@@ -355,7 +355,7 @@ def perform(
             pdx = offset + n_shared_outs
             output_storage[<unsigned int>pdx].storage[0] = None
 
-        # 4.5. Keep a reference to the variables (ndarrays, CudaNdarrays,
+        # 4.5. Keep a reference to the variables (ndarrays, GpuArrays,
         # etc) currently in the output_storage to be able to compare them
         # with the actual outputs of the inner function after its
         # execution. Also keep pointers to their data to be able to detect
@@ -373,7 +373,7 @@ def perform(
             else:
                 old_output_data[idx] = var.gpudata
 
-        # 4.6. Keep a reference to the variables (ndarrays, CudaNdarrays,
+        # 4.6. Keep a reference to the variables (ndarrays, GpuArrays,
         # etc) associated with mitmot inputs currently in the input_storage to
         # be able to compare them with the content of the input_storage after
         # the execution of the function. Also keep pointers to their data to

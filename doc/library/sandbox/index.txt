@@ -13,7 +13,6 @@
 .. toctree::
     :maxdepth: 1
 
-    cuda/index
     linalg
     neighbours
     rng_mrg

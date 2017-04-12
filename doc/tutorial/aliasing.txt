@@ -211,15 +211,16 @@ be costly.  Here are a few tips to ensure fast and efficient use of GPU memory a
   *Solution*: upgrade to a recent version of Theano (>0.3.0) and consider padding your source
   data to make sure that every chunk is the same size.
 
-* It is also worth mentioning that, current GPU copying routines support only contiguous memory.
-  So Theano must make the value you provide *C-contiguous* prior to copying it.
-  This can require an extra copy of the data on the host.
+* It is also worth mentioning that, current GPU copying routines
+  support only contiguous memory.  So Theano must make the value you
+  provide *C-contiguous* prior to copying it.  This can require an
+  extra copy of the data on the host.
 
   *Solution*: make sure that the value
-  you assign to a CudaNdarraySharedVariable is *already*  *C-contiguous*.
+  you assign to a GpuArraySharedVariable is *already*  *C-contiguous*.
 
-(Further information on the current implementation of the GPU version of ``set_value()`` can be found
-here: :ref:`libdoc_cuda_var`)
+(Further information on the current implementation of the GPU version
+of ``set_value()`` can be found here: :ref:`libdoc_gpuarray_type`)
 
 .. _borrowfunction:
 

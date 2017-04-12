@@ -84,9 +84,7 @@ def safe_new(x, tag='', dtype=None):
         try:
             x = tensor.as_tensor_variable(x)
         except TypeError:
-            # This could happen for example for random states, and I really
-            # want to avoid the convoluted logic that checks for cuda
-            # ndarrays
+            # This could happen for example for random states
             pass
 
     # Cast x if needed. If x has a test value, this will also cast it.
@@ -151,23 +149,14 @@ def traverse(out, x, x_copy, d, visited=None):
     if out in visited:
         return d
     visited.add(out)
-    from theano.sandbox import cuda
     from theano.gpuarray.basic_ops import GpuFromHost, host_from_gpu
     from theano.gpuarray import pygpu_activated
     from theano.gpuarray.type import GpuArrayType
     if out == x:
-        if isinstance(x.type, cuda.CudaNdarrayType):
-            d[out] = cuda.gpu_from_host(x_copy)
-        else:
-            assert isinstance(x.type, GpuArrayType)
-            d[out] = GpuFromHost(x.type.context_name)(x_copy)
+        assert isinstance(x.type, GpuArrayType)
+        d[out] = GpuFromHost(x.type.context_name)(x_copy)
         return d
     elif out.owner is None:
-        return d
-    elif (cuda.cuda_available and
-          out.owner.op == cuda.host_from_gpu and
-          out.owner.inputs == [x]):
-        d[out] = tensor.as_tensor_variable(x_copy)
         return d
     elif (pygpu_activated and
           out.owner.op == host_from_gpu and
@@ -994,7 +983,6 @@ def compress_outs(op, not_required, inputs):
     info['n_nit_sot'] = 0
     info['truncate_gradient'] = op.info['truncate_gradient']
     info['name'] = op.info['name']
-    info['gpu'] = op.info['gpu']
     info['gpua'] = op.info['gpua']
     info['mode'] = op.info['mode']
     info['as_while'] = op.info['as_while']
@@ -1257,7 +1245,7 @@ class scan_args(object):
 
         self.other_info = OrderedDict()
         for k in ('truncate_gradient', 'name', 'mode', 'destroy_map',
-                  'gpu', 'gpua', 'as_while', 'profile', 'allow_gc'):
+                  'gpua', 'as_while', 'profile', 'allow_gc'):
             if k in info:
                 self.other_info[k] = info[k]
 

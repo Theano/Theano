@@ -326,8 +326,9 @@ class PureType(object):
         Convert a symbolic variable into this Type, if compatible.
 
         For the moment, the only Types compatible with one another are
-        TensorType and CudaNdarrayType, provided they have the same
-        number of dimensions, same broadcasting pattern, and same dtype.
+        TensorType and GpuArrayType, provided they have the same
+        number of dimensions, same broadcasting pattern, and same
+        dtype.
 
         If Types are not compatible, a TypeError should be raised.
 

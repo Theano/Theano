@@ -8,7 +8,6 @@ import numpy as np
 import theano
 from theano.configparser import config
 import theano.tensor as T
-import theano.sandbox.cuda as cuda
 from theano.compile import Mode
 from .mode import get_mode
 
@@ -107,16 +106,6 @@ def contains_nan(arr, node=None, var=None):
     """
     if not _is_numeric_value(arr, var):
         return False
-    elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
-        if (node and hasattr(theano.sandbox, 'rng_mrg') and
-            isinstance(
-                node.op,
-                # It store ints in float container
-                theano.sandbox.rng_mrg.GPU_mrg_uniform)):
-            return False
-        else:
-            compile_gpu_func(True, False, False)
-            return np.isnan(f_gpumin(arr.reshape(arr.size)))
     elif pygpu_available and isinstance(arr, GpuArray):
         return np.isnan(f_gpua_min(arr.reshape(arr.size)))
 
@@ -150,69 +139,11 @@ def contains_inf(arr, node=None, var=None):
     """
     if not _is_numeric_value(arr, var):
         return False
-    elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
-        if (node and hasattr(theano.sandbox, 'rng_mrg') and
-            isinstance(
-                node.op,
-                # It store ints in float container
-                theano.sandbox.rng_mrg.GPU_mrg_uniform)):
-            return False
-        else:
-            compile_gpu_func(False, True, False)
-            return (np.isinf(f_gpumin(arr.reshape(arr.size))) or
-                    np.isinf(f_gpumax(arr.reshape(arr.size))))
     elif pygpu_available and isinstance(arr, GpuArray):
         return (np.isinf(f_gpua_min(arr.reshape(arr.size))) or
                 np.isinf(f_gpua_max(arr.reshape(arr.size))))
 
     return np.isinf(np.nanmax(arr)) or np.isinf(np.nanmin(arr))
-
-f_gpumin = None
-f_gpumax = None
-f_gpuabsmax = None
-
-
-def compile_gpu_func(nan_is_error, inf_is_error, big_is_error):
-    """ compile utility function used by contains_nan and contains_inf
-    """
-    global f_gpumin, f_gpumax, f_gpuabsmax
-    if not cuda.cuda_available:
-        return
-    guard_input = cuda.fvector('nan_guard')
-    cuda_compile_failed = False
-    if (nan_is_error or inf_is_error) and f_gpumin is None:
-        try:
-            f_gpumin = theano.function(
-                [guard_input], T.min(guard_input),
-                mode='FAST_RUN'
-            )
-        except RuntimeError:
-            # This can happen if cuda is available, but the
-            # device is in exclusive mode and used by another
-            # process.
-            cuda_compile_failed = True
-    if inf_is_error and not cuda_compile_failed and f_gpumax is None:
-        try:
-            f_gpumax = theano.function(
-                [guard_input], T.max(guard_input),
-                mode='FAST_RUN'
-            )
-        except RuntimeError:
-            # This can happen if cuda is available, but the
-            # device is in exclusive mode and used by another
-            # process.
-            cuda_compile_failed = True
-    if big_is_error and not cuda_compile_failed and f_gpuabsmax is None:
-        try:
-            f_gpuabsmax = theano.function(
-                [guard_input], T.max(T.abs_(guard_input)),
-                mode='FAST_RUN'
-                )
-        except RuntimeError:
-            # This can happen if cuda is available, but the
-            # device is in exclusive mode and used by another
-            # process.
-            cuda_compile_failed = True
 
 
 def f_compute(op):
@@ -270,9 +201,6 @@ class NanGuardMode(Mode):
 
         assert nan_is_error or inf_is_error or big_is_error
 
-        if cuda.cuda_enabled:
-            compile_gpu_func(nan_is_error, inf_is_error, big_is_error)
-
         def do_check_on(value, nd, var=None):
             """
             Checks `value` for NaNs / Infs. If detected, raises an exception
@@ -304,9 +232,6 @@ class NanGuardMode(Mode):
                 err = False
                 if not _is_numeric_value(value, var):
                     err = False
-                elif cuda.cuda_available and isinstance(value, cuda.CudaNdarray):
-                    compile_gpu_func(False, False, True)
-                    err = (f_gpuabsmax(value.reshape(value.size)) > 1e10)
                 elif pygpu_available and isinstance(value, GpuArray):
                     err = (f_gpua_absmax(value.reshape(value.size)) > 1e10)
                 else:

@@ -89,19 +89,20 @@ class DeviceParam(ConfigParam):
         self.default = default
 
         def filter(val):
-            if val == self.default or val.startswith('gpu') \
-                    or val.startswith('opencl') or val.startswith('cuda'):
+            if (val == self.default or
+                val.startswith('opencl') or
+                    val.startswith('cuda')):
                 return val
             else:
                 raise ValueError(('Invalid value ("%s") for configuration '
                                   'variable "%s". Valid options start with '
-                                  'one of "%s", "gpu", "opencl", "cuda"'
+                                  'one of "%s", "opencl", "cuda"'
                                   % (self.default, val, self.fullname)))
         over = kwargs.get("allow_override", True)
         super(DeviceParam, self).__init__(default, filter, over)
 
     def __str__(self):
-        return '%s (%s, gpu*, opencl*, cuda*) ' % (self.fullname, self.default)
+        return '%s (%s, opencl*, cuda*) ' % (self.fullname, self.default)
 
 AddConfigVar(
     'device',
@@ -174,88 +175,6 @@ AddConfigVar(
     BoolParam(True, allow_override=False),
     in_c_key=False)
 
-
-AddConfigVar(
-    'enable_initial_driver_test',
-    "Tests the nvidia driver when a GPU device is initialized.",
-    BoolParam(True, allow_override=False),
-    in_c_key=False)
-
-
-def default_cuda_root():
-    v = os.getenv('CUDA_ROOT', "")
-    if v:
-        return v
-    s = os.getenv("PATH")
-    if not s:
-        return ''
-    for dir in s.split(os.path.pathsep):
-        if os.path.exists(os.path.join(dir, "nvcc")):
-            return os.path.dirname(os.path.abspath(dir))
-    return ''
-
-AddConfigVar(
-    'cuda.root',
-    """directory with bin/, lib/, include/ for cuda utilities.
-       This directory is included via -L and -rpath when linking
-       dynamically compiled modules.  If AUTO and nvcc is in the
-       path, it will use one of nvcc parent directory.  Otherwise
-       /usr/local/cuda will be used.  Leave empty to prevent extra
-       linker directives.  Default: environment variable "CUDA_ROOT"
-       or else "AUTO".
-       """,
-    StrParam(default_cuda_root),
-    in_c_key=False)
-
-AddConfigVar(
-    'cuda.enabled',
-    'If false, C code in old backend is not compiled.',
-    BoolParam(True),
-    in_c_key=False)
-
-
-def filter_nvcc_flags(s):
-    assert isinstance(s, str)
-    flags = [flag for flag in s.split(' ') if flag]
-    if any([f for f in flags if not f.startswith("-")]):
-        raise ValueError(
-            "Theano nvcc.flags support only parameter/value pairs without"
-            " space between them. e.g.: '--machine 64' is not supported,"
-            " but '--machine=64' is supported. Please add the '=' symbol."
-            " nvcc.flags value is '%s'" % s)
-    return ' '.join(flags)
-
-AddConfigVar('nvcc.flags',
-             "Extra compiler flags for nvcc",
-             ConfigParam("", filter_nvcc_flags),
-             # Not needed in c key as it is already added.
-             # We remove it as we don't make the md5 of config to change
-             # if theano.sandbox.cuda is loaded or not.
-             in_c_key=False)
-
-AddConfigVar('nvcc.compiler_bindir',
-             "If defined, nvcc compiler driver will seek g++ and gcc"
-             " in this directory",
-             StrParam(""),
-             in_c_key=False)
-
-AddConfigVar('nvcc.fastmath',
-             "",
-             BoolParam(False),
-             # Not needed in c key as it is already added.
-             # We remove it as we don't make the md5 of config to change
-             # if theano.sandbox.cuda is loaded or not.
-             in_c_key=False)
-
-AddConfigVar('nvcc.cudafe',
-             "If 'always' (the default), cudafe will be called for every GPU"
-             " Op compilation. If 'heuristic', it will only be called if the"
-             " source code appears to contain CUDA code. This can speed up"
-             " compilation and importing theano, but might fail to compile"
-             " some custom GPU Ops.",
-             EnumStr('always', 'heuristic'),
-             # Not needed in c key, does not affect the compilation result.
-             in_c_key=False)
 
 AddConfigVar('gpuarray.sync',
              """If True, every op will make sure its work is done before
@@ -391,11 +310,25 @@ AddConfigVar('dnn.conv.precision',
              in_c_key=False)
 
 
+def get_cuda_root():
+    v = os.getenv('CUDA_ROOT', "")
+    if v:
+        return v
+    s = os.getenv("PATH")
+    if not s:
+        return ''
+    for dir in s.split(os.path.pathsep):
+        if os.path.exists(os.path.join(dir, "nvcc")):
+            return os.path.dirname(os.path.abspath(dir))
+    return ''
+
+
 def default_dnn_path(suffix):
     def f(suffix=suffix):
-        if theano.config.cuda.root == '':
+        cuda_root = get_cuda_root()
+        if cuda_root == '':
             return ''
-        return os.path.join(theano.config.cuda.root, suffix)
+        return os.path.join(cuda_root, suffix)
     return f
 
 AddConfigVar('dnn.include_path',
@@ -656,8 +589,8 @@ AddConfigVar(
     in_c_key=False)
 
 AddConfigVar('experimental.unpickle_gpu_on_cpu',
-             "Allow unpickling of pickled CudaNdarrays as numpy.ndarrays."
-             "This is useful, if you want to open a CudaNdarray without "
+             "Allow unpickling of pickled GpuArrays as numpy.ndarrays."
+             "This is useful, if you want to open a GpuArray without "
              "having cuda installed."
              "If you have cuda installed, this will force unpickling to"
              "be done on the cpu to numpy.ndarray."
@@ -1516,38 +1449,6 @@ AddConfigVar('scan.allow_output_prealloc',
 AddConfigVar('scan.debug',
              "If True, enable extra verbose output related to scan",
              BoolParam(False),
-             in_c_key=False)
-
-AddConfigVar('pycuda.init',
-             """If True, always initialize PyCUDA when Theano want to
-                initilize the GPU.  Currently, we must always initialize
-                PyCUDA before Theano do it.  Setting this flag to True,
-                ensure that, but always import PyCUDA.  It can be done
-                manually by importing theano.misc.pycuda_init before theano
-                initialize the GPU device.
-                  """,
-             BoolParam(False),
-             in_c_key=False)
-
-AddConfigVar('cublas.lib',
-             """Name of the cuda blas library for the linker.""",
-             StrParam('cublas'),
-             # Added elsewhere in the c key only when needed.
-             in_c_key=False)
-
-AddConfigVar('lib.cnmem',
-             """Do we enable CNMeM or not (a faster CUDA memory allocator).
-
-             The parameter represent the start size (in MB or % of
-             total GPU memory) of the memory pool.
-
-             0: not enabled.
-             0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
-             > 0: use that number of MB of memory.
-
-             """,
-             # We should not mix both allocator, so we can't override
-             FloatParam(0, lambda i: i >= 0, allow_override=False),
              in_c_key=False)
 
 AddConfigVar('compile.wait',

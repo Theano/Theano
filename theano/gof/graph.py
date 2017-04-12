@@ -216,7 +216,7 @@ class Apply(Node):
         strict : bool
             If True, the type fields of all the inputs must be equal
             to the current ones (or compatible, for instance Tensor /
-            CudaNdarray of the same dtype and broadcastable patterns,
+            GpuArray of the same dtype and broadcastable patterns,
             in which case they will be converted into current Type), and
             returned outputs are guaranteed to have the same types as
             self.outputs.  If False, then there's no guarantee that the
@@ -308,7 +308,7 @@ class Variable(Node):
     - `SparseVariable` subclass of Variable that represents
       a scipy.sparse.{csc,csr}_matrix object.
 
-    - `CudaNdarrayVariable` subclass of Variable that represents our object on
+    - `GpuArrayVariable` subclass of Variable that represents our object on
       the GPU that is a subset of numpy.ndarray.
 
     - `RandomVariable`.

@@ -2,8 +2,6 @@ from __future__ import absolute_import, print_function, division
 
 import copy
 import logging
-import os
-import sys
 import time
 import unittest
 
@@ -14,7 +12,7 @@ from nose.tools import assert_raises, assert_true
 
 import theano
 import theano.scalar as scal
-from six import PY3, StringIO
+from six import StringIO
 from theano import compile
 from theano.compile import deep_copy_op, DeepCopyOp
 from theano.compile import get_mode
@@ -909,7 +907,11 @@ def test_const_type_in_mul_canonizer():
 
 
 class test_fusion(unittest.TestCase):
-    def do(self, mode, shared_fn, shp, gpu=False, nb_repeat=1, assert_len_topo=True, slice=None):
+    mode = copy.copy(compile.mode.get_default_mode())
+    _shared = staticmethod(shared)
+    topo_exclude = ()
+
+    def do(self, mode, shared_fn, shp, nb_repeat=1, assert_len_topo=True, slice=None):
         """
         param shared_fn: if None, will use compile.function
         verify that the elemwise fusion work
@@ -1103,14 +1105,9 @@ class test_fusion(unittest.TestCase):
                  nb_elemwise, answer, out_dtype] in enumerate(cases):
             if isinstance(out_dtype, dict):
                 out_dtype = out_dtype[config.cast_policy]
-            if (gpu and (out_dtype != 'float32' or
-                         any(i.dtype != 'float32' for i in g.owner.inputs))):
-                print("Skip test %d as the gpu code currently supports only float32" % id)
-                continue
             print("new cases", id)
 
             if shared_fn is None:
-                assert gpu is False
                 f = compile.function(list(sym_inputs), g, mode=mode)
                 for x in xrange(nb_repeat):
                     out = f(*val_inputs)
@@ -1125,10 +1122,6 @@ class test_fusion(unittest.TestCase):
                 t1 = time.time()
                 out = out.get_value()
 
-            # print "CASE2/3", f.maker.fgraph.toposort()
-            # print 'CASE2/3', f.maker.fgraph
-            # print 'CASE2/3', f.maker.fgraph.toposort()[3].op.scalar_op.fgraph
-
             times[id] = t1 - t0
             atol = 1e-8
             if out_dtype == 'float32':
@@ -1139,17 +1132,8 @@ class test_fusion(unittest.TestCase):
                 print(out)
                 print(answer * nb_repeat)
             topo = f.maker.fgraph.toposort()
-            if gpu:
-                import theano.sandbox.cuda as cuda
-                topo_ = [x for x in topo if not isinstance(
-                    x.op, (cuda.basic_ops.GpuFromHost, cuda.basic_ops.HostFromGpu))]
-
-                gpu_ = [x for x in topo
-                        if isinstance(x.op, cuda.basic_ops.GpuFromHost)]
-                if not len(gpu_) == len(sym_inputs):
-                    fail2.append((id, gpu_, sym_inputs))
-            else:
-                topo_ = topo
+            topo_ = [n for n in topo
+                     if not isinstance(n.op, self.topo_exclude)]
             if assert_len_topo:
                 if not len(topo_) == nb_elemwise:
                     fail3.append((id, topo_, nb_elemwise))
@@ -1177,62 +1161,24 @@ class test_fusion(unittest.TestCase):
 
     def test_elemwise_fusion(self):
         shp = (5, 5)
-        mode = copy.copy(compile.mode.get_default_mode())
+        mode = copy.copy(self.mode)
         # we need the optimisation enabled and the canonicalize.
         # the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer = mode._optimizer.including(
             'local_elemwise_fusion', 'composite_elemwise_fusion',
             'canonicalize')
-        self.do(mode, shared, shp)
+        self.do(mode, self._shared, shp)
 
     @attr('slow')
     def test_elemwise_fusion_4d(self):
         shp = (3, 3, 3, 3)
-        mode = copy.copy(compile.mode.get_default_mode())
+        mode = copy.copy(self.mode)
         # we need the optimisation enabled and the canonicalize.
         # the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer = mode._optimizer.including(
             'local_elemwise_fusion', 'composite_elemwise_fusion',
             'canonicalize')
-        self.do(mode, shared, shp)
-
-    def test_gpu_fusion(self):
-        shp = (5, 5)
-        # we need the optimisation enabled, debug do this.
-        if theano.config.mode == "FAST_COMPILE":
-            mode = theano.compile.mode.get_mode("FAST_RUN").including(
-                'local_elemwise_fusion', 'composite_elemwise_fusion',
-                'canonicalize', 'gpu')
-        else:
-            mode = theano.compile.mode.get_default_mode().including(
-                'local_elemwise_fusion', 'composite_elemwise_fusion',
-                'canonicalize', 'gpu')
-        import theano.sandbox.cuda as cuda
-        if not cuda.cuda_available:
-            raise SkipTest("cuda not available")
-
-        self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
-
-    @attr('slow')
-    def test_gpu_fusion_Xd(self):
-        # we need the optimisation enabled, debug do this.
-        if theano.config.mode == "FAST_COMPILE":
-            mode = theano.compile.mode.get_mode("FAST_RUN").including(
-                'local_elemwise_fusion', 'composite_elemwise_fusion',
-                'canonicalize', 'gpu')
-        else:
-            mode = theano.compile.mode.get_default_mode().including(
-                'local_elemwise_fusion', 'composite_elemwise_fusion',
-                'canonicalize', 'gpu')
-        import theano.sandbox.cuda as cuda
-        if not cuda.cuda_available:
-            raise SkipTest("cuda not available")
-        sizes = cuda.opt.get_device_type_sizes()
-        if sizes['int_size'] == 4:
-            shp = (5, 5, 5, 5)
-        else:
-            shp = (5, 5, 5)
-        self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
+        self.do(mode, self._shared, shp)
 
     def test_fusion_35inputs(self):
         # Make sure a fused graph with more than 35 inputs does not segfault
@@ -1244,7 +1190,7 @@ class test_fusion(unittest.TestCase):
         for idx in xrange(1, 35):
             out = tensor.sin(inpts[idx] + out)
 
-        f = function(inpts, out)
+        f = function(inpts, out, mode=self.mode)
         # Test it on some dummy values
         f(*[list(range(i, 4 + i)) for i in xrange(35)])
 
@@ -1280,7 +1226,7 @@ class test_fusion(unittest.TestCase):
         dlogp = function(vars, [theano.grad(logp, v) for v in vars])
         dlogp(2, np.random.rand(n))
 
-    def speed_fusion(self, shared_fn=shared, gpu=False, s=None):
+    def speed_fusion(self, s=None):
         """
         param type s: a slice object
         param s: a slice to apply to the case to execute. If None, exec all case.
@@ -1292,18 +1238,18 @@ class test_fusion(unittest.TestCase):
         # linker=gof.CLinker
         # linker=gof.OpWiseCLinker
 
-        mode1 = copy.copy(compile.get_default_mode())
+        mode1 = copy.copy(self.mode)
         mode1._optimizer = mode1._optimizer.including('local_elemwise_fusion')
         # TODO:clinker is much faster... but use to much memory
         # Possible cause: as their is do deletion of intermediate value when we don't keep the fct.
         # More plausible cause: we keep a link to the output data?
         # Follow up. Clinker do the same... second cause?
-        mode2 = copy.copy(compile.get_default_mode())
+        mode2 = copy.copy(self.mode)
         mode2._optimizer = mode2._optimizer.excluding('local_elemwise_fusion')
         print("test with linker", str(mode1.linker))
-        times1 = self.do(mode1, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat,
+        times1 = self.do(mode1, self._shared, shp, nb_repeat=nb_repeat,
                          assert_len_topo=False, slice=s)
-        times2 = self.do(mode2, shared_fn, shp, gpu=gpu, nb_repeat=nb_repeat,
+        times2 = self.do(mode2, self._shared, shp, nb_repeat=nb_repeat,
                          assert_len_topo=False, slice=s)
         print("times1 with local_elemwise_fusion")
         print(times1, times1.min(), times1.max(), times1.sum())
@@ -1317,7 +1263,7 @@ class test_fusion(unittest.TestCase):
               "mean", d.mean(), "std", d.std())
 
     def test_fusion_inplace(self):
-        mode = copy.copy(compile.mode.get_default_mode())
+        mode = copy.copy(self.mode)
         # we need the optimisation enabled and the canonicalize.
         # the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer = mode._optimizer.including(
@@ -1326,123 +1272,17 @@ class test_fusion(unittest.TestCase):
 
         x, y, z = dmatrices('xyz')
         f = theano.function([x, y, z], tensor.dot(x, y) + x + y + z, mode=mode)
-        topo = f.maker.fgraph.toposort()
+        topo = [n for n in f.maker.fgraph.toposort()
+                if not isinstance(n.op, self.topo_exclude)]
         assert len(topo) == 2
-        assert f.maker.fgraph.toposort()[-1].op.inplace_pattern
+        assert topo[-1].op.inplace_pattern
         f(np.random.random((5, 5)), np.random.random((5, 5)),
             np.random.random((5, 5)))
 
-    def speed_fusion_gpu(self):
-        import theano.sandbox.cuda as cuda
-        self.speed_fusion(shared_fn=cuda.float32_shared_constructor,
-                          gpu=True, s=slice(0, 15))
-
     def speed_log_exp(self):
         s = slice(31, 36)
-        print("time", self.do(None, shared, shp=(1000, 1000), gpu=False,
+        print("time", self.do(self.mode, self._shared, shp=(1000, 1000),
                               assert_len_topo=False, slice=s, nb_repeat=100))
-
-    def tes_memory_leak(self, mode=compile.mode.Mode('c', 'merge'),
-                        shared_fn=shared, shp=(3000, 3000), gpu=False,
-                        nb_repeat=30, assert_len_topo=True, slice=None):
-        """
-        param shared_fn: if None, will use compile.function
-        verify that the elemwise fusion work
-        Test with and without DimShuffle
-        """
-        # TODO: disable the canonizer?
-        fx = fmatrices('x')
-        fy = fmatrices('y')
-        fxv = np.zeros(shp, dtype='float32') + 2
-        cases = [
-            (fx, (fx), (fxv), 'float32'),  # 1
-            ]
-        import gc
-        import pdb
-        import objgraph
-        import weakref
-        d = {}
-        dl = []
-        v1 = None
-        mode = compile.mode.Mode('c', 'merge')
-        # TODO: if mode is Mode('py','merge') then their is no memory leak!
-        from theano.compile.function_module import orig_function
-        for id, [g, sym_inputs, val_inputs, out_dtype] in enumerate(cases):
-            for zzzz in xrange(nb_repeat):
-                v = np.zeros(shp, dtype=out_dtype)
-                gc.collect()
-                gc.collect()
-                gc.collect()
-                v1 = weakref.ref(v)  # noqa
-                pdb.set_trace()
-                # no memory leak
-                # f = orig_function([compile.In(fx),compile.In(variable=fy, value=None)],
-                #            [fy+fx],mode=mode)
-                # memory leak
-                f = orig_function(  # noqa
-                    [compile.In(fx), compile.In(variable=fy, value=v)],
-                    [fy + fx], mode=mode)
-                del v
-                gc.collect()
-                gc.collect()
-                gc.collect()
-                pdb.set_trace()
-
-                if False:
-                    gc.collect()
-                    gc.collect()
-                    gc.collect()
-                    nd = objgraph.typestats()
-                    print('key, old val, new val, diff')
-                    for key in set(d.keys() + nd.keys()):
-                        if key in d and key in nd and nd[key] != d[key]:
-                            print(key, d.get(key), nd.get(key), end=' ')
-                            if key in d and key in nd:
-                                    print(nd[key] - d[key])
-                            else:
-                                print(None)
-                    gc.collect()
-                    gc.collect()
-                    gc.collect()
-                    d = nd
-
-#                pdb.set_trace()
-                if False:
-                    gc.collect()
-                    gc.collect()
-                    gc.collect()
-                    ndl = objgraph.by_type('list')
-                    ll = []
-                    if len(dl) > 0:
-                        nb = 0
-                        for x in ndl:
-                            cmp = not isinstance(x, list)
-                            if not cmp and x:
-                                cmp = (x[0].__class__.__name__ != 'array_converter')
-                                if cmp:
-                                    cmp = x[0] != 'Option'
-                                if cmp:
-                                    cmp = x[0] != 270
-                                cmp = False
-                            if cmp and x in dl:
-                                nb += 1
-                                ll.append(x)
-#                                pdb.set_trace()
-                                pass
-                        pdb.set_trace()
-                    dl = ndl
-
-                gc.collect()
-                gc.collect()
-                gc.collect()
-#                objgraph.show_most_common_types(limit=40)
-#                f(*val_inputs)
-                gc.collect()
-                gc.collect()
-                gc.collect()
-
-#            cases[id]=None #to remove g, that link to out that link to the ndarray!
-            # g.owner.inputs[0] is out... make owner a weakref?
 
 
 class TimesN(theano.scalar.basic.UnaryScalarOp):
@@ -1505,27 +1345,6 @@ class TestCompositeCodegen(unittest.TestCase):
         fval = f([1, 2, 3])
         assert np.all(fval == [6, 12, 18])
 
-    def test_nested_gpu(self):
-        import theano.sandbox.cuda as cuda
-        if not cuda.cuda_available:
-            raise SkipTest("cuda not available")
-
-        import theano.sandbox.cuda.opt
-
-        y = self.times_2(self.x)
-        z = self.times_3(y)
-        f = theano.function(
-            [self.x], cuda.gpu_from_host(z),
-            mode=theano.compile.mode.get_default_mode().including('gpu'))
-        topo = f.maker.fgraph.toposort()
-        if config.mode != "FAST_COMPILE":
-            assert len(topo) == 2
-            assert topo[1].op == cuda.gpu_from_host
-        # topo1 is doing the composite work on the CPU. Auto-generation of
-        # GPU code for ops with support code is not possible.
-        fval = np.asarray(f([1, 2, 3]))
-        assert np.all(fval == [6, 12, 18]), fval
-
     def test_local_useless_composite(self):
         x = theano.scalar.float32()
         c = theano.scalar.Composite([x], [x + 1, x - 1])
@@ -1584,19 +1403,10 @@ def test_log1p():
 
     f([1e-7, 10], [[0, 0], [0, 0]])  # debugmode will verify values
 
-    if 0:
-        # at one point this worked, but it has been broken since
-        # the constant up-casting made 1 -> 1.0+0.0j
-        # I was never sure if this optimization should work on complex numbers or not.
-        z = tensor.zmatrix()
-        f = function([z], T.log(1 + (z)), mode=m)
-        assert [node.op for node in f.maker.fgraph.toposort()] == [T.log1p]
-
-    if 1:
-        # should work for int
-        z = tensor.imatrix()
-        f = function([z], T.log(1 + (z)), mode=m)
-        assert [node.op for node in f.maker.fgraph.toposort()] == [T.log1p]
+    # should work for int
+    z = tensor.imatrix()
+    f = function([z], T.log(1 + (z)), mode=m)
+    assert [node.op for node in f.maker.fgraph.toposort()] == [T.log1p]
 
 
 def test_log_add():
@@ -4243,31 +4053,6 @@ class test_shapeoptimizer(unittest.TestCase):
         mode = theano.compile.get_default_mode().excluding('ShapeOpt')
         f = theano.function([X], expr, mode=mode)
         print(f([[1, 2], [2, 3]]))
-
-    def test_no_cycle(self):
-        # Optimizing this graph resulted in a cycle, see gh-1549
-        # This test depends on cuda
-        import theano.sandbox.cuda as cuda
-        if not cuda.cuda_available:
-            raise SkipTest("cuda not available")
-        if sys.version_info[:2] < (2, 5):
-            raise SkipTest("Test skipped due to a too old python")
-
-        # This pickle file has undergone manual surgery due to changes
-        # in scan and may or may not run correctly.  It does passes
-        # the test below.
-        pkl_filename = os.path.join(os.path.dirname(theano.__file__),
-                                    'tensor', 'tests', 'shape_opt_cycle.pkl')
-        # Due to incompatibilities between python 2 and 3 in the format
-        # of pickled numpy ndarray, we have to force an encoding
-        from theano.misc.pkl_utils import CompatUnpickler
-        with open(pkl_filename, "rb") as pkl_file:
-            if PY3:
-                u = CompatUnpickler(pkl_file, encoding="latin1")
-            else:
-                u = CompatUnpickler(pkl_file)
-            fn_args = u.load()
-            theano.function(**fn_args)
 
 
 class test_assert(utt.InferShapeTester):

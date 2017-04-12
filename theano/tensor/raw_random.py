@@ -203,8 +203,6 @@ class RandomFunction(gof.Op):
         assert (shape.type.dtype == 'int64') or (shape.type.dtype == 'int32')
         if not isinstance(r.type, RandomStateType):
             print('WARNING: RandomState instances should be in RandomStateType', file=sys.stderr)
-            if 0:
-                raise TypeError('r must be RandomStateType instance', r)
         # the following doesn't work because we want to ignore the
         # broadcastable flags in shape.type
         # assert shape.type == tensor.lvector

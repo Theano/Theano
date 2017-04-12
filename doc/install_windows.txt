@@ -54,8 +54,8 @@ You must reboot the computer after the driver installation.
 Instructions for other Python distributions (not recommended)
 =============================================================
 
-If you plan to use Theano with other Python distributions, these are generic guidelines to get
-a working environment:
+If you plan to use Theano with other Python distributions, these are
+generic guidelines to get a working environment:
 
     * Look for the mandatory requirements in the package manager's repositories of your distribution. Many
       distributions come with ``pip`` package manager which use `PyPI repository <https://pypi.python.org/pypi>`__.

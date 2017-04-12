@@ -16,12 +16,6 @@ from theano.tensor.nnet.conv3d2d import conv3d, get_diagonal_subtensor_view, Dia
 import theano.tests.unittest_tools as utt
 
 
-if theano.config.mode == 'FAST_COMPILE':
-    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
-else:
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
-
-
 def test_get_diagonal_subtensor_view(wrap=lambda a: a):
     x = numpy.arange(20).reshape(5, 4).astype('float32')
     x = wrap(x)
@@ -106,16 +100,15 @@ def check_diagonal_subtensor_view_traces(fn):
 
 @parameterized.expand(('valid', 'full', 'half'), utt.custom_name_func)
 def test_conv3d(border_mode):
-    check_conv3d(border_mode=border_mode,
-                 mode=mode_without_gpu,
-                 shared=theano.tensor._shared)
-
-
-# This function will also be used in theano/sandbox/cuda/tests/test_tensor_op.py,
-# which is not possible if it is decorated by @parameterized.expand
-def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._shared):
     if ndimage is None or not theano.config.cxx:
         raise SkipTest("conv3d2d tests need SciPy and a c++ compiler")
+
+    if theano.config.mode == 'FAST_COMPILE':
+        mode = theano.compile.mode.get_mode('FAST_RUN')
+    else:
+        mode = theano.compile.mode.get_default_mode()
+
+    shared = theano.tensor._shared
 
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
     Nf, Tf, C, Hf, Wf = 32, 5, 3, 5, 5
