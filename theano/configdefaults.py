@@ -1481,7 +1481,7 @@ AddConfigVar('compile.wait',
 AddConfigVar('cycle_detection',
              """If true it disables the cycle detection in graph.
              """,
-             StrParam(['topo', 'fast']),
+             EnumStr('topo', 'fast'),
              in_c_key=False)
 
 
