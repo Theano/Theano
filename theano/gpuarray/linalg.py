@@ -5,7 +5,6 @@ import theano
 import warnings
 
 from theano import Op
-
 from theano.gpuarray import basic_ops, GpuArrayType
 
 import numpy as np
@@ -254,7 +253,7 @@ class GpuCholesky(Op):
             warnings.warn('The GpuSolve op requires scikit-cuda > 0.5.1 to work with CUDA 8')
         if not pygpu_available:
             raise RuntimeError('Missing pygpu or triu/tril functions.'
-                               'Try updating libgpuarray?')
+                               'Install or update libgpuarray.')
         context_name = basic_ops.infer_context_name(inp)
 
         inp = basic_ops.as_gpuarray_variable(inp, context_name)
@@ -262,14 +261,12 @@ class GpuCholesky(Op):
         inp = basic_ops.gpu_contiguous(inp)
 
         # this op can only operate on float32 matrices
+        # because of current implementation of triu/tril.
+        # TODO: support float64 for triu/tril in GpuArray and for GpuCholesky/GpuCusolverSolve in Theano.
         assert inp.ndim == 2
         assert inp.dtype == 'float32'
 
-        return theano.Apply(
-            self, [inp],
-            [GpuArrayType('float32',
-                          broadcastable=inp.broadcastable,
-                          context_name=context_name)()])
+        return theano.Apply(self, [inp], [inp.type()])
 
     def prepare_node(self, node, storage_map, compute_map, impl):
         ctx = node.inputs[0].type.context

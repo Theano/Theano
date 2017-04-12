@@ -593,8 +593,28 @@ def test_local_lift_cholesky():
     f_gpu = theano.function([A], o, mode=mode_with_gpu)
     assert not any(isinstance(n.op, slinalg.Cholesky)
                    for n in f_gpu.maker.fgraph.apply_nodes)
-    assert any(isinstance(n.op, GpuCholesky)
+    # GpuCholesky op in this graph should be inplace (as his input is not reused by other op).
+    assert any(isinstance(n.op, GpuCholesky) and n.op.inplace
                for n in f_gpu.maker.fgraph.apply_nodes)
+    M_val = np.random.normal(size=(3, 3)).astype("float32")
+    # A = M.dot(M) will be positive definite for all non-singular M
+    A_val = M_val.dot(M_val.T)
+    utt.assert_allclose(f_cpu(A_val), f_gpu(A_val))
+
+
+def test_gpu_cholesky_not_inplace():
+    if not cusolver_available:
+        raise SkipTest('No cuSolver')
+    A = tensor.fmatrix()
+    A_squared = A**2
+    B = slinalg.cholesky(A_squared)
+    D = B + A_squared
+    f_cpu = theano.function([A], D, mode=mode_without_gpu)
+    f_gpu = theano.function([A], D, mode=mode_with_gpu)
+    # GpuCholesky op in this graph should NOT be inplace (as his input is reused in another op)
+    count_cholesky_not_inplace = len([n.op for n in f_gpu.maker.fgraph.apply_nodes
+                                      if isinstance(n.op, GpuCholesky) and not n.op.inplace])
+    assert count_cholesky_not_inplace == 1, count_cholesky_not_inplace
     M_val = np.random.normal(size=(3, 3)).astype("float32")
     # A = M.dot(M) will be positive definite for all non-singular M
     A_val = M_val.dot(M_val.T)

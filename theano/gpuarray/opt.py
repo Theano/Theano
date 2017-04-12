@@ -1977,6 +1977,13 @@ def local_gpu_cholesky(op, context_name, inputs, outputs):
         return
     return GpuCholesky(lower=op.lower, inplace=op.destructive)
 
+
+@register_inplace()
+@local_optimizer([GpuCholesky], inplace=True)
+def local_inplace_cholesky(node):
+    if isinstance(node.op, GpuCholesky) and not node.op.inplace:
+        return [GpuCholesky(lower=node.op.lower, inplace=True)(*node.inputs)]
+
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.
 optdb.register('gpua_scanOp_make_inplace',
