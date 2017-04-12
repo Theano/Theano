@@ -133,7 +133,7 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
         initial_W = np.asarray([[0.1, 0.1, 0.1],
                                 [0.1, 0.1, 0.1],
                                 [0.1, 0.1, 0.1]],
-                                  dtype=theano.config.floatX)
+                               dtype=theano.config.floatX)
         W = theano.shared(value=initial_W, name='W')
         vbias = theano.shared(value=0.1, name='vbias')  # 0.01
         hid = T.vector('hid')
