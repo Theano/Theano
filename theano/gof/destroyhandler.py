@@ -663,7 +663,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
     """
     pickle_rm_attr = ["destroyers"]
 
-    def __init__(self, do_imports_on_attach=True):
+    def __init__(self, do_imports_on_attach=True, algo=None):
         self.fgraph = None
         self.do_imports_on_attach = do_imports_on_attach
 
@@ -693,6 +693,9 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
         """
         self.root_destroyer = OrderedDict()
+        if algo is None:
+            algo = config.cycle_detection
+        self.algo = algo
         self.fail_validate = OrderedDict()
 
     def on_attach(self, fgraph):
@@ -826,7 +829,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         # If it's a destructive op, add it to our watch list
         if getattr(app.op, 'destroy_map', {}):
             self.destroyers.add(app)
-            if config.cycle_detection == 'fast':
+            if self.algo == 'fast':
                 self.fast_destroy(app, reason)
 
         # add this symbol to the forward and backward maps
@@ -928,7 +931,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
                     self.view_o.setdefault(new_r, OrderedSet()).add(output)
 
-            if config.cycle_detection == 'fast':
+            if self.algo == 'fast':
                 self.fast_destroy(app, reason)
         self.stale_droot = True
 
@@ -942,7 +945,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
         """
         if self.destroyers:
-            if config.cycle_detection == 'fast':
+            if self.algo == 'fast':
                 if self.fail_validate:
                     err = self.fail_validate
                     self.fail_validate = {}
