@@ -328,7 +328,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         shape = (2, 3, 5, 5)
         images = T.dtensor4()
         images_val = np.arange(np.prod(shape),
-                                  dtype='float32').reshape(shape)
+                               dtype='float32').reshape(shape)
 
         def fn(images):
             return T.sum(T.sqr(images2neibs(images, (2, 2), mode='valid')),
@@ -369,7 +369,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
     def speed_neibs(self):
         shape = (100, 40, 18, 18)
         images = shared(np.arange(np.prod(shape),
-                                     dtype='float32').reshape(shape))
+                                  dtype='float32').reshape(shape))
         neib_shape = T.as_tensor_variable((3, 3))
 
         f = function([], images2neibs(images, neib_shape),
@@ -381,7 +381,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
     def speed_neibs_wrap_centered(self):
         shape = (100, 40, 18, 18)
         images = shared(np.arange(np.prod(shape),
-                                     dtype='float32').reshape(shape))
+                                  dtype='float32').reshape(shape))
         neib_shape = T.as_tensor_variable((3, 3))
 
         f = function([],
