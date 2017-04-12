@@ -43,7 +43,7 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
         permutation = np.random.permutation
         inputIndice = np.vstack(permutation(nInputBlock)[:inputWindowSize]
-                                   for _ in range(batchSize)).astype('int32')
+                                for _ in range(batchSize)).astype('int32')
         outputIndice = np.vstack(
             permutation(nOutputBlock)[:outputWindowSize]
             for _ in range(batchSize)).astype('int32')
@@ -68,9 +68,9 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         y = randn(batchSize, yWindowSize, ySize).astype('float32')
         randint = np.random.randint
         xIdx = np.vstack(randint(0, nInputBlock, size=xWindowSize)
-                            for _ in range(batchSize)).astype('int32')
+                         for _ in range(batchSize)).astype('int32')
         yIdx = np.vstack(randint(0, nOutputBlock, size=yWindowSize)
-                            for _ in range(batchSize)).astype('int32')
+                         for _ in range(batchSize)).astype('int32')
 
         return o, x, y, xIdx, yIdx
 
@@ -118,7 +118,7 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
                     o[xIdx[b, i], yIdx[b, j]] += np.outer(x[b, i, :],
-                                                             y[b, j, :])
+                                                          y[b, j, :])
         return o
 
     def test_sparseblockdot(self):
