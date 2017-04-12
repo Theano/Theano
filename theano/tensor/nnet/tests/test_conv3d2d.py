@@ -75,7 +75,7 @@ def pyconv3d(signals, filters, border_mode='valid'):
     if Tpad > 0 or Hpad > 0 or Wpad > 0:
         # zero-pad signals
         signals_padded = np.zeros((Ns, Ts + 2 * Tpad, C,
-                                      Hs + 2 * Hpad, Ws + 2 * Wpad), 'float32')
+                                   Hs + 2 * Hpad, Ws + 2 * Wpad), 'float32')
         signals_padded[:, Tpad:(Ts + Tpad), :, Hpad:(Hs + Hpad),
                        Wpad:(Ws + Wpad)] = signals
         Ns, Ts, C, Hs, Ws = signals_padded.shape
