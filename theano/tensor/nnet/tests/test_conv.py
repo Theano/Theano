@@ -109,8 +109,8 @@ class TestConv2D(utt.InferShapeTester):
         ref_output.fill(0)
         if border_mode == 'full':
             image_data2 = np.zeros((N_image_shape[0], N_image_shape[1],
-                                      N_image_shape[2] + 2 * N_filter_shape[2] - 2,
-                                      N_image_shape[3] + 2 * N_filter_shape[3] - 2))
+                                   N_image_shape[2] + 2 * N_filter_shape[2] - 2,
+                                   N_image_shape[3] + 2 * N_filter_shape[3] - 2))
             image_data2[
                 :, :, N_filter_shape[2] - 1:N_filter_shape[2] - 1 + N_image_shape[2],
                 N_filter_shape[3] - 1:N_filter_shape[3] - 1 + N_image_shape[3]] = image_data
