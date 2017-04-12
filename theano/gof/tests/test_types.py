@@ -2,9 +2,10 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 
 import theano
-from theano import Op, Apply
+from theano import Op, Apply, scalar
 from theano.tensor import TensorType
-from theano.gof.type import CDataType
+from theano.gof.type import CDataType, EnumType, EnumList, CEnumType
+from unittest import TestCase
 
 from nose.plugins.skip import SkipTest
 
@@ -76,3 +77,165 @@ def test_cdata():
 
     v2 = f(v)
     assert (v2 == v).all()
+
+
+class MyOpEnumList(Op):
+    __props__ = ('op_chosen',)
+    params_type = EnumList('ADD', 'SUB', 'MULTIPLY', 'DIVIDE', ctype='unsigned long long')
+
+    def __init__(self, choose_op):
+        assert self.params_type.ADD == 0
+        assert self.params_type.SUB == 1
+        assert self.params_type.MULTIPLY == 2
+        assert self.params_type.DIVIDE == 3
+        op_to_const = {'+': self.params_type.ADD,
+                       '-': self.params_type.SUB,
+                       '*': self.params_type.MULTIPLY,
+                       '/': self.params_type.DIVIDE}
+        self.op_chosen = op_to_const[choose_op]
+
+    def get_params(self, node):
+        return self.op_chosen
+
+    def make_node(self, a, b):
+        return Apply(self, [scalar.as_scalar(a), scalar.as_scalar(b)], [scalar.float64()])
+
+    def perform(self, node, inputs, outputs, op):
+        a, b = inputs
+        o, = outputs
+        if op == self.params_type.ADD:
+            o[0] = a + b
+        elif op == self.params_type.SUB:
+            o[0] = a - b
+        elif op == self.params_type.MULTIPLY:
+            o[0] = a * b
+        elif op == self.params_type.DIVIDE:
+            if any(dtype in theano.tensor.continuous_dtypes for dtype in (a.dtype, b.dtype)):
+                o[0] = a / b
+            else:
+                o[0] = a // b
+        else:
+            raise NotImplementedError('Unknown op id ' + str(op))
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        return """
+        switch(%(op)s) {
+            case ADD:
+                %(o)s = %(a)s + %(b)s;
+                break;
+            case SUB:
+                %(o)s = %(a)s - %(b)s;
+                break;
+            case MULTIPLY:
+                %(o)s = %(a)s * %(b)s;
+                break;
+            case DIVIDE:
+                %(o)s = %(a)s / %(b)s;
+                break;
+            default:
+                {%(fail)s}
+                break;
+        }
+        """ % dict(op=sub['params'], o=outputs[0], a=inputs[0], b=inputs[1], fail=sub['fail'])
+
+
+class MyOpCEnumType(Op):
+    __props__ = ('ctype_index',)
+    params_type = CEnumType('SIZE_INT', 'SIZE_FLOAT', 'SIZE_LONG_LONG', ctype='size_t')
+
+    # Just for testing, we define our own macros.
+    def c_support_code(self):
+        return """
+        #define SIZE_INT sizeof(int)
+        #define SIZE_FLOAT sizeof(float)
+        #define SIZE_LONG_LONG sizeof(long long)
+        """
+
+    def __init__(self, ctype):
+        # As we see, Python values of constants are not related to real C values
+        # (sizeof(int) will never be 0).
+        assert self.params_type.SIZE_INT == 0
+        assert self.params_type.SIZE_FLOAT == 1
+        assert self.params_type.SIZE_LONG_LONG == 2
+        d = {'int': self.params_type.SIZE_INT,
+             'float': self.params_type.SIZE_FLOAT,
+             'long long': self.params_type.SIZE_LONG_LONG}
+        self.ctype_index = d[ctype]
+
+    def get_params(self, node):
+        return self.ctype_index
+
+    def make_node(self):
+        return Apply(self, [], [scalar.uint32()])
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        return """
+        %(o)s = %(sizeof_ctype)s;
+        """ % dict(o=outputs[0],
+                   # params in C code will already contains expected C constant value.
+                   sizeof_ctype=sub['params'])
+
+
+class TestEnumTypes(TestCase):
+
+    def test_enum_class(self):
+        # Check that invalid enum name raises exception.
+        for invalid_name in ('a', '_A', '0'):
+            try:
+                EnumList(invalid_name)
+            except AttributeError:
+                pass
+            else:
+                raise Exception('EnumList with invalid name should faild.')
+
+            try:
+                EnumType(**{invalid_name: 0})
+            except AttributeError:
+                pass
+            else:
+                raise Exception('EnumType with invalid name should fail.')
+
+        # Check that invalid enum value raises exception.
+        try:
+            EnumType(INVALID_VALUE='string is not allowed.')
+        except ValueError:
+            pass
+        else:
+            raise Exception('EnumType with invalid value should fail.')
+
+        # Check EnumType.
+        e1 = EnumType(C1=True, C2=12, C3=True, C4=-1, C5=False, C6=0.0)
+        e2 = EnumType(C1=1, C2=12, C3=1, C4=-1.0, C5=0.0, C6=0)
+        assert e1 == e2
+        assert not (e1 != e2)
+        assert hash(e1) == hash(e2)
+        # Check access to attributes.
+        assert len((e1.ctype, e1.C1, e1.C2, e1.C3, e1.C4, e1.C5, e1.C6)) == 7
+
+    def test_op_with_enumlist(self):
+        a = scalar.int32()
+        b = scalar.int32()
+        c_add = MyOpEnumList('+')(a, b)
+        c_sub = MyOpEnumList('-')(a, b)
+        c_multiply = MyOpEnumList('*')(a, b)
+        c_divide = MyOpEnumList('/')(a, b)
+        f = theano.function([a, b], [c_add, c_sub, c_multiply, c_divide])
+        va = 12
+        vb = 15
+        ref = [va + vb, va - vb, va * vb, va // vb]
+        out = f(va, vb)
+        assert ref == out, (ref, out)
+
+    def test_op_with_cenumtype(self):
+        sizeof_int = MyOpCEnumType('int')()
+        sizeof_float = MyOpCEnumType('float')()
+        sizeof_long_long = MyOpCEnumType('long long')()
+        f = theano.function([], [sizeof_int, sizeof_float, sizeof_long_long])
+        out = f()
+        print('(sizeof(int): ', out[0], ', sizeof(float): ', out[1], ', sizeof(long long): ', out[2], ') ', sep='')
