@@ -86,8 +86,8 @@ class TestCorr3D(utt.InferShapeTester):
         # REFERENCE IMPLEMENTATION
         # Testing correlation, not convolution. Reverse filters.
         filter_data_corr = np.array(filter_data[:, :, ::-1, ::-1, ::-1],
-                                       copy=True,
-                                       order='C')
+                                    copy=True,
+                                    order='C')
         orig_image_data = image_data
         img_shape3d = np.array(N_image_shape[-3:])
         fil_shape3d = np.array(N_filter_shape[-3:])
@@ -115,9 +115,9 @@ class TestCorr3D(utt.InferShapeTester):
         # loop over output feature maps
         ref_output.fill(0)
         image_data2 = np.zeros((N_image_shape[0], N_image_shape[1],
-                                   N_image_shape[2] + 2 * padHWD[0],
-                                   N_image_shape[3] + 2 * padHWD[1],
-                                   N_image_shape[4] + 2 * padHWD[2]))
+                                N_image_shape[2] + 2 * padHWD[0],
+                                N_image_shape[3] + 2 * padHWD[1],
+                                N_image_shape[4] + 2 * padHWD[2]))
         image_data2[:, :,
                     padHWD[0]:padHWD[0] + N_image_shape[2],
                     padHWD[1]:padHWD[1] + N_image_shape[3],
