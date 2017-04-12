@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from nose.tools import assert_equals
-import numpy
+import numpy as np
 from six import integer_types
 
 import theano
@@ -66,15 +66,15 @@ class TestCorr2D(utt.InferShapeTester):
         theano_corr = theano.function([input, filters], output, mode=self.mode)
 
         # initialize input and compute result
-        image_data = numpy.random.random(N_image_shape).astype(self.dtype)
-        filter_data = numpy.random.random(N_filter_shape).astype(self.dtype)
+        image_data = np.random.random(N_image_shape).astype(self.dtype)
+        filter_data = np.random.random(N_filter_shape).astype(self.dtype)
         if non_contiguous:
-            image_data = numpy.transpose(image_data, axes=(0, 1, 3, 2))
+            image_data = np.transpose(image_data, axes=(0, 1, 3, 2))
             image_data = image_data.copy()
-            image_data = numpy.transpose(image_data, axes=(0, 1, 3, 2))
-            filter_data = numpy.transpose(filter_data, axes=(0, 1, 3, 2))
+            image_data = np.transpose(image_data, axes=(0, 1, 3, 2))
+            filter_data = np.transpose(filter_data, axes=(0, 1, 3, 2))
             filter_data = filter_data.copy()
-            filter_data = numpy.transpose(filter_data, axes=(0, 1, 3, 2))
+            filter_data = np.transpose(filter_data, axes=(0, 1, 3, 2))
             assert not image_data.flags['CONTIGUOUS']
             assert not filter_data.flags['CONTIGUOUS']
 
@@ -82,36 +82,36 @@ class TestCorr2D(utt.InferShapeTester):
 
         # REFERENCE IMPLEMENTATION
         # Testing correlation, not convolution. Reverse filters.
-        filter_data_corr = numpy.array(filter_data[:, :, ::-1, ::-1],
+        filter_data_corr = np.array(filter_data[:, :, ::-1, ::-1],
                                        copy=True,
                                        order='C')
         orig_image_data = image_data
-        img_shape2d = numpy.array(N_image_shape[-2:])
-        fil_shape2d = numpy.array(N_filter_shape[-2:])
-        dil_shape2d = numpy.array(filter_dilation)
+        img_shape2d = np.array(N_image_shape[-2:])
+        fil_shape2d = np.array(N_filter_shape[-2:])
+        dil_shape2d = np.array(filter_dilation)
         dil_fil_shape2d = (fil_shape2d - 1) * dil_shape2d + 1
-        subsample2d = numpy.array(subsample)
+        subsample2d = np.array(subsample)
         if border_mode == 'full':
             padHW = (dil_fil_shape2d - 1)
         elif border_mode == 'valid':
-            padHW = numpy.array([0, 0])
+            padHW = np.array([0, 0])
         elif border_mode == 'half':
-            padHW = numpy.floor(dil_fil_shape2d / 2).astype('int32')
+            padHW = np.floor(dil_fil_shape2d / 2).astype('int32')
         elif isinstance(border_mode, tuple):
-            padHW = numpy.array(border_mode)
+            padHW = np.array(border_mode)
         elif isinstance(border_mode, integer_types):
-            padHW = numpy.array([border_mode, border_mode])
+            padHW = np.array([border_mode, border_mode])
         else:
             raise NotImplementedError('Unsupported border_mode {}'.format(border_mode))
-        out_shape2d = numpy.floor((img_shape2d + 2 * (padHW) - dil_fil_shape2d) / subsample2d) + 1
+        out_shape2d = np.floor((img_shape2d + 2 * (padHW) - dil_fil_shape2d) / subsample2d) + 1
         # avoid numpy deprecation
         out_shape2d = out_shape2d.astype('int32')
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
-        ref_output = numpy.zeros(out_shape)
+        ref_output = np.zeros(out_shape)
 
         # loop over output feature maps
         ref_output.fill(0)
-        image_data2 = numpy.zeros((N_image_shape[0], N_image_shape[1],
+        image_data2 = np.zeros((N_image_shape[0], N_image_shape[1],
                                    N_image_shape[2] + 2 * padHW[0],
                                    N_image_shape[3] + 2 * padHW[1]))
         image_data2[:, :, padHW[0]:padHW[0] + N_image_shape[2],
@@ -265,7 +265,7 @@ class TestCorr2D(utt.InferShapeTester):
         Checks dtype upcast for CorrMM methods.
         """
         def rand(shape, dtype='float64'):
-            r = numpy.asarray(numpy.random.rand(*shape), dtype=dtype)
+            r = np.asarray(np.random.rand(*shape), dtype=dtype)
             return r * 2 - 1
         if not theano.config.cxx:
             raise SkipTest("Need cxx to test conv2d")
@@ -296,7 +296,7 @@ class TestCorr2D(utt.InferShapeTester):
             raise SkipTest("Need cxx for this test")
 
         def rand(*shape):
-            r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
+            r = np.asarray(np.random.rand(*shape), dtype='float64')
             return r * 2 - 1
         corrMM = corr.CorrMM
 
@@ -329,7 +329,7 @@ class TestCorr2D(utt.InferShapeTester):
             raise SkipTest("Need cxx for this test")
 
         def rand(*shape):
-            r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
+            r = np.asarray(np.random.rand(*shape), dtype='float64')
             return r * 2 - 1
         corrMM = corr.CorrMM
         gradW = corr.CorrMM_gradWeights
@@ -369,7 +369,7 @@ class TestCorr2D(utt.InferShapeTester):
             raise SkipTest("Need cxx for this test")
 
         def rand(*shape):
-            r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
+            r = np.asarray(np.random.rand(*shape), dtype='float64')
             return r * 2 - 1
         corrMM = corr.CorrMM
         gradI = corr.CorrMM_gradInputs
