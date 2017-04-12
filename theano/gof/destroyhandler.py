@@ -693,6 +693,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
         """
         self.root_destroyer = OrderedDict()
+        self.fail_validate = OrderedDict()
 
     def on_attach(self, fgraph):
         """
@@ -740,7 +741,6 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         # clients: how many times does an apply use a given variable
         self.clients = OrderedDict()  # variable -> apply -> ninputs
         self.stale_droot = True
-        self.fail_validate = False
 
         self.debug_all_apps = OrderedSet()
         if self.do_imports_on_attach:
@@ -799,7 +799,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
             inp = app.inputs[inp_idx]
             if inp.owner:
                 if len(inp.clients) > 1:
-                    self.fail_validate = theano.gof.InconsistencyError(
+                    self.fail_validate[app] = theano.gof.InconsistencyError(
                         "Destroyed variable has more than one client. " + str(reason))
                 else:
                     app2 = inp.owner
@@ -809,7 +809,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     dv = d + v
                     assert len(dv) <= 1
                     if len(dv) > 0:
-                        self.fail_validate = theano.gof.InconsistencyError(
+                        self.fail_validate[app] = theano.gof.InconsistencyError(
                             "Destroyed variable has destroy_map or view_map. " + str(reason))
 
     def on_import(self, fgraph, app, reason):
@@ -945,9 +945,16 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
             if config.cycle_detection == 'fast':
                 if self.fail_validate:
                     err = self.fail_validate
-                    self.fail_validate = False
-                    for n in fgraph.apply_nodes:
-                        self.fast_destroy(n, 'validate')
+                    self.fail_validate = {}
+                    # self.fail_validate can only be a hint that maybe/probably
+                    # there is a cycle.This is because inside replace() we could
+                    # record many reasons to not accept a change, but we don't
+                    # know which one will fail first inside validate(). Thus,the
+                    # graph might have already changed when we raise the
+                    # self.fail_validate error. So before raising the error, we
+                    # double check here.
+                    for app in self.fail_validate:
+                        self.fast_destroy(app, 'validate')
                     if self.fail_validate:
                         raise err
             else:
