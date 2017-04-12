@@ -131,8 +131,8 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
         # reason as softmax_with_bias don't support correctly some/all
         # broadcasted inputs pattern
         initial_W = np.asarray([[0.1, 0.1, 0.1],
-                                   [0.1, 0.1, 0.1],
-                                   [0.1, 0.1, 0.1]],
+                                [0.1, 0.1, 0.1],
+                                [0.1, 0.1, 0.1]],
                                   dtype=theano.config.floatX)
         W = theano.shared(value=initial_W, name='W')
         vbias = theano.shared(value=0.1, name='vbias')  # 0.01
@@ -197,7 +197,7 @@ class T_LogSoftmax(utt.InferShapeTester):
 
         xv = np.random.randn(6).astype(config.floatX)
         assert np.allclose(f(xv),
-                              np.log(np.exp(xv) / np.exp(xv).sum()))
+                           np.log(np.exp(xv) / np.exp(xv).sum()))
 
     def test_vector_grad(self):
         def f(a):
@@ -1644,7 +1644,7 @@ def test_relu():
     for alpha in scalar(), vector(), matrix():
         # create value for alpha (correct ndim and broadcastable against X)
         A = np.array(rng.randn(*X.shape[::-1][:alpha.ndim][::-1]),
-                        dtype=config.floatX)
+                     dtype=config.floatX)
         y = relu(x, alpha).eval({x: X, alpha: A})
         assert np.allclose(y, np.where(X > 0, X, A * X), rtol=3e-5)
         # test that for alpha of ndarray don't cause upcast.
@@ -1685,7 +1685,7 @@ def test_h_softmax():
         size=(input_size, h_softmax_level1_size)), dtype=floatX)
     W1 = shared(W1)
     b1 = shared(np.asarray(np.zeros((h_softmax_level1_size,)),
-                              dtype=floatX))
+                           dtype=floatX))
 
     # Second level of h_softmax
     W2 = np.asarray(np.random.normal(
@@ -1694,7 +1694,7 @@ def test_h_softmax():
     W2 = shared(W2)
     b2 = shared(
         np.asarray(np.zeros((h_softmax_level1_size,
-                                   h_softmax_level2_size)), dtype=floatX))
+                             h_softmax_level2_size)), dtype=floatX))
 
     #############
     # Build graph
