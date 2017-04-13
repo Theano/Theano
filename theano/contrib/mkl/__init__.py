@@ -6,17 +6,15 @@ import logging
 import textwrap
 import stat
 import shutil
-import theano
-from theano import config, gof
-from theano.gof.cmodule import Compiler, get_lib_extension, GCC_compiler
-from theano.sandbox.mkl.mkl_helper import header_text
-from theano.gof.compilelock import get_lock, release_lock
 
+from theano import config, gof, function, Mode
 from theano.gof import EquilibriumDB, SequenceDB
-
+from theano.gof.cmodule import Compiler, get_lib_extension, GCC_compiler
+from theano.gof.compilelock import get_lock, release_lock
 from theano.tensor.blas import ldflags
+from theano.contrib.mkl.mkl_helper import header_text
 
-_logger_name = 'theano.sandbox.mkl'
+_logger_name = 'theano.contrib.mkl'
 _logger = logging.getLogger(_logger_name)
 
 
@@ -80,11 +78,12 @@ def mkl_version():
     """
     if mkl_version.v is None:
         try:
-            f = theano.function([], MKLVersion()(),
-                                theano.Mode(optimizer=None),
-                                profile=False)
+            f = function([], MKLVersion()(),
+                         Mode(optimizer=None),
+                         profile=False)
             mkl_version.v = f()
-        except:
+        except Exception as e:
+            _logger.error('Fail to get mkl version due to: %s', str(e))
             mkl_version.v = 0
     return mkl_version.v
 
@@ -123,12 +122,14 @@ def _dnn_is_able_to_link():
 
         compilation_ok, run_ok, out, err = Compiler._try_flags(
             flag_list=params, preambule=preambule, body=body,
-            try_run=True, output=True, compiler=theano.config.cxx,
+            try_run=True, output=True, compiler=config.cxx,
             comp_args=False)
 
-        mkl_available.msg = (
-            "Can not compile with MKL. We got this error: " +
-            str(err))
+        if not (compilation_ok and run_ok):
+            mkl_available.msg = (
+                "Can not compile with MKL. We got this error: " +
+                str(err))
+
         _dnn_is_able_to_link.status = run_ok
 
     return _dnn_is_able_to_link.status
@@ -138,9 +139,14 @@ _dnn_is_able_to_link.status = None
 
 def _dnn_is_enabled_by_user():
     if config.device != "cpu":
-        mkl_available.msg = "MKL is disabled since device is not CPU. " \
-                            "Set the device to 'CPU' if you want to use MKL."
-        return False
+        if config.mkl.nn.enabled == "True":
+            raise RuntimeError("You're trying to use MKL, but the divice is "
+                               "not CPU. Either change device to CPU or "
+                               "disable MKL.")
+        else:
+            mkl_available.msg = "MKL is disabled since device is not CPU. " \
+                                "Set the device to 'CPU' if you want to use MKL."
+            return False
 
     if config.mkl.lib != "mkl":
         raise NotImplementedError("MKL lib only supports 'mkl' currently, "
@@ -245,10 +251,6 @@ if mkl_available():
                 if getattr(e, 'errno', None) != errno.EEXIST or not ok():
                     raise
 
-
-# register name of 'mkl_opt' in opt.py and then add tags for it.
-try:
-    from . import opt
-    opt.optdb.add_tags('mkl_opt', 'fast_compile', 'fast_run')
-except:
-    pass
+    # Note: will remove comments when opt.py was submitted.
+    # from . import opt
+    # opt.optdb.add_tags('mkl_opt', 'fast_compile', 'fast_run')

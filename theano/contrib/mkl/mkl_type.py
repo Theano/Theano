@@ -1,10 +1,11 @@
 from __future__ import absolute_import, print_function, division
 import os
+from six import StringIO
 import numpy
+
 import theano
 from theano import Type, Variable
 from theano import tensor
-from six import StringIO
 
 try:
     import mkl_ndarray

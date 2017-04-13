@@ -128,9 +128,10 @@ else:
 
 if config.device.startswith('cpu'):
     try:
-        import theano.sandbox.mkl
-    except Exception as e:
-        pass
+        import theano.contrib.mkl
+    except (TypeError, NotImplementedError, RuntimeError) as e:
+        theano_logger.warning("Failed to import mkl module due to: %s" % str(e))
+
 
 if (config.device.startswith('cuda') or
         config.device.startswith('opencl') or

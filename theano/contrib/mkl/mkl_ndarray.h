@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "mkl_dnn.h"
+#include "theano_mod_helper.h"
 
 #ifndef SIZE_MAX
 #define SIZE_MAX ((size_t)(-1))
@@ -66,21 +67,21 @@ typedef struct __MKLNdarray__{
 }MKLNdarray;
 
 
-__attribute__((visibility ("default"))) int MKLNdarray_Check(const PyObject* ob);
-__attribute__((visibility ("default"))) PyObject* MKLNdarray_New(int nd, int typenum);
-__attribute__((visibility ("default"))) int MKLNdarray_CopyFromArray(MKLNdarray* self, PyArrayObject* obj);
-__attribute__((visibility ("default"))) int MKLNdarray_set_structure(MKLNdarray* self, int nd, const size_t* dims);
-__attribute__((visibility ("default"))) PyObject* MKLNdarray_CreateArrayObj(MKLNdarray* self);
+MOD_PUBLIC int MKLNdarray_Check(const PyObject* ob);
+MOD_PUBLIC PyObject* MKLNdarray_New(int nd, int typenum);
+MOD_PUBLIC int MKLNdarray_CopyFromArray(MKLNdarray* self, PyArrayObject* obj);
+MOD_PUBLIC int MKLNdarray_set_structure(MKLNdarray* self, int nd, const size_t* dims);
+MOD_PUBLIC PyObject* MKLNdarray_CreateArrayObj(MKLNdarray* self);
 
-__attribute__((visibility ("default"))) void* MKLNdarray_DATA(const MKLNdarray* self);
-__attribute__((visibility ("default"))) void* MKLNdarray_WORKSPACE(const MKLNdarray* self);
-__attribute__((visibility ("default"))) dnnLayout_t MKLNdarray_LAYOUT(const MKLNdarray* self);
-__attribute__((visibility ("default"))) const size_t* MKLNdarray_DIMS(const MKLNdarray* self);
-__attribute__((visibility ("default"))) const size_t* MKLNdarray_STRIDES(const MKLNdarray* self);
-__attribute__((visibility ("default"))) int MKLNdarray_NDIM(const MKLNdarray* self);
-__attribute__((visibility ("default"))) int MKLNdarray_TYPE(const MKLNdarray* self);
+MOD_PUBLIC void* MKLNdarray_DATA(const MKLNdarray* self);
+MOD_PUBLIC void* MKLNdarray_WORKSPACE(const MKLNdarray* self);
+MOD_PUBLIC dnnLayout_t MKLNdarray_LAYOUT(const MKLNdarray* self);
+MOD_PUBLIC const size_t* MKLNdarray_DIMS(const MKLNdarray* self);
+MOD_PUBLIC const size_t* MKLNdarray_STRIDES(const MKLNdarray* self);
+MOD_PUBLIC int MKLNdarray_NDIM(const MKLNdarray* self);
+MOD_PUBLIC int MKLNdarray_TYPE(const MKLNdarray* self);
 
-__attribute__((visibility ("default"))) int MKLNdarray_create_buffer_from_primitive(MKLNdarray *self,
-                                                                                    const dnnPrimitive_t *prim,
-                                                                                    dnnResourceType_t res_type);
+MOD_PUBLIC int MKLNdarray_create_buffer_from_primitive(MKLNdarray *self,
+                                                       const dnnPrimitive_t *prim,
+                                                       dnnResourceType_t res_type);
 #endif
