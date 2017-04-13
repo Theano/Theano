@@ -491,33 +491,6 @@ AddConfigVar(
     EnumStr('warn', 'raise', 'pdb', 'ignore'),
     in_c_key=False)
 
-
-def safe_no_home(home):
-    """
-    Make sure the user is not attempting to use `config.home`.
-
-    This config option was removed in Thenao 0.5 since it was redundant with
-    `config.base_compiledir`. This filter function ensures people who were
-    setting the location of their compilation directory through `config.home`
-    switch to `config.basecompiledir` instead, by raising an error when
-    `config.home` is used.
-    """
-    if home:
-        raise RuntimeError(
-            'The `config.home` option has been removed and should not be '
-            'used anymore. Please set the `config.base_compiledir` option '
-            'instead (for instance to: %s)' %
-            os.path.join(home, '.theano'))
-    return True
-
-
-AddConfigVar(
-    'home',
-    "This config option was removed in 0.5: do not use it!",
-    ConfigParam('', allow_override=False, filter=safe_no_home),
-    in_c_key=False)
-
-
 AddConfigVar(
     'nocleanup',
     "Suppress the deletion of code files that did not compile cleanly",
@@ -1708,12 +1681,21 @@ def default_compiledir():
 AddConfigVar(
     'compiledir',
     "platform-dependent cache directory for compiled modules",
-
     ConfigParam(
         default_compiledir,
         filter=filter_compiledir,
         allow_override=False),
     in_c_key=False)
+
+AddConfigVar(
+    'gpuarray.cache_path',
+    'Directory to cache pre-compiled kernels for the gpuarray backend.',
+    ConfigParam(
+        lambda: os.path.join(config.compiledir, 'gpuarray_kernels'),
+        filter=filter_base_compiledir,
+        allow_override=False),
+    in_c_key=False)
+
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
 for key in THEANO_FLAGS_DICT.keys():
