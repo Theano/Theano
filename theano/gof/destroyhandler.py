@@ -947,8 +947,8 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         if self.destroyers:
             if self.algo == 'fast':
                 if self.fail_validate:
-                    err = self.fail_validate
-                    self.fail_validate = {}
+                    app_err_pairs = self.fail_validate
+                    self.fail_validate = OrderedDict()
                     # self.fail_validate can only be a hint that maybe/probably
                     # there is a cycle.This is because inside replace() we could
                     # record many reasons to not accept a change, but we don't
@@ -956,9 +956,10 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     # graph might have already changed when we raise the
                     # self.fail_validate error. So before raising the error, we
                     # double check here.
-                    for app in self.fail_validate:
+                    for app in app_err_pairs:
                         self.fast_destroy(app, 'validate')
                     if self.fail_validate:
+                        err = app_err_pairs.values()[0]
                         raise err
             else:
                 ords = self.orderings(fgraph)
