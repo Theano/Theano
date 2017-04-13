@@ -925,6 +925,9 @@ class EnumType(Type, dict):
                 if not isinstance(alias, str):
                     raise TypeError('%s: constant alias should be a string, got "%s".'
                                     % (type(self).__name__, alias))
+                if alias == k:
+                    raise TypeError("%s: it's useless to create an alias "
+                                    "with the same name as its associated constant." % type(self).__name__)
                 if alias in self.aliases:
                     raise TypeError('%s: consant alias "%s" already used.' % (type(self).__name__, alias))
                 self.aliases[alias] = k
@@ -934,6 +937,8 @@ class EnumType(Type, dict):
             elif not isinstance(kwargs[k], (int, float)):
                 raise TypeError('%s: constant "%s": expected integer or floating value, got "%s".'
                                 % (type(self).__name__, k, type(kwargs[k]).__name__))
+        if [a for a in self.aliases if a in self]:
+            raise TypeError("%s: some aliases have same names as constants." % type(self).__name__)
         super(EnumType, self).__init__(**kwargs)
 
     def fromalias(self, alias):

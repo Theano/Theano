@@ -238,7 +238,7 @@ class ParamsType(Type):
         self.length = len(kwargs)
         self.fields = tuple(sorted(kwargs.keys()))
         self.types = tuple(kwargs[field] for field in self.fields)
-        self.name = self.__generate_struct_name()
+        self.name = self.generate_struct_name()
 
         self.__const_to_enum = {}
         self.__alias_to_enum = {}
@@ -246,10 +246,15 @@ class ParamsType(Type):
         if enum_types:
             # We don't want same enum names in different enum types.
             if sum(len(t) for t in enum_types) != len(set(k for t in enum_types for k in t)):
-                raise AttributeError('ParamsType: found different enum types with common constant names.')
+                raise AttributeError('ParamsType: found different enum types with common constants names.')
             # We don't want same aliases in different enum types.
             if sum(len(t.aliases) for t in enum_types) != len(set(alias for t in enum_types for alias in t.aliases)):
-                raise AttributeError('ParamsType: found different enum types with common constant aliases.')
+                raise AttributeError('ParamsType: found different enum types with common constants aliases.')
+            # We don't want aliases that have same names as some constants.
+            all_enums = {e for t in enum_types for e in t}
+            all_aliases = {a for t in enum_types for a in t.aliases}
+            if [a for a in all_aliases if a in all_enums]:
+                raise AttributeError('ParamsType: found aliases that have same names as constants.')
             # We map each enum name to the enum type in which it is defined.
             # We will then use this dict to find enum value when looking for enum name in Wrapper object directly.
             self.__const_to_enum = {enum_name: enum_type for enum_type in enum_types for enum_name in enum_type}
@@ -270,7 +275,7 @@ class ParamsType(Type):
     def __hash__(self):
         return hash((type(self),) + self.fields + self.types)
 
-    def __generate_struct_name(self):
+    def generate_struct_name(self):
         # This method tries to generate an unique name for the current instance.
         # This name is intended to be used as struct name in C code and as constant
         # definition to check if a similar ParamsType has already been created
@@ -396,7 +401,7 @@ class ParamsType(Type):
             value_for_c = False
 
             # Value for c can't be retrieved from o, so we add a value for that field in kwargs.
-            params1 = params_type.get_params(o, c=value_for_c)
+            params = params_type.get_params(o, c=value_for_c)
             # params.a contains 10
             # params.b contains [[1, 2, 3], [4, 5, 6]]
             # params.c contains value_for_c
@@ -519,7 +524,6 @@ class ParamsType(Type):
         struct_name = self.name
         struct_name_defined = struct_name.upper()
         c_support_code_set = set()
-        c_support_code_list = []
         c_declare_list = []
         c_init_list = []
         c_cleanup_list = []
@@ -527,10 +531,7 @@ class ParamsType(Type):
         for attribute_name, type_instance in zip(self.fields, self.types):
 
             try:
-                c_support_code_current = type_instance.c_support_code()
-                if c_support_code_current not in c_support_code_set:
-                    c_support_code_list.append(c_support_code_current)
-                    c_support_code_set.add(c_support_code_current)
+                c_support_code_set.add(type_instance.c_support_code())
             except MethodNotDefined:
                 pass
 
@@ -549,7 +550,7 @@ class ParamsType(Type):
                 'extract_code': type_instance.c_extract(attribute_name, sub)
             })
 
-        support_code = '\n'.join(c_support_code_list)
+        support_code = '\n'.join(sorted(list(c_support_code_set)))
         struct_declare = '\n'.join(c_declare_list)
         struct_init = '\n'.join(c_init_list)
         struct_cleanup = '\n'.join(c_cleanup_list)

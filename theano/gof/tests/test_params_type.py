@@ -214,13 +214,21 @@ class TestParamsType(TestCase):
         assert w.values_eq_approx(o1, o3)
 
     def test_params_type_with_enums(self):
-        # Test that we fail if we create a wrapper with common enum names inside different enum types.
+        # Test that we fail if we create a params type with common enum names inside different enum types.
         try:
-            w = ParamsType(enum1=EnumList('A', 'B', 'C'), enum2=EnumList('A', 'B', 'F'))
+            ParamsType(enum1=EnumList('A', 'B', 'C'), enum2=EnumList('A', 'B', 'F'))
         except AttributeError:
             pass
         else:
             raise Exception('ParamsType should fail with common enum names inside different enum types.')
+
+        # Test that we fail if we create a params type with common names in both aliases and constants.
+        try:
+            ParamsType(enum1=EnumList(('A', 'a'), ('B', 'b')), enum2=EnumList(('ONE', 'a'), ('TWO', 'two')))
+        except AttributeError:
+            ParamsType(enum1=EnumList(('A', 'a'), ('B', 'b')), enum2=EnumList(('ONE', 'one'), ('TWO', 'two')))
+        else:
+            raise Exception('ParamsType should fail when there are aliases with same names as some constants.')
 
         # Test that we can access enum values through wrapper directly.
         w = ParamsType(enum1=EnumList('A', ('B', 'beta'), 'C'), enum2=EnumList(('D', 'delta'), 'E', 'F'))

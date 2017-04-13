@@ -228,6 +228,14 @@ class TestEnumTypes(TestCase):
         assert e1.filter('beta') == e1.fromalias('beta') == e1.B == 1
         assert e1.filter('C') == e1.fromalias('C') == e1.C == 2
 
+        # Check that invalid alias (same as a constant) raises exception.
+        try:
+            EnumList(('A', 'a'), ('B', 'B'))
+        except TypeError:
+            EnumList(('A', 'a'), ('B', 'b'))
+        else:
+            raise Exception('Enum with an alias name equal to a constant name should fail.')
+
     def test_op_with_enumlist(self):
         a = scalar.int32()
         b = scalar.int32()
