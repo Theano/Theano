@@ -3,13 +3,11 @@ import sys
 import unittest
 
 from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises
 import numpy as np
 from six import reraise
 
 from theano import config
 from theano import gof
-from theano.gof.link import raise_with_op
 import theano
 from theano.compat import exc_message
 from theano.compile import debugmode
@@ -258,6 +256,7 @@ def test_badoptimization_opt_err():
                                                         inputs[-1]))
                 return [node.op(*inputs)]
         return False
+
     @gof.local_optimizer([theano.tensor.add])
     def insert_bad_dtype(node):
         if node.op == theano.tensor.add:
@@ -296,7 +295,7 @@ def test_badoptimization_opt_err():
         assert 'insert_bad_dtype' in str(e)
         # Test that we can reraise the error with an extended message
         try:
-            new_e = e.__class__("TTT"+str(e))
+            new_e = e.__class__("TTT" + str(e))
             exc_type, exc_value, exc_trace = sys.exc_info()
             exc_value = new_e
             reraise(e.__class__, exc_value, exc_trace)
