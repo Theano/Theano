@@ -16,7 +16,7 @@ from theano.gof.utils import MethodNotDefined
 
 from collections import deque
 
-from six import string_types, iterbytes
+from six import string_types
 from six.moves import xrange
 from six import iteritems
 
@@ -316,14 +316,6 @@ class GpuKernelBase(object):
         # We rely on the input types for the directory to gpuarray includes
         return o + [np.get_include()]
 
-    def _generate_kernel_bin(self, k, ctx):
-        gk = gpuarray.GpuKernel(k.code, k.name, k.params, context=ctx,
-                                **k._get_py_flags())
-        bin = gk._binary
-        bcode = ','.join(hex(c) for c in iterbytes(bin))
-        return ("""static const char %(bname)s[] = { %(bcode)s };""" %
-                dict(bname=k.binvar, bcode=bcode))
-
     def _generate_kernel_code(self, k):
         code = '\\n'.join(l for l in k.code.split('\n'))
         code = code.replace('"', '\\"')
@@ -375,10 +367,8 @@ int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
 
     def c_support_code_apply(self, node, name):
         kernels = self.gpu_kernels(node, name)
-        ctx = self.get_params(node)
-        bins = '\n'.join(self._generate_kernel_bin(k, ctx) for k in kernels)
         codes = '\n'.join(self._generate_kernel_code(k) for k in kernels)
-        return '\n'.join([bins, codes])
+        return codes
 
     def c_support_code_struct(self, node, name):
         kernels = self.gpu_kernels(node, name)
@@ -393,20 +383,14 @@ int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
         return """{
   int err;
   int types[%(numargs)u] = {%(types)s};
-  const char *bcode = %(bvar)s;
-  size_t sz = sizeof(%(bvar)s);
-  if (GpuKernel_init(&%(ovar)s, %(ctx)s->ctx, 1, &bcode, &sz,
-                     "%(kname)s", %(numargs)u, types, GA_USE_BINARY, NULL)
-      != GA_NO_ERROR) {
-    if ((err = GpuKernel_init(&%(ovar)s, %(ctx)s->ctx, 1,
-                              &%(cname)s, NULL, "%(kname)s", %(numargs)u,
-                              types, %(flags)s, NULL)) != GA_NO_ERROR) {
-      PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
-                   err, gpucontext_error(%(ctx)s->ctx, err));
-      %(fail)s
-    }
+  if ((err = GpuKernel_init(&%(ovar)s, %(ctx)s->ctx, 1,
+                            &%(cname)s, NULL, "%(kname)s", %(numargs)u,
+                            types, %(flags)s, NULL)) != GA_NO_ERROR) {
+    PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
+                 err, gpucontext_error(%(ctx)s->ctx, err));
+    %(fail)s
   }
-}""" % dict(numargs=len(k.params), types=k._get_c_types(), bvar=k.binvar,
+}""" % dict(numargs=len(k.params), types=k._get_c_types(),
             ovar=k.objvar, kname=k.name, cname=k.codevar,
             flags=k._get_c_flags(), fail=fail, ctx=ctx)
 
@@ -432,7 +416,7 @@ int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
         v = self.c_code_cache_version()
         if not v:
             return ()
-        return (self.c_code_cache_version(), self.kernel_version(node))
+        return (v, self.kernel_version(node))
 
     def kernel_version(self, node):
         """
@@ -446,7 +430,7 @@ int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
             The node that we need the cache version for.
 
         """
-        return (7, self.get_params(node).bin_id)
+        return (8, self.get_params(node).bin_id)
 
 
 def forward_string_meth(name):
