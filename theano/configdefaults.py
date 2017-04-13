@@ -323,23 +323,32 @@ def get_cuda_root():
     return ''
 
 
-def default_dnn_path(suffix):
-    def f(suffix=suffix):
-        cuda_root = get_cuda_root()
-        if cuda_root == '':
-            return ''
-        return os.path.join(cuda_root, suffix)
-    return f
+def default_dnn_include_path():
+    cuda_root = get_cuda_root()
+    if cuda_root == '':
+        return ''
+    return os.path.join(cuda_root, 'include')
+
+
+def default_dnn_library_path():
+    cuda_root = get_cuda_root()
+    if cuda_root == '':
+        return ''
+    if sys.platform == 'darwin':
+        return os.path.join(cuda_root, 'lib')
+    if sys.platform == 'win32':
+        return os.path.join(cuda_root, 'lib', 'x64')
+    return os.path.join(cuda_root, 'lib64')
 
 AddConfigVar('dnn.include_path',
              "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(default_dnn_path('include')),
+             StrParam(default_dnn_include_path()),
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
 
 AddConfigVar('dnn.library_path',
-             "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(default_dnn_path('lib' if sys.platform == 'darwin' else 'lib64')),
+             "Location of the cudnn library (defaults to the cuda root)",
+             StrParam(default_dnn_library_path()),
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
 
