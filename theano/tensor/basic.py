@@ -2168,27 +2168,66 @@ def sqr(a):
 square = sqr
 
 
-def cov(a):
+def cov(X, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=None):
     """Calculate the covariance matrix.
     Covariance indicates the level to which two variables vary together.
     If we examine N-dimensional samples, :math:`X = [x_1, x_2, ... x_N]^T`,
     then the covariance matrix element :math:`C_{ij}` is the covariance of
     :math:`x_i` and :math:`x_j`. The element :math:`C_{ii}` is the variance
-    of :math:`x_i`.
+    of :math:`x_i`. Code and docstring ported from numpy.
     ----------
     a : array_like
         A 2-D array containing multiple variables and observations.
-        Each row of `a` represents a variable, and each column is 
-        observations of all those variables. 
-        
+        Each row of `a` represents a variable, and each column is
+        observations of all those variables.
+    y : array_like, optional
+        An additional set of variables and observations. `y` has the same form
+        as that of `m`.
+    rowvar : bool, optional
+        If `rowvar` is True (default), then each row represents a
+        variable, with observations in the columns. Otherwise, the relationship
+        is transposed: each column represents a variable, while the rows
+        contain observations.
+    bias : bool, optional
+        Default normalization (False) is by ``(N - 1)``, where ``N`` is the
+        number of observations given (unbiased estimate). If `bias` is True, then
+        normalization is by ``N``. These values can be overridden by using the
+        keyword ``ddof``.
+    ddof : int, optional
+        If not ``None`` the default value implied by `bias` is overridden.
+        The default value is ``None``.
     Returns
     -------
     out : The covariance matrix of the variables.
     """
-        
-    a -= a.mean(axis=1, keepdims=1)
-    c = a.dot(a.T)
-    return c/(a.shape[1]-1)
+
+    if fweights is not None:
+        raise NotImplementedError('fweights are not implemented')
+    if aweights is not None:
+        raise NotImplementedError('aweights are not implemented')
+
+    if not rowvar and X.shape[0] != 1:
+        X = X.T
+
+    if y is not None:
+        if not rowvar and y.shape[0] != 1:
+            y = y.T
+        X = theano.tensor.concatenate((X, y), axis=0)
+
+    if ddof is None:
+        if not bias:
+            ddof = 1
+        else:
+            ddof = 0
+
+    # Determine the normalization
+    fact = X.shape[1] - ddof
+
+    X -= X.mean(axis=1, keepdims=1)
+    c = X.dot(X.T)
+    c *= theano.tensor.constant(1) / fact
+    return c.squeeze()
+
 
 @_scal_elemwise
 def sqrt(a):
