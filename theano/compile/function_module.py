@@ -1475,7 +1475,8 @@ class FunctionMaker(object):
                     optimizer_profile = self.optimize_graph_with_cache(
                         optimizer, inputs, outputs)
                 else:
-                    optimizer_profile = optimizer(fgraph)
+                    with theano.configparser.change_flags(compute_test_value="off"):
+                        optimizer_profile = optimizer(fgraph)
 
                 end_optimizer = time.time()
                 opt_time = end_optimizer - start_optimizer
