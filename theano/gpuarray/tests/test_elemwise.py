@@ -45,13 +45,14 @@ def test_elemwise_pow():
 
             base = theano.tensor.vector(dtype=dtype_base)
             exp = gpuarray_shared_constructor(exp_val)
+            assert exp.dtype == dtype_exp
             output = base ** exp
             f = theano.function([base], output, mode=mode_with_gpu)
             theano.printing.debugprint(f)
             # We don't transfer to the GPU when the output dtype is int*
             n = len([n for n in f.maker.fgraph.apply_nodes
                      if isinstance(n.op, GpuElemwise)])
-            assert n == int("float" in output.dtype)
+            assert n == (output.dtype in tensor.float_dtypes)
 
             # Call the function to make sure the output is valid
             out = f(base_val)
