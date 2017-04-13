@@ -1583,9 +1583,7 @@ class GpuEye(GpuKernelBase, Op):
                              broadcastable=(False, False),
                              context_name=self.context_name)
 
-        # k != 0 isn't implemented on the GPU yet.
-        assert tensor.get_scalar_constant_value(k) == 0
-        return Apply(self, [n, m], [otype()])
+        return Apply(self, [n, m, k], [otype()])
 
     def infer_shape(self, node, in_shapes):
         out_shape = [node.inputs[0], node.inputs[1]]
@@ -1597,21 +1595,28 @@ class GpuEye(GpuKernelBase, Op):
 
     def gpu_kernels(self, node, name):
         code = """
-KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
-    ga_size nb = n < m ? n : m;
+KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m, ga_ssize k) {
+    ga_ssize coff = max(k, (ga_ssize) 0);
+    ga_ssize roff = -min(k, (ga_ssize) 0);
+    ga_size nb = (ga_size) min(n - roff, m - coff);
     for (ga_size i = LID_0; i < nb; i += LDIM_0) {
-        a[i*m + i] = %(write_a)s(1);
+        a[(i + roff)*m + i + coff] = %(write_a)s(1);
     }
 }""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype),
             name=name, write_a=write_w(self.dtype))
         return [Kernel(
                 code=code, name="eye",
-                params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
+                params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE, gpuarray.SSIZE],
                 flags=Kernel.get_flags(self.dtype),
                 objvar='k_eye_' + name)]
 
     def c_code(self, node, name, inp, out, sub):
-        n, m = inp
+        if len(inp) == 2:
+            n, m = inp
+            k = 0
+        elif len(inp) == 3:
+            n, m, k = inp
+
         z, = out
         fail = sub['fail']
         ctx = sub['params']
@@ -1621,10 +1626,15 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         s = """
         size_t dims[2] = {0, 0};
         size_t ls, gs;
+        ssize_t k;
+        size_t col_off;
+        size_t row_off;
         int err;
 
         dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
         dims[1] = ((dtype_%(m)s*)PyArray_DATA(%(m)s))[0];
+        k = ((dtype_%(k)s*)PyArray_DATA(%(k)s))[0];
+
         Py_CLEAR(%(z)s);
 
         %(z)s = pygpu_zeros(2, dims,
@@ -1637,13 +1647,17 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
 
         ls = 1;
         gs = 256;
-        err = eye_call(1, &gs, &ls, 0, %(z)s->ga.data, dims[0], dims[1]);
-        if (err != GA_NO_ERROR) {
-            PyErr_Format(PyExc_RuntimeError,
-                         "gpuarray error: kEye: %%s. n%%lu, m=%%lu.",
-                         GpuKernel_error(&%(kname)s, err),
-                         (unsigned long)dims[0], (unsigned long)dims[1]);
-            %(fail)s;
+        col_off = (size_t) (k > 0?k:0);
+        row_off = (size_t) (k < 0?-k:0);
+        if (row_off < dims[0] && col_off < dims[1]) {
+            err = eye_call(1, &gs, &ls, 0, %(z)s->ga.data, dims[0], dims[1], k);
+            if (err != GA_NO_ERROR) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "gpuarray error: kEye: %%s. n%%lu, m=%%lu.",
+                             GpuKernel_error(&%(kname)s, err),
+                             (unsigned long)dims[0], (unsigned long)dims[1]);
+                %(fail)s;
+            }
         }
 
         if(%(sync)d)
@@ -1653,4 +1667,4 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         return s
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
