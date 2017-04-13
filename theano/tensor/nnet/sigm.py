@@ -997,7 +997,7 @@ def local_1msigmoid(node):
         if sub_r.owner and sub_r.owner.op == sigmoid:
             try:
                 val_l = opt.get_scalar_constant_value(sub_l)
-            except Exception:
+            except tensor.NotScalarConstantError:
                 return
             if np.allclose(np.sum(val_l), 1):
                 out = sigmoid(-sub_r.owner.inputs[0])

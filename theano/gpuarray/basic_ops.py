@@ -319,7 +319,9 @@ class GpuKernelBase(object):
     def _generate_kernel_code(self, k):
         code = '\\n'.join(l for l in k.code.split('\n'))
         code = code.replace('"', '\\"')
-        return ("""static const char *%(cname)s = "%(code)s";""" %
+        return ("""static const char *%(cname)s_unsigned = "%(code)s";
+                static const char *%(cname)s = (char *)%(cname)s_unsigned;
+                """ %
                 dict(cname=k.codevar, code=code))
 
     def _generate_kernel_vars(self, k):

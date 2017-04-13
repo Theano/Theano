@@ -398,9 +398,6 @@ class GpuArrayType(Type):
         return pygpu.gpuarray.zeros(shape, dtype=self.typecode,
                                     context=self.context)
 
-    def make_variable(self, name=None):
-        return self.Variable(self, name=name)
-
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.typecode == other.typecode and
