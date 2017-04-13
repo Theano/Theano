@@ -41,7 +41,8 @@ class BadOptimization(Exception):
     Exception: some variable and its substitute take different runtime values.
 
     Note: If there is only 1 parameter and it is a string, we will use
-    it as the error message.
+    it as the error message. This is needed when we catch, extend and
+    reraise an error.
 
     """
 
@@ -103,6 +104,8 @@ class BadOptimization(Exception):
         self.reason = reason
         self.old_graph = old_graph
         self.new_graph = new_graph
+
+        # To allow extending the error message of an existing error.
         self.full_err = None
         if isinstance(old_r, str):
             assert (new_r is None and old_r_val is None and new_r_val is None and
@@ -110,8 +113,6 @@ class BadOptimization(Exception):
             self.full_err = old_r
 
     def __str__(self):
-        if getattr(self, 'full_err', None) is not None:
-            return self.full_err
         return self.str_diagnostic()
 
     def str_diagnostic(self):
@@ -120,6 +121,9 @@ class BadOptimization(Exception):
         of the exception.
 
         """
+        # We have a pre-made message
+        if getattr(self, 'full_err', None) is not None:
+            return self.full_err
         sio = StringIO()
         val_str_len_limit = 800
         print("BadOptimization Error", super(BadOptimization,

@@ -482,7 +482,8 @@ class FunctionGraph(utils.object2):
                     print_type=True,
                     used_ids=used_ids).getvalue()
                 raise toolbox.BadOptimization(
-                    r, new_r, None, None, reason, old, new)
+                    r, new_r, None, None, str(reason) +
+                    ". The type of the replacement must be the same.", old, new)
             new_r = new_r2
         if r not in self.variables:
             # this variable isn't in the graph... don't raise an
