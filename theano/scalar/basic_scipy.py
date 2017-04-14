@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 # Definitions of theano.scalar ops that have their python implementation taken
 # from SciPy. As SciPy is not always available, we treat them separately.
 
-import numpy
+import numpy as np
 
 import theano
 from theano.gradient import grad_not_implemented
@@ -43,7 +43,7 @@ class Erf(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
+        cst = np.asarray(2. / np.sqrt(np.pi),
                             dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * cst * exp(-x * x),
 
@@ -74,7 +74,7 @@ class Erfc(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
+        cst = np.asarray(2. / np.sqrt(np.pi),
                             dtype=upcast(x.type.dtype, gz.type.dtype))
         return - gz * cst * exp(-x * x),
 
@@ -120,7 +120,7 @@ class Erfcx(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
+        cst = np.asarray(2. / np.sqrt(np.pi),
                             dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * (-cst + (2. * x) * erfcx(x)),
 
@@ -155,7 +155,7 @@ class Erfinv(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
+        cst = np.asarray(np.sqrt(np.pi) / 2.,
                             dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * cst * exp(erfinv(x) ** 2),
 
@@ -188,7 +188,7 @@ class Erfcinv(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
+        cst = np.asarray(np.sqrt(np.pi) / 2.,
                             dtype=upcast(x.type.dtype, gz.type.dtype))
         return - gz * cst * exp(erfcinv(x) ** 2),
 
