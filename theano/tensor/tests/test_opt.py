@@ -4884,6 +4884,9 @@ class T_local_erfc(unittest.TestCase):
         if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
             # python mode don't like the inv(0)
             val.remove(0)
+        if theano.config.floatX == 'float32':
+            # See comment in test_local_grad_log_erfc_neg below
+            val.remove(10)
         val = numpy.asarray(val, dtype=config.floatX)
         x = T.vector('x')
 

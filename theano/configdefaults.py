@@ -40,7 +40,7 @@ AddConfigVar('floatX',
              "Default floating-point precision for python casts.\n"
              "\n"
              "Note: float16 support is experimental, use at your own risk.",
-             EnumStr('float64', 'float32', 'float16',
+             EnumStr('float32', 'float64', 'float16',
                      convert=floatX_convert,),
              # TODO: see gh-4466 for how to remove it.
              in_c_key=True
@@ -418,7 +418,7 @@ AddConfigVar(
 AddConfigVar(
     'mode',
     "Default compilation mode",
-    EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN',
+    EnumStr('FAST_RUN', 'ProfileMode', 'DebugMode', 'Mode',
             'NanGuardMode',
             'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
     in_c_key=False)
@@ -469,7 +469,7 @@ AddConfigVar('cxx',
              " supported, but supporting additional compilers should not be "
              "too difficult. "
              "If it is empty, no C++ code is compiled.",
-             StrParam(param, is_valid=warn_cxx),
+             StrParam('icpc', is_valid=warn_cxx),
              in_c_key=False)
 del param
 
@@ -508,7 +508,7 @@ AddConfigVar('allow_gc',
              " asks that we reallocate memory at the next function call."
              " This is implemented for the default linker, but may not work"
              " for all linkers.",
-             BoolParam(True),
+             BoolParam(False),
              in_c_key=False)
 
 # Keep the default optimizer the same as the one for the mode FAST_RUN
@@ -883,7 +883,7 @@ else:
 # Disable it by default for now as currently only the ConvOp supports
 # it, and this causes slowdown by default as we do not disable it for
 # too small convolution.
-default_openmp = False
+default_openmp = True
 
 AddConfigVar('openmp',
              "Allow (or not) parallel computation on the CPU with OpenMP. "
@@ -904,7 +904,7 @@ AddConfigVar('openmp_elemwise_minsize',
              "If OpenMP is enabled, this is the minimum size of vectors "
              "for which the openmp parallelization is enabled "
              "in element wise ops.",
-             IntParam(200000),
+             IntParam(10),
              in_c_key=False,
              )
 
@@ -1134,7 +1134,7 @@ AddConfigVar('optdb.max_use_ratio',
 
 AddConfigVar('gcc.cxxflags',
              "Extra compiler flags for gcc",
-             StrParam(""),
+             StrParam("-qopenmp -march=native -O3 -qopt-report3 -fno-alias -qopt-prefetch=2 -fp-trap=none"),
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
 
@@ -1392,7 +1392,7 @@ def try_blas_flag(flags):
 
 AddConfigVar('blas.ldflags',
              "lib[s] to include for [Fortran] level-3 blas implementation",
-             StrParam(default_blas_ldflags),
+             StrParam("-lmkl_rt"),
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
 

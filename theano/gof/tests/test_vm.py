@@ -254,6 +254,10 @@ def test_allow_gc_cvm():
     v = theano.tensor.vector()
     f = theano.function([v], v + 1, mode=mode)
 
+    # The test assumes allow_gc is True by default
+    if theano.config.allow_gc is False:
+        f.fn.allow_gc = True
+
     f([1])
     n = list(f.maker.fgraph.apply_nodes)[0].outputs[0]
     assert f.fn.storage_map[n][0] is None
