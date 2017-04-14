@@ -6,7 +6,7 @@
 # See https://docs.docker.com/engine/reference/builder/
 # for more information.
 #
-FROM nvcr.io/nvidia/theano:17.04
+FROM nvcr.io/nvidia/theano:17.05
 
 # Install my-extra-package-1 and my-extra-package-2
 RUN apt-get update && apt-get install -y --no-install-recommends \
