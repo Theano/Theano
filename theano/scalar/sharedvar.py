@@ -56,7 +56,7 @@ def shared(value, name=None, strict=False, allow_downcast=None):
         dtype = np.asarray(value).dtype
 
     dtype = str(dtype)
-    value = getattr(numpy, dtype)(value)
+    value = getattr(np, dtype)(value)
     scalar_type = Scalar(dtype=dtype)
     rval = ScalarSharedVariable(
         type=scalar_type,
