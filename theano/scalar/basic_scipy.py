@@ -44,7 +44,7 @@ class Erf(UnaryScalarOp):
                 return [x.zeros_like()]
 
         cst = np.asarray(2. / np.sqrt(np.pi),
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * cst * exp(-x * x),
 
     def c_code(self, node, name, inp, out, sub):
@@ -75,7 +75,7 @@ class Erfc(UnaryScalarOp):
                 return [x.zeros_like()]
 
         cst = np.asarray(2. / np.sqrt(np.pi),
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return - gz * cst * exp(-x * x),
 
     def c_code(self, node, name, inp, out, sub):
@@ -121,7 +121,7 @@ class Erfcx(UnaryScalarOp):
                 return [x.zeros_like()]
 
         cst = np.asarray(2. / np.sqrt(np.pi),
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * (-cst + (2. * x) * erfcx(x)),
 
 erfcx = Erfcx(upgrade_to_float_no_complex, name='erfcx')
@@ -156,7 +156,7 @@ class Erfinv(UnaryScalarOp):
                 return [x.zeros_like()]
 
         cst = np.asarray(np.sqrt(np.pi) / 2.,
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * cst * exp(erfinv(x) ** 2),
 
     # TODO: erfinv() is not provided by the C standard library
@@ -189,7 +189,7 @@ class Erfcinv(UnaryScalarOp):
                 return [x.zeros_like()]
 
         cst = np.asarray(np.sqrt(np.pi) / 2.,
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return - gz * cst * exp(erfcinv(x) ** 2),
 
     # TODO: erfcinv() is not provided by the C standard library
