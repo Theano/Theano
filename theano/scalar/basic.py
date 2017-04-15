@@ -1924,8 +1924,11 @@ class IntDiv(BinaryScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
         (z,) = outputs
+        fail = sub['fail']
+
         t = node.inputs[0].type.upcast(*[i.type for i in node.inputs[1:]])
         if t in imap(str, discrete_types):
+            check = 'if (%(y)s == 0) {PyErr_SetString(PyExc_ZeroDivisionError, "integer division by zero"); %(fail)s}' % locals()
             x_div_y_pp = '(%(x)s / %(y)s)' % locals()
             x_div_y_mp = '((-%(x)s) / %(y)s)' % locals()
             x_mod_y_mp = 'THEANO_MACRO_MOD((-%(x)s), %(y)s)' % locals()
@@ -1944,6 +1947,7 @@ class IntDiv(BinaryScalarOp):
             else:
                 raise NotImplementedError('type not supported', t)
 
+            check = ''
             x_div_y_pp = '%(floor)s(%(x)s / %(y)s)' % locals()
             x_div_y_mp = '%(floor)s((-%(x)s) / %(y)s)' % locals()
             x_mod_y_mp = '%(fmod)s((-%(x)s), %(y)s)' % locals()
@@ -1956,6 +1960,7 @@ class IntDiv(BinaryScalarOp):
             raise NotImplementedError('type not supported', t)
 
         return dedent("""
+            %(check)s
             if (%(x)s < 0) {
                 if (%(y)s < 0) {
                     %(z)s = %(x_div_y_mm)s;
@@ -1972,7 +1977,7 @@ class IntDiv(BinaryScalarOp):
             """) % locals()
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def grad(self, inputs, g_output):
         return [inp.zeros_like(dtype=theano.config.floatX)
@@ -2004,7 +2009,7 @@ class Mod(BinaryScalarOp):
         return x % y
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_support_code(self):
         # We use a macro as python use % as a special string character,
@@ -2020,6 +2025,7 @@ class Mod(BinaryScalarOp):
         """
         (x, y) = inputs
         (z,) = outputs
+        fail = sub['fail']
         t = node.inputs[0].type.upcast(*[i.type for i in node.inputs[1:]])
         if (str(t) in imap(str, discrete_types) or
                 t in ['uint8', 'int8', 'uint16', 'int16'] or
@@ -2029,6 +2035,7 @@ class Mod(BinaryScalarOp):
             # keep them out of safety, and verify they are useless with an
             # assert.
             assert str(t) in imap(str, discrete_types)
+            check = 'if (%(y)s == 0) {PyErr_SetString(PyExc_ZeroDivisionError, "integer modulo by zero"); %(fail)s}' % locals()
             x_mod_y = "THEANO_MACRO_MOD(%(x)s, %(y)s)" % locals()
             x_mod_ymm = "THEANO_MACRO_MOD(-%(x)s, -%(y)s)" % locals()
             x_mod_ypm = "THEANO_MACRO_MOD(%(x)s, -%(y)s)" % locals()
@@ -2040,6 +2047,7 @@ class Mod(BinaryScalarOp):
             # keep them out of safety, and verify they are useless with an
             # assert.
             assert str(t) in imap(str, float_types)
+            check = ''
             x_mod_y = "fmod(%(x)s,%(y)s)" % locals()
             x_mod_ymm = "fmod(-%(x)s,-%(y)s)" % locals()
             x_mod_ypm = "fmod(%(x)s,-%(y)s)" % locals()
@@ -2050,6 +2058,7 @@ class Mod(BinaryScalarOp):
             raise NotImplementedError('type not supported', t)
 
         return dedent("""
+            %(check)s
             if (%(x)s < 0){
                if (%(y)s < 0){
                   %(z)s = -(%(x_mod_ymm)s);
@@ -3696,8 +3705,9 @@ class Composite(ScalarOp):
 
     def init_c_code(self):
         """
-        Return the C code for this Composite Op.
+        Assemble the C code for this Composite Op.
 
+        The result is assigned to `self._c_code`.
         """
         # It was already called
         if hasattr(self, '_c_code'):

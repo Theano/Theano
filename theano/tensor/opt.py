@@ -7154,7 +7154,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
                                                 "test_presence_of_c_code",
                                                 ["x" for x in i.owner.inputs],
                                                 ["z" for z in i.owner.outputs],
-                                                {})
+                                                {"fail": "%(fail)s"})
                 except MethodNotDefined:
                     catch = True
                 except NotImplementedError:
@@ -7218,7 +7218,8 @@ your code will run correctly, but may be slower.""")
             s_new_out[0].owner.op.c_code(s_new_out[0].owner,
                                          "test_presence_of_c_code",
                                          ["x" for x in s_g],
-                                         ["z" for x in s_new_out], {})
+                                         ["z" for x in s_new_out],
+                                         {"fail": "%(fail)s"})
         except MethodNotDefined:
             _logger.info(("%s does not implement the c_code function."
                           " As well as being potentially slow, this disables "
