@@ -247,6 +247,12 @@ class Apply(Node):
             new_node.inputs = new_inputs
         return new_node
 
+    def __getstate__(self):
+        # fgraph cannot be pickled for now
+        rval = dict(self.__dict__)
+        rval.pop('fgraph', None)
+        return rval
+
     def get_parents(self):
         return list(self.inputs)
 
@@ -525,6 +531,12 @@ class Variable(Node):
         d = self.__dict__.copy()
         d.pop("_fn_cache", None)
         return d
+
+    def __getstate__(self):
+        # fgraph cannot be pickled for now
+        rval = dict(self.__dict__)
+        rval.pop('fgraph', None)
+        return rval
 
 
 class Constant(Variable):
