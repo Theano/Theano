@@ -1106,11 +1106,11 @@ def default_blas_ldflags():
     global numpy
     warn_record = []
     try:
-        if (hasattr(numpy.distutils, '__config__') and
-                numpy.distutils.__config__):
+        if (hasattr(np.distutils, '__config__') and
+                np.distutils.__config__):
             # If the old private interface is available use it as it
             # don't print information to the user.
-            blas_info = numpy.distutils.__config__.blas_opt_info
+            blas_info = np.distutils.__config__.blas_opt_info
         else:
             # We do this import only here, as in some setup, if we
             # just import theano and exit, with the import at global
