@@ -3,7 +3,7 @@ import errno
 import os
 import sys
 import logging
-import numpy
+import numpy as np
 import platform
 import textwrap
 import re
@@ -1052,7 +1052,7 @@ AddConfigVar('profiling.ignore_first_call',
 AddConfigVar('optdb.position_cutoff',
              'Where to stop eariler during optimization. It represent the'
              ' position of the optimizer where to stop.',
-             FloatParam(numpy.inf),
+             FloatParam(np.inf),
              in_c_key=False)
 
 AddConfigVar('optdb.max_use_ratio',
@@ -1494,7 +1494,7 @@ compiledir_format_dict = {
     "python_bitwidth": local_bitwidth(),
     "python_int_bitwidth": python_int_bitwidth(),
     "theano_version": theano.__version__,
-    "numpy_version": numpy.__version__,
+    "numpy_version": np.__version__,
     "gxx_version": gcc_version_str.replace(" ", "_"),
     "hostname": socket.gethostname()}
 
