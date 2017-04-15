@@ -4822,33 +4822,45 @@ class Reshape(Op):
             return [(1,) * self.ndim]
 
         requ = node.inputs[1]
+        input_size = mul(*ishapes[0])
         if isinstance(requ, theano.tensor.TensorConstant):
             requ = list(requ.data)
             requ_part = [ele for ele in requ if ele != -1]
             crit = len(requ) - len(requ_part)
             if crit == 1 and len(requ_part) > 0:
-                missing = mul(*ishapes[0]) // mul(*requ_part)
+                # If there are both 0 and -1 in requ_size, it is impossible
+                # to determine a right output, but we can at least prevent
+                # a division by 0.
+                requ_size = mul(*requ_part)
+                missing = input_size // (1 if requ_size == 0 else requ_size)
                 for i, ele in enumerate(requ):
                     if ele == -1:
                         requ[i] = missing
             elif crit == 1:  # we reshape to -1
-                requ = [mul(*ishapes[0])] if ishapes[0] else [1]
+                requ = [input_size] if ishapes[0] else [1]
             elif crit > 1:
                 raise ValueError('shape argument to Reshape.perform'
                                  ' must have at most one entry equal to -1')
             return [requ]
         else:
-            new_dims = [node.inputs[1][i] for i in xrange(self.ndim)]
+            requ = [requ[i] for i in xrange(self.ndim)]
             # since new_dims can have negative value (-1), the
             # multiplication of all values should be negated
             # to give a positive value.
             # To avoid optimization complexity, we avoid checking
             # for the case when there are two or more '-1' values.
             if self.ndim:
-                rest_size = (mul(*ishapes[0]) // -mul(*new_dims))
-            return [tuple([switch(eq(new_dims[i], -1),
+                requ_size = -mul(*requ)
+                # If there are both 0 and -1 in requ_size, it is impossible
+                # to determine a right output, but we can at least prevent
+                # a division by 0.
+                rest_size = (input_size //
+                             switch(eq(requ_size, 0),
+                                    1,
+                                    requ_size))
+            return [tuple([switch(eq(requ[i], -1),
                                   rest_size,
-                                  new_dims[i])
+                                  requ[i])
                            for i in xrange(self.ndim)])]
 
     def c_code_cache_version(self):
