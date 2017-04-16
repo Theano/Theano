@@ -1085,6 +1085,8 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
     if not x.owner:
         raise TypeError('x must be the result of a subtensor operation')
 
+    if isinstance(x.owner.op, theano.printing.Print):
+        x = x.owner.inputs[0]
     # retrieve idx_list from x.owner
     if isinstance(x.owner.op, Subtensor):
         if tolerate_inplace_aliasing:
