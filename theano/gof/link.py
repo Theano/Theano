@@ -199,7 +199,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
         f = StringIO()
         theano.printing.debugprint(node, file=f, stop_on_name=True,
-                                   print_type=True)
+                                   print_type=True, stop_on_name=True)
         detailed_err_msg += "\nDebugprint of the apply node: \n"
         detailed_err_msg += f.getvalue()
 
