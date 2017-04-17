@@ -529,7 +529,11 @@ class Softmax(gof.Op):
 
     def L_op(self, inp, outputs, grads):
         x, axis = inp
-        g_sm, = grads
+        # TO INVESTIGATE
+        if len(grads) == 2:
+            g_sm, test = grads
+        else:
+            g_sm, = grads
         return [softmax_grad(g_sm, outputs[0], axis), DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
@@ -2096,7 +2100,7 @@ def graph_merge_softmax_with_crossentropy_softmax(node):
             if x_client[0].op == crossentropy_softmax_argmax_1hot_with_bias:
                 big_client = x_client[0]
                 if big_client in [b_client[0] for b_client in b.clients]:
-                    xx, bb, ll = big_client.inputs
+                    xx, bb, ll, ii = big_client.inputs
                     mergeable_client = big_client.op(x, b, ll)
                     copy_stack_trace(node.outputs[0], mergeable_client[1])
                     return [mergeable_client[1]]
