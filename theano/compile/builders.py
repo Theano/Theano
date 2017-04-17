@@ -234,7 +234,7 @@ class OpFromGraph(gof.Op):
             def safe_transfer(v, d):
                 return v.transfer(d) if hasattr(v, 'transfer') else v
             device = config.device
-            if device.startswith('cpu') or device.startswith('gpu'):
+            if device.startswith('cpu'):
                 device = device[:3]
             elif device.startswith('cuda') or device.startswith('opencl'):
                 from theano.gpuarray.basic_ops import infer_context_name
