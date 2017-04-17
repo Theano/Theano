@@ -91,6 +91,19 @@ class OpFromGraph(gof.Op):
         :func:`orig_function <theano.compile.function_module.orig_function>`
         for more arguments, only works when not inline.
 
+    device : string, optional
+        Defaults to ``'auto'``
+        Select device should the inner graph use to perform computation.
+        This parameter has no effect when ``inline=True``.
+
+        ``'auto'`` : will infer device from outer graph.
+
+        ``'static'`` : will infer device depending on given inner graph, optimizer will not change types in input/output nodes.
+
+        ``'cpu'`` : force computation on CPU
+
+        ``'gpu'`` : force computation on GPU device, actual device depends on libgpuarray setting
+
 
     .. TODO:
         - examples for a multi-layer mlp. where?
@@ -103,7 +116,6 @@ class OpFromGraph(gof.Op):
         - add support for NullType and DisconnectedType when R_op supports them
         - check how it works with updates.
         - add test with constant as input or inside the inner graph.
-        - Add support for the GPU? Probably just need an opt to remove transfer
         - Add support to pickle this Op.
         - Add support/test with random generator
         - Add optimization to removing unused inputs/outputs
@@ -218,7 +230,7 @@ class OpFromGraph(gof.Op):
             self, inputs, outputs,
             inline=False,
             grad_overrides='default', rop_overrides='default',
-            name=None, **kwargs
+            name=None, device='auto', **kwargs
     ):
         if not isinstance(outputs, list):
             raise TypeError('outputs must be list, got %s' % type(outputs))
