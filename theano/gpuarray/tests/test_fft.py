@@ -12,11 +12,11 @@ from .config import mode_with_gpu
 
 # Skip tests if pygpu is not available.
 from nose.plugins.skip import SkipTest
-from theano.gpuarray.fft import pygpu_available, scikits_cuda_available, pycuda_available
+from theano.gpuarray.fft import pygpu_available, skcuda_available, pycuda_available
 if not pygpu_available:  # noqa
     raise SkipTest('Optional package pygpu not available')
-if not scikits_cuda_available:  # noqa
-    raise SkipTest('Optional package scikits.cuda not available')
+if not skcuda_available:  # noqa
+    raise SkipTest('Optional package scikit-cuda not available')
 if not pycuda_available:  # noqa
     raise SkipTest('Optional package pycuda not available')
 

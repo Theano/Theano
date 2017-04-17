@@ -26,11 +26,6 @@ from theano import config
 from theano.compat import PY3
 from six import string_types
 from theano.compile.sharedvalue import SharedVariable
-try:
-    from theano.sandbox.cuda import cuda_ndarray
-except ImportError:
-    cuda_ndarray = None
-
 
 __docformat__ = "restructuredtext en"
 __authors__ = "Pascal Lamblin"
@@ -202,21 +197,28 @@ class PersistentNdarrayID(object):
             return self.seen[id(obj)]
 
 
-class PersistentCudaNdarrayID(PersistentNdarrayID):
+class PersistentGpuArrayID(PersistentNdarrayID):
     def __call__(self, obj):
-        if (cuda_ndarray is not None and
-                type(obj) is cuda_ndarray.cuda_ndarray.CudaNdarray):
+        from theano.gpuarray.type import _name_for_ctx
+        try:
+            import pygpu
+        except ImportError:
+            pygpu = None
+
+        if (pygpu and
+                isinstance(obj, pygpu.gpuarray.GpuArray)):
             if id(obj) not in self.seen:
                 def write_array(f):
+                    pickle.dump(_name_for_ctx(obj.context), f, 2)
                     np.lib.format.write_array(f, np.asarray(obj))
                 name = self._resolve_name(obj)
                 zipadd(write_array, self.zip_file, name)
-                self.seen[id(obj)] = 'cuda_ndarray.{0}'.format(name)
+                self.seen[id(obj)] = 'gpuarray.{0}'.format(name)
             return self.seen[id(obj)]
-        return super(PersistentCudaNdarrayID, self).__call__(obj)
+        return super(PersistentGpuArrayID, self).__call__(obj)
 
 
-class PersistentSharedVariableID(PersistentCudaNdarrayID):
+class PersistentSharedVariableID(PersistentGpuArrayID):
     """Uses shared variable names when persisting to zip file.
 
     If a shared variable has a name, this name is used as the name of the
@@ -282,26 +284,29 @@ class PersistentNdarrayLoad(object):
         self.cache = {}
 
     def __call__(self, persid):
+        from theano.gpuarray.type import get_context
+        from theano.gpuarray import pygpu
         array_type, name = persid.split('.')
 
         if name in self.cache:
             return self.cache[name]
         ret = None
-        array = np.lib.format.read_array(self.zip_file.open(name))
-        if array_type == 'cuda_ndarray':
+        if array_type == 'gpuarray':
+            with self.zip_file.open(name) as f:
+                ctx_name = pickle.load(f)
+                array = np.lib.format.read_array(f)
             if config.experimental.unpickle_gpu_on_cpu:
                 # directly return numpy array
                 warnings.warn("config.experimental.unpickle_gpu_on_cpu is set "
-                              "to True. Unpickling CudaNdarray as "
-                              "numpy.ndarray")
+                              "to True. Unpickling GpuArray as numpy.ndarray")
                 ret = array
-            elif cuda_ndarray:
-                ret = cuda_ndarray.cuda_ndarray.CudaNdarray(array)
+            elif pygpu:
+                ret = pygpu.array(array, context=get_context(ctx_name))
             else:
-                raise ImportError("Cuda not found. Cannot unpickle "
-                                  "CudaNdarray")
+                raise ImportError("pygpu not found. Cannot unpickle GpuArray")
         else:
-            ret = array
+            with self.zip_file.open(name) as f:
+                ret = np.lib.format.read_array(f)
         self.cache[name] = ret
         return ret
 

@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import sys
 from copy import copy
 
 import numpy as np
@@ -353,21 +352,6 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
                                shape_statements +
                                strides_statements +
                                close_bracket)
-
-        if 0:
-            print('C_CODE')
-            print('')
-            print(self)
-            print("IN BROAD", self.input_broadcastable)
-            print("NEW ORDER", self.new_order)
-            print("SHUFFLE", self.shuffle)
-            print("AUGMENT", self.augment)
-            print('------------')
-            print('')
-            print(full_code)
-
-            if 0:
-                sys.exit()
 
         return full_code % dict(locals(), **sub)
 

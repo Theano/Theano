@@ -1796,6 +1796,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
 
     if isinstance(mode, (list, tuple)):  # "mode comparison" semantics
         raise Exception("We do not support the passing of multiple modes")
+    fn = None
     try:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
         fn = Maker(inputs,
@@ -1808,7 +1809,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
             defaults)
     finally:
         t2 = time.time()
-        if profile:
+        if fn and profile:
             profile.compile_time += t2 - t1
             # TODO: append
             profile.nb_nodes = len(fn.maker.fgraph.apply_nodes)

@@ -1,16 +1,17 @@
 from __future__ import absolute_import, print_function, division
-from nose.plugins.skip import SkipTest
+import sys
 import unittest
 
+from nose.plugins.skip import SkipTest
 import numpy as np
+from six import reraise
 
 from theano import config
 from theano import gof
 import theano
-import theano.tensor
 from theano.compat import exc_message
 from theano.compile import debugmode
-import theano.compile
+import theano.tensor
 from theano.tests import unittest_tools as utt
 
 
@@ -255,23 +256,55 @@ def test_badoptimization_opt_err():
                                                         inputs[-1]))
                 return [node.op(*inputs)]
         return False
+
+    @gof.local_optimizer([theano.tensor.add])
+    def insert_bad_dtype(node):
+        if node.op == theano.tensor.add:
+            inputs = list(node.inputs)
+            if inputs[-1].owner is None:
+
+                return [node.outputs[0].astype('float32')]
+        return False
     edb = gof.EquilibriumDB()
     edb.register('insert_bigger_b_add', insert_bigger_b_add, 'all')
     opt = edb.query('+all')
+    edb2 = gof.EquilibriumDB()
+    edb2.register('insert_bad_dtype', insert_bad_dtype, 'all')
+    opt2 = edb2.query('+all')
 
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
 
     f = theano.function([a, b], a + b,
                         mode=debugmode.DebugMode(optimizer=opt))
-
     try:
         f([1.0, 2.0, 3.0], [2, 3, 4],)
-    except Exception as e:
+    except ValueError as e:
         assert 'insert_bigger_b_add' in exc_message(e)
-        return  # TEST PASS
+    else:
+        assert False
 
-    assert False
+    # Test that opt that do an illegal change still get the error from gof.
+    try:
+        with theano.configparser.change_flags(on_opt_error='raise'):
+            f2 = theano.function([a, b], a + b,
+                                 mode=debugmode.DebugMode(optimizer=opt2,
+                                                          stability_patience=1))
+        f2([1.0, 2.0, 3.0], [2, 3, 4],)
+    except theano.gof.toolbox.BadOptimization as e:
+        assert 'insert_bad_dtype' in str(e)
+        # Test that we can reraise the error with an extended message
+        try:
+            new_e = e.__class__("TTT" + str(e))
+            exc_type, exc_value, exc_trace = sys.exc_info()
+            exc_value = new_e
+            reraise(e.__class__, exc_value, exc_trace)
+        except theano.gof.toolbox.BadOptimization as e:
+            pass
+        else:
+            assert False
+    else:
+        assert False
 
 
 def test_stochasticoptimization():
@@ -713,7 +746,6 @@ class VecAsRowAndCol(gof.Op):
         if (c[0] is None) or (c[0].shape != (lv, 1)):
             c[0] = node.outputs[1].type.value_zeros((lv, 1))
 
-        # Python loop because CudaNdarrays do not support newaxis
         for i in range(lv):
             r[0][0, i] = v[i]
             c[0][i, 0] = v[i]
@@ -793,25 +825,4 @@ class Test_preallocated_output(unittest.TestCase):
         f = theano.function([v], [c, r])
 
         v_val = self.rng.randn(5).astype('float32')
-        f(v_val)
-
-    def test_output_broadcast_cuda(self):
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest("Optional package Cuda disabled")
-        if cuda.use.device_number is None:
-            # We should normally set VecAsRowAndCol as a GPUOp But we
-            # don't want to do this here as this will disable others
-            # tests in this file.  So we manually init the GPU if
-            # needed to remove warning.
-            cuda.use("gpu",
-                     force=True,
-                     default_to_move_computation_to_gpu=False,
-                     move_shared_float32_to_gpu=False,
-                     enable_cuda=False)
-        v = cuda.fvector('v')
-        c, r = VecAsRowAndCol()(v)
-        f = theano.function([v], [c, r])
-
-        v_val = cuda.CudaNdarray(self.rng.randn(5).astype('float32'))
         f(v_val)

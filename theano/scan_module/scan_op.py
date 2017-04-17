@@ -54,7 +54,7 @@ import logging
 import time
 from collections import OrderedDict
 
-import numpy
+import numpy as np
 from six import iteritems, integer_types, raise_from
 from six.moves import xrange
 
@@ -125,8 +125,6 @@ class Scan(PureOp):
                  info,
                  typeConstructor=None,
                  ):
-        if 'gpua' not in info:
-            info['gpua'] = False
         # adding properties into self
         self.inputs = inputs
         self.outputs = outputs
@@ -193,7 +191,7 @@ class Scan(PureOp):
         self.info['name'] = self.name
 
         # Pre-computing some values to speed up perform
-        self.mintaps = [numpy.min(x) for x in self.tap_array]
+        self.mintaps = [np.min(x) for x in self.tap_array]
         self.mintaps += [0 for x in xrange(self.n_nit_sot)]
         self.seqs_arg_offset = 1 + self.n_seqs
         self.shared_arg_offset = (self.seqs_arg_offset +
@@ -204,7 +202,7 @@ class Scan(PureOp):
                                    self.n_shared_outs)
         self.n_outs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         self.n_tap_outs = self.n_mit_mot + self.n_mit_sot
-        if self.info['gpu'] or self.info['gpua']:
+        if self.info['gpua']:
             self._hash_inner_graph = self.info['gpu_hash']
         else:
             # Do the missing inputs check here to have the error early.
@@ -250,27 +248,6 @@ class Scan(PureOp):
                                     "type '%s' and '%s' respectively." %
                                     (self.name, type_input, type_output))
 
-        # If scan has the flag 'gpu' set to false (meaning that is shouldn't
-        # use the CUDA gpu backend ), ensure that is has no input and no
-        # output with type CudaNdarrayType
-        from theano.sandbox.cuda import CudaNdarrayType
-        if not self.info.get("gpu", False):
-            for inp in self.inputs:
-                if isinstance(inp.type, CudaNdarrayType):
-                    raise TypeError("Inconsistency in the inner graph of "
-                                    "scan '%s' : one of the inputs to the "
-                                    "inner graph is of type CudaNdarray but "
-                                    "the attributes of the scan op indicate "
-                                    "that it shouldn't be the case")
-
-            for out in self.outputs:
-                if isinstance(out.type, CudaNdarrayType):
-                    raise TypeError("Inconsistency in the inner graph of "
-                                    "scan '%s' : one of the outputs to the "
-                                    "inner graph is of type CudaNdarray but "
-                                    "the attributes of the scan op indicate "
-                                    "that it shouldn't be the case")
-
         # If scan has the flag 'gpua' set to false (meaning that is shouldn't
         # use the gpuarray gpu backend ), ensure that is has no input and no
         # output with type GpuArrayType
@@ -297,9 +274,6 @@ class Scan(PureOp):
         if "allow_gc" not in self.__dict__:
             self.allow_gc = True
             self.info['allow_gc'] = True
-        if not hasattr(self, 'gpua'):
-            self.gpua = False
-            self.info['gpua'] = False
         if not hasattr(self, 'var_mappings'):
             # Generate the mappings between inner and outer inputs and outputs
             # if they haven't already been generated.
@@ -336,7 +310,7 @@ class Scan(PureOp):
                           the inner function)
 
         """
-        assert numpy.all(isinstance(i, gof.Variable) for i in inputs)
+        assert np.all(isinstance(i, gof.Variable) for i in inputs)
         # Check that the number of inputs to the Scan node corresponds to
         # the number of inputs of the inner function of scan
         n_outer_ins = len(inputs) - len(self.outer_nitsot(inputs)) - 1
@@ -436,9 +410,9 @@ class Scan(PureOp):
         def format(var, as_var):
             """
             This functions ensures that ``out`` has the same dtype as
-            ``inp`` as well as calling filter_variable to make sure they are
-            both TensorType or CudaNdarrayType. It internally deals with the
-            corner case where inp.ndim + 1 = out.ndim
+            ``inp`` as well as calling filter_variable to make sure
+            they are both TensorType or GpuArrayType. It internally
+            deals with the corner case where inp.ndim + 1 = out.ndim
 
             """
             if not hasattr(var, 'dtype'):
@@ -672,7 +646,7 @@ class Scan(PureOp):
                          'n_seqs', 'tap_array',
                          'as_while', 'n_mit_sot', 'destroy_map',
                          'n_nit_sot', 'n_shared_outs',
-                         'n_sit_sot', 'gpu', 'gpua', 'n_mit_mot_outs',
+                         'n_sit_sot', 'gpua', 'n_mit_mot_outs',
                          'n_mit_mot', 'mit_mot_out_slices']
         # This are some safety checks ( namely that the inner graph has the
         # same number of inputs and same number of outputs )
@@ -696,7 +670,7 @@ class Scan(PureOp):
                                              other.inputs)
 
     def __str__(self):
-        if self.gpu:
+        if self.gpua:
             gpu_str = 'gpu'
         else:
             gpu_str = 'cpu'
@@ -901,53 +875,53 @@ class Scan(PureOp):
         try:
             if impl == 'py':
                 raise theano.gof.cmodule.MissingGXX
-            cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
+            cython_mintaps = np.asarray(self.mintaps, dtype='int32')
             cython_tap_array_len = \
-                numpy.asarray([len(x) for x in self.tap_array],
-                              dtype='int32')
+                np.asarray([len(x) for x in self.tap_array],
+                           dtype='int32')
             if len(self.tap_array) == 0:
                 d1 = 0
             else:
-                d1 = numpy.max(cython_tap_array_len)
+                d1 = np.max(cython_tap_array_len)
             d0 = len(self.tap_array)
-            cython_tap_array = numpy.zeros((d0, d1), dtype='int32')
+            cython_tap_array = np.zeros((d0, d1), dtype='int32')
             for _d0 in xrange(d0):
                 for _d1 in xrange(cython_tap_array_len[_d0]):
                     cython_tap_array[_d0, _d1] = self.tap_array[_d0][_d1]
             cython_mit_mot_out_nslices = \
-                numpy.asarray([len(x) for x in self.mit_mot_out_slices],
-                              dtype='int32')
+                np.asarray([len(x) for x in self.mit_mot_out_slices],
+                           dtype='int32')
             if len(self.mit_mot_out_slices) == 0:
                 d1 = 0
             else:
-                d1 = numpy.max(cython_mit_mot_out_nslices)
+                d1 = np.max(cython_mit_mot_out_nslices)
             d0 = len(self.mit_mot_out_slices)
-            cython_mit_mot_out_slices = numpy.zeros((d0, d1),
-                                                    dtype='int32')
+            cython_mit_mot_out_slices = np.zeros((d0, d1),
+                                                 dtype='int32')
             for _d0 in xrange(d0):
                 for _d1 in xrange(cython_mit_mot_out_nslices[_d0]):
                     cython_mit_mot_out_slices[_d0, _d1] = \
                         self.mit_mot_out_slices[_d0][_d1]
 
-            cython_vector_seqs = numpy.asarray(self.vector_seqs,
-                                               dtype='int32')
-            cython_vector_outs = numpy.asarray(self.vector_outs,
-                                               dtype='int32')
-            cython_mitmots_preallocated = numpy.asarray(self.mitmots_preallocated,
-                                                        dtype='int32')
+            cython_vector_seqs = np.asarray(self.vector_seqs,
+                                            dtype='int32')
+            cython_vector_outs = np.asarray(self.vector_outs,
+                                            dtype='int32')
+            cython_mitmots_preallocated = np.asarray(self.mitmots_preallocated,
+                                                     dtype='int32')
 
-            cython_inps_is_tensor = numpy.asarray(self.inps_is_tensor,
-                                                  dtype='int32')
-            cython_outs_is_tensor = numpy.asarray(self.outs_is_tensor,
-                                                  dtype='int32')
+            cython_inps_is_tensor = np.asarray(self.inps_is_tensor,
+                                               dtype='int32')
+            cython_outs_is_tensor = np.asarray(self.outs_is_tensor,
+                                               dtype='int32')
 
             if hasattr(self, 'destroy_map'):
                 cython_destroy_map = [x in self.destroy_map
                                       for x in xrange(len(node.outputs))]
             else:
                 cython_destroy_map = [0 for x in xrange(len(node.outputs))]
-            cython_destroy_map = numpy.asarray(cython_destroy_map,
-                                               dtype='int32')
+            cython_destroy_map = np.asarray(cython_destroy_map,
+                                            dtype='int32')
             from . import scan_perform_ext
 
             def p(node, args, outs):
@@ -1318,7 +1292,7 @@ class Scan(PureOp):
                 pdx = offset + self.n_shared_outs
                 output_storage[pdx].storage[0] = None
 
-            # 4.5. Keep a reference to the variables (ndarrays, CudaNdarrays,
+            # 4.5. Keep a reference to the variables (ndarrays, GpuArrays,
             # etc) currently in the output_storage to be able to compare them
             # with the actual outputs of the inner function after its
             # execution. Also keep pointers to their data to be able to detect
@@ -1336,7 +1310,7 @@ class Scan(PureOp):
                 else:
                     old_output_data[idx] = var.gpudata
 
-            # 4.6. Keep a reference to the variables (ndarrays, CudaNdarrays,
+            # 4.6. Keep a reference to the variables (ndarrays, GpuArrays,
             # etc) associated with mitmot inputs currently in the
             # input_storage to be able to compare them with the content of the
             # input_storage after the execution of the function. Also keep
@@ -2200,9 +2174,9 @@ class Scan(PureOp):
         # Seqs
         outer_inp_seqs = [x[::-1] for x in inputs[1:1 + self.n_seqs]]
         for idx in xrange(self.n_mit_mot + self.n_mit_sot):
-            mintap = numpy.min(self.tap_array[idx])
+            mintap = np.min(self.tap_array[idx])
             if idx < self.n_mit_mot:
-                outmaxtap = numpy.max(self.mitmot_out_taps()[idx])
+                outmaxtap = np.max(self.mitmot_out_taps()[idx])
             else:
                 outmaxtap = 0
             seq = outs[idx]
@@ -2226,7 +2200,7 @@ class Scan(PureOp):
             # that.
             for taps, x in zip(self.mitsot_taps(),
                                self.outer_mitsot_outs(outs)):
-                mintap = numpy.min(taps)
+                mintap = np.min(taps)
                 if hasattr(x[::-1][:mintap], 'test_value'):
                     assert (x[::-1][:mintap].tag.test_value.shape[0] ==
                             inputs[0].tag.test_value)
@@ -2238,7 +2212,7 @@ class Scan(PureOp):
                 if hasattr(x[::-1].tag, 'test_value'):
                     assert (x[::-1].tag.test_value.shape[0] ==
                             inputs[0].tag.test_value)
-        outer_inp_seqs += [x[::-1][:numpy.min(taps)]
+        outer_inp_seqs += [x[::-1][:np.min(taps)]
                            for taps, x in zip(self.mitsot_taps(),
                                               self.outer_mitsot_outs(outs))]
         outer_inp_seqs += [x[::-1][:-1] for x in self.outer_sitsot_outs(outs)]
@@ -2514,7 +2488,7 @@ class Scan(PureOp):
         info['n_seqs'] = len(outer_inp_seqs)
         info['n_mit_sot'] = 0
         info['tap_array'] = new_tap_array
-        info['gpu'] = False
+        info['gpua'] = False
         info['n_mit_mot'] = len(outer_inp_mitmot)
         info['n_mit_mot_outs'] = n_mitmot_outs
         info['mit_mot_out_slices'] = mitmot_out_taps
@@ -2683,7 +2657,7 @@ class Scan(PureOp):
         info['n_mit_mot'] = self.n_mit_mot * 2
         info['n_nit_sot'] = self.n_nit_sot * 2
         info['n_shared_outs'] = self.n_shared_outs
-        info['gpu'] = False
+        info['gpua'] = False
         info['as_while'] = self.as_while
         info['profile'] = self.profile
         info['truncate_gradient'] = self.truncate_gradient
@@ -2726,8 +2700,8 @@ class Scan(PureOp):
         b = e
         e = e + self.n_mit_mot
         ib = ie
-        ie = ie + int(numpy.sum([len(x) for x in
-                                 self.tap_array[:self.n_mit_mot]]))
+        ie = ie + int(np.sum([len(x) for x in
+                              self.tap_array[:self.n_mit_mot]]))
         clean_eval_points = []
         for inp, evp in zip(inputs[b:e], eval_points[b:e]):
             if evp is not None:
@@ -2742,9 +2716,9 @@ class Scan(PureOp):
         b = e
         e = e + self.n_mit_sot
         ib = ie
-        ie = ie + int(numpy.sum([len(x) for x in
-                                 self.tap_array[self.n_mit_mot:
-                                                self.n_mit_mot + self.n_mit_sot]]))
+        ie = ie + int(np.sum([len(x) for x in
+                              self.tap_array[self.n_mit_mot:
+                                             self.n_mit_mot + self.n_mit_sot]]))
         clean_eval_points = []
         for inp, evp in zip(inputs[b:e], eval_points[b:e]):
             if evp is not None:
@@ -2795,8 +2769,8 @@ class Scan(PureOp):
         inner_other = self_inputs[ie:] + inner_eval_points[ib:]
 
         # Outputs
-        n_mit_mot_outs = int(numpy.sum([len(x) for x in
-                                        self.mit_mot_out_slices]))
+        n_mit_mot_outs = int(np.sum([len(x) for x in
+                                     self.mit_mot_out_slices]))
         info['n_mit_mot_outs'] = n_mit_mot_outs * 2
         b = 0
         e = n_mit_mot_outs

@@ -14,16 +14,14 @@ about how to carry out those computations.  One of the ways we take
 advantage of this flexibility is in carrying out calculations on a
 graphics card.
 
-There are two ways currently to use a gpu, one that should support any OpenCL
-device as well as NVIDIA cards (:ref:`gpuarray`), and the old backend that
-only supports NVIDIA cards (:ref:`cuda`).
-
-Using the GPU in Theano is as simple as setting the ``device`` configuration
-flag to ``device=cuda`` (or ``device=gpu`` for the old backend). You can optionally target a specific gpu by specifying
-the number of the gpu as in e.g. ``device=cuda2``. You also need to set the
-default floating point precision.
-For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=cuda,floatX=float32'``.
-You can also set these options in the .theanorc file's ``[global]`` section:
+Using the GPU in Theano is as simple as setting the ``device``
+configuration flag to ``device=cuda``. You can optionally target a
+specific gpu by specifying the number of the gpu as in
+e.g. ``device=cuda2``.  It is also encouraged to set the floating
+point precision to float32 when working on the GPU as that is usually
+much faster.  For example:
+``THEANO_FLAGS='device=cuda,floatX=float32'``.  You can also set these
+options in the .theanorc file's ``[global]`` section:
 
      .. code-block:: cfg
 
@@ -31,15 +29,10 @@ You can also set these options in the .theanorc file's ``[global]`` section:
         device = cuda
         floatX = float32
 
-.. warning::
-
-  The old CUDA backend will be deprecated soon, in favor of the new libgpuarray
-  backend.
-
 .. note::
 
-    * If your computer has multiple GPUs and you use ``device=cuda``, the driver
-      selects the one to use (usually gpu0).
+    * If your computer has multiple GPUs and you use ``device=cuda``,
+      the driver selects the one to use (usually cuda0).
     * You can use the program ``nvidia-smi`` to change this policy.
     * By default, when ``device`` indicates preference for GPU computations,
       Theano will fall back to the CPU if there is a problem with the GPU.
@@ -65,14 +58,8 @@ remainder of this section, whatever compute device you are using will
 be referred to as GPU.
 
 .. note::
-  GpuArray backend uses ``config.gpuarray.preallocate`` for GPU memory allocation.
-  For the old backend, please see ``config.lib.cnmem``
-
-.. warning::
-
-  If you want to use the new GpuArray backend, make sure to have the
-  development version of Theano installed. The 0.8.X releases have not
-  been optimized to work correctly with the new backend.
+  GpuArray backend uses ``config.gpuarray.preallocate`` for GPU memory
+  allocation.
 
 .. warning::
 
@@ -140,9 +127,10 @@ input *x* is stored on the GPU.
   Used the cpu
 
   $ THEANO_FLAGS=device=cuda0 python gpu_tutorial1.py
-  Mapped name None to device cuda0: GeForce GTX 680 (cuDNN version 5004)
+  Using cuDNN version 5105 on context None
+  Mapped name None to device cuda0: GeForce GTX 750 Ti (0000:07:00.0)
   [GpuElemwise{exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>), HostFromGpu(gpuarray)(GpuElemwise{exp,no_inplace}.0)]
-  Looping 1000 times took 1.202734 seconds
+  Looping 1000 times took 1.697514 seconds
   Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753
     1.62323285]
   Used the gpu
@@ -197,9 +185,10 @@ The output is
    :options: +ELLIPSIS, +SKIP
 
    $ THEANO_FLAGS=device=cuda0 python gpu_tutorial2.py
-   Mapped name None to device cuda0: GeForce GTX 680 (cuDNN version 5004)
+   Using cuDNN version 5105 on context None
+   Mapped name None to device cuda0: GeForce GTX 750 Ti (0000:07:00.0)
    [GpuElemwise{exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>)]
-   Looping 1000 times took 0.088381 seconds
+   Looping 1000 times took 0.040277 seconds
    Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753
      1.62323285]
    Used the gpu
@@ -208,9 +197,10 @@ The output is
 .. code-block:: none
 
   $ THEANO_FLAGS=device=cuda0 python gpu_tutorial2.py
-  Mapped name None to device cuda0: GeForce GTX 680 (cuDNN version 5004)
+  Using cuDNN version 5105 on context None
+  Mapped name None to device cuda0: GeForce GTX 750 Ti (0000:07:00.0)
   [GpuElemwise{exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>)]
-  Looping 1000 times took 0.089194 seconds
+  Looping 1000 times took 0.040277 seconds
   Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753
     1.62323285]
   Used the gpu
@@ -238,8 +228,8 @@ device, and also as we refine our implementation:
 * In general, matrix multiplication, convolution, and large element-wise
   operations can be accelerated a lot (5-50x) when arguments are large enough
   to keep 30 processors busy.
-* Indexing, dimension-shuffling and constant-time reshaping will be equally fast
-  on GPU as on CPU.
+* Indexing, dimension-shuffling and constant-time reshaping will be
+  equally fast on GPU as on CPU.
 * Summation over rows/columns of tensors can be a little slower on the
   GPU than on the CPU.
 * Copying of large quantities of data to and from a device is relatively slow,
@@ -273,23 +263,22 @@ Tips for Improving Performance on GPU
 * Minimize transfers to the GPU device by using ``shared`` variables
   to store frequently-accessed data (see :func:`shared()<shared.shared>`).
   When using the GPU, tensor ``shared`` variables are stored on
-  the GPU by default to eliminate transfer time for GPU ops using those variables.
-* If you aren't happy with the performance you see, try running your script with
-  ``profile=True`` flag. This should print some timing information at program
-  termination. Is time being used sensibly?   If an op or Apply is
-  taking more time than its share, then if you know something about GPU
-  programming, have a look at how it's implemented in theano.gpuarray.
-  Check the line similar to *Spent Xs(X%) in cpu op, Xs(X%) in gpu op and
-  Xs(X%) in transfer op*. This can tell you if not enough of your graph is
-  on the GPU or if there is too much memory transfer.
+  the GPU by default to eliminate transfer time for GPU ops using those
+  variables.
+* If you aren't happy with the performance you see, try running your
+  script with ``profile=True`` flag. This should print some timing
+  information at program termination. Is time being used sensibly?  If
+  an op or Apply is taking more time than its share, then if you know
+  something about GPU programming, have a look at how it's implemented
+  in theano.gpuarray.  Check the line similar to *Spent Xs(X%) in cpu
+  op, Xs(X%) in gpu op and Xs(X%) in transfer op*. This can tell you
+  if not enough of your graph is on the GPU or if there is too much
+  memory transfer.
 * To investigate whether all the Ops in the computational graph are
   running on GPU, it is possible to debug or check your code by providing
   a value to `assert_no_cpu_op` flag, i.e. `warn`, for warning, `raise` for
   raising an error or `pdb` for putting a breakpoint in the computational
   graph if there is a CPU Op.
-* Please note that ``config.lib.cnmem`` and ``config.gpuarray.preallocate``
-  controls GPU memory allocation when using (:ref:`cuda`) and 
-  (:ref:`gpuarray`) as theano backends respectively.
 
   .. _gpu_async:
 
@@ -311,9 +300,9 @@ when doing benchmarks.
 Changing the Value of Shared Variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To change the value of a ``shared`` variable, e.g. to provide new data to processes,
-use ``shared_variable.set_value(new_value)``. For a lot more detail about this,
-see :ref:`aliasing`.
+To change the value of a ``shared`` variable, e.g. to provide new data
+to processes, use ``shared_variable.set_value(new_value)``. For a lot
+more detail about this, see :ref:`aliasing`.
 
 Exercise
 ~~~~~~~~
@@ -389,47 +378,19 @@ Consider again the logistic regression:
    prediction on D
    ...
 
-Modify and execute this example to run on GPU with ``floatX=float32`` and
-time it using the command line ``time python file.py``. (Of course, you may use some of your answer
-to the exercise in section :ref:`Configuration Settings and Compiling Mode<using_modes>`.)
+Modify and execute this example to run on GPU with ``floatX=float32``
+and time it using the command line ``time python file.py``. (Of
+course, you may use some of your answer to the exercise in section
+:ref:`Configuration Settings and Compiling Mode<using_modes>`.)
 
 Is there an increase in speed from CPU to GPU?
 
 Where does it come from? (Use ``profile=True`` flag.)
 
-What can be done to further increase the speed of the GPU version? Put your ideas to test.
+What can be done to further increase the speed of the GPU version? Put
+your ideas to test.
 
 :download:`Solution<using_gpu_solution_1.py>`
-
--------------------------------------------
-
-.. _cuda:
-
-CUDA backend
-------------
-
-If you have not done so already, you will need to install Nvidia's
-GPU-programming toolchain (CUDA) and configure Theano to use it.
-We provide installation instructions for :ref:`Linux <gpu_linux>`,
-:ref:`MacOS <gpu_macos>` and :ref:`Windows <gpu_windows>`.
-
-The old CUDA backend can be activated using the flags ``device=gpu`` or
-``device=gpu{0,1,...}``
-
-.. note::
-   * CUDA backend uses ``config.lib.cnmem`` for GPU memory allocation. For the new backend(:ref:`gpuarray`), please see ``config.gpuarray.preallocate``
-   * Only 32 bit floats are supported.
-   * ``Shared`` variables with *float32* dtype are by default moved to the GPU memory space.
-
-   * There is a limit of one GPU per process.
-
-   * Apply the Theano flag ``floatX=float32`` (through ``theano.config.floatX``) in your code.
-   * ``Cast`` inputs before storing them into a ``shared`` variable.
-   * Circumvent the automatic cast of *int32* with *float32* to *float64*:
-
-     * Insert manual cast in your code or use *[u]int{8,16}*.
-     * Insert manual cast around the mean operator (this involves division by length, which is an *int64*).
-     * Notice that a new casting mechanism is being developed.
 
 -------------------------------------------
 

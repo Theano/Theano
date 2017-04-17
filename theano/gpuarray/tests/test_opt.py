@@ -92,7 +92,8 @@ def test_flatten():
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]
 
-    f = theano.function([m], m.flatten(ndim=2), mode=mode_with_gpu)
+    f = theano.function([m], m.flatten(ndim=2),
+                        mode=mode_with_gpu.excluding("local_useless_reshape"))
     val = np.random.rand(10, 11).astype("float32")
     res = f(val)
     utt.assert_allclose(res, val)
@@ -491,6 +492,27 @@ def test_many_arg_elemwise():
                 results_gpu, results_cpu = outputs
 
                 utt.assert_allclose(results_gpu, results_cpu)
+
+
+def test_not_useless_scalar_gpuelemwise():
+    # We don't want to move elemwise on scalar on the GPU when the
+    # result will not be used on the GPU!
+
+    with theano.configparser.change_flags(warn_float64='ignore'):
+        X = tensor.fmatrix()
+        x = np.random.randn(32, 32).astype(np.float32)
+        m1 = theano.shared(np.random.randn(32, 32).astype(np.float32))
+        loss = (X - tensor.dot(X, m1)).norm(L=2)
+        lr = theano.shared(np.asarray(.001, dtype=np.float32))
+        grad = tensor.grad(loss, m1)
+
+        train = theano.function(inputs=[X], updates=[(m1, m1 - lr * grad)],
+                                mode=mode_with_gpu)
+        train(x)
+        topo = train.maker.fgraph.toposort()
+        gemms = [app for app in topo if isinstance(app.op, GpuGemm)]
+        assert len(gemms) == 2
+        assert isinstance(gemms[1].inputs[1].owner.op, tensor.Elemwise)
 
 
 def test_local_lift_abstractconv_gpu_shape():

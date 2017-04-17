@@ -750,6 +750,9 @@ class ModuleCache(object):
             if subdirs_elem == 'lock_dir':
                 continue
             root = os.path.join(self.dirname, subdirs_elem)
+            # Don't delete the gpuarray kernel cache
+            if root == config.gpuarray.cache_path:
+                continue
             key_pkl = os.path.join(root, 'key.pkl')
             if key_pkl in self.loaded_key_pkl:
                 continue
@@ -796,12 +799,6 @@ class ModuleCache(object):
                                msg='broken cache directory [EOF]',
                                level=logging.WARNING)
                         continue
-                    except ValueError:
-                        # This can happen when we have bad config value
-                        # in the cuda.nvcc_compiler.py file.
-                        # We should not hide it here, as this will cause
-                        # an unrelated error to appear.
-                        raise
                     except Exception:
                         unpickle_failure()
                         if delete_if_problem:
@@ -1323,7 +1320,7 @@ class ModuleCache(object):
             to -1 in order to delete all unversioned cached modules regardless
             of their age.
         clear_base_files : bool
-            If True, then delete base directories 'cuda_ndarray', 'cutils_ext',
+            If True, then delete base directories 'cutils_ext',
             'lazylinker_ext' and 'scan_perform' if they are present.
             If False, those directories are left intact.
         delete_if_problem
@@ -1340,8 +1337,8 @@ class ModuleCache(object):
 
     def clear_base_files(self):
         """
-        Remove base directories 'cuda_ndarray', 'cutils_ext', 'lazylinker_ext'
-        and 'scan_perform' if present.
+        Remove base directories 'cutils_ext', 'lazylinker_ext' and
+        'scan_perform' if present.
 
         Note that we do not delete them outright because it may not work on
         some systems due to these modules being currently in use. Instead we
@@ -1350,8 +1347,7 @@ class ModuleCache(object):
 
         """
         with compilelock.lock_ctx():
-            for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext',
-                             'scan_perform'):
+            for base_dir in ('cutils_ext', 'lazylinker_ext', 'scan_perform'):
                 to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
                 if os.path.isdir(to_delete):
                     try:
@@ -2278,8 +2274,8 @@ class GCC_compiler(Compiler):
             # improved loading times on most platforms (win32 is
             # different, as usual).
             cmd.append('-fvisibility=hidden')
-        cmd.extend(['-o', lib_filename])
-        cmd.append(cppfilename)
+        cmd.extend(['-o', '%s%s%s' % (path_wrapper, lib_filename, path_wrapper)])
+        cmd.append('%s%s%s' % (path_wrapper, cppfilename, path_wrapper))
         cmd.extend(['-l%s' % l for l in libs])
         # print >> sys.stderr, 'COMPILING W CMD', cmd
         _logger.debug('Running cmd: %s', ' '.join(cmd))

@@ -203,10 +203,9 @@ class TensorType(Type):
         """
         Convert a symbolic Variable into a TensorType, if compatible.
 
-        For the moment, only a TensorType, GpuArrayType and
-        CudaNdarrayType will be
-        converted, provided they have the same number of dimensions and
-        dtype and have "compatible" broadcastable pattern.
+        For the moment, only a TensorType and GpuArrayType will be
+        converted, provided they have the same number of dimensions
+        and dtype and have "compatible" broadcastable pattern.
 
         """
         if hasattr(other, '_as_TensorVariable'):
@@ -373,7 +372,9 @@ class TensorType(Type):
 
     def __repr__(self):
         return str(self)
-        # "TensorType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
+
+    def c_element_type(self):
+        return self.dtype_specs()[1]
 
     def c_declare(self, name, sub, check_input=True):
         """

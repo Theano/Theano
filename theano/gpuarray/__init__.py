@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import sys
+import os
 import logging
-import sys
 import warnings
 
 import theano
@@ -31,6 +31,7 @@ from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
 from .basic_ops import as_gpuarray_variable
 from . import fft, dnn, opt, nerv, extra_ops, multinomial, reduction
 
+
 def transfer(x, target):
     try:
         get_context(target)
@@ -41,7 +42,7 @@ def transfer(x, target):
 register_transfer(transfer)
 
 
-def init_dev(dev, name=None):
+def init_dev(dev, name=None, preallocate=None):
     global pygpu_activated
     if not config.cxx:
         raise RuntimeError("The new gpu-backend need a c++ compiler.")
@@ -53,9 +54,13 @@ def init_dev(dev, name=None):
         raise ValueError(
             "Your installed libgpuarray is not in sync, please make sure to have the appropriate version")
     if dev not in init_dev.devmap:
+        if config.gpuarray.cache_path != '':
+            os.environ['GPUARRAY_CACHE_PATH'] = config.gpuarray.cache_path
+        if preallocate is None:
+            preallocate = config.gpuarray.preallocate
         context = pygpu.init(
             dev,
-            disable_alloc_cache=config.gpuarray.preallocate < 0,
+            disable_alloc_cache=preallocate < 0,
             single_stream=config.gpuarray.single_stream,
             sched=config.gpuarray.sched)
         context.dev = dev
@@ -73,14 +78,14 @@ def init_dev(dev, name=None):
                 else:
                     print("Can not use cuDNN on context %s: %s" % (name, dnn.dnn_available.msg),
                           file=sys.stderr)
-        if config.gpuarray.preallocate < 0:
+        if preallocate < 0:
             print("Disabling allocation cache on %s" % (dev,))
-        elif config.gpuarray.preallocate > 0:
+        elif preallocate > 0:
             MB = (1024 * 1024)
-            if config.gpuarray.preallocate <= 1:
-                gmem = min(config.gpuarray.preallocate, 0.95) * context.total_gmem
+            if preallocate <= 1:
+                gmem = min(preallocate, 0.95) * context.total_gmem
             else:
-                gmem = config.gpuarray.preallocate * MB
+                gmem = preallocate * MB
             if gmem > context.free_gmem - 50 * MB:
                 print(
                     "WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
@@ -90,14 +95,16 @@ def init_dev(dev, name=None):
             pygpu.empty((gmem,), dtype='int8', context=context)
             if config.print_active_device:
                 print("Preallocating %d/%d Mb (%f) on %s" %
-                      (gmem//MB, context.total_gmem//MB,
-                       gmem/context.total_gmem, dev),
+                      (gmem // MB, context.total_gmem // MB,
+                       gmem / context.total_gmem, dev),
                       file=sys.stderr)
 
         # Initialise the blas kernels.  We do this after the
         # preallocation to not fragment the heap accidentally.
         tmp = pygpu.empty((2, 2), dtype='float32', context=context)
-        pygpu.blas.gemm(0, tmp, tmp, 0, tmp, overwrite_c=True)
+        if dev.startswith('cuda'):
+            # In OpenCL, BLAS isn't always available
+            pygpu.blas.gemm(0, tmp, tmp, 0, tmp, overwrite_c=True)
         del tmp
     else:
         context = init_dev.devmap[dev]
@@ -120,7 +127,8 @@ init_dev.devmap = {}
 def use(device,
         force=False,
         default_to_move_computation_to_gpu=True,
-        move_shared_to_gpu=True):
+        move_shared_to_gpu=True,
+        preallocate=None):
     """
     Error and warning about CUDA should be displayed only when this
     function is called. We need to be able to load this module only
@@ -138,17 +146,20 @@ def use(device,
         computations to the gpu.
     move_shared_to_gpu
         If gpu init succeeded, put new shared variables on the gpu.
+    preallocate
+        If specified, will use this value for preallocation instead of
+        gpuarray.preallocate.
 
     """
     if force:
-        if not device.startswith('cuda'):
+        if not (device.startswith('cuda') or device.startswith('opencl')):
             raise Exception("forced the init and bad device provided: " +
                             device)
         else:
             # If we force, the device should not already be initialized.
             assert device not in init_dev.devmap
     if device:
-        init_dev(device)
+        init_dev(device, preallocate=preallocate)
     if default_to_move_computation_to_gpu:
         optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
         optdb.add_tags('gpua_scanOp_make_inplace', 'fast_run')
@@ -160,7 +171,7 @@ def use(device,
 if pygpu:
     try:
         if (config.device.startswith('cuda') or
-            config.device.startswith('opencl')):
+                config.device.startswith('opencl')):
             use(config.device)
         elif (config.init_gpu_device.startswith('cuda') or
               config.init_gpu_device.startswith('opencl')):
@@ -181,8 +192,7 @@ if pygpu:
 
     from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
                             GpuFromHost, GpuJoin, GpuReshape, GpuSplit,
-                            HostFromGpu)
-    from .basic_ops import host_from_gpu, GpuFromHost
+                            HostFromGpu, host_from_gpu)
     from .elemwise import GpuElemwise
     from .subtensor import (GpuSubtensor, GpuIncSubtensor,
                             GpuAdvancedIncSubtensor1)

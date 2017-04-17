@@ -54,7 +54,7 @@ import logging
 import copy
 from sys import maxsize
 from collections import OrderedDict
-import numpy
+import numpy as np
 
 import theano
 from theano import tensor, scalar
@@ -636,7 +636,7 @@ class PushOutSeqScan(gof.Optimizer):
                     if out in op.inner_mitsot_outs(ls):
                         odx = op.inner_mitsot_outs(ls).index(out)
                         inp = op.outer_mitsot(node)[odx]
-                        st = abs(numpy.min(op.mitsot_taps()))
+                        st = abs(np.min(op.mitsot_taps()))
                         y = tensor.set_subtensor(inp[st:], _y)
                     elif out in op.inner_sitsot_outs(ls):
                         odx = op.inner_sitsot_outs(ls).index(out)
@@ -914,10 +914,9 @@ class ScanInplaceOptimizer(Optimizer):
 
     """
 
-    def __init__(self, typeInfer=None, gpu_flag=False, gpua_flag=False):
+    def __init__(self, typeInfer=None, gpua_flag=False):
         Optimizer.__init__(self)
         self.typeInfer = typeInfer
-        self.gpu_flag = gpu_flag
         self.gpua_flag = gpua_flag
 
     def add_requirements(self, fgraph):
@@ -998,12 +997,10 @@ class ScanInplaceOptimizer(Optimizer):
 
     def apply(self, fgraph):
 
-        # Depending on the values of gpu_flag and gpua_flag, get the list of
-        # memory allocation ops that the optimization should be able to handle
+        # Depending on the value of gpua_flag, get the list of memory
+        # allocation ops that the optimization should be able to
+        # handle
         alloc_ops = (Alloc, AllocEmpty)
-        if self.gpu_flag:
-            alloc_ops += (theano.sandbox.cuda.GpuAlloc,
-                          theano.sandbox.cuda.GpuAllocEmpty)
         if self.gpua_flag:
             # gpuarray might be imported but not its GpuAlloc and
             # GpuAllopEmpty ops.
@@ -1016,7 +1013,6 @@ class ScanInplaceOptimizer(Optimizer):
         nodes = fgraph.toposort()[::-1]
         scan_nodes = [x for x in nodes
                       if (isinstance(x.op, scan_op.Scan) and
-                          x.op.info['gpu'] == self.gpu_flag and
                           x.op.info['gpua'] == self.gpua_flag)]
         for scan_idx in xrange(len(scan_nodes)):
 
@@ -1373,7 +1369,7 @@ class ScanSaveMem(gof.Optimizer):
                         # TODO: Simplify the number of steps needed.
                         # FB: This need good testing, left to later.
                         #     call get_scalar_constant_value()? it can
-                        # return python/numpy scalar or numpy.ndarray
+                        # return python/numpy scalar or np.ndarray
                         # currently.
                         # pval = pre_greedy_local_optimizer(list_opt_slice,
                         #                                  pval)
@@ -1655,7 +1651,7 @@ class ScanMerge(gof.Optimizer):
         info['truncate_gradient'] = nodes[0].op.truncate_gradient
         info['name'] = '&'.join([nd.op.name for nd in nodes])
         info['mode'] = nodes[0].op.mode
-        info['gpu'] = False
+        info['gpua'] = False
         info['as_while'] = as_while
         info['profile'] = nodes[0].op.profile
         info['allow_gc'] = nodes[0].op.allow_gc
@@ -2263,8 +2259,7 @@ optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
 # ScanSaveMem should execute only once per node.
 optdb.register('scanOp_save_mem', ScanSaveMem(), 1.61, 'fast_run', 'scan')
 optdb.register('scanOp_make_inplace',
-               ScanInplaceOptimizer(typeInfer=None,
-                                    gpu_flag=False),
+               ScanInplaceOptimizer(typeInfer=None),
                75,
                'fast_run',
                'inplace',

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy as N
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -407,7 +407,7 @@ class Conv3D(theano.Op):
                                     long long Vposl = Vpos;
                                     for (int m = 0; m < filterDur; m++) {
 
-                                      //H[i,r,c,t,:] += N.dot(W[:,k,l,m,:],V[i,dr*r+k,dc*c+l,dt*t+m,:])
+                                      //H[i,r,c,t,:] += np.dot(W[:,k,l,m,:],V[i,dr*r+k,dc*c+l,dt*t+m,:])
 
 
                                       //note: changing the weights so that outputChannels and inputChannels were the last two rather than
@@ -573,10 +573,7 @@ def conv3D(V, W, b, d):
     The order of dimensions does not correspond to the one in `conv2d`.
     This is for optimization.
 
-    The GPU implementation is very slow. You should use
-    :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>` or
-    :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>` for a
-    GPU graph instead.
+    Please use nnet.conv3d instead of this for a faster GPU implementation.
 
     See Also
     --------
@@ -619,8 +616,8 @@ def computeH(V, W, b, d):
     outputWidth = int((vidWidth - filterWidth) / dy) + 1
     outputDur = int((vidDur - filterDur) / dt) + 1
 
-    H = N.zeros((batchSize, outputHeight,
-                outputWidth, outputDur, outputChannels), dtype=V.dtype)
+    H = np.zeros((batchSize, outputHeight,
+                 outputWidth, outputDur, outputChannels), dtype=V.dtype)
 
     # H[i,j,x,y,t] = b_j + sum_k sum_l sum_m sum_z W[j,z,k,l,m] V[i,z, dx*x+k,dy*y+l,dt*t+m]
     for i in xrange(0, H.shape[0]):

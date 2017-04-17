@@ -309,5 +309,5 @@ As long as the computations happen on the NULL stream there are no
 special considerations to watch for with regards to synchronization.
 Otherwise, you will have to make sure that you synchronize the pygpu
 objects by calling the `.sync()` method before scheduling any work and
-synchronize with the work that happends in the library after all the
+synchronize with the work that happens in the library after all the
 work is scheduled.

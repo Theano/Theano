@@ -1807,7 +1807,8 @@ _good_broadcast_unary_gammaln = dict(
     empty=(np.asarray([], dtype=config.floatX),),
     int=(randint_ranged(1, 10, (2, 3)),),
     uint8=(randint_ranged(1, 6, (2, 3)).astype('uint8'),),
-    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),))
+    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),),
+    uint64=(randint_ranged(1, 10, (2, 3)).astype('uint64'),))
 _grad_broadcast_unary_gammaln = dict(
     # smaller range as our grad method does not estimate it well enough.
     normal=(rand_ranged(1e-1, 8, (2, 3)),),)
@@ -7631,21 +7632,19 @@ class TestInferShape(utt.InferShapeTester):
         # Flatten
         atens3 = tensor3()
         atens3_val = rand(4, 5, 3)
-        self._compile_and_check([atens3],
-                                [flatten(atens3, 1)],
-                                [atens3_val], Reshape)
-
         for outdim in (3, 2, 1):
             self._compile_and_check([atens3],
                                     [flatten(atens3, outdim)],
-                                    [atens3_val], Reshape)
+                                    [atens3_val], Reshape,
+                                    excluding=['local_useless_reshape'])
 
         amat = matrix()
         amat_val = rand(4, 5)
         for outdim in (2, 1):
             self._compile_and_check([amat],
                                     [flatten(amat, outdim)],
-                                    [amat_val], Reshape)
+                                    [amat_val], Reshape,
+                                    excluding=['local_useless_reshape'])
 
         avec = vector()
         avec_val = rand(4)

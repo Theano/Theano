@@ -11,7 +11,6 @@ import os
 import sys
 import time
 from optparse import OptionParser
-import subprocess
 
 import numpy as np
 import theano
@@ -51,12 +50,6 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print('Numpy dot module:', np.dot.__module__)
         print('Numpy location:', np.__file__)
         print('Numpy version:', np.__version__)
-        if (theano.config.device.startswith("gpu") or
-                theano.config.init_gpu_device.startswith("gpu")):
-            print('nvcc version:')
-            subprocess.call((theano.sandbox.cuda.nvcc_compiler.nvcc_path,
-                             "--version"))
-            print()
 
     a = theano.shared(np.ones((M, N), dtype=theano.config.floatX,
                               order=order))
@@ -88,17 +81,15 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
 
     f()  # Ignore first function call to get representative time.
     if execute:
-        sync = (hasattr(theano, "sandbox") and
-                hasattr(theano.sandbox, "cuda") and
-                isinstance(c, theano.sandbox.cuda.CudaNdarraySharedVariable))
-        sync2 = (hasattr(theano, "gpuarray") and
-                 isinstance(c, theano.gpuarray.GpuArraySharedVariable))
+        sync = (hasattr(theano, "gpuarray") and
+                isinstance(c, theano.gpuarray.GpuArraySharedVariable))
+        if sync:
+            # Make sure we don't include the time from the first call
+            c.get_value(borrow=True, return_internal_type=True).sync()
         t0 = time.time()
         for i in range(iters):
             f()
         if sync:
-            theano.sandbox.cuda.synchronize()
-        if sync2:
             c.get_value(borrow=True, return_internal_type=True).sync()
         t1 = time.time()
     return t1 - t0, impl
@@ -199,87 +190,32 @@ if __name__ == "__main__":
         goto2 1.13/8                                                      1.94s
         goto2 1.13/16                                                     3.16s
 
-        Test time in float32
-
-        cuda version      6.5    6.0    5.5    5.0    4.2    4.1    4.0    3.2    3.0   # note
-        gpu
-        K6000/NOECC       0.06s         0.06s
-        K40                             0.07s
-        K20m/ECC          0.08s 0.08s          0.07s
-        K20/NOECC                              0.07s
-        M2090                           0.19s
-        C2075                                         0.25s
-        M2075                                  0.25s
-        M2070                                  0.25s         0.27s         0.32s
-        M2070-Q                                0.48s         0.27s         0.32s
-        M2050(Amazon)                          0.25s
-        C1060                                                              0.46s
-        K600                            1.04s
-
-        GTX Titan Black                 0.05s
-        GTX Titan(D15U-50)              0.06s  0.06s  don't work
-        GTX 780                         0.06s
-        GTX 980           0.06s
-        GTX 970           0.08s
-        GTX 680                         0.11s  0.12s  0.154s               0.218s
-        GRID K520         0.14s
-        GTX 580                         0.16s  0.16s  0.164s               0.203s
-        GTX 480                         0.19s  0.19s  0.192s               0.237s 0.27s
-        GTX 750 Ti        0.20s
-        GTX 470                         0.23s  0.23s  0.238s               0.297s 0.34s
-        GTX 660                         0.18s  0.20s  0.23s
-        GTX 560                                       0.30s
-        GTX 650 Ti                             0.27s
-        GTX 765M                 0.27s
-        GTX 460                                0.37s                0.45s
-        GTX 285                         0.42s         0.452s        0.452s        0.40s # cuda 3.0 seems faster? driver version?
-        750M                                   0.49s
-        GT 610            2.38s
-        GTX 550 Ti                                                  0.57s
-        GT 520                                        2.68s                3.06s
-        GT 520M                                2.44s                       3.19s        # with bumblebee on Ubuntu 12.04
-        GT 220                                                             3.80s
-        GT 210                                                      6.35s
-        8500 GT                                                                   10.68s
-
-        Results for larger matrices.
-        There were 10 executions of gemm in float32
-        with matrices of shape 5000x5000 (M=N=K=5000).
+        Test time in float32. There were 10 executions of gemm in
+        float32 with matrices of shape 5000x5000 (M=N=K=5000)
         All memory layout was in C order.
 
-        cuda version      7.5    7.0    6.5
-        gpu
-        M40               0.47s
-        k80               0.96s
-        K6000/NOECC              0.69s
-        K40                             0.88s
-        K20m/ECC
-        K20/NOECC
-        M2090
-        C2075
-        M2075
-        M2070
-        M2070-Q
-        M2050(Amazon)
-        C1060
-        K600
 
-        GTX Titan X       0.45s  0.47s
-        GTX Titan Black   0.64s  0.64s
-        GTX Titan(D15U-50)
-        GTX 780
-        GTX 980 Ti        0.41s
-        GTX 980
-        GTX 970           0.66s
-        GTX 680                  1.57s
-        GRID K520
-        GTX 750 Ti        2.01s  2.01s
-        GTX 750           2.46s  2.37s
-        GTX 660           2.32s  2.32s
-        GTX 580           2.42s         2.47s
-        GTX 480           2.87s         2.88s
-        TX1                      7.6s (float32 storage and computation)
-        GT 610                   33.5s
+        cuda version      8.0    7.5    7.0
+        gpu
+        M40               0.45s  0.47s
+        k80               0.92s  0.96s
+        K6000/NOECC       0.71s         0.69s
+        P6000/NOECC       0.25s
+
+        Titan X (Pascal)  0.28s
+        GTX Titan X       0.45s  0.45s  0.47s
+        GTX Titan Black   0.66s  0.64s  0.64s
+        GTX 1080          0.35s
+        GTX 980 Ti               0.41s
+        GTX 970                  0.66s
+        GTX 680                         1.57s
+        GTX 750 Ti               2.01s  2.01s
+        GTX 750                  2.46s  2.37s
+        GTX 660                  2.32s  2.32s
+        GTX 580                  2.42s
+        GTX 480                  2.87s
+        TX1                             7.6s (float32 storage and computation)
+        GT 610                          33.5s
         """)
 
     if options.M == 0:

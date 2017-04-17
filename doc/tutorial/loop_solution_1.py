@@ -2,7 +2,7 @@
 # Theano tutorial
 # Solution to Exercise in section 'Loop'
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 import theano.tensor as tt
@@ -52,7 +52,7 @@ polynomial = components.sum()
 calculate_polynomial1 = theano.function(inputs=[coefficients, x],
                                         outputs=polynomial)
 
-test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
+test_coeff = np.asarray([1, 0, 2], dtype=np.float32)
 print(calculate_polynomial1(test_coeff, 3))
 # 19.0
 
@@ -68,7 +68,7 @@ max_coefficients_supported = 10000
 full_range = tt.arange(max_coefficients_supported)
 
 
-outputs_info = tt.as_tensor_variable(numpy.asarray(0, 'float64'))
+outputs_info = tt.as_tensor_variable(np.asarray(0, 'float64'))
 
 components, updates = theano.scan(fn=lambda coeff, power, prior_value, free_var:
                                   prior_value + (coeff * (free_var ** power)),
@@ -80,6 +80,6 @@ polynomial = components[-1]
 calculate_polynomial = theano.function(inputs=[coefficients, x],
                                        outputs=polynomial, updates=updates)
 
-test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
+test_coeff = np.asarray([1, 0, 2], dtype=np.float32)
 print(calculate_polynomial(test_coeff, 3))
 # 19.0

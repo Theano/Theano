@@ -74,8 +74,6 @@ whitelist_flake8 = [
     "scalar/tests/__init__.py",
     "sandbox/__init__.py",
     "sandbox/tests/__init__.py",
-    "sandbox/cuda/__init__.py",
-    "sandbox/cuda/tests/__init__.py",
     "sandbox/gpuarray/__init__.py",
     "sandbox/linalg/__init__.py",
     "sandbox/linalg/tests/__init__.py",
