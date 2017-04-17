@@ -210,9 +210,10 @@ optdb.register('merge2', gof.MergeOptimizer(),
 optdb.register('add_destroy_handler', AddDestroyHandler(),
                49.5, 'fast_run', 'inplace')
 
+# 'merge3' seems useless
 # final pass just to make sure
-optdb.register('merge3', gof.MergeOptimizer(),
-               100, 'fast_run', 'merge')
+# optdb.register('merge3', gof.MergeOptimizer(),
+#                100, 'fast_run', 'merge')
 
 
 class Mode(object):
