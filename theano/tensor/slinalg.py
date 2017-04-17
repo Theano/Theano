@@ -176,6 +176,7 @@ class Solve(Op):
     """
     Solve a system of linear equations.
 
+    For on CPU and GPU.
     """
 
     __props__ = ('A_structure', 'lower', 'overwrite_A', 'overwrite_b')

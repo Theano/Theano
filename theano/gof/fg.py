@@ -15,6 +15,7 @@ from theano.gof import toolbox
 from theano import config
 
 from six import iteritems, itervalues
+from six.moves import StringIO
 from theano.gof.utils import get_variable_trace_string
 from theano.misc.ordered_set import OrderedSet
 NullType = None
@@ -468,10 +469,21 @@ class FunctionGraph(utils.object2):
             new_r2 = r.type.convert_variable(new_r)
             # We still make sure that the type converts correctly
             if new_r2 is None or new_r2.type != r.type:
-                raise TypeError("The type of the replacement must be "
-                                "compatible with the type of the original "
-                                "Variable.", r, new_r, r.type, new_r.type,
-                                str(reason))
+                done = dict()
+                used_ids = dict()
+                old = theano.compile.debugmode.debugprint(
+                    r, prefix='  ', depth=6,
+                    file=StringIO(), done=done,
+                    print_type=True,
+                    used_ids=used_ids).getvalue()
+                new = theano.compile.debugmode.debugprint(
+                    new_r, prefix='  ', depth=6,
+                    file=StringIO(), done=done,
+                    print_type=True,
+                    used_ids=used_ids).getvalue()
+                raise toolbox.BadOptimization(
+                    r, new_r, None, None, str(reason) +
+                    ". The type of the replacement must be the same.", old, new)
             new_r = new_r2
         if r not in self.variables:
             # this variable isn't in the graph... don't raise an
