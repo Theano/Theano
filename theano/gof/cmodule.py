@@ -1600,7 +1600,7 @@ def std_lib_dirs_and_libs():
     # this method is called many times.
     if std_lib_dirs_and_libs.data is not None:
         return std_lib_dirs_and_libs.data
-    python_inc = distutils.sysconfig.get_python_inc()
+    python_inc = distutils.sysconfig.get_python_lib()
     if sys.platform == 'win32':
         # Obtain the library name from the Python version instead of the
         # installation directory, in case the user defined a custom
