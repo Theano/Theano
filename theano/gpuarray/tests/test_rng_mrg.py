@@ -5,6 +5,7 @@ import numpy as np
 
 import theano
 from theano import tensor
+from theano.configparser import change_flags
 from theano.sandbox import rng_mrg
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.sandbox.tests.test_rng_mrg import java_samples, rng_mrg_overflow
@@ -115,8 +116,6 @@ def test_consistency_GPUA_parallel():
 def test_GPUA_full_fill():
     # Make sure the whole sample buffer is filled.  Also make sure
     # large samples are consistent with CPU results.
-    import theano.gpuarray.tests.config
-    from theano.gpuarray.type import gpuarray_shared_constructor
 
     # This needs to be large to trigger the problem on GPU
     size = (10, 1000)
@@ -136,9 +135,6 @@ def test_GPUA_full_fill():
 
 
 def test_overflow_gpu_new_backend():
-    from theano.gpuarray.tests.test_basic_ops import \
-        mode_with_gpu as mode
-    from theano.gpuarray.type import gpuarray_shared_constructor
     seed = 12345
     n_substreams = 7
     curr_rstate = np.array([seed] * 6, dtype='int32')
@@ -162,11 +158,7 @@ def test_overflow_gpu_new_backend():
 
 
 def test_validate_input_types_gpuarray_backend():
-    from theano.sandbox.rng_mrg import mrg_uniform
-    from theano.gpuarray.type import gpuarray_shared_constructor
-    from theano.configparser import change_flags
-
     with change_flags(compute_test_value="raise"):
         rstate = np.zeros((7, 6), dtype="int32")
         rstate = gpuarray_shared_constructor(rstate)
-        mrg_uniform.new(rstate, ndim=None, dtype="float32", size=(3,))
+        rng_mrg.mrg_uniform.new(rstate, ndim=None, dtype="float32", size=(3,))
