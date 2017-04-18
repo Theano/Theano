@@ -500,6 +500,105 @@ class SoftmaxGrad(gof.Op):
 softmax_grad = SoftmaxGrad()
 
 
+class Abstract_SoftmaxGrad(gof.Op):
+    """
+    Gradient wrt x of the Softmax Op.
+    """
+
+    nin = 3
+    nout = 1
+    __props__ = ()
+
+    def make_node(self, dy, sm, axis=-1):
+        dy = tensor.as_tensor_variable(dy)
+        sm = tensor.as_tensor_variable(sm)
+        if dy.type.dtype not in tensor.float_dtypes:
+            raise ValueError('dy must be tensor of floats. Got ', dy.type)
+        if dy.ndim == 1:
+            dy = tensor.shape_padleft(dy, n_ones=1)
+        if sm.ndim == 1:
+            sm = tensor.shape_padleft(sm, n_ones=1)
+        # Check axes
+        if isinstance(axis, (integer_types, np.integer)):
+            axis = [int(axis)]
+        elif isinstance(axis, np.ndarray) and axis.ndim == 0:
+            axis = [int(axis)]
+        elif isinstance(axis, (tuple, list, np.ndarray)):
+            axis = [int(a) for a in axis]
+            if axis == list(range(sm.type.ndim)):
+                axis = None
+        elif isinstance(axis, Variable):
+            if NoneConst.equals(axis):
+                axis = None
+            elif not isinstance(axis, tensor.var.TensorConstant):
+                raise TypeError("Softmax needs a constant axis. Got %s" % axis)
+            else:
+                assert axis.dtype in integer_dtypes
+                if isinstance(axis.data, (integer_types, np.integer)) or \
+                        (isinstance(axis.data, np.ndarray) and axis.data.ndim == 0):
+                            axis = [int(axis.data)]
+                elif isinstance(axis.data, (list, np.ndarray)):
+                    axis = [int(i) for i in axis.data]
+
+        # Make axis entries non-negative, and sort them
+        if isinstance(axis, list):
+            for idx in xrange(len(axis)):
+                if axis[idx] < 0:
+                    axis[idx] += sm.type.ndim
+            axis.sort()
+
+        # Verify that axes are valid
+        all_axes = []
+        if isinstance(axis, list):
+            for ax in axis:
+                if ax < 0 or ax >= sm.type.ndim:
+                    raise ValueError(
+                        'Invalid axis: %s (the number of dimensions of the '
+                        'input is: %s)' % (ax, sm.type.ndim))
+                    if ax not in all_axes:
+                        all_axes.append(ax)
+        else:
+            all_axes = list(range(sm.ndim))
+
+        if axis is None or axis == list(range(sm.type.ndim)):
+            axis = NoneConst.clone()
+        else:
+            axis = tensor.as_tensor_variable(all_axes)
+            assert axis.ndim == 1
+        inputs = [dy, sm, axis]
+
+        return Apply(self, inputs, [sm.type()])
+
+    def perform(self, node, input_storage, output_storage):
+        dy, sm, axes = input_storage
+        if (dy.shape != sm.shape):
+            raise ValueError('dy and the softmax output should have the same shape.')
+        dx = np.zeros_like(sm)
+        if axes is None:
+            axes = tuple(sm.ndim - 1)
+        else:
+            axes = tuple(int(ax) for ax in axes)
+        # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
+        dy_times_sm = dy * sm
+        dx = dy_times_sm - (np.sum(dy_times_sm, axis=axes, keepdims=True) * sm)
+        output_storage[0][0] = dx
+
+    def grad(self, inp, grads):
+        dy, sm, ax = inp
+        g, = grads
+        tmp = g + tensor.neg(tensor.sum(g * sm, axis=ax.eval(), keepdims=True))
+        g_dy = tmp * sm
+        tmp2 = tensor.sum(dy * sm, axis=ax.eval(), keepdims=True)
+        g_sm = tmp * dy - g * tmp2
+        g_ax = DisconnectedType()()
+        return g_dy, g_sm, g_ax
+
+    def infer_shape(self, node, shape):
+        return [shape[1]]
+
+abstract_softmax_grad = Abstract_SoftmaxGrad()
+
+
 class Abstract_softmax(gof.Op):
     """
     Similar to Argmax Op
@@ -583,7 +682,7 @@ class Abstract_softmax(gof.Op):
             g_sm, test = grads
         else:
             g_sm, = grads
-        return [softmax_grad(g_sm, outputs[0], axis), DisconnectedType()()]
+        return [abstract_softmax_grad(g_sm, outputs[0], axis), DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
