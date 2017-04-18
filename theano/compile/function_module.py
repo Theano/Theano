@@ -1475,8 +1475,7 @@ class FunctionMaker(object):
                     optimizer_profile = self.optimize_graph_with_cache(
                         optimizer, inputs, outputs)
                 else:
-                    with theano.configparser.change_flags(compute_test_value="off"):
-                        optimizer_profile = optimizer(fgraph)
+                    optimizer_profile = optimizer(fgraph)
 
                 end_optimizer = time.time()
                 opt_time = end_optimizer - start_optimizer
@@ -1800,14 +1799,15 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     fn = None
     try:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
-        fn = Maker(inputs,
-                   outputs,
-                   mode,
-                   accept_inplace=accept_inplace,
-                   profile=profile,
-                   on_unused_input=on_unused_input,
-                   output_keys=output_keys).create(
-            defaults)
+        with theano.configparser.change_flags(compute_test_value="off"):
+            fn = Maker(inputs,
+                       outputs,
+                       mode,
+                       accept_inplace=accept_inplace,
+                       profile=profile,
+                       on_unused_input=on_unused_input,
+                       output_keys=output_keys).create(
+                           defaults)
     finally:
         t2 = time.time()
         if fn and profile:
