@@ -13,6 +13,7 @@ Ubuntu Installation Instructions
 
 .. _gpu_linux:
 
+.. |PythonDistRecommended| replace:: The development package (python-dev or python-devel on most Linux distributions) is recommended (see just below)
 .. |PlatformCompiler| replace:: ``python-dev``, ``g++`` >= 4.2
 .. |CompilerName| replace:: ``g++``
 
