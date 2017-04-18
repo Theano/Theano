@@ -275,7 +275,7 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
 
         a = theano.ifelse.ifelse(x, y, z)
         with theano.configparser.change_flags(on_opt_error='raise'):
-            f = theano.function([x], [a], mode=mode_with_gpu)
+            theano.function([x], [a], mode=mode_with_gpu)
 
 
 def test_print_op():
