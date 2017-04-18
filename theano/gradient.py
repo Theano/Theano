@@ -1674,7 +1674,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
             return np.array(plain, o_output.dtype)
         return plain
 
-    t_r = shared(random_projection())
+    t_r = shared(random_projection(), borrow=True)
     t_r.name = 'random_projection'
 
     # random projection of o onto t_r
