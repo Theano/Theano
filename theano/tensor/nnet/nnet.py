@@ -79,7 +79,7 @@ class SoftmaxWithBias(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, b, ax = input_storage
-        if b.shape[0] != x.shape[-1]:
+        if b.shape[0] != x.shape[ax]:
             raise ValueError('b must have same number of columns as x')
 
         if x.size == 0:
