@@ -24,7 +24,8 @@ class GpuCumOp(GpuKernelBase, Op):
     """
     SUPPORTED_NDIMS = 3
     __props__ = ('axis', 'mode')
-    params_type = ParamsType(axis=scalar.int32, context=gpu_context_type, device_is_not_cuda=scalar.bool)
+    params_type = ParamsType(axis=scalar.int32,
+                             context=gpu_context_type)
 
     def __init__(self, axis, mode='add'):
         self.axis = int(axis) if axis is not None else 0
@@ -39,7 +40,7 @@ class GpuCumOp(GpuKernelBase, Op):
         return hash(self.axis) ^ hash(self.mode)
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', '<gpuarray_helper.h>']
@@ -48,9 +49,8 @@ class GpuCumOp(GpuKernelBase, Op):
         return [os.path.dirname(__file__)]
 
     def get_params(self, node):
-        context = GpuKernelBase.get_params(self, node)
-        device_is_not_cuda = (context.kind != b'cuda')
-        return self.params_type.get_params(axis=self.axis, context=context, device_is_not_cuda=device_is_not_cuda)
+        context = node.inputs[0].type.context
+        return self.params_type.get_params(axis=self.axis, context=context)
 
     def make_node(self, x):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumOp"
@@ -235,12 +235,9 @@ class GpuCumOp(GpuKernelBase, Op):
         return kernels
 
     def c_code(self, node, nodename, inp, out, sub):
+        if node.inputs[0].type.context.kind != b'cuda':
+            raise NotImplementedError("cuda only")
         return """
-        if (%(params)s->device_is_not_cuda) {
-            PyErr_SetString(PyExc_NotImplementedError, "cuda only");
-            %(fail)s
-        }
-        {
             const size_t* shape = PyGpuArray_DIMS(%(x)s);
             bool needAllocation = !%(z)s || PyGpuArray_NDIM(%(x)s) != PyGpuArray_NDIM(%(z)s);
 
@@ -279,7 +276,6 @@ class GpuCumOp(GpuKernelBase, Op):
                     %(fail)s;
                 }
             }
-        }
         """ % dict(x=inp[0], z=out[0], nodename=nodename, fail=sub['fail'], params=sub['params'])
 
     def c_support_code_struct(self, node, nodename):

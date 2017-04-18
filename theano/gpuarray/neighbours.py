@@ -24,7 +24,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
     params_type = ParamsType(mode=Images2Neibs.params_type, context=gpu_context_type)
 
     def get_params(self, node):
-        return self.params_type.get_params(self, context=GpuKernelBase.get_params(self, node))
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def make_node(self, ten4, neib_shape, neib_step):
         ten4 = as_gpuarray_variable(ten4, infer_context_name(ten4))

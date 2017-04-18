@@ -613,6 +613,9 @@ class Pool(OpenMPOp, COp):
         headers += super(Pool, self).c_headers()
         return headers
 
+    def c_code_cache_version(self):
+        return (COp.c_code_cache_version(self), self.openmp)
+
 
 class PoolGrad(OpenMPOp):
     __props__ = ('ignore_border', 'mode', 'ndim')

@@ -287,20 +287,30 @@ def mrg_next_value(rstate, new_rstate):
 class mrg_uniform_base(Op):
     # TODO : need description for class, parameter
     __props__ = ("output_type", "inplace")
-    params_type = ParamsType(inplace=bool_t, ndim=int_t, otypenum=int_t, otype_is_float32=bool_t)
+    params_type = ParamsType(inplace=bool_t,
+                             # following params will come from self.output_type.
+                             # NB: As output object may not be allocated in C code,
+                             # we can not be sure to get these properties from output.
+                             # So, we should better get them as params from self.output_type.
+                             ndim=int_t,
+                             otypenum=int_t,
+                             otype_is_float32=bool_t)
 
     def __init__(self, output_type, inplace=False):
         Op.__init__(self)
         self.output_type = output_type
-        # params
         self.inplace = inplace
-        self.ndim = self.output_type.ndim
-        self.otypenum = np.dtype(self.output_type.dtype).num
-        self.otype_is_float32 = (self.output_type.dtype == 'float32')
-        # end params
         if inplace:
             self.destroy_map = {0: [0]}
         self.warned_numpy_version = False
+
+    # These attributes (used as params) are created as properties
+    # to avoid some crashes in FAST_COMPILE mode. It seems __init__()
+    # method is not called in that mode, so that some attributes may
+    # not have been initialized.
+    ndim = property(lambda self: self.output_type.ndim)
+    otypenum = property(lambda self: np.dtype(self.output_type.dtype).num)
+    otype_is_float32 = property(lambda self: self.output_type.dtype == 'float32')
 
     def __str__(self):
         if self.inplace:

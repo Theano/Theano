@@ -25,9 +25,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
     _f16_ok = True
     params_type = mrg_uniform_base.params_type.extended(otypecode=int_t, context=gpu_context_type)
 
-    def get_params(self, node):
-        return self.params_type.get_params(self, otypecode=self.output_type.typecode,
-                                           context=GpuKernelBase.get_params(self, node))
+    otypecode = property(lambda self: self.output_type.typecode)
 
     def make_node(self, rstate, size):
         # error checking slightly redundant here, since
@@ -42,6 +40,9 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         return Apply(self,
                      [rstate, size],
                      [rstate.type(), output_type])
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
