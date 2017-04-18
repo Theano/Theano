@@ -70,7 +70,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
-from .linalg import (GpuCusolverSolve, cusolver_available)
+from .linalg import (GpuCusolverSolve, GpuCholesky, cusolver_available)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -1966,6 +1966,23 @@ def local_gpu_solve(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
     return GpuCusolverSolve()
+
+
+# Cholesky decomposition
+@register_opt('fast_compile')
+@op_lifter([slinalg.Cholesky])
+@register_opt2([theano.tensor.slinalg.Cholesky], 'fast_compile')
+def local_gpu_cholesky(op, context_name, inputs, outputs):
+    if not cusolver_available:
+        return
+    return GpuCholesky(lower=op.lower, inplace=op.destructive)
+
+
+@register_inplace()
+@local_optimizer([GpuCholesky], inplace=True)
+def local_inplace_cholesky(node):
+    if isinstance(node.op, GpuCholesky) and not node.op.inplace:
+        return [GpuCholesky(lower=node.op.lower, inplace=True)(*node.inputs)]
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.
