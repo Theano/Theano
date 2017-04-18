@@ -60,6 +60,20 @@ def test_filter_float():
         del theano.compile.sharedvalue.shared.constructors[-1]
 
 
+def test_gpuarray_shared_scalar():
+    # By default, we don't put scalar as shared variable on the GPU
+    try:
+        gpuarray_shared_constructor(np.asarray(1, dtype='float32'))
+    except TypeError:
+        pass
+    else:
+        assert False, "Expected an error"
+
+    # But we can force that
+    gpuarray_shared_constructor(np.asarray(1, dtype='float32'),
+                                target=test_ctx_name)
+
+
 def test_unpickle_gpuarray_as_numpy_ndarray_flag0():
     """ Test when pygpu isn't there for unpickle are in test_pickle.py"""
     oldflag = config.experimental.unpickle_gpu_on_cpu
