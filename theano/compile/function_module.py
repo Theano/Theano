@@ -1800,12 +1800,12 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     try:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
         m = Maker(inputs,
-                       outputs,
-                       mode,
-                       accept_inplace=accept_inplace,
-                       profile=profile,
-                       on_unused_input=on_unused_input,
-                       output_keys=output_keys)
+                  outputs,
+                  mode,
+                  accept_inplace=accept_inplace,
+                  profile=profile,
+                  on_unused_input=on_unused_input,
+                  output_keys=output_keys)
         with theano.configparser.change_flags(compute_test_value="off"):
             fn = m.create(defaults)
     finally:
