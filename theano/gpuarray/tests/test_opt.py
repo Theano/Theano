@@ -267,6 +267,16 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
                             mode=mode_with_gpu)
         assert f(np.float32([1, 2, 3]), 0) == 6
 
+    def test_lifter_with_shared_var(self):
+        x = tensor.lscalar('x')
+        y = gpuarray_shared_constructor(np.asarray(1, dtype='float32'),
+                                        target=test_ctx_name)
+        z = tensor.constant(2.)
+
+        a = theano.ifelse.ifelse(x, y, z)
+        with theano.configparser.change_flags(on_opt_error='raise'):
+            f = theano.function([x], [a], mode=mode_with_gpu)
+
 
 def test_print_op():
     """ Test that print ops don't block gpu optimization"""
