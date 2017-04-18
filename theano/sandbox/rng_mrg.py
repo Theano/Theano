@@ -15,6 +15,7 @@ from six.moves import xrange
 import theano
 from theano import Op, Apply, shared, config, Variable
 from theano import gradient, function
+from theano.gradient import undefined_grad
 from theano import tensor
 from theano.tensor import (TensorType, as_tensor_variable, get_vector_length,
                            cast, opt, scal)
@@ -773,7 +774,9 @@ class MRG_RandomStreams(object):
 
         """
         low = as_tensor_variable(low)
+        low = undefined_grad(low)
         high = as_tensor_variable(high)
+        high = undefined_grad(high)
         if dtype is None:
             dtype = scal.upcast(config.floatX, low.dtype, high.dtype)
 
@@ -821,6 +824,7 @@ class MRG_RandomStreams(object):
                  nstreams=None):
         # TODO : need description for method, parameter and return
         if n == 1:
+            p = undefined_grad(as_tensor_variable(p))
             x = self.uniform(size=size, nstreams=nstreams)
             return cast(x < p, dtype)
         else:
@@ -852,6 +856,7 @@ class MRG_RandomStreams(object):
         if pvals is None:
             raise TypeError("You have to specify pvals")
         pvals = as_tensor_variable(pvals)
+        pvals = undefined_grad(pvals)
         if size is not None:
             if any([isinstance(i, integer_types) and i <= 0 for i in size]):
                 raise ValueError(
@@ -932,6 +937,7 @@ class MRG_RandomStreams(object):
             raise TypeError("For now, p has to be specified in "
                             "MRG_RandomStreams.choice.")
         p = as_tensor_variable(p)
+        p = undefined_grad(p)
 
         if ndim is not None:
             raise ValueError("ndim argument to "
@@ -978,7 +984,9 @@ class MRG_RandomStreams(object):
         # second half our U2's. See Wikipedia page:
         # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
         avg = as_tensor_variable(avg)
+        avg = undefined_grad(avg)
         std = as_tensor_variable(std)
+        std = undefined_grad(std)
 
         if dtype is None:
             dtype = scal.upcast(config.floatX, avg.dtype, std.dtype)

@@ -687,6 +687,70 @@ def test_overflow_cpu():
     rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=False)
 
 
+def test_undefined_grad():
+    srng = MRG_RandomStreams(seed=1234)
+
+    # checking uniform distribution
+    low = tensor.scalar()
+    out = srng.uniform((), low=low)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, low)
+
+    high = tensor.scalar()
+    out = srng.uniform((), low=0, high=high)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, high)
+
+    out = srng.uniform((), low=low, high=high)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
+                  (low, high))
+
+    # checking binomial distribution
+    prob = tensor.scalar()
+    out = srng.binomial((), p=prob)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, prob)
+
+    # checking multinomial distribution
+    prob1 = tensor.scalar()
+    prob2 = tensor.scalar()
+    p = [theano.tensor.as_tensor_variable([prob1, 0.5, 0.25])]
+    out = srng.multinomial(size=None, pvals=p, n=4)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad,
+                  theano.tensor.sum(out), prob1)
+
+    p = [theano.tensor.as_tensor_variable([prob1, prob2])]
+    out = srng.multinomial(size=None, pvals=p, n=4)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad,
+                  theano.tensor.sum(out), (prob1, prob2))
+
+    # checking choice
+    p = [theano.tensor.as_tensor_variable([prob1, prob2, 0.1, 0.2])]
+    out = srng.choice(a=None, size=1, p=p, replace=False)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out[0],
+                  (prob1, prob2))
+
+    p = [theano.tensor.as_tensor_variable([prob1, prob2])]
+    out = srng.choice(a=None, size=1, p=p, replace=False)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out[0],
+                  (prob1, prob2))
+
+    p = [theano.tensor.as_tensor_variable([prob1, 0.2, 0.3])]
+    out = srng.choice(a=None, size=1, p=p, replace=False)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out[0],
+                  prob1)
+
+    # checking normal distribution
+    avg = tensor.scalar()
+    out = srng.normal((), avg=avg)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, avg)
+
+    std = tensor.scalar()
+    out = srng.normal((), avg=0, std=std)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, std)
+
+    out = srng.normal((), avg=avg, std=std)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
+                  (avg, std))
+
+
 if __name__ == "__main__":
     rng = MRG_RandomStreams(np.random.randint(2147462579))
     print(theano.__file__)
