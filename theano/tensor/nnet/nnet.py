@@ -146,7 +146,11 @@ class SoftmaxWithBias(gof.Op):
                     }
 
             // Check if the axis is valid
-            if(axis > ndim_x - 1 || axis < -1){
+            if (axis < 0)
+            {
+                axis += ndim_x;
+            }
+            if(axis > ndim_x - 1 || axis < 0){
                 PyErr_SetString(PyExc_ValueError,
                 "Argmax, bad axis argument");
                 %(fail)s
@@ -406,7 +410,11 @@ class SoftmaxGrad(gof.Op):
                 }
 
             // Check if the axis is valid
-            if(axis > PyArray_NDIM(%(sm)s)-1 || axis < -1){
+            if (axis < 0)
+            {
+                axis += ndim_sm;
+            }
+            if(axis > ndim_sm - 1 || axis < 0){
                 PyErr_SetString(PyExc_ValueError,
                 "Argmax, bad axis argument");
                 %(fail)s
@@ -771,7 +779,11 @@ class Softmax(gof.Op):
                     }
 
             // Check if the axis is valid
-            if(axis > ndim_x - 1 || axis < -1){
+            if (axis < 0)
+            {
+                axis += ndim_x;
+            }
+            if(axis > ndim_x - 1 || axis < 0){
                 PyErr_SetString(PyExc_ValueError,
                 "Argmax, bad axis argument");
                 %(fail)s
@@ -986,7 +998,11 @@ class LogSoftmax(gof.Op):
                     }
 
             // Check if the axis is valid
-            if(axis > ndim_x || axis < -1){
+            if (axis < 0)
+            {
+                axis += ndim_x;
+            }
+            if(axis > ndim_x - 1 || axis < 0){
                 PyErr_SetString(PyExc_ValueError,
                 "Argmax, bad axis argument");
                 %(fail)s
