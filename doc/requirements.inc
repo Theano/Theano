@@ -14,10 +14,8 @@ Requirements
 .. _pycuda: https://mathema.tician.de/software/pycuda/
 .. _skcuda: http://scikit-cuda.readthedocs.io/en/latest/
 
-    Python_ == 2.7 or ( >= 3.3 and <= 3.5 )
-        The development package (python-dev or
-        python-devel on most Linux distributions) is recommended (see
-        just below). Python 2.4 was supported up to and including the
+    Python_ < 3.6
+        |PythonDistRecommended|. Python 2.4 was supported up to and including the
         release 0.6. Python 2.6 was supported up to and including the
         release 0.8.2. Python 3 is supported past the 3.3 release.
 
@@ -28,7 +26,7 @@ Requirements
         Only currently required for sparse matrix and special functions support, but highly recommended. SciPy >=0.8 could work, but earlier versions have known bugs with sparse matrices.
 
     `BLAS`_ installation (with Level 3 functionality)
-        * **Recommended**: MKL, which is free through Conda.
+        * **Recommended**: MKL, which is free through Conda with ``mkl-service`` package.
         * Alternatively, we suggest to install OpenBLAS, with the development headers (``-dev``, ``-devel``, depending on your Linux distribution).
 
 **Optional requirements**

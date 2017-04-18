@@ -11,7 +11,8 @@ Windows Installation Instructions
     from GitHub, please make sure you are reading `the latest version of this
     page <http://deeplearning.net/software/theano_versions/dev/install_windows.html>`_.
 
-.. |PlatformCompiler| replace:: ``python-dev``, ``g++`` >= 4.2
+.. |PythonDistRecommended| replace:: The conda distribution is highly recommended
+.. |PlatformCompiler| replace:: GCC compiler with ``g++`` (version >= ``4.2.*``), and Python development files
 .. |CompilerName| replace:: ``g++``
 
 .. List of requirements, optional requirements, and installation of miniconda.

@@ -19,6 +19,11 @@ will be automatically installed as a dependency.
 
     conda install theano pygpu
 
+.. warning::
+
+    Last conda packages for theano (0.9) and pygpu (0.6*) currently don't support
+    Python 3.4 branch.
+
 With ``pip``
 ^^^^^^^^^^^^
 
