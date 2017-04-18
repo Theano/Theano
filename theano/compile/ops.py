@@ -693,6 +693,8 @@ class Rebroadcast(gof.Op):
     def make_node(self, x):
         if self.axis.keys() and (x.ndim <= max(self.axis.keys())):
             raise ValueError('Trying to rebroadcast non-existent dimension')
+        temp_dict = OrderedDict([(k%x.ndim,v) if k<0 else (k,v) for k,v in self.axis.items()])
+        self.axis = temp_dict
         t = x.type.clone(
             broadcastable=[self.axis.get(i, b)
                            for i, b in enumerate(x.type.broadcastable)])
