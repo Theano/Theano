@@ -6,7 +6,7 @@ from theano.gof import Op, COp, Apply
 from theano import Generic
 from theano.scalar import Scalar
 from theano.tensor import TensorType
-from theano.gof import ParamsType, Params
+from theano.gof import ParamsType, Params, EnumList
 from theano import tensor
 from theano.tests import unittest_tools as utt
 
@@ -212,6 +212,35 @@ class TestParamsType(TestCase):
                     a2=(random_tensor.astype('float32') * 10 / 2.2 * 2.19999999999 / 10).astype('float64'),
                     a3=2000.0 - 0.00000000000000001)
         assert w.values_eq_approx(o1, o3)
+
+    def test_params_type_with_enums(self):
+        # Test that we fail if we create a params type with common enum names inside different enum types.
+        try:
+            ParamsType(enum1=EnumList('A', 'B', 'C'), enum2=EnumList('A', 'B', 'F'))
+        except AttributeError:
+            pass
+        else:
+            raise Exception('ParamsType should fail with common enum names inside different enum types.')
+
+        # Test that we fail if we create a params type with common names in both aliases and constants.
+        try:
+            ParamsType(enum1=EnumList(('A', 'a'), ('B', 'b')), enum2=EnumList(('ONE', 'a'), ('TWO', 'two')))
+        except AttributeError:
+            ParamsType(enum1=EnumList(('A', 'a'), ('B', 'b')), enum2=EnumList(('ONE', 'one'), ('TWO', 'two')))
+        else:
+            raise Exception('ParamsType should fail when there are aliases with same names as some constants.')
+
+        # Test that we can access enum values through wrapper directly.
+        w = ParamsType(enum1=EnumList('A', ('B', 'beta'), 'C'), enum2=EnumList(('D', 'delta'), 'E', 'F'))
+        assert w.A == 0 and w.B == 1 and w.C == 2
+        assert w.D == 0 and w.E == 1 and w.F == 2
+        # Test constants access through aliases.
+        assert w.enum_from_alias('beta') == w.B
+        assert w.enum_from_alias('delta') == w.D
+        assert w.enum_from_alias('C') == w.C  # C is not an alias, so it should return a constant named C.
+        # Test that other regular wrapper attributes are still available.
+        assert len(w.fields) == len(w.types) == w.length
+        assert w.name
 
     def test_op_params(self):
         a, b, c = 2, 3, -7

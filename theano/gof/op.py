@@ -808,7 +808,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 field = wrapper.fields[i]
                 _type = wrapper.types[i]
                 wrap_dict[field] = _type.filter(getattr(self, field), strict=False, allow_downcast=True)
-            return theano.gof.Params(wrapper, **wrap_dict)
+            return self.params_type.get_params(self)
         raise theano.gof.utils.MethodNotDefined('get_params')
 
     def prepare_node(self, node, storage_map, compute_map, impl):

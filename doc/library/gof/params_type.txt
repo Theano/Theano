@@ -12,4 +12,5 @@ Reference
    :platform: Unix, Windows
    :synopsis: Wrapper class for op params
    :members:
+   :member-order: bysource
 .. moduleauthor:: LISA
