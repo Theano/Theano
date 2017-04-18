@@ -658,7 +658,7 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
         notset object.
 
     """
-    if target == 'gpu' or target == 'cpu':
+    if target == 'cpu':
         raise TypeError('not for me')
 
     if not isinstance(value, (np.ndarray, pygpu.gpuarray.GpuArray)):
