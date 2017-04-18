@@ -9,4 +9,7 @@ allow_gc = False
 [gcc]
 cxxflags = -qopenmp -march=native -O3  -qopt-report=3 -fno-alias -qopt-prefetch=2 -fp-trap=none
 [blas]
+# using Intel MKL library
 ldflags = -lmkl_rt
+# using Intel MKLML library
+# ldflags = -lmklml_intel
