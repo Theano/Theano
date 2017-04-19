@@ -10,9 +10,6 @@ from ..basic_ops import CGpuKernelBase
 from ..type import GpuArrayType, get_context
 
 
-from pygpu.gpuarray import dtype_to_typecode
-
-
 # This is an implementation to test that CGpuKernelBase works and also
 # to use as an example in the docs.  It is not used for user graphs.
 class GpuEye(CGpuKernelBase, Op):
@@ -56,6 +53,8 @@ class GpuEye(CGpuKernelBase, Op):
                 for i in xrange(2)]
 
     def get_op_params(self):
+        from pygpu.gpuarray import dtype_to_typecode
+
         return [('TYPECODE', str(dtype_to_typecode(self.dtype)))]
 
 
