@@ -5567,3 +5567,19 @@ class TestGradUntil(unittest.TestCase):
         self.numpy_gradient[:7 - n] = 0
         utt.assert_allclose(theano_output, self.numpy_output)
         utt.assert_allclose(theano_gradient, self.numpy_gradient)
+
+    def test_grad_until_and_truncate_sequence_taps(self):
+        n = 3
+        r, _ = theano.scan(lambda x, y, u: (x * y,
+                                            theano.scan_module.until(y > u)),
+                           sequences=dict(input=self.x, taps=[-2, 0]),
+                           non_sequences=[self.threshold],
+                           truncate_gradient=n)
+        g = theano.grad(r.sum(), self.x)
+        f = theano.function([self.x, self.threshold], [r, g])
+        theano_output, theano_gradient = f(self.seq, 6)
+
+        # Gradient computed by hand:
+        numpy_grad = np.array([0, 0, 0, 5, 6, 10, 4, 5, 0, 0, 0, 0, 0, 0, 0])
+        numpy_grad = numpy_grad.astype(theano.config.floatX)
+        utt.assert_allclose(theano_gradient, numpy_grad)
