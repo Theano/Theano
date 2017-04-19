@@ -108,7 +108,6 @@ MKLNdarray_uninit(MKLNdarray *self) {
  */
 static void
 MKLNdarray_dealloc(MKLNdarray *self) {
-    // printf("dealloc: %llp \n", (void*)self);
     if (Py_REFCNT(self) > 1) {
         printf("WARNING: MKLNdarray_dealloc called when there is still active reference to it.\n");
     }
@@ -341,7 +340,7 @@ int MKLNdarray_create_buffer_from_primitive(MKLNdarray *self, const dnnPrimitive
                         "MKLNdarray_create_buffer_from_primitive: Can't create layout and buffer with an empty primtive");
         return -1;
     }
-    
+
     int status = 0;
     if (self->dtype == MKL_FLOAT64) {  // for float64
         if (res_type == dnnResourceWorkspace) {
@@ -479,7 +478,7 @@ int MKLNdarray_create_buffer_from_structure(MKLNdarray *self) {
                      "MKLNdarray_create_buffer_from_structure: MKL layout and buffer have been allocated for %p \n", self);
         return -1;
     }
-    
+
     size_t mkl_size[MAX_NDIM] = {0};
     size_t mkl_stride[MAX_NDIM] = {0};
 
@@ -673,16 +672,16 @@ int MKLNdarray_CopyFromArray(MKLNdarray *self, PyArrayObject *obj) {
                      "MKLNdarray does not support a %d-dim array. Try array which ndim is <= %d", ndim, MAX_NDIM);
         return -1;
     }
-    
+
     self->dtype = typenum;
     self->nd = ndim;
-    
+
     PyArrayObject* py_src = (PyArrayObject*)PyArray_ContiguousFromAny((PyObject*)obj, typenum, self->nd, self->nd);
     if (!py_src) {
         PyErr_SetString(PyExc_RuntimeError, "MKLNdarray_CopyFromArray: fail to cast obj to contiguous array");
         return -1;
     }
-    
+
     size_t dims[MAX_NDIM] = {0};
     size_t user_size = 1;
 
@@ -832,7 +831,7 @@ MKLNdarray_get_dtype(MKLNdarray *self, void *closure) {
                         "MKLNdarray_get_dtype: input MKLNdarray* self is NULL");
         return NULL;
     }
-    
+
     if (self->nd < 0 || self->dtype < 0) {
         PyErr_SetString(PyExc_RuntimeError, "MKLNdarray_get_dtype: MKLNdarray not initialized");
         return NULL;
@@ -879,7 +878,7 @@ MKLNdarray_get_size(MKLNdarray *self, void *closure) {
                         "MKLNdarray_get_size: input MKLNdarray* self is NULL");
         return NULL;
     }
-    
+
     if (self->nd <= 0) {
         total_element = 0;
     } else {
@@ -906,7 +905,7 @@ MKLNdarray_get_base(MKLNdarray *self, void *closure) {
                         "MKLNdarray_get_base: input MKLNdarray* self is NULL");
         return NULL;
     }
-    
+
     PyObject * base = self->base;
     if (!base) {
         base = Py_None;
@@ -989,7 +988,7 @@ PyObject* MKLNdarray_CreateArrayObj(MKLNdarray *self) {
                 Py_DECREF(rval);
                 return NULL;
             }
-        
+
             status = dnnConversionExecute_F64(primitive, (void*)self->private_data, (void*)rval_data);
             if (E_SUCCESS != status) {
                 PyErr_Format(PyExc_RuntimeError,
@@ -1086,7 +1085,6 @@ PyObject* MKLNdarray_Zeros(PyObject *_unused, PyObject *args) {
     }
 
     if (typenum != MKL_FLOAT32 && typenum != MKL_FLOAT64) {
-        // printf("No dtype is specified. Use float32 as default. \n");
         typenum = MKL_FLOAT32;
     }
 
@@ -1283,7 +1281,6 @@ MKLNdarray_New(int nd, int typenum) {
         PyErr_SetString(PyExc_RuntimeError, "MKLNdarray_New: failed to allocate self");
         return NULL;
     }
-    // printf("MKLNdarray_New: %llp \n", (void*)self);
     self->base              = NULL;
     self->nd                = nd;
     self->dtype             = typenum;
@@ -1310,7 +1307,7 @@ static PyMethodDef module_methods[] = {
 
 
 #if PY_MAJOR_VERSION == 3
-static struct PyModuleDef mkl_ndarray_moduledef = 
+static struct PyModuleDef mkl_ndarray_moduledef =
 {
     PyModuleDef_HEAD_INIT,
     "mkl_ndarray",

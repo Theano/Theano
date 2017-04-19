@@ -1,7 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import logging
-
-_logger = logging.getLogger('theano.tensor.nnet.mkl_helper')
 
 
 def header_text():
