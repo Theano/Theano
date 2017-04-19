@@ -1928,14 +1928,16 @@ class IntDiv(BinaryScalarOp):
 
         t = node.inputs[0].type.upcast(*[i.type for i in node.inputs[1:]])
         if t in imap(str, discrete_types):
+            # If we are in a gpuarray kernel, %(fail)s exits the kernel,
+            # and we do not have any error report, and we cannot set
+            # Python error messages either, so for now we just call the
+            # cuda function, which return a binary pattern of all 1s.
             check = dedent('''
-                if (%(y)s == 0) {
-                // do not set Python error message in gpuarray kernel for now
-                #ifndef LID_0
+                #ifndef KERNEL
                     PyErr_SetString(PyExc_ZeroDivisionError, "integer division by zero");
-                #endif
                     %(fail)s
-                }''') % locals()
+                #endif
+                ''') % locals()
             x_div_y_pp = '(%(x)s / %(y)s)' % locals()
             x_div_y_mp = '((-%(x)s) / %(y)s)' % locals()
             x_mod_y_mp = 'THEANO_MACRO_MOD((-%(x)s), %(y)s)' % locals()
@@ -1967,16 +1969,18 @@ class IntDiv(BinaryScalarOp):
             raise NotImplementedError('type not supported', t)
 
         return dedent("""
-            %(check)s
-            if (%(x)s < 0) {
-                if (%(y)s < 0) {
+            if (%(y)s == 0) {
+                %(check)s
+                %(z)s = %(x_div_y_pp)s;
+            } else if (%(y)s < 0) {
+                if (%(x)s < 0) {
                     %(z)s = %(x_div_y_mm)s;
                 } else {
-                    %(z)s = - %(x_div_y_mp)s - ((%(x_mod_y_mp)s == 0) ? 0 : 1);
+                    %(z)s = - %(x_div_y_pm)s - ((%(x_mod_y_pm)s == 0) ? 0 : 1);
                 }
             } else {
-                if (%(y)s < 0) {
-                    %(z)s = - %(x_div_y_pm)s - ((%(x_mod_y_pm)s == 0) ? 0 : 1);
+                if (%(x)s < 0) {
+                    %(z)s = - %(x_div_y_mp)s - ((%(x_mod_y_mp)s == 0) ? 0 : 1);
                 } else {
                     %(z)s = %(x_div_y_pp)s;
                 }
@@ -1984,7 +1988,7 @@ class IntDiv(BinaryScalarOp):
             """) % locals()
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def grad(self, inputs, g_output):
         return [inp.zeros_like(dtype=theano.config.floatX)
@@ -2016,13 +2020,13 @@ class Mod(BinaryScalarOp):
         return x % y
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def c_support_code(self):
         # We use a macro as python use % as a special string character,
         # and the output of c_code may be run through another level
         # of string formatting.
-        return "#define THEANO_MACRO_MOD(x,y) (x % y)"
+        return "#define THEANO_MACRO_MOD(x, y) (x % y)"
 
     def c_code(self, node, name, inputs, outputs, sub):
         """
@@ -2042,14 +2046,16 @@ class Mod(BinaryScalarOp):
             # keep them out of safety, and verify they are useless with an
             # assert.
             assert str(t) in imap(str, discrete_types)
+            # If we are in a gpuarray kernel, %(fail)s exits the kernel,
+            # and we do not have any error report, and we cannot set
+            # Python error messages either, so for now we just call the
+            # cuda function, returning a binary pattern depending on dtype
             check = dedent('''
-                if (%(y)s == 0) {
-                // do not set Python error message in gpuarray kernel for now
-                #ifndef LID_0
+                #ifndef KERNEL
                     PyErr_SetString(PyExc_ZeroDivisionError, "integer modulo by zero");
-                #endif
                     %(fail)s
-                }''') % locals()
+                #endif
+                ''') % locals()
             x_mod_y = "THEANO_MACRO_MOD(%(x)s, %(y)s)" % locals()
             x_mod_ymm = "THEANO_MACRO_MOD(-%(x)s, -%(y)s)" % locals()
             x_mod_ypm = "THEANO_MACRO_MOD(%(x)s, -%(y)s)" % locals()
@@ -2062,27 +2068,31 @@ class Mod(BinaryScalarOp):
             # assert.
             assert str(t) in imap(str, float_types)
             check = ''
-            x_mod_y = "fmod(%(x)s,%(y)s)" % locals()
-            x_mod_ymm = "fmod(-%(x)s,-%(y)s)" % locals()
-            x_mod_ypm = "fmod(%(x)s,-%(y)s)" % locals()
-            x_mod_ymp = "fmod(-%(x)s,%(y)s)" % locals()
+            x_mod_y = "fmod(%(x)s, %(y)s)" % locals()
+            x_mod_ymm = "fmod(-%(x)s, -%(y)s)" % locals()
+            x_mod_ypm = "fmod(%(x)s, -%(y)s)" % locals()
+            x_mod_ymp = "fmod(-%(x)s, %(y)s)" % locals()
         elif str(t) in imap(str, complex_types):
             raise self.complex_error
         else:
             raise NotImplementedError('type not supported', t)
 
         return dedent("""
-            %(check)s
-            if (%(x)s < 0){
-               if (%(y)s < 0){
-                  %(z)s = -(%(x_mod_ymm)s);
-               }else{
-                  %(z)s = - %(x_mod_ymp)s + (%(x_mod_ymp)s != 0 ? %(y)s : 0);
-               }
-            }else if (%(y)s < 0){
-               %(z)s = (%(x_mod_ypm)s) + (%(x_mod_ypm)s != 0 ? %(y)s : 0);
-            }else{
-               %(z)s = %(x_mod_y)s;
+            if (%(y)s == 0) {
+                %(check)s
+                %(z)s = %(x_mod_y)s;
+            } else if (%(y)s < 0){
+                if (%(x)s < 0){
+                    %(z)s = -(%(x_mod_ymm)s);
+                } else {
+                    %(z)s = (%(x_mod_ypm)s) + (%(x_mod_ypm)s != 0 ? %(y)s : 0);
+                }
+            } else {
+                if (%(x)s < 0){
+                    %(z)s = - %(x_mod_ymp)s + (%(x_mod_ymp)s != 0 ? %(y)s : 0);
+                } else {
+                    %(z)s = %(x_mod_y)s;
+                }
             }
             """) % locals()
 
