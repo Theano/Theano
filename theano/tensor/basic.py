@@ -5112,6 +5112,9 @@ def flatten(x, ndim=None, outdim=None):
     elif outdim is not None and ndim is not None:
         raise ValueError("You should only specify outdim or ndim")
     elif outdim is not None:
+        warnings.warn(
+            "flatten outdim parmaeter is deprecated, use ndim instead.")
+
         ndim = outdim
     # Any input variable can be flattened to have ndim of 1,
     # even if it's a scalar. Otherwise, ndim must be positive
