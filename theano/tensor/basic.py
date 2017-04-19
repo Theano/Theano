@@ -4830,7 +4830,9 @@ class Reshape(Op):
             if crit == 1 and len(requ_part) > 0:
                 # If there are both 0 and -1 in requ_size, it is impossible
                 # to determine a right output, but we can at least prevent
-                # a division by 0.
+                # a division by 0. We do not want to keep a negative
+                # size here as it could lead to further weird errors
+                # after other optimizations.
                 requ_size = mul(*requ_part)
                 missing = input_size // (1 if requ_size == 0 else requ_size)
                 for i, ele in enumerate(requ):
@@ -4853,11 +4855,10 @@ class Reshape(Op):
                 requ_size = -mul(*requ)
                 # If there are both 0 and -1 in requ_size, it is impossible
                 # to determine a right output, but we can at least prevent
-                # a division by 0.
-                rest_size = (input_size //
-                             switch(eq(requ_size, 0),
-                                    1,
-                                    requ_size))
+                # a division by 0. We do not want to keep a negative
+                # size here as it could lead to further weird errors
+                # after other optimizations.
+                rest_size = input_size // maximum(requ_size, 1)
             return [tuple([switch(eq(requ[i], -1),
                                   rest_size,
                                   requ[i])
