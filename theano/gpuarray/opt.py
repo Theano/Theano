@@ -931,11 +931,20 @@ def local_gpua_lazy_ifelse(op, context_name, inputs, outputs):
         return
     c = inputs[0]
     inps = []
-    for v in inputs[1:]:
-        if isinstance(v.type, tensor.TensorType) and move_to_gpu(v):
-            inps.append(as_gpuarray_variable(v, context_name))
+    falses = []
+    # ifelse need corresponding true/false inputs variables to be of the same type.
+    # But we can't rely on inputs to respect that, as GraphToGPU don't enforce that.
+    # So we need to take care of this here.
+    for v1, v2 in zip(inputs[1:1 + op.n_outs], inputs[1 + op.n_outs:]):
+        if ((isinstance(v1.type, tensor.TensorType) and move_to_gpu(v1)) or
+                isinstance(v1.type, GpuArrayType) or
+                isinstance(v2.type, GpuArrayType)):
+            inps.append(as_gpuarray_variable(v1, context_name))
+            falses.append(as_gpuarray_variable(v2, context_name))
         else:
-            inps.append(v)
+            inps.append(v1)
+            falses.append(v2)
+    inps.extend(falses)
     return IfElse(op.n_outs, gpu=True)(c, *inps, return_list=True)
 
 

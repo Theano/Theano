@@ -658,7 +658,7 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
         notset object.
 
     """
-    if target == 'gpu' or target == 'cpu':
+    if target == 'cpu':
         raise TypeError('not for me')
 
     if not isinstance(value, (np.ndarray, pygpu.gpuarray.GpuArray)):
@@ -667,6 +667,8 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
     if target is notset:
         target = None
         if not gpu_supported(value):
+            raise TypeError('The GPU do not support that value.')
+        if not move_to_gpu(value):
             raise TypeError('We do not move that data by default to the GPU')
     try:
         get_context(target)

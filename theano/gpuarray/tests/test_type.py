@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import os
 
+import nose
 import numpy as np
 
 import theano
@@ -58,6 +59,16 @@ def test_filter_float():
         theano.function([], updates=[(s, 0.0)])
     finally:
         del theano.compile.sharedvalue.shared.constructors[-1]
+
+
+def test_gpuarray_shared_scalar():
+    # By default, we don't put scalar as shared variable on the GPU
+    nose.tools.assert_raises(
+        TypeError, gpuarray_shared_constructor, np.asarray(1, dtype='float32'))
+
+    # But we can force that
+    gpuarray_shared_constructor(np.asarray(1, dtype='float32'),
+                                target=test_ctx_name)
 
 
 def test_unpickle_gpuarray_as_numpy_ndarray_flag0():
