@@ -1,11 +1,11 @@
 from __future__ import absolute_import, print_function, division
 import os
-from six import StringIO
 import numpy
+from six import StringIO
 
 import theano
-from theano import Type, Variable
-from theano import tensor
+from theano import Type, Variable, config
+from theano.tensor.var import _tensor_py_operators
 
 try:
     import mkl_ndarray
@@ -20,52 +20,102 @@ except ImportError:
     mkl = None
 
 
-class _operators(tensor.basic._tensor_py_operators):
+class _operators(_tensor_py_operators):
     dtype = property(lambda s: s.type.dtype)
     broadcastable = property(lambda s: s.type.broadcastable)
     ndim = property(lambda s: s.type.ndim)
 
 
 class MKLNdarrayVariable(_operators, Variable):
+    """
+    See Also
+    --------
+    Variable
+
+    """
     pass
 
 
 class MKLNdarrayType(Type):
-    context_num = 'mkl'
+    """
+    The type that represents an array on CPU with MKL supoorts.
+
+    The `dtype` indicates what scalar data type the elements of
+    variables of this type will be.
+
+    The `broadcastable` indicates whether each dimension is broadcastable
+    or not (to be broadcastable a dimension must always be of length 1)
+
+    The `context_name` is the name of the context. For similar interface
+    with the new back-end for GPU.
+
+    `name` for the type that will be used in printouts.
+
+    """
+    context_name = 'mkl'
     Variable = MKLNdarrayVariable
     Constant = None
     SharedVariable = None
     ndim = None
     broadcastable = None
 
-    def __init__(self, broadcastable, name=None, dtype=None):
-        if dtype not in ('float32', 'float64'):
-            raise TypeError('%s only supports dtype float32/float64 for now. \
-                            Tried sing dtype float32 for variable %s' % (self.__class__.__name__, name))
-        self.dtype = dtype
+    def __init__(self, dtype, broadcastable, context_name=None, name=None):
+        self.dtype = str(dtype)
+        if self.dtype == 'floatX':
+            self.dtype = config.floatX
+
+        if self.dtype not in ('float32', 'float64'):
+            raise TypeError('%s only supports float32/float64 for now.'
+                            'Tried using dtype %s for variable %s' %
+                            (self.__class__.__name__, dtype, name))
+
         self.typenum = 11 if dtype is 'float32' else 12
         self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.name = name
-        self.dtype_specs()  # error checking is done there
+        self.dtype_specs()
+        if not (context_name is None):
+            self.context_name = context_name
 
     def clone(self, dtype=None, broadcastable=None):
         if broadcastable is None:
             broadcastable = self.broadcastable
-        return self.__class__(broadcastable, name=self.name, dtype=dtype)
+
+        if dtype is None:
+            dtype = self.dtype
+
+        return self.__class__(dtype=dtype, broadcastable=broadcastable,
+                              context_name=self.context_name, name=self.name)
 
     def filter(self, data, strict=False, allow_downcast=None):
-        # return self.filter_inplace(data, None, strict=strict, allow_downcast=allow_downcast)
+        """
+        Since it is not support currently to cast layout from FP32 to FP64, we
+        don't do up or down cast in this function for now. It means that it is
+        always strict for all input data.
+
+        """
+        # TODO: we will add up and down cast code here when the low level APIs
+        # support that.
+        if not isinstance(data, mkl.MKLNdarray):
+            raise TypeError('%s expected a MKLNdarray object.' % self,
+                            data, type(data))
+
+        if data.dtype != self.dtype:
+            raise TypeError(('%s expected a MKLNdarray object with'
+                            'dtype=%s (got %s).') % (self, self.dtype, data.dtype))
+
+        if data.ndim != self.ndim:
+            raise TypeError('Wrong number of dimensions: expected %s,'
+                            'got %s with shape %s.' % (self.ndim, data.ndim, data.shape))
+
+        shp = data.shape
+        for i, b in enumerate(self.broadcastable):
+            if b and shp[i] != 1:
+                raise TypeError('None-unit value on shape on a broadcastable'
+                                ' dimension.', shp, self.broadcastable)
+
         return data
 
     def filter_variable(self, other, allow_convert=True):
-        """
-        Convert a Variable into a MKLNdarrayType, if compatible.
-
-        This Variable should either already be a MKLNdarrayType, or be
-        a TensorType. It has to have the right number of dimensions,
-        broadcastable pattern, and dtype.
-
-        """
         raise NotImplementedError('MKLNdarrayType filter_variable')
 
     @staticmethod
@@ -80,8 +130,6 @@ class MKLNdarrayType(Type):
         This function is used internally as part of C code generation.
 
         """
-        # TODO: add more type correspondances for e.g. int32, int64, float32,
-        # complex64, etc.
         try:
             return {'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
                     'float64': (float, 'npy_float64', 'NPY_FLOAT64'),
@@ -107,20 +155,22 @@ class MKLNdarrayType(Type):
 
         """
         return (type(self) == type(other) and
-                other.broadcastable == self.broadcastable)
+                self.dtype == other.dtype and
+                self.broadcastable == other.broadcastable and
+                self.context_name == other.context_name)
 
     def __hash__(self):
         """
         Hash equal for same kinds of MKLNdarrayType.
 
         """
-        return hash(type(self)) ^ hash(self.broadcastable)
+        return hash((type(self), self.dtype, self.broadcastable, self.context_name))
 
     ndim = property(lambda self: len(self.broadcastable), doc='number of dimensions')
 
     def make_variable(self, name=None):
         """
-        Return a 'TensorVariable' of this type.
+        Return a 'MKLNdarrayVariable' with this type.
 
         Parameters
         ----------
@@ -136,17 +186,18 @@ class MKLNdarrayType(Type):
             return self.name
         else:
             b = self.broadcastable
-            if not numpy.any(b):
-                s = '%iD' % len(b)
+            named_broadcastable = {tuple(): 'scalar',
+                                   (False,): 'vector',
+                                   (False, True): 'col',
+                                   (True, False): 'row',
+                                   (False, False): 'matix'}
+            if b in named_broadcastable:
+                bcast = named_broadcastable[b]
+            elif any(b):
+                bcast = str(b)
             else:
-                s = str(b)
-
-            bcast = {(): 'scalar',
-                     (False,): 'vector',
-                     (False, True): 'col',
-                     (True, False): 'row',
-                     (False, False): 'matix'}.get(b, s)
-            return 'MKLNdarrayType(%s, %s)' % (str(self.dtype), bcast)
+                bcast = '%iD' % len(b)
+            return 'MKLNdarrayType<%s>(%s, %s)' % (self.context_name, self.dtype, bcast)
 
     def __repr__(self):
         return str(self)
@@ -167,19 +218,22 @@ class MKLNdarrayType(Type):
         %(name)s = NULL;
         """ % locals()
 
-    def c_extract(self, name, sub, check_input=True,
-                  check_broadcast=True):
+    def c_extract(self, name, sub, check_input=True):
         sio = StringIO()
         fail = sub['fail']
         nd = self.ndim
         print("""
         assert (py_%(name)s->ob_refcnt >= 2);
 
-        if (MKLNdarray_Check(py_%(name)s))
-        {
+        if (py_%(name)s == Py_None) {
+            PyErr_SetString(PyExc_ValueError, "expected a MKLNdarray, not None");
+            %(fail)s
+        }
+
+        if (MKLNdarray_Check(py_%(name)s)) {
             %(name)s = (MKLNdarray*)py_%(name)s;
             assert (%(name)s);
-            Py_INCREF(py_%(name)s);
+            Py_INCREF(%(name)s);
         }
         """ % locals(), file=sio)
 
@@ -190,9 +244,9 @@ class MKLNdarrayType(Type):
         Add cleanup code here.
         """
         return """
-        if (%(name)s)
-        {
+        if (%(name)s) {
             Py_XDECREF(%(name)s);
+            %(name)s = NULL;
         }
         """ % locals()
 
@@ -204,15 +258,11 @@ class MKLNdarrayType(Type):
         """
         return """
         if (NULL == %(name)s) {
-            // failure: sync None to storage
             Py_XDECREF(py_%(name)s);
             py_%(name)s = Py_None;
             Py_INCREF(py_%(name)s);
-        }
-        else
-        {
-            if (py_%(name)s != (PyObject*)%(name)s)
-            {
+        } else {
+            if (py_%(name)s != (PyObject*)%(name)s) {
                 Py_XDECREF(py_%(name)s);
                 py_%(name)s = (PyObject*)%(name)s;
                 Py_INCREF(py_%(name)s);
@@ -235,9 +285,6 @@ class MKLNdarrayType(Type):
     def c_libraries(self):
         return ['mkl_ndarray']
 
-    def c_support_code(self):
-        return ''
-
     def c_code_cache_version(self):
         return (1, 0, 0)
 
@@ -258,7 +305,9 @@ class MKLNdarrayType(Type):
             return numpy.dtype(self.dtype).itemsize
 
 
-theano.compile.ops.expandable_types += (MKLNdarrayType,)
+# expandable_types: can add an extra dimension and for which Scan can deal with.
+# TODO: further check with MKLNdarrayType to support that.
+# theano.compile.ops.expandable_types += (MKLNdarrayType,)
 
 # Register C code for ViewOp on CudaNdarrayType
 theano.compile.register_view_op_c_code(
@@ -268,4 +317,34 @@ theano.compile.register_view_op_c_code(
     %(oname)s = %(iname)s;
     Py_XINCREF(%(oname)s);
     """,
-    version=1)
+    version=(1,))
+
+theano.compile.register_shape_c_code(
+    MKLNdarrayType,
+    """
+    npy_intp shape[] = {MKLNdarray_NDIM(%(iname)s)};
+    if (%(oname)s == NULL || (PyArray_DIMS(%(oname)s)[0] != shape[0])) {
+        Py_XDECREF(%(oname)s);
+        %(oname)s = (PyArrayObject*)PyArray_SimpleNew(1, shape, NPY_INT64);
+    }
+
+    for (int i=0; i<shape[0]; i++) {
+        ((npy_int64*)PyArray_GETPTR1(%(oname)s, i))[0] = MKLNdarray_DIMS(%(iname)s)[i];
+    }
+    """,
+    version=(1,))
+
+theano.compile.register_shape_i_c_code(
+    MKLNdarrayType,
+    """
+    if (!%(oname)s)
+        $(oname)s = (PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
+    ((npy_int64*)PyArray_DATA(%(oname)s))[0] = MKLNdarray_DIMS(%(iname)s)[%(i)s]
+    """,
+    """
+    if (%(i)s >= MKLNdarray_NDIM(%(iname)s)) {
+        PyErr_SetString(PyExc_TypeError, "Number of dimensions lower than expected");
+        %(fail)s
+    }
+    """,
+    version=(1,))

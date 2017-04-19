@@ -84,4 +84,8 @@ MOD_PUBLIC int MKLNdarray_TYPE(const MKLNdarray* self);
 MOD_PUBLIC int MKLNdarray_create_buffer_from_primitive(MKLNdarray *self,
                                                        const dnnPrimitive_t *prim,
                                                        dnnResourceType_t res_type);
+MOD_PUBLIC int MKLNdarray_copy_layout(MKLNdarray *self, const MKLNdarray *other);
+MOD_PUBLIC int MKLNdarray_create_buffer_from_layout(MKLNdarray *self);
+MOD_PUBLIC int MKLNdarray_create_buffer_from_structure(MKLNdarray *self);
+
 #endif
