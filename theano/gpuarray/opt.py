@@ -1936,9 +1936,9 @@ def local_gpua_scan_to_gpua(op, context_name, inputs, outputs):
         return GpuArrayType(dtype=dtype, broadcastable=broadcastable,
                             context_name=context_name)
 
-    nw_op = scan_op.Scan(scan_ins, scan_outs, info,
-                         typeConstructor=typebuild).make_node(*nw_ins)
-    return nw_op.outputs
+    nw_node = scan_op.Scan(scan_ins, scan_outs, info,
+                           typeConstructor=typebuild).make_node(*nw_ins)
+    return nw_node.outputs
 
 
 def _scan_type_infer(node):
@@ -1948,6 +1948,30 @@ def _scan_type_infer(node):
         return GpuArrayType(dtype=dtype, broadcastable=broadcastable,
                             context_name=context_name)
     return typebuild
+
+
+@register_opt('op_from_graph', 'fast_compile')
+@op_lifter([theano.compile.builders.OpFromGraph])
+@register_opt2([theano.compile.builders.OpFromGraph], 'fast_compile')
+def local_gpua_ofg(op, context_name, inputs, outputs):
+    if op.device != 'gpu' or op.device == 'local':
+        return
+
+    info = dict(
+        inline=op.is_inline,
+        device='local',
+        name=op.name + '_gpua' if op.name else None,
+        mode=op.mode)
+    nw_ins = [safe_to_gpu(x, context_name) for x in inputs]
+    ofg_ins = [tensor_to_gpu(x, context_name) for x in op.local_inputs]
+
+    ofg_outs = [safe_to_gpu(x, context_name) for x in op.local_outputs]
+    ofg_outs = scan_utils.clone(
+        ofg_outs,
+        replace=list(zip(op.local_inputs, ofg_ins)))
+
+    nw_node = type(op)(ofg_ins, ofg_outs, **info).make_node(*nw_ins)
+    return nw_node.outputs
 
 
 # Add optimization : maxandargmax (CPU -> GPU)
