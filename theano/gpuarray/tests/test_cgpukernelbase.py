@@ -6,8 +6,6 @@ import theano
 from theano import tensor, config, Apply, Op
 from theano.gradient import grad_undefined
 
-from .config import mode_with_gpu, test_ctx_name
-
 from ..basic_ops import CGpuKernelBase
 from ..type import GpuArrayType, get_context
 
@@ -62,6 +60,10 @@ class GpuEye(CGpuKernelBase, Op):
 
 
 def test_cgpukernelbase():
+    # Import inside the function to prevent the back-end from being
+    # initialized when reloading the GpuEye object from cache.
+    from .config import mode_with_gpu, test_ctx_name
+
     op = GpuEye(dtype='int32', context_name=test_ctx_name)
 
     f = theano.function([], op(4, 5), mode=mode_with_gpu)
