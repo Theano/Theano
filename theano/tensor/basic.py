@@ -5108,28 +5108,28 @@ def flatten(x, ndim=None, outdim=None):
         the flattend variable with dimensionality of outdim
     """
     if outdim is None and ndim is None:
-        outdim = 1
+        ndim = 1
     elif outdim is not None and ndim is not None:
         raise ValueError("You should only specify outdim or ndim")
-    elif outdim is None:
-        outdim = ndim
-    # Any input variable can be flattened to have outdim of 1,
-    # even if it's a scalar. Otherwise, outdim must be positive
+    elif outdim is not None:
+        ndim = outdim
+    # Any input variable can be flattened to have ndim of 1,
+    # even if it's a scalar. Otherwise, ndim must be positive
     # and smaller than x.ndim.
-    if outdim < 1 or (outdim > 1 and outdim > x.ndim):
-        raise ValueError('outdim %s out of bound [1, %d)'
-                         % (outdim, x.ndim + 1))
+    if ndim < 1 or (ndim > 1 and ndim > x.ndim):
+        raise ValueError('ndim %s out of bound [1, %d)'
+                         % (ndim, x.ndim + 1))
 
-    if outdim > 1:
-        dims = tuple(x.shape[:outdim - 1]) + (-1,)
+    if ndim > 1:
+        dims = tuple(x.shape[:ndim - 1]) + (-1,)
     else:
         dims = (-1,)
     x_reshaped = x.reshape(dims)
-    bcast_kept_dims = x.broadcastable[:outdim - 1]
-    bcast_new_dim = python_all(x.broadcastable[outdim - 1:])
+    bcast_kept_dims = x.broadcastable[:ndim - 1]
+    bcast_new_dim = python_all(x.broadcastable[ndim - 1:])
     broadcastable = bcast_kept_dims + (bcast_new_dim,)
     x_reshaped = theano.tensor.addbroadcast(
-        x_reshaped, *filter(lambda i: broadcastable[i], range(outdim)))
+        x_reshaped, *filter(lambda i: broadcastable[i], range(ndim)))
     return x_reshaped
 
 
