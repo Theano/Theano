@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import os
 
+import nose
 import numpy as np
 
 import theano
@@ -62,12 +63,8 @@ def test_filter_float():
 
 def test_gpuarray_shared_scalar():
     # By default, we don't put scalar as shared variable on the GPU
-    try:
-        gpuarray_shared_constructor(np.asarray(1, dtype='float32'))
-    except TypeError:
-        pass
-    else:
-        assert False, "Expected an error"
+    nose.tools.assert_raises(
+        TypeError, gpuarray_shared_constructor, np.asarray(1, dtype='float32'))
 
     # But we can force that
     gpuarray_shared_constructor(np.asarray(1, dtype='float32'),
