@@ -358,9 +358,12 @@ class G_Join_and_Split(test_basic.T_Join_and_Split):
         self.shared = shared
 
     def test_gpusplit_opt(self):
+        # Test that we move the node to the GPU
+        # Also test float16 computation at the same time.
         rng = np.random.RandomState(seed=utt.fetch_seed())
-        m = self.shared(rng.rand(4, 6).astype(self.floatX))
+        m = self.shared(rng.rand(4, 6).astype('float16'))
         o = T.Split(2)(m, 0, [2, 2])
+        assert o[0].dtype == 'float16'
         f = theano.function([], o, mode=self.mode)
         assert any([isinstance(node.op, self.split_op_class)
                     for node in f.maker.fgraph.toposort()])

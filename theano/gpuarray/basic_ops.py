@@ -1341,6 +1341,8 @@ class GpuSplit(HideC, Split):
     Split for GPU.
 
     """
+    _f16_ok = True
+
     def __init__(self, len_splits):
         super(GpuSplit, self).__init__(len_splits)
         # The GPU version of Split returns splits as views of the input.
