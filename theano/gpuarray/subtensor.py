@@ -594,7 +594,8 @@ class GpuAdvancedIncSubtensor1(Op):
     params_type = ParamsType(inplace=bool_t,
                              set_instead_of_inc=bool_t,
                              context=gpu_context_type,
-                             # following params are for c_init_code_struct.
+                             # following params are used into c_init_code_struct(),
+                             # as inputs are not available in that function.
                              ndim_input_0=size_t,
                              ndim_input_1=size_t,
                              typecode_input_0=int_t,
@@ -639,7 +640,7 @@ class GpuAdvancedIncSubtensor1(Op):
 
     def get_params(self, node):
         return self.params_type.get_params(self, context=node.outputs[0].type.context,
-                                           # following params are for c_init_code_struct.
+                                           # following params are used into c_init_code_struct().
                                            ndim_input_0=node.inputs[0].ndim,
                                            ndim_input_1=node.inputs[1].ndim,
                                            typecode_input_0=node.inputs[0].type.typecode,
@@ -809,12 +810,12 @@ class GpuAdvancedIncSubtensor1(Op):
                    {
                         free(start);
                         free(step);
-                        %s
+                        %(fail)s
                    }
-                   """ % sub['fail'])
+                   """ % dict(fail=sub['fail']))
 
     def c_code_cache_version(self):
-        return (3,)
+        return (3, 1)
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,

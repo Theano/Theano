@@ -305,9 +305,8 @@ class mrg_uniform_base(Op):
         self.warned_numpy_version = False
 
     # These attributes (used as params) are created as properties
-    # to avoid some crashes in FAST_COMPILE mode. It seems __init__()
-    # method is not called in that mode, so that some attributes may
-    # not have been initialized.
+    # to make them available even for old pickled objects, e.g.
+    # when testing old interface or when using FAST_COMPILE mode.
     ndim = property(lambda self: self.output_type.ndim)
     otypenum = property(lambda self: np.dtype(self.output_type.dtype).num)
     otype_is_float32 = property(lambda self: self.output_type.dtype == 'float32')
@@ -588,12 +587,12 @@ class mrg_uniform(mrg_uniform_base):
                    fail="""
                    {
                        free(odims);
-                       %s
+                       %(fail)s
                    }
-                   """ % sub['fail'])
+                   """ % dict(fail=sub['fail']))
 
     def c_code_cache_version(self):
-        return (11,)
+        return (11, 1)
 
 
 def guess_n_streams(size, warn=False):

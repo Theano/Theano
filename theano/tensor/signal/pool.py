@@ -448,6 +448,24 @@ class Pool(OpenMPOp, COp):
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
+    def __setstate__(self, state):
+        OpenMPOp.__setstate__(self, state)
+
+        try:
+            COp.c_code_cache_version(self)
+        except Exception:
+            # COp is unable to get version, so we are certainly unpickling an old graph.
+            # As COp functions look for many attributes (e.g. func_codes, func_names, etc.)
+            # that may not be present, we should better just rebuild the COp component
+            # of this object entirely, instead of looking for every COp attribute!
+            COp.__init__(self, 'pool.c', 'APPLY_SPECIFIC(pool)')
+
+        for attribute, default_value in (('ignore_border', False),
+                                         ('mode', 'max'),
+                                         ('ndim', 2)):
+            if not hasattr(self, attribute):
+                self.__dict__.update({attribute: default_value})
+
     def prepare_node(self, node, storage_map, compute_map, impl):
         if len(node.inputs) == 1:
             # Old interface
