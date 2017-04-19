@@ -5086,7 +5086,7 @@ def is_flat(var, outdim=1):
     return var.ndim == outdim
 
 
-def flatten(x, outdim=1):
+def flatten(x, ndim=None, outdim=None):
     """
     Reshapes the variable x by keeping
     the first outdim-1 dimension size(s) of x the same,
@@ -5098,14 +5098,21 @@ def flatten(x, outdim=1):
         x : theano.tensor.var.TensorVariable
             the variable that should be reshaped.
 
-        outdim : int
+        ndim : int
             the number of dimensions of the returned variable
-
+        outdim : int
+            DEPRECATED synonyme for ndim
     Returns
     -------
     theano.tensor.var.TensorVariable
         the flattend variable with dimensionality of outdim
     """
+    if outdim is None and ndim is None:
+        outdim = 1
+    elif outdim is not None and ndim is not None:
+        raise ValueError("You should only specify outdim or ndim")
+    elif outdim is None:
+        outdim = ndim
     # Any input variable can be flattened to have outdim of 1,
     # even if it's a scalar. Otherwise, outdim must be positive
     # and smaller than x.ndim.
