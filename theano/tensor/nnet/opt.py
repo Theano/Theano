@@ -74,7 +74,7 @@ compile.optdb.register('local_inplace_sparse_block_outer',
 def local_abstractconv_gemm(node):
     # If theano.config.blas.ldflags is empty, Theano will use
     # a NumPy C implementation of [sd]gemm_.
-    if theano.config.cxx == "":
+    if theano.config.cxx == "" or node.inputs[0].dtype == 'float16':
         return
     if not isinstance(node.op, AbstractConv2d):
         return None
@@ -98,7 +98,7 @@ def local_abstractconv_gemm(node):
 def local_abstractconv3d_gemm(node):
     # If theano.config.blas.ldflags is empty, Theano will use
     # a NumPy C implementation of [sd]gemm_.
-    if theano.config.cxx == "":
+    if theano.config.cxx == "" or node.inputs[0].dtype == 'float16':
         return
     if not isinstance(node.op, AbstractConv3d):
         return None
@@ -122,7 +122,7 @@ def local_abstractconv3d_gemm(node):
 def local_abstractconv_gradweight_gemm(node):
     # If theano.config.blas.ldflags is empty, Theano will use
     # a NumPy C implementation of [sd]gemm_.
-    if theano.config.cxx == "":
+    if theano.config.cxx == "" or node.inputs[0].dtype == 'float16':
         return
     if not isinstance(node.op, AbstractConv2d_gradWeights):
         return None
@@ -149,7 +149,7 @@ def local_abstractconv_gradweight_gemm(node):
 def local_abstractconv3d_gradweight_gemm(node):
     # If theano.config.blas.ldflags is empty, Theano will use
     # a NumPy C implementation of [sd]gemm_.
-    if theano.config.cxx == "":
+    if theano.config.cxx == "" or node.inputs[0].dtype == 'float16':
         return
     if not isinstance(node.op, AbstractConv3d_gradWeights):
         return None
@@ -176,7 +176,7 @@ def local_abstractconv3d_gradweight_gemm(node):
 def local_abstractconv_gradinputs_gemm(node):
     # If theano.config.blas.ldflags is empty, Theano will use
     # a NumPy C implementation of [sd]gemm_.
-    if theano.config.cxx == "":
+    if theano.config.cxx == "" or node.inputs[0].dtype == 'float16':
         return
     if not isinstance(node.op, AbstractConv2d_gradInputs):
         return None
@@ -201,7 +201,7 @@ def local_abstractconv_gradinputs_gemm(node):
 def local_abstractconv3d_gradinputs_gemm(node):
     # If theano.config.blas.ldflags is empty, Theano will use
     # a NumPy C implementation of [sd]gemm_.
-    if theano.config.cxx == "":
+    if theano.config.cxx == "" or node.inputs[0].dtype == 'float16':
         return
     if not isinstance(node.op, AbstractConv3d_gradInputs):
         return None
@@ -225,7 +225,8 @@ def local_abstractconv3d_gradinputs_gemm(node):
 @local_optimizer([AbstractConv2d])
 def local_conv2d_cpu(node):
 
-    if not isinstance(node.op, AbstractConv2d):
+    if (not isinstance(node.op, AbstractConv2d) or
+            node.inputs[0].dtype == 'float16'):
         return None
 
     img, kern = node.inputs
@@ -280,7 +281,8 @@ def local_conv3d_cpu(node):
 
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_conv2d_gradweight_cpu(node):
-    if not isinstance(node.op, AbstractConv2d_gradWeights):
+    if (not isinstance(node.op, AbstractConv2d_gradWeights) or
+            node.inputs[0].dtype == 'float16'):
         return None
 
     img, topgrad, shape = node.inputs
@@ -431,7 +433,8 @@ def local_conv3d_gradweight_cpu(node):
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_conv2d_gradinputs_cpu(node):
-    if not isinstance(node.op, AbstractConv2d_gradInputs):
+    if (not isinstance(node.op, AbstractConv2d_gradInputs) or
+            node.inputs[0].dtype == 'float16'):
         return None
 
     kern, topgrad, shape = node.inputs
@@ -611,7 +614,8 @@ def local_abstractconv_check(node):
             'available supporting the requested options. Did you exclude '
             'both "conv_dnn" and "conv_gemm" from the optimizer? If on GPU, '
             'is cuDNN available and does the GPU support it? If on CPU, '
-            'do you have a BLAS library installed Theano can link against?' %
+            'do you have a BLAS library installed Theano can link against? '
+            'On the CPU we do not support float16.'%
             node.op.__class__.__name__)
 
 optdb.register('AbstractConvCheck',
