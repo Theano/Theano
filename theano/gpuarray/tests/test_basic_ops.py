@@ -351,7 +351,11 @@ class G_Join_and_Split(test_basic.T_Join_and_Split):
         # this is to avoid errors with limited devices
         self.floatX = 'float32'
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
-        self.shared = gpuarray_shared_constructor
+
+        def shared(x, **kwargs):
+            return gpuarray_shared_constructor(x, target=test_ctx_name,
+                                               **kwargs)
+        self.shared = shared
 
     def test_gpusplit_opt(self):
         rng = np.random.RandomState(seed=utt.fetch_seed())

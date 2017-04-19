@@ -11,7 +11,7 @@ from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22, batched_dot
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
 from .. import gpuarray_shared_constructor
-from .config import mode_with_gpu
+from .config import mode_with_gpu, test_ctx_name
 from .test_basic_ops import makeTester, rand
 
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
@@ -48,7 +48,7 @@ def test_float16():
                     rand(3, 3).astype('float16'),
                     rand(3, 3).astype('float16'),
                     np.asarray(0.5, dtype=np.float32)]
-    float16_shared = [gpuarray_shared_constructor(val)
+    float16_shared = [gpuarray_shared_constructor(val, target=test_ctx_name)
                       for val in float16_data]
     o = gpugemm_no_inplace(*float16_shared)
     f = theano.function([], o)
