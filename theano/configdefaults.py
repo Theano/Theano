@@ -3,7 +3,7 @@ import errno
 import os
 import sys
 import logging
-import numpy
+import numpy as np
 import platform
 import textwrap
 import re
@@ -1052,7 +1052,7 @@ AddConfigVar('profiling.ignore_first_call',
 AddConfigVar('optdb.position_cutoff',
              'Where to stop eariler during optimization. It represent the'
              ' position of the optimizer where to stop.',
-             FloatParam(numpy.inf),
+             FloatParam(np.inf),
              in_c_key=False)
 
 AddConfigVar('optdb.max_use_ratio',
@@ -1106,11 +1106,11 @@ def default_blas_ldflags():
     global numpy
     warn_record = []
     try:
-        if (hasattr(numpy.distutils, '__config__') and
-                numpy.distutils.__config__):
+        if (hasattr(np.distutils, '__config__') and
+                np.distutils.__config__):
             # If the old private interface is available use it as it
             # don't print information to the user.
-            blas_info = numpy.distutils.__config__.blas_opt_info
+            blas_info = np.distutils.__config__.blas_opt_info
         else:
             # We do this import only here, as in some setup, if we
             # just import theano and exit, with the import at global
@@ -1494,7 +1494,7 @@ compiledir_format_dict = {
     "python_bitwidth": local_bitwidth(),
     "python_int_bitwidth": python_int_bitwidth(),
     "theano_version": theano.__version__,
-    "numpy_version": numpy.__version__,
+    "numpy_version": np.__version__,
     "gxx_version": gcc_version_str.replace(" ", "_"),
     "hostname": socket.gethostname()}
 

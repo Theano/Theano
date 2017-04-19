@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 # Definitions of theano.scalar ops that have their python implementation taken
 # from SciPy. As SciPy is not always available, we treat them separately.
 
-import numpy
+import numpy as np
 
 import theano
 from theano.gradient import grad_not_implemented
@@ -43,8 +43,8 @@ class Erf(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(2. / np.sqrt(np.pi),
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * cst * exp(-x * x),
 
     def c_code(self, node, name, inp, out, sub):
@@ -74,8 +74,8 @@ class Erfc(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(2. / np.sqrt(np.pi),
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return - gz * cst * exp(-x * x),
 
     def c_code(self, node, name, inp, out, sub):
@@ -120,8 +120,8 @@ class Erfcx(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(2. / np.sqrt(np.pi),
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * (-cst + (2. * x) * erfcx(x)),
 
 erfcx = Erfcx(upgrade_to_float_no_complex, name='erfcx')
@@ -155,8 +155,8 @@ class Erfinv(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(np.sqrt(np.pi) / 2.,
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * cst * exp(erfinv(x) ** 2),
 
     # TODO: erfinv() is not provided by the C standard library
@@ -188,8 +188,8 @@ class Erfcinv(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(np.sqrt(np.pi) / 2.,
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return - gz * cst * exp(erfcinv(x) ** 2),
 
     # TODO: erfcinv() is not provided by the C standard library
