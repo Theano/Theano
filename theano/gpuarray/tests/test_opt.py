@@ -15,7 +15,8 @@ from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
 from ..basic_ops import (
     GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, host_from_gpu)
 from ..blas import GpuGemm
-from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise, Elemwise
+from ..elemwise import (GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise,
+    Elemwise, max_inputs_to_GpuElemwise)
 from ..subtensor import GpuSubtensor
 from ..linalg import GpuCusolverSolve, cusolver_available
 
@@ -454,10 +455,10 @@ def test_many_arg_elemwise():
     # extremely large numbers of arguments on gpu.
 
     rng = np.random.RandomState([1, 2, 3])
-
-    for num_args in [32, 64, 128]:
+    nb_of_inputs_overflows = []
+    for num_args in [64]:
         for op_to_test in [theano.tensor.add, theano.tensor.mul]:
-            for nb_dim in [2, 4, 8]:
+            for nb_dim in [2, 8]:
                 shapes = [rng.randint(1, int(32 / nb_dim)) for i in range(nb_dim)]
                 args = [np.cast['float32'](rng.randn(*shapes))
                         for arg in range(0, num_args)]
@@ -469,12 +470,14 @@ def test_many_arg_elemwise():
                 outputs = []
                 for mode in [mode_with_gpu, mode_without_gpu]:
                     # test the optimization local_gpua_elemwise
-                    f = theano.function(
-                        symb_args, op_to_test(*symb_args))
+                    output = op_to_test(*symb_args)
+                    f = theano.function(symb_args, output)
                     outputs.append(f(*args))
 
                     # assert that the test was done on the gpu.
                     if mode is mode_with_gpu:
+                        nb_of_inputs_overflows.append(
+                            max_inputs_to_GpuElemwise(output.owner) - num_args)
                         nodelst = [node for node in f.maker.fgraph.apply_nodes]
                         assert any(isinstance(node.op, GpuElemwise)
                                    for node in nodelst)
@@ -483,6 +486,12 @@ def test_many_arg_elemwise():
                                        if not isinstance(node.op, GpuElemwise))
                 results_gpu, results_cpu = outputs
                 utt.assert_allclose(results_gpu, results_cpu)
+
+    # Make sure we test at least one case with no number of inputs overflow
+    assert any(overflow >= 0 for overflow in nb_of_inputs_overflows)
+
+    # Make sure we test at least one case with number of inputs overflow
+    assert any(overflow < 0 for overflow in nb_of_inputs_overflows)
 
 
 def test_not_useless_scalar_gpuelemwise():
