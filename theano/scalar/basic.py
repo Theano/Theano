@@ -1934,8 +1934,10 @@ class IntDiv(BinaryScalarOp):
             # cuda function, which return a binary pattern of all 1s.
             check = dedent('''
                 #ifndef KERNEL
+                #ifndef _OPENMP
                     PyErr_SetString(PyExc_ZeroDivisionError, "integer division by zero");
                     %(fail)s
+                #endif
                 #endif
                 ''') % locals()
             x_div_y_pp = '(%(x)s / %(y)s)' % locals()
@@ -2052,8 +2054,10 @@ class Mod(BinaryScalarOp):
             # cuda function, returning a binary pattern depending on dtype
             check = dedent('''
                 #ifndef KERNEL
+                #ifndef _OPENMP
                     PyErr_SetString(PyExc_ZeroDivisionError, "integer modulo by zero");
                     %(fail)s
+                #endif
                 #endif
                 ''') % locals()
             x_mod_y = "THEANO_MACRO_MOD(%(x)s, %(y)s)" % locals()
