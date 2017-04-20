@@ -15,8 +15,8 @@ from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
 from ..basic_ops import (
     GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, host_from_gpu)
 from ..blas import GpuGemm
-from ..elemwise import (GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise,
-    Elemwise, max_inputs_to_GpuElemwise)
+from ..elemwise import (
+    GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise, Elemwise, max_inputs_to_GpuElemwise)
 from ..subtensor import GpuSubtensor
 from ..linalg import GpuCusolverSolve, cusolver_available
 
