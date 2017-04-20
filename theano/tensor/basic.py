@@ -5100,8 +5100,9 @@ def flatten(x, ndim=None, outdim=None):
 
         ndim : int
             the number of dimensions of the returned variable
+            Default 1.
         outdim : int
-            DEPRECATED synonyme for ndim
+            DEPRECATED synonym for ndim
     Returns
     -------
     theano.tensor.var.TensorVariable
@@ -5110,10 +5111,10 @@ def flatten(x, ndim=None, outdim=None):
     if outdim is None and ndim is None:
         ndim = 1
     elif outdim is not None and ndim is not None:
-        raise ValueError("You should only specify outdim or ndim")
+        raise ValueError("You should only specify ndim")
     elif outdim is not None:
         warnings.warn(
-            "flatten outdim parmaeter is deprecated, use ndim instead.")
+            "flatten outdim parameter is deprecated, use ndim instead.")
 
         ndim = outdim
     # Any input variable can be flattened to have ndim of 1,
