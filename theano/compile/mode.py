@@ -69,9 +69,11 @@ predefined_optimizers = {
     None: OPT_NONE,
     'None': OPT_NONE,
     'merge': OPT_MERGE,
-    'fast_run': OPT_FAST_RUN,
+    'o4': OPT_FAST_RUN,
+    'o3': OPT_FAST_RUN.excluding('inplace'),
+    'o2': OPT_FAST_COMPILE.including('fusion'),
+    'o1': OPT_FAST_COMPILE,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
-    'fast_compile': OPT_FAST_COMPILE,
     'stabilize': OPT_STABILIZE}
 
 
