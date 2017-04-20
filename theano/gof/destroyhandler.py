@@ -957,7 +957,8 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     # self.fail_validate error. So before raising the error, we
                     # double check here.
                     for app in app_err_pairs:
-                        self.fast_destroy(app, 'validate')
+                        if app in fgraph.apply_nodes:
+                            self.fast_destroy(app, 'validate')
                     if self.fail_validate:
                         err = app_err_pairs.values()[0]
                         raise err
