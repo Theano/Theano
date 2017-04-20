@@ -1069,7 +1069,13 @@ class ShapeFeature(object):
             if s_i < 0:
                 msg = "There is a negative shape in the graph!"
                 msg += gof.utils.get_variable_trace_string(var)
-                raise ValueError(msg)
+                # The rest of the pipeline don't handle correctly this
+                # case.  So we have 2 choices, stop compilation or
+                # consider the shape as unknow.  As we have more
+                # chance to give the stack trace here then later, I
+                # choose that options as it would give better error
+                # message.
+                raise AssertionError(msg)
             return T.constant(s_i, dtype='int64')
         if type(s_i) in (tuple, list):
             # this dimension is the same as many of the inputs
