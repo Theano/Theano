@@ -27,12 +27,12 @@ If you would like to add an additional optimization, refer to
 
     python -c 'import theano; theano.compile.FAST_COMPILE.optimizer.print_summary()'
 
-========================================================= ========= ============ =============
-Optimization                                              FAST_RUN  FAST_COMPILE Stabilization
-========================================================= ========= ============ =============
-:term:`merge`                                             x         x
-:term:`constant folding<constant folding>`                x         x
-:term:`GPU transfer`                                      x         x
+========================================================= ============= ================= =============
+Optimization                                              O4 (FAST_RUN) O1 (FAST_COMPILE) Stabilization
+========================================================= ============= ================= =============
+:term:`merge`                                             x             x
+:term:`constant folding<constant folding>`                x             x
+:term:`GPU transfer`                                      x             x
 :term:`shape promotion<shape promotion>`                  x
 :term:`fill cut<fill cut>`                                x
 :term:`inc_subtensor srlz.<inc_subtensor serialization>`  x
@@ -53,9 +53,12 @@ Optimization                                              FAST_RUN  FAST_COMPILE
 :term:`inplace_elemwise`                                  x
 :term:`inplace_random`                                    x
 :term:`elemwise fusion`                                   x
-:term:`local_log_softmax`                                 x                      x
+:term:`local_log_softmax`                                 x                               x
+:term:`o2`                                                              x
+:term:`o3`                                                x
+:term:`local_log_softmax`                                 x                               x
 :term:`local_remove_all_assert`                                                   
-========================================================= ========= ============ =============
+========================================================= ============= ================= =============
 
 
 .. glossary::
@@ -259,6 +262,12 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         It can happen due to rounding errors that the softmax probability of one value gets to 0.
         Taking the log of 0 would generate -inf that will probably generate NaN later.
         We return a closer answer.
+
+    o2
+        FAST_RUN but slow opt like inplace or elemwise_inplace (just excluding inplace for now)
+
+    o3
+        FAST_COMPILE with opt like fusion added for speed (just including fusion for now)
 
     local_remove_all_assert
         This is an unsafe optimization.
