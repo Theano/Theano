@@ -1040,15 +1040,7 @@ second dimension
         if self.openmp:
             # If we are using openmp, we need to get rid of the "goto"
             # statement in sub['fail']. For now we recreate it here.
-            fail = '''
-                {
-                    %(failure_var)s = %(id)s;
-                    if (!PyErr_Occurred()) {
-                        PyErr_SetString(PyExc_RuntimeError,
-                            "Unexpected error in an Op's C code. "
-                            "No Python exception was set.");
-                    }
-                }''' % sub
+            fail = gof.cc.failure_code(sub, use_goto=False)
         else:
             fail = sub['fail']
         task_code = self.scalar_op.c_code(
