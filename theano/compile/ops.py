@@ -344,6 +344,18 @@ class Shape_i(gof.Op):
         i = int(i)
         self.i = i
 
+    # NB:
+    # 1) params_type is defined as a property to avoid
+    #    loop in Python import caused by importing theano.scalar below
+    #    when params_type is defined directly in class code.
+    # 2) We wrap scalar into ParamsType (instead of directly using scalar as op param)
+    #    to avoid Theano converting scalar param to constant that would be later
+    #    hardcoded as litteral in C code, making us loose all the advantages of
+    #    using params.
+    @property
+    def params_type(self):
+        return gof.ParamsType(i=theano.scalar.basic.int64)
+
     def __str__(self):
         return '%s{%i}' % (self.__class__.__name__, self.i)
 
@@ -358,7 +370,7 @@ class Shape_i(gof.Op):
                             (x, self.i))
         return theano.Apply(self, [x], [theano.tensor.lscalar()])
 
-    def perform(self, node, inp, out_):
+    def perform(self, node, inp, out_, params):
         x, = inp
         out, = out_
         if out[0] is None:
@@ -381,7 +393,7 @@ class Shape_i(gof.Op):
             version.append((str(t), v))
 
         if version:
-            version.append(1)
+            version.append(2)
 
         return tuple(version)
 
@@ -389,7 +401,8 @@ class Shape_i(gof.Op):
         iname, = inames
         oname, = onames
         fail = sub['fail']
-        i = self.i
+        # i is then 'params->i', not just 'params'.
+        i = sub['params'] + '->i'
 
         itype = node.inputs[0].type.__class__
         if itype in self.c_code_and_version:
