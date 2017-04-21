@@ -146,7 +146,16 @@ def print_compiledir_content():
                     if len(ops) == 1:
                         table.append((dir, ops[0], types, compile_time))
                     else:
-                        ops_to_str = '[%s]' % ', '.join(sorted(str(op) for op in ops))
+                        # Instead of printing all Ops (which can result in very long lines),
+                        # we will just print every Op class name with the number of times
+                        # this op class is present in current Ops list (e.g. "54*GpuDnnConvDesc").
+                        ops_counts = {}
+                        for op in ops:
+                            op_name = type(op).__name__
+                            ops_counts.setdefault(op_name, 0)
+                            ops_counts[op_name] += 1
+                        ops_to_str = '[%s]' % ', '.join('%s*%s' % (ops_counts[k], k)
+                                                        for k in sorted(ops_counts.keys()))
                         types_to_str = '[%s]' % ', '.join(sorted(str(t) for t in types))
                         table_multiple_ops.append((dir, ops_to_str, types_to_str, compile_time))
 
