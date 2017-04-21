@@ -1037,12 +1037,26 @@ second dimension
         # the index of the last of these aliased outputs.
 
         # We generate the C code of the inner loop using the scalar op
+        if self.openmp:
+            # If we are using openmp, we need to get rid of the "goto"
+            # statement in sub['fail']. For now we recreate it here.
+            fail = '''
+                {
+                    %(failure_var)s = %(id)s;
+                    if (!PyErr_Occurred()) {
+                        PyErr_SetString(PyExc_RuntimeError,
+                            "Unexpected error in an Op's C code. "
+                            "No Python exception was set.");
+                    }
+                }''' % sub
+        else:
+            fail = sub['fail']
         task_code = self.scalar_op.c_code(
             node.tag.fake_node,
             nodename + '_scalar_',
             ["%s_i" % s for s in _inames],
             ["%s_i" % s for s in onames],
-            sub)
+            dict(sub, fail=fail))
         code = """
         {
             %(defines)s
