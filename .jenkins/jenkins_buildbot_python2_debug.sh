@@ -18,7 +18,7 @@ echo "Directory of stdout/stderr ${BUILDBOT_DIR}"
 echo
 echo
 
-BASE_COMPILEDIR=$HOME/.theano/buildbot_theano_python2
+BASE_COMPILEDIR=$HOME/.theano/buildbot_theano_python2_debug
 ROOT_CWD=$WORKSPACE/nightly_build
 FLAGS=base_compiledir=$BASE_COMPILEDIR
 COMPILEDIR=`THEANO_FLAGS=$FLAGS python -c "from __future__ import print_function; import theano; print(theano.config.compiledir)"`
