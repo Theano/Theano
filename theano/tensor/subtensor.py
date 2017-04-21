@@ -12,7 +12,7 @@ import theano
 from theano.compat import izip
 from theano.gradient import DisconnectedType
 from theano import gof
-from theano.gof import Apply, hashtype, Op, Type, MethodNotDefined
+from theano.gof import Apply, hashtype, Op, Type, MethodNotDefined, ParamsType
 from theano.printing import pprint
 from theano import scalar as scal
 from theano.tensor.basic import alloc
@@ -1685,6 +1685,7 @@ class AdvancedSubtensor1(Op):
     # of the grad() method.
     __props__ = ()
     _f16_ok = True
+    check_input = False
 
     def __init__(self, sparse_grad=False):
         self.sparse_grad = sparse_grad
@@ -1872,10 +1873,13 @@ class AdvancedIncSubtensor1(Op):
     """
 
     __props__ = ('inplace', 'set_instead_of_inc')
+    check_input = False
+    params_type = ParamsType(inplace=scal.bool,
+                             set_instead_of_inc=scal.int8)
 
     def __init__(self, inplace=False, set_instead_of_inc=False):
-        self.inplace = inplace
-        self.set_instead_of_inc = set_instead_of_inc
+        self.inplace = bool(inplace)
+        self.set_instead_of_inc = int(bool(set_instead_of_inc))
         if inplace:
             self.destroy_map = {0: [0]}
 
@@ -1955,17 +1959,11 @@ class AdvancedIncSubtensor1(Op):
             raise NotImplementedError
         x, y, idx = input_names
         out = output_names[0]
-        fail = sub['fail']
-        inc_or_set = 1 - self.set_instead_of_inc
-        if self.inplace:  # convert bool to int
-            inplace = 1
-        else:
-            inplace = 0
         copy_of_x = self.copy_of_x(x)
 
         return """
         PyObject* rval = NULL;
-        if (%(inplace)s)
+        if (%(params)s->inplace)
         {
             if (%(x)s != %(out)s)
             {
@@ -1983,16 +1981,17 @@ class AdvancedIncSubtensor1(Op):
                 %(fail)s
             }
         }
-        if (inplace_increment(%(out)s, (PyObject *)%(idx)s, %(y)s, %(inc_or_set)d)) {
+        if (inplace_increment(%(out)s, (PyObject *)%(idx)s, %(y)s, (1 - %(params)s->set_instead_of_inc))) {
             %(fail)s;
         }
         Py_XDECREF(rval);
-        """ % locals()
+        """ % dict(x=x, y=y, idx=idx, out=out, copy_of_x=copy_of_x,
+                   params=sub['params'], fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
-    def perform(self, node, inp, out_):
+    def perform(self, node, inp, out_, params):
         # TODO opt to make this inplace
         x, y, idx = inp
         out, = out_
