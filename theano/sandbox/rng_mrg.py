@@ -775,13 +775,13 @@ class MRG_RandomStreams(object):
         """
         low = as_tensor_variable(low)
         high = as_tensor_variable(high)
-        
+
         if dtype is None:
             dtype = scal.upcast(config.floatX, low.dtype, high.dtype)
 
         low = cast(low, dtype=dtype)
         high = cast(high, dtype=dtype)
-        
+
         low = undefined_grad(low)
         high = undefined_grad(high)
 
