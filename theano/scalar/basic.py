@@ -1928,22 +1928,24 @@ class IntDiv(BinaryScalarOp):
 
         t = node.inputs[0].type.upcast(*[i.type for i in node.inputs[1:]])
         if t in imap(str, discrete_types):
-            # If we are in a gpuarray kernel, %(fail)s exits the kernel,
-            # and we do not have any error report, and we cannot set
-            # Python error messages either, so for now we just call the
-            # cuda function, which return a binary pattern of all 1s.
-            check = dedent('''
-                #ifndef KERNEL
-                    PyErr_SetString(PyExc_ZeroDivisionError, "integer division by zero");
-                    %(fail)s
-                #endif
-                ''') % locals()
             x_div_y_pp = '(%(x)s / %(y)s)' % locals()
             x_div_y_mp = '((-%(x)s) / %(y)s)' % locals()
             x_mod_y_mp = 'THEANO_MACRO_MOD((-%(x)s), %(y)s)' % locals()
             x_div_y_pm = '(%(x)s / (-%(y)s))' % locals()
             x_mod_y_pm = 'THEANO_MACRO_MOD(%(x)s, (-%(y)s))' % locals()
             x_div_y_mm = '((-%(x)s) / (-%(y)s))' % locals()
+            # If we are in a gpuarray kernel, %(fail)s exits the kernel,
+            # and we do not have any error report, and we cannot set
+            # Python error messages either, so for now we just call the
+            # cuda function, which return a binary pattern of all 1s.
+            div_zero = dedent('''
+                #ifdef KERNEL
+                    %(z)s = %(x_div_y_pp)s;
+                #else
+                    PyErr_SetString(PyExc_ZeroDivisionError, "integer division by zero");
+                    %(fail)s
+                #endif
+                ''') % locals()
         elif t in imap(str, float_types):
             # We need to call different functions of math.h
             # depending on the type
@@ -1956,13 +1958,13 @@ class IntDiv(BinaryScalarOp):
             else:
                 raise NotImplementedError('type not supported', t)
 
-            check = ''
             x_div_y_pp = '%(floor)s(%(x)s / %(y)s)' % locals()
             x_div_y_mp = '%(floor)s((-%(x)s) / %(y)s)' % locals()
             x_mod_y_mp = '%(fmod)s((-%(x)s), %(y)s)' % locals()
             x_div_y_pm = '%(floor)s(%(x)s / (-%(y)s))' % locals()
             x_mod_y_pm = '%(fmod)s(%(x)s, (-%(y)s))' % locals()
             x_div_y_mm = '%(floor)s((-%(x)s) / (-%(y)s))' % locals()
+            div_zero = '%(z)s = %(x_div_y_pp)s;' % locals()
         elif t in complex_types:
             raise self.complex_error
         else:
@@ -1970,8 +1972,7 @@ class IntDiv(BinaryScalarOp):
 
         return dedent("""
             if (%(y)s == 0) {
-                %(check)s
-                %(z)s = %(x_div_y_pp)s;
+                %(div_zero)s;
             } else if (%(y)s < 0) {
                 if (%(x)s < 0) {
                     %(z)s = %(x_div_y_mm)s;
@@ -1988,7 +1989,7 @@ class IntDiv(BinaryScalarOp):
             """) % locals()
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def grad(self, inputs, g_output):
         return [inp.zeros_like(dtype=theano.config.floatX)
@@ -2020,7 +2021,7 @@ class Mod(BinaryScalarOp):
         return x % y
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
     def c_support_code(self):
         # We use a macro as python use % as a special string character,
@@ -2046,20 +2047,22 @@ class Mod(BinaryScalarOp):
             # keep them out of safety, and verify they are useless with an
             # assert.
             assert str(t) in imap(str, discrete_types)
-            # If we are in a gpuarray kernel, %(fail)s exits the kernel,
-            # and we do not have any error report, and we cannot set
-            # Python error messages either, so for now we just call the
-            # cuda function, returning a binary pattern depending on dtype
-            check = dedent('''
-                #ifndef KERNEL
-                    PyErr_SetString(PyExc_ZeroDivisionError, "integer modulo by zero");
-                    %(fail)s
-                #endif
-                ''') % locals()
             x_mod_y = "THEANO_MACRO_MOD(%(x)s, %(y)s)" % locals()
             x_mod_ymm = "THEANO_MACRO_MOD(-%(x)s, -%(y)s)" % locals()
             x_mod_ypm = "THEANO_MACRO_MOD(%(x)s, -%(y)s)" % locals()
             x_mod_ymp = "THEANO_MACRO_MOD(-%(x)s, %(y)s)" % locals()
+            # If we are in a gpuarray kernel, %(fail)s exits the kernel,
+            # and we do not have any error report, and we cannot set
+            # Python error messages either, so for now we just call the
+            # cuda function, returning a binary pattern depending on dtype
+            mod_zero = dedent('''
+                #ifdef KERNEL
+                    %(z)s = %(x_mod_y)s;
+                #else
+                    PyErr_SetString(PyExc_ZeroDivisionError, "integer modulo by zero");
+                    %(fail)s
+                #endif
+                ''') % locals()
         elif (str(t) in imap(str, float_types) or
               t in ['float32', 'float64'] or
               t in float_types):
@@ -2067,11 +2070,11 @@ class Mod(BinaryScalarOp):
             # keep them out of safety, and verify they are useless with an
             # assert.
             assert str(t) in imap(str, float_types)
-            check = ''
             x_mod_y = "fmod(%(x)s, %(y)s)" % locals()
             x_mod_ymm = "fmod(-%(x)s, -%(y)s)" % locals()
             x_mod_ypm = "fmod(%(x)s, -%(y)s)" % locals()
             x_mod_ymp = "fmod(-%(x)s, %(y)s)" % locals()
+            mod_zero = "%(z)s = %(x_mod_y)s;" % locals()
         elif str(t) in imap(str, complex_types):
             raise self.complex_error
         else:
@@ -2079,8 +2082,7 @@ class Mod(BinaryScalarOp):
 
         return dedent("""
             if (%(y)s == 0) {
-                %(check)s
-                %(z)s = %(x_mod_y)s;
+                %(mod_zero)s;
             } else if (%(y)s < 0){
                 if (%(x)s < 0){
                     %(z)s = -(%(x_mod_ymm)s);
