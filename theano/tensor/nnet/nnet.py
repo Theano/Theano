@@ -583,7 +583,7 @@ class Abstract_SoftmaxGrad(gof.Op):
             raise ValueError('dy and the softmax output should have the same shape.')
         dx = np.zeros_like(sm)
         if axes is None:
-            axes = tuple(sm.ndim - 1)
+            axes = (sm.ndim - 1)
         else:
             axes = tuple(int(ax) for ax in axes)
         # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
@@ -616,7 +616,7 @@ class Abstract_softmax(gof.Op):
     E_axis = 'invalid axis'
     __props__ = ()
 
-    def make_node(self, x, axis=None):
+    def make_node(self, x, axis=(-1,)):
         x = tensor.as_tensor_variable(x)
 
         if isinstance(axis, (integer_types, np.integer)):
@@ -628,8 +628,9 @@ class Abstract_softmax(gof.Op):
             if axis == list(range(x.type.ndim)):
                 axis = None
         elif isinstance(axis, Variable):
+            # If axis is None, we select the last axis
             if NoneConst.equals(axis):
-                axis = None
+                axis = -1
             elif not isinstance(axis, tensor.var.TensorConstant):
                 raise TypeError("Softmax needs a constant axis. Got %s" % axis)
             else:
@@ -647,35 +648,28 @@ class Abstract_softmax(gof.Op):
                     axis[idx] += x.type.ndim
             axis.sort()
 
+        print(axis)
+        print(x.type.ndim)
         # Verify that axes are valid
-        all_axes = []
         if isinstance(axis, list):
             for ax in axis:
                 if ax < 0 or ax >= x.type.ndim:
                     raise ValueError(
                         'Invalid axis: %s (the number of dimensions of the '
                         'input is: %s)' % (ax, x.type.ndim))
-                    if ax not in all_axes:
-                        all_axes.append(ax)
-        else:
-            all_axes = list(range(x.ndim))
 
-        if axis is None or axis == list(range(x.type.ndim)):
-            axis = NoneConst.clone()
-        else:
-            axis = tensor.as_tensor_variable(all_axes)
-            assert axis.ndim == 1
-        inputs = [x, axis]
+        axis = tensor.as_tensor_variable(axis)
         # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
 
+        inputs = [x, axis]
         return Apply(self, inputs, [x.type()])
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
         if axes is None:
-            axes = tuple(x.ndim - 1)
+            axes = (x.ndim - 1)
         else:
             axes = tuple(int(ax) for ax in axes)
         # Apply softmax on the specified dimension
@@ -690,7 +684,7 @@ class Abstract_softmax(gof.Op):
             g_sm, test = grads
         else:
             g_sm, = grads
-        return [abstract_softmax_grad(g_sm, outputs[0], axis), DisconnectedType()()]
+        return [abstract_softmax_grad(g_sm, outputs[0], axis.eval()), DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
@@ -701,6 +695,8 @@ class Abstract_softmax(gof.Op):
 
     def infer_shape(self, node, shape):
         return [shape[0]]
+
+abstract_softmax_op = Abstract_softmax()
 
 
 class Softmax(gof.Op):
@@ -717,9 +713,16 @@ class Softmax(gof.Op):
     nout = 1
     __props__ = ()
 
-    def make_node(self, x, axis=-1):
+    def make_node(self, x, axis=(-1,)):
         x = tensor.as_tensor_variable(x)
         axis = tensor.as_tensor_variable(axis)
+        if axis is NoneConst:
+            axis = (-1,)
+        if x.ndim == 1:
+            axis = tensor.constant(0)
+        elif x.ndim == 2:
+            axis = tensor.constant(1)
+        # Make axis entries non-negative, and sort them
         if axis.type.dtype not in tensor.int_dtypes:
             raise ValueError('axis must be an integer. Got ', axis.type)
         # TODO : Delete this and modify the test accordly
@@ -1114,6 +1117,50 @@ logsoftmax_op = LogSoftmax()
 # This is not registered in stabilize, as it cause some crossentropy
 # optimization to not be inserted.
 @opt.register_specialize('stabilize', 'fast_compile')
+@gof.local_optimizer([Abstract_softmax])
+def local_softmax(node):
+    """
+    Detect Abstract_Softmax(x) and replace it with Softmax(x) when we get a single axis
+
+    Note: only forward pass is affected
+    """
+    if (isinstance(node.op, Abstract_softmax)):
+        try:
+            axis = opt.get_scalar_constant_value(node.inputs[1])
+        except tensor.NotScalarConstantError:
+            return
+        inVars = node.inputs[0]
+        new_op = Softmax()
+        ret = new_op(inVars, axis)
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+        return [ret]
+
+
+@opt.register_specialize('stabilize', 'fast_compile')
+@gof.local_optimizer([Abstract_SoftmaxGrad])
+def local_gradsoftmax(node):
+    """
+    Detect Abstract_Grad_Softmax(x) and replace it with Softmax(x) when we get a single axis
+
+    Note: only forward pass is affected
+    """
+    if (isinstance(node.op, Abstract_SoftmaxGrad)):
+        try:
+            axis = opt.get_scalar_constant_value(node.inputs[2])
+        except tensor.NotScalarConstantError:
+            return
+        inVars = node.inputs[0], node.inputs[1]
+        new_op = SoftmaxGrad()
+        ret = new_op(inVars, axis)
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+        return [ret]
+
+
+# This is not registered in stabilize, as it cause some crossentropy
+# optimization to not be inserted.
+@opt.register_specialize('stabilize', 'fast_compile')
 @gof.local_optimizer([tensor.Elemwise])
 def local_logsoftmax(node):
     """
@@ -1125,7 +1172,7 @@ def local_logsoftmax(node):
             isinstance(node.op.scalar_op, scalar.basic.Log) and
             len(node.inputs) == 1 and
             node.inputs[0].owner is not None and
-            isinstance(node.inputs[0].owner.op, Softmax)):
+            (isinstance(node.inputs[0].owner.op, Abstract_softmax) or isinstance(node.inputs[0].owner.op, Softmax))):
         inVars = node.inputs[0].owner.inputs[0]
         new_op = LogSoftmax()
         ret = new_op(inVars)
@@ -1144,13 +1191,13 @@ def local_logsoftmax_grad(node):
 
     Note: only grad is affected
     """
-    if (isinstance(node.op, SoftmaxGrad) and
+    if ((isinstance(node.op, SoftmaxGrad) or isinstance(node.op, Abstract_SoftmaxGrad)) and
         len(node.inputs) == 3 and
         node.inputs[0].owner is not None and
         node.inputs[0].owner.op == tensor.true_div and
         len(node.inputs[0].owner.inputs) >= 2 and
         node.inputs[0].owner.inputs[1].owner is not None and
-        node.inputs[0].owner.inputs[1].owner.op == softmax_op and
+        (node.inputs[0].owner.inputs[1].owner.op == softmax_op or node.inputs[0].owner.inputs[1].owner.op == abstract_softmax_op) and
         node.inputs[1] == node.inputs[0].owner.inputs[1] and
         not (
             # skip if it will be optimized by
@@ -1180,7 +1227,7 @@ def softmax(c):
     c = tensor.as_tensor_variable(c)
     if c.broadcastable[-1]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    return softmax_op(c)
+    return abstract_softmax_op(c)
 
 
 def logsoftmax(c):
@@ -1197,7 +1244,7 @@ def local_softmax_with_bias(node):
     Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias).
 
     """
-    if node.op == softmax_op:
+    if node.op == softmax_op or node == abstract_softmax_op:
         x = node.inputs[0]
         if x.owner and x.owner.op == tensor.add:
             vectors = []
@@ -1911,7 +1958,7 @@ def crossentropy_to_crossentropy_with_softmax(fgraph):
             if node.op == crossentropy_categorical_1hot:
                 nll, = node.outputs
                 sm, one_of_n = node.inputs
-                if sm.owner and sm.owner.op == softmax_op:
+                if sm.owner and (sm.owner.op == softmax_op or sm.owner.op == abstract_softmax_op):
                     x = sm.owner.inputs[0]
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(
                         x, tensor.zeros_like(x[0]), one_of_n)
@@ -1960,7 +2007,7 @@ def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
 def local_argmax_pushdown(node):
     if isinstance(node.op, tensor.MaxAndArgmax) and node.inputs[0].owner and \
             len(node.outputs[0].clients) > 0 and node.inputs[0].owner.op in \
-            (softmax_op, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
+            (abstract_softmax_op, softmax_op, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
              softmax_with_bias):
         if theano.config.warn.argmax_pushdown_bug:
             logging.getLogger('theano.tensor.nnet.nnet').warn(
@@ -1978,7 +2025,7 @@ def local_argmax_pushdown(node):
         x = node.inputs[0]
         axis = node.op.get_params(node)
         # TODO: Make a list/set of monotonic ops...
-        if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp,
+        if x.owner and x.owner.op in (abstract_softmax_op, softmax_op, softplus, tensor.exp,
                                       tensor.log, tensor.tanh, sigmoid):
             pre_x = x.owner.inputs[0]
             ret = tensor.max_and_argmax(pre_x, axis)
@@ -2073,7 +2120,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
             except Exception:
                 pass
 
-    if sm is not None and sm.owner and sm.owner.op in (softmax_op,
+    if sm is not None and sm.owner and sm.owner.op in (abstract_softmax_op, softmax_op,
                                                        softmax_with_bias):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
@@ -2106,7 +2153,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     except Exception:
         return
 
-    if (sm is not None) and sm.owner and (sm.owner.op in (softmax_op,
+    if (sm is not None) and sm.owner and (sm.owner.op in (abstract_softmax_op, softmax_op,
                                                           softmax_with_bias)):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
