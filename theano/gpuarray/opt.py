@@ -778,7 +778,10 @@ def split_huge_add_or_mul(node, op=None):
                 inner_op = []
                 for i in range(0, len(node.inputs), max_nb_inputs):
                     inner_op.append(op(*node.inputs[i: i + max_nb_inputs]))
+                # Reuse node.op because op(*inner_op) could fail if there is
+                # still too many inputs
                 node = node.op(*inner_op).owner
+    # Apply op() to make sure the returned node is op and not node.op
     return op(*node.inputs).owner
 
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(

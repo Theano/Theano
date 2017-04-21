@@ -459,7 +459,7 @@ def test_many_arg_elemwise():
     for num_args in [64]:
         for op_to_test in [theano.tensor.add, theano.tensor.mul]:
             for nb_dim in [2, 8]:
-                shapes = [rng.randint(1, int(32 / nb_dim)) for i in range(nb_dim)]
+                shapes = [rng.randint(1, 5) for i in range(nb_dim)]
                 args = [np.cast['float32'](rng.randn(*shapes))
                         for arg in range(0, num_args)]
 
