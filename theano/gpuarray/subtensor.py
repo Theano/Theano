@@ -658,14 +658,11 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                     except Exception:
                         pass
         x_ = x_.transpose(*transp)
-
         idx_ = ([slice(None)] * p + nidx[p:])
         x_ = x_.__getitem__(idx_)
-
         # flatten the array-indexed dimensions
-        shape = ((np.prod(x_.shape[0: p]),) +
-                 x_.shape[p:])
-        x_flat = x_.reshape(shape)
+        x_flat = x_.reshape((np.prod(x_.shape[0: p]),) + x_.shape[p:])
+        y_flat = y.reshape((np.prod(y.shape[0: p]),) + y.shape[p:])
 
         # build the strides
         strides = [1]
@@ -674,11 +671,12 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
             strides.insert(0, stride)
 
         # build the indices and use it
-        take_idx = sum((i * s for i, s in zip(nidx, strides)))
+        take_idx = sum((i * s for i, s in zip(nidx, strides))).flatten()
         k = get_iadd(node.inputs[0], node.inputs[1])
-        y = pygpu.asarray(y, context=x_flat.context)
+        y_flat = pygpu.asarray(y_flat, context=x_flat.context)
+
         for j, i in enumerate(take_idx):
-            k(x_flat[i], y[j], broadcast=True)
+            k(x_flat[i], y_flat[j], broadcast=True)
         out[0] = x
 
 
