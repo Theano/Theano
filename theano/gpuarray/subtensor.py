@@ -587,6 +587,101 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         out[0] = o
 
 
+class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
+    """
+    Implement AdvancedIncSubtensor on the gpu.
+
+    """
+    def make_node(self, x, y, *inputs):
+        ctx_name = infer_context_name(x)
+        rval = tensor.AdvancedIncSubtensor.make_node(self, x, y, *inputs)
+        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
+
+    # We can't use the parent version that loops on each index
+    # as we also need to loop when set_instead_of_inc is True and the
+    # parent doesn't loop in that case.
+    def perform(self, node, inp, out_, ctx=None):
+        out, = out_
+        x = inp[0]
+        y = inp[1]
+        idx = inp[2:]
+        x = x.copy()
+
+        # detect and transpose array indices
+        nidx = []
+        nshp = list(x.shape)
+        for k, i in enumerate(idx):
+            if i is None:
+                nidx.append(slice(None))
+                nshp.insert(k, 1)
+            else:
+                nidx.append(i)
+
+        x_ = x.reshape(nshp)
+
+        narrays = 0
+        transp = list(range(x_.ndim))
+        p = 0
+        # ap gives the position of the array in case there is only one.
+        # if there are more than one (narray > 1) it should be ignored.
+        ap = 0
+        for k, i in enumerate(list(nidx)):
+            if (isinstance(i, np.ndarray) and
+                    i.ndim != 0):
+                transp.remove(k)
+                transp.insert(p, k)
+                ap += k
+                i = nidx.pop(k)
+                nidx.insert(p, i)
+                p += 1
+                narrays += 1
+            else:
+                if narrays == 0:
+                    try:
+                        i.__index__()
+                        # We shift back the position of the array by the
+                        # number of dimensions that are removed by
+                        # indexing.  If ap is bigger than 0 it means we
+                        # have encountered at least one array.
+                        if ap >= 0:
+                            ap -= 1
+                        # If this index is before the first array then
+                        # we will not move the array back to its
+                        # position.  Mark this by faking that there
+                        # are more than two arrays.  This is crazy
+                        # numpy behaviour so blame them.
+                        narrays = 2
+                    except Exception:
+                        pass
+        x_ = x_.transpose(*transp)
+
+        idx_ = ([slice(None)] * p + nidx[p:])
+        x_ = x_.__getitem__(idx_)
+
+        # flatten the array-indexed dimensions
+        shape = ((np.prod(x_.shape[0: p]),) +
+                 x_.shape[p:])
+        x_flat = x_.reshape(shape)
+
+        # build the strides
+        strides = [1]
+        for i in range(p - 1, 0, -1):
+            stride = x_.shape[i] * strides[0]
+            strides.insert(0, stride)
+
+        # build the indices and use it
+        take_idx = sum((i * s for i, s in zip(nidx, strides)))
+        k = get_iadd(node.inputs[0], node.inputs[1])
+        y = pygpu.asarray(y, context=x_flat.context)
+        for j, i in enumerate(take_idx):
+            k(x_flat[i], y[j], broadcast=True)
+        out[0] = x
+
+
 class GpuAdvancedIncSubtensor1(Op):
     """
     Implement AdvancedIncSubtensor1 on the gpu.

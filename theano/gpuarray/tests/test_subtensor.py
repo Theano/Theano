@@ -13,6 +13,7 @@ from ..elemwise import GpuDimShuffle
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor1,
                          GpuAdvancedSubtensor,
+                         GpuAdvancedIncSubtensor,
                          GpuAdvancedIncSubtensor1,
                          GpuAdvancedIncSubtensor1_dev20,
                          GpuExtractDiag,
@@ -74,6 +75,27 @@ class G_subtensorF16(test_subtensor.T_subtensor):
         # GPU opt can't run in fast_compile only.
         self.fast_compile = False
         assert self.sub == GpuSubtensor
+
+
+def test_advinc_subtensor():
+    shp = (3, 3, 3)
+    shared = gpuarray_shared_constructor
+    xval = np.arange(np.prod(shp), dtype='float32').reshape(shp) + 1
+    yval = np.arange(np.prod(shp[1:]), dtype='float32').reshape(shp[1:])
+    idx = ([0, 1, 2], [0, 1, 2])
+    x = shared(xval, name='x')
+    y = tensor.tensor(dtype='float32',
+                      broadcastable=(False, False),
+                      name='y')
+    expr = tensor.advanced_inc_subtensor(x, y, *idx)
+    f = theano.function([y], expr, mode=mode_with_gpu)
+    assert sum([isinstance(node.op, GpuAdvancedIncSubtensor)
+                for node in f.maker.fgraph.toposort()]) == 1
+    rval = f(yval)
+    rep = xval.copy()
+    rep[idx] += yval
+    assert np.allclose(rval, rep)
+>>>>>>> Initial additions for `GpuAdvancedIncSubtensor`
 
 
 def test_advinc_subtensor1():
@@ -199,6 +221,7 @@ class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
             self, name,
             shared=gpuarray_shared_constructor,
             sub=GpuAdvancedSubtensor,
+            inc_sub=GpuAdvancedIncSubtensor,
             mode=mode_with_gpu,
             # avoid errors with limited devices
             dtype='float32',  # floatX?
