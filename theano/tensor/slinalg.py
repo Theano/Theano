@@ -36,16 +36,28 @@ class Cholesky(Op):
 
     L = cholesky(X, lower=True) implies dot(L, L.T) == X.
 
+    Parameters
+    ----------
+    lower : bool, default=True
+        Whether to return the lower or upper cholesky factor
+    on_error : ['raise', 'nan']
+        If on_error is set to 'raise', this Op will raise a
+        `scipy.linalg.LinAlgError` if the matrix is not positive definite.
+        If on_error is set to 'nan', it will return a matrix containing
+        nans instead.
     """
     # TODO: inplace
     # TODO: for specific dtypes
     # TODO: LAPACK wrapper with in-place behavior, for solve also
 
-    __props__ = ('lower', 'destructive')
+    __props__ = ('lower', 'destructive', 'on_error')
 
-    def __init__(self, lower=True):
+    def __init__(self, lower=True, on_error='raise'):
         self.lower = lower
         self.destructive = False
+        if on_error not in ['raise', 'nan']:
+            raise ValueError('on_error must be one of "raise" or ""nan"')
+        self.on_error = on_error
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
@@ -60,7 +72,13 @@ class Cholesky(Op):
     def perform(self, node, inputs, outputs):
         x = inputs[0]
         z = outputs[0]
-        z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
+        try:
+            z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
+        except scipy.linalg.LinAlgError:
+            if self.on_error == 'raise':
+                raise
+            else:
+                z[0] = (np.zeros(x.shape) * np.nan).astype(x.dtype)
 
     def grad(self, inputs, gradients):
         """
@@ -78,6 +96,13 @@ class Cholesky(Op):
         x = inputs[0]
         dz = gradients[0]
         chol_x = self(x)
+
+        # Replace the cholesky decomposition with 1 if there are nans
+        # or solve_upper_triangular will throw a ValueError.
+        if self.on_error == 'nan':
+            ok = ~tensor.any(tensor.isnan(chol_x))
+            chol_x = tensor.switch(ok, chol_x, 1)
+            dz = tensor.switch(ok, dz, 1)
 
         # deal with upper triangular by converting to lower triangular
         if not self.lower:
@@ -97,9 +122,14 @@ class Cholesky(Op):
             chol_x, tril_and_halve_diagonal(chol_x.T.dot(dz)))
 
         if self.lower:
-            return [tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))]
+            grad = tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))
         else:
-            return [tensor.triu(s + s.T) - tensor.diag(tensor.diagonal(s))]
+            grad = tensor.triu(s + s.T) - tensor.diag(tensor.diagonal(s))
+
+        if self.on_error == 'nan':
+            return [tensor.switch(ok, grad, np.nan)]
+        else:
+            return [grad]
 
 cholesky = Cholesky()
 
