@@ -783,9 +783,6 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         delattr(self.fgraph, 'destroy_handler')
         self.fgraph = None
 
-    def on_revert(self, fgraph):
-        self.fail_validate = {}
-
     def fast_destroy(self, app, reason):
         """
         Do the check for only 1 level.
@@ -807,20 +804,27 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                 self.fail_validate[app] = InconsistencyError(
                     "Attempting to destroy indestructible variables: %s" %
                     inp)
-            else:
-                if len(inp.clients) > 1:
+            elif len(inp.clients) > 1:
+                self.fail_validate[app] = theano.gof.InconsistencyError(
+                    "Destroyed variable has more than one client. " + str(reason))
+            elif inp.owner:
+                app2 = inp.owner
+                inp_idx2 = app2.outputs.index(inp)
+                v = getattr(app2.op, 'view_map', {})
+                if v:
+                    v = v.get(inp_idx2, [])
+                if len(v) > 0:
                     self.fail_validate[app] = theano.gof.InconsistencyError(
-                        "Destroyed variable has more than one client. " + str(reason))
-                elif inp.owner:
-                    app2 = inp.owner
-                    inp_idx2 = app2.outputs.index(inp)
-                    d = getattr(app2.op, 'destroy_map', {}).get(inp_idx2, [])
-                    v = getattr(app2.op, 'view_map', {}).get(inp_idx2, [])
-                    dv = d + v
-                    assert len(dv) <= 1
-                    if len(dv) > 0:
-                        self.fail_validate[app] = theano.gof.InconsistencyError(
-                            "Destroyed variable has destroy_map or view_map. " + str(reason))
+                        "Destroyed variable has view_map. " + str(reason))
+                d = getattr(app2.op, 'destroy_map', {})
+                if d:
+                    d = d.get(inp_idx2, [])
+                if len(d) > 0:
+                    self.fail_validate[app] = theano.gof.InconsistencyError(
+                        "Destroyed variable has destroy_map. " + str(reason))
+
+                assert len(v) <= 1
+                assert len(d) <= 1
 
     def on_import(self, fgraph, app, reason):
         """
