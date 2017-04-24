@@ -972,11 +972,11 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     # graph might have already changed when we raise the
                     # self.fail_validate error. So before raising the error, we
                     # double check here.
-                    # for app in app_err_pairs:
-                    #    if app in fgraph.apply_nodes:
-                    #        self.fast_destroy(app, 'validate')
-                    for app in fgraph.apply_nodes:
-                        self.fast_destroy(app, 'validate')
+                    for app in app_err_pairs:
+                        if app in fgraph.apply_nodes:
+                            self.fast_destroy(app, 'validate')
+                    # for app in fgraph.apply_nodes:
+                    #     self.fast_destroy(app, 'validate')
                     self.fail_validate = app_err_pairs
                     if self.fail_validate:
                         err = app_err_pairs.values()[0]
