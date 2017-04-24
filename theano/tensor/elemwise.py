@@ -1353,8 +1353,8 @@ class CAReduce(Op):
                     axis2.append(a)
             assert len(axis) == len(axis2)
             axis = tuple(axis2)
-            # We can't call self.__class__() as there is class that
-            # inherit from CAReduce that don't have the same signature
+            # We can't call self.__class__() as there is a class that
+            # inherits from CAReduce that doesn't have the same signature
             op = copy(self)
             op.set_ufunc(op.scalar_op)
             op.axis = axis
@@ -1398,7 +1398,7 @@ class CAReduce(Op):
 
         if to_reduce:
             for dimension in to_reduce:
-                # If it's a zero-size array, use scalar_op.identity
+                # If it's a zero-sized array, use scalar_op.identity
                 # if available
                 if variable.shape[dimension] == 0:
                     if hasattr(self.scalar_op, 'identity'):
@@ -1553,14 +1553,14 @@ class CAReduce(Op):
             pattern_ = str(pattern)[1:-1]
             decl += """int tosum[]={%(pattern_)s};""" % locals()
             alloc += """
-for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
-  if(PyArray_DIMS(%(iname)s)[i]==0 && tosum[i]){
-    PyErr_Format(PyExc_ValueError,
-         "Input of CAReduce{%(scal_name)s} has zero-size on axis %%d",i);
-    %(fail)s;
-  }
-}
-                   """ % locals()
+                    for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
+                        if(PyArray_DIMS(%(iname)s)[i]==0 && tosum[i]){
+                            PyErr_Format(PyExc_ValueError,
+                                "Input of CAReduce{%(scal_name)s} has zero-size on axis %%d",i);
+                            %(fail)s;
+                        }
+                    }
+                    """ % locals()
         else:
             raise TypeError(
                 "The CAReduce.scalar_op must have an identity field.")
