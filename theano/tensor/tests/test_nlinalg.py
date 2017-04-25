@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
+import itertools
 import numpy as np
 import numpy.linalg
 from numpy.testing import assert_array_almost_equal
@@ -131,15 +132,42 @@ def test_qr_modes():
 def test_svd():
     rng = np.random.RandomState(utt.fetch_seed())
     A = tensor.matrix("A", dtype=theano.config.floatX)
-    U, V, T = svd(A)
-    fn = function([A], [U, V, T])
+    U, S, VT = svd(A)
+    fn = function([A], [U, S, VT])
     a = rng.rand(4, 4).astype(theano.config.floatX)
-    n_u, n_v, n_t = np.linalg.svd(a)
-    t_u, t_v, t_t = fn(a)
+    n_u, n_s, n_vt = np.linalg.svd(a)
+    t_u, t_s, t_vt = fn(a)
 
     assert _allclose(n_u, t_u)
-    assert _allclose(n_v, t_v)
-    assert _allclose(n_t, t_t)
+    assert _allclose(n_s, t_s)
+    assert _allclose(n_vt, t_vt)
+
+    fn = function([A], svd(A, compute_uv=False))
+    t_s = fn(a)
+    assert _allclose(n_s, t_s)
+
+
+def test_svd_infer_shape():
+    rng = np.random.RandomState(utt.fetch_seed())
+    A = tensor.matrix("A", dtype=theano.config.floatX)
+
+    for shp, full_matrices in itertools.product([(4, 4), (2, 4), (4, 2)],
+                                                [True, False]):
+        U, S, VT = svd(A, full_matrices=full_matrices)
+        fn = function([A], [U, S, VT])
+        fn_shp = function([A], [U.shape, S.shape, VT.shape])
+        a = rng.rand(*shp).astype(theano.config.floatX)
+        t_u, t_s, t_vt = fn(a)
+        t_u_shp, t_s_shp, t_vt_shp = fn_shp(a)
+
+        assert _allclose(t_u.shape, t_u_shp)
+        assert _allclose(t_s.shape, t_s_shp)
+        assert _allclose(t_vt.shape, t_vt_shp)
+
+    fn = function([A], svd(A, compute_uv=False))
+    fn_shp = function([A], svd(A, compute_uv=False).shape)
+    a = rng.rand(4, 2).astype(theano.config.floatX)
+    assert _allclose(fn(a).shape, fn_shp(a))
 
 
 def test_tensorsolve():

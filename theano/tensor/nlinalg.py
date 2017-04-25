@@ -616,21 +616,37 @@ class SVD(Op):
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2, "The input of svd function should be a matrix."
-        w = theano.tensor.matrix(dtype=x.dtype)
-        u = theano.tensor.vector(dtype=x.dtype)
-        v = theano.tensor.matrix(dtype=x.dtype)
-        return Apply(self, [x], [w, u, v])
+        s = theano.tensor.vector(dtype=x.dtype)
+        if self.compute_uv:
+            u = theano.tensor.matrix(dtype=x.dtype)
+            vt = theano.tensor.matrix(dtype=x.dtype)
+            return Apply(self, [x], [u, s, vt])
+        else:
+            return Apply(self, [x], [s])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
-        (w, u, v) = outputs
         assert x.ndim == 2, "The input of svd function should be a matrix."
         if self.compute_uv:
-            w[0], u[0], v[0] = self._numop(x,
-                                           self.full_matrices,
-                                           self.compute_uv)
+            u, s, vt = outputs
+            u[0], s[0], vt[0] = self._numop(x,
+                                            self.full_matrices,
+                                            self.compute_uv)
         else:
-            u[0] = self._numop(x, self.full_matrices, self.compute_uv)
+            s, = outputs
+            s[0] = self._numop(x, self.full_matrices, self.compute_uv)
+
+    def infer_shape(self, node, shapes):
+        x_shape, = shapes
+        M, N = x_shape
+        K = tensor.minimum(M, N)
+        s_shape = (K, )
+        if self.compute_uv:
+            u_shape = (M, M) if self.full_matrices else (M, K)
+            vt_shape = (N, N) if self.full_matrices else (K, N)
+            return [u_shape, s_shape, vt_shape]
+        else:
+            return [s_shape]
 
 
 def svd(a, full_matrices=1, compute_uv=1):
