@@ -45,6 +45,9 @@ FLAGS=on_shape_error=raise,$FLAGS
 #      while we want all other runs to run with 'floatX=float64'.
 FLAGS=${FLAGS},device=cpu,floatX=float64
 
+# Only use elements in the cache for < 7 days
+FLAGS=${FLAGS},cmodule.age_thresh_use=604800
+
 echo "Executing tests with mode=FAST_RUN"
 NAME=fastrun
 FILE=${ROOT_CWD}/theano_${NAME}_tests.xml

@@ -42,6 +42,9 @@ FLAGS=on_shape_error=raise,$FLAGS
 #      while we want all other runs to run with 'floatX=float64'.
 FLAGS=${FLAGS},device=cpu,floatX=float64
 
+# Only use elements in the cache for < 7 days
+FLAGS=${FLAGS},cmodule.age_thresh_use=604800
+
 #we change the seed and record it everyday to test different combination. We record it to be able to reproduce bug caused by different seed. We don't want multiple test in DEBUG_MODE each day as this take too long.
 seed=$RANDOM
 echo "Executing tests with mode=DEBUG_MODE with seed of the day $seed"

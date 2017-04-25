@@ -117,6 +117,7 @@ class MyOpEnumList(Op):
                 o[0] = a // b
         else:
             raise NotImplementedError('Unknown op id ' + str(op))
+        o[0] = np.float64(o[0])
 
     def c_code_cache_version(self):
         return (1,)
