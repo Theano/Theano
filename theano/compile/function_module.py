@@ -1422,8 +1422,10 @@ class FunctionMaker(object):
 
         # Find missing inputs and delay the error to after optimization
         # in case we are able to remove there need during optimization
-        all_inputs = theano.gof.graph.inputs([o.variable for o in outputs])
-        missing_inputs = [i for i in all_inputs if i not in inputs]
+        all_inputs = theano.gof.graph.inputs([o.variable for o in outputs],
+                                             blockers=inputs)
+        missing_inputs = [i for i in all_inputs
+                          if i not in inputs and not isinstance(i, gof.Constant)]
 
         # Wrap them in In or Out instances if needed.
         inputs = [self.wrap_in(i) for i in inputs + missing_inputs]
