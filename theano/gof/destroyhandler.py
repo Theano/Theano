@@ -975,10 +975,8 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     for app in app_err_pairs:
                         if app in fgraph.apply_nodes:
                             self.fast_destroy(app, 'validate')
-                    # for app in fgraph.apply_nodes:
-                    #     self.fast_destroy(app, 'validate')
-                    self.fail_validate = app_err_pairs
                     if self.fail_validate:
+                        self.fail_validate = app_err_pairs
                         err = app_err_pairs.values()[0]
                         raise err
             else:
