@@ -4,9 +4,8 @@ setup_ext_cuda();
 
 #section support_code_struct
 
-int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **_A_inv,
+int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **A_inv,
                               PyGpuContextObject *c) {
-  PyGpuArrayObject *A_inv = *_A_inv;
   const size_t *dims;
   magma_int_t N, ldwork, info;
   magma_int_t *piv = NULL;
@@ -40,12 +39,12 @@ int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **_A_inv,
     goto fail;
   }
 #ifdef INPLACE
-  Py_XDECREF(A_inv);
-  A_inv = A;
-  Py_INCREF(A_inv);
+  Py_XDECREF(*A_inv);
+  *A_inv = A;
+  Py_INCREF(*A_inv);
 #else
-  A_inv = theano_try_copy(A_inv, A);
-  if (A_inv == NULL) {
+  *A_inv = theano_try_copy(*A_inv, A);
+  if (*A_inv == NULL) {
     PyErr_SetString(
         PyExc_RuntimeError,
         "GpuMagmaMatrixInverse: failed to allocate memory for the output");
@@ -71,7 +70,7 @@ int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **_A_inv,
     goto fail;
   }
 
-  magma_sgetrf_gpu(N, N, (float *)PyGpuArray_DEV_DATA(A_inv), N, piv, &info);
+  magma_sgetrf_gpu(N, N, (float *)PyGpuArray_DEV_DATA(*A_inv), N, piv, &info);
   if (info != 0) {
     PyErr_Format(
         PyExc_RuntimeError,
@@ -79,7 +78,7 @@ int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **_A_inv,
         magma_strerror(info));
     goto fail;
   }
-  magma_sgetri_gpu(N, (float *)PyGpuArray_DEV_DATA(A_inv), N, piv,
+  magma_sgetri_gpu(N, (float *)PyGpuArray_DEV_DATA(*A_inv), N, piv,
                    *(float **)dwork, ldwork, &info);
   if (info != 0) {
     PyErr_Format(
@@ -89,7 +88,6 @@ int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **_A_inv,
     goto fail;
   }
   res = 0;
-  *_A_inv = A_inv;
 fail:
   if (piv != NULL)
     magma_free(piv);
