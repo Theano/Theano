@@ -1979,6 +1979,7 @@ class ZeroGrad(ViewOp):
         
         return theano.tensor.zeros(1)
 
+
 zero_grad_ = ZeroGrad()
 
 

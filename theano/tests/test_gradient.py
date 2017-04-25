@@ -663,7 +663,7 @@ class TestZeroGrad(unittest.TestCase):
         x = theano.tensor.matrix('x')
         y = x * gradient.zero_grad(x)
         f = theano.function([x], y)
-        # need to refer to theano.ogradient.zero_grad here,
+        # need to refer to theano.gradient.zero_grad here,
         # theano.gradient.zero_grad is a wrapper function!
         assert gradient.zero_grad_ not in \
             [node.op for node in f.maker.fgraph.toposort()]
@@ -695,18 +695,18 @@ class TestZeroGrad(unittest.TestCase):
         T = theano.tensor
 
         x = T.vector()
-        v = T.vector() 
+        v = T.vector()
         y = gradient.zero_grad(x)
 
         rop = T.Rop(y, x, v)
         f = theano.function([x, v], rop, on_unused_input='ignore')
 
         a = np.asarray(self.rng.randn(5),
-                        dtype=config.floatX)
+                       dtype=config.floatX)
         u = np.asarray(self.rng.randn(5),
-                        dtype=config.floatX)
+                       dtype=config.floatX)
 
-        assert np.count_nonzero(f(a,u)) == 0
+        assert np.count_nonzero(f(a, u)) == 0
 
 
 class TestDisconnectedGrad(unittest.TestCase):
