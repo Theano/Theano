@@ -363,12 +363,12 @@ AddConfigVar('dnn.enabled',
 
 AddConfigVar('magma.include_path',
              "Location of the magma header",
-             StrParam(None),
+             StrParam(''),
              in_c_key=False)
 
 AddConfigVar('magma.library_path',
              "Location of the magma library",
-             StrParam(None),
+             StrParam(''),
              in_c_key=False)
 
 AddConfigVar('magma.enabled',
