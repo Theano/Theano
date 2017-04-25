@@ -292,7 +292,7 @@ class TestMagma(unittest.TestCase):
             mode=mode_with_gpu.including('magma'))
 
         A_val = rand(50, 100)
-        utt.assert_allclose(f_cpu(A_val), f_gpu(A_val)[1])
+        utt.assert_allclose(f_cpu(A_val), f_gpu(A_val))
 
         A_val = rand(100, 50)
-        utt.assert_allclose(f_cpu(A_val), f_gpu(A_val)[1])
+        utt.assert_allclose(f_cpu(A_val), f_gpu(A_val))

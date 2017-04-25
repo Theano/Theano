@@ -8,7 +8,7 @@ import numpy as np
 from numpy.linalg.linalg import LinAlgError
 
 import theano
-from theano import Op, config
+from theano import Op, config, tensor
 from theano.gof import COp
 from theano.gpuarray import GpuArrayType
 
@@ -382,20 +382,39 @@ class GpuMagmaSVD(COp):
         A = as_gpuarray_variable(A, ctx_name)
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
-        return theano.Apply(self, [A],
-                            [A.type(),
-                             GpuArrayType(A.dtype, broadcastable=[False],
-                                          context_name=ctx_name)(),
-                             A.type()])
+        if self.compute_uv:
+            return theano.Apply(self, [A],
+                                [A.type(),
+                                GpuArrayType(A.dtype, broadcastable=[False],
+                                             context_name=ctx_name)(),
+                                A.type()])
+        else:
+            return theano.Apply(self, [A],
+                                [GpuArrayType(A.dtype, broadcastable=[False],
+                                              context_name=ctx_name)()])
 
     def get_params(self, node):
         return node.inputs[0].type.context
 
     def get_op_params(self):
-        compute_uv = int(self.compute_uv)
-        full_matrices = int(self.full_matrices)
-        return [('COMPUTE_UV', compute_uv),
-                ('FULL_MATRICES', full_matrices)]
+        params = []
+        if self.compute_uv:
+            params.append(('COMPUTE_UV', '1'))
+        if self.full_matrices:
+            params.append(('FULL_MATRICES', '1'))
+        return params
+
+    def infer_shape(self, node, shapes):
+        x_shape, = shapes
+        M, N = x_shape
+        K = tensor.minimum(M, N)
+        s_shape = (K, )
+        if self.compute_uv:
+            u_shape = (M, M) if self.full_matrices else (M, K)
+            vt_shape = (N, N) if self.full_matrices else (K, N)
+            return [u_shape, s_shape, vt_shape]
+        else:
+            return [s_shape]
 
 
 def gpu_svd(a, full_matrices=1, compute_uv=1):

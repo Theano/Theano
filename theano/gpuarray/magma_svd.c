@@ -4,8 +4,14 @@ setup_ext_cuda();
 
 #section support_code_struct
 
-int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A, PyGpuArrayObject **U,
-                              PyGpuArrayObject **S, PyGpuArrayObject **VT,
+int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
+#ifdef COMPUTE_UV
+                              PyGpuArrayObject **U,
+#endif
+                              PyGpuArrayObject **S,
+#ifdef COMPUTE_UV
+                              PyGpuArrayObject **VT,
+#endif
                               PyGpuContextObject *c) {
   magma_int_t M, N, K, ldu, ldv, M_U, N_VT, info;
   magma_vec_t jobu, jobv;
@@ -56,37 +62,35 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A, PyGpuArrayObject **U,
     goto fail;
   }
 
-  if (COMPUTE_UV) {
-    if (FULL_MATRICES) {
-      jobu = MagmaAllVec;
-      jobv = MagmaAllVec;
-    }
-    else {
-      jobu = MagmaSomeVec;
-      jobv = MagmaSomeVec;
-    }
-    M_U  = (jobu == MagmaAllVec ? M : K);
-    N_VT = (jobv == MagmaAllVec ? N : K);
-    ldu = M;
-    ldv = N_VT;
+#ifdef COMPUTE_UV
+#ifdef FULL_MATRICES
+  jobu = MagmaAllVec;
+  jobv = MagmaAllVec;
+#else
+  jobu = MagmaSomeVec;
+  jobv = MagmaSomeVec;
+#endif
+  M_U  = (jobu == MagmaAllVec ? M : K);
+  N_VT = (jobv == MagmaAllVec ? N : K);
+  ldu = M;
+  ldv = N_VT;
 
-    if (MAGMA_SUCCESS != magma_smalloc_pinned(&u_data, M_U * M)) {
-      PyErr_SetString(PyExc_RuntimeError,
-                      "GpuMagmaSVD: failed to allocate memory");
-      goto fail;
-    }
-    if (MAGMA_SUCCESS != magma_smalloc_pinned(&vt_data, N * N_VT)) {
-      PyErr_SetString(PyExc_RuntimeError,
-                      "GpuMagmaSVD: failed to allocate memory");
-      goto fail;
-    }
+  if (MAGMA_SUCCESS != magma_smalloc_pinned(&u_data, M_U * M)) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "GpuMagmaSVD: failed to allocate memory");
+    goto fail;
   }
-  else {
-    jobu = MagmaNoVec;
-    jobv = MagmaNoVec;
-    ldu = M;
-    ldv = N;
+  if (MAGMA_SUCCESS != magma_smalloc_pinned(&vt_data, N * N_VT)) {
+    PyErr_SetString(PyExc_RuntimeError,
+                    "GpuMagmaSVD: failed to allocate memory");
+    goto fail;
   }
+#else
+  jobu = MagmaNoVec;
+  jobv = MagmaNoVec;
+  ldu = M;
+  ldv = N;
+#endif
 
   // query for workspace size
   magma_sgesvd(jobu, jobv, M, N, NULL, M, NULL, NULL, ldu, NULL, ldv,
@@ -124,6 +128,7 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A, PyGpuArrayObject **U,
   cudaMemcpy(PyGpuArray_DEV_DATA(*S), s_data, K * sizeof(float),
              cudaMemcpyDeviceToDevice);
 
+#ifdef COMPUTE_UV
   u_dims[0] = N; u_dims[1] = N_VT;
   if (theano_prep_output(U, 2, u_dims, A->ga.typecode, GA_C_ORDER, c) != 0){
     PyErr_SetString(PyExc_RuntimeError,
@@ -145,7 +150,7 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A, PyGpuArrayObject **U,
   // to match numpy.linalg.svd output
   cudaMemcpy(PyGpuArray_DEV_DATA(*VT), u_data, M_U * M * sizeof(float),
              cudaMemcpyDeviceToDevice);
-
+#endif
   res = 0;
 fail:
   if (a_data != NULL)
