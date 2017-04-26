@@ -1427,9 +1427,10 @@ class FunctionMaker(object):
         all_inputs = theano.gof.graph.inputs([o.variable for o in outputs],
                                              blockers=blockers)
         missing_inputs = [i for i in all_inputs
-                          if i not in blockers and not isinstance(i,
-                                                                (gof.Constant,
-                                                                 theano.compile.SharedVariable))]
+                          if i not in blockers and
+                          not isinstance(i, (gof.Constant,
+                                             theano.compile.SharedVariable)) and
+                          not isinstance(i.type, gof.null_type.NullType)]
 
         # Wrap them in In or Out instances if needed.
         inputs = [self.wrap_in(i) for i in inputs + missing_inputs]
