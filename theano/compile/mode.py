@@ -73,6 +73,8 @@ predefined_optimizers = {
     'o3': OPT_FAST_RUN.excluding('inplace'),
     'o2': OPT_FAST_COMPILE.including('fusion'),
     'o1': OPT_FAST_COMPILE,
+    'fast_compile': OPT_FAST_COMPILE,
+    'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
     'stabilize': OPT_STABILIZE}
 
