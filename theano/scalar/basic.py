@@ -1188,7 +1188,7 @@ class LogicalComparison(BinaryScalarOp):
 
     def __eq__(self, other):
         return (BinaryScalarOp.__eq__(self, other) and
-                getattr(self, 'bool', False) == getattr(self, 'bool', False))
+                getattr(self, 'bool', False) == getattr(other, 'bool', False))
 
     def __hash__(self):
         # bool should always be True
@@ -1220,7 +1220,7 @@ class FixedLogicalComparison(UnaryScalarOp):
 
     def __eq__(self, other):
         return (UnaryScalarOp.__eq__(self, other) and
-                getattr(self, 'bool', False) == getattr(self, 'bool', False))
+                getattr(self, 'bool', False) == getattr(other, 'bool', False))
 
     def __hash__(self):
         # bool should always be True
