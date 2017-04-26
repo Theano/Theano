@@ -493,18 +493,13 @@ class GpuMagmaMatrixInverse(COp):
         return shapes
 
 
-def gpu_matrix_inverse(a, inplace=False):
+def gpu_matrix_inverse(a):
     """
     This function performs the matrix inverse on GPU.
-
-    Parameters
-    ----------
-    inplace : bool, optional
-        Whether or not to compute matrix inverse inplace.
 
     Returns
     -------
     a_inv: matrix
 
     """
-    return GpuMagmaMatrixInverse(inplace=inplace)(a)
+    return GpuMagmaMatrixInverse()(a)

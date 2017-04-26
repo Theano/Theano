@@ -220,7 +220,7 @@ class TestMagma(unittest.TestCase):
         N = 1000
         A_val_gpu = gpuarray_shared_constructor(rand(N, N))
         A_val_copy = A_val_gpu.get_value()
-        fn = theano.function([], gpu_matrix_inverse(A_val_gpu, inplace=True),
+        fn = theano.function([], GpuMagmaMatrixInverse(inplace=True)(A_val_gpu),
                              mode=mode_with_gpu, accept_inplace=True)
         fn()
         utt.assert_allclose(np.dot(A_val_gpu.get_value(), A_val_copy), np.eye(N), atol=1e-3)
