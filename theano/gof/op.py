@@ -23,7 +23,6 @@ from six import itervalues, PY3
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler
-from theano.gof.fg import FunctionGraph
 
 __authors__ = "theano-dev"
 __copyright__ = "(c) 2010, Universite de Montreal"
@@ -843,7 +842,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 print("Disabling C code for %s due to unsupported "
                       "float16" % (self,))
                 raise NotImplementedError("float16")
-        e = FunctionGraph(node.inputs, node.outputs)
+        # Need full path to don't have circular dependency.
+        # Normally, op.py should not depend from fg.
+        e = theano.gof.fg.FunctionGraph(node.inputs, node.outputs)
         e_no_recycling = [new_o
                           for (new_o, old_o) in zip(e.outputs, node.outputs)
                           if old_o in no_recycling]
