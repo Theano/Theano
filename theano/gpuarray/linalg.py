@@ -60,6 +60,11 @@ def attach_cusolver_handle_to_context(ctx):
         with ctx:
             ctx.cusolver_handle = cusolver.cusolverDnCreate()
 
+# it is a subset of all cases available in slinalg's MATRIX_STRUCTURE
+MATRIX_STRUCTURES_SOLVE = (
+    'general',
+    'symmetric')
+
 
 class GpuCusolverSolve(Op):
     """
@@ -79,7 +84,8 @@ class GpuCusolverSolve(Op):
         self.inplace = inplace
         self.A_structure = A_structure
         if self.inplace:
-            self.destroy_map = {0: [0, 1]}
+            self.destroy_map = {0: [0]}
+        assert A_structure in MATRIX_STRUCTURES_SOLVE
         super(GpuCusolverSolve, self).__init__()
 
     def make_node(self, inp1, inp2):

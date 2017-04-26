@@ -587,8 +587,25 @@ def test_local_lift_solve():
     f_gpu = theano.function([A, b], o, mode=mode_with_gpu)
     assert not any(isinstance(n.op, slinalg.Solve)
                    for n in f_gpu.maker.fgraph.apply_nodes)
-    assert any(isinstance(n.op, GpuCusolverSolve)
+    assert any(isinstance(n.op, GpuCusolverSolve) and n.op.inplace
                for n in f_gpu.maker.fgraph.apply_nodes)
+    A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+    b_val = np.random.uniform(-0.4, 0.4, (5, 3)).astype("float32")
+    utt.assert_allclose(f_cpu(A_val, b_val), f_gpu(A_val, b_val))
+
+
+def test_gpu_solve_not_inplace():
+    if not cusolver_available:
+        raise SkipTest('No cuSolver')
+    A = tensor.fmatrix()
+    b = tensor.fmatrix()
+    s = slinalg.solve(A, b)
+    o = tensor.dot(A, s)
+    f_cpu = theano.function([A, b], o, mode_without_gpu)
+    f_gpu = theano.function([A, b], o, mode=mode_with_gpu)
+    count_not_inplace = len([n.op for n in f_gpu.maker.fgraph.apply_nodes
+                             if isinstance(n.op, GpuCusolverSolve) and not n.op.inplace])
+    assert count_not_inplace == 1, count_not_inplace
     A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
     b_val = np.random.uniform(-0.4, 0.4, (5, 3)).astype("float32")
     utt.assert_allclose(f_cpu(A_val, b_val), f_gpu(A_val, b_val))

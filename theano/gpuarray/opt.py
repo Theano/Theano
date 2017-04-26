@@ -70,7 +70,8 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
-from .linalg import (GpuCusolverSolve, GpuCholesky, cusolver_available)
+from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
+                     cusolver_available)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -1974,7 +1975,17 @@ def local_gpu_maxandargmax(op, context_name, inputs, outputs):
 def local_gpu_solve(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
-    return GpuCusolverSolve()
+    if op.A_structure not in MATRIX_STRUCTURES_SOLVE:
+        return
+    return GpuCusolverSolve(A_structure=op.A_structure)
+
+
+@register_inplace()
+@local_optimizer([GpuCusolverSolve], inplace=True)
+def local_inplace_gpu_solve(node):
+    if isinstance(node.op, GpuCusolverSolve) and not node.op.inplace:
+        return [GpuCusolverSolve(A_structure=node.op.A_structure, trans=node.op.trans,
+                                 inplace=True)(*node.inputs)]
 
 
 # Cholesky decomposition
