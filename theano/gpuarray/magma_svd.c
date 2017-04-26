@@ -113,13 +113,13 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
   if (info > 0) {
     PyErr_Format(
         PyExc_RuntimeError,
-        "GpuMagmaSVD: the updating process of SBDSDC did not converge (error: %s).",
+        "GpuMagmaSVD: the updating process of SBDSDC did not converge (error: %d)",
         info);
     goto fail;
   } else if (info < 0) {
     PyErr_Format(
         PyExc_RuntimeError,
-        "GpuMagmaSVD: magma_sgesvd_gpu argument %d has an illegal value", -info);
+        "GpuMagmaSVD: magma_sgesdd_gpu argument %d has an illegal value", -info);
     goto fail;
   }
 
