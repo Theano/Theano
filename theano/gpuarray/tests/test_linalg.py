@@ -210,7 +210,7 @@ class TestMagma(unittest.TestCase):
     def test_gpu_matrix_inverse(self):
         A = theano.tensor.fmatrix("A")
 
-        fn = theano.function([A], gpu_matrix_inverse(A), mode=mode_with_gpu.including('magma'))
+        fn = theano.function([A], gpu_matrix_inverse(A), mode=mode_with_gpu)
         N = 1000
         A_val = rand(N, N)
         A_val_inv = fn(A_val)
@@ -221,15 +221,13 @@ class TestMagma(unittest.TestCase):
         A_val_gpu = gpuarray_shared_constructor(rand(N, N))
         A_val_copy = A_val_gpu.get_value()
         fn = theano.function([], gpu_matrix_inverse(A_val_gpu, inplace=True),
-                             mode=mode_with_gpu.including('magma'),
-                             accept_inplace=True)
+                             mode=mode_with_gpu, accept_inplace=True)
         fn()
         utt.assert_allclose(np.dot(A_val_gpu.get_value(), A_val_copy), np.eye(N), atol=1e-3)
 
     def test_gpu_matrix_inverse_inplace_opt(self):
         A = theano.tensor.fmatrix("A")
-        fn = theano.function([A], matrix_inverse(A),
-                             mode=mode_with_gpu.including('magma'))
+        fn = theano.function([A], matrix_inverse(A), mode=mode_with_gpu)
         assert any([
             node.op.inplace
             for node in fn.maker.fgraph.toposort() if
@@ -240,7 +238,7 @@ class TestMagma(unittest.TestCase):
         A = theano.tensor.fmatrix("A")
         f = theano.function(
             [A], gpu_svd(A, full_matrices=full_matrices, compute_uv=compute_uv),
-            mode=mode_with_gpu.including('magma'))
+            mode=mode_with_gpu)
         return f(A_val)
 
     def assert_column_orthonormal(self, Ot):
@@ -288,8 +286,7 @@ class TestMagma(unittest.TestCase):
             [A], theano.tensor.nlinalg.svd(A, compute_uv=False),
             mode=mode_without_gpu)
         f_gpu = theano.function(
-            [A], gpu_svd(A, compute_uv=False),
-            mode=mode_with_gpu.including('magma'))
+            [A], gpu_svd(A, compute_uv=False), mode=mode_with_gpu)
 
         A_val = rand(50, 100)
         utt.assert_allclose(f_cpu(A_val), f_gpu(A_val))

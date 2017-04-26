@@ -140,11 +140,10 @@ class test_SVD(utt.InferShapeTester):
         self.op = svd
 
     def test_svd(self):
-        rng = np.random.RandomState(utt.fetch_seed())
         A = tensor.matrix("A", dtype=self.dtype)
         U, S, VT = svd(A)
         fn = function([A], [U, S, VT])
-        a = rng.rand(4, 4).astype(self.dtype)
+        a = self.rng.rand(4, 4).astype(self.dtype)
         n_u, n_s, n_vt = np.linalg.svd(a)
         t_u, t_s, t_vt = fn(a)
 
