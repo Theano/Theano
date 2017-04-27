@@ -56,12 +56,12 @@ libgpuarray
 :::::::::::
 
 For the stable version of Theano you need a specific version of libgpuarray,
-that has been tagged ``v0.6.2``.
+that has been tagged ``v0.6.5``.
 Download it with::
 
     git clone https://github.com/Theano/libgpuarray.git
     cd libgpuarray
-    git checkout tags/v0.6.2 -b v0.6.2
+    git checkout tags/v0.6.5 -b v0.6.5
 
 and then follow the `Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.
 
