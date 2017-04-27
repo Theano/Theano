@@ -4,7 +4,7 @@ BUILDBOT_DIR=$WORKSPACE/nightly_build
 THEANO_PARAM="theano --with-timer --timer-top-n 10"
 # Set test reports using nosetests xunit
 XUNIT="--with-xunit --xunit-file="
-export THEANO_FLAGS=init_gpu_device=cuda
+export THEANO_FLAGS=init_gpu_device=cuda,cycle_detection='fast'
 
 # CUDA
 export PATH=/usr/local/cuda/bin:$PATH
