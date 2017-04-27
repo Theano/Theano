@@ -212,13 +212,13 @@ class TestMagma(unittest.TestCase):
 
         fn = theano.function([A], gpu_matrix_inverse(A), mode=mode_with_gpu)
         N = 1000
-        A_val = rand(N, N)
+        A_val = rand(N, N).astype('float32')
         A_val_inv = fn(A_val)
         utt.assert_allclose(np.dot(A_val_inv, A_val), np.eye(N), atol=1e-3)
 
     def test_gpu_matrix_inverse_inplace(self):
         N = 1000
-        A_val_gpu = gpuarray_shared_constructor(rand(N, N))
+        A_val_gpu = gpuarray_shared_constructor(rand(N, N).astype('float32'))
         A_val_copy = A_val_gpu.get_value()
         fn = theano.function([], GpuMagmaMatrixInverse(inplace=True)(A_val_gpu),
                              mode=mode_with_gpu, accept_inplace=True)
@@ -251,7 +251,7 @@ class TestMagma(unittest.TestCase):
             np.dot(np.dot(U, S_m), VT), A, rtol=rtol, atol=atol)
 
     def test_gpu_svd_wide(self):
-        A = rand(100, 50)
+        A = rand(100, 50).astype('float32')
         M, N = A.shape
 
         U, S, VT = self.run_gpu_svd(A)
@@ -266,7 +266,7 @@ class TestMagma(unittest.TestCase):
         self.assert_column_orthonormal(VT.T)
 
     def test_gpu_svd_tall(self):
-        A = rand(50, 100)
+        A = rand(50, 100).astype('float32')
         M, N = A.shape
 
         U, S, VT = self.run_gpu_svd(A)
@@ -288,8 +288,8 @@ class TestMagma(unittest.TestCase):
         f_gpu = theano.function(
             [A], gpu_svd(A, compute_uv=False), mode=mode_with_gpu)
 
-        A_val = rand(50, 100)
+        A_val = rand(50, 100).astype('float32')
         utt.assert_allclose(f_cpu(A_val), f_gpu(A_val))
 
-        A_val = rand(100, 50)
+        A_val = rand(100, 50).astype('float32')
         utt.assert_allclose(f_cpu(A_val), f_gpu(A_val))
