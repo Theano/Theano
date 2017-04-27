@@ -119,11 +119,11 @@ class GpuGemv(BlasOp):
             if (%(A)s->ga.flags & GA_C_CONTIGUOUS) {
                 ssize_t a_stride0 = %(A)s->ga.strides[0];
                 %(A)s->ga.strides[0] = %(A)s->ga.strides[1];
-                if (pygpu_blas_rdot(%(x)s, %(A)s, %(y)s, 0) == -1) {
+                if (pygpu_blas_rdot(%(x)s, %(A)s, %(out)s, 0) == -1) {
                     %(fail)s
                 }
                 %(A)s->ga.strides[0] = a_stride0;
-            } else if (pygpu_blas_rdot(%(x)s, %(A)s, %(y)s, 0) == -1) {
+            } else if (pygpu_blas_rdot(%(x)s, %(A)s, %(out)s, 0) == -1) {
                 %(fail)s
             }
             %(out)s->ga.nd = 1;
@@ -145,7 +145,7 @@ class GpuGemv(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
