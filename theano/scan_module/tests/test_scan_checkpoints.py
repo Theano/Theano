@@ -35,14 +35,14 @@ class TestScanCheckpoint(unittest.TestCase):
         self.grad_A_check = T.grad(self.result_check.sum(), self.A)
 
     def test_forward_pass(self):
-        """Test forward computation of A**k."""
+        # Test forward computation of A**k.
         f = theano.function(inputs=[self.A, self.k],
                             outputs=[self.result, self.result_check])
         out, out_check = f(range(10), 101)
         assert np.allclose(out, out_check)
 
     def test_backward_pass(self):
-        """Test gradient computation of A**k."""
+        # Test gradient computation of A**k.
         f = theano.function(inputs=[self.A, self.k],
                             outputs=[self.grad_A, self.grad_A_check])
         out, out_check = f(range(10), 101)
@@ -50,7 +50,7 @@ class TestScanCheckpoint(unittest.TestCase):
 
     @unittest.skipUnless(PYGPU_AVAILABLE, 'Requires pygpu.')
     def test_memory(self):
-        """Test that scan_checkpoint reduces memory usage."""
+        # Test that scan_checkpoint reduces memory usage.
         if None not in theano.gpuarray.type.list_contexts():
             return unittest.SkipTest('Requires gpuarray backend.')
         from theano.gpuarray.tests.config import mode_with_gpu  # noqa
@@ -63,9 +63,11 @@ class TestScanCheckpoint(unittest.TestCase):
         # Check that it works with the checkpoints
         f_check(data, 1000)
         # Check that the basic scan fails in that case
-        self.assertRaises(GpuArrayException, f, data, 1000)
+        # Skip that check in DebugMode, as it can fail in different ways
+        if not isinstance(mode_with_gpu, theano.compile.DebugMode):
+            self.assertRaises(GpuArrayException, f, data, 1000)
 
     def test_taps_error(self):
-        """Test that an error rises if we use taps in outputs_info."""
+        # Test that an error rises if we use taps in outputs_info.
         self.assertRaises(RuntimeError, theano.scan_checkpoints,
                           lambda: None, [], {'initial': self.A, 'taps': [-2]})
