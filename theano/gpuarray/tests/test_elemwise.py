@@ -69,31 +69,32 @@ class TestMathErrorFunctions(TestCase):
     expected_erfinv_outputs = {}
     expected_erfcinv_outputs = {}
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         # NB: erfinv is defined in ]-1;1[, and erfcinv is defined in ]0;2[,
         # so we just take some values in an interval that covers both domains
         # (this will also allow to test some values outside the domains).
         # We take [-5;5[ by default and we concatenate it 1000 times
         # to have the GPU ops run on large data.
         default_array = [x / 10.0 for x in range(-50, 50)] * 1000
-        for dtype in self.dtypes:
+        for dtype in cls.dtypes:
             numpy_array = np.asarray(default_array, dtype=dtype)
-            self.default_arrays[dtype] = numpy_array
-            self.expected_erfinv_outputs[dtype] = scipy.special.erfinv(numpy_array)
-            self.expected_erfcinv_outputs[dtype] = scipy.special.erfcinv(numpy_array)
+            cls.default_arrays[dtype] = numpy_array
+            cls.expected_erfinv_outputs[dtype] = scipy.special.erfinv(numpy_array)
+            cls.expected_erfcinv_outputs[dtype] = scipy.special.erfcinv(numpy_array)
 
         # Since there are infinite values, we need to disable that check
         # in DebugMode if needed
         if isinstance(mode_with_gpu, DebugMode):
-            self.mode_with_gpu = copy(mode_with_gpu)
-            self.mode_with_gpu.check_isfinite = False
+            cls.mode_with_gpu = copy(mode_with_gpu)
+            cls.mode_with_gpu.check_isfinite = False
         else:
-            self.mode_with_gpu = mode_with_gpu
+            cls.mode_with_gpu = mode_with_gpu
         if isinstance(mode_without_gpu, DebugMode):
-            self.mode_without_gpu = copy(mode_without_gpu)
-            self.mode_without_gpu.check_isfinite = False
+            cls.mode_without_gpu = copy(mode_without_gpu)
+            cls.mode_without_gpu.check_isfinite = False
         else:
-            self.mode_without_gpu = mode_without_gpu
+            cls.mode_without_gpu = mode_without_gpu
 
     def check_gpu_scalar_op(self, theano_function, scalar_optype):
         for node in theano_function.maker.fgraph.apply_nodes:
