@@ -547,7 +547,8 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         if p == 0:
             # The only indexing was through slices and indices.
             # This can happen with symbolic slices for instance.
-            out[0] = x
+            # Since no view_map is set, we need to copy the returned value
+            out[0] = x.copy()
             return
 
         # flatten the array-indexed dimensions
