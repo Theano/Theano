@@ -1623,6 +1623,14 @@ class TestAdvancedSubtensor(unittest.TestCase):
         out = X[b_idx, r_idx, c_idx].eval({X: xx})
         utt.assert_allclose(out, xx[b_idx, r_idx, c_idx])
 
+    def test_adv_sub_slice(self):
+        # Reported in https://github.com/Theano/Theano/issues/5898
+        var = self.shared(np.zeros([3, 3], dtype=config.floatX))
+        slc = tensor.slicetype()
+        f = theano.function([slc], var[slc])
+        s = slice(1, 3)
+        f(s)
+
     def test_grad(self):
         ones = np.ones((1, 3), dtype=self.dtype)
         n = self.shared(ones * 5, broadcastable=(True, False))
