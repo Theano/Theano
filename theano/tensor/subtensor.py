@@ -2001,7 +2001,7 @@ class AdvancedIncSubtensor1(Op):
         if self.set_instead_of_inc:
             x[idx] = y
         else:
-            if config.cxx:
+            if config.cxx and node.inputs[0].dtype != 'float16':
                 increment = inplace_increment
             else:
                 increment = self.inplace_increment1d_slow
