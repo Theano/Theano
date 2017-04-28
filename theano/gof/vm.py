@@ -367,7 +367,7 @@ class Stack(VM):
             # destroy_dependencies would be impossible to compute after the
             # current `node` runs, because node.thunk() is going to destroy a
             # common input variable needed by whatever node owns each variable
-            # in destroy_depenencies.
+            # in destroy_dependencies.
 
             node.destroy_dependencies = []
             if node in ords:
