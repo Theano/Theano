@@ -33,6 +33,7 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 h_softmax,
                                 elu,
                                 binary_crossentropy,
+                                sigmoid_binary_crossentropy,
                                 confusion_matrix)
 from theano.tensor import matrix, vector, lvector, scalar
 from theano.tensor.nnet.nnet import softsign
@@ -1766,6 +1767,36 @@ SoftsignTester = makeBroadcastTester(
     good=_good_broadcast_unary_normal_float_no_complex,
     name='SoftsignTester',
 )
+
+
+class T_sigmoid_binary_crossentropy(unittest.TestCase):
+
+    def setUp(self):
+        utt.seed_rng()
+
+    def _get_test_inputs(self, n=50):
+        pred, target = numpy.random.randn(2, n).astype(config.floatX)
+        # apply sigmoid to target, but not pred
+        return [pred, 1 / (1 + numpy.exp(-target))]
+
+    def test_matches_binary_crossentropy(self):
+        """
+        Test sigmoid_binary_crossentropy(p, t) ==
+             binary_crossentropy(sigmoid(p), t).
+        """
+        pred, target = inputs = tensor.vectors('pt')
+
+        reference_val = binary_crossentropy(sigmoid(pred), target)
+        f_reference = theano.function(inputs, reference_val)
+
+        test_val = sigmoid_binary_crossentropy(pred, target)
+        f_test = theano.function(inputs, test_val)
+
+        test_inputs = self._get_test_inputs()
+        utt.assert_allclose(f_reference(*test_inputs), f_test(*test_inputs))
+
+    def test_grad(self):
+        utt.verify_grad(sigmoid_binary_crossentropy, self._get_test_inputs())
 
 
 def test_confusion_matrix():

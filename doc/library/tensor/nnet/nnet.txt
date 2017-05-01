@@ -21,6 +21,7 @@
    - :func:`softsign`
    - :func:`relu() <theano.tensor.nnet.relu>`
    - :func:`binary_crossentropy`
+   - :func:`sigmoid_binary_crossentropy`
    - :func:`.categorical_crossentropy`
    - :func:`h_softmax() <theano.tensor.nnet.h_softmax>`
    - :func:`confusion_matrix <theano.tensor.nnet.confusion_matrix>`
@@ -170,6 +171,37 @@
        h = T.nnet.sigmoid(T.dot(W, x) + b)
        x_recons = T.nnet.sigmoid(T.dot(V, h) + c)
        recon_cost = T.nnet.binary_crossentropy(x_recons, x).mean()
+
+.. function:: sigmoid_binary_crossentropy(output,target)
+
+   Computes the binary cross-entropy between a target and the sigmoid of an output:
+    :Parameters:
+
+       * *target* - symbolic Tensor (or compatible)
+       * *output* - symbolic Tensor (or compatible)
+
+    :Return type: same as target
+    :Returns: a symbolic tensor, where the following is applied elementwise :math:`crossentropy(t,o) = -(t\cdot log(sigmoid(o)) + (1 - t) \cdot log(1 - sigmoid(o)))`.
+
+   It is equivalent to `binary_crossentropy(sigmoid(output), target)`,
+   but with more efficient and numerically stable computation, especially when
+   taking gradients.
+
+   The following block implements a simple auto-associator with a
+   sigmoid nonlinearity and a reconstruction error which corresponds
+   to the binary cross-entropy (note that this assumes that x will
+   contain values between 0 and 1):
+
+   .. testcode::
+
+       x, y, b, c = T.dvectors('x', 'y', 'b', 'c')
+       W = T.dmatrix('W')
+       V = T.dmatrix('V')
+       h = T.nnet.sigmoid(T.dot(W, x) + b)
+       x_precons = T.dot(V, h) + c
+       # final reconstructions are given by sigmoid(x_precons), but we leave
+       # them unnormalized as sigmoid_binary_crossentropy applies sigmoid
+       recon_cost = T.nnet.sigmoid_binary_crossentropy(x_precons, x).mean()
 
 .. function:: categorical_crossentropy(coding_dist,true_dist)
 
