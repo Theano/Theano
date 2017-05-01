@@ -800,7 +800,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         inputs = set(itertools.chain.from_iterable(dm.values()))   # list of app's destroyed inputs
         for inp_idx in inputs:
             inp = app.inputs[inp_idx]
-            if getattr(inp.tag, 'indestructible', False):
+            if getattr(inp.tag, 'indestructible', False) or isinstance(inp, graph.Constant):
                 self.fail_validate[app] = InconsistencyError(
                     "Attempting to destroy indestructible variables: %s" %
                     inp)
