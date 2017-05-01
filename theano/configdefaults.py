@@ -361,6 +361,22 @@ AddConfigVar('dnn.enabled',
              EnumStr("auto", "True", "False", "no_check"),
              in_c_key=False)
 
+AddConfigVar('magma.include_path',
+             "Location of the magma header",
+             StrParam(''),
+             in_c_key=False)
+
+AddConfigVar('magma.library_path',
+             "Location of the magma library",
+             StrParam(''),
+             in_c_key=False)
+
+AddConfigVar('magma.enabled',
+             " If True, use magma for matrix computation."
+             " If False, disable magma",
+             BoolParam(False),
+             in_c_key=False)
+
 # This flag determines whether or not to raise error/warning message if
 # there is a CPU Op in the computational graph.
 AddConfigVar(

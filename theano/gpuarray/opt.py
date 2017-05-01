@@ -32,6 +32,7 @@ from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv3d,
                                               AbstractConv3d_gradWeights,
                                               AbstractConv3d_gradInputs)
+import theano.tensor.nlinalg as nlinalg
 import theano.tensor.signal.pool as pool
 import theano.tensor.slinalg as slinalg
 
@@ -71,7 +72,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
-                     cusolver_available)
+                     cusolver_available, GpuMagmaMatrixInverse, GpuMagmaSVD)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -2003,6 +2004,34 @@ def local_gpu_cholesky(op, context_name, inputs, outputs):
 def local_inplace_cholesky(node):
     if isinstance(node.op, GpuCholesky) and not node.op.inplace:
         return [GpuCholesky(lower=node.op.lower, inplace=True)(*node.inputs)]
+
+
+@register_opt('magma', 'fast_compile')
+@op_lifter([nlinalg.MatrixInverse])
+@register_opt2([theano.tensor.nlinalg.MatrixInverse], 'magma', 'fast_compile')
+def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
+    if not config.magma.enabled:
+        return
+    return GpuMagmaMatrixInverse()
+
+
+@register_inplace()
+@local_optimizer([GpuMagmaMatrixInverse])
+def local_inplace_matrix_inverse_inplace(node):
+    if isinstance(node.op, GpuMagmaMatrixInverse):
+        if not node.op.inplace:
+            return [node.op.clone_inplace()(*node.inputs)]
+
+
+@register_opt('magma', 'fast_compile')
+@op_lifter([nlinalg.SVD])
+@register_opt2([theano.tensor.nlinalg.SVD], 'magma', 'fast_compile')
+def local_gpu_svd(op, context_name, inputs, outputs):
+    if not config.magma.enabled:
+        return
+    return GpuMagmaSVD(full_matrices=op.full_matrices,
+                       compute_uv=op.compute_uv)
+
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.

@@ -1,14 +1,19 @@
 from __future__ import absolute_import, division, print_function
 
-import pkg_resources
-import theano
+import os
 import warnings
 
-from theano import Op
-from theano.gpuarray import basic_ops, GpuArrayType
-
+import pkg_resources
 import numpy as np
 from numpy.linalg.linalg import LinAlgError
+
+import theano
+from theano import Op, config, tensor
+from theano.gof import COp
+from theano.gpuarray import GpuArrayType
+
+from .basic_ops import as_gpuarray_variable, gpu_contiguous, infer_context_name
+from .type import gpu_context_type
 
 try:
     import pygpu
@@ -94,13 +99,13 @@ class GpuCusolverSolve(Op):
                                'GpuCusolverSolve Op can not be constructed.')
         if skcuda.__version__ <= '0.5.1':
             warnings.warn('The GpuSolve op requires scikit-cuda > 0.5.1 to work with CUDA 8')
-        context_name = basic_ops.infer_context_name(inp1, inp2)
+        context_name = infer_context_name(inp1, inp2)
 
-        inp1 = basic_ops.as_gpuarray_variable(inp1, context_name)
-        inp2 = basic_ops.as_gpuarray_variable(inp2, context_name)
+        inp1 = as_gpuarray_variable(inp1, context_name)
+        inp2 = as_gpuarray_variable(inp2, context_name)
 
-        inp1 = basic_ops.gpu_contiguous(inp1)
-        inp2 = basic_ops.gpu_contiguous(inp2)
+        inp1 = gpu_contiguous(inp1)
+        inp2 = gpu_contiguous(inp2)
 
         # this op can only operate on float32 matrices
         assert inp1.ndim == 2
@@ -260,11 +265,11 @@ class GpuCholesky(Op):
         if not pygpu_available:
             raise RuntimeError('Missing pygpu or triu/tril functions.'
                                'Install or update libgpuarray.')
-        context_name = basic_ops.infer_context_name(inp)
+        context_name = infer_context_name(inp)
 
-        inp = basic_ops.as_gpuarray_variable(inp, context_name)
+        inp = as_gpuarray_variable(inp, context_name)
 
-        inp = basic_ops.gpu_contiguous(inp)
+        inp = gpu_contiguous(inp)
 
         # this op can only operate on float32 matrices
         # because of current implementation of triu/tril.
@@ -341,3 +346,160 @@ class GpuCholesky(Op):
 
 def gpu_cholesky(A, lower=True):
     return GpuCholesky(lower)(A)
+
+
+class GpuMagmaSVD(COp):
+    """Computes the svd of a matrix :math:`A` using magma library.
+    """
+    __props__ = ('full_matrices', 'compute_uv')
+    params_type = gpu_context_type
+
+    def __init__(self, full_matrices=True, compute_uv=True):
+        self.full_matrices = full_matrices
+        self.compute_uv = compute_uv
+        COp.__init__(self, ['magma_svd.c'], 'APPLY_SPECIFIC(magma_svd)')
+
+    def c_headers(self):
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'magma.h']
+
+    def c_header_dirs(self):
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.magma.include_path:
+            dirs.append(config.magma.include_path)
+        return dirs
+
+    def c_libraries(self):
+        return ['magma']
+
+    def c_lib_dirs(self):
+        if config.magma.library_path:
+            return [config.magma.library_path]
+        return []
+
+    def make_node(self, A):
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        if A.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        if self.compute_uv:
+            return theano.Apply(self, [A],
+                                [A.type(),
+                                GpuArrayType(A.dtype, broadcastable=[False],
+                                             context_name=ctx_name)(),
+                                A.type()])
+        else:
+            return theano.Apply(self, [A],
+                                [GpuArrayType(A.dtype, broadcastable=[False],
+                                              context_name=ctx_name)()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        params = []
+        if self.compute_uv:
+            params.append(('COMPUTE_UV', '1'))
+        if self.full_matrices:
+            params.append(('FULL_MATRICES', '1'))
+        return params
+
+    def infer_shape(self, node, shapes):
+        x_shape, = shapes
+        M, N = x_shape
+        K = tensor.minimum(M, N)
+        s_shape = (K, )
+        if self.compute_uv:
+            u_shape = (M, M) if self.full_matrices else (M, K)
+            vt_shape = (N, N) if self.full_matrices else (K, N)
+            return [u_shape, s_shape, vt_shape]
+        else:
+            return [s_shape]
+
+
+def gpu_svd(a, full_matrices=1, compute_uv=1):
+    """
+    This function performs the SVD on GPU.
+
+    Parameters
+    ----------
+    full_matrices : bool, optional
+        If True (default), u and v have the shapes (M, M) and (N, N),
+        respectively.
+        Otherwise, the shapes are (M, K) and (K, N), respectively,
+        where K = min(M, N).
+    compute_uv : bool, optional
+        Whether or not to compute u and v in addition to s.
+        True by default.
+
+    Returns
+    -------
+    U, V,  D : matrices
+
+    """
+    return GpuMagmaSVD(full_matrices, compute_uv)(a)
+
+
+class GpuMagmaMatrixInverse(COp):
+    """Computes the inverse of a matrix :math:`A` using magma library.
+    """
+    __props__ = ('inplace', )
+    params_type = gpu_context_type
+
+    def __init__(self, inplace=False):
+        COp.__init__(self, ['magma_inv.c'], 'APPLY_SPECIFIC(magma_inv)')
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def c_headers(self):
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'magma.h']
+
+    def c_header_dirs(self):
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.magma.include_path:
+            dirs.append(config.magma.include_path)
+        return dirs
+
+    def c_libraries(self):
+        return ['magma']
+
+    def c_lib_dirs(self):
+        if config.magma.library_path:
+            return [config.magma.library_path]
+        return []
+
+    def clone_inplace(self):
+        return self.__class__(inplace=True)
+
+    def make_node(self, x):
+        ctx_name = infer_context_name(x)
+        x = as_gpuarray_variable(x, ctx_name)
+        if x.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        return theano.Apply(self, [x], [x.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        if self.inplace:
+            return [('INPLACE', '1')]
+        else:
+            return []
+
+    def infer_shape(self, node, shapes):
+        return shapes
+
+
+def gpu_matrix_inverse(a):
+    """
+    This function performs the matrix inverse on GPU.
+
+    Returns
+    -------
+    a_inv: matrix
+
+    """
+    return GpuMagmaMatrixInverse()(a)

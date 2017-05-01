@@ -1,23 +1,29 @@
 from __future__ import absolute_import, division, print_function
 
 import unittest
+
 import numpy as np
-import theano
-
-from theano.tests import unittest_tools as utt
-from .config import mode_with_gpu
-
 from numpy.linalg.linalg import LinAlgError
 
-# Skip tests if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
-from theano.gpuarray.linalg import (cusolver_available, gpu_solve, GpuCholesky)
+import theano
+from theano import config
+from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaMatrixInverse,
+                                    cusolver_available, gpu_matrix_inverse,
+                                    gpu_solve, gpu_svd)
+from theano.tensor.nlinalg import matrix_inverse
+from theano.tests import unittest_tools as utt
 
-if not cusolver_available:
-    raise SkipTest('Optional package scikits.cuda.cusolver not available')
+from .. import gpuarray_shared_constructor
+from .config import mode_with_gpu, mode_without_gpu
+from .test_basic_ops import rand
 
 
 class TestCusolver(unittest.TestCase):
+
+    def setUp(self):
+        if not cusolver_available:
+            self.skipTest('Optional package scikits.cuda.cusolver not available')
+
     def run_gpu_solve(self, A_val, x_val, A_struct=None):
         b_val = np.dot(A_val, x_val)
         b_val_trans = np.dot(A_val.T, x_val)
@@ -117,6 +123,8 @@ class TestCusolver(unittest.TestCase):
 class TestGpuCholesky(unittest.TestCase):
 
     def setUp(self):
+        if not cusolver_available:
+            self.skipTest('Optional package scikits.cuda.cusolver not available')
         utt.seed_rng()
 
     def get_gpu_cholesky_func(self, lower=True, inplace=False):
@@ -191,3 +199,97 @@ class TestGpuCholesky(unittest.TestCase):
         A_val = -M_val.dot(M_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
         self.assertRaises(LinAlgError, fn, A_val)
+
+
+class TestMagma(unittest.TestCase):
+
+    def setUp(self):
+        if not config.magma.enabled:
+            self.skipTest('Magma is not enabled, skipping test')
+
+    def test_gpu_matrix_inverse(self):
+        A = theano.tensor.fmatrix("A")
+
+        fn = theano.function([A], gpu_matrix_inverse(A), mode=mode_with_gpu)
+        N = 1000
+        A_val = rand(N, N).astype('float32')
+        A_val_inv = fn(A_val)
+        utt.assert_allclose(np.dot(A_val_inv, A_val), np.eye(N), atol=1e-3)
+
+    def test_gpu_matrix_inverse_inplace(self):
+        N = 1000
+        A_val_gpu = gpuarray_shared_constructor(rand(N, N).astype('float32'))
+        A_val_copy = A_val_gpu.get_value()
+        fn = theano.function([], GpuMagmaMatrixInverse(inplace=True)(A_val_gpu),
+                             mode=mode_with_gpu, accept_inplace=True)
+        fn()
+        utt.assert_allclose(np.dot(A_val_gpu.get_value(), A_val_copy), np.eye(N), atol=1e-3)
+
+    def test_gpu_matrix_inverse_inplace_opt(self):
+        A = theano.tensor.fmatrix("A")
+        fn = theano.function([A], matrix_inverse(A), mode=mode_with_gpu)
+        assert any([
+            node.op.inplace
+            for node in fn.maker.fgraph.toposort() if
+            isinstance(node.op, GpuMagmaMatrixInverse)
+        ])
+
+    def run_gpu_svd(self, A_val, full_matrices=True, compute_uv=True):
+        A = theano.tensor.fmatrix("A")
+        f = theano.function(
+            [A], gpu_svd(A, full_matrices=full_matrices, compute_uv=compute_uv),
+            mode=mode_with_gpu)
+        return f(A_val)
+
+    def assert_column_orthonormal(self, Ot):
+        utt.assert_allclose(np.dot(Ot.T, Ot), np.eye(Ot.shape[1]))
+
+    def check_svd(self, A, U, S, VT, rtol=None, atol=None):
+        S_m = np.zeros_like(A)
+        np.fill_diagonal(S_m, S)
+        utt.assert_allclose(
+            np.dot(np.dot(U, S_m), VT), A, rtol=rtol, atol=atol)
+
+    def test_gpu_svd_wide(self):
+        A = rand(100, 50).astype('float32')
+        M, N = A.shape
+
+        U, S, VT = self.run_gpu_svd(A)
+        self.assert_column_orthonormal(U)
+        self.assert_column_orthonormal(VT.T)
+        self.check_svd(A, U, S, VT)
+
+        U, S, VT = self.run_gpu_svd(A, full_matrices=False)
+        self.assertEqual(U.shape[1], min(M, N))
+        self.assert_column_orthonormal(U)
+        self.assertEqual(VT.shape[0], min(M, N))
+        self.assert_column_orthonormal(VT.T)
+
+    def test_gpu_svd_tall(self):
+        A = rand(50, 100).astype('float32')
+        M, N = A.shape
+
+        U, S, VT = self.run_gpu_svd(A)
+        self.assert_column_orthonormal(U)
+        self.assert_column_orthonormal(VT.T)
+        self.check_svd(A, U, S, VT)
+
+        U, S, VT = self.run_gpu_svd(A, full_matrices=False)
+        self.assertEqual(U.shape[1], min(M, N))
+        self.assert_column_orthonormal(U)
+        self.assertEqual(VT.shape[0], min(M, N))
+        self.assert_column_orthonormal(VT.T)
+
+    def test_gpu_singular_values(self):
+        A = theano.tensor.fmatrix("A")
+        f_cpu = theano.function(
+            [A], theano.tensor.nlinalg.svd(A, compute_uv=False),
+            mode=mode_without_gpu)
+        f_gpu = theano.function(
+            [A], gpu_svd(A, compute_uv=False), mode=mode_with_gpu)
+
+        A_val = rand(50, 100).astype('float32')
+        utt.assert_allclose(f_cpu(A_val), f_gpu(A_val))
+
+        A_val = rand(100, 50).astype('float32')
+        utt.assert_allclose(f_cpu(A_val), f_gpu(A_val))
