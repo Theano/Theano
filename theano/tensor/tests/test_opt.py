@@ -5580,6 +5580,19 @@ class T_local_opt_alloc(unittest.TestCase):
         finally:
             theano.config.warn_float64 = orig
 
+    @theano.configparser.change_flags(on_opt_error='raise')
+    def test_sum_bool_upcast(self):
+        s = theano.tensor.lscalar()
+        a = theano.tensor.alloc(np.asarray(True, dtype='bool'), s, s)
+        f = theano.function([s], a.sum())
+        f(5)
+        # test with user specified dtype
+        f = theano.function([s], a.sum(dtype='float32'))
+        f(5)
+        # test only 1 axis summed
+        f = theano.function([s], a.sum(axis=0, dtype='float32'))
+        f(5)
+
 
 class T_local_reduce(unittest.TestCase):
     def setUp(self):
