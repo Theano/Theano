@@ -295,8 +295,8 @@ class ParamsType(Type):
         # (see c_support_code() below).
         fields_string = ','.join(self.fields).encode('utf-8')
         types_string = ','.join(str(t) for t in self.types).encode('utf-8')
-        fields_hex = hashlib.md5(fields_string).hexdigest()
-        types_hex = hashlib.md5(types_string).hexdigest()
+        fields_hex = hashlib.md5(fields_string, usedforsecurity=False).hexdigest()
+        types_hex = hashlib.md5(types_string, usedforsecurity=False).hexdigest()
         return '_Params_%s_%s' % (fields_hex, types_hex)
 
     def has_type(self, theano_type):
