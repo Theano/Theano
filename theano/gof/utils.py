@@ -552,17 +552,17 @@ if PY3:
             msg = msg.encode()
         # Python 3 does not like module names that start with
         # a digit.
-        return 'm' + hashlib.md5(msg).hexdigest()
+        return 'm' + hashlib.md5(msg, usedforsecurity=False).hexdigest()
 
 else:
     import hashlib
 
     def hash_from_code(msg):
         try:
-            return hashlib.md5(msg).hexdigest()
+            return hashlib.md5(msg, usedforsecurity=False).hexdigest()
         except TypeError:
             assert isinstance(msg, np.ndarray)
-            return hashlib.md5(np.getbuffer(msg)).hexdigest()
+            return hashlib.md5(np.getbuffer(msg), usedforsecurity=False).hexdigest()
 
 
 def hash_from_file(file_path):
