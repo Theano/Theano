@@ -817,14 +817,16 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     if len(v) > 0:
                         self.fail_validate[app] = theano.gof.InconsistencyError(
                             "Destroyed variable has view_map. " + str(reason))
-                elif d:
-                    d = d.get(inp_idx2, [])
-                    if len(d) > 0:
-                        self.fail_validate[app] = theano.gof.InconsistencyError(
-                            "Destroyed variable has destroy_map. " + str(reason))
+                    elif d:
+                        d = d.get(inp_idx2, [])
+                        if len(d) > 0:
+                            self.fail_validate[app] = theano.gof.InconsistencyError(
+                                "Destroyed variable has destroy_map. " + str(reason))
 
-                assert len(v) <= 1
-                assert len(d) <= 1
+                # The 2 assertions are commented since this function is called so many times
+                # but they should be true.
+                # assert len(v) <= 1
+                # assert len(d) <= 1
 
     def on_import(self, fgraph, app, reason):
         """
