@@ -977,8 +977,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                             self.fast_destroy(app, 'validate')
                     if self.fail_validate:
                         self.fail_validate = app_err_pairs
-                        err = next(app_err_pairs.itervalues())
-                        raise err
+                        raise app_err_pairs[app]
             else:
                 ords = self.orderings(fgraph)
                 if _contains_cycle(fgraph, ords):
