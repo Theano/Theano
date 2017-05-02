@@ -35,7 +35,7 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 binary_crossentropy,
                                 sigmoid_binary_crossentropy,
                                 confusion_matrix)
-from theano.tensor import matrix, vector, lvector, scalar
+from theano.tensor import matrix, vector, lvector, scalar, tensor3
 from theano.tensor.nnet.nnet import softsign
 from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
                                             _good_broadcast_unary_normal_float_no_complex,
@@ -63,29 +63,38 @@ class T_softplus(unittest.TestCase):
 class T_Softmax(utt.InferShapeTester):
 
     def test0(self):
+        axis = np.random.randint(3)
+
         def f(a):
-            return softmax_op(a)[:, 0]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return softmax_op(a, axis)[:, 0]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5)])
 
     def test1(self):
+        axis = np.random.randint(3)
+
         def f(a):
-            return softmax_op(a)[:, 1]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return softmax_op(a, axis)[:, 1]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5)])
 
     def test2(self):
+        axis = np.random.randint(3)
+
         def f(a):
-            return softmax_op(a)[:, 2]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return softmax_op(a, axis)[:, 2]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5)])
 
     def test3(self):
+        axis = np.random.randint(3)
+
         def f(a):
-            return softmax_op(a)[:, 3]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return softmax_op(a, axis)[:, 3]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5)])
 
     def test_infer_shape(self):
-        admat = matrix()
-        admat_val = np.random.rand(3, 4).astype(config.floatX)
-        self._compile_and_check([admat], [Softmax()(admat)],
+        admat = tensor3()
+        admat_val = np.random.rand(3, 4, 5).astype(config.floatX)
+        axis = np.random.randint(3)
+        self._compile_and_check([admat], [Softmax()(admat, axis)],
                                 [admat_val], Softmax)
 
     def test_vector(self):
@@ -104,28 +113,36 @@ class T_Softmax(utt.InferShapeTester):
 class T_SoftmaxWithBias(utt.InferShapeTester):
 
     def test0(self):
+        axis = np.random.randint(3)
+
         def f(a, b):
-            return softmax_with_bias(a, b)[:, 0]
-        utt.verify_grad(f, [np.random.rand(3, 4),
-                        np.random.rand(4)])
+            return softmax_with_bias(a, b, axis)[:, 0]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5),
+                            np.random.rand([3, 4, 5][axis])])
 
     def test1(self):
+        axis = np.random.randint(3)
+
         def f(a, b):
-            return softmax_with_bias(a, b)[:, 1]
-        utt.verify_grad(f, [np.random.rand(3, 4),
-                        np.random.rand(4)])
+            return softmax_with_bias(a, b, axis)[:, 1]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5),
+                            np.random.rand([3, 4, 5][axis])])
 
     def test2(self):
+        axis = np.random.randint(3)
+
         def f(a, b):
-            return softmax_with_bias(a, b)[:, 2]
-        utt.verify_grad(f, [np.random.rand(3, 4),
-                        np.random.rand(4)])
+            return softmax_with_bias(a, b, axis)[:, 2]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5),
+                            np.random.rand([3, 4, 5][axis])])
 
     def test3(self):
+        axis = np.random.randint(3)
+
         def f(a, b):
-            return softmax_with_bias(a, b)[:, 3]
-        utt.verify_grad(f, [np.random.rand(3, 4),
-                        np.random.rand(4)])
+            return softmax_with_bias(a, b, axis)[:, 3]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5),
+                            np.random.rand([3, 4, 5][axis])])
 
     def test_broadcast(self):
         # test that we don't raise an error during optimization for no good
@@ -156,41 +173,52 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
         assert check_stack_trace(f, ops_to_check='last')
 
     def test_infer_shape(self):
-        admat = matrix()
+        admat = tensor3()
         advec = vector()
-        admat_val = np.random.rand(3, 4).astype(config.floatX)
-        advec_val = np.random.rand(4).astype(config.floatX)
+        axis = np.random.randint(3)
+        admat_val = np.random.rand(3, 4, 5).astype(config.floatX)
+        advec_val = np.random.rand([3, 4, 5][axis]).astype(config.floatX)
         self._compile_and_check([admat, advec],
-                                [SoftmaxWithBias()(admat, advec)],
+                                [SoftmaxWithBias()(admat, advec, axis)],
                                 [admat_val, advec_val], SoftmaxWithBias)
 
 
 class T_LogSoftmax(utt.InferShapeTester):
 
     def test0(self):
+        axis = np.random.randint(3)
+
         def f(a):
-            return logsoftmax_op(a)[:, 0]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return logsoftmax_op(a, axis)[:, 0]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5)])
 
     def test1(self):
+        axis = np.random.randint(3)
+
         def f(a):
-            return logsoftmax_op(a)[:, 1]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return logsoftmax_op(a, axis)[:, 1]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5)])
 
     def test2(self):
+        axis = np.random.randint(3)
+
         def f(a):
-            return logsoftmax_op(a)[:, 2]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return logsoftmax_op(a, axis)[:, 2]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5)])
 
     def test3(self):
+        axis = np.random.randint(3)
+
         def f(a):
-            return logsoftmax_op(a)[:, 3]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return logsoftmax_op(a, axis)[:, 3]
+        utt.verify_grad(f, [np.random.rand(3, 4, 5)])
 
     def test_matrix(self):
+        axis = np.random.randint(3)
+
         def f(a):
-            return logsoftmax_op(a)
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return logsoftmax_op(a, axis)
+        utt.verify_grad(f, [np.random.rand(3, 4, 5)])
 
     def test_vector(self):
         x = T.vector()
@@ -330,19 +358,25 @@ class T_CrossentropySoftmax1Hot(unittest.TestCase):
         utt.seed_rng()
 
     def test0(self):
-        y_idx = [0, 1, 3]
+        axis = np.random.randint(3)
+        shape = (3, 4, 5)
+        y_idx = np.random.randint(shape[axis],
+                                  size=(shape[:axis] + shape[(axis + 1):]))
 
         def f(a, b):
-            return crossentropy_softmax_1hot_with_bias(a, b, y_idx)[0]
-        utt.verify_grad(f, [np.random.rand(3, 4),
-                            np.random.rand(4)])
+            return crossentropy_softmax_1hot_with_bias(a, b, y_idx, axis)[0]
+        utt.verify_grad(f, [np.random.rand(*shape),
+                            np.random.rand(shape[axis])])
 
     def test1(self):
-        y_idx = [0, 1, 3]
+        axis = np.random.randint(3)
+        shape = (3, 4, 5)
+        y_idx = np.random.randint(shape[axis],
+                                  size=(shape[:axis] + shape[(axis + 1):]))
 
         def f(a):
-            return crossentropy_softmax_1hot(a, y_idx)[0]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+            return crossentropy_softmax_1hot(a, y_idx, axis)[0]
+        utt.verify_grad(f, [np.random.rand(*shape)])
 
     def test_vector(self):
         y_idx = [3]
@@ -426,51 +460,62 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
         self.op = theano.tensor.nnet.crossentropy_softmax_argmax_1hot_with_bias
 
     def test0(self):
-        n_classes = 5
-        n_samples = 3
+        axis = np.random.randint(3)
+        shape = (3, 4, 5)
+        n_classes = shape[axis]
+        shape_samples = (shape[:axis] + shape[(axis + 1):])
 
         # First test gradient when getting a gradient on the NLL output.
         def grad_on_nll_dtype(dtype):
             def grad_on_nll(x, b):
-                y_idx = np.random.randint(low=0, high=n_classes, size=n_samples).astype(dtype)
-                return self.op(x, b, y_idx=y_idx)[0]
+                y_idx = np.random.randint(
+                    n_classes, size=shape_samples).astype(dtype)
+                return self.op(x, b, y_idx=y_idx, axis=axis)[0, 0]
             return grad_on_nll
         for dtype in ['uint8', 'int8', 'uint64', 'int64']:
             utt.verify_grad(grad_on_nll_dtype(dtype),
-                            [np.random.rand(n_samples, n_classes),
+                            [np.random.rand(*shape),
                              np.random.rand(n_classes)])
 
         # Then test gradient when getting a gradient on the softmax output.
         def grad_on_softmax(x, b):
             return self.op(x, b, y_idx=np.random.randint(
-                low=0, high=n_classes, size=n_samples))[1]
+                low=0, high=n_classes, size=shape_samples), axis=axis)[1, 1]
         utt.verify_grad(
             grad_on_softmax,
-            [np.random.rand(n_samples, n_classes),
-                np.random.rand(n_classes)])
+            [np.random.rand(*shape),
+             np.random.rand(n_classes)])
 
     def test_infer_shape(self):
+        axis = np.random.randint(3)
+        shape = (3, 4, 5)
+        n_classes = shape[axis]
+        shape_samples = (shape[:axis] + shape[(axis + 1):])
         admat = matrix()
         advec = vector()
         alvec = lvector()
         rng = np.random.RandomState(utt.fetch_seed())
-        admat_val = rng.rand(3, 5).astype(config.floatX)
-        advec_val = rng.rand(5).astype(config.floatX)
-        alvec_val = rng.randint(low=0, high=5, size=3)
+        admat_val = rng.rand(*shape).astype(config.floatX)
+        advec_val = rng.rand(n_classes).astype(config.floatX)
+        alvec_val = rng.randint(low=0, high=n_classes, size=shape_samples)
         self._compile_and_check(
             [admat, advec, alvec],
-            CrossentropySoftmaxArgmax1HotWithBias()(admat, advec, alvec),
+            CrossentropySoftmaxArgmax1HotWithBias()(admat, advec, alvec, axis),
             [admat_val, advec_val, alvec_val],
             CrossentropySoftmaxArgmax1HotWithBias)
 
     def test_neg_idx(self):
-        admat = matrix()
+        axis = np.random.randint(3)
+        shape = (3, 4, 5)
+        n_classes = shape[axis]
+        shape_samples = (shape[:axis] + shape[(axis + 1):])
+        admat = tensor3()
         advec = vector()
         alvec = lvector()
         rng = np.random.RandomState(utt.fetch_seed())
-        admat_val = rng.rand(3, 5).astype(config.floatX)
-        advec_val = rng.rand(5).astype(config.floatX)
-        alvec_val = rng.randint(low=0, high=5, size=3)
+        admat_val = rng.rand(*shape).astype(config.floatX)
+        advec_val = rng.rand(n_classes).astype(config.floatX)
+        alvec_val = rng.randint(low=0, high=n_classes, size=shape_samples)
         alvec_val[1] = -1
         out = CrossentropySoftmaxArgmax1HotWithBias()(admat, advec, alvec)
         f = theano.function([admat, advec, alvec], out)
