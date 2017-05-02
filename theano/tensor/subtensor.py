@@ -2169,9 +2169,14 @@ class AdvancedSubtensor(Op):
 
     def perform(self, node, inputs, out_):
         out, = out_
-        # TODO: in general, we need to re-pack the inputs into a valid
-        # index, just like subtensor
-        out[0] = inputs[0].__getitem__(inputs[1:])
+        rval = inputs[0].__getitem__(inputs[1:])
+        # When there are no arrays, we are not actually doing advanced
+        # indexing, so __getitem__ will not return a copy.
+        # Since no view_map is set, we need to copy the returned value
+        if not any(isinstance(v.type, TensorType) and v.ndim > 0
+                   for v in node.inputs[1:]):
+            rval = rval.copy()
+        out[0] = rval
 
     def connection_pattern(self, node):
         rval = [[True]]

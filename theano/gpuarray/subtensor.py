@@ -544,6 +544,13 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         idx_ = ([slice(None)] * p + nidx[p:])
         x = x.__getitem__(idx_)
 
+        if p == 0:
+            # The only indexing was through slices and indices.
+            # This can happen with symbolic slices for instance.
+            # Since no view_map is set, we need to copy the returned value
+            out[0] = x.copy()
+            return
+
         # flatten the array-indexed dimensions
         shape = ((np.prod(x.shape[0: p]),) +
                  x.shape[p:])
