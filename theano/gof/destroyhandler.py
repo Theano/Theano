@@ -811,17 +811,17 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                 app2 = inp.owner
                 inp_idx2 = app2.outputs.index(inp)
                 v = getattr(app2.op, 'view_map', {})
+                d = getattr(app2.op, 'destroy_map', {})
                 if v:
                     v = v.get(inp_idx2, [])
-                if len(v) > 0:
-                    self.fail_validate[app] = theano.gof.InconsistencyError(
-                        "Destroyed variable has view_map. " + str(reason))
-                d = getattr(app2.op, 'destroy_map', {})
-                if d:
+                    if len(v) > 0:
+                        self.fail_validate[app] = theano.gof.InconsistencyError(
+                            "Destroyed variable has view_map. " + str(reason))
+                elif d:
                     d = d.get(inp_idx2, [])
-                if len(d) > 0:
-                    self.fail_validate[app] = theano.gof.InconsistencyError(
-                        "Destroyed variable has destroy_map. " + str(reason))
+                    if len(d) > 0:
+                        self.fail_validate[app] = theano.gof.InconsistencyError(
+                            "Destroyed variable has destroy_map. " + str(reason))
 
                 assert len(v) <= 1
                 assert len(d) <= 1
@@ -977,7 +977,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                             self.fast_destroy(app, 'validate')
                     if self.fail_validate:
                         self.fail_validate = app_err_pairs
-                        err = app_err_pairs.values()[0]
+                        err = next(app_err_pairs.itervalues())
                         raise err
             else:
                 ords = self.orderings(fgraph)
