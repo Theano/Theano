@@ -2108,9 +2108,6 @@ def local_inplace_gpu_solve(node):
 
 
 # Cholesky decomposition
-@register_opt('fast_compile')
-@op_lifter([slinalg.Cholesky])
-@register_opt2([theano.tensor.slinalg.Cholesky], 'fast_compile')
 def local_gpu_cholesky(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
@@ -2121,6 +2118,19 @@ def local_gpu_cholesky(op, context_name, inputs, outputs):
         return op(inputs[0].astype('float32')).astype('float16')
 
     return op
+matrix_ops_db = LocalGroupDB()
+matrix_ops_db2 = LocalGroupDB(local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
+matrix_ops_db2.__name__ = "matrix_ops_db2"
+lifter = op_lifter([slinalg.Cholesky])(local_gpu_cholesky)
+matrix_ops_db.register("local_gpu_cholesky", lifter,
+                       'gpuarray', 'fast_compile', 'fast_run',
+                       position=1)
+matrix_ops_db2.register("local_gpu_cholesky",
+                        local_optimizer([slinalg.Cholesky])(local_gpu_cholesky),
+                        'gpuarray', 'fast_compile', 'fast_run',
+                        position=1)
+register_opt('fast_compile', name='matrix_ops_db')(matrix_ops_db)
+register_opt2([slinalg.Solve], 'fast_compile', name='matrix_ops_db2')(matrix_ops_db2)
 
 
 @register_inplace()
@@ -2130,13 +2140,18 @@ def local_inplace_cholesky(node):
         return [node.op.clone_inplace()(*node.inputs)]
 
 
-@register_opt('magma', 'fast_compile')
-@op_lifter([slinalg.cholesky, GpuCholesky])
-@register_opt2([slinalg.Cholesky, GpuCholesky], 'magma', 'fast_compile')
 def local_gpu_magma_cholesky(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
     return GpuMagmaCholesky(lower=op.lower, inplace=op.destructive)
+lifter = op_lifter([slinalg.Cholesky])(local_gpu_magma_cholesky)
+matrix_ops_db.register("local_gpu_magma_cholesky", lifter,
+                       'gpuarray', 'fast_compile', 'fast_run', 'magma',
+                       position=0)
+matrix_ops_db2.register("local_gpu_magma_cholesky",
+                        local_optimizer([slinalg.Cholesky])(local_gpu_magma_cholesky),
+                        'gpuarray', 'fast_compile', 'fast_run', 'magma',
+                        position=0)
 
 
 @register_inplace()

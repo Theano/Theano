@@ -11,6 +11,7 @@ from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaMatrixInverse,
                                     cusolver_available, gpu_matrix_inverse,
                                     gpu_solve, gpu_svd, GpuMagmaCholesky)
 from theano.tensor.nlinalg import matrix_inverse
+from theano.tensor.slinalg import cholesky
 from theano.tests import unittest_tools as utt
 
 from .. import gpuarray_shared_constructor
@@ -132,7 +133,8 @@ class TestGpuCholesky(unittest.TestCase):
         A = theano.tensor.matrix("A", dtype="float32")
         cholesky_op = GpuCholesky(lower=lower, inplace=inplace)
         chol_A = cholesky_op(A)
-        return theano.function([A], chol_A, accept_inplace=inplace, mode=mode_with_gpu)
+        return theano.function([A], chol_A, accept_inplace=inplace,
+                               mode=mode_with_gpu.excluding('magma'))
 
     def compare_gpu_cholesky_to_np(self, A_val, lower=True, inplace=False):
         # Helper function to compare op output to np.cholesky output.
@@ -143,6 +145,12 @@ class TestGpuCholesky(unittest.TestCase):
         res = fn(A_val)
         chol_A_res = np.array(res)
         utt.assert_allclose(chol_A_res, chol_A_val)
+
+    def test_gpu_cholesky_opt(self):
+        A = theano.tensor.matrix("A", dtype="float32")
+        fn = theano.function([A], cholesky(A), mode=mode_with_gpu.excluding('magma'))
+        assert any([isinstance(node.op, GpuCholesky)
+                    for node in fn.maker.fgraph.toposort()])
 
     def test_invalid_input_fail_non_square(self):
         # Invalid Cholesky input test with non-square matrix as input.
@@ -317,6 +325,12 @@ class TestMagma(unittest.TestCase):
 
         L = self.run_gpu_cholesky(A, lower=False)
         self.check_cholesky(A, L, lower=False, atol=1e-3)
+
+    def test_gpu_cholesky_opt(self):
+        A = theano.tensor.matrix("A", dtype="float32")
+        fn = theano.function([A], cholesky(A), mode=mode_with_gpu)
+        assert any([isinstance(node.op, GpuMagmaCholesky)
+                    for node in fn.maker.fgraph.toposort()])
 
     def test_gpu_cholesky_inplace(self):
         N = 1000
