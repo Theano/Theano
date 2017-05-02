@@ -2127,9 +2127,26 @@ def local_gpu_cholesky(op, context_name, inputs, outputs):
 @local_optimizer([GpuCholesky], inplace=True)
 def local_inplace_cholesky(node):
     if isinstance(node.op, GpuCholesky) and not node.op.inplace:
-        return [GpuCholesky(lower=node.op.lower, inplace=True)(*node.inputs)]
+        return [node.op.clone_inplace()(*node.inputs)]
 
 
+@register_opt('magma', 'fast_compile')
+@op_lifter([slinalg.cholesky, GpuCholesky])
+@register_opt2([slinalg.Cholesky, GpuCholesky], 'magma', 'fast_compile')
+def local_gpu_magma_cholesky(op, context_name, inputs, outputs):
+    if not config.magma.enabled:
+        return
+    return GpuMagmaCholesky(lower=op.lower, inplace=op.destructive)
+
+
+@register_inplace()
+@local_optimizer([GpuMagmaCholesky], inplace=True)
+def local_inplace_gpu_magma_cholesky(node):
+    if isinstance(node.op, GpuMagmaCholesky) and not node.op.inplace:
+        return [node.op.clone_inplace()(*node.inputs)]
+
+
+# Matrix inverse
 @register_opt('magma', 'fast_compile')
 @op_lifter([nlinalg.MatrixInverse])
 @register_opt2([theano.tensor.nlinalg.MatrixInverse], 'magma', 'fast_compile')
@@ -2146,12 +2163,12 @@ def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
 
 @register_inplace()
 @local_optimizer([GpuMagmaMatrixInverse])
-def local_inplace_matrix_inverse_inplace(node):
-    if isinstance(node.op, GpuMagmaMatrixInverse):
-        if not node.op.inplace:
-            return [node.op.clone_inplace()(*node.inputs)]
+def local_inplace_gpu_matrix_inverse(node):
+    if isinstance(node.op, GpuMagmaMatrixInverse) and not node.op.inplace:
+        return [node.op.clone_inplace()(*node.inputs)]
 
 
+# Singular Value Decomposition
 @register_opt('magma', 'fast_compile')
 @op_lifter([nlinalg.SVD])
 @register_opt2([theano.tensor.nlinalg.SVD], 'magma', 'fast_compile')

@@ -258,6 +258,9 @@ class GpuCholesky(Op):
             self.destroy_map = {0: [0]}
         super(GpuCholesky, self).__init__()
 
+    def clone_inplace(self):
+        return self.__class__(lower=self.lower, inplace=True)
+
     def make_node(self, inp):
         if not cusolver_available:
             raise RuntimeError('CUSOLVER is not available and '
@@ -553,6 +556,9 @@ class GpuMagmaCholesky(CGpuKernelBase):
         if config.magma.library_path:
             return [config.magma.library_path]
         return []
+
+    def clone_inplace(self):
+        return self.__class__(lower=self.lower, inplace=True)
 
     def make_node(self, A):
         ctx_name = infer_context_name(A)
