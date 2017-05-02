@@ -264,10 +264,10 @@ Optimization                                              O4 (FAST_RUN) O1 (FAST
         We return a closer answer.
 
     o2
-        FAST_RUN but slow opt like inplace or elemwise_inplace (just excluding inplace for now)
+        FAST_COMPILE with opt like fusion added for speed (just including fusion for now)
 
     o3
-        FAST_COMPILE with opt like fusion added for speed (just including fusion for now)
+        FAST_RUN but slow opt like inplace or elemwise_inplace (just excluding inplace for now)
 
     local_remove_all_assert
         This is an unsafe optimization.
