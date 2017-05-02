@@ -13,7 +13,8 @@ from theano.scalar import bool as bool_t
 from theano.gof import COp, ParamsType
 from theano.gpuarray import GpuArrayType
 
-from .basic_ops import as_gpuarray_variable, gpu_contiguous, infer_context_name
+from .basic_ops import (CGpuKernelBase, as_gpuarray_variable, gpu_contiguous,
+                        infer_context_name)
 from .type import gpu_context_type
 
 try:
@@ -518,3 +519,59 @@ def gpu_matrix_inverse(a):
 
     """
     return GpuMagmaMatrixInverse()(a)
+
+
+class GpuMagmaCholesky(CGpuKernelBase):
+    """Computes the cholesky decomposition of a matrix :math:`A` using magma
+    library.
+
+    """
+    params_type = gpu_context_type
+    __props__ = ('lower', 'inplace')
+
+    def __init__(self, lower=True, inplace=False):
+        self.lower = lower
+        COp.__init__(self, ['magma_cholesky.c'], 'APPLY_SPECIFIC(magma_cholesky)')
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def c_headers(self):
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'magma.h']
+
+    def c_header_dirs(self):
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.magma.include_path:
+            dirs.append(config.magma.include_path)
+        return dirs
+
+    def c_libraries(self):
+        return ['magma']
+
+    def c_lib_dirs(self):
+        if config.magma.library_path:
+            return [config.magma.library_path]
+        return []
+
+    def make_node(self, A):
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
+        if A.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        return theano.Apply(self, [A], [A.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        params = []
+        if self.lower:
+            params.append(('LOWER', '1'))
+        if self.inplace:
+            params.append(('INPLACE', '1'))
+        return params
+
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]

@@ -559,8 +559,7 @@ class QRIncomplete(Op):
         (x,) = inputs
         (q,) = outputs
         assert x.ndim == 2, "The input of qr function should be a matrix."
-        q[0] = self._numop(x,
-                           self.mode)
+        q[0] = self._numop(x, self.mode)
 
 
 def qr(a, mode="reduced"):
