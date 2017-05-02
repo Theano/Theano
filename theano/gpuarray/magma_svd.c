@@ -32,7 +32,7 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
   if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuMagmaMatrixInverse: requires data to be C-contiguous");
-    return 1;
+    goto fail;
   }
   if (PyGpuArray_NDIM(A) != 2) {
     PyErr_SetString(PyExc_ValueError,
