@@ -5718,6 +5718,11 @@ def local_opt_alloc(node):
                     assert val.size == 1
                     # check which type of op
                     size = T.mul(*shapes)
+                    if input.dtype == "float32":
+                        # shapes are ints and normally int64.
+                        # We don't want to have a float64 upcast here
+                        # if input is a float32.
+                        size = size.astype(input.dtype)
                     if isinstance(node.op, T.Sum):
                         val = val.reshape(1)[0] * size
                     else:
