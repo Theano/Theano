@@ -9,8 +9,9 @@ import theano
 from theano import config
 from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaMatrixInverse,
                                     cusolver_available, gpu_matrix_inverse,
-                                    gpu_solve, gpu_svd, GpuMagmaCholesky)
-from theano.tensor.nlinalg import matrix_inverse
+                                    gpu_solve, gpu_svd, GpuMagmaCholesky,
+                                    GpuMagmaQR)
+from theano.tensor.nlinalg import matrix_inverse, qr
 from theano.tensor.slinalg import cholesky
 from theano.tests import unittest_tools as utt
 
@@ -351,4 +352,36 @@ class TestMagma(unittest.TestCase):
             node.op.inplace
             for node in fn.maker.fgraph.toposort() if
             isinstance(node.op, GpuMagmaCholesky)
+        ])
+
+    def run_gpu_qr(self, A_val, complete=True):
+        A = theano.tensor.fmatrix("A")
+        fn = theano.function([A], GpuMagmaQR(complete=complete)(A),
+                             mode=mode_with_gpu)
+        return fn(A_val)
+
+    def check_gpu_qr(self, M, N, complete=True, rtol=None, atol=None):
+        A = rand(M, N).astype('float32')
+        if complete:
+            Q_gpu, R_gpu = self.run_gpu_qr(A, complete=complete)
+        else:
+            R_gpu = self.run_gpu_qr(A, complete=complete)
+
+        Q_np, R_np = np.linalg.qr(A, mode='reduced')
+        utt.assert_allclose(R_gpu, R_np, rtol=rtol, atol=atol)
+        if complete:
+            utt.assert_allclose(Q_gpu, Q_np, rtol=rtol, atol=atol)
+
+    def test_gpu_qr(self):
+        self.check_gpu_qr(1000, 500, atol=1e-3)
+        self.check_gpu_qr(1000, 500, complete=False, atol=1e-3)
+        self.check_gpu_qr(500, 1000, atol=1e-3)
+        self.check_gpu_qr(500, 1000, complete=False, atol=1e-3)
+
+    def test_gpu_qr_opt(self):
+        A = theano.tensor.fmatrix("A")
+        fn = theano.function([A], qr(A), mode=mode_with_gpu)
+        assert any([
+            isinstance(node.op, GpuMagmaQR)
+            for node in fn.maker.fgraph.toposort()
         ])
