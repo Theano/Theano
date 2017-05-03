@@ -823,7 +823,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                             self.fail_validate[app] = theano.gof.InconsistencyError(
                                 "Destroyed variable has destroy_map. " + str(reason))
 
-                # The 2 assertions are commented since this function is called so many times
+                # These 2 assertions are commented since this function is called so many times
                 # but they should be true.
                 # assert len(v) <= 1
                 # assert len(d) <= 1
