@@ -385,3 +385,11 @@ class TestMagma(unittest.TestCase):
             isinstance(node.op, GpuMagmaQR)
             for node in fn.maker.fgraph.toposort()
         ])
+
+    def test_gpu_qr_incomplete_opt(self):
+        A = theano.tensor.fmatrix("A")
+        fn = theano.function([A], qr(A, mode='r'), mode=mode_with_gpu)
+        assert any([
+            isinstance(node.op, GpuMagmaQR)
+            for node in fn.maker.fgraph.toposort()
+        ])
