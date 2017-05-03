@@ -581,3 +581,58 @@ class GpuMagmaCholesky(CGpuKernelBase):
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
+
+
+class GpuMagmaQR(CGpuKernelBase):
+    """Computes the qr decomposition of a matrix :math:`A` using magma
+    library.
+
+    Parameters
+    ----------
+    complete : If `False`, returns only r.
+
+    """
+    params_type = gpu_context_type
+    __props__ = ('complete',)
+
+    def __init__(self, complete=True):
+        self.complete = complete
+        COp.__init__(self, ['magma_qr.c'], 'APPLY_SPECIFIC(magma_qr)')
+
+    def c_headers(self):
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'magma.h']
+
+    def c_header_dirs(self):
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.magma.include_path:
+            dirs.append(config.magma.include_path)
+        return dirs
+
+    def c_libraries(self):
+        return ['magma']
+
+    def c_lib_dirs(self):
+        if config.magma.library_path:
+            return [config.magma.library_path]
+        return []
+
+    def make_node(self, A):
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
+        if A.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        if self.complete:
+            return theano.Apply(self, [A], [A.type(), A.type()])
+        else:
+            return theano.Apply(self, [A], [A.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        params = []
+        if self.complete:
+            params.append(('COMPLETE', '1'))
+        return params
