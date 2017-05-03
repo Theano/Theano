@@ -1221,7 +1221,7 @@ def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
         name = '<ndarray:'
         name += 'strides=[' + ','.join(str(stride)
                                        for stride in obj.strides) + ']'
-        name += ',digest=' + hashlib.md5(obj, usedforsecurity=False).hexdigest() + '>'
+        name += ',digest=' + hashlib.sha256(obj).hexdigest() + '>'
     elif hasattr(obj, 'owner') and obj.owner is not None:
         name = str(obj.owner.op) + '('
         name += ','.join(var_descriptor(ipt,
@@ -1265,7 +1265,7 @@ def hex_digest(x):
     Returns a short, mostly hexadecimal hash of a numpy ndarray
     """
     assert isinstance(x, np.ndarray)
-    rval = hashlib.md5(x.tostring(), usedforsecurity=False).hexdigest()
+    rval = hashlib.sha256(x.tostring()).hexdigest()
     # hex digest must be annotated with strides to avoid collisions
     # because the buffer interface only exposes the raw data, not
     # any info about the semantics of how that data should be arranged
