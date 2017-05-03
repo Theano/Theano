@@ -292,7 +292,10 @@ class GpuArrayType(Type):
                 raise TypeError("Non-unit value on shape on a broadcastable"
                                 " dimension.", shp, self.broadcastable)
         if not isinstance(data, gpuarray.GpuArray):
-            if old_data is not None and old_data.shape == data.shape:
+            if old_data is not None and old_data.shape == data.shape and (
+                # write() only work if the destitation is contiguous.
+                    old_data.flags['C_CONTIGUOUS'] or
+                    old_data.flags['F_CONTIGUOUS']):
                 old_data.write(data)
                 data = old_data
             else:

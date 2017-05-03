@@ -132,3 +132,14 @@ class test_shared_options(object):
 class test_shared_options2(object):
     pass
 """
+
+
+def test_set_value_non_contiguous():
+    s = gpuarray_shared_constructor(
+        np.asarray([[1., 2.], [1., 2.], [5, 6]]))
+    s.set_value(s.get_value(borrow=True, return_internal_type=True)[::2],
+                borrow=True)
+    assert not s.get_value(borrow=True,
+                           return_internal_type=True).flags["C_CONTIGUOUS"]
+    # In the past, this failed
+    s.set_value([[0, 0], [1, 1]])
