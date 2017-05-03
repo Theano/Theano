@@ -760,8 +760,27 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
 
 
 def split_inputs(inputs, max_nb_inputs, op):
+    """
+    For some ops like add and mul, a large number of inputs can make nvcc fail
+    compilation of our current code. We don't want node in the graph that can't
+    execute as this break DebugMode.      
+        
+    This should not happen for other GpuElemwise as their is only the fusion
+    that can generate op with too much input and it check for that.
+
+    Parameters
+    ----------
+    inputs: List of inputs to node.
+
+    max_nb_inputs: Maximum nummber of inputs the node can handle without
+                   compilation fail.
+    
+    op : Theano operator instance.
+         Operator that should be used to rebuild the computation graph with smaller
+         number of inputs per node.
+    """
     if max_nb_inputs <= 1 and len(inputs) > 1:
-        ValueError("Can not split nodes because inputs' dimensionality and/or \
+        raise ValueError("Can not split nodes because inputs' dimensionality and/or \
                     number of outputs is too large")
 
     while len(inputs) > max_nb_inputs:
