@@ -6,6 +6,7 @@ export THEANO_FLAGS=init_gpu_device=cuda
 
 # CUDA
 export PATH=/usr/local/cuda/bin:$PATH
+export CPATH=/usr/local/cuda/include/:$CPATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
 
@@ -78,6 +79,9 @@ FLAGS=on_shape_error=raise,$FLAGS
 #   2. We explicitly add 'floatX=float32' in one run of the test suite below,
 #      while we want all other runs to run with 'floatX=float64'.
 FLAGS=${FLAGS},device=cpu,floatX=float64
+
+# Enable magma GPU library
+FLAGS=${FLAGS},magma.enabled=true
 
 # Only use elements in the cache for < 7 days
 FLAGS=${FLAGS},cmodule.age_thresh_use=604800
