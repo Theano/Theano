@@ -353,6 +353,29 @@ def gpu_cholesky(A, lower=True):
     return GpuCholesky(lower)(A)
 
 
+class GpuMagmaBase(COp):
+    """Base class for magma related operations. Add the necessary headers,
+    libraries and optionally the location of headers and library.
+    """
+    def c_headers(self):
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'magma.h']
+
+    def c_header_dirs(self):
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.magma.include_path:
+            dirs.append(config.magma.include_path)
+        return dirs
+
+    def c_libraries(self):
+        return ['magma']
+
+    def c_lib_dirs(self):
+        if config.magma.library_path:
+            return [config.magma.library_path]
+        return []
+
+
 class GpuMagmaSVD(COp):
     """Computes the svd of a matrix :math:`A` using magma library.
 
@@ -373,24 +396,6 @@ class GpuMagmaSVD(COp):
         self.full_matrices = full_matrices
         self.compute_uv = compute_uv
         COp.__init__(self, ['magma_svd.c'], 'APPLY_SPECIFIC(magma_svd)')
-
-    def c_headers(self):
-        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
-                'gpuarray_helper.h', 'magma.h']
-
-    def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if config.magma.include_path:
-            dirs.append(config.magma.include_path)
-        return dirs
-
-    def c_libraries(self):
-        return ['magma']
-
-    def c_lib_dirs(self):
-        if config.magma.library_path:
-            return [config.magma.library_path]
-        return []
 
     def make_node(self, A):
         ctx_name = infer_context_name(A)
@@ -463,7 +468,7 @@ def gpu_svd(a, full_matrices=1, compute_uv=1):
     return out
 
 
-class GpuMagmaMatrixInverse(COp):
+class GpuMagmaMatrixInverse(GpuMagmaBase):
     """Computes the inverse of a matrix :math:`A` using magma library.
     """
     __props__ = ('inplace', )
@@ -475,24 +480,6 @@ class GpuMagmaMatrixInverse(COp):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
-
-    def c_headers(self):
-        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
-                'gpuarray_helper.h', 'magma.h']
-
-    def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if config.magma.include_path:
-            dirs.append(config.magma.include_path)
-        return dirs
-
-    def c_libraries(self):
-        return ['magma']
-
-    def c_lib_dirs(self):
-        if config.magma.library_path:
-            return [config.magma.library_path]
-        return []
 
     def clone_inplace(self):
         return self.__class__(inplace=True)
@@ -524,12 +511,11 @@ def gpu_matrix_inverse(a):
     return GpuMagmaMatrixInverse()(a)
 
 
-class GpuMagmaCholesky(CGpuKernelBase):
+class GpuMagmaCholesky(GpuMagmaBase, CGpuKernelBase):
     """Computes the cholesky decomposition of a matrix :math:`A` using magma
     library.
 
     """
-    params_type = gpu_context_type
     __props__ = ('lower', 'inplace')
 
     def __init__(self, lower=True, inplace=False):
@@ -538,24 +524,6 @@ class GpuMagmaCholesky(CGpuKernelBase):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
-
-    def c_headers(self):
-        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
-                'gpuarray_helper.h', 'magma.h']
-
-    def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if config.magma.include_path:
-            dirs.append(config.magma.include_path)
-        return dirs
-
-    def c_libraries(self):
-        return ['magma']
-
-    def c_lib_dirs(self):
-        if config.magma.library_path:
-            return [config.magma.library_path]
-        return []
 
     def clone_inplace(self):
         return self.__class__(lower=self.lower, inplace=True)
@@ -567,9 +535,6 @@ class GpuMagmaCholesky(CGpuKernelBase):
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
         return theano.Apply(self, [A], [A.type()])
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     def get_op_params(self):
         params = []
@@ -583,7 +548,7 @@ class GpuMagmaCholesky(CGpuKernelBase):
         return [shapes[0]]
 
 
-class GpuMagmaQR(CGpuKernelBase):
+class GpuMagmaQR(GpuMagmaBase, CGpuKernelBase):
     """Computes the qr decomposition of a matrix :math:`A` using magma
     library.
 
@@ -592,30 +557,11 @@ class GpuMagmaQR(CGpuKernelBase):
     complete : If `False`, returns only r.
 
     """
-    params_type = gpu_context_type
     __props__ = ('complete', )
 
     def __init__(self, complete=True):
         self.complete = complete
         COp.__init__(self, ['magma_qr.c'], 'APPLY_SPECIFIC(magma_qr)')
-
-    def c_headers(self):
-        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
-                'gpuarray_helper.h', 'magma.h']
-
-    def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if config.magma.include_path:
-            dirs.append(config.magma.include_path)
-        return dirs
-
-    def c_libraries(self):
-        return ['magma']
-
-    def c_lib_dirs(self):
-        if config.magma.library_path:
-            return [config.magma.library_path]
-        return []
 
     def make_node(self, A):
         ctx_name = infer_context_name(A)
@@ -628,9 +574,6 @@ class GpuMagmaQR(CGpuKernelBase):
         else:
             return theano.Apply(self, [A], [A.type()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def get_op_params(self):
         params = []
         if self.complete:
@@ -638,7 +581,7 @@ class GpuMagmaQR(CGpuKernelBase):
         return params
 
 
-class GpuMagmaEigh(COp):
+class GpuMagmaEigh(GpuMagmaBase):
     """Computes the eigen decomposition of a symmetric matrix :math:`A` using magma
     library.
 
@@ -650,31 +593,12 @@ class GpuMagmaEigh(COp):
                 default). If `False`, computes only eigenvalues of matrix.
     """
     __props__ = ('lower', )
-    params_type = gpu_context_type
 
     def __init__(self, UPLO='L', compute_v=True):
         assert UPLO in ['L', 'U']
         self.lower = UPLO == 'L'
         self.compute_v = compute_v
         COp.__init__(self, ['magma_eigh.c'], 'APPLY_SPECIFIC(magma_eigh)')
-
-    def c_headers(self):
-        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
-                'gpuarray_helper.h', 'magma.h']
-
-    def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if config.magma.include_path:
-            dirs.append(config.magma.include_path)
-        return dirs
-
-    def c_libraries(self):
-        return ['magma']
-
-    def c_lib_dirs(self):
-        if config.magma.library_path:
-            return [config.magma.library_path]
-        return []
 
     def make_node(self, A):
         ctx_name = infer_context_name(A)
@@ -690,9 +614,6 @@ class GpuMagmaEigh(COp):
             return theano.Apply(self, [A],
                                 [GpuArrayType(A.dtype, broadcastable=[False],
                                               context_name=ctx_name)()])
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     def get_op_params(self):
         params = []
