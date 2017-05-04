@@ -49,7 +49,6 @@ int APPLY_SPECIFIC(magma_qr)(PyGpuArrayObject *A_,
                     "GpuMagmaQR: Unsupported data type");
     return -1;
   }
-
   if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuMagmaQR: requires data to be C-contiguous");
@@ -59,7 +58,6 @@ int APPLY_SPECIFIC(magma_qr)(PyGpuArrayObject *A_,
     PyErr_SetString(PyExc_ValueError, "GpuMagmaQR: matrix rank error");
     return -1;
   }
-
   A = pygpu_copy(A_, GA_F_ORDER);
   if (A == NULL) {
     PyErr_SetString(PyExc_RuntimeError,

@@ -52,25 +52,24 @@ int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
                     "GpuMagmaCholesky: unsupported data type");
     return -1;
   }
-
-  // This is early to match the exit() in the fail label.
-  cuda_enter(c->ctx);
-  magma_init();
-
   if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuMagmaCholesky: requires data to be C-contiguous");
-    goto fail;
+    return -1;
   }
   if (PyGpuArray_NDIM(A) != 2) {
     PyErr_SetString(PyExc_ValueError, "GpuMagmaCholesky: matrix rank error");
-    goto fail;
+    return -1;
   }
   dims = PyGpuArray_DIMS(A);
   if (dims[0] != dims[1]) {
     PyErr_SetString(PyExc_ValueError, "GpuMagmaCholesky: matrix is not square");
-    goto fail;
+    return -1;
   }
+
+  // This is early to match the exit() in the fail label.
+  cuda_enter(c->ctx);
+  magma_init();
 
 #ifdef INPLACE
   Py_XDECREF(*L);
