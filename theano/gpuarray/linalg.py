@@ -593,7 +593,7 @@ class GpuMagmaQR(CGpuKernelBase):
 
     """
     params_type = gpu_context_type
-    __props__ = ('complete',)
+    __props__ = ('complete', )
 
     def __init__(self, complete=True):
         self.complete = complete
@@ -635,4 +635,69 @@ class GpuMagmaQR(CGpuKernelBase):
         params = []
         if self.complete:
             params.append(('COMPLETE', '1'))
+        return params
+
+
+class GpuMagmaEigh(COp):
+    """Computes the eigen decomposition of a symmetric matrix :math:`A` using magma
+    library.
+
+    Parameters
+    ----------
+    UPLO : Specifies whether the calculation is done with the lower triangular
+           part of matrix (`L`, default) or the upper triangular part (`U`).
+    compute_v : If `True`, computes eigenvalues and eigenvectors (`True`,
+                default). If `False`, computes only eigenvalues of matrix.
+    """
+    __props__ = ('lower', )
+    params_type = gpu_context_type
+
+    def __init__(self, UPLO='L', compute_v=True):
+        assert UPLO in ['L', 'U']
+        self.lower = UPLO == 'L'
+        self.compute_v = compute_v
+        COp.__init__(self, ['magma_eigh.c'], 'APPLY_SPECIFIC(magma_eigh)')
+
+    def c_headers(self):
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'magma.h']
+
+    def c_header_dirs(self):
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.magma.include_path:
+            dirs.append(config.magma.include_path)
+        return dirs
+
+    def c_libraries(self):
+        return ['magma']
+
+    def c_lib_dirs(self):
+        if config.magma.library_path:
+            return [config.magma.library_path]
+        return []
+
+    def make_node(self, A):
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        if A.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        if self.compute_v:
+            return theano.Apply(self, [A],
+                                [GpuArrayType(A.dtype, broadcastable=[False],
+                                              context_name=ctx_name)(),
+                                A.type()])
+        else:
+            return theano.Apply(self, [A],
+                                [GpuArrayType(A.dtype, broadcastable=[False],
+                                              context_name=ctx_name)()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        params = []
+        if self.lower:
+            params.append(('LOWER', '1'))
+        if self.compute_v:
+            params.append(('COMPUTE_V', '1'))
         return params
