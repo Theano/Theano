@@ -2124,12 +2124,12 @@ matrix_ops_db2 = LocalGroupDB(local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
 matrix_ops_db2.__name__ = "matrix_ops_db2"
 lifter = op_lifter([slinalg.Cholesky])(local_gpu_cholesky)
 matrix_ops_db.register("local_gpu_cholesky", lifter,
-                       'gpuarray', 'fast_compile', 'fast_run',
-                       position=1)
+                       'gpuarray', 'fast_compile', 'fast_run', 'cusolver',
+                       position=0)
 matrix_ops_db2.register("local_gpu_cholesky",
                         local_optimizer([slinalg.Cholesky])(local_gpu_cholesky),
-                        'gpuarray', 'fast_compile', 'fast_run',
-                        position=1)
+                        'gpuarray', 'fast_compile', 'fast_run', 'cusolver',
+                        position=0)
 register_opt('fast_compile', name='matrix_ops_db')(matrix_ops_db)
 register_opt2([slinalg.Solve], 'fast_compile', name='matrix_ops_db2')(matrix_ops_db2)
 
@@ -2148,11 +2148,11 @@ def local_gpu_magma_cholesky(op, context_name, inputs, outputs):
 lifter = op_lifter([slinalg.Cholesky])(local_gpu_magma_cholesky)
 matrix_ops_db.register("local_gpu_magma_cholesky", lifter,
                        'gpuarray', 'fast_compile', 'fast_run', 'magma',
-                       position=0)
+                       position=1)
 matrix_ops_db2.register("local_gpu_magma_cholesky",
                         local_optimizer([slinalg.Cholesky])(local_gpu_magma_cholesky),
                         'gpuarray', 'fast_compile', 'fast_run', 'magma',
-                        position=0)
+                        position=1)
 
 
 @register_inplace()

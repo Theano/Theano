@@ -135,7 +135,7 @@ class TestGpuCholesky(unittest.TestCase):
         cholesky_op = GpuCholesky(lower=lower, inplace=inplace)
         chol_A = cholesky_op(A)
         return theano.function([A], chol_A, accept_inplace=inplace,
-                               mode=mode_with_gpu.excluding('magma'))
+                               mode=mode_with_gpu)
 
     def compare_gpu_cholesky_to_np(self, A_val, lower=True, inplace=False):
         # Helper function to compare op output to np.cholesky output.
@@ -149,7 +149,7 @@ class TestGpuCholesky(unittest.TestCase):
 
     def test_gpu_cholesky_opt(self):
         A = theano.tensor.matrix("A", dtype="float32")
-        fn = theano.function([A], cholesky(A), mode=mode_with_gpu.excluding('magma'))
+        fn = theano.function([A], cholesky(A), mode=mode_with_gpu)
         assert any([isinstance(node.op, GpuCholesky)
                     for node in fn.maker.fgraph.toposort()])
 
@@ -309,7 +309,7 @@ class TestMagma(unittest.TestCase):
     def run_gpu_cholesky(self, A_val, lower=True):
         A = theano.tensor.fmatrix("A")
         f = theano.function([A], GpuMagmaCholesky(lower=lower)(A),
-                            mode=mode_with_gpu)
+                            mode=mode_with_gpu.excluding('cusolver'))
         return f(A_val)
 
     def check_cholesky(self, N, lower=True, rtol=None, atol=None):
@@ -326,7 +326,7 @@ class TestMagma(unittest.TestCase):
 
     def test_gpu_cholesky_opt(self):
         A = theano.tensor.matrix("A", dtype="float32")
-        fn = theano.function([A], cholesky(A), mode=mode_with_gpu)
+        fn = theano.function([A], cholesky(A), mode=mode_with_gpu.excluding('cusolver'))
         assert any([isinstance(node.op, GpuMagmaCholesky)
                     for node in fn.maker.fgraph.toposort()])
 
