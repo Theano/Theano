@@ -75,7 +75,7 @@ from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
                      cusolver_available, GpuMagmaMatrixInverse, GpuMagmaSVD,
-                     GpuMagmaCholesky, GpuMagmaQR)
+                     GpuMagmaCholesky, GpuMagmaQR, GpuMagmaEigh)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -2201,6 +2201,16 @@ def local_gpu_magma_matrix_inverse(op, context_name, inputs, outputs):
 def local_inplace_gpu_magma_matrix_inverse(node):
     if isinstance(node.op, GpuMagmaMatrixInverse) and not node.op.inplace:
         return [node.op.clone_inplace()(*node.inputs)]
+
+
+# Eigen decomposition of a symmetric matrix
+@register_opt('magma', 'fast_compile')
+@op_lifter([nlinalg.Eigh])
+@register_opt2([theano.tensor.nlinalg.Eigh], 'magma', 'fast_compile')
+def local_gpu_magma_eigh(op, context_name, inputs, outputs):
+    if not config.magma.enabled:
+        return
+    return GpuMagmaEigh(UPLO=op.UPLO, compute_v=True)
 
 
 # Singular Value Decomposition
