@@ -314,7 +314,13 @@ class TestMagma(unittest.TestCase):
 
     def check_cholesky(self, N, lower=True, rtol=None, atol=None):
         A = rand(N, N).astype('float32')
-        A = np.dot(A.T, A)
+        # ensure that eigenvalues are not too small which sometimes results in
+        # magma failure due to gpu limited numerical precision
+        D, W = np.linalg.eigh(A)
+        D[D < 1] = 1
+        V_m = np.zeros_like(A)
+        np.fill_diagonal(V_m, D)
+        A = np.dot(np.dot(W.T, V_m), W)
         L = self.run_gpu_cholesky(A, lower=lower)
         if not lower:
             L = L.T
