@@ -4,6 +4,20 @@ import theano
 from theano.tensor.basic import mul, arange
 
 
+def _variable_is_none(var):
+    return isinstance(var, theano.Constant) and var.data is None
+
+
+def _check_tensor_is_scalar(var):
+    '''
+    Checks if a tensor variable is scalar, raise ValueError otherwise
+    '''
+    msg = '%(var)s is expected to be 0d tensor, got %(ndim)d'
+    if var.ndim != 0:
+        raise ValueError(
+            msg % (var, var.ndim))
+
+
 class SortOp(theano.Op):
     """
     This class is a wrapper for numpy sort function.
@@ -33,8 +47,7 @@ class SortOp(theano.Op):
         z[0] = np.sort(a, axis, self.kind, self.order)
 
     def infer_shape(self, node, inputs_shapes):
-        if (isinstance(node.inputs[1], theano.Constant) and
-                node.inputs[1].data is None):
+        if _variable_is_none(node.inputs[1]):
             # That means axis = None,
             # So the array is flattened before being sorted
             return [(mul(*inputs_shapes[0]),)]
@@ -162,8 +175,7 @@ class ArgSortOp(theano.Op):
                                dtype=node.outputs[0].dtype)
 
     def infer_shape(self, node, inputs_shapes):
-        if (isinstance(node.inputs[1], theano.Constant) and
-                node.inputs[1].data is None):
+        if _variable_is_none(node.inputs[1]):
             return [(mul(*inputs_shapes[0]),)]
         # axis should not be None, so there should be the same number of
         # dimensions in the input and output
@@ -206,3 +218,145 @@ def argsort(a, axis=-1, kind='quicksort', order=None):
         a = a.flatten()
         axis = 0
     return ArgSortOp(kind, order)(a, axis)
+
+
+if hasattr(np, 'argpartition'):
+    def _argtopk_py_impl(x, k, axis, out_dtype):
+        # numpy >= 1.8 implementation
+        if k == 1:
+            return np.expand_dims(
+                np.argmax(x, axis=axis).astype(out_dtype), axis)
+        elif k == -1:
+            return np.expand_dims(
+                np.argmin(x, axis=axis).astype(out_dtype), axis)
+
+        ndim = x.ndim
+        asize = x.shape[axis]
+        if asize == abs(k):
+            z = np.arange(abs(k), dtype=out_dtype)
+            l = axis % ndim
+            r = ndim - l
+            z = z.reshape((1,) * l + (k,) + (1,) * (r - 1))
+            reps = list(x.shape)
+            reps[axis] = 1
+            return np.tile(z, reps)
+
+        print('used axis %d' % axis)
+        z = np.argpartition(x, -k, axis=axis)
+        idx = (slice(None),) * (axis % ndim)
+        if k > 0:
+            idx += (slice(-k, None),)
+        elif k < 0:
+            idx += (slice(-k),)
+        else:
+            raise ValueError('k cannot be zero')
+        return z[idx].astype(out_dtype)
+else:
+    def _argtopk_py_impl(x, k, axis, out_dtype):
+        if k == 1:
+            return np.argmax(x, axis=axis).astype(out_dtype)
+        elif k == -1:
+            return np.argmin(x, axis=axis).astype(out_dtype)
+
+        ndim = x.ndim
+        asize = x.shape[axis]
+        if asize == abs(k):
+            z = np.arange(abs(k), dtype=out_dtype)
+            l = axis % ndim
+            r = ndim - l
+            z = z.reshape((1,) * l + (k,) + (1,) * r)
+            reps = list(x.shape)
+            reps[axis] = 1
+            return np.tile(z, reps)
+
+        # numpy implementation for older version
+        z = np.argsort(x, axis=axis)
+        idx = (slice(None),) * (axis - 1)
+        if k > 0:
+            idx += (slice(-k, None),)
+        elif k < 0:
+            idx += (slice(-k),)
+        else:
+            raise ValueError('k cannot be zero')
+        return z[idx].astype(out_dtype)
+
+
+class ArgTopKOp(theano.Op):
+    """
+    See help(theano.argtopk)
+
+    """
+
+    __props__ = ('out_dtype', 'axis')
+
+    def __init__(self, axis=-1, out_dtype='int64'):
+        # numpy always uses float64 as output dtype for arg*() routines
+        # however, we add this option as memory is more precious on gpu
+        assert isinstance(axis, int)
+        self.out_dtype = out_dtype
+        self.axis = axis
+
+    def __str__(self):
+        return '%(op)s{axis=%(axis)d, dtype=%(dtype)s}' % dict(
+            op=self.__class__.__name__, dtype=self.out_dtype, axis=self.axis)
+
+    def make_node(self, inp, k):
+        inp = theano.tensor.as_tensor_variable(inp)
+        k = theano.tensor.as_tensor_variable(k)
+        bcast = inp.type.broadcastable
+        return theano.Apply(self, [inp, k], [
+            theano.tensor.TensorType(
+                dtype=self.out_dtype,
+                broadcastable=bcast)()])
+
+    def perform(self, node, inputs, output_storage):
+        x, k = inputs
+        pz = output_storage[0]
+        print("Op's axis: %d" % self.axis)
+        pz[0] = _argtopk_py_impl(x, k, self.axis, self.out_dtype)
+
+    def infer_shape(self, node, inp_shapes):
+        _check_tensor_is_scalar(node.inputs[1])
+        shp = list(inp_shapes[0])
+        if not isinstance(self.axis, int):
+            raise TypeError(
+                'axis parameter must be integer, got "%s"' % type(self.axis))
+        ndim = node.inputs[0].ndim
+        if ndim == 0:
+            raise ValueError('cannot use 0d tensor')
+        if not -ndim <= self.axis < ndim:
+            raise IndexError(
+                'axis parameter out of range,'
+                ' expected integer within [%d, %d]' % (-ndim, ndim - 1))
+        shp[self.axis] = node.inputs[1]
+        return [tuple(shp)]
+
+
+def argtopk(x, k, axis=-1, out_dtype='int64'):
+    """
+    Returns the indices of k-largest elements along an axis.
+
+    Parameters
+    ----------
+
+    x: tensor instance
+
+    k: integer constant/variable
+        Must not be 0. If negative, gives k-least elements instead.
+
+    axis: integer or ``None``
+        Upon which axis shall the operation be performed on. If ``None``,
+        works on flattened array.
+
+    out_dtype: string
+        Specify output dtype, defaults to ``int64``, must be integer type
+
+    Notes
+    -----
+    - The corresponding value of returned indices may not be sorted themselves
+
+    """
+    if axis is None:
+        x = theano.tensor.flatten(x)
+        axis = -1
+    return ArgTopKOp(axis=axis, out_dtype=out_dtype)(x, k)
