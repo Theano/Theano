@@ -41,7 +41,7 @@ int APPLY_SPECIFIC(magma_eigh)(PyGpuArrayObject *A_,
   A = pygpu_copy(A_, GA_F_ORDER);
   if (A == NULL) {
     PyErr_SetString(PyExc_RuntimeError,
-                    "GpuMagmaQR: failed to change to column-major order");
+                    "GpuMagmaEigh: failed to change to column-major order");
     return -1;
   }
 

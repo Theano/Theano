@@ -312,15 +312,18 @@ class TestMagma(unittest.TestCase):
                             mode=mode_with_gpu.excluding('cusolver'))
         return f(A_val)
 
-    def check_cholesky(self, N, lower=True, rtol=None, atol=None):
+    def rand_symmetric(self, N):
         A = rand(N, N).astype('float32')
         # ensure that eigenvalues are not too small which sometimes results in
-        # magma failure due to gpu limited numerical precision
+        # magma cholesky failure due to gpu limited numerical precision
         D, W = np.linalg.eigh(A)
         D[D < 1] = 1
         V_m = np.zeros_like(A)
         np.fill_diagonal(V_m, D)
-        A = np.dot(np.dot(W.T, V_m), W)
+        return np.dot(np.dot(W.T, V_m), W)
+
+    def check_cholesky(self, N, lower=True, rtol=None, atol=None):
+        A = self.rand_symmetric(N)
         L = self.run_gpu_cholesky(A, lower=lower)
         if not lower:
             L = L.T
@@ -337,9 +340,7 @@ class TestMagma(unittest.TestCase):
                     for node in fn.maker.fgraph.toposort()])
 
     def test_gpu_cholesky_inplace(self):
-        N = 1000
-        A = rand(N, N).astype('float32')
-        A = np.dot(A.T, A)
+        A = self.rand_symmetric(1000)
         A_gpu = gpuarray_shared_constructor(A)
         A_copy = A_gpu.get_value()
         fn = theano.function([], GpuMagmaCholesky(inplace=True)(A_gpu),
