@@ -65,12 +65,12 @@ int APPLY_SPECIFIC(magma_eigh)(PyGpuArrayObject *A_,
 
   if (MAGMA_SUCCESS != magma_smalloc_pinned(&w_data, N)) {
     PyErr_SetString(PyExc_RuntimeError,
-                    "GpuMagmaSVD: failed to allocate working memory");
+                    "GpuMagmaEigh: failed to allocate working memory");
     goto fail;
   }
   if (MAGMA_SUCCESS != magma_smalloc_pinned(&wA_data, N * N)) {
     PyErr_SetString(PyExc_RuntimeError,
-                    "GpuMagmaSVD: failed to allocate working memory");
+                    "GpuMagmaEigh: failed to allocate working memory");
     goto fail;
   }
 

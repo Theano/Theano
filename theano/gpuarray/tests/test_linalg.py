@@ -379,7 +379,7 @@ class TestMagma(unittest.TestCase):
         A = theano.tensor.fmatrix("A")
         fn = theano.function([A], qr(A), mode=mode_with_gpu)
         assert any([
-            isinstance(node.op, GpuMagmaQR)
+            isinstance(node.op, GpuMagmaQR) and node.op.complete
             for node in fn.maker.fgraph.toposort()
         ])
 
@@ -387,7 +387,7 @@ class TestMagma(unittest.TestCase):
         A = theano.tensor.fmatrix("A")
         fn = theano.function([A], qr(A, mode='r'), mode=mode_with_gpu)
         assert any([
-            isinstance(node.op, GpuMagmaQR)
+            isinstance(node.op, GpuMagmaQR) and not node.op.complete
             for node in fn.maker.fgraph.toposort()
         ])
 
