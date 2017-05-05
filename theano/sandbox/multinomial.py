@@ -212,7 +212,7 @@ class ChoiceFromUniform(MultinomialFromUniform):
 
     """
 
-    __props__ = ("replace",)
+    __props__ = ("odtype", "replace",)
 
     def __init__(self, odtype, replace=False, *args, **kwargs):
         self.replace = replace

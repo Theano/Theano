@@ -507,7 +507,7 @@ def local_gpua_multinomial_wor(op, context_name, inputs, outputs):
     p, u, n = inputs
     m, = outputs
     if ((p.dtype == u.dtype == 'float32') and (m.dtype == 'int64')):
-        gpu_op = GPUAChoiceFromUniform(op.odtype)
+        gpu_op = GPUAChoiceFromUniform(**op._props_dict())
         return GpuDimShuffle([False, False], [1, 0])(
             gpu_op(p, u, n))
 
