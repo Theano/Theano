@@ -9,10 +9,8 @@ KERNEL void tril_kernel(const ga_size nthreads, const ga_size ncols,
        index += LDIM_0 * GDIM_0) {
     unsigned int ix = index / ncols;
     unsigned int iy = index % ncols;
-    if (index < nthreads) {
-      if (ix < iy) {
-        a[index] = 0.0;
-      }
+    if (ix < iy) {
+      a[index] = 0.0;
     }
   }
 }
@@ -26,10 +24,8 @@ KERNEL void triu_kernel(const ga_size nthreads, const ga_size ncols,
        index += LDIM_0 * GDIM_0) {
     unsigned int ix = index / ncols;
     unsigned int iy = index % ncols;
-    if (index < nthreads) {
-      if (ix > iy) {
-        a[index] = 0.0;
-      }
+    if (ix > iy) {
+      a[index] = 0.0;
     }
   }
 }
