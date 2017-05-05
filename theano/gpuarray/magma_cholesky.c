@@ -115,8 +115,8 @@ int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
 #ifdef LOWER
   res = tril_kernel_scall(1, &n2, 0, n2, N, (*L)->ga.data);
   if (res != GA_NO_ERROR) {
-    PyErr_Format(PyExc_RuntimeError, "GpuMagmaCholesky: triu_kernel %s.",
-                 GpuKernel_error(&k_triu_kernel, res));
+    PyErr_Format(PyExc_RuntimeError, "GpuMagmaCholesky: tril_kernel %s.",
+                 GpuKernel_error(&k_tril_kernel, res));
     goto fail;
   }
 #else

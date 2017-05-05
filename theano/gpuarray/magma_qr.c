@@ -72,7 +72,7 @@ int APPLY_SPECIFIC(magma_qr)(PyGpuArrayObject *A_,
   // magma matrix qr
   M = PyGpuArray_DIM(A, 0);
   N = PyGpuArray_DIM(A, 1);
-  K = std::min(M, N);
+  K = M < N ? M : N;
 
   if (MAGMA_SUCCESS != magma_smalloc_pinned(&tau_data, N * N)) {
     PyErr_SetString(PyExc_RuntimeError,

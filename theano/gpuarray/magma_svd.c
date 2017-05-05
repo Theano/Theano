@@ -21,7 +21,7 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
 
   if (A->ga.typecode != GA_FLOAT) {
     PyErr_SetString(PyExc_TypeError,
-                    "GpuMagmaMatrixInverse: Unsupported data type");
+                    "GpuMagmaSVD: Unsupported data type");
     return -1;
   }
 
@@ -31,12 +31,12 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
 
   if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
     PyErr_SetString(PyExc_ValueError,
-                    "GpuMagmaMatrixInverse: requires data to be C-contiguous");
+                    "GpuMagmaSVD: requires data to be C-contiguous");
     goto fail;
   }
   if (PyGpuArray_NDIM(A) != 2) {
     PyErr_SetString(PyExc_ValueError,
-                    "GpuMagmaMatrixInverse: matrix rank error");
+                    "GpuMagmaSVD: matrix rank error");
     goto fail;
   }
 
@@ -44,7 +44,7 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
   // reverse dimensions because MAGMA expects column-major matrices:
   M = PyGpuArray_DIM(A, 1);
   N = PyGpuArray_DIM(A, 0);
-  K = std::min(M, N);
+  K = M < N ? M : N;
 
   if (MAGMA_SUCCESS !=  magma_smalloc_pinned(&a_data, M * N)) {
     PyErr_SetString(PyExc_RuntimeError,
