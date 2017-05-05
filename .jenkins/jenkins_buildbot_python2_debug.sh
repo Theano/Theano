@@ -10,7 +10,7 @@ export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
 
 GPUARRAY_CONFIG="Release"
-DEVICE=cuda0
+DEVICE=cuda
 LIBDIR=${WORKSPACE}/local
 
 # Make fresh clones of libgpuarray (with no history since we don't need it)
