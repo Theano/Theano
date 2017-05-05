@@ -73,8 +73,12 @@ class GpuGemv(BlasOp):
         inplace = self.inplace
         if inplace and y.strides[0] < 0:
             inplace = False
-        out_storage[0][0] = blas.gemv(alpha, A, x, beta, y,
-                                      overwrite_y=inplace)
+        if A.shape[1] == 0:
+            out_storage[0][0] = pygpu.zeros(y.shape, dtype=y.dtype,
+                                            context=y.context)
+        else:
+            out_storage[0][0] = blas.gemv(alpha, A, x, beta, y,
+                                          overwrite_y=inplace)
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], y=inp[0], alpha=inp[1], A=inp[2], x=inp[3],
@@ -119,11 +123,11 @@ class GpuGemv(BlasOp):
             if (%(A)s->ga.flags & GA_C_CONTIGUOUS) {
                 ssize_t a_stride0 = %(A)s->ga.strides[0];
                 %(A)s->ga.strides[0] = %(A)s->ga.strides[1];
-                if (pygpu_blas_rdot(%(x)s, %(A)s, %(y)s, 0) == -1) {
+                if (pygpu_blas_rdot(%(x)s, %(A)s, %(out)s, 0) == -1) {
                     %(fail)s
                 }
                 %(A)s->ga.strides[0] = a_stride0;
-            } else if (pygpu_blas_rdot(%(x)s, %(A)s, %(y)s, 0) == -1) {
+            } else if (pygpu_blas_rdot(%(x)s, %(A)s, %(out)s, 0) == -1) {
                 %(fail)s
             }
             %(out)s->ga.nd = 1;
@@ -145,7 +149,7 @@ class GpuGemv(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
