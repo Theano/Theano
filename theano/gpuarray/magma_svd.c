@@ -166,7 +166,6 @@ fail:
     magma_free_pinned(work);
   if (iwork != NULL)
     magma_free_cpu(iwork);
-  magma_finalize();
   cuda_exit(params->context->ctx);
   return res;
 }

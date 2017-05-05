@@ -65,7 +65,6 @@ int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
 
   // This is early to match the exit() in the fail label.
   cuda_enter(c->ctx);
-  magma_init();
 
 #ifdef INPLACE
   Py_XDECREF(*L);
@@ -125,7 +124,6 @@ int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
 #endif
   res = 0;
 fail:
-  magma_finalize();
   cuda_exit(c->ctx);
   return res;
 }

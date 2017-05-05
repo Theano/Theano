@@ -67,7 +67,6 @@ int APPLY_SPECIFIC(magma_qr)(PyGpuArrayObject *A_,
 
   // This is early to match the exit() in the fail label.
   cuda_enter(c->ctx);
-  magma_init();
 
   // magma matrix qr
   M = PyGpuArray_DIM(A, 0);
@@ -148,7 +147,6 @@ fail:
     magma_free_pinned(tau_data);
   if (work_data != NULL)
     gpudata_release(work_data);
-  magma_finalize();
   cuda_exit(c->ctx);
   return res;
 }

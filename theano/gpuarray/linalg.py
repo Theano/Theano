@@ -375,8 +375,18 @@ class GpuMagmaBase(COp):
             return [config.magma.library_path]
         return []
 
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        from skcuda.magma import magma_init
+        ctx = node.inputs[0].type.context
+        if not getattr(ctx, 'is_magma_initialized', False):
+            magma_init()
+            ctx.is_magma_initialized = True
 
-class GpuMagmaSVD(COp):
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+
+class GpuMagmaSVD(GpuMagmaBase):
     """Computes the svd of a matrix :math:`A` using magma library.
 
     .. warning::
@@ -418,6 +428,7 @@ class GpuMagmaSVD(COp):
                                               context_name=ctx_name)()])
 
     def prepare_node(self, node, storage_map, compute_map, impl):
+        super(GpuMagmaSVD, self).prepare_node(node, storage_map, compute_map, impl)
         # Check node to prevent eventual errors with old pickled nodes.
         if self.compute_uv:
             A, B, C = node.outputs

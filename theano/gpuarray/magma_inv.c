@@ -93,7 +93,6 @@ fail:
     magma_free(piv);
   if (dwork != NULL)
     gpudata_release(dwork);
-  magma_finalize();
   cuda_exit(params->context->ctx);
   return res;
 }

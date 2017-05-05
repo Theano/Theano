@@ -47,7 +47,6 @@ int APPLY_SPECIFIC(magma_eigh)(PyGpuArrayObject *A_,
 
   // This is early to match the exit() in the fail label.
   cuda_enter(c->ctx);
-  magma_init();
 
   // magma matrix eigen decomposition of a symmetric matrix
   N = PyGpuArray_DIM(A, 0);
@@ -133,7 +132,6 @@ fail:
     magma_free_pinned(work_data);
   if (iwork_data != NULL)
     magma_free_cpu(iwork_data);
-  magma_finalize();
   cuda_exit(c->ctx);
   return res;
 }
