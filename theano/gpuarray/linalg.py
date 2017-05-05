@@ -400,6 +400,7 @@ class GpuMagmaSVD(COp):
     def make_node(self, A):
         ctx_name = infer_context_name(A)
         A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
         assert A.dtype == 'float32'
@@ -484,13 +485,13 @@ class GpuMagmaMatrixInverse(GpuMagmaBase):
     def clone_inplace(self):
         return self.__class__(inplace=True)
 
-    def make_node(self, x):
-        ctx_name = infer_context_name(x)
-        x = as_gpuarray_variable(x, ctx_name)
-        assert x.dtype == 'float32'
-        if x.ndim != 2:
+    def make_node(self, A):
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
+        if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
-        return theano.Apply(self, [x], [x.type()])
+        return theano.Apply(self, [A], [A.type()])
 
     def get_params(self, node):
         return self.params_type.get_params(self, context=node.inputs[0].type.context)
@@ -603,6 +604,7 @@ class GpuMagmaEigh(GpuMagmaBase):
     def make_node(self, A):
         ctx_name = infer_context_name(A)
         A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
         if self.compute_v:
