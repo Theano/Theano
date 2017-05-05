@@ -770,11 +770,11 @@ def split_inputs(inputs, max_nb_inputs, op):
 
     Parameters
     ----------
-    inputs: List of inputs to node.
-
-    max_nb_inputs: Maximum nummber of inputs the node can handle without
+    inputs: List of theano variables.
+            List of inputs to node.
+    max_nb_inputs: int
+                   Maximum nummber of inputs the node can handle without
                    compilation fail.
-
     op : Theano operator instance.
          Operator that should be used to rebuild the computation graph with smaller
          number of inputs per node.
