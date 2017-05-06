@@ -2658,7 +2658,12 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
 
             dx = np.random.rand(4, 5).astype(dtype1)
             dy = np.random.rand(2, 5).astype(dtype2)
-            didx = np.asarray([1, 3], "int32")
+            # Duplicate the last row of dy
+            dy = np.vstack([dy, dy[-1:]])
+            # Use the same index twice, with the same corresponding value.
+            # That makes set_subtensor well-defined, and tests
+            # duplication for inc_subtensor.
+            didx = np.asarray([1, 3, 3], "int32")
 
             # set_subtensor
             inc = tensor.set_subtensor(x[idx], y)
@@ -2668,11 +2673,8 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             res = f(dx, dy, didx)
             utt.assert_allclose(dy, res)
             topo = f.maker.fgraph.toposort()
-            if opt:
-                assert len(topo) == 1
-                assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
-            else:
-                assert len(topo) == 2
+            assert len(topo) == 1
+            assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
 
             # inc_subtensor(data[idx], y)
             inc = tensor.inc_subtensor(x[idx], y)
@@ -2680,7 +2682,9 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
-            utt.assert_allclose((dx[didx] + dy), res)
+            _dx = dx.copy()
+            np.add.at(_dx, didx, dy)
+            utt.assert_allclose(_dx[didx], res)
             topo = f.maker.fgraph.toposort()
             len(topo) == 2
 
@@ -2690,13 +2694,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
-            utt.assert_allclose(dy, res)
-            topo = f.maker.fgraph.toposort()
-            if opt:
-                assert len(topo) == 1
-                assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
-            else:
-                assert len(topo) > 2
+            utt.assert_allclose(np.vstack([dy[0], 2 * dy[1], 2 * dy[2]]), res)
 
     def test_assert(self):
             x = tensor.matrix("x")

@@ -653,10 +653,17 @@ AddConfigVar('warn.ignore_bug_before',
               "bugs found after that version. "
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
-             EnumStr('0.7', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
-                     '0.7', '0.8', '0.8.1', '0.8.2', '0.9',
+             EnumStr('0.8', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
+                     '0.7', '0.8', '0.8.1', '0.8.2', '0.9', '0.10',
                      allow_override=False),
              in_c_key=False)
+
+
+def split_version(version):
+    """
+    Take version as a dot-separated string, return a tuple of int
+    """
+    return tuple(int(i) for i in version.split('.'))
 
 
 def warn_default(version):
@@ -667,7 +674,8 @@ def warn_default(version):
         return True
     if config.warn.ignore_bug_before == 'all':
         return False
-    if config.warn.ignore_bug_before >= version:
+    if (split_version(config.warn.ignore_bug_before) >=
+            split_version(version)):
         return False
     return True
 
@@ -759,10 +767,20 @@ AddConfigVar('warn.inc_set_subtensor1',
              in_c_key=False)
 
 AddConfigVar('warn.round',
-             "Round changed its default from Seed to use for randomized unit tests. "
-             "Special value 'random' means using a seed of None.",
+             "Warn when using `tensor.round` with the default mode. "
+             "Round changed its default from `half_away_from_zero` to "
+             "`half_to_even` to have the same default as NumPy.",
              BoolParam(warn_default('0.9')),
              in_c_key=False)
+
+AddConfigVar(
+    'warn.inc_subtensor1_opt',
+    "Warn if previous versions of Theano (before 0.10) could have "
+    "given incorrect results for inc_subtensor when indexing with "
+    "one array of integers. An incorrect optimization was applied "
+    "when computing set_subtensor(zeros[idx], x)[idx].",
+    BoolParam(warn_default('0.10')),
+    in_c_key=False)
 
 
 AddConfigVar(
