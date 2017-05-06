@@ -2960,7 +2960,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
             # sl.stop backwards
             n_val = sl1.stop - 1 - sl2 * sl1.step
             if config.warn.subtensor_merge_bug:
-                _logger.warn((
+                warnings.warn((
                     'Your current code is fine, but Theano versions '
                     'prior to 0.5rc2 might have given an incorrect result. '
                     'To disable this warning, set the Theano flag '
@@ -3473,9 +3473,8 @@ def local_setsubtensor_of_constants(node):
 @register_stabilize
 @gof.local_optimizer([AdvancedSubtensor1])
 def local_adv_sub1_adv_inc_sub1(node):
-    """Optimize the possible AdvSub1(AdvIncSub1(...), ...).
+    """Optimize the possible AdvSub1(AdvSetSub1(...), ...).
 
-    AdvancedSubtensor1(AdvancedIncSubtensor1(0s, y, idx), idx) -> y
     AdvancedSubtensor1(AdvancedSetSubtensor1(x, y, idx), idx) -> y
 
     Notes
@@ -3483,6 +3482,12 @@ def local_adv_sub1_adv_inc_sub1(node):
     This opt add AssertOp. Otherwise, it would remove shape and
     index error. If you want to get rid of them, see the
     :ref:`unsafe_optimization` section.
+
+    WARNING:
+    A previous version of this optimization also matched
+    AdvancedSubtensor1(AdvancedIncSubtensor1(0s, y, idx), idx) -> y
+    This is incorrect when there are duplicate indices.
+    The current version warns the user about potential past issues.
 
     """
     if not isinstance(node.op, AdvancedSubtensor1):
@@ -3502,6 +3507,18 @@ def local_adv_sub1_adv_inc_sub1(node):
             # investigate Alloc of 0s but with non constant shape.
             T.extract_constant(x, elemwise=False) != 0):
         return
+
+    if not inp.owner.op.set_instead_of_inc:
+        if config.warn.inc_subtensor1_opt:
+            warnings.warn(
+                'Your current code is fine, but Theano versions '
+                'between 0.7rc1 and 0.10 (or development versions '
+                'between Nov. 2014 and May 2017) '
+                'might have given incorrect results. '
+                'To disable this warning, set the Theano flag '
+                'warn.inc_subtensor1_opt to False.')
+        return
+
     cond = [T.all(T.and_(T.lt(idx, x.shape[0]), T.ge(idx, -x.shape[0])))]
     if not node.fgraph.shape_feature.same_shape(idx, y, 0, 0):
         cond.append(T.eq(idx.shape[0], y.shape[0]))
