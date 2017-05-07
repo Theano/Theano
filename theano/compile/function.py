@@ -26,9 +26,9 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
                   no_default_updates=False, accept_inplace=False, name=None,
                   rebuild_strict=True, allow_input_downcast=None, profile=None,
                   on_unused_input=None,
-                  extra_tag_to_remove=None):
-    """
-    This is helpful to make a reproducible case for problems during Theano
+                  extra_tag_to_remove=None,
+                  inputs_not_used=()):
+    """This is helpful to make a reproducible case for problems during Theano
     compilation.
 
     Ex:
@@ -64,7 +64,8 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
              accept_inplace=accept_inplace, name=name,
              rebuild_strict=rebuild_strict,
              allow_input_downcast=allow_input_downcast, profile=profile,
-             on_unused_input=on_unused_input)
+             on_unused_input=on_unused_input,
+             inputs_not_used=inputs_not_used)
     with open(filename, 'wb') as f:
         import theano.misc.pkl_utils
         pickler = theano.misc.pkl_utils.StripPickler(
@@ -76,7 +77,7 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
              rebuild_strict=True, allow_input_downcast=None, profile=None,
-             on_unused_input=None):
+             on_unused_input=None, inputs_not_used=()):
     """
     Return a :class:`callable object <theano.compile.function_module.Function>`
     that will calculate `outputs` from `inputs`.
@@ -133,6 +134,15 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     on_unused_input
         What to do if a variable in the 'inputs' list is not used in the graph.
         Possible values are 'raise', 'warn', 'ignore' and None.
+    inputs_not_used: tuple,list of Theano Variable or "auto".
+        If "auto", Theano will recurse the graph, add missing inputs,
+        compile and raise an error if the missing inputs are used by the
+        final graph. This is useful when the graph contain dependence on
+        some variable that Theano optimizer can remove. For example when
+        infering shapes. If a list/tuple is passed, Theano will use that list as
+        missing inputs to that graph and assert that they aren't used by
+        the final graph. It could do less work compared to "auto".
+
 
     Returns
     -------
@@ -308,7 +318,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                 "semantics, which disallow using updates and givens")
         fn = orig_function(inputs, outputs,
                            mode=mode,
-                           accept_inplace=accept_inplace, name=name)
+                           accept_inplace=accept_inplace, name=name,
+                           inputs_not_used=inputs_not_used)
     else:
         # note: pfunc will also call orig_function -- orig_function is
         #      a choke point that all compilation must pass through
@@ -323,7 +334,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                    allow_input_downcast=allow_input_downcast,
                    on_unused_input=on_unused_input,
                    profile=profile,
-                   output_keys=output_keys)
+                   output_keys=output_keys,
+                   inputs_not_used=inputs_not_used)
     # We need to add the flag check_aliased inputs if we have any mutable or
     # borrowed used defined inputs
     fn._check_for_aliased_inputs = check_for_aliased_inputs

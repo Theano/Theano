@@ -1391,7 +1391,7 @@ class FunctionMaker(object):
     def __init__(self, inputs, outputs,
                  mode=None, accept_inplace=False, function_builder=Function,
                  profile=None, on_unused_input=None, fgraph=None,
-                 output_keys=None):
+                 output_keys=None, inputs_not_used=()):
         mode = theano.compile.mode.get_mode(mode)
 
         # Assert old way of working isn't used
@@ -1422,15 +1422,19 @@ class FunctionMaker(object):
 
         # Find missing inputs and delay the error to after optimization
         # in case we are able to remove there need during optimization
-        blockers = [i if isinstance(i, gof.Variable) else i.variable
-                    for i in inputs]
-        all_inputs = theano.gof.graph.inputs([o.variable for o in outputs],
-                                             blockers=blockers)
-        missing_inputs = [i for i in all_inputs
-                          if i not in blockers and
-                          not isinstance(i, (gof.Constant,
-                                             theano.compile.SharedVariable)) and
-                          not isinstance(i.type, gof.null_type.NullType)]
+        if inputs_not_used == "auto":
+            blockers = [i if isinstance(i, gof.Variable) else i.variable
+                        for i in inputs]
+            all_inputs = theano.gof.graph.inputs([o.variable for o in outputs],
+                                                 blockers=blockers)
+            missing_inputs = [i for i in all_inputs
+                              if i not in blockers and
+                              not isinstance(i, (gof.Constant,
+                                                 theano.compile.SharedVariable)) and
+                              not isinstance(i.type, gof.null_type.NullType)]
+        else:
+            missing_inputs = list(inputs_not_used)
+            assert all([isinstance(v, gof.Variable) for v in inputs_not_used])
 
         # Wrap them in In or Out instances if needed.
         inputs = [self.wrap_in(i) for i in inputs + missing_inputs]
@@ -1757,7 +1761,7 @@ def register_checker(checker):
 
 def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   name=None, profile=None, on_unused_input=None,
-                  output_keys=None):
+                  output_keys=None, inputs_not_used=()):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -1828,7 +1832,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   accept_inplace=accept_inplace,
                   profile=profile,
                   on_unused_input=on_unused_input,
-                  output_keys=output_keys)
+                  output_keys=output_keys,
+                  inputs_not_used=inputs_not_used)
         with theano.configparser.change_flags(compute_test_value="off"):
             fn = m.create(defaults)
     finally:
