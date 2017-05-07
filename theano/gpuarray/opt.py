@@ -1966,7 +1966,13 @@ def _scan_type_infer(node):
 @op_lifter([tensor.MaxAndArgmax])
 @register_opt2([tensor.MaxAndArgmax], 'fast_compile')
 def local_gpu_maxandargmax(op, context_name, inputs, outputs):
-    return GpuMaxAndArgmax(op.get_params(None))
+    op = GpuMaxAndArgmax(op.get_params(None))
+    if inputs[0].dtype == "float16":
+        # For now it is better to copy/cast on the GPU then transfer to the CPU
+        casted_inputs = inputs[0].astype('float32')
+        ret = op(casted_inputs)
+        return [ret[0].astype('float16'), ret[1]]
+    return op
 
 
 # solve
