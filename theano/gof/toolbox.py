@@ -9,6 +9,7 @@ import inspect
 import theano
 from theano import config
 from theano.gof import graph
+from theano.misc.ordered_set import OrderedSet
 
 
 class AlreadyThere(Exception):
@@ -570,3 +571,85 @@ class NoOutputFromInplace(Feature):
                     "operations. This has prevented output ", out, " from ",
                     "being computed by modifying another variable ",
                     "inplace.")
+
+
+class Priority(Feature):
+    def orderings(self, fg):
+        """
+        Called by toposort. It should return a dictionary of
+        {node: predecessors} where predecessors is a list of
+        nodes that should be computed before the key node.
+
+        If you raise an exception in this function, the state of the graph
+        might be broken for all intents and purposes.
+
+        """
+        def clean():
+            nodes = fg.apply_nodes
+            for n in nodes:
+                n.priority = None
+
+        def sort():
+            nodes = fg.apply_nodes
+            high_nodes = []
+            ord_nodes = []
+            for n in nodes:
+                if hasattr(n, 'priority') and n.priority is 'high':
+                    high_nodes.append(n)
+                elif hasattr(n, 'priority') and n.priority is 'low':
+                    pass
+                else:
+                    ord_nodes.append(n)
+            return high_nodes, ord_nodes
+
+        def set_priorities():
+            nodes = fg.apply_nodes
+            for n in nodes:
+                if hasattr(n.op, 'priority') and n.op.priority is 'high':
+                    n.priority = 'high'
+                elif hasattr(n.op, 'priority') and n.op.priority is 'low':
+                    n.priority = 'low'
+                else:
+                    n.priority = None
+
+        def prioritize():
+            nodes = fg.apply_nodes
+            stop = False
+            iter = 0
+            low = high = 0
+            while not stop:
+                for n in nodes:
+                    if hasattr(n, 'priority') and n.priority is not None:
+                        if n.priority is 'high':
+                            for input in n.inputs:
+                                if input.owner:
+                                    input.owner.priority = 'high'
+                    else:
+                        for input in n.inputs:
+                            if input.owner and hasattr(input.owner, 'priority'):
+                                if input.owner.priority is 'low':
+                                    n.priority = 'low'
+                                    break
+                iter = iter + 1
+                i = j = 0
+                for n in nodes:
+                    if hasattr(n, 'priority'):
+                        if n.priority is 'low':
+                            i = i + 1
+                        elif n.priority is 'high':
+                            j = j + 1
+                if i <= low and j <= high:
+                    stop = True
+                low, high = i, j
+
+        ords = OrderedDict()
+        set_priorities()
+        prioritize()
+        high_nodes, ord_nodes = sort()
+        for n in fg.apply_nodes:
+            prereqs = []
+            if hasattr(n, 'priority') and n.priority is 'low':
+                prereqs.extend(high_nodes)
+                prereqs.extend(ord_nodes)
+                ords[n] = list(OrderedSet(prereqs))
+        return ords

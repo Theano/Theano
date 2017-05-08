@@ -198,7 +198,8 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
     return fgraph, list(map(SymbolicOutput, updates))
 
 
-std_fgraph.features = [gof.toolbox.PreserveVariableAttributes]
+# std_fgraph.features = [gof.toolbox.PreserveVariableAttributes]
+std_fgraph.features = [gof.toolbox.PreserveVariableAttributes, gof.toolbox.Priority]
 
 
 class AliasedMemoryError(Exception):
