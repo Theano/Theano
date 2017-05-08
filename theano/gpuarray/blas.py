@@ -545,9 +545,6 @@ class BaseGpuCorrMM(CGpuKernelBase):
         flops *= inputs[1] * filters[0] * inputs[0]
         return flops
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def c_headers(self):
         return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]
 
@@ -1141,9 +1138,6 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         # nb patch multiplied
         flops *= inputs[1] * filters[0] * inputs[0]
         return flops
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     def c_headers(self):
         return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]

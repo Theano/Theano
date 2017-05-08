@@ -43,9 +43,6 @@ class GpuCumOp(GpuKernelBase, Op):
     def c_header_dirs(self):
         return [os.path.dirname(__file__)]
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def make_node(self, x):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumOp"
 
