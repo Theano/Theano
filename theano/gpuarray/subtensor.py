@@ -602,20 +602,19 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         y = as_gpuarray_variable(y, ctx_name)
         return gof.Apply(self, [x, y] + rval.inputs[2:], [otype()])
 
-    # We can't use the parent version that loops on each index
-    # as we also need to loop when set_instead_of_inc is True and the
-    # parent doesn't loop in that case.
     def perform(self, node, inp, out_, ctx=None):
         out, = out_
         x = inp[0]
         y = inp[1]
         idx = inp[2:]
         x = x.copy()
+
+        # convert all indices to np.array
         for i in range(len(idx)):
             if isinstance(idx[i], gpuarray.GpuArray):
                 idx[i] = np.asarray(idx[i])
 
-        # detect and transpose array indices
+        # Copied code from AdvancedSubtensor
         nidx = []
         nshp = list(x.shape)
         for k, i in enumerate(idx):
@@ -630,8 +629,6 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         narrays = 0
         transp = list(range(x_.ndim))
         p = 0
-        # ap gives the position of the array in case there is only one.
-        # if there are more than one (narray > 1) it should be ignored.
         ap = 0
         for k, i in enumerate(list(nidx)):
             if (isinstance(i, np.ndarray) and
@@ -652,12 +649,19 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                         narrays = 2
                     except Exception:
                         pass
+        # End of copied code from AdvancedSubtensor
+        # transp: order to shuffle axes of x so that single dimension
+        #         subarrays are extracted first
+        # p: number of axes with array indexing
+
         x_ = x_.transpose(*transp)
         idx_ = ([slice(None)] * p + nidx[p:])
         x_ = x_.__getitem__(idx_)
-        # flatten the array-indexed dimensions
 
+        # flatten the array-indexed dimensions
         x_flat = x_.reshape((np.prod(x_.shape[0: p]),) + x_.shape[p:])
+
+        # process y so that last axes are the same
         if y.shape != (1,):
             y_shape_reverse = []
             for x_s, y_s in zip(x_flat.shape[::-1], y.shape[::-1]):
@@ -686,9 +690,9 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
 
         # build the indices and use it
         take_idx = sum(i * s for i, s in zip(nidx, strides))
-        k = get_iadd(node.inputs[0], node.inputs[1])
 
         if x_flat.shape[-len(y_flat.shape):] == y_flat.shape or y_flat.shape == ():
+            # y_flat has to be broadcast over axes of x_flat[i]
             for i in take_idx.flatten():
                 tmp = pygpu.elemwise.elemwise2(
                     x_flat[i], '+', y_flat, x_flat[i],
@@ -696,9 +700,12 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                 )
                 x_flat.__setitem__(i, tmp)
         else:
+            # y_flat's first axis corresponds to first exist of x_flat
+            k = get_iadd(node.inputs[0], node.inputs[1])
             for j, i in enumerate(take_idx.flatten()):
                 k(x_flat[i], y_flat[j % y_flat.shape[0]], broadcast=True)
 
+        # updating the view updates the original
         out[0] = x
 
 
