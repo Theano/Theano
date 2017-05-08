@@ -403,6 +403,7 @@ class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
     """
     AdvancedSubrensor1 on the GPU.
     """
+    _f16_ok = True
     def make_node(self, x, ilist):
         ctx_name = infer_context_name(x, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)
@@ -1088,6 +1089,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
 
 class GpuExtractDiag(Op):
     __props__ = ("offset", "axis1", "axis2", "view")
+    _f16_ok = True
 
     def __init__(self, offset=0, axis1=0, axis2=1, view=False):
         self.view = view
