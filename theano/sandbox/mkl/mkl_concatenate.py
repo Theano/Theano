@@ -73,7 +73,6 @@ class Concatenate(basic_ops.MKLOp, Join):
             raise Exception("Type %s not implemented" %
                             node.inputs[1].type.dtype)
         return """
-        int status = 0;
         if(NULL != pConcat) {
             CHECK_ERR( dnnDelete_%(precision)s(pConcat), err );
             pConcat = NULL;
@@ -140,7 +139,6 @@ class Concatenate(basic_ops.MKLOp, Join):
             %(fail)s
         }
 
-        int status = 0;
         if(NULL == pConcat) {
              dnnLayout_t x_internal_layout[%(len_of_tensors)s];
              memcpy(out_dim, PyArray_DIMS(%(input_1)s), PyArray_NDIM(%(input_1)s)*sizeof(npy_intp));
@@ -267,7 +265,6 @@ class ConcatenateGrad(basic_ops.MKLOp):
                             node.inputs[-1].type.dtype)
 
         return """
-        int status = 0;
         if(NULL != pSplit) {
             CHECK_ERR( dnnDelete_%(precision)s(pSplit), err );
             pSplit = NULL;
@@ -321,7 +318,6 @@ class ConcatenateGrad(basic_ops.MKLOp):
         ccode = """
         int axis = ((%(adtype)s *)PyArray_DATA(%(axis)s))[0];
 
-        int status = 0;
         if (NULL == gx_internal_buffer) {
             gx_internal_buffer = (void**)malloc(%(num_of_gx)s * sizeof(void*));
             for(int i = 0; i < %(num_of_gx)s; ++i)
