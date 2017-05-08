@@ -1171,6 +1171,14 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.Gemv, tensor.blas_c.CGemv])
 @register_opt2([tensor.blas.Gemv], 'fast_compile')
 def local_gpua_gemv(op, context_name, inputs, outputs):
+    if inputs[0].dtype == 'float16':
+        # Use gemm implementation as cublas gemv don't support float16
+        return gpugemm_no_inplace(inputs[0][:, None],
+                                  inputs[1],
+                                  inputs[2],
+                                  inputs[3][:, None],
+                                  inputs[4]).dimshuffle(0)
+
     if inputs[0].dtype not in ['float32', 'float64']:
         return
     if op.inplace:
