@@ -611,7 +611,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         y = inp[1]
         idx = inp[2:]
         x = x.copy()
-        for i in xrange(len(idx)):
+        for i in range(len(idx)):
             if isinstance(idx[i], gpuarray.GpuArray):
                 idx[i] = np.asarray(idx[i])
 
@@ -687,7 +687,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         # build the indices and use it
         take_idx = sum(i * s for i, s in zip(nidx, strides))
         k = get_iadd(node.inputs[0], node.inputs[1])
-        
+
         if x_flat.shape[-len(y_flat.shape):] == y_flat.shape or y_flat.shape == ():
             for i in take_idx.flatten():
                 tmp = pygpu.elemwise.elemwise2(
