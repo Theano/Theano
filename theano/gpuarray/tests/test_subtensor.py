@@ -68,7 +68,7 @@ class G_subtensorF16(test_subtensor.T_subtensor):
             dimshuffle=GpuDimShuffle,
             mode=mode_with_gpu,
             # avoid errors with limited devices
-            dtype='float16', #use floatX?
+            dtype='float16',  # use floatX?
             ignore_topo=(HostFromGpu, GpuFromHost,
                          DeepCopyOp, GpuContiguous))
         # GPU opt can't run in fast_compile only.
@@ -200,7 +200,7 @@ class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
             sub=GpuAdvancedSubtensor,
             mode=mode_with_gpu,
             # avoid errors with limited devices
-            dtype='float32', # floatX?
+            dtype='float32',  # floatX?
             ignore_topo=(HostFromGpu, GpuFromHost,
                          DeepCopyOp))
         # GPU opt can't run in fast_compile only.
@@ -219,7 +219,7 @@ class G_advancedsubtensorF16(test_subtensor.TestAdvancedSubtensor):
             sub=GpuAdvancedSubtensor,
             mode=mode_with_gpu,
             # avoid errors with limited devices
-            dtype='float16', # floatX?
+            dtype='float16',  # floatX?
             ignore_topo=(HostFromGpu, GpuFromHost,
                          DeepCopyOp))
         # GPU opt can't run in fast_compile only.

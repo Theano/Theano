@@ -404,6 +404,7 @@ class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
     AdvancedSubrensor1 on the GPU.
     """
     _f16_ok = True
+
     def make_node(self, x, ilist):
         ctx_name = infer_context_name(x, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)
