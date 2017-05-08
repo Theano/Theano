@@ -91,7 +91,6 @@ if on_xeon_phi:
         'KMP_BLOCKTIME': '1',
         'KMP_AFFINITY': 'verbose,granularity=core,noduplicates,compact,0,0',
         'OMP_NUM_THREADS': str(num_cores - 2),
-        'MKL_DYNAMIC': 'false'
     }
 
     for key, val in env_vars.iteritems():
