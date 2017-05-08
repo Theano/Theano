@@ -78,27 +78,42 @@ class G_subtensorF16(test_subtensor.T_subtensor):
 
 
 def test_advinc_subtensor():
-    x_shp = (8, 8, 8)
-    y_shp = (2, 2, 8)
-    shared = gpuarray_shared_constructor
-    xval = np.arange(np.prod(x_shp), dtype='float32').reshape(x_shp) + 1
-    yval = np.arange(np.prod(y_shp), dtype='float32').reshape(y_shp)
+    x_shp = (20, 15, 10, 5)
     idx = ([[0, 1],
             [2, 3]],
            [[0, 1],
             [2, 3]])
 
+    for y_shp in [(2, 2, 10, 5),
+                  (2, 10, 5),
+                  (10, 5), (5,), (1,)]:
+        shared = gpuarray_shared_constructor
+        xval = np.arange(np.prod(x_shp), dtype='float32').reshape(x_shp) + 1
+        yval = np.arange(np.prod(y_shp), dtype='float32').reshape(y_shp) + 1
+        rep = xval.copy()
+        rep[idx] += yval
+        x = shared(xval, name='x')
+        y = tensor.tensor(dtype='float32',
+                          broadcastable=(False,) * len(yval.shape),
+                          name='y')
+        expr = tensor.advanced_inc_subtensor(x, y, *idx)
+        f = theano.function([y], expr, mode=mode_with_gpu)
+        assert sum([isinstance(node.op, GpuAdvancedIncSubtensor)
+                    for node in f.maker.fgraph.toposort()]) == 1
+        rval = f(yval)
+        assert np.allclose(rval, rep)
+    shared = gpuarray_shared_constructor
+    xval = np.arange(np.prod(x_shp), dtype='float32').reshape(x_shp) + 1
     rep = xval.copy()
-    rep[idx] += yval
+    rep[idx] += 1.
     x = shared(xval, name='x')
-    y = tensor.tensor(dtype='float32',
-                      broadcastable=(False,) * len(yval.shape),
+    y = tensor.scalar(dtype='float32',
                       name='y')
     expr = tensor.advanced_inc_subtensor(x, y, *idx)
     f = theano.function([y], expr, mode=mode_with_gpu)
     assert sum([isinstance(node.op, GpuAdvancedIncSubtensor)
                 for node in f.maker.fgraph.toposort()]) == 1
-    rval = f(yval)
+    rval = f(np.float32(1.))
     assert np.allclose(rval, rep)
 >>>>>>> Initial additions for `GpuAdvancedIncSubtensor`
 

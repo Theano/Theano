@@ -611,6 +611,9 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         y = inp[1]
         idx = inp[2:]
         x = x.copy()
+        for i in xrange(len(idx)):
+            if isinstance(idx[i], gpuarray.GpuArray):
+                idx[i] = np.asarray(idx[i])
 
         # detect and transpose array indices
         nidx = []
@@ -644,17 +647,8 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                 if narrays == 0:
                     try:
                         i.__index__()
-                        # We shift back the position of the array by the
-                        # number of dimensions that are removed by
-                        # indexing.  If ap is bigger than 0 it means we
-                        # have encountered at least one array.
                         if ap >= 0:
                             ap -= 1
-                        # If this index is before the first array then
-                        # we will not move the array back to its
-                        # position.  Mark this by faking that there
-                        # are more than two arrays.  This is crazy
-                        # numpy behaviour so blame them.
                         narrays = 2
                     except Exception:
                         pass
@@ -662,8 +656,27 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         idx_ = ([slice(None)] * p + nidx[p:])
         x_ = x_.__getitem__(idx_)
         # flatten the array-indexed dimensions
+
         x_flat = x_.reshape((np.prod(x_.shape[0: p]),) + x_.shape[p:])
-        y_flat = y.reshape((np.prod(y.shape[0: p]),) + y.shape[p:])
+        if y.shape != (1,):
+            y_shape_reverse = []
+            for x_s, y_s in zip(x_flat.shape[::-1], y.shape[::-1]):
+                if x_s == y_s or y_s == 1:
+                    y_shape_reverse.append(y_s)
+                else:
+                    break
+            if np.prod(y_shape_reverse) < np.prod(y.shape):
+                if len(y_shape_reverse) > 0:
+                    y_shape_reverse.append(
+                        int(np.prod(y.shape[0:-len(y_shape_reverse)])))
+                else:
+                    y_shape_reverse.append(int(np.prod(y.shape)))
+
+            y_shape = y_shape_reverse[::-1]
+            assert(np.prod(y_shape) == np.prod(y.shape))
+            y_flat = y.reshape(y_shape)
+        else:
+            y_flat = y[0]
 
         # build the strides
         strides = [1]
@@ -672,10 +685,20 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
             strides.insert(0, stride)
 
         # build the indices and use it
-        take_idx = sum((i * s for i, s in zip(nidx, strides))).flatten()
+        take_idx = sum(i * s for i, s in zip(nidx, strides))
         k = get_iadd(node.inputs[0], node.inputs[1])
-        for j, i in enumerate(take_idx):
-            k(x_flat[i], y_flat[j], broadcast=True)
+        
+        if x_flat.shape[-len(y_flat.shape):] == y_flat.shape or y_flat.shape == ():
+            for i in take_idx.flatten():
+                tmp = pygpu.elemwise.elemwise2(
+                    x_flat[i], '+', y_flat, x_flat[i],
+                    broadcast=True
+                )
+                x_flat.__setitem__(i, tmp)
+        else:
+            for j, i in enumerate(take_idx.flatten()):
+                k(x_flat[i], y_flat[j % y_flat.shape[0]], broadcast=True)
+
         out[0] = x
 
 
