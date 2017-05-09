@@ -773,15 +773,15 @@ def split_inputs(inputs, max_nb_inputs, op):
     inputs: List of theano variables.
             List of inputs to node.
     max_nb_inputs: int
-                   Maximum nummber of inputs the node can handle without
+                   Maximum number of inputs the node can handle without
                    compilation fail.
     op : Theano operator instance.
          Operator that should be used to rebuild the computation graph with smaller
          number of inputs per node.
     """
     if max_nb_inputs <= 1 and len(inputs) > 1:
-        raise ValueError("Can not split nodes because inputs' dimensionality and/or \
-                    number of outputs is too large")
+        raise ValueError("Can not split nodes because inputs' dimensionality and/or"
+                         " number of outputs is too large")
 
     while len(inputs) > max_nb_inputs:
         inner_ops = []
