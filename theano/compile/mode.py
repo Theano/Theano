@@ -65,9 +65,8 @@ OPT_FAST_RUN_STABLE.name = 'OPT_FAST_RUN_STABLE'
 OPT_FAST_COMPILE.name = 'OPT_FAST_COMPILE'
 OPT_STABILIZE.name = 'OPT_STABILIZE'
 
-OPT_O2 = gof.Query(include=['fast_compile', 'fast_compile_gpu', 'fusion'],
-                   exclude=exclude)
-OPT_O3 = gof.Query(include=['fast_run'], exclude=exclude+['inplace'])
+OPT_O2 = OPT_FAST_COMPILE.including('fusion')
+OPT_O3 = OPT_FAST_RUN.excluding('inplace')
 OPT_UNSAFE = OPT_O3.including('unsafe')
 
 OPT_O2.name = 'OPT_O2'
