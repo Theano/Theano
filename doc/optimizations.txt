@@ -18,7 +18,9 @@ If you would like to add an additional optimization, refer to
 
 When compiling, we can make a tradeoff between compile-time and run-time.
 Faster compile times will result in fewer optimizations being applied, hence generally slower run-times.
-For making this tradeoff when compiling, we provide a set of 4 compilation modes, O1 to O4, where O1 leads to fastest compile-time and O4 leads to fastest run-time in general.
+For making this tradeoff when compiling, we provide a set of 4 optimization modes, 'o1' to 'o4', where 'o1' leads to fastest compile-time and 'o4' leads to fastest run-time in general.
+For an even faster run-time, we could disable assertions (which could be time comsuming) for valid user inputs, using the optimization mode 'unsafe', but this is, as the name suggests, unsafe.
+(Also see note at :ref:`unsafe_optimization`.)
 
 ..  note::
 
@@ -57,7 +59,6 @@ Optimization                                              o4 (fast_run) o3  o2  
 :term:`inplace_elemwise`                                  x                                                         
 :term:`inplace_random`                                    x                                                     
 :term:`elemwise fusion`                                   x             x   x                                   x   
-:term:`local_log_softmax`                                 x             x                         x             x   
 :term:`local_log_softmax`                                 x             x                         x             x   
 :term:`local_remove_all_assert`                                                                                 x
 ========================================================= ============= === === ================= ============= ======
