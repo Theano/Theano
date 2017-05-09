@@ -346,20 +346,20 @@ AddConfigVar('dnn.conv.algo_bwd',
 
 AddConfigVar('dnn.conv.algo_fwd',
              "Default implementation to use for cuDNN forward convolution.",
-             EnumStr(*SUPPORTED_DNN_CONV_ALGO_FWD),
+             EnumStr(*(SUPPORTED_DNN_CONV_ALGO_FWD + SUPPORTED_DNN_CONV_ALGO_RUNTIME)),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_bwd_data',
              "Default implementation to use for cuDNN backward convolution to "
              "get the gradients of the convolution with regard to the inputs.",
-             EnumStr(*SUPPORTED_DNN_CONV_ALGO_BWD_DATA),
+             EnumStr(*(SUPPORTED_DNN_CONV_ALGO_BWD_DATA + SUPPORTED_DNN_CONV_ALGO_RUNTIME)),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_bwd_filter',
              "Default implementation to use for cuDNN backward convolution to "
              "get the gradients of the convolution with regard to the "
              "filters.",
-             EnumStr(*SUPPORTED_DNN_CONV_ALGO_BWD_FILTER),
+             EnumStr(*(SUPPORTED_DNN_CONV_ALGO_BWD_FILTER + SUPPORTED_DNN_CONV_ALGO_RUNTIME)),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.precision',
