@@ -517,7 +517,7 @@ class Abstract_SoftmaxGrad(gof.Op):
     nout = 1
     __props__ = ()
 
-    def make_node(self, dy, sm, axis=-1):
+    def make_node(self, dy, sm, axis=None):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
         if dy.type.dtype not in tensor.float_dtypes:
@@ -526,7 +526,6 @@ class Abstract_SoftmaxGrad(gof.Op):
             dy = tensor.shape_padleft(dy, n_ones=1)
         if sm.ndim == 1:
             sm = tensor.shape_padleft(sm, n_ones=1)
-        # Check axes
         if isinstance(axis, (integer_types, np.integer)):
             axis = [int(axis)]
         elif isinstance(axis, np.ndarray) and axis.ndim == 0:
@@ -536,8 +535,9 @@ class Abstract_SoftmaxGrad(gof.Op):
             if axis == list(range(sm.type.ndim)):
                 axis = None
         elif isinstance(axis, Variable):
+            # If axis is None, we select the last axis
             if NoneConst.equals(axis):
-                axis = None
+                axis = -1
             elif not isinstance(axis, tensor.var.TensorConstant):
                 raise TypeError("Softmax needs a constant axis. Got %s" % axis)
             else:
@@ -556,23 +556,15 @@ class Abstract_SoftmaxGrad(gof.Op):
             axis.sort()
 
         # Verify that axes are valid
-        all_axes = []
         if isinstance(axis, list):
             for ax in axis:
                 if ax < 0 or ax >= sm.type.ndim:
                     raise ValueError(
                         'Invalid axis: %s (the number of dimensions of the '
                         'input is: %s)' % (ax, sm.type.ndim))
-                    if ax not in all_axes:
-                        all_axes.append(ax)
-        else:
-            all_axes = list(range(sm.ndim))
 
-        if axis is None or axis == list(range(sm.type.ndim)):
-            axis = NoneConst.clone()
-        else:
-            axis = tensor.as_tensor_variable(all_axes)
-            assert axis.ndim == 1
+        self.axis = axis
+        axis = tensor.as_tensor_variable(axis)
         inputs = [dy, sm, axis]
 
         return Apply(self, inputs, [sm.type()])
@@ -648,8 +640,6 @@ class Abstract_softmax(gof.Op):
                     axis[idx] += x.type.ndim
             axis.sort()
 
-        print(axis)
-        print(x.type.ndim)
         # Verify that axes are valid
         if isinstance(axis, list):
             for ax in axis:
@@ -658,6 +648,7 @@ class Abstract_softmax(gof.Op):
                         'Invalid axis: %s (the number of dimensions of the '
                         'input is: %s)' % (ax, x.type.ndim))
 
+        self.axis = axis
         axis = tensor.as_tensor_variable(axis)
         # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
@@ -678,13 +669,13 @@ class Abstract_softmax(gof.Op):
         output_storage[0][0] = sm
 
     def L_op(self, inp, outputs, grads):
-        x, axis = inp
+        x, ax = inp
         # TO INVESTIGATE
         if len(grads) == 2:
             g_sm, test = grads
         else:
             g_sm, = grads
-        return [abstract_softmax_grad(g_sm, outputs[0], axis.eval()), DisconnectedType()()]
+        return [abstract_softmax_grad(g_sm, outputs[0], ax.eval()), DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
@@ -716,18 +707,11 @@ class Softmax(gof.Op):
     def make_node(self, x, axis=(-1,)):
         x = tensor.as_tensor_variable(x)
         axis = tensor.as_tensor_variable(axis)
-        if axis is NoneConst:
-            axis = (-1,)
         if x.ndim == 1:
-            axis = tensor.constant(0)
-        elif x.ndim == 2:
-            axis = tensor.constant(1)
+            x = tensor.shape_padleft(x, n_ones=1)
         # Make axis entries non-negative, and sort them
         if axis.type.dtype not in tensor.int_dtypes:
             raise ValueError('axis must be an integer. Got ', axis.type)
-        # TODO : Delete this and modify the test accordly
-        if x.ndim == 1:
-            x = tensor.shape_padleft(x, n_ones=1)
         return Apply(self, [x, axis], [x.type()])
 
     def perform(self, node, input_storage, output_storage):
@@ -1150,11 +1134,10 @@ def local_gradsoftmax(node):
             axis = opt.get_scalar_constant_value(node.inputs[2])
         except tensor.NotScalarConstantError:
             return
-        inVars = node.inputs[0], node.inputs[1]
         new_op = SoftmaxGrad()
-        ret = new_op(inVars, axis)
+        ret = new_op(node.inputs[0], node.inputs[1], axis)
         ret .tag.values_eq_approx = values_eq_approx_remove_inf
-        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+        copy_stack_trace([node.inputs[0], node.inputs[1], node.outputs[0]], ret)
         return [ret]
 
 
@@ -1172,7 +1155,7 @@ def local_logsoftmax(node):
             isinstance(node.op.scalar_op, scalar.basic.Log) and
             len(node.inputs) == 1 and
             node.inputs[0].owner is not None and
-            (isinstance(node.inputs[0].owner.op, Abstract_softmax) or isinstance(node.inputs[0].owner.op, Softmax))):
+            isinstance(node.inputs[0].owner.op, Softmax)):
         inVars = node.inputs[0].owner.inputs[0]
         new_op = LogSoftmax()
         ret = new_op(inVars)
@@ -1191,13 +1174,13 @@ def local_logsoftmax_grad(node):
 
     Note: only grad is affected
     """
-    if ((isinstance(node.op, SoftmaxGrad) or isinstance(node.op, Abstract_SoftmaxGrad)) and
+    if (isinstance(node.op, SoftmaxGrad) and
         len(node.inputs) == 3 and
         node.inputs[0].owner is not None and
         node.inputs[0].owner.op == tensor.true_div and
         len(node.inputs[0].owner.inputs) >= 2 and
         node.inputs[0].owner.inputs[1].owner is not None and
-        (node.inputs[0].owner.inputs[1].owner.op == softmax_op or node.inputs[0].owner.inputs[1].owner.op == abstract_softmax_op) and
+        (node.inputs[0].owner.inputs[1].owner.op == softmax_op) and
         node.inputs[1] == node.inputs[0].owner.inputs[1] and
         not (
             # skip if it will be optimized by
