@@ -513,7 +513,7 @@ def local_poolGrad_mkl(node):
         gz_internal = I2UGrad()(poolOut, gz)
 
         poolGradOut = mkl_pool.PoolGrad(ignore_border=node.op.ignore_border,
-                                        mode=node.op.mode)(x_internal, gz_internal, ws, stride, pad)
+                                        mode=node.op.mode)(x_internal, poolOut, gz_internal, ws, stride, pad)
 
         gx_user = U2IGrad()(x, poolGradOut)
 
@@ -644,7 +644,7 @@ def local_lrnGrad_mkl(node):
         lrnGradOut = mkl_lrn.LRNGrad(alpha=node.op.alpha,
                                      beta=node.op.beta,
                                      k=node.op.k,
-                                     n=node.op.n)(x_u2i, gz_u2i)
+                                     n=node.op.n)(x_u2i, lrnOut, gz_u2i)
         gx_i2u = U2IGrad()(x, lrnGradOut)
         rval = gx_i2u
         return [rval]

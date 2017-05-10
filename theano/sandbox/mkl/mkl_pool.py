@@ -265,9 +265,6 @@ class PoolBase(MKLOp):
         dnnLayout_t workspace_internal_layout = NULL;
         dnnPrimitive_t convert_gz_to_internal = NULL;
         dnnPrimitive_t convert_x_to_internal = NULL;
-
-        void *workspace_ptr_ptr[2];
-        void *workspace_ptr = NULL;
         """ % sub
         return ccode
 
@@ -401,11 +398,12 @@ class Pool(PoolBase):
 
     def grad(self, inp, grads):
         x, ws, stride, pad = inp
+        z = self(*inp)
         gz, = grads
         disc = [DisconnectedType()() for i in inp[1:]]
 
         return [PoolGrad(ignore_border=self.ignore_border,
-                         mode=self.mode)(x, gz, ws, stride, pad)] + disc
+                         mode=self.mode)(x, z, gz, ws, stride, pad)] + disc
 
     def c_code(self, node, name, inp, out, sub):
         x, ws, stride, pad = inp
@@ -446,8 +444,6 @@ class Pool(PoolBase):
         #ifdef _MKL_DEBUG_
             std::cout<<"pool start"<<std::endl;
         #endif
-
-        ((void **)PyArray_DATA(%(x)s))[2] = (void*)workspace_ptr_ptr;
 
         if (1 == first_run) {
             size_t kernel_h = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));
@@ -544,8 +540,6 @@ class Pool(PoolBase):
         }
 
         pool_res[dnnResourceWorkspace] = workspace_buffer;
-        ((dnnLayout_t**)workspace_ptr_ptr)[0] = &workspace_internal_layout;
-        ((void**)workspace_ptr_ptr)[1] = workspace_buffer;
 
         npy_intp out_dim[4];
         out_dim[0] = outputSize[3];
@@ -612,6 +606,9 @@ class Pool(PoolBase):
 
         ((dnnLayout_t*)PyArray_DATA(%(z)s))[0] = z_internal_layout;
         ((void**)PyArray_DATA(%(z)s))[1] = z_internal_buffer;
+        // pass workspace buffer to backward Op
+        ((void **)PyArray_DATA(%(z)s))[2] = workspace_buffer;
+        ((dnnLayout_t *)PyArray_DATA(%(z)s))[3] = workspace_internal_layout;
 
         first_run = 0;
         #ifdef _MKL_DEBUG_
@@ -664,8 +661,9 @@ class PoolGrad(PoolBase):
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
 
-    def make_node(self, x, gz, ws, stride=None, pad=None):
+    def make_node(self, x, z, gz, ws, stride=None, pad=None):
         x = tensor.as_tensor_variable(x)
+        z = tensor.as_tensor_variable(z)
         gz = tensor.as_tensor_variable(gz)
 
         if x.type.ndim != 4 or gz.type.ndim != 4:
@@ -692,10 +690,10 @@ class PoolGrad(PoolBase):
         if pad.dtype not in tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
 
-        return Apply(self, [x, gz, ws, stride, pad], [x.type()])
+        return Apply(self, [x, z, gz, ws, stride, pad], [x.type()])
 
     def c_code(self, node, name, inp, out, sub):
-        x, gz, ws, stride, pad = inp
+        x, z, gz, ws, stride, pad = inp
         gx, = out
 
         if 'max' == self.mode:
@@ -732,7 +730,6 @@ class PoolGrad(PoolBase):
             std::cout<<"poolgrad start"<<std::endl;
         #endif
 
-        workspace_ptr = ((void**)PyArray_DATA(%(x)s))[2];
         if (1 == first_run) {
             size_t kernel_h = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));
             size_t kernel_w = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 1));
@@ -838,8 +835,8 @@ class PoolGrad(PoolBase):
         gz_internal_layout_get_from_previous_op = ((dnnLayout_t*)PyArray_DATA(%(gz)s))[0];
         gz_internal_buffer_get_from_previous_op = ((void **)PyArray_DATA(%(gz)s))[1];
 
-        workspace_internal_layout = *(((dnnLayout_t**)workspace_ptr)[0]);
-        pool_res[dnnResourceWorkspace] = ((void**)workspace_ptr)[1];
+        pool_res[dnnResourceWorkspace] = ((void **)PyArray_DATA(%(z)s))[2];
+        workspace_internal_layout = ((dnnLayout_t *)PyArray_DATA(%(z)s))[3];
 
         if (1 == first_run) {
             if (!dnnLayoutCompare_%(precision)s(gz_internal_layout_get_from_previous_op, gz_internal_layout)) {
@@ -870,6 +867,9 @@ class PoolGrad(PoolBase):
             std::cout << " input_bytes = " << input_bytes << std::endl;
             std::cout << " output_bytes = " << output_bytes << std::endl;
             std::cout << " workspace_bytes =  " << workspace_bytes << std::endl;
+            std::cout << "pool_res[dnnResourceDiffSrc] = @" << pool_res[dnnResourceDiffSrc] << std::endl;
+            std::cout << "pool_res[dnnResourceDiffDst] = @" << pool_res[dnnResourceDiffDst] << std::endl;
+            std::cout << "pool_res[dnnResourceWorkspace] = @" << pool_res[dnnResourceWorkspace] << std::endl;
         #endif
 
         CHECK_ERR( dnnExecute_%(precision)s(pPoolingBwd, (void**)pool_res), err );
@@ -894,6 +894,9 @@ class PoolGrad(PoolBase):
         ((dnnLayout_t*)PyArray_DATA(%(gx)s))[0] = x_internal_layout_get_from_previous_op;
         ((void**)PyArray_DATA(%(gx)s))[1] = x_internal_buffer_to_previous;
 
+        #ifdef _MKL_DEBUG_
+            std::cout<<"poolgrad end\\n"<<std::endl;
+        #endif
         first_run = 0;
 
         """ % sub

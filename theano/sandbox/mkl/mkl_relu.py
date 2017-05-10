@@ -69,12 +69,7 @@ class Relu(basic_ops.MKLOp):
         return [ReluGrad(slope=self.slope)(x, gz)]
 
     def c_support_code(self):
-        ccode = mkl_helper.header_text()
-        ccode += """
-        #define L_PASS (1)
-        #define __DEBUG__ 0
-        """
-        return ccode
+        return mkl_helper.header_text()
 
     def c_support_code_struct(self, node, name):
         return """
@@ -153,7 +148,7 @@ class Relu(basic_ops.MKLOp):
 
         ret = """
         {
-            #if __DEBUG__
+            #ifdef _MKL_DEBUG_
             std::cout<<"Relu Fwd start"<<std::endl;
             #endif
             if(first_run){
@@ -232,7 +227,7 @@ class Relu(basic_ops.MKLOp):
                 }
             }
 
-            #if __DEBUG__
+            #ifdef _MKL_DEBUG_
                 std::cout<<"relu forward: fwd_bottom_data_int_l:"<<fwd_bottom_data_int_l<<std::endl;
                 std::cout<<"relu forward: input:"<<input_buffer_ptr<<std::endl;
                 size_t img_size = dnnLayoutGetMemorySize_%(precision)s(fwd_bottom_data_int_l);
@@ -261,7 +256,7 @@ class Relu(basic_ops.MKLOp):
 
             first_run = 0;
 
-            #if __DEBUG__
+            #ifdef _MKL_DEBUG_
             std::cout<<"relu forward: output layout=@"<<fwd_top_data_int_l<<", output_buffer_ptr=@"<<output_buffer_ptr<<std::endl;
             std::cout<<"relu fwd finished\\n"<<std::endl;
             #endif
@@ -283,12 +278,7 @@ class ReluGrad(basic_ops.MKLOp):
         return ['<math.h>']
 
     def c_support_code(self):
-        ccode = mkl_helper.header_text()
-        ccode += """
-        #define __DEBUG__ 0
-        """
-
-        return ccode
+        return mkl_helper.header_text()
 
     def c_support_code_struct(self, node, name):
         return """
@@ -373,7 +363,7 @@ class ReluGrad(basic_ops.MKLOp):
 
         ret = """
         {
-            #if __DEBUG__
+            #ifdef _MKL_DEBUG_
             std::cout<<"Relu bwd start"<<std::endl;
             #endif
             if(first_run){
@@ -391,7 +381,7 @@ class ReluGrad(basic_ops.MKLOp):
                 strides[2] = sizes[0]*sizes[1];
                 strides[3] = sizes[0]*sizes[1]*sizes[2];
             }
-            #if __DEBUG__
+            #ifdef _MKL_DEBUG_
             printf(\"gz: %%d, %%d, %%d, %%d\\n\", PyArray_DIMS(%(gz)s)[0], PyArray_DIMS(%(gz)s)[1], PyArray_DIMS(%(gz)s)[2], PyArray_DIMS(%(gz)s)[3]);
             printf(\"x: %%d, %%d, %%d, %%d\\n\", PyArray_DIMS(%(x)s)[0], PyArray_DIMS(%(x)s)[1], PyArray_DIMS(%(x)s)[2], PyArray_DIMS(%(x)s)[3]);
             #endif
@@ -446,7 +436,7 @@ class ReluGrad(basic_ops.MKLOp):
             relu_res[dnnResourceDiffDst] = input_gz;
             relu_res[dnnResourceDiffSrc] = output_buffer_ptr;
 
-            #if __DEBUG__
+            #ifdef _MKL_DEBUG_
                 std::cout<<"relu bwd, bwd_bottom_diff_int_l:"<<bwd_bottom_diff_int_l<<std::endl;
                 std::cout<<"relu bwd, bwd_top_diff_int_l:"<<bwd_top_diff_int_l<<std::endl;
                 std::cout<<"relu bwd, relu_res[dnnResourceSrc]:"<<relu_res[dnnResourceSrc]<<std::endl;
@@ -464,7 +454,7 @@ class ReluGrad(basic_ops.MKLOp):
             ((dnnLayout_t*)PyArray_DATA(%(z)s))[0] = bwd_bottom_diff_int_l;
             ((void**)PyArray_DATA(%(z)s))[1] = output_buffer_ptr;
 
-            #if __DEBUG__
+            #ifdef _MKL_DEBUG_
                 printf(\"%%x, %%x\\n\",((dnnLayout_t*)PyArray_DATA(%(z)s))[0],((void**)PyArray_DATA(%(z)s))[1]);
                 std::cout<<"relu bwd end\\n"<<std::endl;;
             #endif

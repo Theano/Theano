@@ -103,9 +103,10 @@ class LRN(basic_ops.MKLOp):
 
     def grad(self, inp, grads):
         x, = inp
+        z = self(*inp)
         gz, = grads
         return [LRNGrad(alpha=self.alpha, beta=self.beta, k=self.k,
-                        n=self.n)(x, gz)]
+                        n=self.n)(x, z, gz)]
 
     def c_support_code(self):
         support_code = mkl_helper.header_text()
@@ -144,7 +145,6 @@ class LRN(basic_ops.MKLOp):
             dnnLayout_t layout_internal_workspace;
             void* buf_workspace;
             void* buf_output;
-            void* workspace_ptr_ptr[4];
             void* lrn_res[dnnResourceNumber];
         """
         return support_code
@@ -202,7 +202,6 @@ class LRN(basic_ops.MKLOp):
 
         ccode = """
         {
-            ((void **)PyArray_DATA(%(x)s))[2] = (void *)workspace_ptr_ptr;
             if (first_run) {
                 bottomSize[0] = PyArray_DIMS(%(x)s)[3];  // w
                 bottomSize[1] = PyArray_DIMS(%(x)s)[2];  // h
@@ -259,7 +258,6 @@ class LRN(basic_ops.MKLOp):
                 }
 
                 dnnLayoutDelete_%(precision)s(layout_internal_workspace);
-                ((void **)workspace_ptr_ptr)[0] = buf_workspace;
 
                 // output
                 CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&layout_internal_output, primitive, dnnResourceDst), err );
@@ -283,6 +281,8 @@ class LRN(basic_ops.MKLOp):
 
             ((dnnLayout_t*)PyArray_DATA(%(z)s))[0] = layout_internal_output;
             ((void**)PyArray_DATA(%(z)s))[1] = buf_output;
+            // pass to backward
+            ((void **)PyArray_DATA(%(z)s))[2] = buf_workspace;
             first_run = 0;
         }
         """ % locals()
@@ -352,7 +352,6 @@ class LRNGrad(basic_ops.MKLOp):
             void* buf_diff;
             void* buf_gz;
             void* buf_output;
-            void* workspace_ptr;
             void* lrn_res[dnnResourceNumber];
         """
         return support_code
@@ -374,7 +373,6 @@ class LRNGrad(basic_ops.MKLOp):
             buf_diff = NULL;
             buf_gz = NULL;
             buf_output = NULL;
-            workspace_ptr = NULL;
         """
         return init_code
 
@@ -392,16 +390,18 @@ class LRNGrad(basic_ops.MKLOp):
         """ % sub
         return ccode
 
-    def make_node(self, x, gz):
+    def make_node(self, x, z, gz):
         if not isinstance(x, Variable) or x.type.ndim != 4:
             raise TypeError('Input x type error or dimension error.')
+        if not isinstance(z, Variable) or z.type.ndim != 4:
+            raise TypeError('Input z type error or dimension error.')
         if not isinstance(gz, Variable) or gz.type.ndim != 4:
             raise TypeError('Inputs gz type error or dimension error.')
-        return gof.Apply(self, [x, gz], [x.type()])
+        return gof.Apply(self, [x, z, gz], [x.type()])
 
     def c_code(self, node, name, inp, out, sub):
-        x, gz, = inp
-        z, = out
+        x, z, gz, = inp
+        gx, = out
         alpha = self.alpha
         beta = self.beta
         size = self.n
@@ -419,7 +419,6 @@ class LRNGrad(basic_ops.MKLOp):
 
         ccode = """
         {
-            workspace_ptr = ((void**)PyArray_DATA(%(x)s))[2];
             if (first_run) {
                 bottomSize[0] = PyArray_DIMS(%(x)s)[3];  // w
                 bottomSize[1] = PyArray_DIMS(%(x)s)[2];  // h
@@ -432,20 +431,20 @@ class LRNGrad(basic_ops.MKLOp):
                 bottomStride[3] = bottomSize[0] * bottomSize[1] * bottomSize[2];
             }
 
-            if ((!%(z)s) ||
-                (PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(x)s)[0]) ||
-                (PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(x)s)[1])) {
+            if ((!%(gx)s) ||
+                (PyArray_DIMS(%(gx)s)[0] != PyArray_DIMS(%(x)s)[0]) ||
+                (PyArray_DIMS(%(gx)s)[1] != PyArray_DIMS(%(x)s)[1])) {
 
-                if (%(z)s) {
-                    Py_XDECREF(%(z)s);
+                if (%(gx)s) {
+                    Py_XDECREF(%(gx)s);
                 }
 
-                %(z)s = (PyArrayObject*)PyArray_ZEROS(DIMENSION,
+                %(gx)s = (PyArrayObject*)PyArray_ZEROS(DIMENSION,
                                                       PyArray_DIMS(%(x)s),
                                                       PyArray_TYPE(%(x)s),
                                                       0);
 
-                if (NULL == %(z)s) {
+                if (NULL == %(gx)s) {
                     %(fail)s
                 }
             }
@@ -464,15 +463,15 @@ class LRNGrad(basic_ops.MKLOp):
                 CHECK_ERR( dnnAllocateBuffer_%(precision)s(&buf_diff, x_layout_previous), err );
             }
 
-            lrn_res[dnnResourceWorkspace] = ((void**)workspace_ptr)[0];
+            lrn_res[dnnResourceWorkspace] = ((void**)PyArray_DATA(%(z)s))[2];
             lrn_res[dnnResourceDiffDst] = (void*)buf_gz;
             lrn_res[dnnResourceSrc] = (void*)x_buf_previous;
             lrn_res[dnnResourceDiffSrc] = buf_diff;
 
             CHECK_ERR( dnnExecute_%(precision)s(primitive, lrn_res), err );
 
-            ((dnnLayout_t*)PyArray_DATA(%(z)s))[0] = x_layout_previous;
-            ((void**)PyArray_DATA(%(z)s))[1] = buf_diff;
+            ((dnnLayout_t*)PyArray_DATA(%(gx)s))[0] = x_layout_previous;
+            ((void**)PyArray_DATA(%(gx)s))[1] = buf_diff;
 
             first_run = 0;
         }
