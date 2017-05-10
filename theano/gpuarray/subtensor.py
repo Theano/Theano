@@ -232,7 +232,7 @@ class GpuIncSubtensor(IncSubtensor):
             if not self.set_instead_of_inc:
                 # sub_x += y
                 iadd = get_iadd(node.inputs[0], node.inputs[1])
-                iadd(sub_x, y, broadcast=False)
+                iadd(sub_x, y)
             else:
                 # sub_x[...] = y
                 x.__setitem__(cdata, y)
