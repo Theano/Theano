@@ -188,11 +188,11 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     int nd;
     int pad[2];
     int stride[2];
-    int upscale[2];
+    int dilation[2];
     cudnnConvolutionMode_t mode;
     cudnnDataType_t data_type;
     err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
-                                             upscale, &mode, &data_type);
+                                             dilation, &mode, &data_type);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
                    "error getting convolution properties: %s",

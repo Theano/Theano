@@ -5,7 +5,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
   cudnnStatus_t err;
   int pad[3] = {PAD_0, PAD_1, PAD_2};
   int strides[3] = {SUB_0, SUB_1, SUB_2};
-  int upscale[3] = {1, 1, 1};
+  int dilation[3] = {DIL_0, DIL_1, DIL_2};
 
 #if BORDER_MODE == 0
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
@@ -36,6 +36,11 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
   }
 
   err = cudnnSetConvolutionNdDescriptor(*desc, NB_DIMS, pad, strides,
-                                        upscale, CONV_MODE, PRECISION);
+                                        dilation, CONV_MODE, PRECISION);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_MemoryError, "could not set convolution "
+                 "descriptor: %s", cudnnGetErrorString(err));
+    return -1;
+  }
   return 0;
 }
