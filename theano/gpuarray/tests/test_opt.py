@@ -471,7 +471,7 @@ def test_many_arg_elemwise():
                 for mode in [mode_with_gpu, mode_without_gpu]:
                     # test the optimization local_gpua_elemwise
                     output = op_to_test(*symb_args)
-                    f = theano.function(symb_args, output)
+                    f = theano.function(symb_args, output, mode=mode)
                     outputs.append(f(*args))
 
                     # assert that the test was done on the gpu.
