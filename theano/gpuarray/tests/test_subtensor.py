@@ -136,7 +136,8 @@ def test_advinc_subtensor1_vector_scalar():
                           name='y')
         expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
         f = theano.function([y], expr, mode=mode_with_gpu)
-        assert sum([isinstance(node.op, GpuAdvancedIncSubtensor1_dev20)
+        assert sum([isinstance(node.op, (GpuAdvancedIncSubtensor1_dev20,
+                                         GpuAdvancedIncSubtensor1))
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
