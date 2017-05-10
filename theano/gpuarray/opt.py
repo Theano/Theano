@@ -753,36 +753,46 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         gpu_output = res(*new_inputs)
         return [gpu_output]
     elif op.scalar_op in (scalar.add, scalar.mul):
-        max_nb_inputs = max_inputs_to_GpuElemwise(outputs)
-        if max_nb_inputs > 1:
-            while len(inputs) > max_nb_inputs:
-                inputs = inputs[:-max_nb_inputs] + [res(*inputs[-max_nb_inputs:])]
-        return res(*inputs)
+        try:
+            return [split_inputs(inputs, max_inputs_to_GpuElemwise(outputs), res)]
+        except ValueError:
+            return False
     else:
         return res
 
 
-def split_huge_add_or_mul(node):
+def split_inputs(inputs, max_nb_inputs, op):
     """
-    For add and mul, it can happen that we have too much input
-    That will make nvcc fail compilation of our current code.
-    We don't want node in the graph that can't execute
-    as this break DebugMode.
+    For some ops like add and mul, a large number of inputs can make nvcc fail
+    compilation of our current code. We don't want node in the graph that can't
+    execute as this break DebugMode.
 
     This should not happen for other GpuElemwise as their is only the fusion
     that can generate op with too much input and it check for that.
 
+    Parameters
+    ----------
+    inputs: List of theano variables.
+            List of inputs to node.
+    max_nb_inputs: int
+                   Maximum number of inputs the node can handle without
+                   compilation fail.
+    op : Theano operator instance.
+         Operator that should be used to rebuild the computation graph with smaller
+         number of inputs per node.
     """
-    if node.op.scalar_op in (scalar.add, scalar.mul):
-        max_nb_inputs = max_inputs_to_GpuElemwise(node)
-        if max_nb_inputs <= 1 and len(node.inputs) > 1:
-            return False
-        while len(node.inputs) > max_nb_inputs:
-            inner_op = []
-            for i in range(0, len(node.inputs), max_nb_inputs):
-                inner_op.append(node.op(*node.inputs[i: i + max_nb_inputs]))
-            node = node.op(*inner_op).owner
-    return node
+    if max_nb_inputs <= 1 and len(inputs) > 1:
+        raise ValueError("Can not split nodes because inputs' dimensionality and/or"
+                         " number of outputs is too large")
+
+    while len(inputs) > max_nb_inputs:
+        inner_ops = []
+        for i in range(0, len(inputs), max_nb_inputs):
+            inner_ops.append(op(*inputs[i: i + max_nb_inputs]))
+        inputs = inner_ops
+
+    return op(*inputs)
+
 
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
     GpuElemwise,
