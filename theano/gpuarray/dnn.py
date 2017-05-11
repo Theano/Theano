@@ -131,7 +131,7 @@ def _dnn_check_version():
     if v < 5000:
         return False, "cuDNN version is too old. Update to v5, was %d." % v
     # 5200 should not print warning with cudnn 5.1 final.
-    if v > 6020:
+    if v >= 6100:
         warnings.warn("Your cuDNN version is more recent than "
                       "Theano. If you encounter problems, try "
                       "updating Theano or downgrading cuDNN to "
@@ -401,7 +401,6 @@ class GpuDnnConvDesc(COp):
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
 
-        assert len(dilation) in (2, 3)
         assert len(dilation) == len(subsample)
         self.dilation = dilation
 
@@ -486,6 +485,11 @@ class GpuDnnConvDesc(COp):
 
     def c_code_cache_version(self):
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, "dilation"):
+            self.dilation = (1,) * len(self.subsample)
 
 
 # scalar constants
@@ -935,16 +939,20 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
         could be directly specified by an integer or a pair of integers.
     subsample
         Perform subsampling of the output (default: (1, 1)).
+    dilation
+        Filter dilation factor. A dilation factor of d is equivalent to a
+        convolution with d - 1 zeros inserted between neighboring filter
+        values.
     conv_mode
         Perform convolution (kernels flipped) or cross-correlation.
         One of 'conv', 'cross' (default: 'conv').
     direction_hint
         Used by graph optimizers to change algorithm choice.
         By default, GpuDnnConv will be used to carry out the convolution.
-        If border_mode is 'valid', subsample is (1, 1) and direction_hint is
-        'bprop weights', it will use GpuDnnConvGradW.
-        If border_mode is 'full', subsample is (1, 1) and direction_hint is
-        *not* 'forward!', it will use GpuDnnConvGradI.
+        If border_mode is 'valid', subsample is (1, 1), dilation is (1, 1), and
+        direction_hint is 'bprop weights', it will use GpuDnnConvGradW.
+        If border_mode is 'full', subsample is (1, 1), dilation is (1, 1), and
+        direction_hint is *not* 'forward!', it will use GpuDnnConvGradI.
         This parameter is used internally by graph optimizers and may be
         removed at any time without a deprecation period. You have been warned.
     algo : {'none', 'small', 'large', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
@@ -1053,17 +1061,23 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
         One of 'valid', 'full', 'half'; additionally, the padding size
         could be directly specified by an integer or a pair of integers.
     subsample
-        Perform subsampling of the output (default: (1, 1)).
+        Perform subsampling of the output (default: (1, 1, 1)).
+    dilation
+        Filter dilation factor. A dilation factor of d is equivalent to a
+        convolution with d - 1 zeros inserted between neighboring filter
+        values.
     conv_mode
         Perform convolution (kernels flipped) or cross-correlation.
         One of 'conv', 'cross' (default: 'conv').
     direction_hint
         Used by graph optimizers to change algorithm choice.
         By default, GpuDnnConv will be used to carry out the convolution.
-        If border_mode is 'valid', subsample is (1, 1) and direction_hint is
-        'bprop weights', it will use GpuDnnConvGradW.
-        If border_mode is 'full', subsample is (1, 1) and direction_hint is
-        *not* 'forward!', it will use GpuDnnConvGradI.
+        If border_mode is 'valid', subsample is (1, 1, 1), dilation is
+        (1, 1, 1), and direction_hint is 'bprop weights', it will use
+        GpuDnnConvGradW.
+        If border_mode is 'full', subsample is (1, 1, 1), dilation is
+        (1, 1, 1), and direction_hint is *not* 'forward!', it will use
+        GpuDnnConvGradI.
         This parameter is used internally by graph optimizers and may be
         removed at any time without a deprecation period. You have been warned.
     algo : convolution implementation to use. Only 'none' is implemented
@@ -1168,12 +1182,12 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
 
 
 def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
-                     subsample=(1, 1, 1), conv_mode='conv', precision=None):
+                     subsample=(1, 1, 1), dilation=(1, 1, 1), conv_mode='conv', precision=None):
     """
     3d version of dnn_gradweight
     """
     return dnn_gradweight(img, topgrad, kerns_shp, border_mode,
-                          subsample, conv_mode, precision)
+                          subsample, dilation, conv_mode, precision)
 
 
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
@@ -1196,12 +1210,12 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
 
 
 def dnn_gradinput3d(kerns, topgrad, img_shp, border_mode='valid',
-                    subsample=(1, 1, 1), conv_mode='conv', precision=None):
+                    subsample=(1, 1, 1), dilation=(1, 1, 1), conv_mode='conv', precision=None):
     """
     3d version of `dnn_gradinput`.
     """
     return dnn_gradinput(kerns, topgrad, img_shp, border_mode, subsample,
-                         conv_mode, precision)
+                         dilation, conv_mode, precision)
 
 
 class GpuDnnPoolDesc(Op):
