@@ -776,9 +776,9 @@ AddConfigVar('warn.round',
 AddConfigVar(
     'warn.inc_subtensor1_opt',
     "Warn if previous versions of Theano (before 0.10) could have "
-    "given incorrect results for inc_subtensor when indexing with "
-    "one array of integers. An incorrect optimization was applied "
-    "when computing set_subtensor(zeros[idx], x)[idx].",
+    "given incorrect results when computing "
+    "inc_subtensor(zeros[idx], x)[idx], when idx is an array of integers "
+    "with duplicated values.",
     BoolParam(warn_default('0.10')),
     in_c_key=False)
 
