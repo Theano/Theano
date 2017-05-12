@@ -384,6 +384,9 @@ class GpuDnnConvDesc(COp):
                  precision="float32"):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
+        if version() < 6000 and any([d != 1 for d in dilation]):
+            raise RuntimeError("Dilation > 1 not supported for cuDNN version < 6.")
+
         if isinstance(border_mode, integer_types):
             border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
@@ -455,17 +458,12 @@ class GpuDnnConvDesc(COp):
         else:
             sub2 = '0'
 
-        if version() < 6000:
-            dil0 = '1'
-            dil1 = '1'
-            dil2 = '1'
+        dil0 = str(self.dilation[0])
+        dil1 = str(self.dilation[1])
+        if len(self.dilation) > 2:
+            dil2 = str(self.dilation[2])
         else:
-            dil0 = str(self.dilation[0])
-            dil1 = str(self.dilation[1])
-            if len(self.dilation) > 2:
-                dil2 = str(self.dilation[2])
-            else:
-                dil2 = '0'
+            dil2 = '0'
 
         if self.precision == 'float16':
             precision = 'CUDNN_DATA_HALF'
