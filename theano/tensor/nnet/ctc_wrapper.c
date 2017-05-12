@@ -3,11 +3,11 @@
 
 #section support_code_apply
 
-int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject * activations,
-                                 PyArrayObject * labels,
-                                 PyArrayObject * input_lengths,
-                                 PyArrayObject **costs,
-                                 PyArrayObject **gradients)
+int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  activations,
+                                 PyArrayObject *  labels,
+                                 PyArrayObject *  input_lengths,
+                                 PyArrayObject ** costs,
+                                 PyArrayObject ** gradients)
 {
     npy_int minibatch_size = PyArray_DIMS(activations)[1];
 
@@ -32,7 +32,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject * activations,
     if ( PyArray_NDIM( *gradients ) != 3 
         || PyArray_DIMS( *gradients )[0] != PyArray_DIMS( activations )[0]
         || PyArray_DIMS( *gradients )[1] != PyArray_DIMS( activations )[1]
-        || PyArray_DIMS( *gradients )[2] != PyArray_DIMS( activations )[2])
+        || PyArray_DIMS( *gradients )[2] != PyArray_DIMS( activations )[2] )
     {
         // Existing matrix is the wrong size. Make a new one.
         // Decrement ref counter to existing array
