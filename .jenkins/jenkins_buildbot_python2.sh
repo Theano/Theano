@@ -9,6 +9,40 @@ export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
 
+GPUARRAY_CONFIG="Release"
+DEVICE=cuda
+LIBDIR=${WORKSPACE}/local
+
+# Make fresh clones of libgpuarray (with no history since we don't need it)
+rm -rf libgpuarray
+git clone --depth 1 "https://github.com/Theano/libgpuarray.git"
+
+# Clean up previous installs (to make sure no old files are left)
+rm -rf $LIBDIR
+mkdir $LIBDIR
+
+# Build libgpuarray
+mkdir libgpuarray/build
+(cd libgpuarray/build && cmake .. -DCMAKE_BUILD_TYPE=${GPUARRAY_CONFIG} -DCMAKE_INSTALL_PREFIX=$LIBDIR && make)
+
+# Finally install
+(cd libgpuarray/build && make install)
+
+# Export paths
+export CPATH=$CPATH:$LIBDIR/include
+export LIBRARY_PATH=$LIBRARY_PATH:$LIBDIR/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBDIR/lib
+
+# Build the pygpu modules
+(cd libgpuarray && python setup.py build_ext --inplace -I$LIBDIR/include -L$LIBDIR/lib)
+ls $LIBDIR
+mkdir $LIBDIR/lib/python
+export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
+# Then install
+(cd libgpuarray && python setup.py install --home=$LIBDIR)
+
+python -c 'import pygpu; print(pygpu.__file__)'
+
 # nosetests xunit for test profiling
 XUNIT="--with-xunit --xunit-file="
 
