@@ -23,17 +23,20 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
 
     """
     def __init__(self, mode='valid'):
-        if mode not in ['valid', 'ignore_borders', 'wrap_centered']:
+        if mode not in ['valid', 'ignore_borders', 'wrap_centered', 'half']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
-                                      " and wrap_centered"
+                                      ", wrap_centered and half"
                                       " have been implemented for the op"
                                       " GpuImages2Neibs")
         self.mode = mode
 
-    def make_node(self, ten4, neib_shape, neib_step):
+    def make_node(self, ten4, neib_shape, neib_step=None):
         ten4 = as_gpuarray_variable(ten4, infer_context_name(ten4))
         neib_shape = T.as_tensor_variable(neib_shape)
-        neib_step = T.as_tensor_variable(neib_step)
+        if neib_step is None:
+            neib_step = neib_shape
+        else:
+            neib_step = T.as_tensor_variable(neib_step)
 
         assert ten4.ndim == 4
         assert neib_shape.ndim == 1
@@ -50,7 +53,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         return node.inputs[0].type.context
 
     def c_code_cache_version(self):
-        return (11,)
+        return (12,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -85,8 +88,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             GLOBAL_MEM %(type_z)s * global_out, const ga_size offset_out
         )
         {
-            const ga_int wrap_centered_idx_shift_x = c/2;
-            const ga_int wrap_centered_idx_shift_y = d/2;
+            const ga_int wrap_centered_half_idx_shift_x = c/2;
+            const ga_int wrap_centered_half_idx_shift_y = d/2;
             global_ten4 = (GLOBAL_MEM const %(type_ten4)s *)(((GLOBAL_MEM char *)global_ten4)+offset_ten4);
             global_out = (GLOBAL_MEM %(type_z)s *)(((GLOBAL_MEM char *)global_out)+offset_out);
 
@@ -111,31 +114,38 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                             {
                                 ga_int ten4_2 = i + a * step_x;
                                 if("%(mode)s"=="wrap_centered"){
-                                    ten4_2 -= wrap_centered_idx_shift_x;
+                                    ten4_2 -= wrap_centered_half_idx_shift_x;
                                     if ( ten4_2 < 0 )
                                         ten4_2 += height;
                                     else if (ten4_2 >= height)
                                         ten4_2 -= height;
+                                } else if ("%(mode)s"=="half"){
+                                    ten4_2 -= wrap_centered_half_idx_shift_x;
                                 }
                                 ga_int j = LID_0;  // loop over d
                                 {
                                     ga_int ten4_3 = j + b * step_y;
                                     if("%(mode)s"=="wrap_centered"){
-                                        ten4_3 -= wrap_centered_idx_shift_y;
+                                        ten4_3 -= wrap_centered_half_idx_shift_y;
                                         if ( ten4_3 < 0 )
                                             ten4_3 += width;
                                         else if (ten4_3 >= width)
                                             ten4_3 -= width;
+                                    } else if ("%(mode)s"=="half"){
+                                        ten4_3 -= wrap_centered_half_idx_shift_y;
                                     }
-
-                                    ga_int ten4_idx = stride3*ten4_3 +
-                                                   stride2*ten4_2 +
-                                                   stride1*s + stride0*n;
 
                                     ga_int z_col = j + d * i;
                                     ga_int z_idx = z_col * out_s1 +
                                                 z_row * out_s0;
-                                    global_out[z_idx] = global_ten4[ten4_idx];
+                                    if(ten4_2 < 0 || ten4_2 >= height || ten4_3 < 0 || ten4_3 >= width){
+                                        global_out[z_idx] = 0;
+                                    } else {
+                                        ga_int ten4_idx = stride3*ten4_3 +
+                                                       stride2*ten4_2 +
+                                                       stride1*s + stride0*n;
+                                        global_out[z_idx] = global_ten4[ten4_idx];
+                                    }
                                 }
                             }
             }
@@ -172,8 +182,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             GLOBAL_MEM %(type_z)s * global_out, const ga_size offset_out
         )
         {
-            const ga_int wrap_centered_idx_shift_x = c/2;
-            const ga_int wrap_centered_idx_shift_y = d/2;
+            const ga_int wrap_centered_half_idx_shift_x = c/2;
+            const ga_int wrap_centered_half_idx_shift_y = d/2;
             global_ten4 = (GLOBAL_MEM const %(type_ten4)s *)(((GLOBAL_MEM char *)global_ten4)+offset_ten4);
             global_out = (GLOBAL_MEM %(type_z)s *)(((GLOBAL_MEM char *)global_out)+offset_out);
 
@@ -199,32 +209,39 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                             {
                                 ga_int ten4_2 = i + a * step_x;
                                 if("%(mode)s"=="wrap_centered"){
-                                    ten4_2 -= wrap_centered_idx_shift_x;
+                                    ten4_2 -= wrap_centered_half_idx_shift_x;
                                     if ( ten4_2 < 0 )
                                         ten4_2 += height;
                                     else if (ten4_2 >= height)
                                         ten4_2 -= height;
+                                } else if ("%(mode)s"=="half"){
+                                    ten4_2 -= wrap_centered_half_idx_shift_x;
                                 }
                                 // loop over d
                                 for (ga_int j = LID_0; j < d; j+=LDIM_0)
                                 {
                                     ga_int ten4_3 = j + b * step_y;
                                     if("%(mode)s"=="wrap_centered"){
-                                        ten4_3 -= wrap_centered_idx_shift_y;
+                                        ten4_3 -= wrap_centered_half_idx_shift_y;
                                         if ( ten4_3 < 0 )
                                             ten4_3 += width;
                                         else if (ten4_3 >= width)
                                             ten4_3 -= width;
+                                    } else if ("%(mode)s"=="half"){
+                                        ten4_3 -= wrap_centered_half_idx_shift_y;
                                     }
-
-                                    ga_int ten4_idx = stride3*ten4_3 +
-                                                   stride2*ten4_2 +
-                                                   stride1*s + stride0*n;
 
                                     ga_int z_col = j + d * i;
                                     ga_int z_idx = z_col * out_s1 +
                                                 z_row * out_s0;
-                                    global_out[z_idx] = global_ten4[ten4_idx];
+                                    if(ten4_2 < 0 || ten4_2 >= height || ten4_3 < 0 || ten4_3 >= width){
+                                        global_out[z_idx] = 0;
+                                    } else {
+                                        ga_int ten4_idx = stride3*ten4_3 +
+                                                       stride2*ten4_2 +
+                                                       stride1*s + stride0*n;
+                                        global_out[z_idx] = global_ten4[ten4_idx];
+                                    }
                                 }
                             }
             }
@@ -367,6 +384,31 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                 grid_c = 1+(((PyGpuArray_DIMS(%(ten4)s))[2]-c)/step_x);
                 //number of patch in width
                 grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]-d)/step_y);
+            }else if ( "%(mode)s" == "half") {
+                if ( ((PyGpuArray_DIMS(%(ten4)s))[2] < c) ||
+                     ((((PyGpuArray_DIMS(%(ten4)s))[2]-(c%%2)) %% step_x)!=0))
+                {
+                    PyErr_Format(PyExc_TypeError, "GpuImages2Neibs:"
+                                 " neib_shape[0]=%%d, neib_step[0]=%%d and"
+                                 " ten4.shape[2]=%%d not consistent",
+                                 c, step_x,
+                                 PyGpuArray_DIMS(%(ten4)s)[2]);
+                    %(fail)s;
+                }
+                if ( ((PyGpuArray_DIMS(%(ten4)s))[3] < d) ||
+                     ((((PyGpuArray_DIMS(%(ten4)s))[3]-(d%%2)) %% step_y)!=0))
+                {
+                    PyErr_Format(PyExc_TypeError, "GpuImages2Neibs:"
+                                 " neib_shape[1]=%%d, neib_step[1]=%%d and"
+                                 " ten4.shape[3]=%%d not consistent",
+                                 d, step_y,
+                                 PyGpuArray_DIMS(%(ten4)s)[3]);
+                    %(fail)s;
+                }
+                //number of patch in height
+                grid_c = 1+(((PyGpuArray_DIMS(%(ten4)s))[2]-(c%%2))/step_x);
+                //number of patch in width
+                grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]-(d%%2))/step_y);
             }else{
                 PyErr_Format(PyExc_TypeError,
                              "GpuImages2Neibs:: unknown mode '%(mode)s'");
@@ -485,5 +527,5 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
 @op_lifter([Images2Neibs])
 @register_opt2([Images2Neibs], 'fast_compile')
 def local_gpua_images2neibs(op, context_name, inputs, outputs):
-    if op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
+    if op.mode in ['valid', 'ignore_borders', 'wrap_centered', 'half']:
         return GpuImages2Neibs(op.mode)

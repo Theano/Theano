@@ -29,15 +29,18 @@ class Images2Neibs(Op):
             of the input is not a multiple of the pooling factor(s).
         - 'wrap_centered' :
             ?? TODO comment
+        - 'half' :
+            Equivalent to 'valid' if we pre-pad with zeros the input on
+            each side by (neib_shape[0]//2, neib_shape[1]//2)
 
     """
 
     __props__ = ("mode",)
 
     def __init__(self, mode='valid'):
-        if mode not in ['valid', 'wrap_centered', 'ignore_borders']:
+        if mode not in ['valid', 'wrap_centered', 'ignore_borders', 'half']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
-                                      " and wrap_centered have been"
+                                      ",wrap_centered and half have been"
                                       " implemented for the op Images2Neibs")
         self.mode = mode
 
@@ -198,7 +201,6 @@ class Images2Neibs(Op):
                     (c, d, ten4.shape[2], ten4.shape[3]))
             grid_c = CEIL_INTDIV(ten4.shape[2], step_x)
             grid_d = CEIL_INTDIV(ten4.shape[3], step_y)
-
         elif mode == "valid":
             if (ten4.shape[2] < c) or (((ten4.shape[2] - c) % step_x) != 0):
                 raise TypeError(
@@ -219,6 +221,26 @@ class Images2Neibs(Op):
             grid_c = 1 + ((ten4.shape[2] - c) // step_x)
             # number of patch in width
             grid_d = 1 + ((ten4.shape[3] - d) // step_y)
+        elif mode == "half":
+            # This is equivalent to 'valid' with padding (c // 2, d // 2) on both sides
+            # Thus the expanded image will have size (h + 2 * (c // 2), w + 2 * (d // 2))
+            # Plugging these in the equation for 'valid' we get
+            # h + 2 * (c // 2) - c  = h - (c % 2)
+            # w + 2 * (d // 2) - c  = w - (d % 2)
+            if (ten4.shape[2] < c) or (((ten4.shape[2] - (c % 2)) % step_x) != 0):
+                raise TypeError(
+                    "neib_shape[0]=%d, neib_step[0]=%d and"
+                    " ten4.shape[2]=%d not consistent" %
+                    (c, step_x, ten4.shape[2]))
+            if (ten4.shape[3] < d) or (((ten4.shape[3] - (d % 2)) % step_y) != 0):
+                raise TypeError(
+                    "neib_shape[1]=%d, neib_step[1]=%d and"
+                    " ten4.shape[3]=%d not consistent" %
+                    (d, step_y, ten4.shape[3]))
+            # number of patch in height
+            grid_c = 1 + ((ten4.shape[2] - (c % 2)) // step_x)
+            # number of patch in width
+            grid_d = 1 + ((ten4.shape[3] - (d % 2)) // step_y)
         else:
             raise TypeError("Images2Neibs: unknow mode '%s'" % mode)
 
@@ -231,8 +253,8 @@ class Images2Neibs(Op):
         height = ten4.shape[2]
         width = ten4.shape[3]
 
-        wrap_centered_idx_shift_x = c // 2
-        wrap_centered_idx_shift_y = d // 2
+        wrap_centered_half_idx_shift_x = c // 2
+        wrap_centered_half_idx_shift_y = d // 2
         for n in range(nb_batch):
             for s in range(nb_stack):
                 # loop over the number of patch in height
@@ -243,22 +265,31 @@ class Images2Neibs(Op):
                         for i in range(c):
                             ten4_2 = i + a * step_x
                             if mode == "wrap_centered":
-                                ten4_2 -= wrap_centered_idx_shift_x
+                                ten4_2 -= wrap_centered_half_idx_shift_x
                                 if ten4_2 < 0:
                                     ten4_2 += height
                                 elif ten4_2 >= height:
                                     ten4_2 -= height
-                            for j in range(d):
-                                ten4_3 = j + b * step_y
-                                if mode == "wrap_centered":
-                                    ten4_3 -= wrap_centered_idx_shift_y
-                                    if ten4_3 < 0:
-                                        ten4_3 += width
-                                    elif ten4_3 >= width:
-                                        ten4_3 -= width
-                                z_col = j + d * i
-
-                                z[0][z_row, z_col] = ten4[n, s, ten4_2, ten4_3]
+                            elif mode == "half":
+                                ten4_2 -= wrap_centered_half_idx_shift_x
+                            if ten4_2 < 0 or ten4_2 >= height:
+                                z[0][z_row, d * i: d * i + d] = 0
+                            else:
+                                for j in range(d):
+                                    ten4_3 = j + b * step_y
+                                    if mode == "wrap_centered":
+                                        ten4_3 -= wrap_centered_half_idx_shift_y
+                                        if ten4_3 < 0:
+                                            ten4_3 += width
+                                        elif ten4_3 >= width:
+                                            ten4_3 -= width
+                                    elif mode == "half":
+                                        ten4_3 -= wrap_centered_half_idx_shift_y
+                                    z_col = j + d * i
+                                    if ten4_3 < 0 or ten4_3 >= width:
+                                        z[0][z_row, z_col] = 0
+                                    else:
+                                        z[0][z_row, z_col] = ten4[n, s, ten4_2, ten4_3]
 
     def infer_shape(self, node, input_shape):
         in_shape = input_shape[0]
@@ -273,6 +304,9 @@ class Images2Neibs(Op):
         elif self.mode == 'ignore_borders':
             grid_c = 1 + ((in_shape[2] - c) // step_x)
             grid_d = 1 + ((in_shape[3] - d) // step_y)
+        elif self.mode == 'half':
+            grid_c = 1 + ((in_shape[2] - (c % 2)) // step_x)
+            grid_d = 1 + ((in_shape[3] - (d % 2)) // step_y)
         z_dim0 = grid_c * grid_d * in_shape[1] * in_shape[0]
         z_dim1 = c * d
         return [(z_dim0, z_dim1)]
@@ -394,6 +428,31 @@ class Images2Neibs(Op):
             grid_c = 1+(((PyArray_DIMS(%(ten4)s))[2]-c)/step_x);
             //number of patch in width
             grid_d = 1+(((PyArray_DIMS(%(ten4)s))[3]-d)/step_y);
+        }else if ( "%(mode)s" == "half") {
+            if ( ((PyArray_DIMS(%(ten4)s))[2] < c) ||
+                 ( (((PyArray_DIMS(%(ten4)s))[2]-(c%%2)) %% step_x)!=0))
+            {
+                PyErr_Format(PyExc_TypeError,
+                             "neib_shape[0]=%%ld, neib_step[0]=%%ld and"
+                             " ten4.shape[2]=%%ld not consistent",
+                             (long int)c, (long int)step_x,
+                             (long int)(PyArray_DIMS(%(ten4)s)[2]));
+                %(fail)s;
+            }
+            if ( ((PyArray_DIMS(%(ten4)s))[3] < d) ||
+                 ( (((PyArray_DIMS(%(ten4)s))[3]-(d%%2)) %% step_y)!=0))
+            {
+                PyErr_Format(PyExc_TypeError,
+                             "neib_shape[1]=%%ld, neib_step[1]=%%ld and"
+                             " ten4.shape[3]=%%ld not consistent",
+                             (long int)d, (long int)step_y,
+                             (long int)(PyArray_DIMS(%(ten4)s)[3]));
+                %(fail)s;
+            }
+            //number of patch in height
+            grid_c = 1+(((PyArray_DIMS(%(ten4)s))[2]-(c%%2))/step_x);
+            //number of patch in width
+            grid_d = 1+(((PyArray_DIMS(%(ten4)s))[3]-(d%%2))/step_y);
         }else{
             PyErr_Format(PyExc_TypeError,
                          "Images2Neibs: unknow mode '%(mode)s'");
@@ -444,8 +503,8 @@ class Images2Neibs(Op):
         const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
         const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
 
-        const int wrap_centered_idx_shift_x = c/2;
-        const int wrap_centered_idx_shift_y = d/2;
+        const int wrap_centered_half_idx_shift_x = c/2;
+        const int wrap_centered_half_idx_shift_y = d/2;
         // Oh this is messed up...
         for (int n = 0; n < nb_batch; n++)              // loop over batches
             for (int s = 0; s < nb_stack; s++)          // loop over stacks
@@ -457,27 +516,34 @@ class Images2Neibs(Op):
                         {
                             int ten4_2 = i + a * step_x;
                             if ( "%(mode)s" == "wrap_centered" ){
-                                ten4_2 -= wrap_centered_idx_shift_x;
+                                ten4_2 -= wrap_centered_half_idx_shift_x;
                                 if ( ten4_2 < 0 ) ten4_2 += height;
                                 else if (ten4_2 >= height) ten4_2 -= height;
+                            } else if ( "%(mode)s" == "half" ){
+                                ten4_2 -= wrap_centered_half_idx_shift_x;
                             }
-                            for (int j = 0; j < d; j++)  // loop over d
-                            {
-
-                                int ten4_3 = j + b * step_y;
-                                if ( "%(mode)s" == "wrap_centered" ){
-                                    ten4_3 -= wrap_centered_idx_shift_y;
-                                    if ( ten4_3 < 0 ) ten4_3 += width;
-                                    else if (ten4_3 >= width) ten4_3 -= width;
+                            if (ten4_2 < 0 | ten4_2 >= height) {
+                                dtype_%(z)s* curr_z = (dtype_%(z)s*) PyArray_GETPTR2(%(z)s, z_row, d * i);
+                                memset(curr_z, 0, d*sizeof(*curr_z));
+                            } else {
+                                for (int j = 0; j < d; j++)  // loop over d
+                                {
+                                    int ten4_3 = j + b * step_y;
+                                    if ( "%(mode)s" == "wrap_centered" ){
+                                        ten4_3 -= wrap_centered_half_idx_shift_y;
+                                        if ( ten4_3 < 0 ) ten4_3 += width;
+                                        else if (ten4_3 >= width) ten4_3 -= width;
+                                    } else if ( "%(mode)s" == "half" ){
+                                        ten4_3 -= wrap_centered_half_idx_shift_y;
+                                    }
+                                    int z_col = j + d * i;
+                                    dtype_%(z)s* curr_z = (dtype_%(z)s*) PyArray_GETPTR2(%(z)s, z_row, z_col);
+                                    if (ten4_3 < 0 | ten4_3 >= width) {
+                                        *curr_z = 0;
+                                    } else {
+                                        *curr_z = *( (dtype_%(ten4)s*) PyArray_GETPTR4(%(ten4)s, n, s, ten4_2, ten4_3));
+                                    }
                                 }
-                                int z_col = j + d * i;
-
-                                dtype_%(z)s* curr_z = (dtype_%(z)s*) PyArray_GETPTR2(%(z)s, z_row, z_col);
-                                *curr_z = *( (dtype_%(ten4)s*) PyArray_GETPTR4(%(ten4)s, n, s, ten4_2, ten4_3));
-
-                                //printf("\\n(%%i,%%i,%%i,%%i) --> (%%i,%%i)",
-                                //       n, s, ten4_2, ten4_3, z_row, z_col);
-                                //printf("%%f ", *curr_z);
                             }
                         }
                     }
@@ -513,7 +579,7 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
         By default it is equal to `neib_shape` in other words, the patches are
         disjoint. When the step is greater than `neib_shape`, some elements are
         omitted. When None, this is the same as neib_shape (patch are disjoint).
-    mode : {'valid', 'ignore_borders', 'wrap_centered'}
+    mode : {'valid', 'ignore_borders', 'wrap_centered', 'half'}
         ``valid``
             Requires an input that is a multiple of the
             pooling factor (in each direction).
@@ -522,6 +588,9 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
             the input is not a multiple of the pooling factor(s).
         ``wrap_centered``
             ?? TODO comment
+        ``half``
+            Equivalent to 'valid' if we pre-pad with zeros the input on
+            each side by (neib_shape[0]//2, neib_shape[1]//2)
 
     Returns
     -------
