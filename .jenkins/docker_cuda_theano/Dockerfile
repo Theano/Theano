@@ -27,9 +27,6 @@ RUN echo jenkins:jenkins | chpasswd
 RUN echo "export PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/miniconda/bin:\$PATH" >> /home/jenkins/.bashrc
 RUN echo "export LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:\$LD_LIBRARY_PATH" >> /home/jenkins/.bashrc
 
-# Create cache volume mount point
-RUN mkdir -p /home/jenkins/.theano && chown jenkins:jenkins /home/jenkins/.theano
-
 # Copy jenkins slave.jar into container
 RUN wget -P home/jenkins http://earlgrey.iro.umontreal.ca:8080/jnlpJars/slave.jar
 RUN chown -R jenkins:jenkins /home/jenkins/*
