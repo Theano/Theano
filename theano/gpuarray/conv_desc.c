@@ -8,16 +8,16 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
   int dilation[3] = {DIL_0, DIL_1, DIL_2};
 
 #if BORDER_MODE == 0
-  pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
-  pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1;
+  pad[0] = (*(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1) * DIL_0;
+  pad[1] = (*(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1) * DIL_1;
 #if NB_DIMS > 2
-  pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1;
+  pad[2] = (*(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1) * DIL_2;
 #endif
 #elif BORDER_MODE == 2
-  pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) / 2;
-  pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) / 2;
+  pad[0] = ((*(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1) * DIL_0 + 1) / 2;
+  pad[1] = ((*(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1) * DIL_1 + 1) / 2;
 #if NB_DIMS > 2
-  pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) / 2;
+  pad[2] = ((*(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1) * DIL_2 + 1) / 2;
 #endif
 #endif
 
