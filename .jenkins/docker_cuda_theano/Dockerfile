@@ -10,7 +10,7 @@ RUN apt-get install -y build-essential apt-utils wget git dvipng time
 RUN wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
 RUN bash Miniconda2-latest-Linux-x86_64.sh -p /miniconda -b
 ENV PATH=/miniconda/bin:${PATH}
-RUN conda install numpy scipy mkl nose pydot-ng cython cmake
+RUN conda install numpy scipy sympy mkl nose pydot-ng graphviz cython cmake
 RUN conda update -y conda
 RUN pip install nose-timer parameterized "flake8<3" "sphinx==1.3.5"
 RUN pip install --upgrade-strategy only-if-needed git+https://github.com/lebedov/scikit-cuda.git 
