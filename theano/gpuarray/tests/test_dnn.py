@@ -13,7 +13,7 @@ import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
-from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape, get_conv_gradinputs_shape
 from theano.tensor.nnet import bn
 
 from .. import dnn
@@ -45,9 +45,9 @@ def test_dnn_conv_desc_merge():
         raise SkipTest(dnn.dnn_available.msg)
     kern_shp = T.as_tensor_variable(
         np.asarray([3, 1, 2, 2]).astype('int64'))
-    desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2),
+    desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2), dilation=(1, 1),
                                conv_mode='conv')(kern_shp)
-    desc2 = dnn.GpuDnnConvDesc(border_mode='full', subsample=(1, 1),
+    desc2 = dnn.GpuDnnConvDesc(border_mode='full', subsample=(1, 1), dilation=(1, 1),
                                conv_mode='cross')(kern_shp)
     # CDataType is not DeepCopyable so this will crash if we don't use
     # borrow=True
@@ -601,32 +601,35 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dnn.GpuDnnSoftmaxGrad
         )
 
-    def _test_conv(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsamples, algo):
+    def _test_conv(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsamples, dilations, algo):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
         img_val = np.asarray(img_val, dtype=theano.config.floatX)
         kern_vals = np.asarray(kern_vals, dtype=theano.config.floatX)
 
-        for subsample in subsamples:
-            out_vals = np.zeros(
-                dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
-                                             border_mode=border_mode,
-                                             subsample=subsample),
-                dtype=theano.config.floatX)
-            desc = dnn.GpuDnnConvDesc(
-                border_mode=border_mode,
-                subsample=subsample,
-                conv_mode=conv_mode,
-                precision=set_precision(theano.config.floatX)
-            )(kerns.shape)
-            conv = dnn.GpuDnnConv(algo=algo)(img, kerns, out, desc)
-            self._compile_and_check(
-                [img, kerns, out],
-                [conv],
-                [img_val, kern_vals, out_vals],
-                dnn.GpuDnnConv
-            )
+        for dilation in dilations:
+            for subsample in subsamples:
+                out_vals = np.zeros(
+                    dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
+                                                 border_mode=border_mode,
+                                                 subsample=subsample,
+                                                 dilation=dilation),
+                    dtype=theano.config.floatX)
+                desc = dnn.GpuDnnConvDesc(
+                    border_mode=border_mode,
+                    subsample=subsample,
+                    dilation=dilation,
+                    conv_mode=conv_mode,
+                    precision=set_precision(theano.config.floatX)
+                )(kerns.shape)
+                conv = dnn.GpuDnnConv(algo=algo)(img, kerns, out, desc)
+                self._compile_and_check(
+                    [img, kerns, out],
+                    [conv],
+                    [img_val, kern_vals, out_vals],
+                    dnn.GpuDnnConv
+                )
 
     @parameterized.expand(chain(product([SUPPORTED_DNN_CONV_ALGO_FWD[0]],
                                         border_modes,
@@ -636,18 +639,25 @@ class TestDnnInferShapes(utt.InferShapeTester):
                                         [conv_modes[0]])),
                           testcase_func_name=utt.custom_name_func)
     def test_conv(self, algo, border_mode, conv_mode):
+        # Currently only CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM (algo 'none')
+        # supports dilation > 1.
+        dilations = [(1, 1), (2, 2)] if algo == "none" else [(1, 1)]
+
         self._test_conv(T.tensor4('img'),
                         T.tensor4('kerns'),
                         T.tensor4('out'),
-                        np.random.rand(7, 2, 8, 4),
+                        np.random.rand(7, 2, 12, 16),
                         np.random.rand(8, 2, 4, 3),
                         border_mode,
                         conv_mode,
                         [(1, 1), (2, 2)],
+                        dilations,
                         algo)
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv3d_none(self, border_mode, conv_mode):
+        # CUDNN docs don't say that 3D conv can't handle dilation, but it returns
+        # CUDNN_STATUS_NOT_SUPPORTED if you try it.
         self._test_conv(T.tensor5('img'),
                         T.tensor5('kerns'),
                         T.tensor5('out'),
@@ -656,44 +666,49 @@ class TestDnnInferShapes(utt.InferShapeTester):
                         border_mode,
                         conv_mode,
                         [(1, 1, 1), (2, 2, 2)],
+                        [(1, 1, 1)],
                         'none')
 
-    def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsample):
+    def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsamples, dilations):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
-        topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
-                                              border_mode, subsample)
-
-        img_val = np.asarray(
-            np.random.rand(*img_shape),
-            dtype=theano.config.floatX
-        )
-        topgrad_vals = np.asarray(
-            np.random.rand(*topgrad_shape),
-            dtype=theano.config.floatX
-        )
-
         kerns_vals = np.zeros(kerns_shape, dtype=theano.config.floatX)
-        kerns_shape = theano.shared(np.asarray(kerns_shape))
-        desc = dnn.GpuDnnConvDesc(
-            border_mode=border_mode,
-            subsample=subsample,
-            conv_mode=conv_mode,
-            precision=set_precision(theano.config.floatX)
-        )(kerns_shape)
-        conv_grad_w = dnn.GpuDnnConvGradW()(
-            img,
-            topgrad,
-            kerns,
-            desc,
-        )
-        self._compile_and_check(
-            [img, topgrad, kerns],
-            [conv_grad_w],
-            [img_val, topgrad_vals, kerns_vals],
-            dnn.GpuDnnConvGradW
-        )
+        kerns_shape_shared = theano.shared(np.asarray(kerns_shape))
+
+        for dilation in dilations:
+            for subsample in subsamples:
+                topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
+                                                      border_mode, subsample, dilation)
+
+                img_val = np.asarray(
+                    np.random.rand(*img_shape),
+                    dtype=theano.config.floatX
+                )
+                topgrad_vals = np.asarray(
+                    np.random.rand(*topgrad_shape),
+                    dtype=theano.config.floatX
+                )
+
+                desc = dnn.GpuDnnConvDesc(
+                    border_mode=border_mode,
+                    subsample=subsample,
+                    dilation=dilation,
+                    conv_mode=conv_mode,
+                    precision=set_precision(theano.config.floatX)
+                )(kerns_shape_shared)
+                conv_grad_w = dnn.GpuDnnConvGradW()(
+                    img,
+                    topgrad,
+                    kerns,
+                    desc,
+                )
+                self._compile_and_check(
+                    [img, topgrad, kerns],
+                    [conv_grad_w],
+                    [img_val, topgrad_vals, kerns_vals],
+                    dnn.GpuDnnConvGradW
+                )
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv_gradw(self, border_mode, conv_mode):
@@ -704,7 +719,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
                               (1, 2, 3, 7),
                               border_mode,
                               conv_mode,
-                              (1, 1))
+                              [(1, 1)],
+                              [(1, 1), (2, 2)])
 
     def test_conv_gradi(self):
         if not dnn.dnn_available(test_ctx_name):
@@ -713,29 +729,27 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = T.tensor4('kerns')
         out = T.tensor4('out')
         kern_vals = np.asarray(
-            np.random.rand(13, 14, 15, 16),
+            np.random.rand(13, 4, 5, 6),
             dtype=theano.config.floatX
         )
         out_vals = np.asarray(
-            np.random.rand(3, 13, 5, 6),
+            np.random.rand(3, 13, 9, 11),
             dtype=theano.config.floatX
         )
 
-        for params in product(
-            ['valid'],  # Should this work for 'full'?
+        for border_mode, subsample, dilation, conv_mode in product(
+            ['valid', 'full'],
             [(1, 1)],
+            [(1, 1), (2, 2)],
             ['conv', 'cross']
         ):
-            shape = (
-                out_vals.shape[0], kern_vals.shape[1],
-                out_vals.shape[2] + kern_vals.shape[2] - 1,
-                out_vals.shape[3] + kern_vals.shape[3] - 1
-            )
+            shape = get_conv_gradinputs_shape(kern_vals.shape, out_vals.shape, border_mode, subsample, dilation)
             img_vals = np.zeros(shape, dtype=theano.config.floatX)
             desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2],
+                border_mode=border_mode,
+                subsample=subsample,
+                dilation=dilation,
+                conv_mode=conv_mode,
                 precision=set_precision(theano.config.floatX)
             )(kerns.shape)
             conv_grad_i = dnn.GpuDnnConvGradI()(
@@ -981,18 +995,18 @@ def test_dnn_conv_grad():
                                 iw - kw + 1)).astype(theano.config.floatX)
 
     def dconv(img, kern, out):
-        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                                   conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
         return dnn.GpuDnnConv()(img, kern, out, desc, alpha=0.5, beta=0.75)
 
     def dconvi(img, kern, out):
-        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                                   conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
         return dnn.GpuDnnConvGradI()(kern, out, img, desc, alpha=-1.0,
                                      beta=0.0)
 
     def dconvw(img, kern, out):
-        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                                   conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
         return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
                                      beta=-1.0)
@@ -1004,29 +1018,29 @@ def test_dnn_conv_grad():
 
 def get_conv3d_test_cases():
     # Every element of test_shapes follows the format
-    # [input_shape, filter_shape, subsample]
-    test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1)],
-                   [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2)],
-                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3)],
-                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
+    # [input_shape, filter_shape, subsample, dilation]
+    test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1), (1, 1, 1)],
+                   [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2), (1, 1, 1)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3), (1, 1, 1)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1), (1, 1, 1)],
                    # Test with 1x1x1 filters
-                   [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1), (1, 1, 1)],
                    # Test with dimensions larger than 1024 (thread block dim)
-                   [(1025, 1, 2, 3, 4), (5, 1, 1, 2, 3), (1, 1, 1)],
-                   [(8, 1, 2, 3, 4), (1025, 1, 1, 2, 3), (1, 1, 1)],
-                   [(8, 1025, 2, 3, 4), (5, 1025, 1, 1, 2), (1, 1, 1)],
-                   [(8, 1, 1030, 3, 4), (5, 1, 1025, 1, 1), (1, 1, 1)],
-                   [(8, 1, 2, 1030, 4), (5, 1, 2, 1025, 1), (1, 1, 1)],
-                   [(8, 1, 2, 3, 1030), (5, 1, 1, 2, 1025), (1, 1, 1)],
+                   [(1025, 1, 2, 3, 4), (5, 1, 1, 2, 3), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 2, 3, 4), (1025, 1, 1, 2, 3), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1025, 2, 3, 4), (5, 1025, 1, 1, 2), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 1030, 3, 4), (5, 1, 1025, 1, 1), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 2, 1030, 4), (5, 1, 2, 1025, 1), (1, 1, 1), (1, 1, 1)],
+                   [(8, 1, 2, 3, 1030), (5, 1, 1, 2, 1025), (1, 1, 1), (1, 1, 1)],
                    # The equivalent of this caused a crash with conv2d
-                   [(1, 1, 1, 44800, 1), (6, 1, 1, 1, 1), (1, 1, 1)]]
+                   [(1, 1, 1, 44800, 1), (6, 1, 1, 1, 1), (1, 1, 1), (1, 1, 1)]]
 
     # With border mode 'full', test with kernel bigger than image in some/all
     # dimensions
-    test_shapes_full = [[(6, 2, 2, 2, 2), (4, 2, 3, 1, 1), (1, 1, 1)],
-                        [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1)],
-                        [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1)],
-                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1)]]
+    test_shapes_full = [[(6, 2, 2, 2, 2), (4, 2, 3, 1, 1), (1, 1, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1), (1, 1, 1)]]
     border_modes = ['valid', 'full', 'half', (1, 2, 3), (3, 2, 1), 1, 2]
     conv_modes = ['conv', 'cross']
 
@@ -1043,7 +1057,7 @@ def test_conv3d_fwd():
     utt.seed_rng()
 
     def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
-                       border_mode, conv_mode):
+                       dilation, border_mode, conv_mode):
 
         inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
         filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
@@ -1059,6 +1073,7 @@ def test_conv3d_fwd():
         # Compile a theano function for the cuDNN implementation
         conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
                               border_mode=border_mode, subsample=subsample,
+                              dilation=dilation,
                               conv_mode=conv_mode)
         f = theano.function([], conv, mode=mode_with_gpu)
 
@@ -1071,7 +1086,8 @@ def test_conv3d_fwd():
 
         # Compile a theano function for the reference implementation
         conv_ref = theano.tensor.nnet.corr3d.Corr3dMM(border_mode=border_mode,
-                                                      subsample=subsample
+                                                      subsample=subsample,
+                                                      filter_dilation=dilation,
                                                       )(ref_cast(inputs), flipped_filters)
         f_ref = theano.function([], conv_ref, mode="FAST_RUN")
 
@@ -1086,8 +1102,8 @@ def test_conv3d_fwd():
         utt.assert_allclose(res_ref, res, rtol=rtol)
 
     test_cases = get_conv3d_test_cases()
-    for (i_shape, f_shape, subsample), border_mode, conv_mode in test_cases:
-        yield (run_conv3d_fwd, i_shape, f_shape, subsample, border_mode,
+    for (i_shape, f_shape, subsample, dilation), border_mode, conv_mode in test_cases:
+        yield (run_conv3d_fwd, i_shape, f_shape, subsample, dilation, border_mode,
                conv_mode)
 
 
@@ -1098,7 +1114,7 @@ def test_conv3d_bwd():
     utt.seed_rng()
 
     def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
-                       border_mode, conv_mode):
+                       dilation, border_mode, conv_mode):
 
         inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
         filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
@@ -1108,7 +1124,9 @@ def test_conv3d_bwd():
 
         # Compile a theano function for the cuDNN implementation
         conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
-                              border_mode=border_mode, subsample=subsample,
+                              border_mode=border_mode,
+                              subsample=subsample,
+                              dilation=dilation,
                               conv_mode=conv_mode)
 
         grad_i, grad_w = theano.tensor.grad(conv.sum(), [inputs, filters])
@@ -1124,7 +1142,8 @@ def test_conv3d_bwd():
 
         # Compile a theano function for the reference implementation
         conv_ref = theano.tensor.nnet.corr3d.Corr3dMM(border_mode=border_mode,
-                                                      subsample=subsample
+                                                      subsample=subsample,
+                                                      filter_dilation=dilation,
                                                       )(ref_cast(inputs), flipped_filters)
         (grad_i_ref,
          grad_w_ref) = theano.tensor.grad(conv_ref.sum(),
@@ -1144,8 +1163,8 @@ def test_conv3d_bwd():
         utt.assert_allclose(res_ref[1], res[1], rtol=rtol)
 
     test_cases = get_conv3d_test_cases()
-    for (i_shape, f_shape, subsample), border_mode, conv_mode in test_cases:
-        yield (run_conv3d_bwd, i_shape, f_shape, subsample, border_mode,
+    for (i_shape, f_shape, subsample, dilation), border_mode, conv_mode in test_cases:
+        yield (run_conv3d_bwd, i_shape, f_shape, subsample, dilation, border_mode,
                conv_mode)
 
 

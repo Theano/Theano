@@ -641,7 +641,7 @@ class GpuDnnConv(DnnBase):
         return [[1], [1], [1], [0], [1], [1]]
 
     @staticmethod
-    def get_out_shape(ishape, kshape, border_mode, subsample):
+    def get_out_shape(ishape, kshape, border_mode, subsample, dilation):
         """
         This function computes the output shape for a convolution with
         the specified parameters. `ishape` and `kshape` can be symbolic
@@ -660,7 +660,8 @@ class GpuDnnConv(DnnBase):
             ishape,
             kshape,
             border_mode,
-            subsample)
+            subsample,
+            dilation)
 
     def infer_shape(self, node, shape):
         return [shape[2]]
