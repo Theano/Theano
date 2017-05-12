@@ -1121,7 +1121,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
         return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3, 4), ctx_name)
 
-    elif (border_mode == 'full' and subsample == (1, 1, 1) and
+    elif (border_mode == 'full' and subsample == (1, 1, 1) and dilation == (1, 1, 1) and
           direction_hint != 'forward!'):
         # Special case: We can be faster by using GpuDnnConvGradI to compute
         # the full convolution as the backward pass of a valid convolution.
