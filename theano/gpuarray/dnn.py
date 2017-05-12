@@ -727,14 +727,27 @@ class GpuDnnConvGradW(DnnBase):
 
         return defs
 
+    def op_may_fail_with_subsample(self, img, desc):
+        return (version() < 6000 and
+                img.type.dtype == 'float32' and
+                img.type.ndim == 5 and
+                self.algo != 'none' and
+                desc.owner.op.subsample != (1, 1, 1))
+
+    def op_may_fail_with_beta(self, img, beta):
+        return (version() < 6000 and
+                img.type.dtype == 'float32' and
+                self.algo not in ('none', 'deterministic', 'fft', 'small') and
+                beta is not None and
+                theano.tensor.extract_constant(beta) != 1)
+
     def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
-        if img.type.ndim == 5 and self.algo != 'none' and desc.owner.op.subsample != (1, 1, 1):
+        if self.op_may_fail_with_subsample(img, desc):
             warnings.warn('cuDNN backward filter operation for 3D convolutions may produce bad results '
                           'with certain cuDNN algorithms depending on the compute capability of your GPU '
                           'if subsample is not (1, 1, 1). If you encounter problems, consider '
                           'setting the theano flag "dnn.conv.algo_bwd_filter" to "none".')
-        if (self.algo not in ('none', 'deterministic', 'fft', 'small') and
-                beta is not None and theano.tensor.extract_constant(beta) != 1):
+        if self.op_may_fail_with_beta(img, beta):
             warnings.warn('cuDNN backward filter operation for convolutions may produce bad results '
                           'with certain cuDNN algorithms depending on the compute capability of your GPU '
                           'if beta != 1. If you encounter problems, consider '
