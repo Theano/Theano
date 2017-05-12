@@ -23,9 +23,7 @@ class ConnectionistTemporalClassification(gof.COp):
         if self.computeGradient:
             self.gradients = T.ftensor3(name="ctc_grad")
 
-        try:
-            self.ctcLibDir = os.environ["CTC_LIB"]
-        except KeyError:
+        if not "CTC_LIB" in os.environ:
             raise EnvironmentError("CTC_LIB environment variable is not set.")
 
     def c_lib_dirs(self):
