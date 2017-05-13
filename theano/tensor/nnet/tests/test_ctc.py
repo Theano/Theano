@@ -50,11 +50,7 @@ t_grad = T.grad(T.mean(t_cost[:1]), t_weights)
 
 # Compile symbolic functions
 ctc_func = theano.function([], [t_cost, t_grad])
-"""
 cost, grad = ctc_func()
 
 print("CTC costs: {0}".format(cost))
 print("Gradient of avg. CTC cost w.r.t. weights: {0}".format(np.asarray(grad)))
-
-# TODO: compare costs with softmax results (as in the warp-ctc tests)
-"""
