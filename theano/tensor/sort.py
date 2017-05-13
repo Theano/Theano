@@ -221,117 +221,217 @@ def argsort(a, axis=-1, kind='quicksort', order=None):
 
 
 if hasattr(np, 'argpartition'):
-    def _argtopk_py_impl(x, k, axis, out_dtype):
-        # numpy >= 1.8 implementation
-        if k == 1:
-            return np.expand_dims(
-                np.argmax(x, axis=axis).astype(out_dtype), axis)
-        elif k == -1:
-            return np.expand_dims(
-                np.argmin(x, axis=axis).astype(out_dtype), axis)
-
+    # numpy >= 1.8 implementation
+    def _topk_py_impl(op, x, k, axis, idx_dtype):
         ndim = x.ndim
+        if abs(k) == 1:
+            i = (k + 1) // 2
+            fn_max = [np.min, np.max][i]
+            fn_argmax = [np.argmin, np.argmax][i]
+            if not op.return_indices:
+                return np.expand_dims(fn_max(x, axis=axis), axis)
+            elif op.return_values:
+                zi = np.expand_dims(
+                    fn_argmax(x, axis=axis).astype(idx_dtype), axis)
+                idx2 = tuple(np.arange(s).reshape((s,) + (1,) * (ndim - i - 1)) if i != axis else zi for i, s in enumerate(x.shape))
+                zv = x[idx2]
+                return zv, zi.astype(idx_dtype)
+            else:
+                zi = np.expand_dims(
+                    fn_argmax(x, axis=axis).astype(idx_dtype), axis)
+                return zi.astype(idx_dtype)
+
         asize = x.shape[axis]
         if asize == abs(k):
-            z = np.arange(abs(k), dtype=out_dtype)
-            l = axis % ndim
-            r = ndim - l
-            z = z.reshape((1,) * l + (k,) + (1,) * (r - 1))
-            reps = list(x.shape)
-            reps[axis] = 1
-            return np.tile(z, reps)
+            if not op.return_indices:
+                return x.copy()
+            else:
+                l = axis
+                r = ndim - l
+                reps = list(x.shape)
+                reps[axis] = 1
+                zi = np.arange(abs(k), dtype=idx_dtype)
+                zi = zi.reshape((1,) * l + (k,) + (1,) * (r - 1))
+                zi = np.tile(zi, reps)
+                if op.return_values:
+                    return x.copy(), zi
+                else:
+                    return zi
 
-        print('used axis %d' % axis)
-        z = np.argpartition(x, -k, axis=axis)
-        idx = (slice(None),) * (axis % ndim)
+        idx = [slice(None)] * ndim
         if k > 0:
-            idx += (slice(-k, None),)
+            idx[axis] = slice(-k, None)
         elif k < 0:
-            idx += (slice(-k),)
+            idx[axis] = slice(-k)
         else:
             raise ValueError('k cannot be zero')
-        return z[idx].astype(out_dtype)
+        if not op.return_indices:
+            zv = np.partition(x, -k, axis=axis)[idx]
+            return zv
+        elif op.return_values:
+            zi = np.argpartition(x, -k, axis=axis)[idx]
+            idx2 = tuple(np.arange(s).reshape((s,)+(1,)*(ndim-i-1)) if i != axis else zi for i, s in enumerate(x.shape))
+            zv = x[idx2]
+            return zv, zi.astype(idx_dtype)
+        else:
+            zi = np.argpartition(x, -k, axis=axis)[idx]
+            return zi
 else:
-    def _argtopk_py_impl(x, k, axis, out_dtype):
-        if k == 1:
-            return np.argmax(x, axis=axis).astype(out_dtype)
-        elif k == -1:
-            return np.argmin(x, axis=axis).astype(out_dtype)
-
-        ndim = x.ndim
-        asize = x.shape[axis]
-        if asize == abs(k):
-            z = np.arange(abs(k), dtype=out_dtype)
-            l = axis % ndim
-            r = ndim - l
-            z = z.reshape((1,) * l + (k,) + (1,) * r)
-            reps = list(x.shape)
-            reps[axis] = 1
-            return np.tile(z, reps)
-
-        # numpy implementation for older version
-        z = np.argsort(x, axis=axis)
-        idx = (slice(None),) * (axis - 1)
-        if k > 0:
-            idx += (slice(-k, None),)
-        elif k < 0:
-            idx += (slice(-k),)
-        else:
-            raise ValueError('k cannot be zero')
-        return z[idx].astype(out_dtype)
+    def _topk_py_impl(op, x, k, axis, idx_dtype):
+        # TODO better compatibility?
+        raise NotImplementedError('TopKOp: need numpy.argpartition() method (numpy >= 1.8)')
 
 
-class ArgTopKOp(theano.Op):
+class TopKOp(theano.Op):
     """
-    See help(theano.argtopk)
+    Operations related to finding k-largest elements.
+
+    The outputs of this Op depends on ``returns_values`` and ``return_indices``,
+    if both ``True``, will return two outputs, corresponding to k-largest values
+    and indices. If only one is ``True``, this Op shall have only one output. Can't
+    be both ``False``.
+
+    Parameters
+    ----------
+    axis: integer
+        The axis to perform the operation. Must be in range ``[-ndim, ndim)``, where
+        ``ndim`` is the dimensionality of input tensor.
+
+    return_values: bool
+        Defaults to ``True``
+
+        If ``True``, one output of the Op will return k-largest array values.
+
+    return_indices: bool
+        Defaults to ``False``
+
+        If ``True``, one output of the Op will return the indices on the given axis.
+
+    Notes
+    -----
+    - ``return_values`` and ``return_indices`` cannot be both ``False``
+
+    See Also
+    --------
+    topk
+    argtopk
+    argtopk_and_topk
 
     """
 
-    __props__ = ('axis',)
+    # TODO more params
+    '''
+    sorted: bool
+        Defaults to ``False``
 
-    def __init__(self, axis=-1):
+        If True, the result array would be incremental-sorted. Mutually exclusive with ``sparse``
+
+    sparse: bool
+        Defaults to ``False``
+
+        if ``True``, the output array will always have the same shape as input.
+        The non-top-k values will be replaced by zero.
+
+    only_top_kth: bool
+        Defaults to ``False``
+
+        If ``True``, will only find the exact top k-th element. The Op behaves
+        like a reduction.
+    '''
+
+    # TODO c_code
+
+
+    __props__ = ('axis', 'return_values', 'return_indices')
+
+    def __init__(self, axis=-1, return_indices=False, return_values=True):
         assert isinstance(axis, int)
+        assert return_indices or return_values
         self.axis = axis
+        self.return_indices = return_indices
+        self.return_values = return_values
 
     def __str__(self):
         return '%(op)s{axis=%(axis)d}' % dict(
             op=self.__class__.__name__, axis=self.axis)
 
-    def make_node(self, inp, k, out_dtype='int64'):
+    def make_node(self, inp, k, idx_dtype='int64'):
+        # numpy always uses float64 as output dtype for arg*() routines
+        # however, we add this option as memory is more precious on gpu
         inp = theano.tensor.as_tensor_variable(inp)
         k = theano.tensor.as_tensor_variable(k)
         bcast = inp.type.broadcastable
-        return theano.Apply(self, [inp, k], [
-            theano.tensor.TensorType(
-                dtype=out_dtype,
-                broadcastable=bcast)()])
+        outs = []
+        if self.return_values:
+            outs.append(inp.type())
+        if self.return_indices:
+            outs.append(
+                theano.tensor.TensorType(dtype=idx_dtype, broadcastable=bcast)())
+        return theano.Apply(self, [inp, k], outs)
 
     def perform(self, node, inputs, output_storage):
         x, k = inputs
-        pz = output_storage[0]
-        print("Op's axis: %d" % self.axis)
-        pz[0] = _argtopk_py_impl(x, k, self.axis, node.outputs[0].dtype)
+        ndim = x.ndim
+        axis = self.axis
+        assert -ndim <= axis < ndim
+        axis %= ndim
+        if not self.return_indices:
+            pzv = output_storage[0]
+            pzv[0] = _topk_py_impl(self, x, k, axis, None)
+        elif self.return_values:
+            pzv = output_storage[0]
+            pzi = output_storage[1]
+            pzv[0], pzi[0] = _topk_py_impl(self, x, k, axis, node.outputs[1].dtype)
+        else:
+            pzi = output_storage[0]
+            pzi[0] = _topk_py_impl(self, x, k, axis, node.outputs[0].dtype)
+
 
     def infer_shape(self, node, inp_shapes):
-        # numpy always uses float64 as output dtype for arg*() routines
-        # however, we add this option as memory is more precious on gpu
         _check_tensor_is_scalar(node.inputs[1])
         shp = list(inp_shapes[0])
         if not isinstance(self.axis, int):
             raise TypeError(
-                'axis parameter must be integer, got "%s"' % type(self.axis))
+                '"axis" parameter must be integer, got "%s"' % type(self.axis))
         ndim = node.inputs[0].ndim
         if ndim == 0:
-            raise ValueError('cannot use 0d tensor')
+            raise ValueError('Cannot take 0d tensor as input')
         if not -ndim <= self.axis < ndim:
             raise IndexError(
-                'axis parameter out of range,'
+                '"axis" parameter out of range,'
                 ' expected integer within [%d, %d]' % (-ndim, ndim - 1))
         shp[self.axis] = np.abs(node.inputs[1])
-        return [tuple(shp)]
+        shp = tuple(shp)
+        return [shp for i in [self.return_values, self.return_indices] if i]
+
+def topk(x, k, axis=-1):
+    """
+    Returns the k-largest elements along an axis.
+
+    Parameters
+    ----------
+
+    x: tensor instance
+
+    k: integer constant/variable
+        Must not be 0. If negative, gives k-smallest elements instead.
+
+    axis: integer or ``None``
+        Upon which axis shall the operation be performed on. If ``None``,
+        works on flattened array.
+
+    Notes
+    -----
+    - The returned values may not be sorted.
+
+    """
+    if axis is None:
+        x = theano.tensor.flatten(x)
+        axis = -1
+    return TopKOp(axis=axis)(x, k)
 
 
-def argtopk(x, k, axis=-1, out_dtype='int64'):
+def argtopk(x, k, axis=-1, idx_dtype='int64'):
     """
     Returns the indices of k-largest elements along an axis.
 
@@ -341,21 +441,35 @@ def argtopk(x, k, axis=-1, out_dtype='int64'):
     x: tensor instance
 
     k: integer constant/variable
-        Must not be 0. If negative, gives k-least elements instead.
+        Must not be 0. If negative, gives k-smallest elements instead.
 
     axis: integer or ``None``
         Upon which axis shall the operation be performed on. If ``None``,
         works on flattened array.
 
-    out_dtype: string
-        Specify output dtype, defaults to ``int64``, must be integer type
+    idx_dtype: string
+        Specify output dtype, defaults to ``int64``, must be integer type.
 
     Notes
     -----
-    - The corresponding value of returned indices may not be sorted themselves
+    - The corresponding values of returned indices may not be sorted.
 
     """
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = -1
-    return ArgTopKOp(axis=axis)(x, k, out_dtype=out_dtype)
+    return TopKOp(axis=axis, return_indices=True, return_values=False)(x, k, idx_dtype=idx_dtype)
+
+
+def topk_and_argtopk(x, k, axis=-1, idx_dtype='int64'):
+    '''
+    Returns the results of both topk() and argtopk() in one Op.
+
+    See the respective documentation for details.
+
+    '''
+    if axis is None:
+        x = theano.tensor.flatten(x)
+        axis = -1
+    return TopKOp(axis=axis, return_indices=True)(x, k, idx_dtype=idx_dtype)
+
