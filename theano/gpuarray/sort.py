@@ -20,13 +20,16 @@ except ImportError as e:
     pass
 
 
-# TODO add support is slice size is larger than max allowed block size (1024)
+# TODO add support when slice size is larger than max allowed block size (1024)
 # TODO add runtime opt, if k==1, use max/min reduce
+# TODO add opt to merge argtopk / topk, or split topk_and_argtopk when only
+#      one result is needed
+# TODO add grad
 # TODO sort / argsort
 
 class GpuTopKOp(GpuKernelBase, TopKOp):
     '''
-    Implements TopKOp() on gpu
+    Implements TopKOp on gpu
 
     '''
     __props__ = TopKOp.__props__
@@ -79,11 +82,6 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         set_slice_code = ''.join(
             set_slice_code % dict(i=j) for j in range(1, ndim))
         flags = Kernel.get_flags(node.inputs[0].dtype)
-        dst = ''
-        if self.return_values:
-            dst += 'INPUT_TYPE *dstv, '
-        if self.return_values:
-            dst += 'INDEX_TYPE *dsti, '
         write_value = 'ptr_at(dstv, out_idx * dstv_strides_0) = xval' if self.return_values else ''
         write_index = 'ptr_at(dsti, out_idx * dsti_strides_0) = (INDEX_TYPE)idx' if self.return_indices else ''
         subs = dict(
@@ -92,8 +90,8 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             dims=''.join('ga_size dims_%d, ' % i for i in range(1, ndim)),
             dstv='INPUT_TYPE *dstv,' if self.return_values else '',
             dsti='INDEX_TYPE *dsti,' if self.return_indices else '',
-            dstv_strides=dstv_strides_code,
-            dsti_strides=dsti_strides_code,
+            dstv_strides=dstv_strides_code if self.return_values else '',
+            dsti_strides=dsti_strides_code if self.return_indices else '',
             src_strides=src_strides_code,
             set_slice=set_slice_code,
             write_value=write_value,
@@ -111,7 +109,8 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         param_types.append(ga.SIZE)  # k
         param_types.append(ga.GpuArray)  # src
         param_types.extend([ga.SSIZE] * ndim)  # src_strides
-        param_types.append(ga.SIZE) # size
+        param_types.append(ga.SIZE)  # size
+        self.nargs = len(param_types)
         return [Kernel(
             code=kernel_src,
             name='k_topk_dense',
@@ -143,11 +142,12 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         WARP_SIZE = 32
 
         ndim = node.inputs[0].ndim
+        nargs = self.nargs
         reordered_axes = list(range(ndim))
         axis = self.axis % ndim
         del(reordered_axes[axis])
         reordered_axes = [axis] + reordered_axes
-        dims = ', '.join('(void*)(dims+%d)' % i for i in reordered_axes[1:])
+        dims = ''.join('(void*)(dims+%d), ' % i for i in reordered_axes[1:])
         prep_output = ''
         if self.return_values:
             def_dvstrides = 'const ssize_t *dvstrides = PyGpuArray_STRIDES(%s)' % yv
@@ -179,9 +179,8 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 {
     const size_t *dims = PyGpuArray_DIMS(%(x)s);
     size_t odims[%(ndim)d];
-    for (int i=0; i<%(ndim)d; i++) {
+    for (int i=0; i<%(ndim)d; i++)
         odims[i] = dims[i];
-    }
     odims[%(axis)d] = *((%(k_dtype)s*)(PyArray_DATA(%(k)s)));
     if (odims[0] > %(MAX_TPB)d) {
         PyErr_SetString(
