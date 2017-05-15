@@ -114,7 +114,7 @@ the most important ones:
 
     .. method:: c_support_code()
 
-        Allows to add helper functions/structs that the :ref:`type` needs.
+        Allows to add helper functions/structs (in a string or a list of strings) that the :ref:`type` needs.
 
     .. method:: c_compiler()
 
