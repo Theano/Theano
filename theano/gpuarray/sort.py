@@ -216,8 +216,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
     int err = GpuKernel_call(
         &k_topk_dense_%(nodename)s, 3,
-        grd, blk,
-        blk[0] * gpuarray_get_elsize(%(x)s->ga.typecode),
+        grd, blk, 0,
         args);
     if (err != GA_NO_ERROR) {
         PyErr_SetString(
