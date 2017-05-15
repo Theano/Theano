@@ -295,8 +295,7 @@ class GpuKernelBase(object):
 
     def get_params(self, node):
         # Default implementation, suitable for most sub-classes.
-        # To be necessarly overridden if a subclass uses a ParamsType
-        # (see GpuCumOp, GpuAdvancedIncSubtensor1_dev20 for examples).
+        # To be necessarly overridden in a subclass that uses a ParamsType.
         assert (self.params_type is gpu_context_type and
                 node.inputs and
                 isinstance(node.inputs[0].type, GpuArrayType))
