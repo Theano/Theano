@@ -152,7 +152,7 @@ class CLinkerObject(object):
 
     def c_support_code(self):
         """
-        Optional: Return utility code (a string, or a LIST of strings) for use by a `Variable` or `Op` to be
+        Optional: Return utility code (a string, or a list of strings) for use by a `Variable` or `Op` to be
         included at global scope prior to the rest of the code for this class.
 
         QUESTION: How many times will this support code be emitted for a graph

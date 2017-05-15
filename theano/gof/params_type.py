@@ -655,7 +655,7 @@ class ParamsType(Type):
         return list(sorted(list(c_support_code_set))) + [final_struct_code]
 
     def c_code_cache_version(self):
-        return ((1, 8), tuple(t.c_code_cache_version() for t in self.types))
+        return ((2,), tuple(t.c_code_cache_version() for t in self.types))
 
     # As this struct has constructor and destructor, it could be instanciated on stack,
     # but current implementations of C ops will then pass the instance by value at functions,
