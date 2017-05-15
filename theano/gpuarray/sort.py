@@ -82,8 +82,6 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         set_slice_code = ''.join(
             set_slice_code % dict(i=j) for j in range(1, ndim))
         flags = Kernel.get_flags(node.inputs[0].dtype)
-        write_value = 'ptr_at(dstv, out_idx * dstv_strides_0) = xval' if self.return_values else ''
-        write_index = 'ptr_at(dsti, out_idx * dsti_strides_0) = (INDEX_TYPE)idx' if self.return_indices else ''
         subs = dict(
             inp_t=ga.dtype_to_ctype(node.inputs[0].dtype),
             out_t=ga.dtype_to_ctype(node.outputs[0].dtype),
@@ -94,8 +92,8 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             dsti_strides=dsti_strides_code if self.return_indices else '',
             src_strides=src_strides_code,
             set_slice=set_slice_code,
-            write_value=write_value,
-            write_index=write_index,
+            write_value=int(self.return_values),
+            write_index=int(self.return_indices),
             ndim=str(ndim))
 
         # substitute "$" macros in kernel code
@@ -192,14 +190,16 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
     // TODO better scheduling?
     size_t blk[6];
     size_t *grd = blk+3;
-    blk[1] = blk[2] = 1;
+    blk[0] = blk[1] = blk[2] = 1;
     grd[0] = grd[1] = grd[2] = 1;
     // round up to multiples of warp size
-    blk[0] = ((dims[0] + %(WARP_SIZE)d - 1) / %(WARP_SIZE)d) * %(WARP_SIZE)d;
     for(int i=0; i<%(ndim)d; ++i) {
         if (i!=%(axis)d)
             grd[0] *= dims[i];
+        else
+            blk[0] = dims[i];
     }
+    blk[0] = ((blk[0] + %(WARP_SIZE)d - 1) / %(WARP_SIZE)d) * %(WARP_SIZE)d;
 
     %(def_dvstrides)s;
     %(def_distrides)s;
