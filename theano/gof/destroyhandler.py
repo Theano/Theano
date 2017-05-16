@@ -743,7 +743,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         self.clients = OrderedDict()  # variable -> apply -> ninputs
         self.stale_droot = True
 
-        self.debug_all_apps = OrderedSet()
+        self.debug_all_apps = set()
         if self.do_imports_on_attach:
             toolbox.Bookkeeper.on_attach(self, fgraph)
 
