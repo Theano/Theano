@@ -93,11 +93,17 @@ class DeviceParam(ConfigParam):
                 val.startswith('opencl') or
                     val.startswith('cuda')):
                 return val
+            elif val.startswith('gpu'):
+                raise ValueError(
+                    'You are tring to use the old GPU back-end. '
+                    'It was removed from Theano. Use device=cuda* now. '
+                    'See https://github.com/Theano/Theano/wiki/Converting-to-the-new-gpu-back-end%28gpuarray%29 '
+                    'for more information.')
             else:
                 raise ValueError(('Invalid value ("%s") for configuration '
                                   'variable "%s". Valid options start with '
-                                  'one of "%s", "opencl", "cuda"'
-                                  % (self.default, val, self.fullname)))
+                                  'one of "cpu", "opencl" or "cuda".'
+                                  % (val, self.fullname)))
         over = kwargs.get("allow_override", True)
         super(DeviceParam, self).__init__(default, filter, over)
 
