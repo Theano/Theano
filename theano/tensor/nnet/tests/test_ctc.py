@@ -27,7 +27,7 @@ activations = np.dot(inputs, weights)
 # Duration of each sequence
 activation_times = np.asarray([1, 3, 3], dtype=np.int32)
 
-print("Activations: {0}".format(activations))
+print("Activations:\n{0}".format(activations))
 ##print("Softmax outputs: {0}".format(softmax(activations)))
 
 # Labels for each sequence
@@ -45,12 +45,11 @@ t_labels = theano.shared(labels, "labels")
 # Symbolic CTC cost
 t_cost = ctc(t_activations, t_labels, t_activaction_times)
 # Symbolic gradient of CTC cost
-# - FIXME: eliminate need for slicing t_cost
-t_grad = T.grad(T.mean(t_cost[:1]), t_weights)
+t_grad = T.grad(T.mean(t_cost), t_weights)
 
 # Compile symbolic functions
 ctc_func = theano.function([], [t_cost, t_grad])
 cost, grad = ctc_func()
 
-print("CTC costs: {0}".format(cost))
-print("Gradient of avg. CTC cost w.r.t. weights: {0}".format(np.asarray(grad)))
+print("CTC costs:\n{0}".format(cost))
+print("Gradient of avg. CTC cost w.r.t. weights:\n{0}".format(np.asarray(grad)))
