@@ -640,8 +640,10 @@ class TestDnnInferShapes(utt.InferShapeTester):
                           testcase_func_name=utt.custom_name_func)
     def test_conv(self, algo, border_mode, conv_mode):
         # Currently only CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM (algo 'none')
-        # supports dilation > 1.
-        dilations = [(1, 1), (2, 2)] if (algo == "none" and dnn.version() >= 6000) else [(1, 1)]
+        # supports dilation > 1. 'time*' and 'guess*' should fallback to it.
+        dilations = [(1, 1)]
+        if dnn.version() >= 6000 and (algo == "none" or "time_" in algo or "guess_" in algo):
+            dilations += [(2, 2)]
 
         self._test_conv(T.tensor4('img'),
                         T.tensor4('kerns'),
@@ -656,6 +658,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv3d_none(self, border_mode, conv_mode):
+        dilations = [(1, 1, 1), (2, 2, 2)] if dnn.version() >= 6000 else [(1, 1, 1)]
+
         self._test_conv(T.tensor5('img'),
                         T.tensor5('kerns'),
                         T.tensor5('out'),
@@ -664,7 +668,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                         border_mode,
                         conv_mode,
                         [(1, 1, 1), (2, 2, 2)],
-                        [(1, 1, 1), (2, 2, 2)],
+                        dilations,
                         'none')
 
     def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsamples, dilations):
@@ -711,6 +715,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv_gradw(self, border_mode, conv_mode):
         dilations = [(1, 1), (2, 2)] if dnn.version() >= 6000 else [(1, 1)]
+
         self._test_conv_gradw(T.tensor4('img'),
                               T.tensor4('topgrad'),
                               T.tensor4('kerns'),
@@ -1023,8 +1028,6 @@ def get_conv3d_test_cases():
                    [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2), (1, 1, 1)],
                    [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3), (1, 1, 1)],
                    [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1), (1, 1, 1)],
-                   [(8, 1, 20, 12, 15), (5, 1, 6, 3, 4), (1, 1, 2), (3, 2, 1)],
-                   [(8, 1, 20, 12, 15), (5, 1, 6, 3, 4), (2, 2, 1), (1, 2, 3)],
                    # Test with 1x1x1 filters
                    [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1), (1, 1, 1)],
                    # Test with dimensions larger than 1024 (thread block dim)
@@ -1042,8 +1045,15 @@ def get_conv3d_test_cases():
     test_shapes_full = [[(6, 2, 2, 2, 2), (4, 2, 3, 1, 1), (1, 1, 1), (1, 1, 1)],
                         [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1), (1, 1, 1)],
                         [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1), (1, 1, 1)],
-                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1), (1, 1, 1)],
-                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1), (3, 2, 1)]]
+                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1), (1, 1, 1)]]
+
+    if dnn.version() >= 6000:
+        test_shapes.extend([
+               [(8, 1, 20, 12, 15), (5, 1, 6, 3, 4), (1, 1, 2), (3, 2, 1)],
+               [(8, 1, 20, 12, 15), (5, 1, 6, 3, 4), (2, 2, 1), (1, 2, 3)]])
+        test_shapes_full.append(
+                    [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1), (3, 2, 1)])
+
     border_modes = ['valid', 'full', 'half', (1, 2, 3), (3, 2, 1), 1, 2]
     conv_modes = ['conv', 'cross']
 
