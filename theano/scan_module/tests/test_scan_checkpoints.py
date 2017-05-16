@@ -57,11 +57,15 @@ class TestScanCheckpoint(unittest.TestCase):
         f = theano.function(inputs=[self.A, self.k],
                             outputs=self.grad_A, mode=mode_with_gpu)
         f_check = theano.function(inputs=[self.A, self.k],
-                                  outputs=self.grad_A_check, mode=mode_with_gpu)
+                                  outputs=self.grad_A_check,
+                                  mode=mode_with_gpu)
         free_gmem = theano.gpuarray.type._context_reg[None].free_gmem
         data = np.ones(free_gmem // 3000, dtype=np.float32)
         # Check that it works with the checkpoints
-        f_check(data, 1000)
+        size = 1000
+        if isinstance(mode_with_gpu, theano.compile.DebugMode):
+            size = 100
+        f_check(data, size)
         # Check that the basic scan fails in that case
         # Skip that check in DebugMode, as it can fail in different ways
         if not isinstance(mode_with_gpu, theano.compile.DebugMode):
