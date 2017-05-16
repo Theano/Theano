@@ -53,11 +53,11 @@ void create_flat_labels( PyArrayObject * label_matrix, int ** flat_labels,
 
 #section support_code_apply
 
-int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  activations,
-                                 PyArrayObject *  labels,
-                                 PyArrayObject *  input_lengths,
-                                 PyArrayObject ** costs,
-                                 PyArrayObject ** gradients)
+int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
+                                 PyArrayObject *  in_labels,
+                                 PyArrayObject *  in_input_lengths,
+                                 PyArrayObject ** out_costs,
+                                 PyArrayObject ** out_gradients)
 {
     // setup CTC computation parameters
     ctcOptions ctc_options;
@@ -65,19 +65,19 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  activations,
     ctc_options.loc = CTC_CPU;
     ctc_options.num_threads = 1;
 
-    npy_float * f_activations = NULL;
+    npy_float32 * activations = NULL;
     PyArrayObject * activations_copy = NULL;
 
-    if ( PyArray_IS_C_CONTIGUOUS( activations ) )
+    if ( PyArray_IS_C_CONTIGUOUS( in_activations ) )
     {
-        f_activations = (npy_float *) PyArray_DATA( activations );
+        activations = (npy_float32 *) PyArray_DATA( in_activations );
     }
     else
     {
-        activations_copy = PyArray_GETCONTIGUOUS( activations );
+        activations_copy = PyArray_GETCONTIGUOUS( in_activations );
         if ( NULL != activations_copy )
         {
-            f_activations = (npy_float *) PyArray_DATA( activations_copy );
+            activations = (npy_float32 *) PyArray_DATA( activations_copy );
         }
         else
         {
@@ -87,13 +87,13 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  activations,
         }
     }
 
-    int * i_input_lengths = NULL,
-        * i_flat_labels = NULL,
-        * i_label_lengths = NULL;
+    int * input_lengths = NULL,
+        * flat_labels = NULL,
+        * label_lengths = NULL;
 
-    create_contiguous_input_lengths( input_lengths, &i_input_lengths );
+    create_contiguous_input_lengths( in_input_lengths, &input_lengths );
 
-    if ( NULL == i_input_lengths )
+    if ( NULL == input_lengths )
     {
         PyErr_Format( PyExc_ValueError,
                       "Could not allocate storage for input lengths" );
@@ -101,77 +101,77 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  activations,
     }
 
     // flatten labels to conform with library memory layout
-    create_flat_labels( labels, &i_flat_labels, &i_label_lengths );
+    create_flat_labels( in_labels, &flat_labels, &label_lengths );
 
-    if ( ( NULL == i_label_lengths ) || ( NULL == i_flat_labels ) )
+    if ( ( NULL == label_lengths ) || ( NULL == flat_labels ) )
     {
         PyErr_Format( PyExc_ValueError,
                       "Could not allocate storage for labels and their lengths" );
         return 1;
     }
 
-    npy_int minibatch_size = PyArray_DIMS( activations )[1];
-    npy_int alphabet_size = PyArray_DIMS( activations )[2];
+    npy_int minibatch_size = PyArray_DIMS( in_activations )[1];
+    npy_int alphabet_size = PyArray_DIMS( in_activations )[2];
 
     void * ctc_cpu_workspace = NULL;
 
-    npy_float * f_costs = NULL;
+    npy_float32 * costs = NULL;
     npy_intp cost_size = minibatch_size;
 
-    if ( NULL == (*costs) )
+    if ( NULL == (*out_costs) )
     {
         // Symbolic variable has no memory backing, so we create one
-        *costs = (PyArrayObject *) PyArray_ZEROS( 1, &cost_size, NPY_FLOAT32, 0 );
+        *out_costs = (PyArrayObject *) PyArray_ZEROS( 1, &cost_size, NPY_FLOAT32, 0 );
     }
-    else if ( PyArray_NDIM( *costs ) != 1 || PyArray_DIMS( *costs )[0] != cost_size )  // matrix has the wrong size
-    {   
-        Py_XDECREF( *costs ); 
+    else if ( PyArray_NDIM( *out_costs ) != 1 ||
+              PyArray_DIMS( *out_costs )[0] != cost_size )  // matrix has the wrong size
+    {
+        Py_XDECREF( *out_costs ); 
         // Allocate new matrix
-        *costs = (PyArrayObject *) PyArray_ZEROS( 1, &cost_size, NPY_FLOAT32, 0 );
+        *out_costs = (PyArrayObject *) PyArray_ZEROS( 1, &cost_size, NPY_FLOAT32, 0 );
     }
 
-    if ( NULL == (*costs) )
+    if ( NULL == (*out_costs) )
     {
         PyErr_Format( PyExc_ValueError,
                       "Could not allocate storage for CTC costs" );
         return 1;
     }
     
-    f_costs = (npy_float *) PyArray_DATA( *costs );
+    costs = (npy_float32 *) PyArray_DATA( *out_costs );
 
-    if ( NULL == (*gradients) )
+    if ( NULL == (*out_gradients) )
     {
         // Symbolic variable has no real backing, so create one.
-        *gradients = (PyArrayObject*) PyArray_ZEROS( 3, PyArray_DIMS( activations ),
+        *out_gradients = (PyArrayObject*) PyArray_ZEROS( 3, PyArray_DIMS( in_activations ),
             NPY_FLOAT32, 0 );
     }
-    else if ( PyArray_NDIM( *gradients ) != 3 
-        || PyArray_DIMS( *gradients )[0] != PyArray_DIMS( activations )[0]
-        || PyArray_DIMS( *gradients )[1] != PyArray_DIMS( activations )[1]
-        || PyArray_DIMS( *gradients )[2] != PyArray_DIMS( activations )[2] )
+    else if ( PyArray_NDIM( *out_gradients ) != 3 
+        || PyArray_DIMS( *out_gradients )[0] != PyArray_DIMS( in_activations )[0]
+        || PyArray_DIMS( *out_gradients )[1] != PyArray_DIMS( in_activations )[1]
+        || PyArray_DIMS( *out_gradients )[2] != PyArray_DIMS( in_activations )[2] )
     {
         // Existing matrix is the wrong size. Make a new one.
         // Decrement ref counter to existing array
-        Py_XDECREF( *gradients ); 
+        Py_XDECREF( *out_gradients ); 
         // Allocate new array
-        *gradients = (PyArrayObject *) PyArray_ZEROS(3, PyArray_DIMS( activations ),
+        *out_gradients = (PyArrayObject *) PyArray_ZEROS(3, PyArray_DIMS( in_activations ),
             NPY_FLOAT32, 0);
     }
 
-    if ( NULL == (*gradients) )
+    if ( NULL == (*out_gradients) )
     {
         PyErr_Format( PyExc_ValueError,
                       "Could not allocate storage for CTC gradients!" );
         return 1;        
     }
 
-    npy_float * f_gradients = (npy_float *) PyArray_ZEROS( 3,
-        PyArray_DIMS( activations ), NPY_FLOAT32, 0 );
+    npy_float32 * gradients = (npy_float32 *) PyArray_DATA( *out_gradients );
 
     ctcStatus_t status;
     size_t cpu_workspace_size;
 
-    status = get_workspace_size( i_label_lengths, i_input_lengths, alphabet_size,
+    status = get_workspace_size( label_lengths, input_lengths, alphabet_size,
         minibatch_size, ctc_options, &cpu_workspace_size );
 
     if ( CTC_STATUS_SUCCESS != status )
@@ -183,9 +183,10 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  activations,
 
     ctc_cpu_workspace = malloc( cpu_workspace_size );
 
-    status = compute_ctc_loss( f_activations, f_gradients, i_flat_labels,
-        i_label_lengths, i_input_lengths, alphabet_size, minibatch_size,
-        f_costs, ctc_cpu_workspace, ctc_options );
+
+    status = compute_ctc_loss( activations, gradients, flat_labels,
+        label_lengths, input_lengths, alphabet_size, minibatch_size,
+        costs, ctc_cpu_workspace, ctc_options );
 
     if ( CTC_STATUS_SUCCESS != status )
     {
@@ -194,11 +195,13 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  activations,
     }
 
     if ( NULL != activations_copy )
+    {
         Py_XDECREF( activations_copy );
+    }
 
-    free( i_input_lengths );
-    free( i_flat_labels );
-    free( i_label_lengths );
+    free( input_lengths );
+    free( flat_labels );
+    free( label_lengths );
 
     free( ctc_cpu_workspace );
 
