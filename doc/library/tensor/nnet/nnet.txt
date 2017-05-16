@@ -181,7 +181,7 @@
        * *output* - symbolic Tensor (or compatible)
 
     :Return type: same as target
-    :Returns: a symbolic tensor, where the following is applied elementwise :math:`crossentropy(t,o) = -(t\cdot log(sigmoid(o)) + (1 - t) \cdot log(1 - sigmoid(o)))`.
+    :Returns: a symbolic tensor, where the following is applied elementwise :math:`crossentropy(o,t) = -(t\cdot log(sigmoid(o)) + (1 - t) \cdot log(1 - sigmoid(o)))`.
 
    It is equivalent to `binary_crossentropy(sigmoid(output), target)`,
    but with more efficient and numerically stable computation, especially when
