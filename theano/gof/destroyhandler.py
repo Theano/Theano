@@ -979,7 +979,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                         self.fail_validate = app_err_pairs
                         raise app_err_pairs[app]
             else:
-                ords = self.orderings(fgraph)
+                ords = self.orderings(fgraph, ordered=False)
                 if _contains_cycle(fgraph, ords):
                     raise InconsistencyError("Dependency graph contains cycles")
         else:
@@ -996,7 +996,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
             pass
         return True
 
-    def orderings(self, fgraph):
+    def orderings(self, fgraph, ordered=True):
         """
         Return orderings induced by destructive operations.
 
@@ -1006,7 +1006,12 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         c) an Apply destroys (illegally) one of its own inputs by aliasing
 
         """
-        rval = OrderedDict()
+        if ordered:
+            set_type = OrderedSet
+            rval = OrderedDict()
+        else:
+            set_type = set
+            rval = dict()
 
         if self.destroyers:
             # BUILD DATA STRUCTURES
@@ -1026,7 +1031,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
             # add destroyed variable clients as computational dependencies
             for app in self.destroyers:
                 # keep track of clients that should run before the current Apply
-                root_clients = OrderedSet()
+                root_clients = set_type()
                 # for each destroyed input...
                 for output_idx, input_idx_list in iteritems(app.op.destroy_map):
                     destroyed_idx = input_idx_list[0]
