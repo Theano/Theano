@@ -52,7 +52,8 @@ def test_dnn_conv_desc_merge():
     # CDataType is not DeepCopyable so this will crash if we don't use
     # borrow=True
     f = theano.function([], [theano.Out(desc1, borrow=True),
-                             theano.Out(desc2, borrow=True)])
+                             theano.Out(desc2, borrow=True)],
+                        mode=mode_with_gpu)
 
     d1, d2 = f()
 
@@ -997,9 +998,9 @@ def test_dnn_conv_grad():
         return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
                                      beta=-1.0)
 
-    utt.verify_grad(dconv, [img_val, kern_val, out_val], eps=1e-3)
-    utt.verify_grad(dconvi, [img_val, kern_val, out_val], eps=1e-3)
-    utt.verify_grad(dconvw, [img_val, kern_val, out_val], eps=1e-3)
+    utt.verify_grad(dconv, [img_val, kern_val, out_val], eps=1e-3, mode=mode_with_gpu)
+    utt.verify_grad(dconvi, [img_val, kern_val, out_val], eps=1e-3, mode=mode_with_gpu)
+    utt.verify_grad(dconvw, [img_val, kern_val, out_val], eps=1e-3, mode=mode_with_gpu)
 
 
 def get_conv3d_test_cases():
