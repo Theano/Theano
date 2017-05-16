@@ -618,9 +618,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                               ret.outputs[0].type.broadcastable,
                                               context_name=x.type.context_name)()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def perform(self, node, inp, out, ctx):
         theano.Op.perform(self, node, inp, out, ctx)
 

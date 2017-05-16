@@ -39,9 +39,6 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                      [rstate, size],
                      [rstate.type(), output_type])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
         v_size = as_tensor_variable(size)

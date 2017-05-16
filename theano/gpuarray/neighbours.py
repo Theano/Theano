@@ -46,9 +46,6 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                    dtype=ten4.type.dtype,
                                    context_name=ten4.type.context_name)()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def c_code_cache_version(self):
         return (11,)
 

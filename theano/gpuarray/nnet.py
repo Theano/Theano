@@ -42,9 +42,6 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         am = y_idx.type()
         return Apply(self, [x, b, y_idx], [nll, sm, am])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', 'gpuarray_helper.h']
 
@@ -294,9 +291,6 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
         y_idx = as_gpuarray_variable(y_idx, ctx_name)
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def c_code_cache_version(self):
         return (12,)
 
@@ -501,9 +495,6 @@ class GpuSoftmax(GpuKernelBase, Op):
         x = as_gpuarray_variable(x, infer_context_name(x))
         return Apply(self, [x], [x.type()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def infer_shape(self, node, shape):
         return shape
 
@@ -699,9 +690,6 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
         x = as_gpuarray_variable(x, ctx_name)
         b = as_gpuarray_variable(b, ctx_name)
         return Apply(self, [x, b], [x.type()])
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     def infer_shape(self, node, shape):
         return [shape[0]]
