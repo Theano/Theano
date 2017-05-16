@@ -418,7 +418,7 @@ if 0:
             # self.debug_all_apps.remove(app)
 
             # UPDATE self.clients
-            for i, input in enumerate(OrderedSet(app.inputs)):
+            for i, input in enumerate(set(app.inputs)):
                 del self.clients[input][app]
 
             if getattr(app.op, 'destroy_map', {}):
@@ -583,18 +583,16 @@ if 0:
                                                 'destroyhandler_tolerate_same',
                                                 [])
                         assert isinstance(tolerate_same, list)
-                        tolerated = OrderedSet(idx1 for idx0, idx1 in
-                                               tolerate_same
-                                               if idx0 == destroyed_idx)
+                        tolerated = set(idx1 for idx0, idx1 in
+                                        tolerate_same
+                                        if idx0 == destroyed_idx)
                         tolerated.add(destroyed_idx)
                         tolerate_aliased = getattr(
                             app.op, 'destroyhandler_tolerate_aliased', [])
                         assert isinstance(tolerate_aliased, list)
-                        ignored = OrderedSet(idx1 for idx0, idx1
-                                             in tolerate_aliased
-                                             if idx0 == destroyed_idx)
-                        # print 'tolerated', tolerated
-                        # print 'ignored', ignored
+                        ignored = set(idx1 for idx0, idx1
+                                      in tolerate_aliased
+                                      if idx0 == destroyed_idx)
                         for i, input in enumerate(app.inputs):
                             if i in ignored:
                                 continue
@@ -877,7 +875,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         self.debug_all_apps.remove(app)
 
         # UPDATE self.clients
-        for i, input in enumerate(OrderedSet(app.inputs)):
+        for i, input in enumerate(set(app.inputs)):
             del self.clients[input][app]
 
         if getattr(app.op, 'destroy_map', OrderedDict()):
@@ -1073,16 +1071,14 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     tolerate_same = getattr(app.op,
                                             'destroyhandler_tolerate_same', [])
                     assert isinstance(tolerate_same, list)
-                    tolerated = OrderedSet(idx1 for idx0, idx1 in tolerate_same
-                                           if idx0 == destroyed_idx)
+                    tolerated = set(idx1 for idx0, idx1 in tolerate_same
+                                    if idx0 == destroyed_idx)
                     tolerated.add(destroyed_idx)
                     tolerate_aliased = getattr(
                         app.op, 'destroyhandler_tolerate_aliased', [])
                     assert isinstance(tolerate_aliased, list)
-                    ignored = OrderedSet(idx1 for idx0, idx1 in tolerate_aliased
-                                         if idx0 == destroyed_idx)
-                    # print 'tolerated', tolerated
-                    # print 'ignored', ignored
+                    ignored = set(idx1 for idx0, idx1 in tolerate_aliased
+                                  if idx0 == destroyed_idx)
                     for i, input in enumerate(app.inputs):
                         if i in ignored:
                             continue
