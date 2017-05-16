@@ -329,7 +329,7 @@ if 0:
             # end of checking #
 
             def get_destroyers_of(r):
-                droot, impact, root_destroyer = self.refresh_droot_impact()
+                droot, _, root_destroyer = self.refresh_droot_impact()
                 try:
                     return [root_destroyer[droot[r]]]
                 except Exception:
@@ -751,7 +751,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
     def unpickle(self, fgraph):
         def get_destroyers_of(r):
-            droot, impact, root_destroyer = self.refresh_droot_impact()
+            droot, _, root_destroyer = self.refresh_droot_impact()
             try:
                 return [root_destroyer[droot[r]]]
             except Exception:
