@@ -3047,7 +3047,7 @@ class T_Scan(unittest.TestCase):
         tnu, tnh0, tnW, tno = fn_test(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
         utt.assert_allclose(vnu, tnu, atol=1e-6)
         utt.assert_allclose(vnh0, tnh0, atol=1e-6)
-        utt.assert_allclose(vnW, tnW, atol=1e-6)
+        utt.assert_allclose(vnW, tnW, atol=2e-6)
 
     def test_rop(self):
         seed = utt.fetch_seed()
