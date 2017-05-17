@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 
 import theano
+from theano import config
 from theano import tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22, batched_dot
@@ -13,7 +14,6 @@ from theano.tensor.tests.test_blas import TestGer, BaseGemv
 from .. import gpuarray_shared_constructor
 from .config import mode_with_gpu, test_ctx_name
 from .test_basic_ops import makeTester, rand
-
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
                     gpugemm_inplace, gpugemm_no_inplace,
                     gpugemmbatch_no_inplace,
@@ -133,6 +133,18 @@ GpuGemmBatchTester = makeTester(
     gpu_op=gpugemmbatch_no_inplace,
     cases=gemm_batched_tests
     )
+
+
+class TestGpuGemmBatchStrided(TestCase):
+    def test0(self):
+        # Reported in https://github.com/Theano/Theano/issues/5730
+        x = tensor.tensor3()
+        y = tensor.tensor3()
+        z = tensor.batched_dot(x, y[:, 0, :, np.newaxis])
+        f = theano.function([x, y], z, mode=mode_with_gpu)
+        x_num = np.arange(32 * 19 * 600, dtype=config.floatX).reshape((32, 19, 600))
+        y_num = np.arange(7 * 32 * 600, dtype=config.floatX).reshape((32, 7, 600))
+        f(x_num, y_num)
 
 
 class TestGpuSger(TestGer):

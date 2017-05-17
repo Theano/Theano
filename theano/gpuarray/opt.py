@@ -1208,9 +1208,31 @@ def local_gpua_gemmbatch(op, context_name, inputs, outputs):
     if inputs[0].dtype not in ['float32', 'float64']:
         return
     a, b = inputs
-    c = tensor.AllocEmpty(a.dtype)(a.shape[0], a.shape[1], b.shape[2])
-    return gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=a.dtype),
-                                   a, b, np.asarray(0.0, dtype=a.dtype))
+    # Since GpuGemmBatch only supports 3D inputs and output,
+    # we need to add broadcastable dims to the inputs, and drop
+    # them from outputs
+    output_dims = [0, 1, 2]
+    if a.ndim == 2:
+        a = GpuDimShuffle(a.broadcastable, (0, 1, 'x'))(a)
+        del output_dims[1]
+    if b.ndim == 2:
+        b = GpuDimShuffle(b.broadcastable, (0, 'x', 1))(b)
+        del output_dims[-1]
+    # In case of mismatched dtypes, we also have to upcast
+    out_dtype = outputs[0].dtype
+    if a.dtype != out_dtype or b.dtype != out_dtype:
+        gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
+        if a.dtype != out_dtype:
+            a = gpu_cast_op(a)
+        if b.dtype != out_dtype:
+            b = gpu_cast_op(b)
+
+    c = tensor.AllocEmpty(out_dtype)(a.shape[0], a.shape[1], b.shape[2])
+    out = gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=out_dtype),
+                                  a, b, np.asarray(0.0, dtype=out_dtype))
+    if len(output_dims) != 3:
+        out = GpuDimShuffle(out.broadcastable, output_dims)(out)
+    return out
 
 
 @register_opt()
