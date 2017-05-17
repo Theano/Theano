@@ -656,3 +656,27 @@ def test_local_gpua_advanced_incsubtensor():
     w = tensor.set_subtensor(w[tensor.eq(y, 1.0).nonzero()], 100)
     w = tensor.set_subtensor(w[tensor.eq(y, -1.0).nonzero()], 0)
     theano.function([target], w)
+
+
+def test_batched_dot_lifter():
+    # The CPU Op accepts 2D and 3D inputs, as well as mixed dtypes.
+    # Make sure the lifter adds the appropriate dimshuffles and casts
+    rng = np.random.RandomState(utt.fetch_seed())
+
+    def randX(*args):
+        return rng.rand(*args).astype(theano.config.floatX)
+
+    cases = [
+        (randX(3, 5, 7), randX(3, 7)),
+        (randX(3, 5), randX(3, 5, 7)),
+        (randX(3, 5), randX(3, 5)),
+        (rng.rand(3, 5, 7).astype('float32'), randX(3, 7, 9)),
+        (rng.rand(3, 5, 7).astype('float64'), randX(3, 7, 9))]
+    for x_val, y_val in cases:
+        x = tensor.TensorType(broadcastable=[s == 1 for s in x_val.shape],
+                              dtype=x_val.dtype)('x')
+        y = tensor.TensorType(broadcastable=[s == 1 for s in y_val.shape],
+                              dtype=y_val.dtype)('y')
+        z = tensor.batched_dot(x, y)
+        f = theano.function([x, y], z, mode=mode_with_gpu)
+        f(x_val, y_val)
