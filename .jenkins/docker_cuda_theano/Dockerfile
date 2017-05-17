@@ -18,6 +18,16 @@ RUN pip install --upgrade-strategy only-if-needed git+https://github.com/lebedov
 # Setup latex for doc test
 RUN apt-get install -y texlive-latex-base texlive-latex-extra
 
+# Install magma lib
+RUN apt-get install -y libopenblas-dev
+RUN wget http://icl.cs.utk.edu/projectsfiles/magma/downloads/magma-2.2.0.tar.gz
+RUN tar xvf magma-2.2.0.tar.gz
+RUN cp magma-2.2.0/make.inc-examples/make.inc.openblas magma-2.2.0/make.inc
+ENV OPENBLASDIR /usr
+ENV CUDADIR /usr/local/cuda
+RUN (cd magma-2.2.0 && make && make install prefix=/usr/local)
+RUN ldconfig
+
 # Install SSH server and Java runtime for Jenkins
 RUN apt-get install -y openssh-server default-jre-headless
 
