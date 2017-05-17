@@ -1,4 +1,6 @@
-raise RuntimeError(
+from nose.plugins.skip import SkipTest
+
+raise SkipTest(
     "You are importing theano.sandbox.cuda. This is the old GPU back-end and "
     "is removed from Theano. Use Theano 0.9 to use it. Even better, "
     "transition to the new GPU back-end! See "
