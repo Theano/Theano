@@ -47,7 +47,7 @@ class TestCorr3dMM(unittest.TestCase):
             utt.verify_grad(GpuCorr3dMM(border_mode=border_mode,
                                         filter_dilation=filter_dilation,
                                         subsample=subsample),
-                            [inputs_val, filters_val])
+                            [inputs_val, filters_val], mode=mode_with_gpu)
 
     def test_valid(self):
         self.run_conv_valid(inputs_shape=(16, 20, 12, 16, 1),
