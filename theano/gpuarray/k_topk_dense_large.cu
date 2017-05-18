@@ -99,8 +99,8 @@ KERNEL void k_topk_dense_large(
             #pragma unroll
             for (int bin=RADIX_SIZE-1; bin>=0; --bin) {
                 if (smem[bin] >= k2) {
-                    known_bits |= (bin << i);
-                    known_bits_mask |= ((RADIX_SIZE-1) << i);
+                    known_bits |= (((radix_t)bin) << i);
+                    known_bits_mask |= (((radix_t)(RADIX_SIZE-1)) << i);
                     break;
                 } else
                     k2 -= smem[bin];
@@ -111,8 +111,8 @@ KERNEL void k_topk_dense_large(
 
     /*
     if (idx < RADIX_SIZE) {
-        ptr_at(dstv, idx*dstv_strides_0) = known_bits;
-        ptr_at(dstv, idx*dstv_strides_0) = smem[idx];
+        long long int xxx = 1337;
+        ptr_at(dstv, idx*dstv_strides_0) = xxx;
     }
     return;
     */
