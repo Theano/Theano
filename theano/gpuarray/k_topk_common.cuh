@@ -8,6 +8,11 @@
 // This also gives a relative order for NaNs, but that's ok, as they
 // will all be adjacent
 
+#if __CUDA_ARCH__ < 350
+#define __ldg(ptr) (*(ptr))
+#endif
+
+
 template <typename T>
 struct RadixConfig {
     typedef T RadixType;
