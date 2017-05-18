@@ -21,10 +21,11 @@ _int_dtypes = (
     'int8', 'int16', 'int32', 'int64',
     'uint8', 'uint16', 'uint32', 'uint64')
 
+
 def gen_unique_vector(size, dtype):
     # generate a randomized vector with unique elements
-    retval = np.arange(size*3) + np.random.uniform(-1., 1.)
-    return (retval[np.random.permutation(size)] - size*1.5).astype(dtype)
+    retval = np.arange(size) * 3. + np.random.uniform(-1., 1.)
+    return (retval[np.random.permutation(size)] - size * 1.5).astype(dtype)
 
 
 class Test_sort(unittest.TestCase):
@@ -270,7 +271,6 @@ class Test_TopK(unittest.TestCase):
         assert yival == np.asarray([0], dtype=idx_dtype)
         assert np.allclose(xval, yvval)
 
-
     @utt.parameterized.expand(chain(
         product(
             (16, 61, 257),
@@ -475,4 +475,3 @@ class TopKInferShapeTester(utt.InferShapeTester):
             xval = gen_unique_vector(size, theano.config.floatX).reshape(shp)
             self._compile_and_check(
                 [x], [yv, yi], [xval], TopKOp)
-

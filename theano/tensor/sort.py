@@ -233,7 +233,10 @@ if hasattr(np, 'argpartition'):
             elif op.return_values:
                 zi = np.expand_dims(
                     fn_argmax(x, axis=axis).astype(idx_dtype), axis)
-                idx2 = tuple(np.arange(s).reshape((s,) + (1,) * (ndim - i - 1)) if i != axis else zi for i, s in enumerate(x.shape))
+                idx2 = tuple(
+                    np.arange(s).reshape(
+                        (s,) + (1,) * (ndim - i - 1)
+                        ) if i != axis else zi for i, s in enumerate(x.shape))
                 zv = x[idx2]
                 return zv, zi.astype(idx_dtype)
             else:
@@ -270,7 +273,10 @@ if hasattr(np, 'argpartition'):
             return zv
         elif op.return_values:
             zi = np.argpartition(x, -k, axis=axis)[idx]
-            idx2 = tuple(np.arange(s).reshape((s,)+(1,)*(ndim-i-1)) if i != axis else zi for i, s in enumerate(x.shape))
+            idx2 = tuple(
+                np.arange(s).reshape(
+                    (s,) + (1,) * (ndim - i - 1)
+                    ) if i != axis else zi for i, s in enumerate(x.shape))
             zv = x[idx2]
             return zv, zi.astype(idx_dtype)
         else:
@@ -324,13 +330,7 @@ class TopKOp(theano.Op):
     sorted: bool
         Defaults to ``False``
 
-        If True, the result array would be incremental-sorted. Mutually exclusive with ``sparse``
-
-    sparse: bool
-        Defaults to ``False``
-
-        if ``True``, the output array will always have the same shape as input.
-        The non-top-k values will be replaced by zero.
+        If True, the result array would be incremental-sorted.
 
     only_top_kth: bool
         Defaults to ``False``
@@ -341,10 +341,14 @@ class TopKOp(theano.Op):
 
     # TODO c_code
 
-
     __props__ = ('axis', 'return_values', 'return_indices', 'idx_dtype')
 
-    def __init__(self, axis=-1, return_indices=False, return_values=True, idx_dtype='int64'):
+    def __init__(
+            self,
+            axis=-1,
+            return_indices=False,
+            return_values=True,
+            idx_dtype='int64'):
         assert isinstance(axis, int)
         assert return_indices or return_values
         self.axis = axis
@@ -366,8 +370,8 @@ class TopKOp(theano.Op):
         if self.return_values:
             outs.append(inp.type())
         if self.return_indices:
-            outs.append(
-                theano.tensor.TensorType(dtype=self.idx_dtype, broadcastable=bcast)())
+            outs.append(theano.tensor.TensorType(
+                dtype=self.idx_dtype, broadcastable=bcast)())
         return theano.Apply(self, [inp, k], outs)
 
     def perform(self, node, inputs, output_storage):
@@ -382,11 +386,11 @@ class TopKOp(theano.Op):
         elif self.return_values:
             pzv = output_storage[0]
             pzi = output_storage[1]
-            pzv[0], pzi[0] = _topk_py_impl(self, x, k, axis, node.outputs[1].dtype)
+            pzv[0], pzi[0] = _topk_py_impl(
+                self, x, k, axis, node.outputs[1].dtype)
         else:
             pzi = output_storage[0]
             pzi[0] = _topk_py_impl(self, x, k, axis, node.outputs[0].dtype)
-
 
     def infer_shape(self, node, inp_shapes):
         _check_tensor_is_scalar(node.inputs[1])
@@ -404,6 +408,7 @@ class TopKOp(theano.Op):
         shp[self.axis] = np.abs(node.inputs[1])
         shp = tuple(shp)
         return [shp for i in [self.return_values, self.return_indices] if i]
+
 
 def topk(x, k, axis=-1):
     """
@@ -459,7 +464,11 @@ def argtopk(x, k, axis=-1, idx_dtype='int64'):
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = -1
-    return TopKOp(axis=axis, return_indices=True, return_values=False, idx_dtype=idx_dtype)(x, k)
+    return TopKOp(
+        axis=axis,
+        return_indices=True,
+        return_values=False,
+        idx_dtype=idx_dtype)(x, k)
 
 
 def topk_and_argtopk(x, k, axis=-1, idx_dtype='int64'):
@@ -473,4 +482,3 @@ def topk_and_argtopk(x, k, axis=-1, idx_dtype='int64'):
         x = theano.tensor.flatten(x)
         axis = -1
     return TopKOp(axis=axis, return_indices=True, idx_dtype=idx_dtype)(x, k)
-

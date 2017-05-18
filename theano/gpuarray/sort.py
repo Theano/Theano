@@ -1,16 +1,14 @@
 from __future__ import absolute_import, print_function, division
 import os
 from string import Template
-import pdb
 
 import numpy as np
-import theano
 from theano import Apply
 from theano.tensor import as_tensor_variable
 from theano.tensor.sort import TopKOp
 
 from .basic_ops import (GpuKernelBase, Kernel, infer_context_name,
-                        as_gpuarray_variable, gpu_contiguous)
+                        as_gpuarray_variable)
 from .opt import register_opt, op_lifter, register_opt2
 from .type import GpuArrayType
 
@@ -34,6 +32,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
     '''
     __props__ = TopKOp.__props__
+
     def __init__(self, axis=-1, return_values=True, return_indices=False, idx_dtype='int64'):
         GpuKernelBase.__init__(self)
         TopKOp.__init__(
@@ -57,8 +56,8 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         # load kernel source
         device_type = node.inputs[0].type.context.kind
         knames = ['k_topk_dense', 'k_topk_dense_large']
-        kernel_ext = {b'cuda':'.cu', b'opencl':'.cl'}[device_type]
-        common_ext = {b'cuda':'.cuh', b'opencl':'.h'}[device_type]
+        kernel_ext = {b'cuda': '.cu', b'opencl': '.cl'}[device_type]
+        common_ext = {b'cuda': '.cuh', b'opencl': '.h'}[device_type]
         kernel_src = {}
         for kname in knames:
             with open(os.path.join(
@@ -294,4 +293,3 @@ def local_gpua_topkop(op, ctx_name, inputs, outputs):
     rets = GpuTopKOp(
         axis=axis, return_values=rv, return_indices=ri, idx_dtype=op.idx_dtype)(x, k)
     return rets
-
