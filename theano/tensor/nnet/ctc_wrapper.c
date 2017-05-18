@@ -11,10 +11,10 @@ typedef struct ctc_context {
 
 void ctc_context_init(ctc_context_t * context)
 {
-    struct ctcOptions options = context->options;
-    memset(&options, 0, sizeof(struct ctcOptions));
-    options.loc = CTC_CPU;
-    options.num_threads = 1;
+    struct ctcOptions * options = &(context->options);
+    memset(options, 0, sizeof(struct ctcOptions));
+    options->loc = CTC_CPU;
+    options->num_threads = 1;
 
     context->workspace = NULL;
     context->input_lengths = NULL;
