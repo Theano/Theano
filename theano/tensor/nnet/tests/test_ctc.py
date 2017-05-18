@@ -1,55 +1,68 @@
 from __future__ import print_function
 
+import unittest
 import numpy as np
+
 import theano
 import theano.tensor as T
+from theano.tests import unittest_tools as utt
+from theano.tensor.nnet.ctc import (ctc_enabled, ctc)
 
-from theano.tensor.nnet.ctc import ctc
 
-def softmax():
-    """ Compute softmax values of each set of scores in x. """
-    pass
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    broadcastShape = x.shape[0:2] + (1,)
+    e_x = np.exp(x - np.max(x, axis=2).reshape(broadcastShape))
+    return e_x / e_x.sum(axis=2).reshape(broadcastShape)
 
-# Layout, from slowest to fastest changing dimension, is (time, batchSize, inputLayerSize)
-inputs = np.asarray([[[0, 0, 0, 0, 0, 0], [1, 2, 3, 4, 5, 0], [1, 2, 3, 4, 5, -6]],
-                     [[0, 0, 0, 0, 0, 0], [1, 2, 3, 4, 5, 5], [1, 2, 3, 4, 5, -11]],
-                     [[0, 0, 0, 0, 0, 0], [1, 2, 3, 4, 5, 10], [1, 2, 3, 4, 5, -16]]],
-                    dtype=np.float32)
+class TestCTC(unittest.TestCase):
+    def setUp(self):
+        if not ctc_enabled:
+            self.skipTest('Optional library warp-ctc not available')
 
-weights = np.asarray([[1, 0, 0, 0, 0],
-                      [0, 1, 0, 0, 0],
-                      [0, 0, 1, 0, 0],
-                      [0, 0, 0, 1, 0],
-                      [0, 0, 0, 0, 1],
-                      [1, 1, 1, 1, 1]], dtype=np.float32)
+    def run_ctc(self, activations, labels, input_length):
+        # Check if softmax probabilites are approximately equal to the gradients
+        # of the activations, using utt.assert_allclose(a, b)
 
-activations = np.dot(inputs, weights)
-# Duration of each sequence
-activation_times = np.asarray([1, 3, 3], dtype=np.int32)
+        # Create symbolic variables
+        t_activations = theano.shared(activations, name="activations")
+        t_activation_times = theano.shared(input_length, name="activation_times")
+        t_labels = theano.shared(labels, name="labels")
 
-print("Activations:\n{0}".format(activations))
-##print("Softmax outputs: {0}".format(softmax(activations)))
+        t_cost = ctc(t_activations, t_labels, t_activation_times)
+        # Symbolic gradient of CTC cost
+        t_grad = T.grad(T.mean(t_cost), t_activations)
+        # Compile symbolic functions
+        train = theano.function([], [t_cost, t_grad])
+        test = theano.function([], [t_cost])
 
-# Labels for each sequence
-labels = np.asarray([[1, -1],
-                     [3,  3],
-                     [2,  3]], dtype=np.int32)
+        cost, grad = train()
+        cost, = test()
 
-# Create symbolic variables
-t_inputs = theano.shared(inputs, name="inputs")
-t_weights = theano.shared(weights, name="weights")
-t_activations = T.dot(t_inputs, t_weights)
-t_activaction_times = theano.shared(activation_times, "activation_times")
-t_labels = theano.shared(labels, "labels")
+        utt.assert_allcose(grad, softmax(activations))
 
-# Symbolic CTC cost
-t_cost = ctc(t_activations, t_labels, t_activaction_times)
-# Symbolic gradient of CTC cost
-t_grad = T.grad(T.mean(t_cost), t_weights)
+    # Test obtained from Torch tutorial at:
+    # https://github.com/baidu-research/warp-ctc/blob/master/torch_binding/TUTORIAL.md
+    def test_torch_case(self):
+        # Layout, from slowest to fastest changing dimension, is (time, batchSize, inputLayerSize)
+        inputs = np.asarray([[[0, 0, 0, 0, 0, 0], [1, 2, 3, 4, 5, 0], [1, 2, 3, 4, 5, -6]],
+                             [[0, 0, 0, 0, 0, 0], [1, 2, 3, 4, 5, 5], [1, 2, 3, 4, 5, -11]],
+                             [[0, 0, 0, 0, 0, 0], [1, 2, 3, 4, 5, 10], [1, 2, 3, 4, 5, -16]]],
+                            dtype=np.float32)
 
-# Compile symbolic functions
-ctc_func = theano.function([], [t_cost, t_grad])
-cost, grad = ctc_func()
+        weights = np.asarray([[1, 0, 0, 0, 0],
+                              [0, 1, 0, 0, 0],
+                              [0, 0, 1, 0, 0],
+                              [0, 0, 0, 1, 0],
+                              [0, 0, 0, 0, 1],
+                              [1, 1, 1, 1, 1]], dtype=np.float32)
 
-print("CTC costs:\n{0}".format(cost))
-print("Gradient of avg. CTC cost w.r.t. weights:\n{0}".format(np.asarray(grad)))
+        activations = np.dot(inputs, weights)
+        # Duration of each sequence
+        activation_times = np.asarray([1, 3, 3], dtype=np.int32)
+        # Labels for each sequence
+        labels = np.asarray([[1, -1],
+                             [3, 3],
+                             [2, 3]], dtype=np.int32)
+
+        self.run_ctc(activations, labels, activation_times)
