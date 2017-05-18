@@ -1763,6 +1763,23 @@ AddConfigVar(
         allow_override=False),
     in_c_key=False)
 
+AddConfigVar(
+    'ctc.enabled',
+    " If True, use Baidu library for CTC computations."
+    " If False, disable Baidu CTC",
+    BoolParam(False),
+    in_c_key=False)
+
+AddConfigVar(
+    'ctc.root',
+    'Directory which contains the root of Baidu CTC library. It is assumed \
+    that the compiled library is inside the build directory, and the header \
+    inside the include directory.',
+    ConfigParam(
+        '',
+        filter=filter_base_compiledir,
+        allow_override=False
+    ), in_c_key=False )
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
 for key in THEANO_FLAGS_DICT.keys():
