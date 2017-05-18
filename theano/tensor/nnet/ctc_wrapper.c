@@ -187,11 +187,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
     ctcOptions ctc_options;
     memset( &ctc_options, 0, sizeof(ctcOptions) );
     ctc_options.loc = CTC_CPU;
-#if defined(_OPENMP)
-    ctc_options.num_threads = omp_get_num_threads();
-#else
     ctc_options.num_threads = 1;
-#endif
 
     size_t cpu_workspace_size;
     int ctc_error;

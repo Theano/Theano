@@ -21,9 +21,6 @@ class ConnectionistTemporalClassification(gof.COp):
     def __init__(self, compute_grad=True):
         super(ConnectionistTemporalClassification, self).__init__(self.func_file,
                                                                   self.func_name)
-        # Instantiate dummy OpenMP Op to check OpenMP support, pull headers and
-        # compilation options
-        self.openmp_op = gof.OpenMPOp()
 
         self.compute_grad = compute_grad
         self.costs = T.fvector(name="ctc_cost")
@@ -34,9 +31,6 @@ class ConnectionistTemporalClassification(gof.COp):
             raise ValueError('ctc.root variable is not set, please set it '
                              'to the root directory of the CTC library in '
                              'your system.')
-
-    def c_compile_args(self):
-        return self.openmp_op.c_compile_args()
 
     def c_lib_dirs(self):
         dirs = []
@@ -58,7 +52,7 @@ class ConnectionistTemporalClassification(gof.COp):
         return dirs
 
     def c_headers(self):
-        return ["ctc.h"] + self.openmp_op.c_headers()
+        return ["ctc.h"]
 
     def make_node(self, activations, labels, input_lengths=None):
         if not ctc_enabled:
