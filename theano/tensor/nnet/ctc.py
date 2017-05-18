@@ -1,6 +1,7 @@
 import numpy as np
 import theano
 import theano.tensor as T
+from theano import config
 from theano import gof
 from theano.gof import local_optimizer
 from theano.tensor.opt import register_canonicalize
@@ -9,38 +10,60 @@ from theano.gradient import grad_undefined
 
 import os
 
+ctc_enabled = config.ctc.enabled
+
 class ConnectionistTemporalClassification(gof.COp):
-    __props__ = ()
+    __props__ = ('compute_grad',)
 
     func_file = "./ctc_wrapper.c"
     func_name = "APPLY_SPECIFIC(ctc_cost_cpu)"
 
-    def __init__(self, computeGradient=True):
+    def __init__(self, compute_grad=True):
         super(ConnectionistTemporalClassification, self).__init__(self.func_file,
                                                                   self.func_name)
-        self.computeGradient = computeGradient
+        # Instantiate dummy OpenMP Op to check OpenMP support, pull headers and
+        # compilation options
+        self.openmp_op = gof.OpenMPOp()
+
+        self.compute_grad = compute_grad
         self.costs = T.fvector(name="ctc_cost")
-        if self.computeGradient:
+        if self.compute_grad:
             self.gradients = T.ftensor3(name="ctc_grad")
 
-        if "CTC_LIB" in os.environ:
-            self.ctcLibDir = os.environ["CTC_LIB"]
-        else:
-            raise EnvironmentError("CTC_LIB environment variable is not set.")
+        if config.ctc.root == "":
+            raise ValueError("ctc.root variable is not set, please set it " +
+                "to the root directory of the CTC library in your system.")
+
+    def c_compile_args(self):
+        return self.openmp_op.c_compile_args()
 
     def c_lib_dirs(self):
-        return [os.path.join(self.ctcLibDir, "build")]
+        dirs = []
+        if ctc_enabled:
+            # We assume here that the compiled library (libwarpctc.so) is available
+            # at the build directory of the CTC root directory.
+            dirs.append(os.path.join(config.ctc.root, "build"))
+        return dirs 
 
     def c_libraries(self):
         return ["warpctc"]
 
     def c_header_dirs(self):
-        return [os.path.join(self.ctcLibDir, "include")]
+        dirs = []
+        if ctc_enabled:
+            # We assume here that the header is available at the include directory
+            # of the CTC root directory.
+            dirs.append(os.path.join(config.ctc.root, "include"))
+        return dirs
 
     def c_headers(self):
-        return ["ctc.h"]
+        return ["ctc.h"] + self.openmp_op.c_headers()
 
     def make_node(self, activations, labels, input_lengths=None):
+        if not ctc_enabled:
+            raise RuntimeError('Baidu CTC is not enabled and '
+                               'ConnectionistTemporalClassification Op '
+                               'can not be constructed.')
         t_activations = T.as_tensor_variable(activations)
         t_labels = T.as_tensor_variable(labels)
         t_input_lengths = T.cast(activations.shape[0], dtype="int32") * \
@@ -53,6 +76,10 @@ class ConnectionistTemporalClassification(gof.COp):
                          outputs=[self.costs, self.gradients])
 
     def grad(self, inputs, output_grads):
+        if not ctc_enabled:
+            raise RuntimeError('Baidu CTC is not enabled and '
+                               'ConnectionistTemporalClassification Op '
+                               'can not be constructed.')
         # self.gradients.shape = [seqLen, batchSize, outputSize]
         # output_grads[0].shape = [batchSize]  (one cost per sequence)
         # So, reshape output_grads to [1, batchSize, 1] for broadcasting
@@ -72,5 +99,5 @@ def local_ConnectionistTemporalClassification_no_grad(node):
     if isinstance(node.op, ConnectionistTemporalClassification): 
         if len(node.outputs) > 1:
             if len(node.outputs[1].clients) == 0:   # gradient is not used
-                node.op = ConnectionistTemporalClassification(computeGradient=False)
+                node.op = ConnectionistTemporalClassification(compute_grad=False)
                 node.outputs = node.outputs[:1]   # costs only
