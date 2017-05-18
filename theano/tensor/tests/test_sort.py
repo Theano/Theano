@@ -21,14 +21,12 @@ _int_dtypes = (
     'int8', 'int16', 'int32', 'int64',
     'uint8', 'uint16', 'uint32', 'uint64')
 
-
 def gen_unique_vector(size, dtype):
     # generate a randomized vector with unique elements
     retval = np.arange(size*3) + np.random.uniform(-1., 1.)
     return (retval[np.random.permutation(size)] - size*1.5).astype(dtype)
 
 
-'''
 class Test_sort(unittest.TestCase):
 
     def setUp(self):
@@ -236,7 +234,6 @@ def test_argsort_grad():
 
     data = np.random.rand(2, 3, 3).astype(theano.config.floatX)
     utt.verify_grad(lambda x: argsort(x, axis=2), [data])
-'''
 
 
 class Test_TopK(unittest.TestCase):

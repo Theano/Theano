@@ -342,20 +342,21 @@ class TopKOp(theano.Op):
     # TODO c_code
 
 
-    __props__ = ('axis', 'return_values', 'return_indices')
+    __props__ = ('axis', 'return_values', 'return_indices', 'idx_dtype')
 
-    def __init__(self, axis=-1, return_indices=False, return_values=True):
+    def __init__(self, axis=-1, return_indices=False, return_values=True, idx_dtype='int64'):
         assert isinstance(axis, int)
         assert return_indices or return_values
         self.axis = axis
         self.return_indices = return_indices
         self.return_values = return_values
+        self.idx_dtype = idx_dtype
 
     def __str__(self):
         return '%(op)s{axis=%(axis)d}' % dict(
             op=self.__class__.__name__, axis=self.axis)
 
-    def make_node(self, inp, k, idx_dtype='int64'):
+    def make_node(self, inp, k):
         # numpy always uses float64 as output dtype for arg*() routines
         # however, we add this option as memory is more precious on gpu
         inp = theano.tensor.as_tensor_variable(inp)
@@ -366,7 +367,7 @@ class TopKOp(theano.Op):
             outs.append(inp.type())
         if self.return_indices:
             outs.append(
-                theano.tensor.TensorType(dtype=idx_dtype, broadcastable=bcast)())
+                theano.tensor.TensorType(dtype=self.idx_dtype, broadcastable=bcast)())
         return theano.Apply(self, [inp, k], outs)
 
     def perform(self, node, inputs, output_storage):
@@ -458,18 +459,18 @@ def argtopk(x, k, axis=-1, idx_dtype='int64'):
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = -1
-    return TopKOp(axis=axis, return_indices=True, return_values=False)(x, k, idx_dtype=idx_dtype)
+    return TopKOp(axis=axis, return_indices=True, return_values=False, idx_dtype=idx_dtype)(x, k)
 
 
 def topk_and_argtopk(x, k, axis=-1, idx_dtype='int64'):
-    '''
+    """
     Returns the results of both topk() and argtopk() in one Op.
 
     See the respective documentation for details.
 
-    '''
+    """
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = -1
-    return TopKOp(axis=axis, return_indices=True)(x, k, idx_dtype=idx_dtype)
+    return TopKOp(axis=axis, return_indices=True, idx_dtype=idx_dtype)(x, k)
 
