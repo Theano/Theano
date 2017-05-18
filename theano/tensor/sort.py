@@ -313,6 +313,10 @@ class TopKOp(theano.Op):
 
         If ``True``, one output of the Op will return the indices on the given axis.
 
+    idx_dtype: string
+        Specify output dtype, defaults to ``int64``, must be integer type.
+
+
     Notes
     -----
     - ``return_values`` and ``return_indices`` cannot be both ``False``

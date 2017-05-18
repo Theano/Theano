@@ -50,10 +50,8 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include()]
 
-    '''
     def c_code_cache_version(self):
         return (1,)
-    '''
 
     def gpu_kernels(self, node, nodename):
         # load kernel source
