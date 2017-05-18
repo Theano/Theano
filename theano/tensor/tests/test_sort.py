@@ -275,7 +275,7 @@ class Test_TopK(unittest.TestCase):
         product(
             (16, 61, 257),
             (1, -1, 10, -10, 'n//2', 'n-1', '-n', '1-n'),
-            ('float64', 'int16', 'int8')),
+            ('float64', 'float16', 'int16', 'int8')),
         ((2049, 1337, 'float64'),)))
     def test_topk_1d(self, size, k, dtype):
         if isinstance(k, str):

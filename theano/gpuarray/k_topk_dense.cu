@@ -15,10 +15,10 @@ KERNEL void k_topk_dense(
         $src_strides
         // ga_ssize src_strides_0, ga_ssize src_strides_1, ... , src_strides_$${NDIM}
         ga_size size) {
-    LOCAL_MEM radix_t smem[32 * RADIX_SIZE];
+    LOCAL_MEM ga_size smem[32 * RADIX_SIZE];
     ga_ssize LOCAL_MEM bins[RADIX_SIZE+1]; // TODO: does using 32-bit gives good speedup?
     bool is_topk=true, is_topkth=true;
-    radix_t out_idx;
+    ga_size out_idx;
 
     const ga_ushort idx = LID_0;
     ga_size LOCAL_MEM k2, exceed;
@@ -118,12 +118,12 @@ KERNEL void k_topk_dense(
     if (exceed != 0) {
         // top_kth value may not be unique, so we need to
         // perform binary cumsum on is_topkth to drop exceeding top-kth values
-        out_idx = binary_cumsum_exclusive<radix_t>(idx, warp_id, lane_id, smem, is_topkth);
+        out_idx = binary_cumsum_exclusive(idx, warp_id, lane_id, smem, is_topkth);
         is_topk &= ((!is_topkth) || out_idx>=exceed);
     }
 
     // perform binary cumsum on is_topk to determine the indices to put result
-    out_idx = binary_cumsum_exclusive<radix_t>(idx, warp_id, lane_id, smem, is_topk);
+    out_idx = binary_cumsum_exclusive(idx, warp_id, lane_id, smem, is_topk);
     local_barrier();
 
     if (is_topk) {

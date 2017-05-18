@@ -19,12 +19,14 @@ except ImportError as e:
     # To make sure theano is importable
     pass
 
+# TODO sort / argsort
 
 # TODO add runtime opt, if k==1, use max/min reduce
+#      also if k is axis size, just copy input tensor
 # TODO add opt to merge argtopk / topk, or split topk_and_argtopk when only
 #      one result is needed
 # TODO add grad
-# TODO sort / argsort
+
 
 class GpuTopKOp(GpuKernelBase, TopKOp):
     '''
@@ -32,6 +34,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
     '''
     __props__ = TopKOp.__props__
+    _f16_ok = True
 
     def __init__(self, axis=-1, return_values=True, return_indices=False, idx_dtype='int64'):
         GpuKernelBase.__init__(self)
@@ -99,7 +102,9 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
                 set_slice=set_slice_code,
                 write_value=int(self.return_values),
                 write_index=int(self.return_indices),
-                ndim=str(ndim))
+                ndim=str(ndim),
+                use_half=int(node.inputs[0].dtype == 'float16')
+                )
         elif device_type == b'opencl':
             raise NotImplementedError()
 
@@ -201,6 +206,11 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             PyExc_ValueError,
             "topk: k must not be zero");
         %(fail)s;
+    } else if (dims[%(axis)d] < odims[%(axis)d]){
+        PyErr_SetString(
+            PyExc_ValueError,
+            "topk: k cannot larger than size on specified axis %(axis)d");
+        %(fail)s;
     }
     %(prep_output)s
 
@@ -236,7 +246,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
     int err;
     if (blk[0] > %(MAX_TPB)d) {
-        // CUDA_OUT_OF_RESOURCE if a max sized block is used
+        // LAUNCH_OUT_OF_RESOURCE if a 1024 sized block is used
         blk[0] = %(MAX_TPB)d / 2;
         err = GpuKernel_call(
             &k_topk_dense_large_%(nodename)s, 3,
@@ -291,5 +301,8 @@ def local_gpua_topkop(op, ctx_name, inputs, outputs):
     x = as_gpuarray_variable(x, ctx_name)
 
     rets = GpuTopKOp(
-        axis=axis, return_values=rv, return_indices=ri, idx_dtype=op.idx_dtype)(x, k)
+        axis=axis,
+        return_values=rv,
+        return_indices=ri,
+        idx_dtype=op.idx_dtype)(x, k)
     return rets

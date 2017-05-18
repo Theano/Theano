@@ -426,6 +426,10 @@ def topk(x, k, axis=-1):
         Upon which axis shall the operation be performed on. If ``None``,
         works on flattened array.
 
+    Returns
+    -------
+    Tensor variable with same dtype as `x`.
+
     Notes
     -----
     - The returned values may not be sorted.
@@ -455,6 +459,10 @@ def argtopk(x, k, axis=-1, idx_dtype='int64'):
 
     idx_dtype: string
         Specify output dtype, defaults to ``int64``, must be integer type.
+
+    Returns
+    -------
+    Tensor variable with dtype specified in `idx_dtype`.
 
     Notes
     -----

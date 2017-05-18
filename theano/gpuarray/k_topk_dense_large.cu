@@ -15,9 +15,9 @@ KERNEL void k_topk_dense_large(
         $src_strides
         // ga_ssize src_strides_0, ga_ssize src_strides_1, ... , src_strides_$${NDIM}
         ga_size size, ga_ushort inp_per_thread) {
-    LOCAL_MEM radix_t smem[32 * RADIX_SIZE];
+    LOCAL_MEM ga_size smem[32 * RADIX_SIZE];
     LOCAL_MEM radix_t known_bits, known_bits_mask;
-    radix_t out_idx;
+    ga_size out_idx;
     ga_size LOCAL_MEM write_base;
     INPUT_TYPE xval;
     radix_t x;
@@ -109,21 +109,13 @@ KERNEL void k_topk_dense_large(
         local_barrier();
     }
 
-    /*
-    if (idx < RADIX_SIZE) {
-        long long int xxx = 1337;
-        ptr_at(dstv, idx*dstv_strides_0) = xxx;
-    }
-    return;
-    */
-
     // 2. write values smaller than top-kth
     for (i=0; i<inp_per_thread; ++i) {
         in_range = (idx*inp_per_thread+i) < size;
         xval = in_range ? ptr_read(src, i*src_strides_0) : (INPUT_TYPE)0;
         x = inv_bits ^ RadixConfig<INPUT_TYPE>::convert(xval);
         is_topk = (x > known_bits) && in_range;
-        out_idx = binary_cumsum<radix_t>(idx, warp_id, lane_id, smem, is_topk);
+        out_idx = binary_cumsum(idx, warp_id, lane_id, smem, is_topk);
         if (is_topk) {
 #if WRITE_VALUE == 1
             ptr_at(dstv, (out_idx+write_base-1) * dstv_strides_0) = xval;
@@ -144,7 +136,7 @@ KERNEL void k_topk_dense_large(
         xval = in_range ? ptr_read(src, i*src_strides_0) : (INPUT_TYPE)0;
         x = inv_bits ^ RadixConfig<INPUT_TYPE>::convert(xval);
         is_topk = (x == known_bits) && in_range;
-        out_idx = binary_cumsum<radix_t>(idx, warp_id, lane_id, smem, is_topk);
+        out_idx = binary_cumsum(idx, warp_id, lane_id, smem, is_topk);
         is_topk = ((out_idx+write_base) <= abs(k)) && is_topk;
         if (is_topk) {
 #if WRITE_VALUE == 1
