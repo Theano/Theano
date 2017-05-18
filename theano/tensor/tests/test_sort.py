@@ -250,6 +250,7 @@ class Test_TopK(unittest.TestCase):
         xval = np.asarray([1]).astype(dtype)
         yval = fn(xval)
         assert yval == np.asarray([0], dtype=idx_dtype)
+        assert yval.dtype == np.dtype(idx_dtype)
 
     @utt.parameterized.expand(product(
         _dtypes, [-1, 0, None]))
@@ -259,6 +260,7 @@ class Test_TopK(unittest.TestCase):
         xval = np.asarray([1]).astype(dtype)
         yval = fn(xval)
         assert yval == xval
+        assert yval.dtype == xval.dtype
 
     @utt.parameterized.expand(product(
         _dtypes, _int_dtypes, [-1, 0, None]))
@@ -270,6 +272,8 @@ class Test_TopK(unittest.TestCase):
         yvval, yival = fn(xval)
         assert yival == np.asarray([0], dtype=idx_dtype)
         assert np.allclose(xval, yvval)
+        assert yvval.dtype == xval.dtype
+        assert yival.dtype == np.dtype(idx_dtype)
 
     @utt.parameterized.expand(chain(
         product(
