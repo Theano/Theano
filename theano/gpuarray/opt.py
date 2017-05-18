@@ -1213,10 +1213,10 @@ def local_gpua_gemmbatch(op, context_name, inputs, outputs):
     # them from outputs
     output_dims = [0, 1, 2]
     if a.ndim == 2:
-        a = GpuDimShuffle(a.broadcastable, (0, 1, 'x'))(a)
+        a = GpuDimShuffle(a.broadcastable, (0, 'x', 1))(a)
         del output_dims[1]
     if b.ndim == 2:
-        b = GpuDimShuffle(b.broadcastable, (0, 'x', 1))(b)
+        b = GpuDimShuffle(b.broadcastable, (0, 1, 'x'))(b)
         del output_dims[-1]
     # In case of mismatched dtypes, we also have to upcast
     out_dtype = outputs[0].dtype
