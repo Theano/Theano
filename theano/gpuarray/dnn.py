@@ -279,7 +279,7 @@ handle_type = CDataType('cudnnHandle_t', 'cudnnDestroy',
                         header_dirs=[config.dnn.include_path],
                         libraries=['cudnn'],
                         lib_dirs=[config.dnn.library_path],
-                        version=version())
+                        version=version(raises=False))
 
 
 def get_precision(precision, inputs):
