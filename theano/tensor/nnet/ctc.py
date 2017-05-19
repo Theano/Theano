@@ -63,9 +63,9 @@ class ConnectionistTemporalClassification(gof.COp):
             raise RuntimeError('Baidu CTC is not enabled and '
                                'ConnectionistTemporalClassification Op '
                                'can not be constructed.')
+        t_activations = T.as_tensor_variable(activations)
         # Ensure activations array is C-contiguous
-        t_activations = cpu_contiguous(activations)
-        t_activations = T.as_tensor_variable(t_activations)
+        t_activations = cpu_contiguous(t_activations)
 
         t_labels = T.as_tensor_variable(labels)
         t_input_lengths = T.cast(activations.shape[0], dtype="int32") * \
