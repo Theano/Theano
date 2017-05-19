@@ -39,7 +39,7 @@ class TestCTC(unittest.TestCase):
         cost, grad = train()
         cost, = test()
 
-        utt.assert_allcose(grad, softmax(activations))
+        utt.assert_allclose(grad, softmax(activations))
 
     # Test obtained from Torch tutorial at:
     # https://github.com/baidu-research/warp-ctc/blob/master/torch_binding/TUTORIAL.md
