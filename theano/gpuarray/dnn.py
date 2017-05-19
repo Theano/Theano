@@ -194,11 +194,92 @@ def dnn_available(context_name):
 
 dnn_available.msg = None
 
+
+class DnnVersion(Op):
+    __props__ = ()
+
+    def c_headers(self):
+        return ['cudnn.h']
+
+    def c_header_dirs(self):
+        return [config.dnn.include_path] if config.dnn.include_path else []
+
+    def c_libraries(self):
+        return ['cudnn']
+
+    def c_lib_dirs(self):
+        if config.dnn.library_path:
+            return [config.dnn.library_path]
+        return []
+
+    def c_compile_args(self):
+        if config.dnn.library_path:
+            return ['-Wl,-rpath,"' + config.dnn.library_path + '"']
+        return []
+
+    def c_support_code(self):
+        return """
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_FromLong PyLong_FromLong
+#endif
+"""
+
+    def make_node(self):
+        return Apply(self, [], [Generic()()])
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        o = outputs[0]
+        return """
+        %(o)s = PyTuple_Pack(2, PyInt_FromLong(CUDNN_VERSION), PyInt_FromLong(cudnnGetVersion()));
+        """ % locals()
+
+    def do_constant_folding(self, node):
+        # Needed as we do not want to cache this information.
+        return False
+
+    def c_code_cache_version(self):
+        # Not needed, but make it clear that we do not want to cache this.
+        return None
+
+
+def version(raises=True):
+    """Return the current cuDNN version we link with.
+
+    This also does a check that the header version matches the runtime version.
+
+    :raises: If True, raise an exception if cuDNN is not present.
+        Otherwise, return -1.
+
+    It always raise an RuntimeError if the header and library version
+    are not the same.
+
+    """
+    if not dnn_present():
+        if raises:
+            raise RuntimeError(
+                "We can't determine the cudnn version as it is not available",
+                dnn_available.msg)
+        else:
+            return -1
+
+    if version.v is None:
+        f = theano.function([], DnnVersion()(),
+                            theano.Mode(optimizer=None),
+                            profile=False)
+        v = f()
+        if v[0] != v[1]:
+            raise RuntimeError("Mixed dnn version. The header is version %s "
+                               "while the library is version %s." % v)
+        version.v = v[1]
+    return version.v
+version.v = None
+
 handle_type = CDataType('cudnnHandle_t', 'cudnnDestroy',
                         headers=['cudnn.h'],
                         header_dirs=[config.dnn.include_path],
                         libraries=['cudnn'],
-                        lib_dirs=[config.dnn.library_path])
+                        lib_dirs=[config.dnn.library_path],
+                        version=version(raises=False))
 
 
 def get_precision(precision, inputs):
@@ -273,84 +354,6 @@ class DnnBase(COp):
 
     def c_code_cache_version(self):
         return (super(DnnBase, self).c_code_cache_version(), version(), 1)
-
-
-class DnnVersion(Op):
-    __props__ = ()
-
-    def c_headers(self):
-        return ['cudnn.h']
-
-    def c_header_dirs(self):
-        return [config.dnn.include_path] if config.dnn.include_path else []
-
-    def c_libraries(self):
-        return ['cudnn']
-
-    def c_lib_dirs(self):
-        if config.dnn.library_path:
-            return [config.dnn.library_path]
-        return []
-
-    def c_compile_args(self):
-        if config.dnn.library_path:
-            return ['-Wl,-rpath,"' + config.dnn.library_path + '"']
-        return []
-
-    def c_support_code(self):
-        return """
-#if PY_MAJOR_VERSION >= 3
-#define PyInt_FromLong PyLong_FromLong
-#endif
-"""
-
-    def make_node(self):
-        return Apply(self, [], [Generic()()])
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        o = outputs[0]
-        return """
-        %(o)s = PyTuple_Pack(2, PyInt_FromLong(CUDNN_VERSION), PyInt_FromLong(cudnnGetVersion()));
-        """ % locals()
-
-    def do_constant_folding(self, node):
-        # Needed as we do not want to cache this information.
-        return False
-
-    def c_code_cache_version(self):
-        # Not needed, but make it clear that we do not want to cache this.
-        return None
-
-
-def version(raises=True):
-    """
-    Return the current cuDNN version we link with.
-
-    This also does a check that the header version matches the runtime version.
-
-    :raises: If True, raise an exception if cuDNN is not present or badly installed.
-        Otherwise, return -1.
-
-    """
-    if not dnn_present():
-        if raises:
-            raise RuntimeError(
-                "We can't determine the cudnn version as it is not available",
-                dnn_available.msg)
-        else:
-            return -1
-
-    if version.v is None:
-        f = theano.function([], DnnVersion()(),
-                            theano.Mode(optimizer=None),
-                            profile=False)
-        v = f()
-        if v[0] != v[1]:
-            raise RuntimeError("Mixed dnn version. The header is version %s "
-                               "while the library is version %s." % v)
-        version.v = v[1]
-    return version.v
-version.v = None
 
 
 class GpuDnnConvDesc(COp):
@@ -2285,7 +2288,7 @@ class _RNNSplitParams(DnnBase):
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (3, version())
 
 
 def _split_rnn_params(w, desc, layer, input_size, dtype, rnn_mode):
