@@ -9,18 +9,12 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.nnet.ctc import (ctc_enabled, ctc)
 
 
-def softmax(x):
-    """Compute softmax values for each sets of scores in x."""
-    broadcastShape = x.shape[0:2] + (1,)
-    e_x = np.exp(x - np.max(x, axis=2).reshape(broadcastShape))
-    return e_x / e_x.sum(axis=2).reshape(broadcastShape)
-
 class TestCTC(unittest.TestCase):
     def setUp(self):
         if not ctc_enabled:
             self.skipTest('Optional library warp-ctc not available')
 
-    def run_ctc(self, activations, labels, input_length):
+    def run_ctc(self, activations, labels, input_length, expected_costs):
         # Check if softmax probabilites are approximately equal to the gradients
         # of the activations, using utt.assert_allclose(a, b)
 
@@ -39,25 +33,16 @@ class TestCTC(unittest.TestCase):
         cost, grad = train()
         cost, = test()
 
-        utt.assert_allclose(grad, softmax(activations))
+        utt.assert_allclose(cost, expected_costs)
 
     # Test obtained from Torch tutorial at:
     # https://github.com/baidu-research/warp-ctc/blob/master/torch_binding/TUTORIAL.md
     def test_torch_case(self):
         # Layout, from slowest to fastest changing dimension, is (time, batchSize, inputLayerSize)
-        inputs = np.asarray([[[0, 0, 0, 0, 0, 0], [1, 2, 3, 4, 5, 0], [1, 2, 3, 4, 5, -6]],
-                             [[0, 0, 0, 0, 0, 0], [1, 2, 3, 4, 5, 5], [1, 2, 3, 4, 5, -11]],
-                             [[0, 0, 0, 0, 0, 0], [1, 2, 3, 4, 5, 10], [1, 2, 3, 4, 5, -16]]],
-                            dtype=np.float32)
-
-        weights = np.asarray([[1, 0, 0, 0, 0],
-                              [0, 1, 0, 0, 0],
-                              [0, 0, 1, 0, 0],
-                              [0, 0, 0, 1, 0],
-                              [0, 0, 0, 0, 1],
-                              [1, 1, 1, 1, 1]], dtype=np.float32)
-
-        activations = np.dot(inputs, weights)
+        activations = np.asarray([[[0, 0, 0, 0, 0], [1, 2, 3, 4, 5], [-5, -4, -3, -2, -1]],
+                                  [[0, 0, 0, 0, 0], [6, 7, 8, 9, 10], [-10, -9, -8, -7, -6]],
+                                  [[0, 0, 0, 0, 0], [11, 12, 13, 14, 15], [-15, -14, -13, -12, -11]]],
+                                 dtype=np.float32)
         # Duration of each sequence
         activation_times = np.asarray([1, 3, 3], dtype=np.int32)
         # Labels for each sequence
@@ -65,4 +50,8 @@ class TestCTC(unittest.TestCase):
                              [3, 3],
                              [2, 3]], dtype=np.int32)
 
-        self.run_ctc(activations, labels, activation_times)
+        expected_costs = np.asarray([3.03655, 7.35574, 4.93884],
+                                    dtype=np.float32)
+
+        self.run_ctc(activations, labels, activation_times, expected_costs)
+
