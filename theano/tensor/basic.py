@@ -2319,6 +2319,12 @@ def conj(z):
 def complex_from_polar(abs, angle):
     """Return complex-valued tensor from polar coordinate specification."""
 
+
+@_scal_elemwise
+def trigamma(x):
+    """Return 3d derivative of gamma function"""
+
+
 ##########################
 # Misc
 ##########################

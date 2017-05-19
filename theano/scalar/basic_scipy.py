@@ -298,8 +298,10 @@ class Psi(UnaryScalarOp):
         else:
             super(Psi, self).impl(x)
 
-    def grad(self, inputs, outputs_gradients):
-        raise NotImplementedError()
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        return [gz * trigamma(x)]
 
     def c_support_code(self):
         return (
@@ -542,3 +544,30 @@ class I0(UnaryScalarOp):
         return [gz * i1(x)]
 
 i0 = I0(upgrade_to_float, name='i0')
+
+
+class Polygamma(UnaryScalarOp):
+    """
+    (m-1)'th derivative of gammaln
+    """
+    __props__ = ('m', )
+
+    def __init__(self, m, *args, **kwargs):
+        super(Polygamma, self).__init__(*args, **kwargs)
+        self.m = m
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return scipy.special.polygamma(self.m, x)
+        else:
+            # raises an error
+            super(Polygamma, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        # derivative is again polygamma
+        poly = Polygamma(self.m+1, upgrade_to_float, name='_%dgamma' % (self.m+1))
+        return [gz * poly(x)]
+
+trigamma = Polygamma(3, upgrade_to_float, name='trigamma')
