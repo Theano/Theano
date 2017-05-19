@@ -54,7 +54,7 @@ echo
 
 BASE_COMPILEDIR=$HOME/.theano/buildbot_theano_python2_debug
 ROOT_CWD=$WORKSPACE/nightly_build
-FLAGS=base_compiledir=$BASE_COMPILEDIR,cycle_detection='fast'
+FLAGS=base_compiledir=$BASE_COMPILEDIR
 COMPILEDIR=`THEANO_FLAGS=$FLAGS python -c "from __future__ import print_function; import theano; print(theano.config.compiledir)"`
 NOSETESTS=bin/theano-nose
 export PYTHONPATH=${WORKSPACE}:$PYTHONPATH
