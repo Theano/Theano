@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import (division, absolute_import, print_function)
 
 import unittest
 import numpy as np
@@ -54,4 +54,3 @@ class TestCTC(unittest.TestCase):
                                     dtype=np.float32)
 
         self.run_ctc(activations, labels, activation_times, expected_costs)
-
