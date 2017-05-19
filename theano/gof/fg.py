@@ -655,7 +655,6 @@ class FunctionGraph(utils.object2):
 
         """
         ords = OrderedDict()
-        first_ordering = None  # first non empty ordering
         assert isinstance(self._features, list)
         non_empty_ordering = 0
 
