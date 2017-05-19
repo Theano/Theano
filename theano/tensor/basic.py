@@ -2322,7 +2322,7 @@ def complex_from_polar(abs, angle):
 
 @_scal_elemwise
 def trigamma(x):
-    """Return 3d derivative of gamma function"""
+    """Return 2d derivative of gamma function"""
 
 
 ##########################
