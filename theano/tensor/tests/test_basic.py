@@ -1713,8 +1713,9 @@ if imported_scipy_special:
     expected_i0 = scipy.special.i0
     expected_i1 = scipy.special.i1
     expected_iv = scipy.special.iv
-    skip_scipy = False
     expected_erfcx = scipy.special.erfcx
+    expected_trigamma = partial(scipy.special.polygamma, 3)
+    skip_scipy = False
 else:
     expected_erf = []
     expected_erfc = []
@@ -1731,6 +1732,7 @@ else:
     expected_i0 = []
     expected_i1 = []
     expected_iv = []
+    expected_trigamma = []
     skip_scipy = "scipy is not present"
 
 ErfTester = makeBroadcastTester(
@@ -1846,6 +1848,24 @@ GammalnInplaceTester = makeBroadcastTester(
     mode=mode_no_scipy,
     inplace=True,
     skip=skip_scipy)
+
+TrigammaTester = makeBroadcastTester(
+    op=tensor.trigamma,
+    expected=expected_trigamma,
+    good=_good_broadcast_unary_normal,
+    grad=_grad_broadcast_unary_normal,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+TrigammaInplaceTester = makeBroadcastTester(
+    op=inplace.trigamma_inplace,
+    expected=expected_trigamma,
+    good=_good_broadcast_unary_normal_float,
+    mode=mode_no_scipy,
+    eps=2e-10,
+    inplace=True,
+    skip=skip_scipy)
+
 
 _good_broadcast_unary_psi = dict(
     normal=(rand_ranged(1, 10, (2, 3)),),
