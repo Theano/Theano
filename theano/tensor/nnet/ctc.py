@@ -5,6 +5,7 @@ from theano import gof
 from theano.gof import local_optimizer
 from theano.tensor.opt import register_canonicalize
 from theano.tensor.opt import register_stabilize
+from theano.tensor.extra_ops import cpu_contiguous
 from theano.gradient import grad_undefined
 
 import os
@@ -19,6 +20,9 @@ class ConnectionistTemporalClassification(gof.COp):
     func_name = "APPLY_SPECIFIC(ctc_cost_cpu)"
 
     def __init__(self, compute_grad=True):
+        if not compute_grad:
+            self.func_name = "APPLY_SPECIFIC(ctc_cost_cpu_no_grad)"
+
         super(ConnectionistTemporalClassification, self).__init__(self.func_file,
                                                                   self.func_name)
 
@@ -59,7 +63,10 @@ class ConnectionistTemporalClassification(gof.COp):
             raise RuntimeError('Baidu CTC is not enabled and '
                                'ConnectionistTemporalClassification Op '
                                'can not be constructed.')
-        t_activations = T.as_tensor_variable(activations)
+        # Ensure activations array is C-contiguous
+        t_activations = cpu_contiguous(activations)
+        t_activations = T.as_tensor_variable(t_activations)
+
         t_labels = T.as_tensor_variable(labels)
         t_input_lengths = T.cast(activations.shape[0], dtype="int32") * \
             T.ones_like(activations[0, :, 0], dtype=np.int32)
