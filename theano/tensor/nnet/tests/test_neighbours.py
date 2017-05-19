@@ -237,27 +237,29 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                 # assert numpy.allclose(images.get_value(borrow=True), g())
 
     def test_neibs_half_step_by_valid(self):
-        for shp_idx, (shape, neib_shape, neib_step) in enumerate([
-            [(7, 8, 5, 5), (3, 3), (1, 1)],
-            [(7, 8, 5, 5), (3, 3), (2, 2)],
-            [(7, 8, 5, 5), (3, 3), (4, 4)],
-            [(7, 8, 5, 5), (3, 3), (1, 4)],
-            [(7, 8, 5, 5), (3, 3), (4, 1)],
-            [(80, 90, 5, 5), (3, 3), (1, 2)],
-            [(1025, 9, 5, 5), (3, 3), (2, 1)],
-            [(1, 1, 5, 1037), (3, 3), (2, 4)],
-            [(1, 1, 1045, 5), (3, 3), (4, 2)]]
+        for shp_idx, (shape, neib_step) in enumerate([
+            [(7, 8, 5, 5), (1, 1)],
+            [(7, 8, 5, 5), (2, 2)],
+            [(7, 8, 5, 5), (4, 4)],
+            [(7, 8, 5, 5), (1, 4)],
+            [(7, 8, 5, 5), (4, 1)],
+            [(80, 90, 5, 5), (1, 2)],
+            [(1025, 9, 5, 5), (2, 1)],
+            [(1, 1, 5, 1037), (2, 4)],
+            [(1, 1, 1045, 5), (4, 2)]]
         ):
-            for dtype in self.dtypes:
-                x = theano.shared(np.random.randn(*shape).astype(dtype))
-                extra = (neib_shape[0] // 2, neib_shape[1] // 2)
-                padded_shape = (x.shape[0], x.shape[1], x.shape[2] + 2 * extra[0], x.shape[3] + 2 * extra[1])
-                padded_x = T.zeros(padded_shape)
-                padded_x = T.set_subtensor(padded_x[:, :, extra[0]:-extra[0], extra[1]:-extra[1]], x)
-                x_using_valid = images2neibs(padded_x, neib_shape, neib_step, mode="valid")
-                x_using_half = images2neibs(x, neib_shape, neib_step, mode="half")
-                close = T.allclose(x_using_valid, x_using_half)
-                assert close.eval()
+            for neib_shape in [(3, 3), (3, 5), (5, 3)]:
+                for dtype in self.dtypes:
+                    x = theano.shared(np.random.randn(*shape).astype(dtype))
+                    extra = (neib_shape[0] // 2, neib_shape[1] // 2)
+                    padded_shape = (x.shape[0], x.shape[1], x.shape[2] + 2 * extra[0], x.shape[3] + 2 * extra[1])
+                    padded_x = T.zeros(padded_shape)
+                    padded_x = T.set_subtensor(padded_x[:, :, extra[0]:-extra[0], extra[1]:-extra[1]], x)
+                    x_using_valid = images2neibs(padded_x, neib_shape, neib_step, mode="valid")
+                    x_using_half = images2neibs(x, neib_shape, neib_step, mode="half")
+                    close = T.allclose(x_using_valid, x_using_half)
+                    f = theano.function([], close, mode=self.mode)
+                    assert f()
 
     def test_neibs_bad_shape_wrap_centered(self):
         shape = (2, 3, 10, 10)
@@ -387,7 +389,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
 
         img = T.tensor4('img')
         patches = T.nnet.neighbours.images2neibs(img, [16, 16])
-        extractPatches = theano.function([img], patches)
+        extractPatches = theano.function([img], patches,
+                                         mode=self.mode)
 
         patsRecovery = T.matrix('patsRecovery')
         original_size = T.ivector('original_size')
@@ -395,7 +398,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         for mode in ['valid', 'ignore_borders']:
             out = neibs2images(patsRecovery, (16, 16),
                                original_size, mode=mode)
-            f = theano.function([patsRecovery, original_size], out)
+            f = theano.function([patsRecovery, original_size], out,
+                                mode=self.mode)
 
             im_val = np.ones((1, 3, 320, 320), dtype=np.float32)
             neibs = extractPatches(im_val)

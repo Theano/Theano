@@ -30,8 +30,8 @@ class Images2Neibs(Op):
         - 'wrap_centered' :
             ?? TODO comment
         - 'half' :
-            Equivalent to 'valid' if we pre-pad the input on each side by
-            (neib_shape[0]//2, neib_shape[1]//2)
+            Equivalent to 'valid' if we pre-pad with zeros the input on
+            each side by (neib_shape[0]//2, neib_shape[1]//2)
 
     """
 
@@ -525,12 +525,6 @@ class Images2Neibs(Op):
                             if (ten4_2 < 0 | ten4_2 >= height) {
                                 dtype_%(z)s* curr_z = (dtype_%(z)s*) PyArray_GETPTR2(%(z)s, z_row, d * i);
                                 memset(curr_z, 0, d*sizeof(*curr_z));
-                                // for (int j = 0; j < d; j++)  // loop over d
-                                // {
-                                //     int z_col = j + d * i;
-                                //     dtype_%(z)s* curr_z = (dtype_%(z)s*) PyArray_GETPTR2(%(z)s, z_row, z_col);
-                                //     *curr_z = 0;
-                                // }
                             } else {
                                 for (int j = 0; j < d; j++)  // loop over d
                                 {
@@ -549,9 +543,6 @@ class Images2Neibs(Op):
                                     } else {
                                         *curr_z = *( (dtype_%(ten4)s*) PyArray_GETPTR4(%(ten4)s, n, s, ten4_2, ten4_3));
                                     }
-                                    //printf("\\n(%%i,%%i,%%i,%%i) --> (%%i,%%i)",
-                                    //       n, s, ten4_2, ten4_3, z_row, z_col);
-                                    //printf("%%f ", *curr_z);
                                 }
                             }
                         }
@@ -598,8 +589,8 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
         ``wrap_centered``
             ?? TODO comment
         ``half``
-            Equivalent to 'valid' if we pre-pad the input on each side by
-            (neib_shape[0]//2, neib_shape[1]//2)
+            Equivalent to 'valid' if we pre-pad with zeros the input on
+            each side by (neib_shape[0]//2, neib_shape[1]//2)
 
     Returns
     -------
