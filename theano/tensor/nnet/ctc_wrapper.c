@@ -7,6 +7,8 @@ typedef struct ctc_context {
     int * flat_labels;
     int * label_lengths;
     PyArrayObject * activations_copy;
+    PyArrayObject * costs;
+    PyArrayObject * gradients;
 } ctc_context_t;
 
 void ctc_context_init(ctc_context_t * context)
@@ -21,9 +23,11 @@ void ctc_context_init(ctc_context_t * context)
     context->flat_labels = NULL;
     context->label_lengths = NULL;
     context->activations_copy = NULL;
+    context->costs = NULL;
+    context->gradients = NULL;
 }
 
-void ctc_context_destroy(ctc_context_t * context)
+void ctc_context_destroy(ctc_context_t * context, int error = 0)
 {
     if ( NULL != context->workspace )
         free( context->workspace );
@@ -38,6 +42,13 @@ void ctc_context_destroy(ctc_context_t * context)
         free( context->label_lengths );
 
     Py_XDECREF( context->activations_copy );
+
+    // Decrease reference to allocated costs and gradients, if an error occurs
+    if ( error )
+    {
+        Py_XDECREF( context->costs );
+        Py_XDECREF( context->gradients );
+    }
 }
 
 int ctc_check_result(ctcStatus_t retcode, const char * msg)
@@ -154,7 +165,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
     if ( ( NULL == context->label_lengths ) || ( NULL == context->flat_labels ) )
     {
         // Destroy previous CTC context before returning exception
-        ctc_context_destroy( context );
+        ctc_context_destroy( context, 1 );
 
         PyErr_Format( PyExc_MemoryError,
             "Could not allocate storage for labels and their lengths" );
@@ -174,11 +185,14 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
         Py_XDECREF( *out_costs );
         // Allocate new matrix
         *out_costs = (PyArrayObject *) PyArray_ZEROS( 1, &cost_size, NPY_FLOAT32, 0 );
+        // Add a copy of the newly allocated costs, so that we can decrease
+        // its reference (deallocate it) in case of errors inside the wrapper.
+        context->costs = *out_costs;
 
         if ( NULL == (*out_costs) )
         {
             // Destroy previous CTC context before returning exception
-            ctc_context_destroy( context );
+            ctc_context_destroy( context, 1 );
 
             PyErr_Format( PyExc_MemoryError,
                 "Could not allocate storage for CTC costs" );
@@ -188,31 +202,39 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
 
     costs = (npy_float32 *) PyArray_DATA( *out_costs );
 
-    if ( NULL == (*out_gradients) ||  // Symbolic variable has no real backing
-         PyArray_NDIM( *out_gradients ) != 3 ||
-         PyArray_DIMS( *out_gradients )[0] != PyArray_DIMS( in_activations )[0] ||
-         PyArray_DIMS( *out_gradients )[1] != PyArray_DIMS( in_activations )[1] ||
-         PyArray_DIMS( *out_gradients )[2] != PyArray_DIMS( in_activations )[2] )
+    npy_float32 * gradients = NULL;
+
+    if ( NULL != out_gradients )  // If gradient computation is not disabled
     {
-        // Existing matrix is the wrong size. Make a new one.
-        // Decrement ref counter to existing array
-        Py_XDECREF( *out_gradients );
-        // Allocate new array
-        *out_gradients = (PyArrayObject *) PyArray_ZEROS(3, PyArray_DIMS( in_activations ),
-            NPY_FLOAT32, 0);
-
-        if ( NULL == (*out_gradients) )
+        if ( NULL == (*out_gradients) ||  // Symbolic variable has no real backing
+            PyArray_NDIM( *out_gradients ) != 3 ||
+            PyArray_DIMS( *out_gradients )[0] != PyArray_DIMS( in_activations )[0] ||
+            PyArray_DIMS( *out_gradients )[1] != PyArray_DIMS( in_activations )[1] ||
+            PyArray_DIMS( *out_gradients )[2] != PyArray_DIMS( in_activations )[2] )
         {
-            // Destroy previous CTC context before returning exception
-            ctc_context_destroy( context );
+            // Existing matrix is the wrong size. Make a new one.
+            // Decrement ref counter to existing array
+            Py_XDECREF( *out_gradients );
+            // Allocate new array
+            *out_gradients = (PyArrayObject *) PyArray_ZEROS(3, PyArray_DIMS( in_activations ),
+                NPY_FLOAT32, 0);
+            // Add a copy of the newly allocated gradients, so that we can
+            // decrease its reference (deallocate it) in case of errors inside
+            // the wrapper.
+            context->gradients = *out_gradients;
 
-            PyErr_Format( PyExc_MemoryError,
-                "Could not allocate storage for CTC gradients!" );
-            return 1;
+            if ( NULL == (*out_gradients) )
+            {
+                // Destroy previous CTC context before returning exception
+                ctc_context_destroy( context, 1 );
+
+                PyErr_Format( PyExc_MemoryError,
+                    "Could not allocate storage for CTC gradients!" );
+                return 1;
+            }
         }
+        gradients = (npy_float32 *) PyArray_DATA( *out_gradients );
     }
-
-    npy_float32 * gradients = (npy_float32 *) PyArray_DATA( *out_gradients );
 
     size_t cpu_workspace_size;
     int ctc_error;
@@ -230,7 +252,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
     if ( NULL == context->workspace )
     {
         // Destroy previous CTC context before returning exception
-        ctc_context_destroy( context );
+        ctc_context_destroy( context, 1 );
 
         PyErr_Format( PyExc_MemoryError,
             "Failed to allocate memory for CTC workspace!" );
@@ -239,8 +261,8 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
 
     ctc_error = ctc_check_result( compute_ctc_loss( activations, gradients,
         context->flat_labels, context->label_lengths, context->input_lengths,
-        alphabet_size, minibatch_size, costs, context->workspace, context->options ),
-        "Failed to compute CTC loss function!" );
+        alphabet_size, minibatch_size, costs, context->workspace,
+        context->options ), "Failed to compute CTC loss function!" );
 
     if ( ctc_error )  // Exception is set by ctc_check_result, return error here
         return 1;
@@ -249,4 +271,22 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
     free( context );
 
     return 0;
+}
+
+/**
+ * Wrapper version with gradient computation disabled.
+ *
+ * We assume that function overloading (C++) is available to distinguish between
+ * two versions of the ctc_cost_cpu function.
+ **/
+int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
+                                 PyArrayObject *  in_labels,
+                                 PyArrayObject *  in_input_lengths,
+                                 PyArrayObject ** out_costs)
+{
+    return APPLY_SPECIFIC(ctc_cost_cpu)(in_activations,
+                                        in_labels,
+                                        in_input_lengths,
+                                        out_costs,
+                                        NULL); 
 }
