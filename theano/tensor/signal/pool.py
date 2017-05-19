@@ -433,6 +433,9 @@ class Pool(OpenMPOp):
         super(Pool, self).__init__(openmp=openmp)
         self.ndim = ndim
         self.ignore_border = ignore_border
+        if mode == 'max_deterministic':
+            # It seems max pool algo is already deterministic in CPU.
+            mode = 'max'
         if mode not in ['max', 'average_inc_pad', 'average_exc_pad', 'sum']:
             raise ValueError(
                 "Pool mode parameter only support 'max', 'sum',"
@@ -1040,6 +1043,9 @@ class PoolGrad(OpenMPOp):
     def __init__(self, ignore_border, mode='max', ndim=2, openmp=None):
         self.ndim = ndim
         self.ignore_border = ignore_border
+        if mode == 'max_deterministic':
+            # It seems max pool grad algo is already deterministic in CPU.
+            mode = 'max'
         if mode not in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
             raise ValueError(
                 "Pool mode parameter only support 'max', 'sum',"

@@ -963,6 +963,12 @@ class EnumType(Type, dict):
         """
         return alias in self.aliases
 
+    def get_aliases(self):
+        """
+        Return the list of all aliases in this enumeration.
+        """
+        return self.aliases.keys()
+
     def __repr__(self):
         names_to_aliases = {constant_name: '' for constant_name in self}
         for alias in self.aliases:
