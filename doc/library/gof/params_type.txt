@@ -1,0 +1,16 @@
+.. _libdoc_gof_params_type:
+
+============================================================
+:mod:`theano.gof.params_type` -- Wrapper class for op params
+============================================================
+
+---------
+Reference
+---------
+
+.. automodule:: theano.gof.params_type
+   :platform: Unix, Windows
+   :synopsis: Wrapper class for op params
+   :members:
+   :member-order: bysource
+.. moduleauthor:: LISA

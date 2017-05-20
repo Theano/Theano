@@ -5,10 +5,10 @@
 KERNEL void max_pool2d_grad_grad_kernel(const ga_size nthreads,
    const ga_size num, const ga_size channels, const ga_size pooled_height,
    const ga_size pooled_width, const ga_size height, const ga_size width,
-   GLOBAL_MEM const DTYPE_i0 *x, GLOBAL_MEM const DTYPE_i1 *z, GLOBAL_MEM const DTYPE_i2 *gx,
+   GLOBAL_MEM const DTYPE_INPUT_0 *x, GLOBAL_MEM const DTYPE_INPUT_1 *z, GLOBAL_MEM const DTYPE_INPUT_2 *gx,
    const ga_size kernel_h, const ga_size kernel_w, const ga_size stride_h, const ga_size stride_w,
    const ga_size pad_h, const ga_size pad_w,
-   GLOBAL_MEM DTYPE_o0 *gz)
+   GLOBAL_MEM DTYPE_OUTPUT_0 *gz)
 {
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
@@ -26,9 +26,9 @@ KERNEL void max_pool2d_grad_grad_kernel(const ga_size nthreads,
 
     const ga_size offset = (n*channels + c) * height * width;
 
-    const DTYPE_i0* x_slice = x + offset;
-    const DTYPE_i2* gx_slice = gx + offset;
-    DTYPE_o0 gradient = 0;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_2* gx_slice = gx + offset;
+    DTYPE_OUTPUT_0 gradient = 0;
 
     for (ga_size h=hstart; h < hend; ++h) {
       for (ga_size w=wstart; w < wend; ++w) {
@@ -48,11 +48,11 @@ KERNEL void max_pool3d_grad_grad_kernel(const ga_size nthreads,
    const ga_size num, const ga_size channels, const ga_size pooled_depth,
    const ga_size pooled_height, const ga_size pooled_width,
    const ga_size depth, const ga_size height, const ga_size width,
-   GLOBAL_MEM const DTYPE_i0 *x, GLOBAL_MEM const DTYPE_i1 *z, GLOBAL_MEM const DTYPE_i2 *gx,
+   GLOBAL_MEM const DTYPE_INPUT_0 *x, GLOBAL_MEM const DTYPE_INPUT_1 *z, GLOBAL_MEM const DTYPE_INPUT_2 *gx,
    const ga_size kernel_d, const ga_size kernel_h, const ga_size kernel_w,
    const ga_size stride_d, const ga_size stride_h, const ga_size stride_w,
    const ga_size pad_d, const ga_size pad_h, const ga_size pad_w,
-   GLOBAL_MEM DTYPE_o0 *gz)
+   GLOBAL_MEM DTYPE_OUTPUT_0 *gz)
 {
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
@@ -74,9 +74,9 @@ KERNEL void max_pool3d_grad_grad_kernel(const ga_size nthreads,
 
     const ga_size offset = (n*channels + c) * depth * height * width;
 
-    const DTYPE_i0* x_slice = x + offset;
-    const DTYPE_i2* gx_slice = gx + offset;
-    DTYPE_o0 gradient = 0;
+    GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
+    GLOBAL_MEM const DTYPE_INPUT_2* gx_slice = gx + offset;
+    DTYPE_OUTPUT_0 gradient = 0;
 
     for (ga_size d=dstart; d < dend; ++d) {
       for (ga_size h=hstart; h < hend; ++h) {

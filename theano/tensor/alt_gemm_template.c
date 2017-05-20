@@ -144,6 +144,9 @@ void %(name)s(
     PyObject* opB_transposed = alt_op_%(float_type)s(!to_transpose_B, B, nrowb, ncolb, *LDB);
     PyObject* opB_trans_dot_opA_trans = PyArray_New(&PyArray_Type, 2, computation_dims, %(npy_float)s, computation_strides, computation_pointer, 0, computation_flags, NULL);
     PyArray_MatrixProduct2(opB_transposed, opA_transposed, (PyArrayObject*)opB_trans_dot_opA_trans);
+    /* PyArray_MatrixProduct2 adds a reference to the output array,
+     * which we need to remove to avoid a memory leak. */
+    Py_XDECREF(opB_trans_dot_opA_trans);
     if(*BETA == 0) {
         if(*ALPHA != 1.0)
             alt_numpy_scale_matrix_inplace_%(float_type)s(ALPHA, (PyArrayObject*)opB_trans_dot_opA_trans);

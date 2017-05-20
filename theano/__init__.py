@@ -31,13 +31,35 @@ import logging
 
 import sys
 
+def has_handlers(logger):
+    # copied from Logger.hasHandlers() (introduced in Python 3.2)
+    _logger = logger
+    _has_handler = False
+    while _logger:
+        if _logger.handlers:
+            _has_handler = True
+            break
+        if not _logger.propagate:
+            break
+        else:
+            _logger = _logger.parent
+    return _has_handler
+
 theano_logger = logging.getLogger("theano")
 logging_default_handler = logging.StreamHandler()
 logging_default_formatter = logging.Formatter(
     fmt='%(levelname)s (%(name)s): %(message)s')
 logging_default_handler.setFormatter(logging_default_formatter)
-theano_logger.addHandler(logging_default_handler)
 theano_logger.setLevel(logging.WARNING)
+
+if has_handlers(theano_logger) is False:
+    theano_logger.addHandler(logging_default_handler)
+
+# Disable default log handler added to theano_logger when the module
+# is imported.
+def disable_log_handler(logger=theano_logger, handler=logging_default_handler):
+    if has_handlers(logger):
+        logger.removeHandler(handler)
 
 # Version information.
 from theano.version import version as __version__
@@ -104,17 +126,6 @@ else:
         raise ImportError("The nose module is not installed."
                           " It is needed for Theano tests.")
 
-if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
-    import theano.sandbox.cuda
-    # We can't test the driver during import of theano.sandbox.cuda as
-    # this cause circular import dependency. So we also test it manually
-    # after the import
-    if theano.sandbox.cuda.cuda_available:
-        import theano.sandbox.cuda.tests.test_driver
-
-        if config.enable_initial_driver_test:
-            theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
-
 if (config.device.startswith('cuda') or
         config.device.startswith('opencl') or
         config.init_gpu_device.startswith('cuda') or
@@ -123,7 +134,7 @@ if (config.device.startswith('cuda') or
     import theano.gpuarray
 
 # Use config.numpy to call numpy.seterr
-import numpy
+import numpy as np
 
 if config.numpy.seterr_all == 'None':
     _all = None
@@ -145,7 +156,7 @@ if config.numpy.seterr_invalid == 'None':
     _invalid = None
 else:
     _invalid = config.numpy.seterr_invalid
-numpy.seterr(
+np.seterr(
     all=_all,
     divide=_divide,
     over=_over,

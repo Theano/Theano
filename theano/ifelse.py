@@ -15,7 +15,7 @@ from copy import deepcopy
 from theano.compat import izip
 import logging
 
-import numpy
+import numpy as np
 
 import theano.tensor
 from theano.tensor import TensorType
@@ -26,7 +26,6 @@ from six import iteritems
 from six.moves import xrange
 from theano.compile import optdb
 from theano.tensor import opt
-from theano.scan_module.scan_utils import find_up
 from theano.scan_module.scan_utils import clone
 
 
@@ -169,8 +168,8 @@ class IfElse(Op):
         )
         c = theano.tensor.as_tensor_variable(c)
         if not self.gpu:
-            # When gpu is true, we are given only cuda ndarrays, and we want
-            # to keep them be cuda ndarrays
+            # When gpu is true, we are given only gpuarrays, and we want
+            # to keep them as gpuarrays
             nw_args = []
             for x in args:
                 if hasattr(x, '_as_TensorVariable'):
@@ -260,7 +259,7 @@ class IfElse(Op):
                             if self.as_view:
                                 storage_map[out][0] = val
                             # Work around broken numpy deepcopy
-                            elif type(val) in (numpy.ndarray, numpy.memmap):
+                            elif type(val) in (np.ndarray, np.memmap):
                                 storage_map[out][0] = val.copy()
                             else:
                                 storage_map[out][0] = deepcopy(val)
@@ -277,7 +276,7 @@ class IfElse(Op):
                             # improves
                             # Work around broken numpy deepcopy
                             val = storage_map[f][0]
-                            if type(val) in (numpy.ndarray, numpy.memmap):
+                            if type(val) in (np.ndarray, np.memmap):
                                 storage_map[out][0] = val.copy()
                             else:
                                 storage_map[out][0] = deepcopy(val)
@@ -578,7 +577,7 @@ class CondMerge(gof.Optimizer):
         merging_node = cond_nodes[0]
         for proposal in cond_nodes[1:]:
             if (proposal.inputs[0] == merging_node.inputs[0] and
-                    not find_up(proposal, merging_node)):
+                    not gof.graph.is_in_ancestors(proposal, merging_node)):
                 # Create a list of replacements for proposal
                 mn_ts = merging_node.inputs[1:][:merging_node.op.n_outs]
                 mn_fs = merging_node.inputs[1:][merging_node.op.n_outs:]
@@ -683,8 +682,8 @@ def cond_merge_random_op(main_node):
     merging_node = cond_nodes[0]
     for proposal in cond_nodes[1:]:
         if (proposal.inputs[0] == merging_node.inputs[0] and
-                not find_up(proposal, merging_node) and
-                not find_up(merging_node, proposal)):
+                not gof.graph.is_in_ancestors(proposal, merging_node) and
+                not gof.graph.is_in_ancestors(merging_node, proposal)):
             # Create a list of replacements for proposal
             mn_ts = merging_node.inputs[1:][:merging_node.op.n_outs]
             mn_fs = merging_node.inputs[1:][merging_node.op.n_outs:]

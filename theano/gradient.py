@@ -6,7 +6,7 @@ import logging
 import time
 import warnings
 
-import numpy  # for numeric_grad
+import numpy as np  # for numeric_grad
 from six import itervalues
 
 import theano
@@ -19,7 +19,6 @@ from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp, FAST_RUN, DebugMode
 
-np = numpy
 __authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron, Ian Goodfellow"
 __copyright__ = "(c) 2011, Universite de Montreal"
 __license__ = "3-clause BSD License"
@@ -219,7 +218,7 @@ def Rop(f, wrt, eval_points):
                                  str(eval_point.type.ndim))
         except AttributeError:
             # wrt_elem and eval_point don't always have ndim like random type
-            # Tensor, Sparse and CudaNdArray have the ndim attribute
+            # Tensor, Sparse and GpuArray have the ndim attribute
             pass
 
     seen_nodes = OrderedDict()
@@ -1374,9 +1373,9 @@ class numeric_grad(object):
     type_eps = {'float64': 1e-7,
                 'float32': 3e-4,
                 'float16': 1e-1,
-                numpy.dtype('float64'): 1e-7,
-                numpy.dtype('float32'): 3e-4,
-                numpy.dtype('float16'): 1e-1}
+                np.dtype('float64'): 1e-7,
+                np.dtype('float32'): 3e-4,
+                np.dtype('float16'): 1e-1}
 
     def __init__(self, f, pt, eps=None, out_type=None):
         """Return the gradient of f at pt.
@@ -1406,7 +1405,7 @@ class numeric_grad(object):
             pt = [pt]
             packed_pt = True
 
-        apt = [numpy.array(p) for p in pt]
+        apt = [np.array(p) for p in pt]
 
         shapes = [p.shape for p in apt]
         dtypes = [str(p.dtype) for p in apt]
@@ -1423,12 +1422,12 @@ class numeric_grad(object):
             (self.type_eps[dt], dt) for dt in dtypes)[1]
 
         # create un-initialized memory
-        x = numpy.ndarray((total_size,), dtype=working_dtype)
+        x = np.ndarray((total_size,), dtype=working_dtype)
         # (not out_type is None) --> (out_type is not None) ???
         if (out_type is not None) and (out_type.startswith('complex')):
-            gx = numpy.ndarray((total_size,), dtype=out_type)
+            gx = np.ndarray((total_size,), dtype=out_type)
         else:
-            gx = numpy.ndarray((total_size,), dtype=working_dtype)
+            gx = np.ndarray((total_size,), dtype=working_dtype)
 
         if eps is None:
             eps = builtins.max(self.type_eps[dt] for dt in dtypes)
@@ -1483,13 +1482,13 @@ class numeric_grad(object):
         The tuple (abs_err, rel_err) is returned
         """
         abs_err = abs(a - b)
-        rel_err = abs_err / numpy.maximum(abs(a) + abs(b), 1e-8)
+        rel_err = abs_err / np.maximum(abs(a) + abs(b), 1e-8)
         # The numpy.asarray are needed as if a or b is a sparse matrix
         # this would result in a numpy.matrix and not a numpy.ndarray
         # and the behave differently causing problem later.
         # In particular a_npy_matrix.flatten().shape == (1, n_element)
-        abs_err = numpy.asarray(abs_err)
-        rel_err = numpy.asarray(rel_err)
+        abs_err = np.asarray(abs_err)
+        rel_err = np.asarray(rel_err)
         return (abs_err, rel_err)
 
     def abs_rel_errors(self, g_pt):
@@ -1530,11 +1529,11 @@ class numeric_grad(object):
 
         abs_rel_errs = self.abs_rel_errors(g_pt)
         for abs_err, rel_err in abs_rel_errs:
-            if not numpy.all(numpy.isfinite(abs_err)):
+            if not np.all(np.isfinite(abs_err)):
                 raise ValueError('abs_err not finite', repr(abs_err))
-            if not numpy.all(numpy.isfinite(rel_err)):
+            if not np.all(np.isfinite(rel_err)):
                 raise ValueError('rel_err not finite', repr(rel_err))
-            scaled_err = numpy.minimum(abs_err / abs_tol, rel_err / rel_tol)
+            scaled_err = np.minimum(abs_err / abs_tol, rel_err / rel_tol)
             max_i = scaled_err.argmax()
 
             pos.append(max_i)
@@ -1543,7 +1542,7 @@ class numeric_grad(object):
             rel_errs.append(rel_err.flatten()[max_i])
 
         # max over the arrays in g_pt
-        max_arg = numpy.argmax(errs)
+        max_arg = np.argmax(errs)
         max_pos = pos[max_arg]
         return (max_arg, max_pos, abs_errs[max_arg], rel_errs[max_arg])
 
@@ -1564,8 +1563,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     Example:
         >>> verify_grad(theano.tensor.tanh,
-        ...             (numpy.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
-        ...             rng=numpy.random)
+        ...             (np.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
+        ...             rng=np.random)
 
     Raises an Exception if the difference between the analytic gradient and
     numerical gradient (computed through the Finite Difference Method) of a
@@ -1609,7 +1608,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     import theano.tensor
     from theano.tensor import as_tensor_variable, TensorType
     assert isinstance(pt, (list, tuple))
-    pt = [numpy.array(p) for p in pt]
+    pt = [np.array(p) for p in pt]
 
     for i, p in enumerate(pt):
         if p.dtype not in ('float16', 'float32', 'float64'):
@@ -1672,10 +1671,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     def random_projection():
         plain = rng.rand(*o_fn_out.shape) + 0.5
         if cast_to_output_type and o_output.dtype == "float32":
-            return numpy.array(plain, o_output.dtype)
+            return np.array(plain, o_output.dtype)
         return plain
 
-    t_r = shared(random_projection())
+    t_r = shared(random_projection(), borrow=True)
     t_r.name = 'random_projection'
 
     # random projection of o onto t_r
@@ -1712,6 +1711,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
             if max_abs_err > abs_tol and max_rel_err > rel_tol:
 
                 raise verify_grad.E_grad(max_arg, max_err_pos,
+                                         analytic_grad[max_arg].shape,
+                                         analytic_grad[max_arg].flatten()[max_err_pos],
+                                         num_grad.gf[max_arg].flatten()[max_err_pos],
                                          max_abs_err, max_rel_err,
                                          abs_tol, rel_tol)
 
@@ -1727,10 +1729,14 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
 class GradientError(Exception):
     """This error is raised when a gradient is calculated, but incorrect."""
-    def __init__(self, arg, err_pos, abs_err, rel_err, abs_tol, rel_tol):
+    def __init__(self, arg, err_pos, shape, val1, val2,
+                 abs_err, rel_err, abs_tol, rel_tol):
         Exception.__init__(self)  # to be compatible with python2.4
         self.arg = arg
         self.err_pos = err_pos
+        self.shape = shape
+        self.val1 = val1
+        self.val2 = val2
         self.abs_err = abs_err
         self.rel_err = rel_err
         self.abs_tol = abs_tol
@@ -1741,10 +1747,13 @@ class GradientError(Exception):
         args_msg = ", ".join(str(a) for a in self.args)
         return """\
 GradientError: numeric gradient and analytic gradient exceed tolerance:
-        At position %i of argument %i,
+        At position %i of argument %i with shape %s,
+            val1 = %f      ,  val2 = %f
             abs. error = %f,  abs. tolerance = %f
             rel. error = %f,  rel. tolerance = %f
 Exception args: %s""" % (self.err_pos, self.arg,
+                         self.shape,
+                         self.val1, self.val2,
                          self.abs_err, self.abs_tol,
                          self.rel_err, self.rel_tol,
                          args_msg)
@@ -1983,6 +1992,38 @@ def zero_grad(x):
         is now truncated to 0.
     """
     return zero_grad_(x)
+
+
+class UndefinedGrad(ViewOp):
+    def grad(self, args, g_outs):
+        return [grad_undefined(self, i, arg) for i, arg in enumerate(args)]
+
+    def R_op(self, inputs, eval_points):
+        return [None]
+
+    def connection_pattern(self, node):
+        return [[True]]
+
+
+undefined_grad_ = UndefinedGrad()
+
+
+def undefined_grad(x):
+    """
+    Consider the gradient of this variable undefined and
+    generate an error message if its gradient is taken.
+
+    The expression itself is unaffected, but when its gradient is
+    computed, or the gradient of another expression that this
+    expression is a subexpression of, an error message will be generated
+    specifying such gradient is not defined.
+
+    :param x: A Theano expression whose gradient should be undefined.
+
+    :return: The expression is returned unmodified, but its gradient
+        is now undefined.
+    """
+    return undefined_grad_(x)
 
 
 class DisconnectedGrad(ViewOp):

@@ -3,7 +3,7 @@ import logging
 import warnings
 from six.moves import xrange
 
-import numpy
+import numpy as np
 
 try:
     import scipy.linalg
@@ -36,16 +36,28 @@ class Cholesky(Op):
 
     L = cholesky(X, lower=True) implies dot(L, L.T) == X.
 
+    Parameters
+    ----------
+    lower : bool, default=True
+        Whether to return the lower or upper cholesky factor
+    on_error : ['raise', 'nan']
+        If on_error is set to 'raise', this Op will raise a
+        `scipy.linalg.LinAlgError` if the matrix is not positive definite.
+        If on_error is set to 'nan', it will return a matrix containing
+        nans instead.
     """
     # TODO: inplace
     # TODO: for specific dtypes
     # TODO: LAPACK wrapper with in-place behavior, for solve also
 
-    __props__ = ('lower', 'destructive')
+    __props__ = ('lower', 'destructive', 'on_error')
 
-    def __init__(self, lower=True):
+    def __init__(self, lower=True, on_error='raise'):
         self.lower = lower
         self.destructive = False
+        if on_error not in ['raise', 'nan']:
+            raise ValueError('on_error must be one of "raise" or ""nan"')
+        self.on_error = on_error
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
@@ -60,7 +72,13 @@ class Cholesky(Op):
     def perform(self, node, inputs, outputs):
         x = inputs[0]
         z = outputs[0]
-        z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
+        try:
+            z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
+        except scipy.linalg.LinAlgError:
+            if self.on_error == 'raise':
+                raise
+            else:
+                z[0] = (np.zeros(x.shape) * np.nan).astype(x.dtype)
 
     def grad(self, inputs, gradients):
         """
@@ -78,6 +96,13 @@ class Cholesky(Op):
         x = inputs[0]
         dz = gradients[0]
         chol_x = self(x)
+
+        # Replace the cholesky decomposition with 1 if there are nans
+        # or solve_upper_triangular will throw a ValueError.
+        if self.on_error == 'nan':
+            ok = ~tensor.any(tensor.isnan(chol_x))
+            chol_x = tensor.switch(ok, chol_x, 1)
+            dz = tensor.switch(ok, dz, 1)
 
         # deal with upper triangular by converting to lower triangular
         if not self.lower:
@@ -97,9 +122,14 @@ class Cholesky(Op):
             chol_x, tril_and_halve_diagonal(chol_x.T.dot(dz)))
 
         if self.lower:
-            return [tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))]
+            grad = tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))
         else:
-            return [tensor.triu(s + s.T) - tensor.diag(tensor.diagonal(s))]
+            grad = tensor.triu(s + s.T) - tensor.diag(tensor.diagonal(s))
+
+        if self.on_error == 'nan':
+            return [tensor.switch(ok, grad, np.nan)]
+        else:
+            return [grad]
 
 cholesky = Cholesky()
 
@@ -145,7 +175,7 @@ class CholeskyGrad(Op):
         dx = outputs[0]
         N = x.shape[0]
         if self.lower:
-            F = numpy.tril(dz)
+            F = np.tril(dz)
             for k in xrange(N - 1, -1, -1):
                 for j in xrange(k + 1, N):
                     for i in xrange(j, N):
@@ -156,7 +186,7 @@ class CholeskyGrad(Op):
                     F[k, k] -= L[j, k] * F[j, k]
                 F[k, k] /= (2 * L[k, k])
         else:
-            F = numpy.triu(dz)
+            F = np.triu(dz)
             for k in xrange(N - 1, -1, -1):
                 for j in xrange(k + 1, N):
                     for i in xrange(j, N):
@@ -176,6 +206,7 @@ class Solve(Op):
     """
     Solve a system of linear equations.
 
+    For on CPU and GPU.
     """
 
     __props__ = ('A_structure', 'lower', 'overwrite_A', 'overwrite_b')
@@ -206,8 +237,8 @@ class Solve(Op):
         # infer dtype by solving the most simple
         # case with (1, 1) matrices
         o_dtype = scipy.linalg.solve(
-            numpy.eye(1).astype(A.dtype),
-            numpy.eye(1).astype(b.dtype)).dtype
+            np.eye(1).astype(A.dtype),
+            np.eye(1).astype(b.dtype)).dtype
         x = tensor.tensor(
             broadcastable=b.broadcastable,
             dtype=o_dtype)
@@ -370,11 +401,11 @@ class EigvalshGrad(Op):
         assert lower in [True, False]
         self.lower = lower
         if lower:
-            self.tri0 = numpy.tril
-            self.tri1 = lambda a: numpy.triu(a, 1)
+            self.tri0 = np.tril
+            self.tri1 = lambda a: np.triu(a, 1)
         else:
-            self.tri0 = numpy.triu
-            self.tri1 = lambda a: numpy.tril(a, -1)
+            self.tri0 = np.triu
+            self.tri1 = lambda a: np.tril(a, -1)
 
     def make_node(self, a, b, gw):
         assert imported_scipy, (
@@ -394,14 +425,14 @@ class EigvalshGrad(Op):
     def perform(self, node, inputs, outputs):
         (a, b, gw) = inputs
         w, v = scipy.linalg.eigh(a, b, lower=self.lower)
-        gA = v.dot(numpy.diag(gw).dot(v.T))
-        gB = - v.dot(numpy.diag(gw * w).dot(v.T))
+        gA = v.dot(np.diag(gw).dot(v.T))
+        gB = - v.dot(np.diag(gw * w).dot(v.T))
 
         # See EighGrad comments for an explanation of these lines
         out1 = self.tri0(gA) + self.tri1(gA).T
         out2 = self.tri0(gB) + self.tri1(gB).T
-        outputs[0][0] = numpy.asarray(out1, dtype=node.outputs[0].dtype)
-        outputs[1][0] = numpy.asarray(out2, dtype=node.outputs[1].dtype)
+        outputs[0][0] = np.asarray(out1, dtype=node.outputs[0].dtype)
+        outputs[1][0] = np.asarray(out2, dtype=node.outputs[1].dtype)
 
     def infer_shape(self, node, shapes):
         return [shapes[0], shapes[1]]
@@ -510,13 +541,13 @@ class ExpmGrad(Op):
         w, V = scipy.linalg.eig(A, right=True)
         U = scipy.linalg.inv(V).T
 
-        exp_w = numpy.exp(w)
-        X = numpy.subtract.outer(exp_w, exp_w) / numpy.subtract.outer(w, w)
-        numpy.fill_diagonal(X, exp_w)
+        exp_w = np.exp(w)
+        X = np.subtract.outer(exp_w, exp_w) / np.subtract.outer(w, w)
+        np.fill_diagonal(X, exp_w)
         Y = U.dot(V.T.dot(gA).dot(U) * X).dot(V.T)
 
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", numpy.ComplexWarning)
+            warnings.simplefilter("ignore", np.ComplexWarning)
             out[0] = Y.astype(A.dtype)
 
 

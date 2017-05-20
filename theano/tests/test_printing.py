@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function, division
 import logging
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 
 from six.moves import StringIO
 
@@ -252,11 +252,11 @@ def test_debugprint():
     s = s.getvalue()
     # The additional white space are needed!
     reference = '\n'.join([
-        "Elemwise{add,no_inplace} [id A] ''   0 clients:[('[id B]', 1), ('output', '')]",
+        "Elemwise{add,no_inplace} [id A] ''   0 clients:[('output', ''), ('[id C]', 1)]",
         " |A [id D]",
         " |B [id E]",
-        "Elemwise{sub,no_inplace} [id B] ''   1",
-        " |Elemwise{add,no_inplace} [id A] ''   0 clients:[('[id B]', 1), ('output', '')]",
+        "Elemwise{sub,no_inplace} [id C] ''   1",
+        " |Elemwise{add,no_inplace} [id A] ''   0 clients:[('output', ''), ('[id C]', 1)]",
         " |D [id F]",
     ]) + '\n'
     if s != reference:
@@ -509,8 +509,8 @@ def test_scan_debugprint4():
     def fn(a_m2, a_m1, b_m2, b_m1):
         return a_m1 + a_m2, b_m1 + b_m2
 
-    a0 = theano.shared(numpy.arange(2, dtype='int64'))
-    b0 = theano.shared(numpy.arange(2, dtype='int64'))
+    a0 = theano.shared(np.arange(2, dtype='int64'))
+    b0 = theano.shared(np.arange(2, dtype='int64'))
 
     (a, b), _ = theano.scan(
         fn, outputs_info=[{'initial': a0, 'taps': [-2, -1]},
@@ -693,8 +693,8 @@ def test_scan_debugprint5():
 
     for{cpu,scan_fn} [id F] ''
     >Elemwise{mul,no_inplace} [id CR] ''
-    > |<TensorType(float64, vector)> [id CS] -> [id H]
-    > |A_copy [id CT] -> [id P]
+    > |<TensorType(float64, vector)> [id CP] -> [id H]
+    > |A_copy [id CL] -> [id P]
 
     for{cpu,scan_fn} [id F] ''
     >Elemwise{mul,no_inplace} [id CR] ''

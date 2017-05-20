@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import unittest
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 
 import theano
 import theano.typed_list
@@ -24,8 +24,8 @@ except ImportError:
 
 # took from tensors/tests/test_basic.py
 def rand_ranged_matrix(minimum, maximum, shape):
-    return numpy.asarray(numpy.random.rand(*shape) * (maximum - minimum) +
-                         minimum, dtype=theano.config.floatX)
+    return np.asarray(np.random.rand(*shape) * (maximum - minimum) +
+                      minimum, dtype=theano.config.floatX)
 
 
 # took from sparse/tests/test_basic.py
@@ -34,8 +34,8 @@ def random_lil(shape, dtype, nnz):
     huge = 2 ** 30
     for k in range(nnz):
         # set non-zeros in random locations (row x, col y)
-        idx = numpy.random.randint(1, huge + 1, size=2) % shape
-        value = numpy.random.rand()
+        idx = np.random.randint(1, huge + 1, size=2) % shape
+        value = np.random.rand()
         # if dtype *int*, value will always be zeros!
         if dtype in theano.tensor.integer_dtypes:
             value = int(value * 100)
@@ -68,7 +68,7 @@ class test_get_item(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], slice(0, 1, 1)), [x]))
+        self.assertTrue(np.array_equal(f([x], slice(0, 1, 1)), [x]))
 
     def test_sanity_check_single(self):
 
@@ -84,9 +84,9 @@ class test_get_item(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x],
-                                            numpy.asarray(0, dtype='int64')),
-                                          x))
+        self.assertTrue(np.array_equal(f([x],
+                                         np.asarray(0, dtype='int64')),
+                                       x))
 
     def test_interface(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -100,16 +100,16 @@ class test_get_item(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x],
-                                            numpy.asarray(0, dtype='int64')),
-                                          x))
+        self.assertTrue(np.array_equal(f([x],
+                                         np.asarray(0, dtype='int64')),
+                                       x))
 
         z = mySymbolicMatricesList[0]
 
         f = theano.function([mySymbolicMatricesList],
                             z)
 
-        self.assertTrue(numpy.array_equal(f([x]), x))
+        self.assertTrue(np.array_equal(f([x]), x))
 
     def test_wrong_input(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -130,14 +130,14 @@ class test_get_item(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x]), x))
+        self.assertTrue(np.array_equal(f([x]), x))
 
         z = GetItem()(mySymbolicMatricesList, slice(0, 1, 1))
 
         f = theano.function([mySymbolicMatricesList],
                             z)
 
-        self.assertTrue(numpy.array_equal(f([x]), [x]))
+        self.assertTrue(np.array_equal(f([x]), [x]))
 
 
 class test_append(unittest.TestCase):
@@ -156,7 +156,7 @@ class test_append(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], y), [x, y]))
+        self.assertTrue(np.array_equal(f([x], y), [x, y]))
 
     def test_sanity_check(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -171,7 +171,7 @@ class test_append(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], y), [x, y]))
+        self.assertTrue(np.array_equal(f([x], y), [x, y]))
 
     def test_interfaces(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -186,7 +186,7 @@ class test_append(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], y), [x, y]))
+        self.assertTrue(np.array_equal(f([x], y), [x, y]))
 
 
 class test_extend(unittest.TestCase):
@@ -206,7 +206,7 @@ class test_extend(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], [y]), [x, y]))
+        self.assertTrue(np.array_equal(f([x], [y]), [x, y]))
 
     def test_sanity_check(self):
         mySymbolicMatricesList1 = TypedListType(T.TensorType(
@@ -223,7 +223,7 @@ class test_extend(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], [y]), [x, y]))
+        self.assertTrue(np.array_equal(f([x], [y]), [x, y]))
 
     def test_interface(self):
         mySymbolicMatricesList1 = TypedListType(T.TensorType(
@@ -240,7 +240,7 @@ class test_extend(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], [y]), [x, y]))
+        self.assertTrue(np.array_equal(f([x], [y]), [x, y]))
 
 
 class test_insert(unittest.TestCase):
@@ -260,10 +260,10 @@ class test_insert(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x],
-                                            numpy.asarray(1, dtype='int64'),
-                                            y),
-                                          [x, y]))
+        self.assertTrue(np.array_equal(f([x],
+                                         np.asarray(1, dtype='int64'),
+                                         y),
+                                       [x, y]))
 
     def test_sanity_check(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -279,7 +279,7 @@ class test_insert(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1,
+        self.assertTrue(np.array_equal(f([x], np.asarray(1,
                         dtype='int64'), y), [x, y]))
 
     def test_interface(self):
@@ -296,10 +296,10 @@ class test_insert(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x],
-                                            numpy.asarray(1, dtype='int64'),
-                                            y),
-                                          [x, y]))
+        self.assertTrue(np.array_equal(f([x],
+                                         np.asarray(1, dtype='int64'),
+                                         y),
+                                       [x, y]))
 
 
 class test_remove(unittest.TestCase):
@@ -318,7 +318,7 @@ class test_remove(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x, y], y), [x]))
+        self.assertTrue(np.array_equal(f([x, y], y), [x]))
 
     def test_sanity_check(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -333,7 +333,7 @@ class test_remove(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x, y], y), [x]))
+        self.assertTrue(np.array_equal(f([x, y], y), [x]))
 
     def test_interface(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -348,7 +348,7 @@ class test_remove(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x, y], y), [x]))
+        self.assertTrue(np.array_equal(f([x, y], y), [x]))
 
 
 class test_reverse(unittest.TestCase):
@@ -366,7 +366,7 @@ class test_reverse(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x, y]), [y, x]))
+        self.assertTrue(np.array_equal(f([x, y]), [y, x]))
 
     def test_sanity_check(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -380,7 +380,7 @@ class test_reverse(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x, y]), [y, x]))
+        self.assertTrue(np.array_equal(f([x, y]), [y, x]))
 
     def test_interface(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -394,7 +394,7 @@ class test_reverse(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x, y]), [y, x]))
+        self.assertTrue(np.array_equal(f([x, y]), [y, x]))
 
 
 class test_index(unittest.TestCase):
@@ -570,10 +570,10 @@ class TestMakeList(unittest.TestCase):
         x = T.tensor3()
         y = T.tensor3()
 
-        A = numpy.cast[theano.config.floatX](numpy.random.rand(5, 3))
-        B = numpy.cast[theano.config.floatX](numpy.random.rand(7, 2))
-        X = numpy.cast[theano.config.floatX](numpy.random.rand(5, 6, 1))
-        Y = numpy.cast[theano.config.floatX](numpy.random.rand(1, 9, 3))
+        A = np.cast[theano.config.floatX](np.random.rand(5, 3))
+        B = np.cast[theano.config.floatX](np.random.rand(7, 2))
+        X = np.cast[theano.config.floatX](np.random.rand(5, 6, 1))
+        Y = np.cast[theano.config.floatX](np.random.rand(1, 9, 3))
 
         make_list((3., 4.))
         c = make_list((a, b))

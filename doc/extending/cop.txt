@@ -151,7 +151,7 @@ There are less methods to define for an Op than for a Type:
 
     .. method:: c_support_code()
 
-       Allows you to specify helper functions/structs that the
+       Allows you to specify helper functions/structs (in a string or a list of string) that the
        :ref:`op` needs.  That code will be reused for each apply of
        this op. It will be inserted at global scope.
 

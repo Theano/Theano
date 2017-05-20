@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import numpy.linalg
 
 import theano
@@ -39,9 +39,9 @@ def test_rop_lop():
                         non_sequences=[y, mx, mv])
     scan_f = function([mx, mv], sy)
 
-    rng = numpy.random.RandomState(utt.fetch_seed())
-    vx = numpy.asarray(rng.randn(4, 4), theano.config.floatX)
-    vv = numpy.asarray(rng.randn(4, 4), theano.config.floatX)
+    rng = np.random.RandomState(utt.fetch_seed())
+    vx = np.asarray(rng.randn(4, 4), theano.config.floatX)
+    vv = np.asarray(rng.randn(4, 4), theano.config.floatX)
 
     v1 = rop_f(vx, vv)
     v2 = scan_f(vx, vv)
@@ -61,7 +61,7 @@ def test_rop_lop():
             'Op did not raised an error even though the function'
             ' is not differentiable'))
 
-    vv = numpy.asarray(rng.uniform(size=(4,)), theano.config.floatX)
+    vv = np.asarray(rng.uniform(size=(4,)), theano.config.floatX)
     yv = tensor.Lop(y, mx, v)
     lop_f = function([mx, v], yv)
 
@@ -75,21 +75,21 @@ def test_rop_lop():
 
 def test_spectral_radius_bound():
     tol = 10 ** (-6)
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     x = theano.tensor.matrix()
     radius_bound = spectral_radius_bound(x, 5)
     f = theano.function([x], radius_bound)
 
     shp = (3, 4)
     m = rng.rand(*shp)
-    m = numpy.cov(m).astype(config.floatX)
+    m = np.cov(m).astype(config.floatX)
     radius_bound_theano = f(m)
 
     # test the approximation
     mm = m
     for i in range(5):
-        mm = numpy.dot(mm, mm)
-    radius_bound_numpy = numpy.trace(mm) ** (2 ** (-5))
+        mm = np.dot(mm, mm)
+    radius_bound_numpy = np.trace(mm) ** (2 ** (-5))
     assert abs(radius_bound_numpy - radius_bound_theano) < tol
 
     # test the bound
@@ -163,4 +163,4 @@ def test_matrix_inverse_solve():
     b = theano.tensor.dmatrix('b')
     node = matrix_inverse(A).dot(b).owner
     [out] = inv_as_solve.transform(node)
-    assert isinstance(out.owner.op, Solve)               
+    assert isinstance(out.owner.op, Solve)

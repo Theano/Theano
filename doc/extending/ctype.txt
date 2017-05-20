@@ -114,7 +114,7 @@ the most important ones:
 
     .. method:: c_support_code()
 
-        Allows to add helper functions/structs that the :ref:`type` needs.
+        Allows to add helper functions/structs (in a string or a list of strings) that the :ref:`type` needs.
 
     .. method:: c_compiler()
 
@@ -130,6 +130,16 @@ the most important ones:
        change in the code. If you don't want to cache the compiled code
        return an empty tuple or don't implement it.
 
+    .. method:: c_element_type()
+
+       Optional: should return the name of the primitive C type of
+       items into variables handled by this Theano type. For example,
+       for a matrix of 32-bit signed NumPy integers, it should return
+       ``"npy_int32"``. If C type may change from an instance to another
+       (e.g. ``Scalar('int32')`` vs ``Scalar('int64')``), consider
+       implementing this method. If C type is fixed accross instances,
+       this method may be useless (as you already know the C type
+       when you work with the C code).
 
 Each of these functions take two arguments, ``name`` and ``sub`` which
 must be used to parameterize the C code they return. ``name`` is a
@@ -527,8 +537,8 @@ You can implement c_code for this op. You register it like this:
 
 In your C code, you should use %(iname)s and %(oname)s to represent
 the C variable names of the DeepCopyOp input and output
-respectively. See an example for the type ``CudaNdarrayType`` (GPU
-array) in the file `theano/sandbox/cuda/type.py`. The version
+respectively. See an example for the type ``GpuArrayType`` (GPU
+array) in the file `theano/gpuarray/type.py`. The version
 parameter is what is returned by DeepCopyOp.c_code_cache_version(). By
 default, it will recompile the c code for each process.
 
@@ -549,8 +559,8 @@ calling:
 
 In your C code, you should use %(iname)s and %(oname)s to represent
 the C variable names of the ViewOp input and output
-respectively. See an example for the type ``CudaNdarrayType`` (GPU
-array) in the file `theano/sandbox/cuda/type.py`. The version
+respectively. See an example for the type ``GpuArrayType`` (GPU
+array) in the file `thean/gpuarray/type.py`. The version
 parameter is what is returned by ViewOp.c_code_cache_version(). By
 default, it will recompile the c code for each process.
 

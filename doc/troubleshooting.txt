@@ -120,7 +120,7 @@ some test fails on your machine, you are encouraged to tell us what went
 wrong on the ``theano-users@googlegroups.com`` mailing list.
 
 .. warning::
-    Theano's test should **NOT** be run with ``device=cuda`` or ``device=gpu``
+    Theano's test should **NOT** be run with ``device=cuda``
     or they will fail. The tests automatically use the gpu, if any, when
     needed. If you don't want Theano to ever use the gpu when running tests,
     you can set :attr:`config.device` to ``cpu`` and
@@ -137,24 +137,22 @@ CPU and GPU memory usage.
 
 Could speed up and lower memory usage:
 
-- :ref:`cuDNN <libdoc_cuda_dnn>` default cuDNN convolution use less
+- :ref:`cuDNN <libdoc_gpuarray_dnn>` default cuDNN convolution use less
    memory then Theano version. But some flags allow it to use more
    memory. GPU only.
-- Shortly avail, multi-GPU.
 
 Could raise memory usage but speed up computation:
 
-- :attr:`config.gpuarray.preallocate` =1  # Preallocates the GPU memory for the new backend(:ref:`gpuarray`) 
-  and then manages it in a smart way. Does not raise much the memory usage, but if
-  you are at the limit of GPU memory available you might need to specify a
-  lower value. GPU only.
-- :attr:`config.lib.cnmem` =1  # Equivalent on the old backend (:ref:`cuda`). GPU only.
+- :attr:`config.gpuarray.preallocate` = 1  # Preallocates the GPU memory
+  and then manages it in a smart way. Does not raise much the memory
+  usage, but if you are at the limit of GPU memory available you might
+  need to specify a lower value. GPU only.
 - :attr:`config.allow_gc` =False
 - :attr:`config.optimizer_excluding` =low_memory , GPU only for now.
 
 Could lower the memory usage, but raise computation time:
 
-- :attr:`config.scan.allow_gc` =True # Probably not significant slowdown if config.lib.cnmem is used.
+- :attr:`config.scan.allow_gc` = True # Probably not significant slowdown on the GPU if memory cache is not disabled
 - :attr:`config.scan.allow_output_prealloc` =False
 - Use :func:`batch_normalization()
   <theano.tensor.nnet.bn.batch_normalization>`. It use less memory

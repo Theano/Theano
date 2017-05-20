@@ -15,7 +15,7 @@ revisited later when all the intermediate part are on the GPU.
 from __future__ import absolute_import, print_function, division
 import logging
 import warnings
-import numpy
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -85,7 +85,7 @@ class SoftmaxWithBias(gof.Op):
 
         if x.size == 0:
             # Numpy doesn't like the max of a zero-sized object.
-            output_storage[0][0] = numpy.zeros(x.shape, dtype=x.dtype)
+            output_storage[0][0] = np.zeros(x.shape, dtype=x.dtype)
             return
 
         x_dtype = x.dtype
@@ -94,21 +94,20 @@ class SoftmaxWithBias(gof.Op):
             x = x.astype('float32')
 
         x_plus_b = x + b[None, :]
-        e_x = numpy.exp(x_plus_b - x_plus_b.max(axis=1)[:, None])
+        e_x = np.exp(x_plus_b - x_plus_b.max(axis=1)[:, None])
         e_x *= 1.0 / e_x.sum(axis=1)[:, None]
         # default for copy is True and we don't need a copy if the
         # data type matches.
         output_storage[0][0] = e_x.astype(x_dtype, copy=False)
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, b = inp
         g_sm, = grads
 
         if isinstance(g_sm.type, DisconnectedType):
             return [DisconnectedType()(), DisconnectedType()()]
 
-        sm = softmax_with_bias(x, b)
-        dx = softmax_grad(g_sm, sm)
+        dx = softmax_grad(g_sm, outputs[0])
         db = tensor.sum(dx, axis=0)
         return dx, db
 
@@ -315,7 +314,7 @@ class SoftmaxGrad(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         dy, sm = input_storage
-        dx = numpy.zeros_like(sm)
+        dx = np.zeros_like(sm)
         # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
         for i in xrange(sm.shape[0]):
             dy_times_sm_i = dy[i] * sm[i]
@@ -436,22 +435,21 @@ class Softmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, = input_storage
-        e_x = numpy.exp(x - x.max(axis=1)[:, None])
+        e_x = np.exp(x - x.max(axis=1)[:, None])
         sm = e_x / e_x.sum(axis=1)[:, None]
         output_storage[0][0] = sm
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, = inp
         g_sm, = grads
-        sm = softmax_op(x)
-        return [softmax_grad(g_sm, sm)]
+        return [softmax_grad(g_sm, outputs[0])]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
         # is the same as the grad
         if None in eval_points:
             return [None]
-        return self.grad(inputs, eval_points)
+        return self.L_op(inputs, [self(*inputs)], eval_points)
 
     def infer_shape(self, node, shape):
         return shape
@@ -622,8 +620,8 @@ class LogSoftmax(gof.Op):
     def perform(self, node, input_storage, output_storage):
         x, = input_storage
         xdev = x - x.max(axis=1)[:, None]
-        lsm = xdev - numpy.log(numpy.sum(numpy.exp(xdev), axis=1,
-                               keepdims=True))
+        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=1,
+                            keepdims=True))
         output_storage[0][0] = lsm
 
     def grad(self, inp, grads):
@@ -1005,27 +1003,27 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             raise ValueError('y_idx must have same number of rows as x')
         if any(y_idx < 0):
             raise ValueError("y_i value out of bounds")
-        sm = numpy.zeros_like(x)  # softmax
-        nll = numpy.zeros(x.shape[0], dtype=node.outputs[0].type.dtype)  # nll(y | softmax(x))
-        am = numpy.zeros_like(y_idx)
+        sm = np.zeros_like(x)  # softmax
+        nll = np.zeros(x.shape[0], dtype=node.outputs[0].type.dtype)  # nll(y | softmax(x))
+        am = np.zeros_like(y_idx)
         for i in xrange(sm.shape[0]):
             # add the bias vector to the i'th row of x
             row = x[i] + b
 
             # get the maximum value of i'th row for numerically safe
             # softmax / nll
-            am[i] = numpy.argmax(row)
+            am[i] = np.argmax(row)
             m = row[am[i]]
 
             # compute the unnormalized softmax, and normalization constant
-            sm[i] = numpy.exp(row - m)
-            sum_j = numpy.sum(sm[i])  # sum_j(exp(x[j] - m))
+            sm[i] = np.exp(row - m)
+            sum_j = np.sum(sm[i])  # sum_j(exp(x[j] - m))
 
             # normalized our softmax
             sm[i] *= 1.0 / sum_j
 
             # store the nll
-            nll[i] = -row[y_idx[i]] + m + numpy.log(sum_j)
+            nll[i] = -row[y_idx[i]] + m + np.log(sum_j)
 
         output_storage[0][0] = nll
         output_storage[1][0] = sm
@@ -1060,7 +1058,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             db_terms.append(db)
 
         if not isinstance(g_sm.type, DisconnectedType):
-            dx, db = softmax_with_bias.grad((x, b), (g_sm, ))
+            dx, db = softmax_with_bias.L_op((x, b), [softmax_with_bias(x, b)], (g_sm, ))
             dx_terms.append(dx)
             db_terms.append(db)
 
@@ -1202,7 +1200,7 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
         dy, sm, y_idx = input_storage
         if any(y_idx < 0):
             raise ValueError("y_i value out of bounds")
-        dx = numpy.zeros_like(sm)
+        dx = np.zeros_like(sm)
         if dy.ndim == 0:
             dy = dy[None]
         incr = int(dy.shape[0] > 1)
@@ -1393,7 +1391,7 @@ class CrossentropyCategorical1HotGrad(gof.Op):
     def perform(self, node, inp, out):
         g_y, coding_dist, true_one_of_n = inp
         g_coding_strg, = out
-        g_coding = numpy.zeros_like(coding_dist)
+        g_coding = np.zeros_like(coding_dist)
         for i in xrange(len(g_y)):
             g_coding[i, true_one_of_n[i]] = (-g_y[i] /
                                              coding_dist[i, true_one_of_n[i]])
@@ -1452,9 +1450,9 @@ class CrossentropyCategorical1Hot(gof.Op):
     def perform(self, node, inp, out):
         coding, one_of_n = inp
         y_out, = out
-        y = numpy.zeros_like(coding[:, 0])
+        y = np.zeros_like(coding[:, 0])
         for i in xrange(len(y)):
-            y[i] = -numpy.log(coding[i, one_of_n[i]])
+            y[i] = -np.log(coding[i, one_of_n[i]])
         y_out[0] = y
 
     def infer_shape(self, node, in_shapes):
@@ -1661,9 +1659,9 @@ def _is_const(z, val, approx=False):
     except tensor.NotScalarConstantError:
         return False
     if approx:
-        return numpy.allclose(maybe, val)
+        return np.allclose(maybe, val)
     else:
-        return numpy.all(maybe == val)
+        return np.all(maybe == val)
 
 
 @opt.register_specialize('fast_compile_gpu')
@@ -1794,7 +1792,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
             # set out_grad according to the numerator, it may be divided later
             # num should be a vector or a scalar
-            if num.ndim == 1 or numpy.all(num.broadcastable):
+            if num.ndim == 1 or np.all(num.broadcastable):
                 out_grad *= -num
             else:
                 return
@@ -1820,7 +1818,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
                             rest = tensor.mul(*[other_inputs])
 
                         # Check that rest is a vector or a scalar
-                        if rest.ndim == 1 or numpy.all(rest.broadcastable):
+                        if rest.ndim == 1 or np.all(rest.broadcastable):
                             adv_subtensor = input
                             out_grad /= rest
                             break
@@ -2019,6 +2017,31 @@ def binary_crossentropy(output, target):
     return -(target * tensor.log(output) + (1.0 - target) * tensor.log(1.0 - output))
 
 
+def sigmoid_binary_crossentropy(output, target):
+    """
+    Compute the cross-entropy of binary random variables.
+
+    `output` should be real-valued (range (-inf, +inf)); `sigmoid` will be
+    applied to produce a (0, 1) valued input.
+
+    `target` is assumed to be probabilities in [0, 1].
+
+    Notes
+    -----
+    Mathematically equivalent to `binary_crossentropy(sigmoid(output), target)`,
+    but with more efficient and numerically stable computation.
+    """
+    def grad(inputs, out_grads):
+        (output, target), (out_grad,) = inputs, out_grads
+        g_output = out_grad * (sigmoid(output) - target)
+        g_target = out_grad * (-output)
+        return [g_output, g_target]
+    inp = [output, target]
+    outp = softplus(-abs(output)) + output * ((output > 0) - target)
+    return theano.OpFromGraph(inp, [outp], grad_overrides=grad, inline=True,
+                              name='sigmoid_binary_crossentropy')(*inp)
+
+
 def categorical_crossentropy(coding_dist, true_dist):
     """
     Return the cross-entropy between an approximating distribution and a true
@@ -2101,14 +2124,14 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         output, = out
         new_shape = (mat.shape[0], mat.shape[1] + 1)
         if output[0] is None:
-            output[0] = numpy.empty(new_shape, dtype=mat.dtype)
+            output[0] = np.empty(new_shape, dtype=mat.dtype)
             out = output[0]
         else:
             if output[0].shape != new_shape:
                 try:
                     output[0].resize(new_shape)
                 except Exception:
-                    output[0] = numpy.empty(new_shape, dtype=mat.dtype)
+                    output[0] = np.empty(new_shape, dtype=mat.dtype)
             out = output[0]
 
         out[:, 0].fill(self.val.data)
@@ -2149,14 +2172,14 @@ class Prepend_scalar_to_each_row(gof.Op):
         output, = out
         new_shape = (mat.shape[0], mat.shape[1] + 1)
         if output[0] is None:
-            output[0] = numpy.empty(new_shape, dtype=mat.dtype)
+            output[0] = np.empty(new_shape, dtype=mat.dtype)
             out = output[0]
         else:
             if output[0].shape != new_shape:
                 try:
                     output[0].resize(new_shape)
                 except Exception:
-                    output[0] = numpy.empty(new_shape, dtype=mat.dtype)
+                    output[0] = np.empty(new_shape, dtype=mat.dtype)
             out = output[0]
         out[:, 0].fill(val)
         out[:, 1:] = mat
@@ -2422,7 +2445,7 @@ def elu(x, alpha=1):
         "Fast and Accurate Deep Network Learning by
         Exponential Linear Units (ELUs)" <http://arxiv.org/abs/1511.07289>`.
     """
-    return tensor.switch(x > 0, x, alpha * (tensor.exp(x) - 1))
+    return tensor.switch(x > 0, x, alpha * tensor.expm1(x))
 
 
 class ScalarSoftsign(theano.scalar.UnaryScalarOp):

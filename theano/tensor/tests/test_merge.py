@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
@@ -62,8 +62,8 @@ def test_merge_with_weird_eq():
     """numpy arrays don't compare equal like other python objects"""
 
     # SCALAR CASE
-    x = T.constant(numpy.asarray(1), name='x')
-    y = T.constant(numpy.asarray(1), name='y')
+    x = T.constant(np.asarray(1), name='x')
+    y = T.constant(np.asarray(1), name='y')
     g = Env([x, y], [x+y])
     MergeOptimizer().optimize(g)
 
@@ -74,8 +74,8 @@ def test_merge_with_weird_eq():
 
     # NONSCALAR CASE
     # This was created to test TensorConstantSignature
-    x = T.constant(numpy.ones(5), name='x')
-    y = T.constant(numpy.ones(5), name='y')
+    x = T.constant(np.ones(5), name='x')
+    y = T.constant(np.ones(5), name='y')
     g = Env([x, y], [x+y])
     MergeOptimizer().optimize(g)
 

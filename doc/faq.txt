@@ -65,28 +65,29 @@ optimizations and disables the generation of any c/cuda code. This is useful
 for quickly testing a simple idea.
 
 If c/cuda code is necessary, as when using a GPU, the flag
-``optimizer=fast_compile`` can be used instead. It instructs Theano to skip time
-consuming optimizations but still generate c/cuda code. To get the most out of
-this flag requires using a development version of Theano instead of the latest
-release (0.6).
+``optimizer=fast_compile`` can be used instead. It instructs Theano to
+skip time consuming optimizations but still generate c/cuda code.
 
 Similarly using the flag ``optimizer_excluding=inplace`` will speed up
-compilation by preventing optimizations that replace operations with a version
-that reuses memory where it will not negatively impact the integrity of the
-operation. Such optimizations can be time consuming. However using this flag will
-result in greater memory usage because space must be allocated for the results
-which would be unnecessary otherwise. In short, using this flag will speed up
+compilation by preventing optimizations that replace operations with a
+version that reuses memory where it will not negatively impact the
+integrity of the operation. Such optimizations can be time
+consuming. However using this flag will result in greater memory usage
+because space must be allocated for the results which would be
+unnecessary otherwise. In short, using this flag will speed up
 compilation but it will also use more memory because
-``optimizer_excluding=inplace`` excludes inplace optimizations resulting
-in a trade off between speed of compilation and memory usage.
+``optimizer_excluding=inplace`` excludes inplace optimizations
+resulting in a trade off between speed of compilation and memory
+usage.
 
-Theano flag `reoptimize_unpickled_function` controls if an unpickled theano function
-should reoptimize its graph or not. Theano users can use the standard python pickle
-tools to save a compiled theano function. When pickling, both graph before and
-after the optimization are saved, including shared variables. When set to True,
-the graph is reoptimized when being unpickled. Otherwise, skip the graph optimization
-and use directly the optimized graph from the pickled file. After Theano 0.7,
-the default changed to False.
+Theano flag `reoptimize_unpickled_function` controls if an unpickled
+theano function should reoptimize its graph or not. Theano users can
+use the standard python pickle tools to save a compiled theano
+function. When pickling, both graph before and after the optimization
+are saved, including shared variables. When set to True, the graph is
+reoptimized when being unpickled. Otherwise, skip the graph
+optimization and use directly the optimized graph from the pickled
+file. The default is False.
 
 Faster Theano function
 ----------------------

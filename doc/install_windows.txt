@@ -11,7 +11,8 @@ Windows Installation Instructions
     from GitHub, please make sure you are reading `the latest version of this
     page <http://deeplearning.net/software/theano_versions/dev/install_windows.html>`_.
 
-.. |PlatformCompiler| replace:: ``python-dev``, ``g++`` >= 4.2
+.. |PythonDistRecommended| replace:: The conda distribution is highly recommended
+.. |PlatformCompiler| replace:: GCC compiler with ``g++`` (version >= ``4.2.*``), and Python development files
 .. |CompilerName| replace:: ``g++``
 
 .. List of requirements, optional requirements, and installation of miniconda.
@@ -54,8 +55,8 @@ You must reboot the computer after the driver installation.
 Instructions for other Python distributions (not recommended)
 =============================================================
 
-If you plan to use Theano with other Python distributions, these are generic guidelines to get
-a working environment:
+If you plan to use Theano with other Python distributions, these are
+generic guidelines to get a working environment:
 
     * Look for the mandatory requirements in the package manager's repositories of your distribution. Many
       distributions come with ``pip`` package manager which use `PyPI repository <https://pypi.python.org/pypi>`__.

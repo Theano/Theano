@@ -51,7 +51,6 @@ whitelist_flake8 = [
     "tensor/tests/test_misc.py",
     "tensor/tests/mlp_test.py",
     "tensor/tests/test_opt_uncanonicalize.py",
-    "tensor/tests/test_basic.py",
     "tensor/tests/test_blas.py",
     "tensor/tests/test_merge.py",
     "tensor/tests/test_gc.py",
@@ -74,15 +73,16 @@ whitelist_flake8 = [
     "scalar/__init__.py",
     "scalar/tests/__init__.py",
     "sandbox/__init__.py",
-    "sandbox/tests/test_theano_object.py",
-    "sandbox/tests/test_scan.py",
     "sandbox/tests/__init__.py",
+<<<<<<< HEAD
     "sandbox/cuda/__init__.py",
     "sandbox/cuda/tests/__init__.py",
     "sandbox/linalg/ops.py",
+=======
+    "sandbox/gpuarray/__init__.py",
+>>>>>>> upstream/master
     "sandbox/linalg/__init__.py",
     "sandbox/linalg/tests/__init__.py",
-    "sandbox/linalg/tests/test_linalg.py",
     "scan_module/scan_utils.py",
     "scan_module/scan_views.py",
     "scan_module/scan.py",

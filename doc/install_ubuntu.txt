@@ -13,6 +13,7 @@ Ubuntu Installation Instructions
 
 .. _gpu_linux:
 
+.. |PythonDistRecommended| replace:: The development package (python-dev or python-devel on most Linux distributions) is recommended (see just below)
 .. |PlatformCompiler| replace:: ``python-dev``, ``g++`` >= 4.2
 .. |CompilerName| replace:: ``g++``
 
@@ -24,14 +25,14 @@ Ubuntu Installation Instructions
 Prerequisites through System Packages (not recommended)
 -------------------------------------------------------
 
-If you want to acquire the requirements through your system packages and install
-them system wide follow these instructions:
+If you want to acquire the requirements through your system packages
+and install them system wide follow these instructions:
 
 For Ubuntu 16.04 with cuda 7.5
 
 .. code-block:: bash
 
-    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git graphviz
     sudo pip install Theano
 
     # cuda 7.5 don't support the default g++ version. Install an supported version and make it the default.
@@ -48,9 +49,6 @@ For Ubuntu 16.04 with cuda 7.5
 
     sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30
     sudo update-alternatives --set c++ /usr/bin/g++
-
-    # Work around a glibc bug
-    echo -e "\n[nvcc]\nflags=-D_FORCE_INLINES\n" >> ~/.theanorc
 
 For Ubuntu 11.10 through 14.04:
 

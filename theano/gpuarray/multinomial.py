@@ -1,6 +1,7 @@
 # TODO test dtype != float32
 from __future__ import absolute_import, print_function, division
 import os
+import warnings
 
 try:
     import pygpu
@@ -232,7 +233,7 @@ KERNEL void k_multi_warp_multinomial(
         return (3,)
 
 
-class GPUAMultinomialWOReplacementFromUniform(GpuKernelBase, Op):
+class GPUAChoiceFromUniform(GpuKernelBase, Op):
     """
     The output is transposed compared to MultinomialWOReplacementFromUniform.
     We must insert a Transpose op after it.
@@ -241,11 +242,17 @@ class GPUAMultinomialWOReplacementFromUniform(GpuKernelBase, Op):
 
     """
 
-    __props__ = ("odtype",)
+    __props__ = ("odtype", "replace")
 
-    def __init__(self, odtype):
+    def __init__(self, odtype, replace=False):
         Op.__init__(self)
         self.odtype = odtype
+        self.replace = replace
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if "replace" not in state:
+            self.replace = False
 
     def get_params(self, node):
         return node.outputs[0].type.context
@@ -281,6 +288,7 @@ class GPUAMultinomialWOReplacementFromUniform(GpuKernelBase, Op):
         return Apply(self, [pvals, unis, as_scalar(n)], [out])
 
     def gpu_kernels(self, node, name):
+        replace = int(self.replace)
         code = """
 KERNEL void k_multi_warp_multinomial_wor(
     const ga_size nb_multi,
@@ -301,39 +309,35 @@ KERNEL void k_multi_warp_multinomial_wor(
 
     if (n < nb_multi)
     {
+        // Sum of the remaining p_vals in global_pvals_copy[n]
+        float pvals_sum = 1.;
         for (int c = 0; c < n_samples; ++c)
         {
             float cummul = 0.;
-            bool done = false;
-            const float unis_n = global_unis[(c * nb_multi + n)*unis_stride];
+            const float unis_n = global_unis[(c * nb_multi + n)*unis_stride] * pvals_sum;
             for (ga_size m = 0; m < nb_outcomes; ++m)
             {
                 float pvals_nm = global_pvals_copy[m * pvals_col_stride + n * pvals_row_stride];
                 cummul += pvals_nm;
 
-                if (!done && unis_n < cummul)
+                if (unis_n < cummul)
                 {
-                    //write out transposed for speed.
+                    // write out transposed for speed.
                     global_outs[n * outs_col_stride +
                                 c * outs_row_stride] = m;
 
-                    global_pvals_copy[m * pvals_col_stride + n * pvals_row_stride] = 0.0;
-                    cummul -= pvals_nm;
-                    done = true;
+                    if (! %(replace)s )
+                    {
+                        global_pvals_copy[m * pvals_col_stride + n * pvals_row_stride] = 0.0;
+                        pvals_sum -= pvals_nm;
+                    }
+                    break;
                 }
-            }
-            // No need to renormalize after the last samples.
-            if (c == (n_samples - 1))
-                break;
-            // parallel renormalize the multinomial
-            for (ga_int k = LID_1; k < nb_outcomes; k+=LDIM_1)
-            {
-                global_pvals_copy[k * pvals_col_stride + n * pvals_row_stride] /= cummul;
             }
         }
     }
 }
-"""
+""" % {"replace": replace}
         return [Kernel(
             code=code, name="k_multi_warp_multinomial_wor",
             params=[pygpu.gpuarray.SIZE,
@@ -354,6 +358,7 @@ KERNEL void k_multi_warp_multinomial_wor(
     def c_code(self, node, name, inp, outputs, sub):
         pvals, unis, n = inp
         out, = outputs
+        replace = int(self.replace)
         fail = sub['fail']
         ctx = sub['params']
         sync = bool(config.gpuarray.sync)
@@ -387,9 +392,12 @@ KERNEL void k_multi_warp_multinomial_wor(
         PyErr_Format(PyExc_ValueError, "unis.shape[0] != pvals.shape[0] * n");
         %(fail)s
     }
-
-    pvals_copy = pygpu_copy(pvals, GA_C_ORDER);
-
+    if (! %(replace)s) {
+        pvals_copy = pygpu_copy(pvals, GA_C_ORDER);
+    } else {
+        pvals_copy = pvals;
+        Py_INCREF(pvals_copy);
+    }
     dims[0] = n_samples;
     dims[1] = PyGpuArray_DIMS(pvals)[0];
 
@@ -451,18 +459,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         args[9] = (void*)&strides[3];
         args[10] = (void*)&strides[4];
 
-        size_t nb_threads2[2], nb_blocks2[2];
-        nb_threads2[0] = nb_threads;
-        nb_threads2[1] = 1;
-        // If we can't schedule enough threads parallelize the renormalization.
-        // I do this because we don't always use those extra threads.
-        if (nb_threads * nb_blocks < 2048)
-            nb_threads2[1] = 1024 / nb_threads;
-
-        nb_blocks2[0] = nb_blocks;
-        nb_blocks2[1] = 1;
-
-        err = GpuKernel_call(&%(kname)s, 2, nb_blocks2, nb_threads2, 0, args);
+        err = GpuKernel_call(&%(kname)s, 1, &nb_blocks, &nb_threads, 0, args);
         if (err != GA_NO_ERROR) {
            PyErr_Format(
                 PyExc_RuntimeError,
@@ -480,7 +477,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         return s
 
     def c_code_cache_version(self):
-        return (4,)
+        return (7,)
 
 
 @register_opt('fast_compile')
@@ -506,13 +503,22 @@ def local_gpua_multinomial(op, context_name, inputs, outputs):
 
 
 @register_opt('fast_compile')
-@op_lifter([theano.sandbox.multinomial.MultinomialWOReplacementFromUniform])
-@register_opt2([theano.sandbox.multinomial.MultinomialWOReplacementFromUniform], 'fast_compile')
+@op_lifter([theano.sandbox.multinomial.ChoiceFromUniform])
+@register_opt2([theano.sandbox.multinomial.ChoiceFromUniform], 'fast_compile')
 def local_gpua_multinomial_wor(op, context_name, inputs, outputs):
     # TODO : need description for function
     p, u, n = inputs
     m, = outputs
     if ((p.dtype == u.dtype == 'float32') and (m.dtype == 'int64')):
-        gpu_op = GPUAMultinomialWOReplacementFromUniform(op.odtype)
+        gpu_op = GPUAChoiceFromUniform(**op._props_dict())
         return GpuDimShuffle([False, False], [1, 0])(
             gpu_op(p, u, n))
+
+
+class GPUAMultinomialWOReplacementFromUniform(GPUAChoiceFromUniform):
+    def __init__(self, *args, **kwargs):
+        warnings.warn("GPUAMultinomialWOReplacementFromUniform is deprecated, "
+                      "use GPUAChoiceFromUniform instead.",
+                      DeprecationWarning,
+                      stacklevel=2)
+        super(GPUAMultinomialWOReplacementFromUniform, self).__init__(*args, **kwargs)

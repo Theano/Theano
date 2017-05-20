@@ -2,7 +2,7 @@
 Implementations of BLAS Ops based on scipy's BLAS bindings.
 """
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 from theano.tensor.blas import Ger, ger, ger_destructive, have_fblas
 from theano.tensor.blas import blas_optdb, optdb, local_optimizer
@@ -13,10 +13,10 @@ from theano.tensor.opt import in2out
 if have_fblas:
     from theano.tensor.blas import fblas
     _blas_ger_fns = {
-        numpy.dtype('float32'): fblas.sger,
-        numpy.dtype('float64'): fblas.dger,
-        numpy.dtype('complex64'): fblas.cgeru,
-        numpy.dtype('complex128'): fblas.zgeru,
+        np.dtype('float32'): fblas.sger,
+        np.dtype('float64'): fblas.dger,
+        np.dtype('complex64'): fblas.cgeru,
+        np.dtype('complex128'): fblas.zgeru,
     }
 
 
@@ -24,7 +24,7 @@ class ScipyGer(Ger):
 
     def prepare_node(self, node, storage_map, compute_map, impl):
         if impl == 'py':
-            node.tag.local_ger = _blas_ger_fns[numpy.dtype(
+            node.tag.local_ger = _blas_ger_fns[np.dtype(
                 node.inputs[0].type.dtype)]
 
     def perform(self, node, inputs, output_storage):

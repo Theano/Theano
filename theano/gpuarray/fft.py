@@ -28,9 +28,9 @@ except ImportError:
 try:
     import skcuda
     from skcuda import fft
-    scikits_cuda_available = True
+    skcuda_available = True
 except (ImportError, Exception):
-    scikits_cuda_available = False
+    skcuda_available = False
 
 
 class CuRFFTOp(Op):
@@ -51,7 +51,7 @@ class CuRFFTOp(Op):
         # the shape given to the plan, so padding will have to be done in the op.
         # The effect of padding on gradients has yet to be investigated.
 
-        if not scikits_cuda_available:
+        if not skcuda_available:
             raise RuntimeError("skcuda is needed for CuFFTOp")
 
         if not pygpu_available:
@@ -175,7 +175,7 @@ class CuIRFFTOp(Op):
         # the shape given to the plan, so padding will have to be done in the op.
         # The effect of padding on gradients has yet to be investigated.
 
-        if not scikits_cuda_available:
+        if not skcuda_available:
             raise RuntimeError("skcuda is needed for CuIFFTOp")
 
         if not pygpu_available:
@@ -370,7 +370,7 @@ def _unitary(norm):
                          "'no norm'" % norm)
     return norm
 
-if scikits_cuda_available:
+if skcuda_available:
     @register_opt('fast_compile')
     @op_lifter([theano.tensor.fft.RFFTOp])
     @register_opt2([theano.tensor.fft.RFFTOp], 'fast_compile')

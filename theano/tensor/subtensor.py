@@ -4,7 +4,7 @@ from textwrap import dedent
 import warnings
 import logging
 
-import numpy
+import numpy as np
 from six import integer_types
 from six.moves import xrange
 
@@ -58,7 +58,7 @@ def make_constant(args):
                 return slice(conv(a.start),
                              conv(a.stop),
                              conv(a.step))
-            elif isinstance(a, (integer_types, numpy.integer)):
+            elif isinstance(a, (integer_types, np.integer)):
                 return scal.ScalarConstant(scal.int64, a)
             else:
                 return a
@@ -355,11 +355,11 @@ class Subtensor(Op):
 
         if (isinstance(entry, gof.Variable) and
                 entry.type in tensor_types and
-                numpy.all(entry.type.broadcastable)):
+                np.all(entry.type.broadcastable)):
             return scal.get_scalar_type(entry.type.dtype)
         elif (isinstance(entry, gof.Type) and
               entry in tensor_types and
-              numpy.all(entry.broadcastable)):
+              np.all(entry.broadcastable)):
             return scal.get_scalar_type(entry.dtype)
         elif slice_ok and isinstance(entry, slice):
             a = entry.start
@@ -385,7 +385,7 @@ class Subtensor(Op):
                 slice_c = None
 
             return slice(slice_a, slice_b, slice_c)
-        elif isinstance(entry, (integer_types, numpy.integer)):
+        elif isinstance(entry, (integer_types, np.integer)):
             # Disallow the use of python scalars in idx_list
             raise TypeError("Python scalar in idx_list."
                             "Please report this error to theano-dev.")
@@ -510,8 +510,8 @@ class Subtensor(Op):
                         if start is None:
                             start = 0
                         if (p.stop is None or
-                            (isinstance(p.stop, (integer_types, numpy.integer,
-                                                 numpy.ndarray)) and
+                            (isinstance(p.stop, (integer_types, np.integer,
+                                                 np.ndarray)) and
                              p.stop > start)):
                             broadcastable.append(True)
                             continue
@@ -531,7 +531,7 @@ class Subtensor(Op):
         if len(cdata) == 1:
             cdata = cdata[0]
 
-        out[0] = numpy.asarray(x.__getitem__(cdata))
+        out[0] = np.asarray(x.__getitem__(cdata))
 
     def infer_shape(self, node, shapes):
         xshp = shapes[0]
@@ -573,8 +573,9 @@ class Subtensor(Op):
         else:
             # For best optimization, we let this as an inc.
             # This allow the opt local_IncSubtensor_serialize to apply first.
-            # We need to implement an optimization that will convert this to a
-            # set subtensor.
+            # We have an optimization that will convert this to a
+            # set subtensor here at:
+            # theano/tensor/opt.py:local_incsubtensor_of_zeros_to_setsubtensor()
             first = IncSubtensor(self.idx_list)(x.zeros_like(),
                                                 gz, *rest)
         return ([first] + [DisconnectedType()()] * len(rest))
@@ -640,7 +641,7 @@ class Subtensor(Op):
                       strides_mul=None):
         """
         The parameters c_prefix are there to allow reusing this
-        function on PyArray and CudaNdarray object.
+        function on PyArray and GpuArray object.
 
         This fct take as input the x.
 
@@ -681,7 +682,7 @@ class Subtensor(Op):
             return pos[1]
 
         def init_entry(entry, depth=0):
-            if isinstance(entry, (numpy.integer, integer_types)):
+            if isinstance(entry, (np.integer, integer_types)):
                 init_cmds.append(
                     "subtensor_spec[%i] = %i;" % (spec_pos(),
                                                   entry))
@@ -1373,7 +1374,7 @@ class IncSubtensor(Op):
         # but subclasses may override the helper methods
         # to change the particulars, e.g. GpuIncSubtensor
         # turns the view/copy operations on numpy arrays
-        # into the same operations on cuda arrays.
+        # into the same operations on gpu arrays.
 
         self.do_type_checking(node)
 
@@ -1390,8 +1391,8 @@ class IncSubtensor(Op):
             op_is_set = 0
         fail = sub['fail']
         view_ndim = (node.inputs[0].ndim -
-                     numpy.sum([not isinstance(idx, slice)
-                                for idx in self.idx_list]))
+                     np.sum([not isinstance(idx, slice)
+                             for idx in self.idx_list]))
 
         copy_of_x = self.copy_of_x(x)
 
@@ -1712,11 +1713,11 @@ class AdvancedSubtensor1(Op):
         # We need to check if values in i can fit in numpy.intp, because
         # if they don't, that should be an error (no array can have that
         # many elements on a 32-bit arch).
-        if i.dtype != numpy.intp:
-            i_ = theano._asarray(i, dtype=numpy.intp)
-            if not numpy.can_cast(i.dtype, numpy.intp):
+        if i.dtype != np.intp:
+            i_ = theano._asarray(i, dtype=np.intp)
+            if not np.can_cast(i.dtype, np.intp):
                 # Check if there was actually an incorrect conversion
-                if numpy.any(i != i_):
+                if np.any(i != i_):
                     raise IndexError(
                         'index contains values that are bigger '
                         'than the maximum array size on this system.', i)
@@ -1946,7 +1947,7 @@ class AdvancedIncSubtensor1(Op):
         return compile_cutils_code()
 
     def c_code(self, node, name, input_names, output_names, sub):
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
         if bool(numpy_ver < [1, 8]):
             raise NotImplementedError
         x, y, idx = input_names
@@ -2000,7 +2001,7 @@ class AdvancedIncSubtensor1(Op):
         if self.set_instead_of_inc:
             x[idx] = y
         else:
-            if config.cxx:
+            if config.cxx and node.inputs[0].dtype != 'float16':
                 increment = inplace_increment
             else:
                 increment = self.inplace_increment1d_slow
@@ -2113,13 +2114,13 @@ def adv_index_broadcastable_pattern(a, idx):
         if isinstance(v.type, SliceType):
             return slice(None, None)
 
-        return numpy.zeros((2,) * v.ndim, int)
+        return np.zeros((2,) * v.ndim, int)
 
     newidx = tuple(map(replace_slice, idx))
 
     # 2 - True = 1; 2 - False = 2
     fakeshape = [2 - bc for bc in a.broadcastable]
-    retshape = numpy.empty(fakeshape)[newidx].shape
+    retshape = np.empty(fakeshape)[newidx].shape
     return tuple([dim == 1 for dim in retshape])
 
 
@@ -2168,9 +2169,14 @@ class AdvancedSubtensor(Op):
 
     def perform(self, node, inputs, out_):
         out, = out_
-        # TODO: in general, we need to re-pack the inputs into a valid
-        # index, just like subtensor
-        out[0] = inputs[0].__getitem__(inputs[1:])
+        rval = inputs[0].__getitem__(inputs[1:])
+        # When there are no arrays, we are not actually doing advanced
+        # indexing, so __getitem__ will not return a copy.
+        # Since no view_map is set, we need to copy the returned value
+        if not any(isinstance(v.type, TensorType) and v.ndim > 0
+                   for v in node.inputs[1:]):
+            rval = rval.copy()
+        out[0] = rval
 
     def connection_pattern(self, node):
         rval = [[True]]

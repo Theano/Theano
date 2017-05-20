@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import pdb
 
 import theano
@@ -102,7 +102,7 @@ class PdbBreakpoint(Op):
 
         if condition:
             try:
-                monitored = [numpy.asarray(inp) for inp in inputs[1:]]
+                monitored = [np.asarray(inp) for inp in inputs[1:]]
             except:
                 raise ValueError("Some of the inputs to the PdbBreakpoint op "
                                  "'%s' could not be casted to NumPy arrays" %

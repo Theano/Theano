@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Kernels for fast unfold + copy
 // GPU kernel for the case of dilation
 KERNEL void dilated_im2col_kernel(const ga_size n,
-    GLOBAL_MEM const DTYPE_i0 * data_im,
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_im,
     const ga_size data_im_offset,
     const ga_size height, const ga_size width,
     const ga_size kernel_h, const ga_size kernel_w,
@@ -42,7 +42,7 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
     const ga_size pad_h, const ga_size pad_w,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
-    GLOBAL_MEM DTYPE_i0 * data_col) {
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col) {
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
@@ -53,9 +53,9 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
     const ga_size c_col = c_im * kernel_h * kernel_w;
     const ga_size h_offset = h_col * stride_h - pad_h;
     const ga_size w_offset = w_col * stride_w - pad_w;
-    DTYPE_i0 * data_col_ptr = data_col;
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col_ptr = data_col;
     data_col_ptr += (c_col * height_col + h_col) * width_col + w_col;
-    const DTYPE_i0 * data_im_ptr = data_im + data_im_offset;
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
     data_im_ptr += (c_im * height + h_offset) * width + w_offset;
     for (ga_size i = 0; i < kernel_h; ++i) {
       for (ga_size j = 0; j < kernel_w; ++j) {
@@ -72,14 +72,14 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
 
 #kernel im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, * : 
 KERNEL void im2col_kernel(const ga_size n,
-    GLOBAL_MEM const DTYPE_i0 * data_im,
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_im,
     const ga_size data_im_offset,
     const ga_size height, const ga_size width,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size pad_h, const ga_size pad_w,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
-    GLOBAL_MEM DTYPE_i0 * data_col) {
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col) {
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
@@ -90,9 +90,9 @@ KERNEL void im2col_kernel(const ga_size n,
     const ga_size c_col = c_im * kernel_h * kernel_w;
     const ga_size h_offset = h_col * stride_h - pad_h;
     const ga_size w_offset = w_col * stride_w - pad_w;
-    DTYPE_i0 * data_col_ptr = data_col;
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col_ptr = data_col;
     data_col_ptr += (c_col * height_col + h_col) * width_col + w_col;
-    const DTYPE_i0 * data_im_ptr = data_im + data_im_offset;
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
     data_im_ptr += (c_im * height + h_offset) * width + w_offset;
     for (ga_size i = 0; i < kernel_h; ++i) {
       for (ga_size j = 0; j < kernel_w; ++j) {
@@ -110,19 +110,19 @@ KERNEL void im2col_kernel(const ga_size n,
 // GPU kernel for the case of dilation
 #kernel dilated_col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size : 
 KERNEL void dilated_col2im_kernel(const ga_size n,
-    GLOBAL_MEM const DTYPE_i0 * data_col,
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_col,
     const ga_size height, const ga_size width, const ga_size channels,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size dilation_h, const ga_size dilation_w,
     const ga_size pad_h, const ga_size pad_w,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
-    GLOBAL_MEM DTYPE_i0 * data_im,
+    GLOBAL_MEM DTYPE_INPUT_0 * data_im,
     const ga_size data_im_offset) {
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
-    DTYPE_i0 val = 0;
+    DTYPE_INPUT_0 val = 0;
     const ga_size w_im = index % width + pad_w;
     const ga_size h_im = (index / width) % height + pad_h;
     const ga_size c_im = index / (width * height);
@@ -155,18 +155,18 @@ KERNEL void dilated_col2im_kernel(const ga_size n,
 
 #kernel col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, *, size : 
 KERNEL void col2im_kernel(const ga_size n,
-    GLOBAL_MEM const DTYPE_i0 * data_col,
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_col,
     const ga_size height, const ga_size width, const ga_size channels,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size pad_h, const ga_size pad_w,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
-    GLOBAL_MEM DTYPE_i0 * data_im,
+    GLOBAL_MEM DTYPE_INPUT_0 * data_im,
     const ga_size data_im_offset) {
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
-    DTYPE_i0 val = 0;
+    DTYPE_INPUT_0 val = 0;
     const ga_size w_im = index % width + pad_w;
     const ga_size h_im = (index / width) % height + pad_h;
     const ga_size c_im = index / (width * height);

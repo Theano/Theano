@@ -618,9 +618,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                               ret.outputs[0].type.broadcastable,
                                               context_name=x.type.context_name)()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def perform(self, node, inp, out, ctx):
         theano.Op.perform(self, node, inp, out, ctx)
 
@@ -2512,6 +2509,7 @@ class GpuErfinv(Erfinv):
         # For consistency of CPU and GPU ops, we wrap the CUDA erfinv in the following conditions
         # to ensure that GPU op returns the same values as CPU op.
         return "%(z)s = (%(x)s <= -1) ? erfinv(-1.0): ((%(x)s >= 1) ? erfinv(1.0): erfinv(%(x)s));" % locals()
+gpu_erfinv = GpuErfinv(upgrade_to_float_no_complex, name='gpu_erfinv')
 
 
 class GpuErfcinv(Erfcinv):
@@ -2533,8 +2531,6 @@ class GpuErfcinv(Erfcinv):
         # For consistency of CPU and GPU ops, we wrap the CUDA erfcinv in the following conditions
         # to ensure that GPU op returns the same values as CPU op.
         return "%(z)s = (%(x)s <= 0) ? erfcinv(0.0): ((%(x)s >= 2) ? erfcinv(2.0): erfcinv(%(x)s));" % locals()
-
-gpu_erfinv = GpuErfinv(upgrade_to_float_no_complex, name='gpu_erfinv')
 gpu_erfcinv = GpuErfcinv(upgrade_to_float_no_complex, name='gpu_erfcinv')
 
 

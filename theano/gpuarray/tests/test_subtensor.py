@@ -19,7 +19,7 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAllocDiag)
 from ..type import gpuarray_shared_constructor
 
-from .config import mode_with_gpu
+from .config import mode_with_gpu, test_ctx_name
 
 
 class G_subtensor(test_subtensor.T_subtensor):
@@ -27,9 +27,13 @@ class G_subtensor(test_subtensor.T_subtensor):
         return None
 
     def __init__(self, name):
+        def shared(x, **kwargs):
+            return gpuarray_shared_constructor(x, target=test_ctx_name,
+                                               **kwargs)
+
         test_subtensor.T_subtensor.__init__(
             self, name,
-            shared=gpuarray_shared_constructor,
+            shared=shared,
             sub=GpuSubtensor,
             inc_sub=GpuIncSubtensor,
             adv_sub1=GpuAdvancedSubtensor1,

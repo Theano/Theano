@@ -152,7 +152,7 @@ class CLinkerObject(object):
 
     def c_support_code(self):
         """
-        Optional: Return utility code for use by a `Variable` or `Op` to be
+        Optional: Return utility code (a string, or a list of strings) for use by a `Variable` or `Op` to be
         included at global scope prior to the rest of the code for this class.
 
         QUESTION: How many times will this support code be emitted for a graph
@@ -795,6 +795,20 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
+
+    # We add a default get_params() implementation which will try to detect params from the op
+    # if params_type is set to a ParamsType. If not, we raise a MethodNotDefined exception.
+    def get_params(self, node):
+        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.ParamsType):
+            wrapper = self.params_type
+            if not all(hasattr(self, field) for field in wrapper.fields):
+                # Let's print missing attributes for debugging.
+                not_found = tuple(field for field in wrapper.fields if not hasattr(self, field))
+                raise AttributeError('%s: missing attributes %s for ParamsType.' % (type(self).__name__, not_found))
+            # ParamsType.get_params() will apply filtering to attributes.
+            return self.params_type.get_params(self)
+        raise theano.gof.utils.MethodNotDefined('get_params')
+
     def prepare_node(self, node, storage_map, compute_map, impl):
         """
         Make any special modifications that the Op needs before doing
@@ -1377,7 +1391,25 @@ class COp(Op):
         The names must be strings that are not a C keyword and the
         values must be strings of literal C representations.
 
+        If op uses a :class:`theano.gof.params_type.ParamsType` as ``params_type``,
+        it returns:
+         - a default macro ``PARAMS_TYPE`` which defines the class name of the
+           corresponding C struct.
+         - a macro ``DTYPE_PARAM_key`` for every ``key`` in the ParamsType for which associated
+           type implements the method :func:`theano.gof.type.CLinkerType.c_element_type`.
+           ``DTYPE_PARAM_key`` defines the primitive C type name of an item in a variable
+           associated to ``key``.
+
         """
+        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.ParamsType):
+            wrapper = self.params_type
+            params = [('PARAMS_TYPE', wrapper.name)]
+            for i in range(wrapper.length):
+                try:
+                    params.append(('DTYPE_PARAM_' + wrapper.fields[i], wrapper.types[i].c_element_type()))
+                except utils.MethodNotDefined:
+                    pass
+            return params
         return []
 
     def c_code_cache_version(self):

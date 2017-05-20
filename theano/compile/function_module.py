@@ -670,7 +670,7 @@ class Function(object):
             if name:
                 message = name
             else:
-                message = str(maker.profile.message) + " copy"
+                message = str(profile.message) + " copy"
             profile = theano.compile.profiling.ProfileStats(message=message)
             # profile -> object
         elif type(profile) == str:
@@ -1466,6 +1466,10 @@ class FunctionMaker(object):
                 theano.config.traceback.limit = theano.config.traceback.compile_limit
                 start_optimizer = time.time()
 
+                # In case there is an error during optimization.
+                optimizer_profile = None
+                opt_time = None
+
                 # now optimize the graph
                 if theano.config.cache_optimizations:
                     optimizer_profile = self.optimize_graph_with_cache(
@@ -1475,16 +1479,6 @@ class FunctionMaker(object):
 
                 end_optimizer = time.time()
                 opt_time = end_optimizer - start_optimizer
-                theano.compile.profiling.total_graph_opt_time += opt_time
-                if profile:
-                    profile.optimizer_time += opt_time
-                    if theano.config.profile_optimizer:
-                        profile.optimizer_profile = (optimizer,
-                                                     optimizer_profile)
-                elif theano.config.profile_optimizer:
-                    warnings.warn((
-                        "config.profile_optimizer requires config.profile to "
-                        " be set to True as well"), stacklevel=3)
                 _logger.debug('Optimizing took %f seconds', opt_time)
 
                 # Add deep copy to respect the memory interface
@@ -1492,6 +1486,25 @@ class FunctionMaker(object):
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
                 theano.config.traceback.limit = limit_orig
+
+                # If the optimizer got interrupted
+                if opt_time is None:
+                    end_optimizer = time.time()
+                    opt_time = end_optimizer - start_optimizer
+                theano.compile.profiling.total_graph_opt_time += opt_time
+                if profile:
+                    if (optimizer_profile is None and
+                            hasattr(optimizer, 'pre_profile')):
+                        optimizer_profile = optimizer.pre_profile
+                    profile.optimizer_time += opt_time
+                    if theano.config.profile_optimizer:
+                        profile.optimizer_profile = (optimizer,
+                                                     optimizer_profile)
+                # IF False, if mean the profile for that function was explicitly disabled
+                elif theano.config.profile_optimizer and profile is not False:
+                    warnings.warn((
+                        "config.profile_optimizer requires config.profile to "
+                        " be set to True as well"), stacklevel=3)
 
         # initialize the linker
         if not hasattr(linker, 'accept'):
@@ -1783,21 +1796,24 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
 
     if isinstance(mode, (list, tuple)):  # "mode comparison" semantics
         raise Exception("We do not support the passing of multiple modes")
-    else:
+    fn = None
+    try:
         Maker = getattr(mode, 'function_maker', FunctionMaker)
-        fn = Maker(inputs,
-                   outputs,
-                   mode,
-                   accept_inplace=accept_inplace,
-                   profile=profile,
-                   on_unused_input=on_unused_input,
-                   output_keys=output_keys).create(
-            defaults)
-
-    t2 = time.time()
-    if profile:
-        profile.compile_time += t2 - t1
-        profile.nb_nodes = len(fn.maker.fgraph.apply_nodes)
+        m = Maker(inputs,
+                  outputs,
+                  mode,
+                  accept_inplace=accept_inplace,
+                  profile=profile,
+                  on_unused_input=on_unused_input,
+                  output_keys=output_keys)
+        with theano.configparser.change_flags(compute_test_value="off"):
+            fn = m.create(defaults)
+    finally:
+        t2 = time.time()
+        if fn and profile:
+            profile.compile_time += t2 - t1
+            # TODO: append
+            profile.nb_nodes = len(fn.maker.fgraph.apply_nodes)
 
     fn.name = name
     fn.maker.fgraph.name = name

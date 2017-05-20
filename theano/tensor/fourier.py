@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import math
 from theano import gof, tensor
 
@@ -98,7 +98,7 @@ class Fourier(gof.Op):
         a = inputs[0]
         n = inputs[1]
         axis = inputs[2]
-        output_storage[0][0] = numpy.fft.fft(a, n=int(n), axis=axis.item())
+        output_storage[0][0] = np.fft.fft(a, n=int(n), axis=axis.item())
 
     def grad(self, inputs, cost_grad):
         """
@@ -128,7 +128,7 @@ class Fourier(gof.Op):
         # tensor.set_subtensor(res[...,n::], 0, False, False), res)
 
         # Instead we resort to that to account for truncation:
-        flip_shape = list(numpy.arange(0, a.ndim)[::-1])
+        flip_shape = list(np.arange(0, a.ndim)[::-1])
         res = res.dimshuffle(flip_shape)
         res = tensor.switch(tensor.lt(n, tensor.shape(a)[axis]),
                             tensor.set_subtensor(res[n::, ], 0, False, False),
@@ -136,8 +136,8 @@ class Fourier(gof.Op):
         res = res.dimshuffle(flip_shape)
 
         # insures that gradient shape conforms to input shape:
-        out_shape = list(numpy.arange(0, axis)) + [a.ndim - 1] +\
-            list(numpy.arange(axis, a.ndim - 1))
+        out_shape = list(np.arange(0, axis)) + [a.ndim - 1] +\
+            list(np.arange(axis, a.ndim - 1))
         res = res.dimshuffle(*out_shape)
         return [res, None, None]
 

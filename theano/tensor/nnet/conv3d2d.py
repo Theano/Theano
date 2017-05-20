@@ -4,7 +4,6 @@ from theano.gradient import DisconnectedType
 from theano.gof import Op, Apply, TopoOptimizer
 from theano.gof.opt import copy_stack_trace
 from theano import tensor
-import theano.sandbox.cuda as cuda
 
 
 def get_diagonal_subtensor_view(x, i0, i1):
@@ -16,7 +15,7 @@ def get_diagonal_subtensor_view(x, i0, i1):
     It returns a partial view of x, not a partial copy.
 
     """
-    # We have to cast i0 and i0 to int because python 2.4 (and maybe later)
+    # We have to cast i0 and i0 to int because python
     # do not support indexing with 0-dim, 'int*' ndarrays.
     i0 = int(i0)
     i1 = int(i1)
@@ -198,8 +197,7 @@ def conv3d(signals, filters,
     Another way to define signals: (batch,  time, in channel, row, column)
     Another way to define filters: (out channel,time,in channel, row, column)
 
-    For the GPU, you can use this implementation or
-    :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>`.
+    For the GPU, use nnet.conv3d.
 
     See Also
     --------
@@ -293,67 +291,6 @@ def conv3d(signals, filters,
             out_5d = diagonal_subtensor(out_tmp_padded, 1, 3).sum(axis=3)
 
     return out_5d
-
-
-def make_gpu_optimizer(op, to_gpu):
-    """
-    This function create optimizer that move some inputs to the GPU
-    for op that work on both CPU and GPU.
-
-    The op object is created by calling op(), so good default value
-    are needed.
-
-    We suppose the same op work with CPU and GPU inputs.
-
-    Parameters
-    ----------
-    op
-        The op that support GPU inputs.
-    to_gpu
-        A list of op inputs that are moved to the GPU.
-
-    """
-    @theano.gof.local_optimizer([op, cuda.gpu_from_host])
-    def local_to_gpu(node):
-        """
-        op(host_from_gpu()) -> host_from_gpu(op)
-        gpu_from_host(op) -> op(gpu_from_host)
-
-        """
-        if isinstance(node.op, op):
-            # op(host_from_gpu()) -> host_from_gpu(op)
-            # If any of the input that go on the GPU are on the GPU,
-            # move the op to the gpu.
-            if any(node.inputs[idx].owner and
-                   isinstance(node.inputs[idx].owner.op, cuda.HostFromGpu)
-                   for idx in to_gpu):
-                new_inp = list(node.inputs)
-                for idx in to_gpu:
-                    new_inp[idx] = cuda.gpu_from_host(new_inp[idx])
-                result_node = op()(*new_inp)
-                copy_stack_trace(node.outputs[0], result_node)
-                transfer_node = cuda.host_from_gpu(result_node)
-                copy_stack_trace(node.outputs[0], transfer_node)
-                return [transfer_node]
-        if node.op == cuda.gpu_from_host:
-            # gpu_from_host(op) -> op(gpu_from_host)
-            host_input = node.inputs[0]
-            if host_input.owner and isinstance(host_input.owner.op,
-                                               op):
-                op_node = host_input.owner
-                new_inp = list(op_node.inputs)
-                for idx in to_gpu:
-                    new_inp[idx] = cuda.gpu_from_host(new_inp[idx])
-                new_node = op()(*new_inp)
-                copy_stack_trace(host_input, new_node)
-                return [new_node]
-        return False
-    local_to_gpu.__name__ = "local_to_gpu_" + op.__name__
-    cuda.opt.register_opt()(local_to_gpu)
-
-if cuda.cuda_available:
-    make_gpu_optimizer(DiagonalSubtensor, [0])
-    make_gpu_optimizer(IncDiagonalSubtensor, [0, 3])
 
 
 @theano.gof.local_optimizer([DiagonalSubtensor, IncDiagonalSubtensor])

@@ -4,7 +4,7 @@ from __future__ import absolute_import, print_function, division
 import sys
 from copy import copy
 
-import numpy
+import numpy as np
 from six import string_types
 from six.moves import reduce, xrange
 
@@ -38,7 +38,7 @@ class RandomStateType(gof.Type):
             raise TypeError()
 
     def is_valid_value(self, a):
-        return type(a) == numpy.random.RandomState
+        return type(a) == np.random.RandomState
 
     def values_eq(self, a, b):
         sa = a.get_state()
@@ -47,7 +47,7 @@ class RandomStateType(gof.Type):
         if sa[0] != sb[0]:
             return False
         # 1-D array of 624 unsigned integer keys
-        if not numpy.all(sa[1] == sb[1]):
+        if not np.all(sa[1] == sb[1]):
             return False
         # integer "pos" representing the position in the array
         if sa[2] != sb[2]:
@@ -67,17 +67,17 @@ class RandomStateType(gof.Type):
 
     def get_size(self, shape_info):
         # The size is the data, that have constant size.
-        state = numpy.random.RandomState().get_state()
+        state = np.random.RandomState().get_state()
         size = 0
         for elem in state:
             if isinstance(elem, str):
                 size += len(elem)
-            elif isinstance(elem, numpy.ndarray):
+            elif isinstance(elem, np.ndarray):
                 size += elem.size * elem.itemsize
             elif isinstance(elem, int):
-                size += numpy.dtype("int").itemsize
+                size += np.dtype("int").itemsize
             elif isinstance(elem, float):
-                size += numpy.dtype("float").itemsize
+                size += np.dtype("float").itemsize
             else:
                 raise NotImplementedError()
         return size
@@ -151,7 +151,7 @@ class RandomFunction(gof.Op):
         fn, outtype, inplace, ndim_added = state
         self.fn = fn
         if isinstance(fn, string_types):
-            self.exec_fn = getattr(numpy.random.RandomState, fn)
+            self.exec_fn = getattr(np.random.RandomState, fn)
         else:
             self.exec_fn = fn
         self.outtype = outtype
@@ -203,8 +203,6 @@ class RandomFunction(gof.Op):
         assert (shape.type.dtype == 'int64') or (shape.type.dtype == 'int32')
         if not isinstance(r.type, RandomStateType):
             print('WARNING: RandomState instances should be in RandomStateType', file=sys.stderr)
-            if 0:
-                raise TypeError('r must be RandomStateType instance', r)
         # the following doesn't work because we want to ignore the
         # broadcastable flags in shape.type
         # assert shape.type == tensor.lvector
@@ -240,7 +238,7 @@ class RandomFunction(gof.Op):
         # Numbers are drawn from r if self.inplace is True, and from a
         # copy of r if self.inplace is False
         r, shape, args = inputs[0], inputs[1], inputs[2:]
-        assert type(r) == numpy.random.RandomState, (type(r), r)
+        assert type(r) == np.random.RandomState, (type(r), r)
 
         # If shape == [], that means no shape is enforced, and numpy is
         # trusted to draw the appropriate number of samples, numpy uses
@@ -260,7 +258,7 @@ class RandomFunction(gof.Op):
             r = copy(r)
         rout[0] = r
         rval = self.exec_fn(r, *(args + [shape]))
-        if (not isinstance(rval, numpy.ndarray) or
+        if (not isinstance(rval, np.ndarray) or
                 str(rval.dtype) != node.outputs[1].type.dtype):
             rval = theano._asarray(rval, dtype=node.outputs[1].type.dtype)
 
@@ -527,13 +525,13 @@ def binomial(random_state, size=None, n=1, p=0.5, ndim=None,
     """
     if prob is not None:
         p = prob
-        print("DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy.", file=sys.stderr)
+        print("DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as np.", file=sys.stderr)
     n = tensor.as_tensor_variable(n)
     p = tensor.as_tensor_variable(p)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, n, p)
     if n.dtype == 'int64':
         try:
-            numpy.random.binomial(n=numpy.asarray([2, 3, 4], dtype='int64'), p=numpy.asarray([.1, .2, .3], dtype='float64'))
+            np.random.binomial(n=np.asarray([2, 3, 4], dtype='int64'), p=np.asarray([.1, .2, .3], dtype='float64'))
         except TypeError:
             # THIS WORKS AROUND A NUMPY BUG on 32bit machine
             n = tensor.cast(n, 'int32')
@@ -583,7 +581,7 @@ def random_integers_helper(random_state, low, high, size):
             out_size = out_size + (dim_len,)
 
     # Build the indices over which to loop
-    out = numpy.ndarray(out_size)
+    out = np.ndarray(out_size)
     broadcast_ind = _generate_broadcasting_indices(out_size, low.shape,
                                                    high.shape)
     # Iterate over these indices, drawing one sample at a time from numpy
@@ -716,8 +714,8 @@ def permutation_helper(random_state, n, shape):
         shape = ()
     out_shape = list(shape)
     out_shape.append(n)
-    out = numpy.empty(out_shape, int)
-    for i in numpy.ndindex(*shape):
+    out = np.empty(out_shape, int)
+    for i in np.ndindex(*shape):
         out[i] = random_state.permutation(n)
 
     # print 'RETURNING', out.shape
@@ -801,7 +799,7 @@ def multinomial_helper(random_state, n, pvals, size):
     # Build the indices over which to loop
     # Note that here, the rows (inner-most 1D subtensors) of pvals and out
     # are indexed, not their individual elements
-    out = numpy.ndarray(out_size)
+    out = np.ndarray(out_size)
     broadcast_ind = _generate_broadcasting_indices(size, n.shape,
                                                    pvals.shape[:-1])
     # Iterate over these indices, drawing from one multinomial at a
@@ -815,16 +813,16 @@ def multinomial_helper(random_state, n, pvals, size):
         # of probabilities meets or exceeds 1.0.
         # In  perfect arithmetic this would be correct, but in float32 or
         # float64 it is too strict.
-        pisum = numpy.sum(pvi)
+        pisum = np.sum(pvi)
         if 1.0 < pisum < 1.0 + 1e-5:  # correct if we went a little over
             # because mtrand.pyx has a ValueError that will trigger if
             # sum(pvals[:-1]) > 1.0
             pvi = pvi * (1.0 - 5e-5)
             # pvi = pvi * .9
-            pisum = numpy.sum(pvi)
+            pisum = np.sum(pvi)
         elif pvi[-1] < 5e-5:  # will this even work?
             pvi = pvi * (1.0 - 5e-5)
-            pisum = numpy.sum(pvi)
+            pisum = np.sum(pvi)
         assert pisum <= 1.0, pisum
         out[mi] = random_state.multinomial(n=n[ni],
                                            pvals=pvi.astype('float64'))

@@ -94,22 +94,36 @@ class CodeBlock:
                         "\ndouble __DUMMY_%(id)i;\n" % sub)  # % sub
 
 
-def failure_code(sub):
+def failure_code(sub, use_goto=True):
     """
     Code contained in sub['fail'], usually substituted for %(fail)s.
 
     It sets information about current error, then goto the code
     actually handling the failure, which is defined in struct_gen().
 
+    Parameters
+    ----------
+    sub: dict
+        Contains other code snippets that can be substituted,
+        in particular 'failure_var' and 'id'.
+    use_goto: bool, True by default
+        Include a "goto" statement to the failure label.
+        Passing False is sometimes required, in which cases we have to
+        be careful to avoid executing incorrect code.
+
     """
+    if use_goto:
+        goto_statement = 'goto __label_%(id)i;' % sub
+    else:
+        goto_statement = ''
     return '''{
-        %(failure_var)s = %(id)s;
+        %(failure_var)s = %(id)i;
         if (!PyErr_Occurred()) {
             PyErr_SetString(PyExc_RuntimeError,
                 "Unexpected error in an Op's C code. "
                 "No Python exception was set.");
-            }
-        goto __label_%(id)i;}''' % sub
+        }
+        %(goto_statement)s}''' % dict(sub, goto_statement=goto_statement)
 
 
 def failure_code_init(sub):
@@ -751,8 +765,6 @@ class CLinker(link.Linker):
             # This ensures that, when defining functions in support code,
             # we cannot have two different functions, in different modules,
             # that have the same name.
-            # It was problematic, in particular, on Mac OS X (10.6 and 10.7)
-            # when defining CUDA kernels (with Cuda 4.2 and 5.0). See gh-1172.
             name = "node_<<<<HASH_PLACEHOLDER>>>>_%i" % node_num
             isyms = [symbol[r] for r in node.inputs]
             osyms = [symbol[r] for r in node.outputs]
@@ -902,7 +914,11 @@ class CLinker(link.Linker):
         for x in [y.type for y in self.variables] + [
                 y.op for y in self.node_order]:
             try:
-                ret.append(x.c_support_code())
+                support_code = x.c_support_code()
+                if isinstance(support_code, list):
+                    ret.extend(support_code)
+                else:
+                    ret.append(support_code)
             except utils.MethodNotDefined:
                 pass
         return ret

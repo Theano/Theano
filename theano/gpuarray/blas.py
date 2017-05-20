@@ -50,9 +50,8 @@ class GpuGemv(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         x = as_gpuarray_variable(x, ctx_name)
         y = as_gpuarray_variable(y, ctx_name)
-        with theano.configparser.change_flags(warn_float64='ignore'):
-            alpha = as_tensor_variable(alpha).astype('float64')
-            beta = as_tensor_variable(beta).astype('float64')
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
 
         assert alpha.ndim == 0
         assert beta.ndim == 0
@@ -60,6 +59,13 @@ class GpuGemv(BlasOp):
         assert x.ndim == 1
         assert y.ndim == 1
         assert A.dtype == x.dtype == y.dtype
+
+        # float16 not supported
+        expected = A.dtype
+        assert theano.scalar.upcast(alpha.dtype,
+                                    beta.dtype, expected) == expected
+        alpha = alpha.astype(expected)
+        beta = beta.astype(expected)
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
     def perform(self, node, inputs, out_storage):
@@ -67,8 +73,12 @@ class GpuGemv(BlasOp):
         inplace = self.inplace
         if inplace and y.strides[0] < 0:
             inplace = False
-        out_storage[0][0] = blas.gemv(alpha, A, x, beta, y,
-                                      overwrite_y=inplace)
+        if A.shape[1] == 0:
+            out_storage[0][0] = pygpu.zeros(y.shape, dtype=y.dtype,
+                                            context=y.context)
+        else:
+            out_storage[0][0] = blas.gemv(alpha, A, x, beta, y,
+                                          overwrite_y=inplace)
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], y=inp[0], alpha=inp[1], A=inp[2], x=inp[3],
@@ -113,11 +123,11 @@ class GpuGemv(BlasOp):
             if (%(A)s->ga.flags & GA_C_CONTIGUOUS) {
                 ssize_t a_stride0 = %(A)s->ga.strides[0];
                 %(A)s->ga.strides[0] = %(A)s->ga.strides[1];
-                if (pygpu_blas_rdot(%(x)s, %(A)s, %(y)s, 0) == -1) {
+                if (pygpu_blas_rdot(%(x)s, %(A)s, %(out)s, 0) == -1) {
                     %(fail)s
                 }
                 %(A)s->ga.strides[0] = a_stride0;
-            } else if (pygpu_blas_rdot(%(x)s, %(A)s, %(y)s, 0) == -1) {
+            } else if (pygpu_blas_rdot(%(x)s, %(A)s, %(out)s, 0) == -1) {
                 %(fail)s
             }
             %(out)s->ga.nd = 1;
@@ -139,7 +149,7 @@ class GpuGemv(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
@@ -163,15 +173,30 @@ class GpuGemm(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         B = as_gpuarray_variable(B, ctx_name)
         C = as_gpuarray_variable(C, ctx_name)
-        with theano.configparser.change_flags(warn_float64='ignore'):
-            alpha = as_tensor_variable(alpha).astype('float64')
-            beta = as_tensor_variable(beta).astype('float64')
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
+
+        if not (A.dtype == B.dtype == C.dtype):
+            raise TypeError(theano.tensor.blas.Gemm.E_mixed,
+                            (A.dtype, B.dtype, C.dtype,
+                             alpha.dtype, beta.dtype))
+        if not A.dtype.startswith('float'):
+            raise TypeError(theano.tensor.blas.Gemm.E_float, (A.dtype))
+
+        if A.dtype == 'float16':
+            expected = 'float32'
+        else:
+            expected = A.dtype
+        assert theano.scalar.upcast(alpha.dtype,
+                                    beta.dtype, expected) == expected
+        alpha = alpha.astype(expected)
+        beta = beta.astype(expected)
+
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 2
         assert B.ndim == 2
         assert C.ndim == 2
-        assert A.dtype == B.dtype == C.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
     def perform(self, node, inputs, outputs):
@@ -244,13 +269,17 @@ class GpuGer(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         x = as_gpuarray_variable(x, ctx_name)
         y = as_gpuarray_variable(y, ctx_name)
-        with theano.configparser.change_flags(warn_float64='ignore'):
-            alpha = as_tensor_variable(alpha).astype('float64')
+        alpha = as_tensor_variable(alpha)
+        if not(A.dtype == x.dtype == y.dtype):
+            raise TypeError('ger requires matching dtypes',
+                            (A.dtype, alpha.dtype, x.dtype, y.dtype))
+
+        assert theano.scalar.upcast(alpha.dtype, A.dtype) == A.dtype
+        alpha = alpha.astype(A.dtype)
         assert alpha.ndim == 0
         assert A.ndim == 2
         assert x.ndim == 1
         assert y.ndim == 1
-        assert A.dtype == x.dtype == y.dtype
         return Apply(self, [A, alpha, x, y], [A.type()])
 
     def perform(self, node, inp, out):
@@ -383,15 +412,14 @@ class GpuGemmBatch(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         B = as_gpuarray_variable(B, ctx_name)
         C = as_gpuarray_variable(C, ctx_name)
-        with theano.configparser.change_flags(warn_float64='ignore'):
-            alpha = as_tensor_variable(alpha).astype('float64')
-            beta = as_tensor_variable(beta).astype('float64')
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 3
         assert B.ndim == 3
         assert C.ndim == 3
-        assert A.dtype == B.dtype == C.dtype
+        assert A.dtype == B.dtype == C.dtype == alpha.dtype == beta.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
     def c_headers(self):
@@ -399,12 +427,11 @@ class GpuGemmBatch(BlasOp):
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], C=inp[0], alpha=inp[1], A=inp[2], B=inp[3],
-                    beta=inp[4], fail=sub['fail'], name=name)
+                    beta=inp[4], inplace=int(self.inplace),
+                    fail=sub['fail'], name=name)
         code = """
         int err;
-        """
-        if self.inplace:
-            code += """
+        if (%(inplace)s){
                    if (!GpuArray_ISONESEGMENT(&%(C)s->ga)) {
                      %(out)s = theano_try_copy(%(out)s, %(C)s);
                      if (%(out)s == NULL) {
@@ -415,15 +442,12 @@ class GpuGemmBatch(BlasOp):
                      %(out)s = %(C)s;
                      Py_INCREF(%(out)s);
                    }
-                   """ % vars
-        else:
-            code += """
+        } else {
                    %(out)s = theano_try_copy(%(out)s, %(C)s);
                    if (%(out)s == NULL) {
                        %(fail)s
                    }
-                   """ % vars
-        code += """
+        }
         err = GpuArray_rgemmBatch_3d(
             cb_no_trans, cb_no_trans,
             ((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
@@ -443,7 +467,7 @@ class GpuGemmBatch(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpugemmbatch_no_inplace = GpuGemmBatch(inplace=False)
 gpugemmbatch_inplace = GpuGemmBatch(inplace=True)
@@ -520,9 +544,6 @@ class BaseGpuCorrMM(CGpuKernelBase):
         # nb patch multiplied
         flops *= inputs[1] * filters[0] * inputs[0]
         return flops
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     def c_headers(self):
         return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]
@@ -1117,9 +1138,6 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         # nb patch multiplied
         flops *= inputs[1] * filters[0] * inputs[0]
         return flops
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     def c_headers(self):
         return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]

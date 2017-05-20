@@ -51,7 +51,7 @@ Environment Variables
 
     .. code-block:: bash
 
-        THEANO_FLAGS='floatX=float32,device=cuda0,lib.cnmem=1'  python <myscript>.py
+        THEANO_FLAGS='floatX=float32,device=cuda0,gpuarray.preallocate=1'  python <myscript>.py
 
     If a value is defined several times in ``THEANO_FLAGS``,
     the right-most definition is used. So, for instance, if
@@ -72,15 +72,15 @@ Environment Variables
         floatX = float32
         device = cuda0
 
-        [lib]
-        cnmem = 1
+        [gpuarray]
+        preallocate = 1
 
     Configuration attributes that are available directly in ``config``
     (e.g. ``config.device``, ``config.mode``) should be defined in the
     ``[global]`` section.
-    Attributes from a subsection of ``config`` (e.g. ``config.lib.cnmem``,
+    Attributes from a subsection of ``config`` (e.g. ``config.gpuarray.preallocate``,
     ``config.dnn.conv.algo_fwd``) should be defined in their corresponding
-    section (e.g. ``[nvcc]``, ``[dnn.conv]``).
+    section (e.g. ``[gpuarray]``, ``[dnn.conv]``).
 
     Multiple configuration files can be specified by separating them with ':'
     characters (as in $PATH).  Multiple configuration files will be merged,
@@ -105,14 +105,12 @@ import theano and print the config variable, as in:
 .. attribute:: device
 
     String value: either ``'cpu'``, ``'cuda'``, ``'cuda0'``, ``'cuda1'``,
-    ``'opencl0:0'``, ``'opencl0:1'``, ``'gpu'``, ``'gpu0'`` ...
+    ``'opencl0:0'``, ``'opencl0:1'``, ...
 
     Default device for computations. If ``'cuda*``, change the default to try
     to move computation to the GPU using CUDA libraries. If ``'opencl*'``,
     the openCL libraries will be used. To let the driver select the device,
-    use ``'cuda'`` or ``'opencl'``. If ``'gpu*'``, the old gpu backend will
-    be used, although users are encouraged to migrate to the new GpuArray 
-    backend. If we are not able to use the GPU,
+    use ``'cuda'`` or ``'opencl'``. If we are not able to use the GPU,
     either we fall back on the CPU, or an error is raised, depending
     on the :attr:`force_device` flag.
 
@@ -140,10 +138,10 @@ import theano and print the config variable, as in:
 .. attribute:: init_gpu_device
 
     String value: either ``''``, ``'cuda'``, ``'cuda0'``, ``'cuda1'``,
-    ``'opencl0:0'``, ``'opencl0:1'``, ``'gpu'``, ``'gpu0'`` ...
+    ``'opencl0:0'``, ``'opencl0:1'``, ...
 
     Initialize the gpu device to use.
-    When its value is ``'cuda*'``, ``'opencl*'`` or ``'gpu*'``, the theano
+    When its value is ``'cuda*'`` or ``'opencl*'``, the theano
     flag :attr:`device` must be ``'cpu'``.
     Unlike :attr:`device`, setting this flag to a specific GPU will not
     try to use this device by default, in particular it will **not** move
@@ -154,20 +152,6 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
-.. attribute:: config.pycuda.init
-
-    Bool value: either ``True`` or ``False``
-
-    Default: ``False``
-
-    If True, always initialize PyCUDA when Theano want to initialize
-    the GPU.  With PyCUDA version 2011.2.2 or earlier, PyCUDA must
-    initialize the GPU before Theano does it.  Setting
-    this flag to True, ensure that, but always import PyCUDA.  It can
-    be done manually by importing ``theano.misc.pycuda_init`` before
-    Theano initialize the GPU device.  Newer version of PyCUDA
-    (currently only in the trunk) don't have this restriction.
-
 .. attribute:: print_active_device
 
     Bool value: either ``True`` or ``False``
@@ -175,14 +159,6 @@ import theano and print the config variable, as in:
     Default: ``True``
 
     Print active device at when the GPU device is initialized.
-
-.. attribute:: enable_initial_driver_test
-
-    Bool value: either ``True`` or ``False``
-
-    Default: ``True``
-
-    Tests the nvidia driver when a GPU device is initialized.
 
 .. attribute:: floatX
 
@@ -455,47 +431,6 @@ import theano and print the config variable, as in:
         automatically to get more memory. But this can cause
         fragmentation, see note above.
 
-.. attribute:: config.lib.cnmem
-
-    .. note::
-
-        This value allocates GPU memory ONLY when using (:ref:`cuda`)
-        and has no effect when the GPU backend is (:ref:`gpuarray`).
-        For the new backend, please see ``config.gpuarray.preallocate``
-
-    Float value: >= 0
-
-    Controls the use of `CNMeM <https://github.com/NVIDIA/cnmem>`_ (a
-    faster CUDA memory allocator). Applies to the old GPU backend 
-    :ref:`cuda` up to Theano release 0.8.
-
-    The CNMeM library is included in Theano and does not need to be
-    separately installed.
-
-    The value represents the start size (either in MB or the fraction of total GPU
-    memory) of the memory pool. If more memory is needed, Theano will
-    try to obtain more, but this can cause memory fragmentation.
-
-        * 0: not enabled.
-        * 0 < N <= 1: use this fraction of the total GPU memory (clipped to .95 for driver memory).
-        * > 1: use this number in megabytes (MB) of memory.
-
-
-    Default: 0
-
-    .. note::
-
-        This could cause memory fragmentation. So if you have a
-        memory error while using CNMeM, try to allocate more memory at
-        the start or disable it. If you try this, report your result
-        on :ref`theano-dev`.
-
-    .. note::
-
-        The clipping at 95% can be bypassed by specifing the exact
-        number of megabytes. If more then 95% are needed, it will try
-        automatically to get more memory. But this can cause
-        fragmentation, see note above.
 
 .. attribute:: config.gpuarray.sched
 
@@ -526,6 +461,13 @@ import theano and print the config variable, as in:
     In the future when true multi-stream is enabled in libgpuarray,
     this may change.  If you want to make sure to have optimal
     performance, check both options.
+
+
+.. attribute:: config.gpuarray.cache_path
+
+   Default: ``config.compiledir``/gpuarray_kernels
+
+   Directory to cache pre-compiled kernels for the gpuarray backend.
 
 
 .. attribute:: linker
@@ -584,9 +526,9 @@ import theano and print the config variable, as in:
 .. attribute:: config.warn.ignore_bug_before
 
     String value: ``'None'``, ``'all'``, ``'0.3'``, ``'0.4'``, ``'0.4.1'``, ``'0.5'``,
-    ``'0.6'``, ``'0.7'``, ``'0.8'``, ``'0.8.1'``, ``'0.8.2'``, ``'0.9'``
+    ``'0.6'``, ``'0.7'``, ``'0.8'``, ``'0.8.1'``, ``'0.8.2'``, ``'0.9'``, ``'0.10'``
 
-    Default: ``'0.7'``
+    Default: ``'0.8'``
 
     When we fix a Theano bug that generated bad results under some
     circumstances, we also make Theano raise a warning when it encounters
@@ -664,20 +606,6 @@ import theano and print the config variable, as in:
     As such this optimization does not always introduce an assert in the graph.
     Removing the assert could speed up execution.
 
-.. attribute:: config.cuda.root
-
-    Default: $CUDA_ROOT or failing that, ``"/usr/local/cuda"``
-
-    A directory with bin/, lib/, include/ folders containing cuda utilities.
-
-.. attribute:: config.cuda.enabled
-
-    Bool value: either ``True`` of ``False``
-
-    Default: ``True``
-
-    If set to `False`, C code in old backend is not compiled.
-
 .. attribute:: config.dnn.enabled
 
     String value: ``'auto'``, ``'True'``, ``'False'``
@@ -691,6 +619,8 @@ import theano and print the config variable, as in:
     If ``'True'``, require the use of cuDNN.  If cuDNN is unavailable, raise an error.
 
     If ``'False'``, do not use cuDNN or check if it is available.
+
+    If ``'no_check'``, assume present and the version between header and library match (so less compilation at context init)",
 
 .. attribute:: config.conv.assert_shape
 
@@ -749,6 +679,29 @@ import theano and print the config variable, as in:
     ``'guess_once'``, ``'guess_on_shape_change'``, ``'time_once'``,
     ``'time_on_shape_change'``.
 
+.. attribute:: config.magma.enabled
+
+    String value: ``'True'``, ``'False'``
+
+    Default: ``'False'``
+
+    If ``'True'``, use `magma <http://icl.cs.utk.edu/magma/>`_ for matrix
+    computations.
+
+    If ``'False'``, disable magma.
+
+.. attribute:: config.magma.include_path
+
+    Default: ``''``
+
+    Location of the magma headers.
+
+.. attribute:: config.magma.library_path
+
+    Default: ``''``
+
+    Location of the magma library.
+
 .. attribute:: config.gcc.cxxflags
 
     Default: ``""``
@@ -771,19 +724,6 @@ import theano and print the config variable, as in:
 
     This can be any compiler binary (full path or not) but things may
     break if the interface is not g++-compatible to some degree.
-
-.. attribute:: config.nvcc.fastmath
-
-    Bool value, default: ``False``
-
-    If true, this will enable fastmath (|use_fast_math|_)
-    mode for compiled cuda code which makes div and sqrt faster at the
-    cost of precision.  This also disables support for denormal
-    numbers. This can cause NaN. So if you have NaN and use this flag,
-    try to disable it.
-
-    .. |use_fast_math| replace:: ``--use-fast-math``
-    .. _use_fast_math: http://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/#options-for-steering-cuda-compilation
 
 .. attribute:: config.optimizer_excluding
 

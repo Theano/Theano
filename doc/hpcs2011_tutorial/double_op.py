@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano
 
 class DoubleOp(theano.Op):
@@ -21,8 +21,8 @@ x = theano.tensor.matrix()
 
 f = theano.function([x], DoubleOp()(x))
 
-inp = numpy.random.rand(5,5)
+inp = np.random.rand(5,5)
 out = f(inp)
-assert numpy.allclose(inp*2, out)
+assert np.allclose(inp*2, out)
 print(inp)
 print(out)

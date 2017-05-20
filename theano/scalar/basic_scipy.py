@@ -1,9 +1,11 @@
 from __future__ import absolute_import, print_function, division
-# definition theano.scalar op that have their python implementation taked from scipy
-# as scipy is not always available, we treat them separatly
-import numpy
+# Definitions of theano.scalar ops that have their python implementation taken
+# from SciPy. As SciPy is not always available, we treat them separately.
+
+import numpy as np
 
 import theano
+from theano.gradient import grad_not_implemented
 from theano.scalar.basic import (UnaryScalarOp, BinaryScalarOp,
                                  exp, upgrade_to_float,
                                  upgrade_to_float64,
@@ -30,19 +32,19 @@ class Erf(UnaryScalarOp):
         else:
             super(Erf, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(2. / np.sqrt(np.pi),
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * cst * exp(-x * x),
 
     def c_code(self, node, name, inp, out, sub):
@@ -61,19 +63,19 @@ class Erfc(UnaryScalarOp):
         else:
             super(Erfc, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(2. / np.sqrt(np.pi),
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return - gz * cst * exp(-x * x),
 
     def c_code(self, node, name, inp, out, sub):
@@ -98,8 +100,7 @@ class Erfcx(UnaryScalarOp):
     Notes
     -----
     This op can still be executed on GPU, despite not having c_code. When
-    running on GPU, sandbox.cuda.opt.local_gpu_elemwise_[0,1] replaces this op
-    with sandbox.cuda.elemwise.ErfcxGPU.
+    running on GPU an optimization will replace it with a gpu version.
 
     """
     def impl(self, x):
@@ -108,19 +109,19 @@ class Erfcx(UnaryScalarOp):
         else:
             super(Erfcx, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(2. / np.sqrt(np.pi),
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * (-cst + (2. * x) * erfcx(x)),
 
 erfcx = Erfcx(upgrade_to_float_no_complex, name='erfcx')
@@ -133,8 +134,7 @@ class Erfinv(UnaryScalarOp):
     Notes
     -----
     This op can still be executed on GPU, despite not having c_code. When
-    running on GPU, sandbox.cuda.opt.local_gpu_elemwise_[0,1] replaces this op
-    with sandbox.cuda.elemwise.ErfinvGPU.
+    running on GPU, an optimization will replace it with a GPU version.
 
     (TODO) Find a C implementation of erfinv for CPU.
     """
@@ -144,19 +144,19 @@ class Erfinv(UnaryScalarOp):
         else:
             super(Erfinv, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(np.sqrt(np.pi) / 2.,
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return gz * cst * exp(erfinv(x) ** 2),
 
     # TODO: erfinv() is not provided by the C standard library
@@ -177,19 +177,19 @@ class Erfcinv(UnaryScalarOp):
         else:
             super(Erfcinv, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
                 return [x.zeros_like()]
 
-        cst = numpy.asarray(numpy.sqrt(numpy.pi) / 2.,
-                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        cst = np.asarray(np.sqrt(np.pi) / 2.,
+                         dtype=upcast(x.type.dtype, gz.type.dtype))
         return - gz * cst * exp(erfcinv(x) ** 2),
 
     # TODO: erfcinv() is not provided by the C standard library
@@ -214,12 +214,12 @@ class Gamma(UnaryScalarOp):
         else:
             super(Gamma, self).impl(x)
 
-    def grad(self, inputs, gout):
+    def L_op(self, inputs, outputs, gout):
         (x,) = inputs
         (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
@@ -251,12 +251,12 @@ class GammaLn(UnaryScalarOp):
         else:
             super(GammaLn, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
@@ -267,10 +267,19 @@ class GammaLn(UnaryScalarOp):
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
-        if node.inputs[0].type in float_types:
-            return """%(z)s =
-                lgamma(%(x)s);""" % locals()
-        raise NotImplementedError('only floating point is implemented')
+        # no c code for complex
+        # [u]int* will be casted to float64 before computation
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError(
+                'gammaln complex c code is not implemented')
+        # For some reason, on the GPU, uint64 inputs don't get casted
+        # automatically to float64. This make the compilation crash
+        dtype = ""
+        if node.outputs[0].dtype == 'float64':
+            dtype = "(double)"
+        elif node.outputs[0].dtype == 'float32':
+            dtype = "(float)"
+        return """%(z)s = lgamma(%(dtype)s%(x)s);""" % locals()
 gammaln = GammaLn(upgrade_to_float, name='gammaln')
 
 
@@ -296,47 +305,53 @@ class Psi(UnaryScalarOp):
         return (
             """
             // For GPU support
-            #ifdef __CUDACC__
-            #define DEVICE __device__
+            #ifdef WITHIN_KERNEL
+            #define DEVICE WITHIN_KERNEL
             #else
             #define DEVICE
             #endif
 
+            #ifndef ga_double
+            #define ga_double double
+            #endif
+
             #ifndef _PSIFUNCDEFINED
             #define _PSIFUNCDEFINED
-            DEVICE double _psi(double x){
+            DEVICE double _psi(ga_double x) {
 
             /*taken from
             Bernardo, J. M. (1976). Algorithm AS 103:
             Psi (Digamma) Function. Applied Statistics. 25 (3), 315-317.
             http://www.uv.es/~bernardo/1976AppStatist.pdf */
 
-            double y, R, psi_ = 0;
-            double S  = 1.0e-5;
-            double C = 8.5;
-            double S3 = 8.333333333e-2;
-            double S4 = 8.333333333e-3;
-            double S5 = 3.968253968e-3;
-            double D1 = -0.5772156649;
+            ga_double y, R, psi_ = 0;
+            ga_double S  = 1.0e-5;
+            ga_double C = 8.5;
+            ga_double S3 = 8.333333333e-2;
+            ga_double S4 = 8.333333333e-3;
+            ga_double S5 = 3.968253968e-3;
+            ga_double D1 = -0.5772156649;
 
             y = x;
 
             if (y <= 0.0)
                return psi_;
 
-            if (y <= S )
+            if (y <= S)
                 return D1 - 1.0/y;
 
-            while (y < C){
+            while (y < C) {
                 psi_ = psi_ - 1.0 / y;
-                y = y + 1;}
+                y = y + 1;
+            }
 
             R = 1.0 / y;
             psi_ = psi_ + log(y) - .5 * R ;
             R= R*R;
             psi_ = psi_ - R * (S3 - R * (S4 - R * S5));
 
-            return psi_;}
+            return psi_;
+            }
             #endif
             """)
 
@@ -373,9 +388,33 @@ class Chi2SF(BinaryScalarOp):
 chi2sf = Chi2SF(upgrade_to_float64, name='chi2sf')
 
 
+class Jv(BinaryScalarOp):
+    """
+    Bessel function of the first kind of order v (real).
+    """
+
+    @staticmethod
+    def st_impl(v, x):
+        return scipy.special.jv(v, x)
+
+    def impl(self, v, x):
+        if imported_scipy_special:
+            return self.st_impl(v, x)
+        else:
+            super(Jv, self).impl(v, x)
+
+    def grad(self, inputs, grads):
+        v, x = inputs
+        gz, = grads
+        return [grad_not_implemented(self, 0, v),
+                gz * (jv(v - 1, x) - jv(v + 1, x)) / 2.]
+
+jv = Jv(upgrade_to_float, name='jv')
+
+
 class J1(UnaryScalarOp):
     """
-    Bessel function of the 1'th kind
+    Bessel function of the first kind of order 1.
     """
 
     @staticmethod
@@ -388,8 +427,10 @@ class J1(UnaryScalarOp):
         else:
             super(J1, self).impl(x)
 
-    def grad(self, inp, grads):
-        raise NotImplementedError()
+    def grad(self, inputs, grads):
+        x, = inputs
+        gz, = grads
+        return [gz * (j0(x) - jv(2, x)) / 2.]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -398,12 +439,13 @@ class J1(UnaryScalarOp):
             return """%(z)s =
                 j1(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
+
 j1 = J1(upgrade_to_float, name='j1')
 
 
 class J0(UnaryScalarOp):
     """
-    Bessel function of the 0'th kind
+    Bessel function of the first kind of order 0.
     """
 
     @staticmethod
@@ -428,4 +470,75 @@ class J0(UnaryScalarOp):
             return """%(z)s =
                 j0(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
+
 j0 = J0(upgrade_to_float, name='j0')
+
+
+class Iv(BinaryScalarOp):
+    """
+    Modified Bessel function of the first kind of order v (real).
+    """
+
+    @staticmethod
+    def st_impl(v, x):
+        return scipy.special.iv(v, x)
+
+    def impl(self, v, x):
+        if imported_scipy_special:
+            return self.st_impl(v, x)
+        else:
+            super(Iv, self).impl(v, x)
+
+    def grad(self, inputs, grads):
+        v, x = inputs
+        gz, = grads
+        return [grad_not_implemented(self, 0, v),
+                gz * (iv(v - 1, x) + iv(v + 1, x)) / 2.]
+
+iv = Iv(upgrade_to_float, name='iv')
+
+
+class I1(UnaryScalarOp):
+    """
+    Modified Bessel function of the first kind of order 1.
+    """
+
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.i1(x)
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(I1, self).impl(x)
+
+    def grad(self, inputs, grads):
+        x, = inputs
+        gz, = grads
+        return [gz * (i0(x) + iv(2, x)) / 2.]
+
+i1 = I1(upgrade_to_float, name='i1')
+
+
+class I0(UnaryScalarOp):
+    """
+    Modified Bessel function of the first kind of order 0.
+    """
+
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.i0(x)
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(I0, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        return [gz * i1(x)]
+
+i0 = I0(upgrade_to_float, name='i0')

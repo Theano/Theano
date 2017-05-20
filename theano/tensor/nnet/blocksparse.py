@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 from theano import Op, Apply
@@ -106,7 +106,7 @@ class SparseBlockGemv(Op):
                 for i in range(h.shape[1]):
                     inputIdx = iIdx[b, i]
                     w = W[inputIdx, outputIdx]
-                    o[b, j, :] += numpy.dot(h[b, i], w)
+                    o[b, j, :] += np.dot(h[b, i], w)
         out_[0][0] = o
 
     def infer_shape(self, node, input_shapes):
@@ -185,7 +185,7 @@ class SparseBlockOuter(Op):
           Which blocks will be computed is specified in `yIdx`.
 
         """
-        one = theano.tensor.constant(numpy.asarray(1.0, dtype='float32'))
+        one = theano.tensor.constant(np.asarray(1.0, dtype='float32'))
         o = theano.tensor.as_tensor_variable(o)
         x = theano.tensor.as_tensor_variable(x)
         y = theano.tensor.as_tensor_variable(y)
@@ -208,8 +208,8 @@ class SparseBlockOuter(Op):
         for b in range(x.shape[0]):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
-                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b, i],
-                                                             y[b, j, :])
+                    o[xIdx[b, i], yIdx[b, j]] += np.outer(x[b, i],
+                                                          y[b, j, :])
         out_[0][0] = o
 
 

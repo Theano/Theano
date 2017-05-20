@@ -1,6 +1,5 @@
 """
-test the tensor and sparse type. The CudaNdarray type is tested in
-sandbox/cuda/tests/test_tensor_op.py.test_may_share_memory_cuda
+test the tensor and sparse type. (gpuarray is tested in the gpuarray folder).
 """
 from __future__ import absolute_import, print_function, division
 import numpy as np
@@ -15,9 +14,7 @@ except ImportError:
 from theano.misc.may_share_memory import may_share_memory
 
 
-def test_may_share_memory():
-    a = np.random.rand(5, 4)
-    b = np.random.rand(5, 4)
+def may_share_memory_core(a, b):
     va = a.view()
     vb = b.view()
     ra = a.reshape((4, 5))
@@ -50,6 +47,13 @@ def test_may_share_memory():
             raise Exception("An error was expected")
         except TypeError:
             pass
+
+
+def test_may_share_memory():
+    a = np.random.rand(5, 4)
+    b = np.random.rand(5, 4)
+
+    may_share_memory_core(a, b)
 
 if scipy_imported:
     def test_may_share_memory_scipy():

@@ -125,9 +125,10 @@ class Apply(Node):
         Returns the params for the node, or NoParams if no params is set.
 
         """
-        if hasattr(self.op, 'get_params'):
+        try:
             return self.op.get_params(self)
-        return NoParams
+        except theano.gof.utils.MethodNotDefined:
+            return NoParams
 
     def __getstate__(self):
         d = self.__dict__
@@ -215,7 +216,7 @@ class Apply(Node):
         strict : bool
             If True, the type fields of all the inputs must be equal
             to the current ones (or compatible, for instance Tensor /
-            CudaNdarray of the same dtype and broadcastable patterns,
+            GpuArray of the same dtype and broadcastable patterns,
             in which case they will be converted into current Type), and
             returned outputs are guaranteed to have the same types as
             self.outputs.  If False, then there's no guarantee that the
@@ -307,7 +308,7 @@ class Variable(Node):
     - `SparseVariable` subclass of Variable that represents
       a scipy.sparse.{csc,csr}_matrix object.
 
-    - `CudaNdarrayVariable` subclass of Variable that represents our object on
+    - `GpuArrayVariable` subclass of Variable that represents our object on
       the GPU that is a subset of numpy.ndarray.
 
     - `RandomVariable`.
@@ -608,6 +609,8 @@ def stack_search(start, expand, mode='bfs', build_inv=False):
     expand : callable
         When we get to a node, add expand(node) to the list of nodes to visit.
         This function should return a list, or None.
+    mode : string
+        'bfs' or 'dfs' for breath first search or depth first search.
 
     Returns
     -------
@@ -632,7 +635,7 @@ def stack_search(start, expand, mode='bfs', build_inv=False):
         start_pop = start.popleft
     else:
         start_pop = start.pop
-    expand_inv = {}
+    expand_inv = {}  # var: clients
     while start:
         l = start_pop()
         if id(l) not in rval_set:
@@ -878,7 +881,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     return memo
 
 
-def general_toposort(r_out, deps, debug_print=False,
+def general_toposort(outputs, deps, debug_print=False,
                      compute_deps_cache=None, deps_cache=None,
                      clients=None):
     """
@@ -932,9 +935,9 @@ def general_toposort(r_out, deps, debug_print=False,
                 return deps_cache[io]
     assert deps_cache is not None
 
-    assert isinstance(r_out, (tuple, list, deque))
+    assert isinstance(outputs, (tuple, list, deque))
 
-    reachable, _clients = stack_search(deque(r_out), compute_deps_cache,
+    reachable, _clients = stack_search(deque(outputs), compute_deps_cache,
                                        'dfs', True)
     if clients is not None:
         clients.update(_clients)
@@ -948,9 +951,9 @@ def general_toposort(r_out, deps, debug_print=False,
             rlist.append(node)
             rset.add(node)
             for client in _clients.get(node, []):
-                deps_cache[client] = [a for a in deps_cache[client]
-                                      if a is not node]
-                if not deps_cache[client]:
+                d = [a for a in deps_cache[client] if a is not node]
+                deps_cache[client] = d
+                if not d:
                     sources.append(client)
 
     if len(rlist) != len(reachable):
@@ -980,17 +983,37 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
         node->clients for each node in the subgraph that is sorted
 
     """
-    # the inputs are used only here in the function that decides what 'predecessors' to explore
-    iset = set(inputs)
+    if not orderings and clients is None:  # ordering can be None or empty dict
+        # Specialized function that is faster when more then ~10 nodes
+        # when no ordering.
 
-    # We build 2 functions as a speed up
-    deps_cache = {}
+        # Do a new stack implementation with the vm algo.
+        # This will change the order returned.
+        computed = set(inputs)
+        todo = [o.owner for o in reversed(outputs) if o.owner]
+        order = []
+        while todo:
+            cur = todo.pop()
+            # We suppose that all outputs are always computed
+            if cur.outputs[0] in computed:
+                continue
+            if all([i in computed or i.owner is None for i in cur.inputs]):
+                computed.update(cur.outputs)
+                order.append(cur)
+            else:
+                todo.append(cur)
+                todo.extend(i.owner for i in cur.inputs if i.owner)
+        return order
 
     compute_deps = None
     compute_deps_cache = None
-    if not orderings:  # can be None or empty dict
+    iset = set(inputs)
+    deps_cache = {}
+
+    if not orderings:  # ordering can be None or empty dict
         # Specialized function that is faster when no ordering.
         # Also include the cache in the function itself for speed up.
+
         def compute_deps_cache(obj):
             if obj in deps_cache:
                 return deps_cache[obj]
@@ -1013,6 +1036,9 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
                 deps_cache[obj] = rval
             return rval
     else:
+
+        # the inputs are used only here in the function that decides what
+        # 'predecessors' to explore
         def compute_deps(obj):
             rval = []
             if obj not in iset:
@@ -1023,7 +1049,7 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
                     rval = list(obj.inputs)
                 rval.extend(orderings.get(obj, []))
             else:
-                assert not orderings.get(obj, [])
+                assert not orderings.get(obj, None)
             return rval
 
     topo = general_toposort(outputs, deps=compute_deps,
@@ -1350,3 +1376,27 @@ def list_of_nodes(inputs, outputs):
         lambda o: [inp.owner for inp in o.inputs
                    if inp.owner and
                    not any(i in inp.owner.outputs for i in inputs)])
+
+
+def is_in_ancestors(l_node, f_node):
+    r"""
+    Goes up in the graph and returns True if the apply node f_node is found.
+
+    Use a stack implementation as the vm algo.
+    We suppose all nodes are not lazy
+    (i.e. for IfElse we suppose all inputs are computed)
+    """
+    computed = set()
+    todo = [l_node]
+    while todo:
+        cur = todo.pop()
+        if cur.outputs[0] in computed:
+            continue
+        if all([i in computed or i.owner is None for i in cur.inputs]):
+            computed.update(cur.outputs)
+            if cur is f_node:
+                return True
+        else:
+            todo.append(cur)
+            todo.extend(i.owner for i in cur.inputs if i.owner)
+    return False

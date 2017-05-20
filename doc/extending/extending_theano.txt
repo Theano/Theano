@@ -98,7 +98,7 @@ possibilities you may encounter or need.  For that refer to
         def c_code(self, node, inputs, outputs, sub):
             pass
 
-        # Other implementations (pycuda, ...):
+        # Other implementations:
         def make_thunk(self, node, storage_map, _, _2, impl=None):
             pass
 
@@ -194,8 +194,7 @@ or :func:`make_thunk`.
       It should have a default value of None.
 
   :func:`make_thunk` is useful if you want to generate code and compile
-  it yourself. For example, this allows you to use PyCUDA to compile GPU
-  code and keep state in the thunk.
+  it yourself.
 
   If :func:`make_thunk()` is defined by an op, it will be used by Theano
   to obtain the op's implementation.
@@ -673,14 +672,6 @@ For instance, to verify the Rop method of the DoubleOp, you can use this:
            super(test_DoubleRop, self).setUp()
        def test_double_rop(self):
            self.check_rop_lop(DoubleRop()(self.x), self.in_shape)
-
-Testing GPU Ops
-^^^^^^^^^^^^^^^
-
-When using the old GPU backend, Ops to be executed on the GPU should inherit
-from ``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allows
-Theano to distinguish them. Currently, we use this to test if the
-NVIDIA driver works correctly with our sum reduction code on the GPU.
 
 Running Your Tests
 ^^^^^^^^^^^^^^^^^^

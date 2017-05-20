@@ -9,8 +9,7 @@ out Theano easy. You can install a stable version of Theano, without having to
 worry about the current state of the repository.  While we usually try NOT to
 break the trunk, mistakes can happen. This also greatly simplifies the
 installation process: mercurial is no longer required and certain python
-dependencies can be handled automatically (numpy for now, maybe pycuda, cython
-later).
+dependencies can be handled automatically (numpy for now, cython later).
 
 The Theano release plan is detailed below. Comments and/or suggestions are
 welcome on the mailing list.

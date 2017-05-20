@@ -18,6 +18,7 @@ import sys
 import time
 from collections import defaultdict
 from six import iteritems
+import warnings
 
 import numpy as np
 
@@ -88,6 +89,7 @@ def _atexit_print_fn():
                 # merge dictonary
                 for attr in ["apply_time", "apply_callcount",
                              "apply_cimpl", "variable_shape", "variable_strides",
+                             "variable_offset",
                              "linker_make_thunk_time"]:
                     cum_attr = getattr(cum, attr)
                     for key, val in iteritems(getattr(ps, attr)):
@@ -102,7 +104,6 @@ def _atexit_print_fn():
                         assert len(merge) == len(cum.optimizer_profile[1])
                         cum.optimizer_profile = (cum.optimizer_profile[0], merge)
                     except Exception as e:
-                        print("Got an exception while merging profile")
                         print(e)
                         cum.optimizer_profile = None
                 else:
@@ -147,6 +148,14 @@ def print_global_stats():
     print('=' * 50, file=destination_file)
 
 
+_profiler_printers = []
+
+
+def register_profiler_printer(fct):
+    _profiler_printers.append(fct)
+    return fct
+
+
 class ProfileStats(object):
 
     """
@@ -172,7 +181,7 @@ class ProfileStats(object):
         self.apply_time = {}
         self.apply_callcount = {}
         # self.apply_cimpl = None
-        # self.messge = None
+        # self.message = None
     #
     # Note on implementation:
     # Class variables are used here so that each one can be
@@ -221,6 +230,10 @@ class ProfileStats(object):
     # Variable -> strides
     #
 
+    variable_offset = {}
+    # Variable -> offset
+    #
+
     optimizer_time = 0.0
     # time spent optimizing graph (FunctionMaker.__init__)
 
@@ -253,28 +266,30 @@ class ProfileStats(object):
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None,
                  gpu_checks=True, **kwargs):
-        if (config.profile and gpu_checks and
-                ((hasattr(theano, 'sandbox') and
-                  hasattr(theano.sandbox, 'cuda') and
-                  theano.sandbox.cuda.cuda_enabled) or (
-                      hasattr(theano, 'gpuarray') and
-                      theano.gpuarray.pygpu_activated))):
-            if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
-                raise Exception(
-                    "You are running the Theano profiler with CUDA enabled."
-                    " Theano GPU ops execution is asynchronous by default."
-                    " So by default, the profile is useless."
-                    " You must set the environment variable"
-                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
-                    " synchronize the execution to get a meaningful profile.")
+        if (gpu_checks and
+            (hasattr(theano, 'gpuarray') and
+             theano.gpuarray.pygpu_activated) and
+                os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1'):
+            msg = (
+                "You are running the Theano profiler with CUDA enabled."
+                " Theano GPU ops execution is asynchronous by default."
+                " So by default, the profile is useless."
+                " You must set the environment variable"
+                " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
+                " synchronize the execution to get a meaningful profile.")
+            if config.profile:
+                raise Exception(msg)
+            else:
+                warnings.warn(msg)
+
         if (config.profile and gpu_checks and
                 hasattr(theano, 'gpuarray') and
                 theano.gpuarray.pygpu_activated and
                 not config.profiling.ignore_first_call):
-            logger.warn(
-                "Theano flag profiling.ignore_first_call is False."
-                " This cause bad profiling result in the new gpu"
-                " back-end, we as sometimes we compile at the first call.")
+            warnings.warn(
+                "Theano flag profiling.ignore_first_call is False. "
+                "This cause bad profiling result in the gpu "
+                "back-end, as sometimes we compile at the first call.")
 
         self.apply_callcount = {}
         self.output_size = {}
@@ -282,6 +297,7 @@ class ProfileStats(object):
         self.apply_cimpl = {}
         self.variable_shape = {}
         self.variable_strides = {}
+        self.variable_offset = {}
         if flag_time_thunks is None:
             self.flag_time_thunks = config.profiling.time_thunks
         else:
@@ -495,8 +511,8 @@ class ProfileStats(object):
             tot += t
             ftot = tot * 100 / local_time
             # Remove the useless start and end of the class name:
-            # "<class 'theano.sandbox.cuda.blas.GpuDot22'>" ->
-            #  "theano.sandbox.cuda.blas.GpuDot22"
+            # "<class 'theano.gpuarray.blas.GpuDot22'>" ->
+            #  "theano.gpuarray.blas.GpuDot22"
             class_name = str(a)[8:-2][:maxlen]
             print(format_str % (f, ftot, t, t / nb_call,
                                 impl, nb_call,
@@ -684,15 +700,21 @@ class ProfileStats(object):
             for idx, var in enumerate(a.inputs):
                 sh = self.variable_shape.get(var, 'no shape')
                 st = self.variable_strides.get(var, 'no strides')
+                off = self.variable_offset.get(var, '')
+                if off != '':
+                    off = ", offset=%s" % off
                 dtype = getattr(var, 'dtype', 'no dtype')
-                print("    input %d: dtype=%s, shape=%s, strides=%s " % (
-                    idx, dtype, sh, st), file=file)
+                print("    input %d: dtype=%s, shape=%s, strides=%s%s" % (
+                    idx, dtype, sh, st, off), file=file)
             for idx, var in enumerate(a.outputs):
                 sh = self.variable_shape.get(var, 'no shape')
                 st = self.variable_strides.get(var, 'no strides')
+                off = self.variable_offset.get(var, '')
+                if off != '':
+                    off = ", offset=%s" % off
                 dtype = getattr(var, 'dtype', 'no dtype')
-                print("    output %d: dtype=%s, shape=%s, strides=%s " % (
-                    idx, dtype, sh, st), file=file)
+                print("    output %d: dtype=%s, shape=%s, strides=%s%s" % (
+                    idx, dtype, sh, st, off), file=file)
             # Same as before, this I've sacrificied some information making
             # the output more readable
         print('   ... (remaining %i Apply instances account for '
@@ -807,7 +829,8 @@ class ProfileStats(object):
                 new allocation.
 
             """
-            from theano.sandbox.cuda import CudaNdarrayType
+            from theano.gpuarray import GpuArrayType
+
             # Initial Mem info values [CPU, GPU]
             node_memory_size = [0, 0]
             running_memory_size = [0, 0]
@@ -857,7 +880,7 @@ class ProfileStats(object):
                 # allocated by the node
                 idx2 = 0
                 for out in node.outputs:
-                    if isinstance(out.type, CudaNdarrayType):
+                    if isinstance(out.type, GpuArrayType):
                         cg = 1
                     else:
                         cg = 0
@@ -899,7 +922,7 @@ class ProfileStats(object):
                 for ins in set(node.inputs):
                     assert not (ins in view_of and viewed_by[ins])
                     # we trac the original var, so this shouldn't happen
-                    if isinstance(ins.type, CudaNdarrayType):
+                    if isinstance(ins.type, GpuArrayType):
                         cg = 1
                     else:
                         cg = 0
@@ -1232,16 +1255,6 @@ class ProfileStats(object):
 
             print("---", file=file)
 
-        if (hasattr(theano, 'sandbox') and
-            hasattr(theano.sandbox, 'cuda') and
-            hasattr(theano.sandbox.cuda, 'cuda_ndarray') and
-            hasattr(theano.sandbox.cuda.cuda_ndarray.cuda_ndarray,
-                    'theano_allocated')):
-            cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
-            _, gpu_max = cuda_ndarray.theano_allocated()
-            print("    Max Memory allocated on the GPU (for all functions): "
-                  "%dKB" % int(round(gpu_max / 1024.)), file=file)
-
         print("", file=file)
         if len(fct_memory) > 1:
             print("    This list is based on all functions in the profile",
@@ -1318,6 +1331,7 @@ class ProfileStats(object):
             print("-----------------", file=file)
             self.optimizer_profile[0].print_profile(file,
                                                     self.optimizer_profile[1])
+        self.print_extra(file)
         self.print_tips(file)
 
     def print_tips(self, file):
@@ -1443,7 +1457,6 @@ class ProfileStats(object):
                 printed_tip = True
 
         # tip 7
-        import theano.sandbox.cuda as cuda
         from theano.tensor.nnet import LogSoftmax
         import theano.tensor.signal.pool as pool
         import theano.gpuarray
@@ -1451,18 +1464,24 @@ class ProfileStats(object):
         for a in self.apply_time:
             node = a
             if (isinstance(node.op, pool.Pool)):
-                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
+                if not theano.gpuarray.dnn.dnn_present():
                     print("Install CuDNN to do pooling faster"
                           "this allows the operation to run on GPU")
                     printed_tip = True
             if (isinstance(node.op, LogSoftmax)):
-                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
+                if not theano.gpuarray.dnn.dnn_present():
                     print("Install CuDNN to do LogSoftmax faster"
                           "this allows the operation to run on GPU")
                     printed_tip = True
 
         if not printed_tip:
             print("  Sorry, no tip for today.", file=file)
+
+    def print_extra(self, file):
+        params = [self.message, self.compile_time, self.fct_call_time,
+                  self.apply_time, self.apply_cimpl, self.output_size]
+        for f in _profiler_printers:
+            f(*params, file=file)
 
 
 class ScanProfileStats(ProfileStats):

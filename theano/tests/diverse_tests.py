@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 import numpy.random
 
 import theano
@@ -28,7 +28,7 @@ class T_scipy(unittest.TestCase):
         a = theano.tensor.vector('a')  # declare variable
         b = a + a**10                  # build expression
         f = theano.function([a], b)    # compile function
-        assert numpy.all(f([0, 1, 2]) == numpy.array([0, 2, 1026]))
+        assert np.all(f([0, 1, 2]) == np.array([0, 2, 1026]))
 
     def test_scipy_paper_example2(self):
         ''' This just sees if things compile well and if they run '''
@@ -45,7 +45,7 @@ class T_scipy(unittest.TestCase):
         x = T.matrix()
         y = T.vector()
         w = shared(rng.randn(100))
-        b = shared(numpy.zeros(()))
+        b = shared(np.zeros(()))
 
         # Construct Theano expression graph
         p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b))

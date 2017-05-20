@@ -153,165 +153,8 @@ class BadThunkOutput(DebugModeError):
         return ret
 
 
-class BadOptimization(DebugModeError):
-    """
-    Exception: some variable and its substitute take different runtime values.
-
-    """
-
-    new_r = None
-    """
-    A `Variable` instance that took a different value from `old_r`,
-    but which replaced `old_r`.
-
-    """
-
-    old_r = None
-    """
-    A `Variable` instance that was replaced by `new_r`.
-
-    """
-
-    old_r_val = None
-    """
-    The value computed for `old_r`.
-
-    """
-
-    new_r_val = None
-    """
-    The value computed for `new_r`.
-
-    """
-
-    reason = None
-    """
-    An object that indicates why old_r was turned into new_r.
-
-    Convention is that this is the name of the optimization that
-    requested the replacement.
-
-    """
-
-    old_graph = ""
-    """
-    A multiline string representation of the graph leading to
-    old_r, at the time of the replacement.
-
-    """
-
-    new_graph = ""
-    """
-    A multiline string representation of the graph leading to
-    new_r, at the time of the replacement.
-
-    """
-
-    def __init__(self, old_r, new_r, old_r_val, new_r_val, reason,
-                 old_graph, new_graph):
-        super(BadOptimization, self).__init__()
-        self.old_r = old_r
-        self.new_r = new_r
-        self.old_r_val = old_r_val
-        self.new_r_val = new_r_val
-        self.reason = reason
-        self.old_graph = old_graph
-        self.new_graph = new_graph
-
-    def __str__(self):
-        return self.str_diagnostic()
-
-    def str_diagnostic(self):
-        """
-        Return a pretty multiline string representating the cause
-        of the exception.
-
-        """
-        sio = StringIO()
-        val_str_len_limit = 800
-        print("BadOptimization Error", super(BadOptimization,
-                                             self).__str__(), file=sio)
-        print("  Variable: id", id(self.new_r), self.new_r, file=sio)
-        print("  Op", self.new_r.owner, file=sio)
-        print("  Value Type:", type(self.new_r_val), file=sio)
-        try:
-            ssio = StringIO()
-            print("  Old Value shape, dtype, strides:", end=' ', file=ssio)
-            print(self.old_r_val.shape, end=' ', file=ssio)
-            print(self.old_r_val.dtype, end=' ', file=ssio)
-            print(self.old_r_val.strides, file=ssio)
-            # only if all succeeds to we add anything to sio
-            print(ssio.getvalue(), file=sio)
-        except Exception:
-            pass
-
-        str_old_r_val = str(self.old_r_val)
-        if len(str_old_r_val) > val_str_len_limit:
-            print("  Old Value: ", str(self.old_r_val)[
-                :val_str_len_limit], '...', file=sio)
-        else:
-            print("  Old Value: ", str(self.old_r_val), file=sio)
-
-        try:
-            ssio = StringIO()
-            print("  New Value shape, dtype, strides:", end=' ', file=ssio)
-            print(self.new_r_val.shape, end=' ', file=ssio)
-            print(self.new_r_val.dtype, end=' ', file=ssio)
-            print(self.new_r_val.strides, file=ssio)
-            # only if all succeeds to we add anything to sio
-            print(ssio.getvalue(), file=sio)
-        except Exception:
-            pass
-        str_new_r_val = str(self.new_r_val)
-        if len(str_new_r_val) > val_str_len_limit:
-            print("  New Value: ", str(self.new_r_val)[
-                :val_str_len_limit], '...', file=sio)
-        else:
-            print("  New Value: ", str(self.new_r_val), file=sio)
-
-        try:
-            ov = np.asarray(self.old_r_val)
-            nv = np.asarray(self.new_r_val)
-            ssio = StringIO()
-            abs_diff = np.absolute(nv - ov)
-            print("  Max Abs Diff: ", np.max(abs_diff), file=ssio)
-            print("  Mean Abs Diff: ", np.mean(abs_diff), file=ssio)
-            print("  Median Abs Diff: ", np.median(abs_diff), file=ssio)
-            print("  Std Abs Diff: ", np.std(abs_diff), file=ssio)
-            arg_max_val = np.argmax(abs_diff)
-            values_at_max = (nv.flatten()[arg_max_val],
-                             ov.flatten()[arg_max_val])
-            print("  Value at Max Diff: ", values_at_max, file=ssio)
-
-            # N.B. the maximum(..., 1e-8) protects against div by 0 when
-            #      nv == ov == 0
-            reldiff = (abs_diff /
-                       np.maximum(np.absolute(nv) + np.absolute(ov),
-                                  1e-8))
-            print("  Max Rel Diff: ", np.max(reldiff), file=ssio)
-            print("  Mean Rel Diff: ", np.mean(reldiff), file=ssio)
-            print("  Median Rel Diff: ", np.median(reldiff), file=ssio)
-            print("  Std Rel Diff: ", np.std(reldiff), file=ssio)
-            arg_max_val = np.argmax(reldiff)
-            values_at_max = (nv.flatten()[arg_max_val],
-                             ov.flatten()[arg_max_val])
-            print("  Value at Max Diff: ", values_at_max, file=ssio)
-            # only if all succeeds to we add anything to sio
-            print(ssio.getvalue(), file=sio)
-        except Exception:
-            pass
-
-        print("  Reason: ", str(self.reason), file=sio)
-        print("  Old Graph:", file=sio)
-        print(self.old_graph, file=sio)
-        print("  New Graph:", file=sio)
-        print(self.new_graph, file=sio)
-        print("", file=sio)
-        print("Hint: relax the tolerance by setting tensor.cmp_sloppy=1",
-              file=sio)
-        print("  or even tensor.cmp_sloppy=2 for less-strict comparison",
-              file=sio)
-        return sio.getvalue()
+class BadOptimization(DebugModeError, theano.gof.toolbox.BadOptimization):
+    pass
 
 
 class BadDestroyMap(DebugModeError):
@@ -427,9 +270,12 @@ class InvalidValueError(DebugModeError):
     Exception: some Op an output value that is inconsistent with
     the Type of that output.
 
+    Note: If there is only one parameter and it is a string, then we
+    will use it as the error message. This is needed when we catch,
+    extend, and reraise an error.
     """
 
-    def __init__(self, r, v, client_node=None, hint='none',
+    def __init__(self, r, v=None, client_node=None, hint='none',
                  specific_hint='none'):
         super(InvalidValueError, self).__init__()
         self.r = r
@@ -438,7 +284,20 @@ class InvalidValueError(DebugModeError):
         self.hint = hint
         self.specific_hint = specific_hint
 
+        # To allow extending th error message of an existing error.
+        self.full_err = None
+        if isinstance(r, str):
+            assert (v is None and
+                    client_node is None and
+                    hint == 'none' and
+                    specific_hint == 'none')
+            self.full_err = r
+
     def __str__(self):
+        # We have a pre-made message
+        if getattr(self, 'full_err', None) is not None:
+            return self.full_err
+
         r, v = self.r, self.v
         type_r = r.type
         type_v = type(v)
@@ -1198,10 +1057,11 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
 
     # To avoid circular imports
     from theano.tensor import TensorType
-    from theano.sandbox.cuda import cuda_available, CudaNdarrayType
-    if cuda_available:
-        from theano.sandbox.cuda import CudaNdarray
-        from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
+    from theano.gpuarray import GpuArrayType
+    try:
+        import pygpu
+    except ImportError:
+        pass
 
     # TODO: Sparse? Scalar does not really make sense.
 
@@ -1240,7 +1100,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         for r in considered_outputs:
             # There is no risk to overwrite inputs, since r does not work
             # inplace.
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 reuse_outputs[r][...] = np.asarray(
                     def_val).astype(r.type.dtype)
 
@@ -1250,15 +1110,14 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         del reuse_outputs
 
     # c_cont_output: use a c-continuous array
-    # (for TensorType and CudaNdarray, else None)
+    # (for TensorType, else None)
     if 'c_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         c_cont_outputs = {}
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 # Build a C-contiguous buffer
                 new_buf = r.type.value_zeros(r_vals[r].shape)
-                # CudaNdarray don't have flags field
-                # assert new_buf.flags["C_CONTIGUOUS"]
+                assert new_buf.flags["C_CONTIGUOUS"]
                 new_buf[...] = np.asarray(def_val).astype(r.type.dtype)
 
                 c_cont_outputs[r] = new_buf
@@ -1272,18 +1131,14 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     if 'f_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         f_cont_outputs = {}
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 new_buf = np.zeros(
                     shape=r_vals[r].shape,
                     dtype=r_vals[r].dtype,
                     order='F')
                 new_buf[...] = def_val
-                if isinstance(r.type, CudaNdarrayType):
-                    # When the CudaNdarray is built, the underlying memory
-                    # is c-contiguous, so we transpose it before and after.
-                    new_buf = CudaNdarray(new_buf.T)
-                    new_buf = cuda_dimshuffle(
-                        new_buf, reversed(list(range(new_buf.ndim))))
+                if isinstance(r.type, GpuArrayType):
+                    new_buf = pygpu.array(new_buf)
 
                 f_cont_outputs[r] = new_buf
 
@@ -1305,7 +1160,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         max_ndim = 0
         rev_out_broadcastable = []
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 if max_ndim < r.ndim:
                     rev_out_broadcastable += [True] * (r.ndim - max_ndim)
                     max_ndim = r.ndim
@@ -1320,7 +1175,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         # Initial allocation
         init_strided = {}
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 # Create a buffer twice as large in every dimension,
                 # except if broadcastable, or for dimensions above
                 # config.DebugMode.check_preallocated_output_ndim
@@ -1399,7 +1254,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 name = 'wrong_size%s' % str(tuple(shape_diff))
 
                 for r in considered_outputs:
-                    if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                    if isinstance(r.type, (TensorType, GpuArrayType)):
                         r_shape_diff = shape_diff[:r.ndim]
                         out_shape = [max((s + sd), 0)
                                      for s, sd in zip(r_vals[r].shape,
@@ -1701,9 +1556,11 @@ class _VariableEquivalenceTracker(object):
                  r,
                  debugprint(r, prefix='  ', depth=6,
                             file=StringIO(), done=done,
+                            print_type=True,
                             used_ids=used_ids).getvalue(),
                  debugprint(new_r, prefix='  ', depth=6,
                             file=StringIO(), done=done,
+                            print_type=True,
                             used_ids=used_ids).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
@@ -1741,7 +1598,6 @@ class _VariableEquivalenceTracker(object):
 
 # List of default version of make thunk.
 # This is needed to know if the user overrided it.
-# The GpuOp will be added here when theano.sandbox.cuda is imported.
 default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk)]
 
 

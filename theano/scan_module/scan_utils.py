@@ -20,7 +20,7 @@ import logging
 import warnings
 from collections import OrderedDict
 
-import numpy
+import numpy as np
 
 import theano
 from theano.compat import izip
@@ -84,9 +84,7 @@ def safe_new(x, tag='', dtype=None):
         try:
             x = tensor.as_tensor_variable(x)
         except TypeError:
-            # This could happen for example for random states, and I really
-            # want to avoid the convoluted logic that checks for cuda
-            # ndarrays
+            # This could happen for example for random states
             pass
 
     # Cast x if needed. If x has a test value, this will also cast it.
@@ -151,23 +149,14 @@ def traverse(out, x, x_copy, d, visited=None):
     if out in visited:
         return d
     visited.add(out)
-    from theano.sandbox import cuda
-    from theano.gpuarray.basic_ops import gpu_from_host, host_from_gpu
+    from theano.gpuarray.basic_ops import GpuFromHost, host_from_gpu
     from theano.gpuarray import pygpu_activated
     from theano.gpuarray.type import GpuArrayType
     if out == x:
-        if isinstance(x.type, cuda.CudaNdarrayType):
-            d[out] = cuda.gpu_from_host(x_copy)
-        else:
-            assert isinstance(x.type, GpuArrayType)
-            d[out] = gpu_from_host(x.type.context_name)(x_copy)
+        assert isinstance(x.type, GpuArrayType)
+        d[out] = GpuFromHost(x.type.context_name)(x_copy)
         return d
     elif out.owner is None:
-        return d
-    elif (cuda.cuda_available and
-          out.owner.op == cuda.host_from_gpu and
-          out.owner.inputs == [x]):
-        d[out] = tensor.as_tensor_variable(x_copy)
         return d
     elif (pygpu_activated and
           out.owner.op == host_from_gpu and
@@ -589,8 +578,8 @@ def get_updates_and_outputs(ls):
 def isNaN_or_Inf_or_None(x):
     isNone = x is None
     try:
-        isNaN = numpy.isnan(x)
-        isInf = numpy.isinf(x)
+        isNaN = np.isnan(x)
+        isInf = np.isinf(x)
         isStr = isinstance(x, string_types)
     except Exception:
         isNaN = False
@@ -599,8 +588,8 @@ def isNaN_or_Inf_or_None(x):
     if not isNaN and not isInf:
         try:
             val = get_scalar_constant_value(x)
-            isInf = numpy.isinf(val)
-            isNaN = numpy.isnan(val)
+            isInf = np.isinf(val)
+            isNaN = np.isnan(val)
         except Exception:
             isNaN = False
             isInf = False
@@ -855,50 +844,80 @@ class Validator(object):
         If out is not valid and has no equivalent, None is returned.
 
         """
-        if out in self.valid:
-            return out, True
-        elif out in self.valid_equivalent:
-            return self.valid_equivalent[out], False
-        elif out in self.invalid:
-            return None
 
-        if out.owner is None:
-            if isinstance(out, tensor.TensorConstant):
-                # This might be a constant from the outer graph or a constant
-                # from the inner graph. In all cases, we can clone it to be
-                # certain we have a valid constant
-                cloned_out = out.clone()
-                self.valid.add(cloned_out)
-                self.invalid.add(out)
-                self.valid_equivalent[out] = cloned_out
-                return cloned_out, False
-            else:
-                # This is an input node and it has not been explicitly marked
-                # as invalid so we can use it
+        def get_value(out):
+            if out in self.valid:
                 return out, True
+            elif out in self.valid_equivalent:
+                return self.valid_equivalent[out], False
+            elif out in self.invalid:
+                return None
+            else:
+                raise RuntimeError("This should not happen")
 
-        # Recurse over inputs
-        inputs = [self.check(i) for i in out.owner.inputs]
+        q = [out]
+        while q:
+            out = q.pop()
+            if out in self.valid:
+                continue
+            elif out in self.invalid:
+                continue
 
-        # If some inputs are invalid without equivalent, so is out
-        if None in inputs:
-            self.invalid.add(out)
-            return None
+            if out.owner is None:
+                if isinstance(out, tensor.TensorConstant):
+                    if hasattr(out, 'fgraph') or getattr(out, 'cached', False):
+                        # If out have an fgraph, we aren't sure if it
+                        # is from the inner graph or outer graph, so
+                        # clone it.
+                        # As it will be used as is in an FunctionGraph
+                        # (won't be cloned later), it can't be a
+                        # cached variable
+                        cloned_out = out.clone()
+                        self.valid.add(cloned_out)
+                        self.invalid.add(out)
+                        self.valid_equivalent[out] = cloned_out
+                    else:
+                        self.valid.add(out)
+                    continue
+                else:
+                    # This is an input node and it has not been
+                    # explicitly marked as invalid so we can use it
+                    self.valid.add(out)
+                    continue
 
-        # If some inputs are invalid with equivalent,
-        # an equivalent out should be built and returned
-        all_inputs = [inp for (inp, is_valid) in inputs]
-        equiv_inputs = [inp for (inp, is_valid) in inputs if not is_valid]
-        if equiv_inputs:
-            cloned_node = out.owner.clone_with_new_inputs(all_inputs)
-            cloned_out = cloned_node.outputs[out.index]
-            self.invalid.add(out)
-            self.valid.add(cloned_out)
-            self.valid_equivalent[out] = cloned_out
-            return cloned_out, False
+            # Process the input if needed
+            continue_while = False
+            for inp in out.owner.inputs:
+                if inp not in self.valid and inp not in self.invalid:
+                    q.append(out)
+                    q.extend(out.owner.inputs)
+                    continue_while = True
+                    break
+            if continue_while:
+                continue
+            inputs = [get_value(i) for i in out.owner.inputs]
 
-        # All inputs are valid, so is out
-        return out, True
+            # If some inputs are invalid without equivalent, so is out
+            if None in inputs:
+                self.invalid.add(out)
+                continue
+
+            # If some inputs are invalid with equivalent,
+            # an equivalent out should be built and returned
+            all_inputs = [inp for (inp, is_valid) in inputs]
+            equiv_inputs = [inp for (inp, is_valid) in inputs if not is_valid]
+            if equiv_inputs:
+                cloned_node = out.owner.clone_with_new_inputs(all_inputs)
+                cloned_out = cloned_node.outputs[out.index]
+                self.invalid.add(out)
+                self.valid.add(cloned_out)
+                self.valid_equivalent[out] = cloned_out
+                continue
+
+            # All inputs are valid, so is out
+            self.valid.add(out)
+
+        return get_value(out)
 
 
 def scan_can_remove_outs(op, out_idxs):
@@ -929,7 +948,7 @@ def scan_can_remove_outs(op, out_idxs):
         added = False
         for pos, idx in enumerate(out_idxs):
             if (out_idxs_mask[pos] and
-                 numpy.any([x in required_inputs for x in out_ins[idx]])):
+                 np.any([x in required_inputs for x in out_ins[idx]])):
                 # This output is required ..
                 out_idxs_mask[pos] = 0
                 required_inputs += gof.graph.inputs([op.outputs[idx]])
@@ -964,7 +983,6 @@ def compress_outs(op, not_required, inputs):
     info['n_nit_sot'] = 0
     info['truncate_gradient'] = op.info['truncate_gradient']
     info['name'] = op.info['name']
-    info['gpu'] = op.info['gpu']
     info['gpua'] = op.info['gpua']
     info['mode'] = op.info['mode']
     info['as_while'] = op.info['as_while']
@@ -1084,20 +1102,6 @@ def compress_outs(op, not_required, inputs):
         #map_old_new[len(op_outputs)-1] = o_offset
 
     return (op_inputs, op_outputs, info, node_inputs, map_old_new)
-
-
-def find_up(l_node, f_node):
-    r"""
-    Goes up in the graph and returns True if a node in nodes is found.
-
-    """
-    if isinstance(l_node, gof.Apply):
-        l_outs = l_node.outputs
-    else:
-        l_outs = l_node
-    l_ins = gof.graph.inputs(l_outs)
-    nodes = gof.graph.io_toposort(l_ins, l_outs)
-    return f_node in nodes
 
 
 def reconstruct_graph(inputs, outputs, tag=None):
@@ -1241,7 +1245,7 @@ class scan_args(object):
 
         self.other_info = OrderedDict()
         for k in ('truncate_gradient', 'name', 'mode', 'destroy_map',
-                  'gpu', 'gpua', 'as_while', 'profile', 'allow_gc'):
+                  'gpua', 'as_while', 'profile', 'allow_gc'):
             if k in info:
                 self.other_info[k] = info[k]
 

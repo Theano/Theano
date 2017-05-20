@@ -2,13 +2,13 @@ from __future__ import absolute_import, print_function, division
 import os
 from theano import Apply, Op
 from theano.tensor.extra_ops import CumOp
-from .basic_ops import infer_context_name
+
 try:
     from pygpu import gpuarray
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape)
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape, infer_context_name)
 from .opt import register_opt, op_lifter, register_opt2
 
 
@@ -42,9 +42,6 @@ class GpuCumOp(GpuKernelBase, Op):
 
     def c_header_dirs(self):
         return [os.path.dirname(__file__)]
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     def make_node(self, x):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumOp"

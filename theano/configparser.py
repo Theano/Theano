@@ -105,7 +105,7 @@ class change_flags(object):
         for k in args:
             l = [v for v in theano.configparser._config_var_list
                  if v.fullname == k]
-            assert len(l) == 1
+            assert len(l) == 1, l
             confs[k] = l[0]
         self.confs = confs
         self.new_vals = args

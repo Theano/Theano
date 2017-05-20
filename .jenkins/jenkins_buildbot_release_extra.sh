@@ -2,9 +2,9 @@
 
 BUILDBOT_DIR=$WORKSPACE/nightly_build
 THEANO_PARAM="theano --with-timer --timer-top-n 10"
-export THEANO_FLAGS=init_gpu_device=gpu
+export THEANO_FLAGS=init_gpu_device=cuda
 
-# CUDA                                                                          
+# CUDA
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
@@ -21,7 +21,7 @@ echo "Directory of stdout/stderr ${BUILDBOT_DIR}"
 echo
 echo
 
-BASE_COMPILEDIR=$WORKSPACE/compile/theano_compile_dir_theano_release
+BASE_COMPILEDIR=$HOME/.theano/buildbot_theano_release
 ROOT_CWD=$WORKSPACE/nightly_build
 FLAGS=base_compiledir=$BASE_COMPILEDIR
 COMPILEDIR=`THEANO_FLAGS=$FLAGS python -c "from __future__ import print_function; import theano; print(theano.config.compiledir)"`
@@ -32,7 +32,7 @@ echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
 # We don't want warnings in the buildbot for errors already fixed.
-FLAGS=${THEANO_FLAGS},warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,warn.subtensor_merge_bug=False,$FLAGS
+FLAGS=${THEANO_FLAGS},warn.ignore_bug_before=all,$FLAGS
 
 # We want to see correctly optimization/shape errors, so make make them raise an
 # error.

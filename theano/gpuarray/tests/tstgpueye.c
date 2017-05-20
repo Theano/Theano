@@ -7,7 +7,7 @@
    has to match the kernel function name below.
  */
 
-KERNEL void eye(GLOBAL_MEM DTYPE_o0 *a, ga_size n, ga_size m) {
+KERNEL void eye(GLOBAL_MEM DTYPE_OUTPUT_0 *a, ga_size n, ga_size m) {
   ga_size nb = n < m ? n : m;
   for (ga_size i = LID_0; i < nb; i += LDIM_0) {
     a[i*m + i] = 1;

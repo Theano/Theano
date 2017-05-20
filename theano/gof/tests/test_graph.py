@@ -15,8 +15,6 @@ from theano.gof.graph import (
     is_same_graph, Variable)
 from theano.gof.op import Op
 from theano.gof.type import Type
-from theano.sandbox.cuda.var import (
-    CudaNdarrayVariable, CudaNdarrayConstant, CudaNdarraySharedVariable)
 
 
 def as_variable(x):
@@ -212,7 +210,7 @@ class TestToposort:
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(r3, r4)
         all = io_toposort([r1, r2, r3, r4], o0.outputs + o1.outputs)
-        assert all == [o1, o0]
+        assert all == [o1, o0] or all == [o0, o1]
 
     def test_4(self):
         """Test inputs and outputs mixed together in a chain graph"""
@@ -359,9 +357,7 @@ class TestAutoName:
         assert r1 is r2
 
         r3 = tensor.constant(1.6)
-        # The cache still create a new object that we don't return.
-        # This is why we must increase by 2 and not 1.
-        assert r3.auto_name == "auto_" + str(autoname_id + 2)
+        assert r3.auto_name == "auto_" + str(autoname_id + 1)
 
     def test_tensorvariable(self):
         # Get counter value
@@ -387,22 +383,6 @@ class TestAutoName:
         assert r1.auto_name == "auto_" + str(autoname_id)
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
         assert r3.auto_name == "auto_" + str(autoname_id + 2)
-
-    def test_cudandarrayvariable(self):
-        # Get counter value
-        autoname_id = next(Variable.__count__)
-        Variable.__count__ = count(autoname_id)
-        mytype = tensor.TensorType(dtype='int32', broadcastable=())
-        r1 = CudaNdarrayVariable(type='int32')
-        r2 = CudaNdarrayVariable(type='int32')
-        r3 = CudaNdarrayConstant(type=mytype,
-                                 data=1)
-        r4 = CudaNdarraySharedVariable(name='x', type=mytype,
-                                       value=1, strict=False)
-        assert r1.auto_name == "auto_" + str(autoname_id)
-        assert r2.auto_name == "auto_" + str(autoname_id + 1)
-        assert r3.auto_name == "auto_" + str(autoname_id + 2)
-        assert r4.auto_name == "auto_" + str(autoname_id + 3)
 
     def test_randomvariable(self):
         # Get counter value

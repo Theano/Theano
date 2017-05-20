@@ -810,7 +810,7 @@ class SpecifyShape(gof.Op):
 
     We currently don't support specifying partial shape information.
 
-    TODO : test this op with sparse and cuda ndarray. Do C code for them too.
+    TODO : test this op with sparse. Do C code for them too.
 
     """
 

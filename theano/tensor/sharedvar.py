@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import traceback
 
-import numpy
+import numpy as np
 from six import integer_types
 
 import theano.tensor.basic
@@ -41,7 +41,7 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=None,
     if target != 'cpu':
         raise TypeError('not for cpu')
 
-    if not isinstance(value, numpy.ndarray):
+    if not isinstance(value, np.ndarray):
         raise TypeError()
 
     # if no broadcastable is given, then the default is to assume that
@@ -51,7 +51,7 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=None,
         broadcastable = (False,) * len(value.shape)
     type = TensorType(value.dtype, broadcastable=broadcastable)
     return TensorSharedVariable(type=type,
-                                value=numpy.array(value, copy=(not borrow)),
+                                value=np.array(value, copy=(not borrow)),
                                 name=name,
                                 strict=strict,
                                 allow_downcast=allow_downcast)
@@ -86,12 +86,12 @@ def scalar_constructor(value, name=None, strict=False, allow_downcast=None,
     if target != 'cpu':
         raise TypeError('not for cpu')
 
-    if not isinstance(value, (numpy.number, float, integer_types, complex)):
+    if not isinstance(value, (np.number, float, integer_types, complex)):
         raise TypeError()
     try:
         dtype = value.dtype
     except Exception:
-        dtype = numpy.asarray(value).dtype
+        dtype = np.asarray(value).dtype
 
     dtype = str(dtype)
     value = theano._asarray(value, dtype=dtype)
@@ -101,7 +101,7 @@ def scalar_constructor(value, name=None, strict=False, allow_downcast=None,
         # Do not pass the dtype to asarray because we want this to fail if
         # strict is True and the types do not match.
         rval = ScalarSharedVariable(type=tensor_type,
-                                    value=numpy.array(value, copy=True),
+                                    value=np.array(value, copy=True),
                                     name=name,
                                     strict=strict,
                                     allow_downcast=allow_downcast)

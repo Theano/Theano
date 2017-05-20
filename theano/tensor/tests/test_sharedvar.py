@@ -1,7 +1,9 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import six
+
+import numpy as np
 import unittest
-import warnings
+from functools import update_wrapper
 
 import theano
 from theano import tensor
@@ -24,9 +26,7 @@ def makeSharedTester(shared_constructor_,
                      test_internal_type_,
                      theano_fct_,
                      ref_fct_,
-                     cast_value_=numpy.asarray,
-                     op_by_matrix_=False,
-                     name=None,
+                     cast_value_=np.asarray,
                      ):
     """
     This is a generic fct to allow reusing the same test function
@@ -49,7 +49,6 @@ def makeSharedTester(shared_constructor_,
     :param theano_fct_: A theano op that will be used to do some computation on the shared variable
     :param ref_fct_: A reference function that should return the same value as the theano_fct_
     :param cast_value_: A callable that cast an ndarray into the internal shared variable representation
-    :param op_by_matrix_: When we do inplace operation on the an internal type object, should we do it with a scalar or a matrix of the same value.
     :param name: This string is used to set the returned class' __name__
                  attribute. This is needed for nosetests to properly tag the
                  test with its correct name, rather than use the generic
@@ -61,7 +60,13 @@ def makeSharedTester(shared_constructor_,
 
 
     """
+    class m(type):
+        pass
+
     class SharedTester(unittest.TestCase):
+        # This is to allow setting __doc__ with python 2
+        if not six.PY3:
+            __metaclass__ = m
         shared_constructor = staticmethod(shared_constructor_)
         dtype = dtype_
         get_value_borrow_true_alias = get_value_borrow_true_alias_
@@ -75,15 +80,14 @@ def makeSharedTester(shared_constructor_,
         set_cast_value_inplace = set_cast_value_inplace_
         shared_constructor_accept_ndarray = shared_constructor_accept_ndarray_
         cast_value = staticmethod(cast_value_)
-        op_by_matrix = op_by_matrix_
 
         def test_shared_dont_alias(self):
             dtype = self.dtype
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            x = numpy.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            x = np.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
             x = self.cast_value(x)
 
             x_ref = self.ref_fct(x)
@@ -94,45 +98,41 @@ def makeSharedTester(shared_constructor_,
 
             total_val = total_func()
 
-            assert numpy.allclose(self.ref_fct(x), total_val)
+            assert np.allclose(self.ref_fct(x), total_val)
 
-            values_to_div = .5
-            if self.op_by_matrix:
-                values_to_div = self.internal_type(numpy.ones(x.shape, dtype=dtype)/2)  # supported for cudandarray, but not ndarray.
-                assert self.test_internal_type(values_to_div)
-            x /= values_to_div
+            x /= .5
             total_val_2 = total_func()
 
             # value used to construct should not alias with internal
-            assert numpy.allclose(total_val, total_val_2)
+            assert np.allclose(total_val, total_val_2)
 
             x = x_shared.get_value(borrow=False)
 
-            x /= values_to_div
+            x /= .5
 
             total_val_3 = total_func()
 
             # value returned by access should not alias with internal
-            assert numpy.allclose(total_val, total_val_3)
+            assert np.allclose(total_val, total_val_3)
 
             # in this case we can alias
             x = x_shared.get_value(borrow=True)
-            x /= values_to_div
+            x /= .5
 
             # this is not required by the contract but it is a feature we've
             # implemented for some type of SharedVariable.
             if self.get_value_borrow_true_alias:
-                assert numpy.allclose(self.ref_fct(x), total_func())
+                assert np.allclose(self.ref_fct(x), total_func())
             else:
-                assert numpy.allclose(x_ref, total_func())
+                assert np.allclose(x_ref, total_func())
 
         def test_shape(self):
             dtype = self.dtype
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            x = numpy.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            x = np.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
             x = self.cast_value(x)
 
             x_ref = self.ref_fct(x)
@@ -142,7 +142,7 @@ def makeSharedTester(shared_constructor_,
             f = theano.function([], x_shared.shape)
             topo = f.maker.fgraph.toposort()
 
-            assert numpy.all(f() == (2, 4))
+            assert np.all(f() == (2, 4))
             if theano.config.mode != 'FAST_COMPILE':
                 assert len(topo) == 3
                 assert isinstance(topo[0].op, tensor.opt.Shape_i)
@@ -154,8 +154,8 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            x = numpy.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            x = np.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
             x = self.cast_value(x)
 
             x_ref = self.ref_fct(x)
@@ -165,7 +165,7 @@ def makeSharedTester(shared_constructor_,
             f = theano.function([], x_shared.shape[1])
             topo = f.maker.fgraph.toposort()
 
-            assert numpy.all(f() == (4))
+            assert np.all(f() == (4))
             if theano.config.mode != 'FAST_COMPILE':
                 assert len(topo) == 1
                 assert isinstance(topo[0].op, tensor.opt.Shape_i)
@@ -175,8 +175,8 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            x = numpy.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            x = np.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
             x = self.cast_value(x)
 
             x_ref = self.ref_fct(x)
@@ -189,35 +189,28 @@ def makeSharedTester(shared_constructor_,
             x = x_shared.get_value(borrow=True, return_internal_type=True)
             assert self.test_internal_type(x)
 
-            values_to_div = .5
-            if self.op_by_matrix:
-                # supported for cudandarray, but not ndarray.
-                values_to_div = self.internal_type(
-                    numpy.ones(x.shape, dtype=dtype)/2)
-            x /= values_to_div  # supported by ndarray and CudaNdarray
+            x /= .5
 
             # this is not required by the contract but it is a feature we can
             # implement for some type of SharedVariable.
-            assert numpy.allclose(self.ref_fct(x), total_func())
+            assert np.allclose(self.ref_fct(x), total_func())
 
             x = x_shared.get_value(borrow=False, return_internal_type=True)
             assert self.test_internal_type(x)
             assert x is not x_shared.container.value
-            x /= values_to_div  # supported by ndarray and CudaNdarray
+            x /= .5
 
             # this is required by the contract
-            assert not numpy.allclose(self.ref_fct(x), total_func())
+            assert not np.allclose(self.ref_fct(x), total_func())
 
         def test_get_value(self):
-            """
-            Test that get_value return the same type as what was gived when creating the shared variable
-            """
+            # Test that get_value returns a ndarray
             dtype = self.dtype
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            x_orig = numpy.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            x_orig = np.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
             x_cast = self.cast_value(x_orig)
             if self.shared_constructor_accept_ndarray:
                 x_shared = self.shared_constructor(x_orig, borrow=False)
@@ -231,8 +224,8 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            x = numpy.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            x = np.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
             x = self.cast_value(x)
 
             x_orig = x
@@ -244,30 +237,24 @@ def makeSharedTester(shared_constructor_,
             total_func = theano.function([], total)
             total_func()
 
-            values_to_div = .5
-            if self.op_by_matrix:
-                # supported for cudandarray, but not ndarray.
-                values_to_div = self.internal_type(numpy.ones(x.shape, dtype=dtype)/2)
-                assert self.test_internal_type(values_to_div)
-
             # test if that theano shared variable optimize set_value(borrow=True)
             get_x = x_shared.get_value(borrow=True)
             assert get_x is not x_orig  # borrow=False to shared_constructor
-            get_x /= values_to_div
+            get_x /= .5
             x_shared.set_value(get_x, borrow=True)
             x = x_shared.get_value(borrow=True)
             if self.set_value_borrow_true_alias:
                 assert x is get_x
             else:
                 assert x is not get_x
-            assert numpy.allclose(self.ref_fct(numpy.asarray(x_orig)/.5), self.ref_fct(x))
+            assert np.allclose(self.ref_fct(np.asarray(x_orig)/.5), self.ref_fct(x))
 
             # test optimized get set value on the gpu(don't pass data to the cpu)
             get_x = x_shared.get_value(borrow=True, return_internal_type=True)
             assert get_x is not x_orig  # borrow=False to shared_constructor
             assert self.test_internal_type(get_x)
 
-            get_x /= values_to_div  # supported by ndarray and CudaNdarray
+            get_x /= .5
             assert self.test_internal_type(get_x)
             x_shared.set_value(get_x, borrow=True)
             x = x_shared.get_value(borrow=True, return_internal_type=True)
@@ -280,8 +267,8 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            x = numpy.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            x = np.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
             x = self.cast_value(x)
             x_ref = self.ref_fct(x)
 
@@ -293,20 +280,15 @@ def makeSharedTester(shared_constructor_,
 
             total_val = total_func()
 
-            assert numpy.allclose(self.ref_fct(x), total_val)
+            assert np.allclose(self.ref_fct(x), total_val)
 
-            values_to_div = .5
-            if self.op_by_matrix:
-                # supported for cudandarray, but not ndarray.
-                values_to_div = self.internal_type(numpy.ones(x.shape, dtype=dtype)/2)
-                assert self.test_internal_type(values_to_div)
-            x /= values_to_div
+            x /= .5
 
             # not required by the contract but it is a feature we've implemented
             if self.shared_borrow_true_alias:
-                assert numpy.allclose(self.ref_fct(x), total_func())
+                assert np.allclose(self.ref_fct(x), total_func())
             else:
-                assert numpy.allclose(x_ref, total_func())
+                assert np.allclose(x_ref, total_func())
 
         def test_inplace_set_value(self):
             """
@@ -319,25 +301,25 @@ def makeSharedTester(shared_constructor_,
 
             shp = (100//4, 1024)  # 100KB
 
-            x = numpy.zeros(shp, dtype=dtype)
+            x = np.zeros(shp, dtype=dtype)
             x = self.cast_value(x)
             x_shared = self.shared_constructor(x, borrow=True)
 
             old_data = x_shared.container.storage[0]
-            nd = numpy.ones(shp, dtype=dtype)
+            nd = np.ones(shp, dtype=dtype)
 
             if x.__class__.__name__ != 'csr_matrix':
                 # sparse matrix don't support inplace affectation
                 x_shared.container.value[:] = nd
-                assert (numpy.asarray(x_shared.get_value(borrow=True)) == nd).all()
+                assert (np.asarray(x_shared.get_value(borrow=True)) == nd).all()
                 # This should always share value!
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 assert may_share_memory(old_data, x_shared.get_value(borrow=True, return_internal_type=True))
 
                 nd[0] += 1
                 x_shared.container.value[0] = nd[0]
-                assert (numpy.asarray(x_shared.get_value(borrow=True)[0]) == nd[0]).all()
-                assert (numpy.asarray(x_shared.get_value(borrow=True)[1:]) == nd[1:]).all()
+                assert (np.asarray(x_shared.get_value(borrow=True)[0]) == nd[0]).all()
+                assert (np.asarray(x_shared.get_value(borrow=True)[1:]) == nd[1:]).all()
                 # This should always share value!
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 assert may_share_memory(old_data, x_shared.get_value(borrow=True, return_internal_type=True))
@@ -345,9 +327,9 @@ def makeSharedTester(shared_constructor_,
             if x.__class__.__name__ != 'csr_matrix':
                 # sparse matrix don't support inplace affectation
                 nd += 1
-                # THIS DON't DO WHAT WE EXPECT the contain of a is not updated for CudaNdarray, but it is for ndarray
+                # THIS DOENS'T DO WHAT WE EXPECT the content of a is
+                # not updated for GpuArray, but it is for ndarray
                 x_shared.get_value(borrow=True)[:] = nd
-                #assert (numpy.asarray(x_shared.get_value(borrow=True))!=nd).all()
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 x_shared.get_value(borrow=True)
 
@@ -355,7 +337,7 @@ def makeSharedTester(shared_constructor_,
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(nd, borrow=False)
-            assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
+            assert np.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
                     self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
@@ -364,7 +346,7 @@ def makeSharedTester(shared_constructor_,
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd), borrow=False)
-            assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
+            assert np.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
                     self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_cast_value_inplace
 
@@ -372,7 +354,7 @@ def makeSharedTester(shared_constructor_,
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(nd.copy(), borrow=True)
-            assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
+            assert np.allclose(self.ref_fct(x_shared.get_value(borrow=True)),
                     self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_value_inplace
 
@@ -380,7 +362,7 @@ def makeSharedTester(shared_constructor_,
             nd += 1
             old_data = x_shared.container.storage[0]
             x_shared.set_value(self.cast_value(nd.copy()), borrow=True)
-            assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)), self.ref_fct(self.cast_value(nd)))
+            assert np.allclose(self.ref_fct(x_shared.get_value(borrow=True)), self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_cast_value_inplace
 
         def test_specify_shape(self):
@@ -388,19 +370,19 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            x1_1 = numpy.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            x1_1 = np.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
             x1_1 = self.cast_value(x1_1)
-            x1_2 = numpy.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
+            x1_2 = np.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
             x1_2 = self.cast_value(x1_2)
-            x2 = numpy.asarray(rng.uniform(1, 2, [4, 3]), dtype=dtype)
+            x2 = np.asarray(rng.uniform(1, 2, [4, 3]), dtype=dtype)
             x2 = self.cast_value(x2)
 
             # Test that we can replace with values of the same shape
             x1_shared = self.shared_constructor(x1_1)
             x1_specify_shape = tensor.specify_shape(x1_shared, x1_1.shape)
             x1_shared.set_value(x1_2)
-            assert numpy.allclose(self.ref_fct(x1_shared.get_value(borrow=True)),
+            assert np.allclose(self.ref_fct(x1_shared.get_value(borrow=True)),
                     self.ref_fct( x1_2))
             shape_op_fct = theano.function([], x1_shared.shape)
             topo = shape_op_fct.maker.fgraph.toposort()
@@ -412,14 +394,14 @@ def makeSharedTester(shared_constructor_,
 
             # Test that we forward the input
             specify_shape_fct = theano.function([], x1_specify_shape)
-            assert numpy.all(self.ref_fct(specify_shape_fct()) ==
+            assert np.all(self.ref_fct(specify_shape_fct()) ==
                              self.ref_fct(x1_2))
             topo_specify = specify_shape_fct.maker.fgraph.toposort()
             assert len(topo_specify) == 2
 
             # Test that we put the shape info into the graph
             shape_constant_fct = theano.function([], x1_specify_shape.shape)
-            assert numpy.all(shape_constant_fct() == shape_op_fct())
+            assert np.all(shape_constant_fct() == shape_op_fct())
             topo_cst = shape_constant_fct.maker.fgraph.toposort()
             if theano.config.mode != 'FAST_COMPILE':
                 assert len(topo_cst) == 1
@@ -454,12 +436,12 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            x1_1 = numpy.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            x1_1 = np.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
             x1_1 = self.cast_value(x1_1)
-            x1_2 = numpy.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
+            x1_2 = np.asarray(rng.uniform(1, 2, [4, 2]), dtype=dtype)
             x1_2 = self.cast_value(x1_2)
-            x2 = numpy.asarray(rng.uniform(1, 2, [5, 2]), dtype=dtype)
+            x2 = np.asarray(rng.uniform(1, 2, [5, 2]), dtype=dtype)
             x2 = self.cast_value(x2)
 
             # Test that we can replace with values of the same shape
@@ -468,7 +450,7 @@ def makeSharedTester(shared_constructor_,
                                                     (tensor.as_tensor_variable(x1_1.shape[0]),
                                                      x1_shared.shape[1]))
             x1_shared.set_value(x1_2)
-            assert numpy.allclose(
+            assert np.allclose(
                     self.ref_fct(x1_shared.get_value(borrow=True)),
                     self.ref_fct( x1_2))
             shape_op_fct = theano.function([], x1_shared.shape)
@@ -484,7 +466,7 @@ def makeSharedTester(shared_constructor_,
             specify_shape_fct = theano.function([], x1_specify_shape)
             specify_shape_fct()
             # theano.printing.debugprint(specify_shape_fct)
-            assert numpy.all(self.ref_fct(specify_shape_fct())
+            assert np.all(self.ref_fct(specify_shape_fct())
                              == self.ref_fct(x1_2))
             topo_specify = specify_shape_fct.maker.fgraph.toposort()
             if theano.config.mode != 'FAST_COMPILE':
@@ -493,7 +475,7 @@ def makeSharedTester(shared_constructor_,
             # Test that we put the shape info into the graph
             shape_constant_fct = theano.function([], x1_specify_shape.shape)
             # theano.printing.debugprint(shape_constant_fct)
-            assert numpy.all(shape_constant_fct() == shape_op_fct())
+            assert np.all(shape_constant_fct() == shape_op_fct())
             topo_cst = shape_constant_fct.maker.fgraph.toposort()
             if theano.config.mode != 'FAST_COMPILE':
                 assert len(topo_cst) == 2
@@ -516,14 +498,14 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            a = numpy.asarray(rng.uniform(1, 2, [40, 40]), dtype=dtype)
+            rng = np.random.RandomState(utt.fetch_seed())
+            a = np.asarray(rng.uniform(1, 2, [40, 40]), dtype=dtype)
             a = self.cast_value(a)
             a_shared = self.shared_constructor(a)
-            b = numpy.asarray(rng.uniform(1, 2, [40, 40]), dtype=dtype)
+            b = np.asarray(rng.uniform(1, 2, [40, 40]), dtype=dtype)
             b = self.cast_value(b)
             b_shared = self.shared_constructor(b)
-            s = numpy.zeros((40, 40), dtype=dtype)
+            s = np.zeros((40, 40), dtype=dtype)
             s = self.cast_value(s)
             s_shared = self.shared_constructor(s)
             f = theano.function([],
@@ -546,7 +528,7 @@ def makeSharedTester(shared_constructor_,
                                          + s_shared_specify)])
             topo = f.maker.fgraph.toposort()
             shp = f()
-            assert numpy.all(shp == (40, 40))
+            assert np.all(shp == (40, 40))
             if theano.config.mode != 'FAST_COMPILE':
                 assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo]) == 1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op, tensor.blas.Gemm))
@@ -562,7 +544,7 @@ def makeSharedTester(shared_constructor_,
                                          + s_shared_specify)])
             topo = f.maker.fgraph.toposort()
             shp = f()
-            assert numpy.all(shp == (40, 40))
+            assert np.all(shp == (40, 40))
             if theano.config.mode != 'FAST_COMPILE':
                 assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo]) == 1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op, tensor.blas.Gemm))
@@ -578,9 +560,9 @@ def makeSharedTester(shared_constructor_,
             shp = (1024, 1024)
 
             # Test the case with all zeros element
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            for x in [numpy.asarray(rng.rand(*shp), dtype=dtype),
-                      numpy.zeros(shp, dtype=dtype)]:
+            rng = np.random.RandomState(utt.fetch_seed())
+            for x in [np.asarray(rng.rand(*shp), dtype=dtype),
+                      np.zeros(shp, dtype=dtype)]:
                 zeros = (x == 0).all()
                 x = self.cast_value(x)
                 x_shared = self.shared_constructor(x, borrow=True)
@@ -592,18 +574,15 @@ def makeSharedTester(shared_constructor_,
                 assert x_shared.type.values_eq(x, x)
                 assert x_shared.type.values_eq_approx(x, x)
                 if not zeros:
-                    assert not numpy.allclose(self.ref_fct(x), self.ref_fct(y))
+                    assert not np.allclose(self.ref_fct(x), self.ref_fct(y))
                     assert not x_shared.type.values_eq(x, y)
                     assert not x_shared.type.values_eq_approx(x, y)
 
-    assert name is not None
-    SharedTester.__name__ = name
-    if hasattr(SharedTester, '__qualname__'):
-        SharedTester.__qualname__ = name
+    def f(cls):
+        return update_wrapper(SharedTester, cls, updated=())
+    return f
 
-    return SharedTester
-
-test_shared_options = makeSharedTester(
+@makeSharedTester(
     shared_constructor_=tensor._shared,
     dtype_=theano.config.floatX,
     get_value_borrow_true_alias_=True,
@@ -612,16 +591,16 @@ test_shared_options = makeSharedTester(
     set_value_inplace_=False,
     set_cast_value_inplace_=False,
     shared_constructor_accept_ndarray_=True,
-    internal_type_=numpy.ndarray,
-    test_internal_type_=lambda a: isinstance(a, numpy.ndarray),
+    internal_type_=np.ndarray,
+    test_internal_type_=lambda a: isinstance(a, np.ndarray),
     theano_fct_=lambda a: a*2,
-    ref_fct_=lambda a: numpy.asarray((a*2)),
-    cast_value_=numpy.asarray,
-    op_by_matrix_=False,
-    name='test_shared_options')
+    ref_fct_=lambda a: np.asarray((a*2)),
+    cast_value_=np.asarray)
+class test_shared_options(object):
+    pass
 
 
 def test_scalar_shared_options():
     # Simple test to make sure we do not loose that fonctionality.
     theano.shared(value=0., name='lk', borrow=True)
-    theano.shared(value=numpy.float32(0.), name='lk', borrow=True)
+    theano.shared(value=np.float32(0.), name='lk', borrow=True)
