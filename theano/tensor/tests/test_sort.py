@@ -13,13 +13,7 @@ from theano.tensor.sort import sort, SortOp
 from theano.tensor.sort import argsort, ArgSortOp
 from theano.tensor.sort import topk, argtopk, topk_and_argtopk, TopKOp
 
-_dtypes = (
-    'float32', 'float64',
-    'int8', 'int16', 'int32', 'int64',
-    'uint8', 'uint16', 'uint32', 'uint64')
-_int_dtypes = (
-    'int8', 'int16', 'int32', 'int64',
-    'uint8', 'uint16', 'uint32', 'uint64')
+_all_dtypes = tensor.integer_dtypes + tensor.float_dtypes
 
 
 def gen_unique_vector(size, dtype):
@@ -39,7 +33,7 @@ class Test_sort(unittest.TestCase):
         a = tensor.dmatrix()
         w = sort(a)
         f = theano.function([a], w)
-        assert np.allclose(f(self.m_val), np.sort(self.m_val))
+        assert utt.assert_allclose(f(self.m_val), np.sort(self.m_val))
 
     def test2(self):
         a = tensor.dmatrix()
@@ -49,7 +43,7 @@ class Test_sort(unittest.TestCase):
         for axis_val in 0, 1:
             gv = f(self.m_val, axis_val)
             gt = np.sort(self.m_val, axis_val)
-            assert np.allclose(gv, gt)
+            assert utt.assert_allclose(gv, gt)
 
     def test3(self):
         a = tensor.dvector()
@@ -57,7 +51,7 @@ class Test_sort(unittest.TestCase):
         f = theano.function([a], w2)
         gv = f(self.v_val)
         gt = np.sort(self.v_val)
-        assert np.allclose(gv, gt)
+        assert utt.assert_allclose(gv, gt)
 
     def test4(self):
         a = tensor.dmatrix()
@@ -67,7 +61,7 @@ class Test_sort(unittest.TestCase):
         for axis_val in 0, 1:
             gv = f(self.m_val, axis_val)
             gt = np.sort(self.m_val, axis_val)
-            assert np.allclose(gv, gt)
+            assert utt.assert_allclose(gv, gt)
 
     def test5(self):
         a1 = SortOp("mergesort", [])
@@ -84,7 +78,7 @@ class Test_sort(unittest.TestCase):
         f = theano.function([a], l)
         gv = f(self.m_val)
         gt = np.sort(self.m_val, None)
-        assert np.allclose(gv, gt)
+        assert utt.assert_allclose(gv, gt)
 
     def test_grad_vector(self):
         data = np.random.rand(10).astype(theano.config.floatX)
@@ -176,7 +170,7 @@ def test_argsort():
     f = theano.function([a], w)
     gv = f(m_val)
     gt = np.argsort(m_val)
-    assert np.allclose(gv, gt)
+    assert utt.assert_allclose(gv, gt)
 
     # Example 2
     a = tensor.dmatrix()
@@ -186,7 +180,7 @@ def test_argsort():
     for axis_val in 0, 1:
         gv = f(m_val, axis_val)
         gt = np.argsort(m_val, axis_val)
-        assert np.allclose(gv, gt)
+        assert utt.assert_allclose(gv, gt)
 
     # Example 3
     a = tensor.dvector()
@@ -194,7 +188,7 @@ def test_argsort():
     f = theano.function([a], w2)
     gv = f(v_val)
     gt = np.argsort(v_val)
-    assert np.allclose(gv, gt)
+    assert utt.assert_allclose(gv, gt)
 
     # Example 4
     a = tensor.dmatrix()
@@ -204,7 +198,7 @@ def test_argsort():
     for axis_val in 0, 1:
         gv = f(m_val, axis_val)
         gt = np.argsort(m_val, axis_val)
-        assert np.allclose(gv, gt)
+        assert utt.assert_allclose(gv, gt)
 
     # Example 5
     a = tensor.dmatrix()
@@ -222,7 +216,7 @@ def test_argsort():
     f = theano.function([a], w2)
     gv = f(m_val)
     gt = np.argsort(m_val, None)
-    assert np.allclose(gv, gt)
+    assert utt.assert_allclose(gv, gt)
 
 
 def test_argsort_grad():
@@ -243,7 +237,7 @@ class Test_TopK(unittest.TestCase):
         pass
 
     @utt.parameterized.expand(product(
-        _dtypes, _int_dtypes, [-1, 0, None]))
+        _all_dtypes, tensor.integer_dtypes, [-1, 0, None]))
     def test_argtopk_sanity(self, dtype, idx_dtype, axis):
         x = tensor.vector(name='x', dtype=dtype)
         fn = theano.function([x], argtopk(x, 1, axis=axis, idx_dtype=idx_dtype))
@@ -253,7 +247,7 @@ class Test_TopK(unittest.TestCase):
         assert yval.dtype == np.dtype(idx_dtype)
 
     @utt.parameterized.expand(product(
-        _dtypes, [-1, 0, None]))
+        _all_dtypes, [-1, 0, None]))
     def test_topk_sanity(self, dtype, axis):
         x = tensor.vector(name='x', dtype=dtype)
         fn = theano.function([x], topk(x, 1, axis=axis))
@@ -263,7 +257,7 @@ class Test_TopK(unittest.TestCase):
         assert yval.dtype == xval.dtype
 
     @utt.parameterized.expand(product(
-        _dtypes, _int_dtypes, [-1, 0, None]))
+        _all_dtypes, tensor.integer_dtypes, [-1, 0, None]))
     def test_combined_sanity(self, dtype, idx_dtype, axis):
         x = tensor.vector(name='x', dtype=dtype)
         yv, yi = topk_and_argtopk(x, 1, axis=axis, idx_dtype=idx_dtype)
@@ -271,14 +265,14 @@ class Test_TopK(unittest.TestCase):
         xval = np.asarray([1]).astype(dtype)
         yvval, yival = fn(xval)
         assert yival == np.asarray([0], dtype=idx_dtype)
-        assert np.allclose(xval, yvval)
+        assert utt.assert_allclose(xval, yvval)
         assert yvval.dtype == xval.dtype
         assert yival.dtype == np.dtype(idx_dtype)
 
     @utt.parameterized.expand(chain(
         product(
             (16, 61, 257),
-            (1, -1, 10, -10, 'n//2', 'n-1', '-n', '1-n'),
+            (1, -1, -10, 'n//2', 'n-1', '-n', '1-n'),
             ('float64', 'float16', 'int16', 'int8')),
         ((2049, 1337, 'float64'),)))
     def test_topk_1d(self, size, k, dtype):
@@ -297,7 +291,7 @@ class Test_TopK(unittest.TestCase):
         print(np.sort(yval))
         print(goal)
         assert yval.dtype == goal.dtype
-        assert np.allclose(np.sort(yval), goal)
+        assert utt.assert_allclose(np.sort(yval), goal)
 
     @utt.parameterized.expand(chain(
         product(
@@ -345,7 +339,7 @@ class Test_TopK(unittest.TestCase):
 
         # due to uniqueness, we expect indices same
         assert np.all(xval[np.sort(yival)] == xval[np.sort(goali)])
-        assert np.allclose(np.sort(yvval), goalv)
+        assert utt.assert_allclose(np.sort(yvval), goalv)
 
     @utt.parameterized.expand(chain(
         product(
@@ -368,11 +362,11 @@ class Test_TopK(unittest.TestCase):
         goal = np.argsort(xval)[idx].astype('int32')
         print(goal)
         print(np.argsort(xval))
-        assert np.allclose(np.sort(xval[yval]), np.sort(xval[goal]))
+        assert utt.assert_allclose(np.sort(xval[yval]), np.sort(xval[goal]))
 
     @utt.parameterized.expand(product(
-        ((1, 1), (2, 3), (17, 15), (15, 17), (11, 7, 5), (2, 3, 5, 7, 11), (2017, 5, 3)),
-        (1, -1, '(1+n)//2', 'n-1', '-n', '1-n'),
+        ((17, 15), (2, 3, 5, 7, 11), (2017, 5, 3)),
+        (-1, '(1+n)//2', '-n', '1-n'),
         ('float32', 'int32'),
         ('int32', 'int64')))
     def test_argtopk_nd(self, shp, k_, dtype, idx_dtype):
@@ -410,7 +404,7 @@ class Test_TopK(unittest.TestCase):
             assert np.all(np.sort(yval, axis=axis) == np.sort(goal, axis=axis))
 
     @utt.parameterized.expand(product(
-        ((3,), (257,), (2, 3), (17, 15), (11, 7, 5), (5, 3, 5, 3), (2, 3, 5, 7, 11)),
+        ((257,), (17, 15), (5, 3, 5, 3), (2, 3, 5, 7, 11)),
         (1, -1, '(1+n)//2', 'n-1', '-n', '1-n')))
     def test_grad(self, shp, k_):
         ndim = len(shp)
@@ -429,8 +423,8 @@ class Test_TopK(unittest.TestCase):
 
 class TopKInferShapeTester(utt.InferShapeTester):
     @utt.parameterized.expand(product(
-        ((2, 3), (15, 17), (11, 7, 5), (2, 3, 5, 7, 11), (2, 4, 3, 1)),
-        (1, -1, '(1+n)//2', 'n-1', '-n', '1-n')))
+        ((15, 17), (11, 7, 5), (2, 3, 5, 7, 11), (2, 4, 3, 1)),
+        (1, '(1+n)//2', 'n-1', '-n')))
     def test_topk_infer_shape(self, shp, k_):
         ndim = len(shp)
         for axis in range(-ndim, ndim):
@@ -452,8 +446,8 @@ class TopKInferShapeTester(utt.InferShapeTester):
                 [x], [y], [xval], TopKOp)
 
     @utt.parameterized.expand(product(
-        ((2, 3), (15, 17), (11, 7, 5), (2, 3, 5, 7, 11), (2, 4, 3, 1)),
-        (1, -1, '(1+n)//2', 'n-1', '-n', '1-n')))
+        ((15, 17), (11, 7, 5), (2, 3, 5, 7, 11), (2, 4, 3, 1)),
+        (-1, '(1+n)//2', '1-n')))
     def test_argtopk_infer_shape(self, shp, k_):
         ndim = len(shp)
         for axis in range(-ndim, ndim):
@@ -476,7 +470,7 @@ class TopKInferShapeTester(utt.InferShapeTester):
 
     @utt.parameterized.expand(product(
         ((2, 3), (15, 17), (11, 7, 5), (2, 3, 5, 7, 11), (2, 4, 3, 1)),
-        (1, -1, '(1+n)//2', 'n-1', '-n', '1-n')))
+        (1, '(1+n)//2', 'n-1', 'n')))
     def test_combined_infer_shape(self, shp, k_):
         ndim = len(shp)
         for axis in range(-ndim, ndim):

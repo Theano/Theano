@@ -19,12 +19,7 @@ except ImportError as e:
     # To make sure theano is importable
     pass
 
-# TODO sort / argsort
-
-# TODO add runtime opt, if k==1, use max/min reduce
-#      also if k is axis size, just copy input tensor
-# TODO add opt to merge argtopk / topk, or split topk_and_argtopk when only
-#      one result is needed
+# TODO GPU sort / argsort
 
 
 class GpuTopKOp(GpuKernelBase, TopKOp):
@@ -141,11 +136,10 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         inp_dtc = ga.dtype_to_typecode(node.inputs[0].dtype)
         if not self.return_indices:
             yv, = outs
+        elif self.return_values:
+            yv, yi = outs
         else:
-            if self.return_values:
-                yv, yi = outs
-            else:
-                yi, = outs
+            yi, = outs
         out_dtype_s = self.idx_dtype
         out_dtc = ga.dtype_to_typecode(out_dtype_s)
         fail = sub['fail']
@@ -285,7 +279,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
 
 @register_opt('fast_compile')
-@op_lifter([TopKOp])
+@op_lifter([TopKOp], cuda_only=True)
 @register_opt2([TopKOp], 'fast_compile')
 def local_gpua_topkop(op, ctx_name, inputs, outputs):
     if isinstance(op, GpuTopKOp):
