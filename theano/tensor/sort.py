@@ -1,4 +1,3 @@
-from __future__ import absolute_import, print_function, division
 import numpy as np
 import theano
 from theano.tensor.basic import mul, arange
@@ -223,6 +222,8 @@ def argsort(a, axis=-1, kind='quicksort', order=None):
 
 def _topk_py_impl(op, x, k, axis, idx_dtype):
     ndim = x.ndim
+    assert -ndim <= axis < ndim
+    axis %= ndim
     if k == 0:
         raise ValueError('topk: k cannot be zero')
     if abs(k) == 1:
@@ -245,8 +246,7 @@ def _topk_py_impl(op, x, k, axis, idx_dtype):
                 fn_argmax(x, axis=axis), axis)
             return zi.astype(idx_dtype)
 
-    asize = x.shape[axis]
-    if asize == abs(k):
+    if x.shape[axis] == abs(k):
         if not op.return_indices:
             return x.copy()
         else:
@@ -263,7 +263,7 @@ def _topk_py_impl(op, x, k, axis, idx_dtype):
                 return zi
 
     idx = [slice(None)] * ndim
-        idx[axis] = slice(-k, None) if k > 0 else idx[axis] = slice(-k)
+    idx[axis] = (slice(-k, None) if k > 0 else slice(-k))
 
     if not op.return_indices:
         zv = np.partition(x, -k, axis=axis)[idx]
@@ -336,7 +336,6 @@ class TopKOp(theano.Op):
     #      one result is needed
     # TODO R_op
 
-
     __props__ = ('axis', 'return_values', 'return_indices', 'idx_dtype')
 
     def __init__(
@@ -345,7 +344,7 @@ class TopKOp(theano.Op):
             idx_dtype='int64'):
         if not isinstance(axis, int):
             raise TypeError(
-                '"axis" parameter must be integer, got "%s"' % type(self.axis))
+                '"axis" parameter must be integer, got "%s"' % type(axis))
         if idx_dtype not in theano.tensor.integer_dtypes:
             raise TypeError(
                 '"idx_dtype" parameter must be an integer dtype, got "%s"' % idx_dtype)
@@ -382,10 +381,7 @@ class TopKOp(theano.Op):
 
     def perform(self, node, inputs, output_storage):
         x, k = inputs
-        ndim = x.ndim
         axis = self.axis
-        assert -ndim <= axis < ndim
-        axis %= ndim
         if not self.return_indices:
             pzv = output_storage[0]
             pzv[0] = _topk_py_impl(self, x, k, axis, None)
@@ -401,7 +397,6 @@ class TopKOp(theano.Op):
     def infer_shape(self, node, inp_shapes):
         _check_tensor_is_scalar(node.inputs[1])
         shp = list(inp_shapes[0])
-        ndim = node.inputs[0].ndim
         shp[self.axis] = np.abs(node.inputs[1])
         shp = tuple(shp)
         return [shp for i in [self.return_values, self.return_indices] if i]
