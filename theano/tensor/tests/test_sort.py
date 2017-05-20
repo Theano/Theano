@@ -288,15 +288,13 @@ class Test_TopK(unittest.TestCase):
         idx = slice(-k, None) if k > 0 else slice(-k)
         goal = np.sort(xval)[idx]
 
-        print(np.sort(yval))
-        print(goal)
         assert yval.dtype == goal.dtype
         assert utt.assert_allclose(np.sort(yval), goal)
 
     @utt.parameterized.expand(chain(
         product(
             (16, 61, 257),
-            (1, -1, 10, -10, 'n//2', 'n-1', '-n', '1-n'),
+            (1, -1, -10, 'n//2', 'n-1', '-n'),
             ('float32', 'int32'),
             ('int32', 'int64')),
         ((2049, 1337, 'float32', 'int32'),)))
@@ -319,7 +317,7 @@ class Test_TopK(unittest.TestCase):
     @utt.parameterized.expand(chain(
         product(
             (16, 61, 257),
-            (1, -1, 10, -10, 'n//2', 'n-1', '-n', '1-n'),
+            (1, -1, 10, 'n//2', 'n-1', '1-n'),
             ('float32', 'int32'),
             ('int32', 'int64')),
         ((2049, 1337, 'float32', 'int32'),)))
