@@ -25,7 +25,6 @@ except ImportError as e:
 #      also if k is axis size, just copy input tensor
 # TODO add opt to merge argtopk / topk, or split topk_and_argtopk when only
 #      one result is needed
-# TODO add grad
 
 
 class GpuTopKOp(GpuKernelBase, TopKOp):

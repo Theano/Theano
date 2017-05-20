@@ -2,6 +2,7 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 import theano
 from theano.tensor.basic import mul, arange
+from theano.gradient import grad_undefined
 
 
 def _variable_is_none(var):
@@ -62,7 +63,7 @@ class SortOp(theano.Op):
         a, axis = inputs
         indices = self.__get_argsort_indices(a, axis)
         inp_grad = output_grads[0][tuple(indices)]
-        axis_grad = theano.gradient.grad_undefined(
+        axis_grad = grad_undefined(
             self, 1, axis,
             "The gradient of sort is not defined "
             "with respect to the integer axes itself")
@@ -187,7 +188,7 @@ class ArgSortOp(theano.Op):
         # No grad defined for intergers.
         inp, axis = inputs
         inp_grad = inp.zeros_like()
-        axis_grad = theano.gradient.grad_undefined(
+        axis_grad = grad_undefined(
             self, 1, axis,
             "argsort is not defined for non-integer axes so"
             " argsort(x, axis+eps) is undefined")
@@ -292,34 +293,20 @@ class TopKOp(theano.Op):
     """
     Operations related to finding k-largest elements.
 
-    The outputs of this Op depends on ``returns_values`` and ``return_indices``,
-    if both ``True``, will return two outputs, corresponding to k-largest values
-    and indices. If only one is ``True``, this Op shall have only one output. Can't
-    be both ``False``.
-
     Parameters
     ----------
     axis: integer
         The axis to perform the operation. Must be in range ``[-ndim, ndim)``, where
         ``ndim`` is the dimensionality of input tensor.
 
-    return_values: bool
-        Defaults to ``True``
-
-        If ``True``, one output of the Op will return k-largest array values.
-
-    return_indices: bool
-        Defaults to ``False``
-
-        If ``True``, one output of the Op will return the indices on the given axis.
-
     idx_dtype: string
-        Specify output dtype, defaults to ``int64``, must be integer type.
+        Specify output dtype for indices, defaults to ``int64``, must be integer type.
 
 
     Notes
     -----
-    - ``return_values`` and ``return_indices`` cannot be both ``False``
+    - By default, this Op give two outputs: values and indices. However optimizer may
+      remove a certain output if not needed for computing graph outputs.
 
     See Also
     --------
@@ -350,14 +337,11 @@ class TopKOp(theano.Op):
     def __init__(
             self,
             axis=-1,
-            return_indices=False,
-            return_values=True,
             idx_dtype='int64'):
         assert isinstance(axis, int)
-        assert return_indices or return_values
         self.axis = axis
-        self.return_indices = return_indices
-        self.return_values = return_values
+        self.return_indices = True
+        self.return_values = True
         self.idx_dtype = idx_dtype
 
     def __str__(self):
@@ -413,8 +397,34 @@ class TopKOp(theano.Op):
         shp = tuple(shp)
         return [shp for i in [self.return_values, self.return_indices] if i]
 
+    def L_op(self, inputs, outputs, out_grads):
+        x, k = inputs
+        k_grad = grad_undefined(self, 1, k, 'topk: k is not differentiable')
+        if not (self.return_indices, self.return_values):
+            x_grad = grad_undefined(
+                self, 0, x, 'topk: cannot get gradient'
+                ' without both indices and values')
+        elif x.ndim == 1:
+            z_grad = out_grads[0]
+            indices = outputs[-1]
+            x_grad = x.zeros_like(dtype=z_grad.dtype)
+            x_grad = theano.tensor.advanced_set_subtensor1(
+                x_grad, z_grad, indices)
+        else:
+            x_shp = theano.tensor.shape(x)
+            z_grad = out_grads[0]
+            ndim = x.ndim
+            axis = self.axis % ndim
+            grad_indices = [
+                arange(x_shp[i]).dimshuffle([0] + ['x'] * (ndim - i - 1))
+                if i != axis else outputs[-1] for i in range(ndim)]
+            x_grad = x.zeros_like(dtype=z_grad.dtype)
+            x_grad = theano.tensor.advanced_set_subtensor(
+                x_grad, z_grad, *grad_indices)
+        return [x_grad, k_grad]
 
-def topk(x, k, axis=-1):
+
+def topk(x, k, axis=-1, idx_dtype='int64'):
     """
     Returns the k-largest elements along an axis.
 
@@ -430,6 +440,10 @@ def topk(x, k, axis=-1):
         Upon which axis shall the operation be performed on. If ``None``,
         works on flattened array.
 
+    idx_dtype: string
+        Specify output dtype used in indices, defaults to ``int64``, must be integer type.
+        This option is here because indices are needed for gradient.
+
     Returns
     -------
     Tensor variable with same dtype as `x`.
@@ -442,7 +456,7 @@ def topk(x, k, axis=-1):
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = -1
-    return TopKOp(axis=axis)(x, k)
+    return TopKOp(axis=axis, idx_dtype=idx_dtype)(x, k)[0]
 
 
 def argtopk(x, k, axis=-1, idx_dtype='int64'):
@@ -478,9 +492,7 @@ def argtopk(x, k, axis=-1, idx_dtype='int64'):
         axis = -1
     return TopKOp(
         axis=axis,
-        return_indices=True,
-        return_values=False,
-        idx_dtype=idx_dtype)(x, k)
+        idx_dtype=idx_dtype)(x, k)[1]
 
 
 def topk_and_argtopk(x, k, axis=-1, idx_dtype='int64'):
@@ -493,4 +505,6 @@ def topk_and_argtopk(x, k, axis=-1, idx_dtype='int64'):
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = -1
-    return TopKOp(axis=axis, return_indices=True, idx_dtype=idx_dtype)(x, k)
+    return TopKOp(
+        axis=axis,
+        idx_dtype=idx_dtype)(x, k)

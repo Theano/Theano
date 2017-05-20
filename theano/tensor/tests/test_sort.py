@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 from itertools import product, chain
-from functools import reduce
+from functools import reduce, partial
 import unittest
 from theano.tests import unittest_tools as utt
 
@@ -408,6 +408,23 @@ class Test_TopK(unittest.TestCase):
             print(np.sort(goal, axis=axis))
             # print(np.argsort(xval))
             assert np.all(np.sort(yval, axis=axis) == np.sort(goal, axis=axis))
+
+    @utt.parameterized.expand(product(
+        ((3,), (257,), (2, 3), (17, 15), (11, 7, 5), (5, 3, 5, 3), (2, 3, 5, 7, 11)),
+        (1, -1, '(1+n)//2', 'n-1', '-n', '1-n')))
+    def test_grad(self, shp, k_):
+        ndim = len(shp)
+        for axis in range(-ndim, ndim):
+            if isinstance(k_, str):
+                k = eval(k_.replace('n', str(shp[axis])))
+            else:
+                k = k_
+
+            if k == 0:
+                continue
+
+            xval = np.random.rand(*shp).astype(theano.config.floatX)
+            utt.verify_grad(partial(topk, k=k, axis=axis), [xval])
 
 
 class TopKInferShapeTester(utt.InferShapeTester):
