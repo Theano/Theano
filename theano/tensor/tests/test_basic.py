@@ -1849,20 +1849,33 @@ GammalnInplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy)
 
+_good_broadcast_unary_normal_no_complex_trigamma = dict(
+    normal=[np.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
+    integers=[randint_ranged(-5, 5, (2, 3))],
+    int8=[np.arange(-127, 128, dtype='int8')],
+    uint8=[np.arange(0, 89, dtype='uint8')],
+    uint16=[np.arange(0, 89, dtype='uint16')],
+    empty=[np.asarray([], dtype=config.floatX)],
+)
+
+_grad_broadcast_unary_normal_no_complex_trigamma = dict(
+    normal=[np.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
+)
+
 TrigammaTester = makeBroadcastTester(
     op=tensor.trigamma,
     expected=expected_trigamma,
-    good=_good_broadcast_unary_normal,
-    grad=_grad_broadcast_unary_normal,
-    eps=2e-10,
+    good=_good_broadcast_unary_normal_no_complex_trigamma,
+    grad=_grad_broadcast_unary_normal_no_complex_trigamma,
+    eps=1e-6,
     mode=mode_no_scipy,
     skip=skip_scipy)
 TrigammaInplaceTester = makeBroadcastTester(
     op=inplace.trigamma_inplace,
     expected=expected_trigamma,
-    good=_good_broadcast_unary_normal_float,
+    good=_good_broadcast_unary_normal_no_complex_trigamma,
     mode=mode_no_scipy,
-    eps=2e-10,
+    eps=1e-6,
     inplace=True,
     skip=skip_scipy)
 

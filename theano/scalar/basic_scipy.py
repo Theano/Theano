@@ -567,7 +567,7 @@ class Polygamma(UnaryScalarOp):
         x, = inp
         gz, = grads
         # derivative is again polygamma
-        poly = Polygamma(self.m+1, upgrade_to_float, name='_%dgamma' % (self.m+1))
+        poly = Polygamma(self.m+1, upgrade_to_float)
         return [gz * poly(x)]
 
 trigamma = Polygamma(3, upgrade_to_float, name='trigamma')
