@@ -553,6 +553,8 @@ class Polygamma(UnaryScalarOp):
     __props__ = ('m', )
 
     def __init__(self, m, *args, **kwargs):
+        if not isinstance(m, int) and m >= 0:
+            raise ValueError('m should be an int >= 0')
         super(Polygamma, self).__init__(*args, **kwargs)
         self.m = m
 
