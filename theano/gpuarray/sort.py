@@ -259,10 +259,10 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         '''
         return code % locals()
 
-    def make_node(self, inp, k):
+    def make_node(self, inp, kth):
         ctx_name = infer_context_name(inp)
         inp = as_gpuarray_variable(inp, ctx_name)
-        k = as_tensor_variable(k)
+        kth = as_tensor_variable(kth)
         bcast = inp.type.broadcastable
         outs = []
         if self.return_values:
@@ -272,7 +272,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
                 dtype=self.idx_dtype,
                 broadcastable=bcast,
                 context_name=ctx_name)())
-        return Apply(self, [inp, k], outs)
+        return Apply(self, [inp, kth], outs)
 
     def get_params(self, node):
         return node.inputs[0].type.context

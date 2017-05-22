@@ -22,7 +22,6 @@ def gen_unique_vector(size, dtype):
     return (retval[np.random.permutation(size)] - size * 1.5).astype(dtype)
 
 
-'''
 class Test_sort(unittest.TestCase):
 
     def setUp(self):
@@ -230,7 +229,6 @@ def test_argsort_grad():
 
     data = np.random.rand(2, 3, 3).astype(theano.config.floatX)
     utt.verify_grad(lambda x: argsort(x, axis=2), [data])
-'''
 
 
 class Test_TopK(unittest.TestCase):
@@ -408,59 +406,13 @@ class Test_TopK(unittest.TestCase):
                 continue
 
             def op(x):
-                return theano.ggtensor.sort(topk(x, k=k, axis=axis), axis=axis)
+                return theano.tensor.sort(topk(x, k, axis=axis), axis=axis)
 
             xval = np.random.rand(*shp).astype(theano.config.floatX)
             utt.verify_grad(op, [xval])
 
 
 class TopKInferShapeTester(utt.InferShapeTester):
-    @utt.parameterized.expand(product(
-        ((15, 17), (11, 7, 5), (2, 3, 5, 7, 11), (2, 4, 3, 1)),
-        (1, '(1+n)//2', 'n-1', '-n')))
-    def test_topk_infer_shape(self, shp, k_):
-        ndim = len(shp)
-        for axis in range(-ndim, ndim):
-            if isinstance(k_, str):
-                k = eval(k_.replace('n', str(shp[axis])))
-            else:
-                k = k_
-
-            if k == 0:
-                continue
-
-            x = theano.tensor.tensor(
-                name='x', broadcastable=(False,) * len(shp),
-                dtype=theano.config.floatX)
-            y = topk(x, k, axis=axis)
-            size = reduce(int.__mul__, shp)
-            xval = gen_unique_vector(size, theano.config.floatX).reshape(shp)
-            self._compile_and_check(
-                [x], [y], [xval], TopKOp)
-
-    @utt.parameterized.expand(product(
-        ((15, 17), (11, 7, 5), (2, 3, 5, 7, 11), (2, 4, 3, 1)),
-        (-1, '(1+n)//2', '1-n')))
-    def test_argtopk_infer_shape(self, shp, k_):
-        ndim = len(shp)
-        for axis in range(-ndim, ndim):
-            if isinstance(k_, str):
-                k = eval(k_.replace('n', str(shp[axis])))
-            else:
-                k = k_
-
-            if k == 0:
-                continue
-
-            x = theano.tensor.tensor(
-                name='x', broadcastable=(False,) * len(shp),
-                dtype=theano.config.floatX)
-            y = argtopk(x, k, axis=axis, idx_dtype='int32')
-            size = reduce(int.__mul__, shp)
-            xval = gen_unique_vector(size, theano.config.floatX).reshape(shp)
-            self._compile_and_check(
-                [x], [y], [xval], TopKOp)
-
     @utt.parameterized.expand(product(
         ((2, 3), (15, 17), (11, 7, 5), (2, 3, 5, 7, 11), (2, 4, 3, 1)),
         (1, '(1+n)//2', 'n-1', 'n')))

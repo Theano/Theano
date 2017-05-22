@@ -357,7 +357,7 @@ class TopKOp(theano.Op):
         return '%(op)s{axis=%(axis)d}' % dict(
             op=self.__class__.__name__, axis=self.axis)
 
-    def make_node(self, inp, k):
+    def make_node(self, inp, kth):
         # numpy always uses int64 as output dtype for arg*() routines
         # however, we add this option as memory is more precious on gpu
         inp = theano.tensor.as_tensor_variable(inp)
@@ -369,7 +369,7 @@ class TopKOp(theano.Op):
                 '"axis" parameter out of range,'
                 ' expected integer within [%d, %d]' % (-ndim, ndim - 1))
 
-        k = theano.tensor.as_tensor_variable(k)
+        kth = theano.tensor.as_tensor_variable(kth)
         bcast = inp.type.broadcastable
         outs = []
         if self.return_values:
@@ -377,7 +377,7 @@ class TopKOp(theano.Op):
         if self.return_indices:
             outs.append(theano.tensor.TensorType(
                 dtype=self.idx_dtype, broadcastable=bcast)())
-        return theano.Apply(self, [inp, k], outs)
+        return theano.Apply(self, [inp, kth], outs)
 
     def perform(self, node, inputs, output_storage):
         x, k = inputs
@@ -428,7 +428,7 @@ class TopKOp(theano.Op):
         return [x_grad, k_grad]
 
 
-def topk(x, k, axis=-1, idx_dtype='int64'):
+def topk(x, kth, axis=-1, idx_dtype='int64'):
     """
     Returns the k-largest elements along an axis.
 
@@ -437,7 +437,7 @@ def topk(x, k, axis=-1, idx_dtype='int64'):
 
     x: tensor instance
 
-    k: integer constant/variable
+    kth: integer constant/variable
         Must not be 0. If negative, gives k-smallest elements instead.
 
     axis: integer or ``None``
@@ -460,10 +460,10 @@ def topk(x, k, axis=-1, idx_dtype='int64'):
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = -1
-    return TopKOp(axis=axis, idx_dtype=idx_dtype)(x, k)[0]
+    return TopKOp(axis=axis, idx_dtype=idx_dtype)(x, kth)[0]
 
 
-def argtopk(x, k, axis=-1, idx_dtype='int64'):
+def argtopk(x, kth, axis=-1, idx_dtype='int64'):
     """
     Returns the indices of k-largest elements along an axis.
 
@@ -472,7 +472,7 @@ def argtopk(x, k, axis=-1, idx_dtype='int64'):
 
     x: tensor instance
 
-    k: integer constant/variable
+    kth: integer constant/variable
         Must not be 0. If negative, gives k-smallest elements instead.
 
     axis: integer, tuple/list of integers, or ``None``
@@ -499,10 +499,10 @@ def argtopk(x, k, axis=-1, idx_dtype='int64'):
         axis = -1
     return TopKOp(
         axis=axis,
-        idx_dtype=idx_dtype)(x, k)[1]
+        idx_dtype=idx_dtype)(x, kth)[1]
 
 
-def topk_and_argtopk(x, k, axis=-1, idx_dtype='int64'):
+def topk_and_argtopk(x, kth, axis=-1, idx_dtype='int64'):
     """
     Returns the results of both topk() and argtopk() in one Op.
 
@@ -518,4 +518,4 @@ def topk_and_argtopk(x, k, axis=-1, idx_dtype='int64'):
         axis = -1
     return TopKOp(
         axis=axis,
-        idx_dtype=idx_dtype)(x, k)
+        idx_dtype=idx_dtype)(x, kth)
