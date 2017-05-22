@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 from itertools import product, chain
-from functools import reduce, partial
+from functools import reduce
 import unittest
 from theano.tests import unittest_tools as utt
 
@@ -407,8 +407,11 @@ class Test_TopK(unittest.TestCase):
             if k == 0:
                 continue
 
+            def op(x):
+                return theano.ggtensor.sort(topk(x, k=k, axis=axis), axis=axis)
+
             xval = np.random.rand(*shp).astype(theano.config.floatX)
-            utt.verify_grad(partial(topk, k=k, axis=axis), [xval])
+            utt.verify_grad(op, [xval])
 
 
 class TopKInferShapeTester(utt.InferShapeTester):
