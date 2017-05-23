@@ -1,3 +1,4 @@
+from __future__ import (division, absolute_import, print_function)
 import numpy as np
 import theano.tensor as T
 from theano import config
@@ -58,7 +59,7 @@ class ConnectionistTemporalClassification(gof.COp):
     def c_headers(self):
         return ["ctc.h"]
 
-    def make_node(self, activations, labels, input_lengths=None):
+    def make_node(self, activations, labels, input_lengths):
         if not ctc_enabled:
             raise RuntimeError('Baidu CTC is not enabled and '
                                'ConnectionistTemporalClassification Op '
