@@ -6222,7 +6222,7 @@ def test_local_flatten_lift():
 
         reshape_nodes = [n for n in topo if isinstance(n.op, tensor.Reshape)]
         assert (len(reshape_nodes) == 1 and
-                tensor.is_flat(reshape_nodes[0].outputs[0], outdim=i))
+                tensor.is_flat(reshape_nodes[0].outputs[0], ndim=i))
         assert isinstance(topo[-1].op, tensor.Elemwise)
 
 
