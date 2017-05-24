@@ -654,9 +654,8 @@ class FunctionGraph(utils.object2):
         take care of computing dependencies by itself.
 
         """
-        ords = OrderedDict()
         assert isinstance(self._features, list)
-        non_empty_ordering = 0
+        all_orderings = []
 
         for feature in self._features:
             if hasattr(feature, 'orderings'):
@@ -667,34 +666,23 @@ class FunctionGraph(utils.object2):
                                     ". Nondeterministic object is " +
                                     str(orderings))
                 if len(orderings) > 0:
-                    non_empty_ordering += 1
-                    # If we get only 1 ordering, we reuse it directly.
-                    if non_empty_ordering == 1:
-                        ords = orderings
-                        for node, prereqs in iteritems(orderings):
-                            if not isinstance(prereqs, (list, OrderedSet)):
-                                raise TypeError(
-                                    "prereqs must be a type with a "
-                                    "deterministic iteration order, or toposort "
-                                    " will be non-deterministic.")
-                    # If we get more then 1 orderings, we need to
-                    # combine them.
-                    elif non_empty_ordering == 2:
-                        ords = OrderedDict()
-                    if non_empty_ordering > 1:
-                        for node, prereqs in iteritems(orderings):
-                            if not isinstance(prereqs, (list, OrderedSet)):
-                                raise TypeError(
-                                    "prereqs must be a type with a "
-                                    "deterministic iteration order, or toposort "
-                                    " will be non-deterministic.")
-                            ords.setdefault(node, []).extend(prereqs)
-        if non_empty_ordering > 1:
-            # eliminate duplicate prereqs if there is more then one
-            # empty ordering
-            for (node, prereqs) in iteritems(ords):
-                ords[node] = list(OrderedSet(prereqs))
-        return ords
+                    all_orderings.append(orderings)
+                    for node, prereqs in iteritems(orderings):
+                        if not isinstance(prereqs, (list, OrderedSet)):
+                            raise TypeError(
+                                "prereqs must be a type with a "
+                                "deterministic iteration order, or toposort "
+                                " will be non-deterministic.")
+        if len(all_orderings) == 1:
+            # If there is only 1 ordering, we reuse it directly.
+            return all_orderings[0]
+        else:
+            # If there is more than 1 ordering, combine them.
+            ords = OrderedDict()
+            for orderings in all_orderings:
+                for node, prereqs in iteritems(orderings):
+                    ords.setdefault(node, []).extend(prereqs)
+            return ords
 
     def check_integrity(self):
         """
