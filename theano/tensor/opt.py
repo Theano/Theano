@@ -5717,11 +5717,13 @@ def local_opt_alloc(node):
                 val = val.reshape(1)[0]
                 # check which type of op
                 size = T.mul(*shapes)
-                if input.dtype == "float32":
+                if input.dtype in ["float16", "float32"]:
                     # shapes are ints and normally int64.
-                    # We don't want to have a float64 upcast here
-                    # if input is a float32.
-                    size = size.astype(input.dtype)
+                    # We don't want to have a float64 upcast
+                    # We don't want to downcast to float16
+                    # as we fear it could loose too much precision
+                    # that will be amplified by the mul/pow below.
+                    size = size.astype('float32')
                 if (node.op.axis is None or
                         node.op.axis == tuple(range(input.ndim))):
                     if isinstance(node.op, T.Sum):
