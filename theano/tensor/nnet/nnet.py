@@ -612,7 +612,7 @@ class Abstract_softmax(gof.Op):
 
 abstract_softmax_op = Abstract_softmax()
 
-class Abstract_LogSoftmax(gof.Op):
+class Abstract_logsoftmax(gof.Op):
     """
     LogSoftmax activation function
     :math:`\\varphi(\\mathbf{x})_j =
@@ -627,16 +627,15 @@ class Abstract_LogSoftmax(gof.Op):
         x = tensor.as_tensor_variable(x)
         axis = tensor.as_tensor_variable(axis)
         if x.type.dtype not in tensor.float_dtypes:
-            raise ValueError('x must be tensor of floats. Got %s' %
-                    x.type)
-            # TODO : Delete this and modify the test accordly
+            raise ValueError('x must be tensor of floats. Got %s' % x.type)
+        # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
         return Apply(self, [x, axis], [x.type()])
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
-        xdev = x - x.max(axis=ax, keepdims=True)
+        xdev = x - x.max(axis=axes, keepdims=True)
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
         output_storage[0][0] = lsm
 
@@ -644,7 +643,7 @@ class Abstract_LogSoftmax(gof.Op):
         x, axes = inp
         sm = abstract_softmax_op(x, axes)
         axes_grad = theano.gradient.grad_undefined(self, 1, axes)
-        return [grads[0] - tensor.sum(grads[0], axis=axes, keepdims=True) * sm, axes_grad]
+        return [grads[0] - tensor.sum(grads[0], axis=axes.eval(), keepdims=True) * sm, axes_grad]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
@@ -656,7 +655,8 @@ class Abstract_LogSoftmax(gof.Op):
     def infer_shape(self, node, shape):
         return [shape[0]]
 
-abstract_logsoftmax_op = Abstract_LogSoftmax()
+abstract_logsoftmax_op = Abstract_logsoftmax()
+
 
 class Softmax(gof.Op):
     """
@@ -1077,9 +1077,8 @@ def local_softmax(node):
             axis = opt.get_scalar_constant_value(node.inputs[1])
         except tensor.NotScalarConstantError:
             return
-        inVars = node.inputs[0]
         new_op = Softmax()
-        ret = new_op(inVars, axis)
+        ret = new_op(node.inputs[0], axis)
         ret .tag.values_eq_approx = values_eq_approx_remove_inf
         copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
         return [ret]
@@ -1105,13 +1104,11 @@ def local_gradsoftmax(node):
         return [ret]
 
 
-# This is not registered in stabilize, as it cause some crossentropy
-# optimization to not be inserted.
 @opt.register_specialize('stabilize', 'fast_compile')
 @gof.local_optimizer([tensor.Elemwise])
-def local_logsoftmax(node):
+def local_logabstractsoftmax(node):
     """
-    Detect Log(Abstract_Softmax(x)) and replace it with Abstract_LogSoftmax(x) when we get a single axis
+    Detect Log(Abstract_Softmax(x)) and replace it with Abstract_LogSoftmax(x)
 
     Note: only forward pass is affected
     """
@@ -1119,15 +1116,32 @@ def local_logsoftmax(node):
             isinstance(node.op.scalar_op, scalar.basic.Log) and
             len(node.inputs) == 1 and
             node.inputs[0].owner is not None and
-            isinstance(node.inputs[0].owner.op, Abstract_Softmax)):
-        try:
-            axis = opt.get_scalar_constant_value(node.inputs[2])
-        except tensor.NotScalarConstantError:
-            return
-        new_op = LogSoftmax()
-        ret = new_op(node.inputs[0], node.inputs[1], axis)
+            isinstance(node.inputs[0].owner.op, Abstract_softmax)):
+        new_op = Abstract_logsoftmax()
+        ret = new_op(node.inputs[0], node.inputs[1])
         ret .tag.values_eq_approx = values_eq_approx_remove_inf
         copy_stack_trace([node.inputs[0], node.inputs[1], node.outputs[0]], ret)
+        return [ret]
+
+
+@opt.register_specialize('stabilize', 'fast_compile')
+@gof.local_optimizer([Abstract_logsoftmax])
+def local_abstractlogsoftmax(node):
+    """
+    Detect Abstract_LogSoftmax(x) and replace it with LogSoftmax(x) when we get a single axis
+
+    Note: only forward pass is affected
+    """
+    if (isinstance(node.op, Abstract_logsoftmax)):
+        try:
+            axis = opt.get_scalar_constant_value(node.inputs[1])
+        except tensor.NotScalarConstantError:
+            return
+        inVars = node.inputs[0]
+        new_op = LogSoftmax()
+        ret = new_op(inVars, axis)
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
         return [ret]
 
 
@@ -1235,17 +1249,55 @@ def softmax(c, axis=(-1)):
         for ax in axis:
             if ax < 0 or ax >= c.type.ndim:
                 raise ValueError(
-                        'Invalid axis: %s (the number of dimensions of the '
-                        'input is: %s)' % (ax, c.type.ndim))
+                    'Invalid axis: %s (the number of dimensions of the '
+                    'input is: %s)' % (ax, c.type.ndim))
 
-    return softmax_op(c, axis)
+    return abstract_softmax_op(c, axis)
 
 
-def logsoftmax(c):
+def logsoftmax(c, axis=(-1,)):
     c = tensor.as_tensor_variable(c)
     if c.broadcastable[-1]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    return logsoftmax_op(c)
+    # Check of the axes
+    if isinstance(axis, (integer_types, np.integer)):
+        axis = [int(axis)]
+    elif isinstance(axis, np.ndarray) and axis.ndim == 0:
+        axis = [int(axis)]
+    elif isinstance(axis, (tuple, list, np.ndarray)):
+        axis = [int(a) for a in axis]
+        if axis == list(range(c.type.ndim)):
+            axis = None
+    elif isinstance(axis, Variable):
+        # If axis is None, we select the last axis
+        if NoneConst.equals(axis):
+            axis = -1
+        elif not isinstance(axis, tensor.var.TensorConstant):
+            raise TypeError("Softmax needs a constant axis. Got %s" % axis)
+        else:
+            assert axis.dtype in integer_dtypes
+            if isinstance(axis.data, (integer_types, np.integer)) or \
+                    (isinstance(axis.data, np.ndarray) and axis.data.ndim == 0):
+                        axis = [int(axis.data)]
+            elif isinstance(axis.data, (list, np.ndarray)):
+                axis = [int(i) for i in axis.data]
+
+    # Make axis entries non-negative, and sort them
+    if isinstance(axis, list):
+        for idx in xrange(len(axis)):
+            if axis[idx] < 0:
+                axis[idx] += c.type.ndim
+        axis.sort()
+
+    # Verify that axes are valid
+    if isinstance(axis, list):
+        for ax in axis:
+            if ax < 0 or ax >= c.type.ndim:
+                raise ValueError(
+                    'Invalid axis: %s (the number of dimensions of the '
+                    'input is: %s)' % (ax, c.type.ndim))
+
+    return abstract_logsoftmax_op(c, axis)
 
 
 @opt.register_specialize('fast_compile_gpu')
