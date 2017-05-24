@@ -418,7 +418,7 @@ if 0:
             # self.debug_all_apps.remove(app)
 
             # UPDATE self.clients
-            for i, input in enumerate(set(app.inputs)):
+            for input in set(app.inputs):
                 del self.clients[input][app]
 
             if getattr(app.op, 'destroy_map', {}):
@@ -875,7 +875,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         self.debug_all_apps.remove(app)
 
         # UPDATE self.clients
-        for i, input in enumerate(set(app.inputs)):
+        for input in set(app.inputs):
             del self.clients[input][app]
 
         if getattr(app.op, 'destroy_map', OrderedDict()):
