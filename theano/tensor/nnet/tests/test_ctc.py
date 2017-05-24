@@ -33,10 +33,8 @@ class TestCTC(unittest.TestCase):
         cost, grad = train()
         test_cost, = test()
 
-        print( grad )
-
-        #utt.assert_allclose(grad, expected_grads)
-        utt.assert_allclose( expected_costs, cost )
+        utt.assert_allclose(expected_grads, grad)
+        utt.assert_allclose(expected_costs, cost)
 
     # Test obtained from Torch tutorial at:
     # https://github.com/baidu-research/warp-ctc/blob/master/torch_binding/TUTORIAL.md
@@ -47,16 +45,24 @@ class TestCTC(unittest.TestCase):
                                   [[0, 0, 0, 0, 0], [11, 12, 13, 14, 15], [-15, -14, -13, -12, -11]]],
                                  dtype=np.float32)
         # Duration of each sequence
-        activation_times = np.asarray([1, 3, 3], dtype=np.int32)
+        activation_times = np.asarray([1, 3, 3], dtype=np.int)
         # Labels for each sequence
         labels = np.asarray([[1, -1],
                              [3, 3],
-                             [2, 3]], dtype=np.int32)
+                             [2, 3]], dtype=np.int)
 
         expected_costs = np.asarray([1.609437943, 7.355742931, 4.938849926],
                                     dtype=np.float32)
 
-        grads = [0.200000003, -0.8000000119, 0.200000003, 0.200000003, 0.200000003]
+        grads = [[[0.2, -0.8, 0.2, 0.2, 0.2],
+                  [0.01165623125, 0.03168492019, 0.08612854034, -0.7658783197, 0.636408627],
+                  [-0.02115798369, 0.03168492019, -0.8810571432, 0.2341216654, 0.636408627]],
+                 [[0, 0, 0, 0, 0],
+                  [-0.9883437753, 0.03168492019, 0.08612854034, 0.2341216654, 0.636408627],
+                  [-0.02115798369, 0.03168492019, -0.1891518533, -0.4577836394, 0.636408627]],
+                 [[0, 0, 0, 0, 0],
+                  [0.01165623125, 0.03168492019, 0.08612854034, -0.7658783197, 0.636408627],
+                  [-0.02115798369, 0.03168492019, 0.08612854034, -0.7330639958, 0.636408627]]]
         expected_gradients = np.asarray(grads, dtype=np.float32)
 
         self.run_ctc(activations, labels, activation_times, expected_costs, expected_gradients)
