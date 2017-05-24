@@ -612,6 +612,51 @@ class Abstract_softmax(gof.Op):
 
 abstract_softmax_op = Abstract_softmax()
 
+class Abstract_LogSoftmax(gof.Op):
+    """
+    LogSoftmax activation function
+    :math:`\\varphi(\\mathbf{x})_j =
+    \\e^{(\mathbf{x}_j - log{\sum_{k=1}^K e^{\mathbf{x}_k})}}
+    where :math:`K` is the total number of neurons in the layer. This
+    activation function gets applied row-wise.
+
+    """
+    __props__ = ()
+
+    def make_node(self, x, axis=-1):
+        x = tensor.as_tensor_variable(x)
+        axis = tensor.as_tensor_variable(axis)
+        if x.type.dtype not in tensor.float_dtypes:
+            raise ValueError('x must be tensor of floats. Got %s' %
+                    x.type)
+            # TODO : Delete this and modify the test accordly
+        if x.ndim == 1:
+            x = tensor.shape_padleft(x, n_ones=1)
+        return Apply(self, [x, axis], [x.type()])
+
+    def perform(self, node, input_storage, output_storage):
+        x, axes = input_storage
+        xdev = x - x.max(axis=ax, keepdims=True)
+        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
+        output_storage[0][0] = lsm
+
+    def grad(self, inp, grads):
+        x, axes = inp
+        sm = abstract_softmax_op(x, axes)
+        axes_grad = theano.gradient.grad_undefined(self, 1, axes)
+        return [grads[0] - tensor.sum(grads[0], axis=axes, keepdims=True) * sm, axes_grad]
+
+    def R_op(self, inputs, eval_points):
+        # I think the Jacobian is symmetric so the R_op
+        # is the same as the grad
+        if None in eval_points:
+            return [None]
+        return self.grad(inputs, eval_points)
+
+    def infer_shape(self, node, shape):
+        return [shape[0]]
+
+abstract_logsoftmax_op = Abstract_LogSoftmax()
 
 class Softmax(gof.Op):
     """
@@ -1066,6 +1111,32 @@ def local_gradsoftmax(node):
 @gof.local_optimizer([tensor.Elemwise])
 def local_logsoftmax(node):
     """
+    Detect Log(Abstract_Softmax(x)) and replace it with Abstract_LogSoftmax(x) when we get a single axis
+
+    Note: only forward pass is affected
+    """
+    if (isinstance(node.op, tensor.Elemwise) and
+            isinstance(node.op.scalar_op, scalar.basic.Log) and
+            len(node.inputs) == 1 and
+            node.inputs[0].owner is not None and
+            isinstance(node.inputs[0].owner.op, Abstract_Softmax)):
+        try:
+            axis = opt.get_scalar_constant_value(node.inputs[2])
+        except tensor.NotScalarConstantError:
+            return
+        new_op = LogSoftmax()
+        ret = new_op(node.inputs[0], node.inputs[1], axis)
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.inputs[1], node.outputs[0]], ret)
+        return [ret]
+
+
+# This is not registered in stabilize, as it cause some crossentropy
+# optimization to not be inserted.
+@opt.register_specialize('stabilize', 'fast_compile')
+@gof.local_optimizer([tensor.Elemwise])
+def local_logsoftmax(node):
+    """
     Detect Log(Softmax(x)) and replace it with LogSoftmax(x)
 
     Note: only forward pass is affected
@@ -1166,6 +1237,7 @@ def softmax(c, axis=(-1)):
                 raise ValueError(
                         'Invalid axis: %s (the number of dimensions of the '
                         'input is: %s)' % (ax, c.type.ndim))
+
     return softmax_op(c, axis)
 
 
