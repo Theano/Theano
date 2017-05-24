@@ -3,9 +3,9 @@
 typedef struct ctc_context {
     struct ctcOptions options;
     void * workspace;
-    int * input_lengths;
-    int * flat_labels;
-    int * label_lengths;
+    npy_int * input_lengths;
+    npy_int * flat_labels;
+    npy_int * label_lengths;
 } ctc_context_t;
 
 void ctc_context_init(ctc_context_t * context)
@@ -53,32 +53,32 @@ int ctc_check_result(ctcStatus_t retcode, const char * msg)
 }
 
 void create_contiguous_input_lengths( PyArrayObject * input_lengths_arr,
-    int ** input_lengths )
+    npy_int ** input_lengths )
 {
-    int num_elements = PyArray_DIMS( input_lengths_arr )[0];
+    npy_int num_elements = PyArray_DIMS( input_lengths_arr )[0];
 
-    *input_lengths = (int *) malloc( num_elements * sizeof(int) );
+    *input_lengths = (npy_int *) malloc( num_elements * sizeof(npy_int) );
 
     if ( NULL == (*input_lengths) )
         return;
 
-    for( int elem_idx = 0; elem_idx < num_elements; ++elem_idx )
+    for( npy_int elem_idx = 0; elem_idx < num_elements; ++elem_idx )
     {
-        (*input_lengths)[elem_idx] = *( (int *) PyArray_GETPTR1( input_lengths_arr, elem_idx ) );
+        (*input_lengths)[elem_idx] = *( (npy_int *) PyArray_GETPTR1( input_lengths_arr, elem_idx ) );
     }
 }
 
-void create_flat_labels( PyArrayObject * label_matrix, int ** flat_labels,
-    int ** label_lengths )
+void create_flat_labels( PyArrayObject * label_matrix, npy_int ** flat_labels,
+    npy_int ** label_lengths )
 {
-    int rows = PyArray_DIMS( label_matrix )[0];
-    int cols = PyArray_DIMS( label_matrix )[1];
+    npy_int rows = PyArray_DIMS( label_matrix )[0];
+    npy_int cols = PyArray_DIMS( label_matrix )[1];
 
-    *flat_labels = (int *) malloc( rows * cols * sizeof(int) );
+    *flat_labels = (npy_int *) malloc( rows * cols * sizeof(npy_int) );
     if ( NULL == (*flat_labels) )
         return;
 
-    *label_lengths = (int *) malloc( rows * sizeof(int) );
+    *label_lengths = (npy_int *) malloc( rows * sizeof(npy_int) );
     if ( NULL == (*label_lengths) )
     {
         free( *flat_labels );
@@ -86,13 +86,13 @@ void create_flat_labels( PyArrayObject * label_matrix, int ** flat_labels,
         return;
     }
 
-    int label_index = 0;
-    for( int row_idx = 0; row_idx < rows; ++row_idx )
+    npy_int label_index = 0;
+    for( npy_int row_idx = 0; row_idx < rows; ++row_idx )
     {
-        int label_length = 0;
-        for( int col_idx = 0; col_idx < cols; ++col_idx )
+        npy_int label_length = 0;
+        for( npy_int col_idx = 0; col_idx < cols; ++col_idx )
         {
-            int label = *( (int *) PyArray_GETPTR2( label_matrix, row_idx, col_idx ) );
+            npy_int label = *( (npy_int *) PyArray_GETPTR2( label_matrix, row_idx, col_idx ) );
             if ( label >= 0 )  // negative values are assumed to be padding
             {
                 (*flat_labels)[ label_index++ ] = label;
@@ -262,4 +262,3 @@ int APPLY_SPECIFIC(ctc_cost_cpu_no_grad)(PyArrayObject *  in_activations,
                                         out_costs,
                                         NULL);
 }
-
