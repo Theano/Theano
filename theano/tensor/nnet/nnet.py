@@ -373,7 +373,7 @@ class SoftmaxGrad(gof.Op):
         return [shape[1]]
 
     def c_code_cache_version(self):
-        return (6,)
+        return (4,)
 
     def c_code(self, node, name, inp, out, sub):
         dy, sm, axis = inp
@@ -517,7 +517,7 @@ class Abstract_SoftmaxGrad(gof.Op):
     nout = 1
     __props__ = ()
 
-    def make_node(self, dy, sm, axis=None):
+    def make_node(self, dy, sm, axis=(-1,)):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
         if dy.type.dtype not in tensor.float_dtypes:
@@ -526,44 +526,6 @@ class Abstract_SoftmaxGrad(gof.Op):
             dy = tensor.shape_padleft(dy, n_ones=1)
         if sm.ndim == 1:
             sm = tensor.shape_padleft(sm, n_ones=1)
-        if isinstance(axis, (integer_types, np.integer)):
-            axis = [int(axis)]
-        elif isinstance(axis, np.ndarray) and axis.ndim == 0:
-            axis = [int(axis)]
-        elif isinstance(axis, (tuple, list, np.ndarray)):
-            axis = [int(a) for a in axis]
-            if axis == list(range(sm.type.ndim)):
-                axis = None
-        elif isinstance(axis, Variable):
-            # If axis is None, we select the last axis
-            if NoneConst.equals(axis):
-                axis = -1
-            elif not isinstance(axis, tensor.var.TensorConstant):
-                raise TypeError("Softmax needs a constant axis. Got %s" % axis)
-            else:
-                assert axis.dtype in integer_dtypes
-                if isinstance(axis.data, (integer_types, np.integer)) or \
-                        (isinstance(axis.data, np.ndarray) and axis.data.ndim == 0):
-                            axis = [int(axis.data)]
-                elif isinstance(axis.data, (list, np.ndarray)):
-                    axis = [int(i) for i in axis.data]
-
-        # Make axis entries non-negative, and sort them
-        if isinstance(axis, list):
-            for idx in xrange(len(axis)):
-                if axis[idx] < 0:
-                    axis[idx] += sm.type.ndim
-            axis.sort()
-
-        # Verify that axes are valid
-        if isinstance(axis, list):
-            for ax in axis:
-                if ax < 0 or ax >= sm.type.ndim:
-                    raise ValueError(
-                        'Invalid axis: %s (the number of dimensions of the '
-                        'input is: %s)' % (ax, sm.type.ndim))
-
-        self.axis = axis
         axis = tensor.as_tensor_variable(axis)
         inputs = [dy, sm, axis]
 
@@ -575,7 +537,7 @@ class Abstract_SoftmaxGrad(gof.Op):
             raise ValueError('dy and the softmax output should have the same shape.')
         dx = np.zeros_like(sm)
         if axes is None:
-            axes = (sm.ndim - 1)
+            axes = (sm.ndim - 1,)
         else:
             axes = tuple(int(ax) for ax in axes)
         # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
@@ -610,45 +572,6 @@ class Abstract_softmax(gof.Op):
 
     def make_node(self, x, axis=(-1,)):
         x = tensor.as_tensor_variable(x)
-
-        if isinstance(axis, (integer_types, np.integer)):
-            axis = [int(axis)]
-        elif isinstance(axis, np.ndarray) and axis.ndim == 0:
-            axis = [int(axis)]
-        elif isinstance(axis, (tuple, list, np.ndarray)):
-            axis = [int(a) for a in axis]
-            if axis == list(range(x.type.ndim)):
-                axis = None
-        elif isinstance(axis, Variable):
-            # If axis is None, we select the last axis
-            if NoneConst.equals(axis):
-                axis = -1
-            elif not isinstance(axis, tensor.var.TensorConstant):
-                raise TypeError("Softmax needs a constant axis. Got %s" % axis)
-            else:
-                assert axis.dtype in integer_dtypes
-                if isinstance(axis.data, (integer_types, np.integer)) or \
-                        (isinstance(axis.data, np.ndarray) and axis.data.ndim == 0):
-                    axis = [int(axis.data)]
-                elif isinstance(axis.data, (list, np.ndarray)):
-                    axis = [int(i) for i in axis.data]
-
-        # Make axis entries non-negative, and sort them
-        if isinstance(axis, list):
-            for idx in xrange(len(axis)):
-                if axis[idx] < 0:
-                    axis[idx] += x.type.ndim
-            axis.sort()
-
-        # Verify that axes are valid
-        if isinstance(axis, list):
-            for ax in axis:
-                if ax < 0 or ax >= x.type.ndim:
-                    raise ValueError(
-                        'Invalid axis: %s (the number of dimensions of the '
-                        'input is: %s)' % (ax, x.type.ndim))
-
-        self.axis = axis
         axis = tensor.as_tensor_variable(axis)
         # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
@@ -723,11 +646,7 @@ class Softmax(gof.Op):
 
     def L_op(self, inp, outputs, grads):
         x, axis = inp
-        # TO INVESTIGATE
-        if len(grads) == 2:
-            g_sm, test = grads
-        else:
-            g_sm, = grads
+        g_sm, = grads
         return [softmax_grad(g_sm, outputs[0], axis), DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
@@ -1206,11 +1125,48 @@ def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
 
-def softmax(c):
+def softmax(c, axis=(-1)):
     c = tensor.as_tensor_variable(c)
     if c.broadcastable[-1]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    return abstract_softmax_op(c)
+    # Check of the axes
+    if isinstance(axis, (integer_types, np.integer)):
+        axis = [int(axis)]
+    elif isinstance(axis, np.ndarray) and axis.ndim == 0:
+        axis = [int(axis)]
+    elif isinstance(axis, (tuple, list, np.ndarray)):
+        axis = [int(a) for a in axis]
+        if axis == list(range(c.type.ndim)):
+            axis = None
+    elif isinstance(axis, Variable):
+        # If axis is None, we select the last axis
+        if NoneConst.equals(axis):
+            axis = -1
+        elif not isinstance(axis, tensor.var.TensorConstant):
+            raise TypeError("Softmax needs a constant axis. Got %s" % axis)
+        else:
+            assert axis.dtype in integer_dtypes
+            if isinstance(axis.data, (integer_types, np.integer)) or \
+                    (isinstance(axis.data, np.ndarray) and axis.data.ndim == 0):
+                        axis = [int(axis.data)]
+            elif isinstance(axis.data, (list, np.ndarray)):
+                axis = [int(i) for i in axis.data]
+
+    # Make axis entries non-negative, and sort them
+    if isinstance(axis, list):
+        for idx in xrange(len(axis)):
+            if axis[idx] < 0:
+                axis[idx] += c.type.ndim
+        axis.sort()
+
+    # Verify that axes are valid
+    if isinstance(axis, list):
+        for ax in axis:
+            if ax < 0 or ax >= c.type.ndim:
+                raise ValueError(
+                        'Invalid axis: %s (the number of dimensions of the '
+                        'input is: %s)' % (ax, c.type.ndim))
+    return softmax_op(c, axis)
 
 
 def logsoftmax(c):
@@ -1852,8 +1808,10 @@ class CrossentropyCategorical1Hot(gof.Op):
         """
         _coding_dist = tensor.as_tensor_variable(coding_dist)
         _true_one_of_n = tensor.as_tensor_variable(true_one_of_n)
+        if _coding_dist.type.ndim == 1:
+            _coding_dist = tensor.shape_padleft(_coding_dist, n_ones=1)
         if _coding_dist.type.ndim != 2:
-            raise TypeError('matrix required for argument: coding_dist')
+            raise TypeError('iatrix required for argument: coding_dist')
         if _true_one_of_n.type not in (tensor.lvector, tensor.ivector):
             raise TypeError(
                 'integer vector required for argument: true_one_of_n'
