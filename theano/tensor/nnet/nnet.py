@@ -326,7 +326,60 @@ class SoftmaxWithBias(gof.Op):
 softmax_with_bias = SoftmaxWithBias()
 
 
-class SoftmaxGrad(gof.Op):
+class Abstract_SoftmaxGrad(gof.Op):
+    """
+    Gradient wrt x of the Softmax Op.
+    """
+
+    nin = 3
+    nout = 1
+    __props__ = ()
+
+    def make_node(self, dy, sm, axis=(-1,)):
+        dy = tensor.as_tensor_variable(dy)
+        sm = tensor.as_tensor_variable(sm)
+        if dy.type.dtype not in tensor.float_dtypes:
+            raise ValueError('dy must be tensor of floats. Got ', dy.type)
+        if dy.ndim == 1:
+            dy = tensor.shape_padleft(dy, n_ones=1)
+        if sm.ndim == 1:
+            sm = tensor.shape_padleft(sm, n_ones=1)
+        axis = tensor.as_tensor_variable(axis)
+        inputs = [dy, sm, axis]
+
+        return Apply(self, inputs, [sm.type()])
+
+    def perform(self, node, input_storage, output_storage):
+        dy, sm, axes = input_storage
+        if (dy.shape != sm.shape):
+            raise ValueError('dy and the softmax output should have the same shape.')
+        dx = np.zeros_like(sm)
+        if axes is None:
+            axes = (sm.ndim - 1,)
+        else:
+            axes = tuple(int(ax) for ax in axes)
+        # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
+        dy_times_sm = dy * sm
+        dx = dy_times_sm - (np.sum(dy_times_sm, axis=axes, keepdims=True) * sm)
+        output_storage[0][0] = dx
+
+    def grad(self, inp, grads):
+        dy, sm, ax = inp
+        g, = grads
+        tmp = g + tensor.neg(tensor.sum(g * sm, axis=ax.eval(), keepdims=True))
+        g_dy = tmp * sm
+        tmp2 = tensor.sum(dy * sm, axis=ax.eval(), keepdims=True)
+        g_sm = tmp * dy - g * tmp2
+        g_ax = DisconnectedType()()
+        return g_dy, g_sm, g_ax
+
+    def infer_shape(self, node, shape):
+        return [shape[1]]
+
+abstract_softmax_grad = Abstract_SoftmaxGrad()
+
+
+class SoftmaxGrad(Abstract_SoftmaxGrad):
     """
     Gradient wrt x of the Softmax Op.
     """
@@ -348,29 +401,6 @@ class SoftmaxGrad(gof.Op):
         if sm.ndim == 1:
             sm = tensor.shape_padleft(sm, n_ones=1)
         return Apply(self, [dy, sm, axis], [sm.type()])
-
-    def perform(self, node, input_storage, output_storage):
-        dy, sm, ax = input_storage
-        if (dy.shape != sm.shape):
-            raise ValueError('dy and the softmax output should have the same shape.')
-        dx = np.zeros_like(sm)
-        # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
-        dy_times_sm = dy * sm
-        dx = dy_times_sm - (np.sum(dy_times_sm, axis=ax, keepdims=True) * sm)
-        output_storage[0][0] = dx
-
-    def grad(self, inp, grads):
-        dy, sm, ax = inp
-        g, = grads
-        tmp = g + tensor.neg(tensor.sum(g * sm, axis=ax.eval(), keepdims=True))
-        g_dy = tmp * sm
-        tmp2 = tensor.sum(dy * sm, axis=ax.eval(), keepdims=True)
-        g_sm = tmp * dy - g * tmp2
-        g_ax = DisconnectedType()()
-        return g_dy, g_sm, g_ax
-
-    def infer_shape(self, node, shape):
-        return [shape[1]]
 
     def c_code_cache_version(self):
         return (4,)
@@ -508,59 +538,6 @@ class SoftmaxGrad(gof.Op):
 softmax_grad = SoftmaxGrad()
 
 
-class Abstract_SoftmaxGrad(gof.Op):
-    """
-    Gradient wrt x of the Softmax Op.
-    """
-
-    nin = 3
-    nout = 1
-    __props__ = ()
-
-    def make_node(self, dy, sm, axis=(-1,)):
-        dy = tensor.as_tensor_variable(dy)
-        sm = tensor.as_tensor_variable(sm)
-        if dy.type.dtype not in tensor.float_dtypes:
-            raise ValueError('dy must be tensor of floats. Got ', dy.type)
-        if dy.ndim == 1:
-            dy = tensor.shape_padleft(dy, n_ones=1)
-        if sm.ndim == 1:
-            sm = tensor.shape_padleft(sm, n_ones=1)
-        axis = tensor.as_tensor_variable(axis)
-        inputs = [dy, sm, axis]
-
-        return Apply(self, inputs, [sm.type()])
-
-    def perform(self, node, input_storage, output_storage):
-        dy, sm, axes = input_storage
-        if (dy.shape != sm.shape):
-            raise ValueError('dy and the softmax output should have the same shape.')
-        dx = np.zeros_like(sm)
-        if axes is None:
-            axes = (sm.ndim - 1,)
-        else:
-            axes = tuple(int(ax) for ax in axes)
-        # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
-        dy_times_sm = dy * sm
-        dx = dy_times_sm - (np.sum(dy_times_sm, axis=axes, keepdims=True) * sm)
-        output_storage[0][0] = dx
-
-    def grad(self, inp, grads):
-        dy, sm, ax = inp
-        g, = grads
-        tmp = g + tensor.neg(tensor.sum(g * sm, axis=ax.eval(), keepdims=True))
-        g_dy = tmp * sm
-        tmp2 = tensor.sum(dy * sm, axis=ax.eval(), keepdims=True)
-        g_sm = tmp * dy - g * tmp2
-        g_ax = DisconnectedType()()
-        return g_dy, g_sm, g_ax
-
-    def infer_shape(self, node, shape):
-        return [shape[1]]
-
-abstract_softmax_grad = Abstract_SoftmaxGrad()
-
-
 class Abstract_softmax(gof.Op):
     """
     Similar to Argmax Op
@@ -582,10 +559,6 @@ class Abstract_softmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
-        if axes is None:
-            axes = (x.ndim - 1)
-        else:
-            axes = tuple(int(ax) for ax in axes)
         # Apply softmax on the specified dimension
         e_x = np.exp(x - x.max(axis=axes, keepdims=True))
         sm = e_x / e_x.sum(axis=axes, keepdims=True)
@@ -593,11 +566,8 @@ class Abstract_softmax(gof.Op):
 
     def L_op(self, inp, outputs, grads):
         x, ax = inp
+        g_sm, = grads
         # TO INVESTIGATE
-        if len(grads) == 2:
-            g_sm, test = grads
-        else:
-            g_sm, = grads
         return [abstract_softmax_grad(g_sm, outputs[0], ax.eval()), DisconnectedType()()]
 
     def R_op(self, inputs, eval_points):
@@ -612,53 +582,8 @@ class Abstract_softmax(gof.Op):
 
 abstract_softmax_op = Abstract_softmax()
 
-class Abstract_logsoftmax(gof.Op):
-    """
-    LogSoftmax activation function
-    :math:`\\varphi(\\mathbf{x})_j =
-    \\e^{(\mathbf{x}_j - log{\sum_{k=1}^K e^{\mathbf{x}_k})}}
-    where :math:`K` is the total number of neurons in the layer. This
-    activation function gets applied row-wise.
 
-    """
-    __props__ = ()
-
-    def make_node(self, x, axis=-1):
-        x = tensor.as_tensor_variable(x)
-        axis = tensor.as_tensor_variable(axis)
-        if x.type.dtype not in tensor.float_dtypes:
-            raise ValueError('x must be tensor of floats. Got %s' % x.type)
-        # TODO : Delete this and modify the test accordly
-        if x.ndim == 1:
-            x = tensor.shape_padleft(x, n_ones=1)
-        return Apply(self, [x, axis], [x.type()])
-
-    def perform(self, node, input_storage, output_storage):
-        x, axes = input_storage
-        xdev = x - x.max(axis=axes, keepdims=True)
-        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
-        output_storage[0][0] = lsm
-
-    def grad(self, inp, grads):
-        x, axes = inp
-        sm = abstract_softmax_op(x, axes)
-        axes_grad = theano.gradient.grad_undefined(self, 1, axes)
-        return [grads[0] - tensor.sum(grads[0], axis=axes.eval(), keepdims=True) * sm, axes_grad]
-
-    def R_op(self, inputs, eval_points):
-        # I think the Jacobian is symmetric so the R_op
-        # is the same as the grad
-        if None in eval_points:
-            return [None]
-        return self.grad(inputs, eval_points)
-
-    def infer_shape(self, node, shape):
-        return [shape[0]]
-
-abstract_logsoftmax_op = Abstract_logsoftmax()
-
-
-class Softmax(gof.Op):
+class Softmax(Abstract_softmax):
     """
     Softmax activation function
     :math:`\\varphi(\\mathbf{x})_j =
@@ -677,32 +602,12 @@ class Softmax(gof.Op):
         axis = tensor.as_tensor_variable(axis)
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
+        if axis.type.dtype not in tensor.int_dtypes:
+            raise ValueError('axis must be an integer. Got ', axis.type)
         # Make axis entries non-negative, and sort them
         if axis.type.dtype not in tensor.int_dtypes:
             raise ValueError('axis must be an integer. Got ', axis.type)
         return Apply(self, [x, axis], [x.type()])
-
-    def perform(self, node, input_storage, output_storage):
-        x, ax = input_storage
-        # Apply softmax on the last dimension
-        e_x = np.exp(x - x.max(axis=ax, keepdims=True))
-        sm = e_x / e_x.sum(axis=ax, keepdims=True)
-        output_storage[0][0] = sm
-
-    def L_op(self, inp, outputs, grads):
-        x, axis = inp
-        g_sm, = grads
-        return [softmax_grad(g_sm, outputs[0], axis), DisconnectedType()()]
-
-    def R_op(self, inputs, eval_points):
-        # I think the Jacobian is symmetric so the R_op
-        # is the same as the grad
-        if None in eval_points:
-            return [None]
-        return self.L_op(inputs, [self(*inputs)], eval_points)
-
-    def infer_shape(self, node, shape):
-        return [shape[0]]
 
     def c_headers(self):
         return ['<iostream>', '<cmath>']
@@ -884,7 +789,53 @@ class Softmax(gof.Op):
 softmax_op = Softmax()
 
 
-class LogSoftmax(gof.Op):
+class Abstract_logsoftmax(gof.Op):
+    """
+    LogSoftmax activation function
+    :math:`\\varphi(\\mathbf{x})_j =
+    \\e^{(\mathbf{x}_j - log{\sum_{k=1}^K e^{\mathbf{x}_k})}}
+    where :math:`K` is the total number of neurons in the layer. This
+    activation function gets applied row-wise.
+
+    """
+    __props__ = ()
+
+    def make_node(self, x, axis=-1):
+        x = tensor.as_tensor_variable(x)
+        axis = tensor.as_tensor_variable(axis)
+        if x.type.dtype not in tensor.float_dtypes:
+            raise ValueError('x must be tensor of floats. Got %s' % x.type)
+        # TODO : Delete this and modify the test accordly
+        if x.ndim == 1:
+            x = tensor.shape_padleft(x, n_ones=1)
+        return Apply(self, [x, axis], [x.type()])
+
+    def perform(self, node, input_storage, output_storage):
+        x, axes = input_storage
+        xdev = x - x.max(axis=axes, keepdims=True)
+        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
+        output_storage[0][0] = lsm
+
+    def grad(self, inp, grads):
+        x, axes = inp
+        sm = abstract_softmax_op(x, axes)
+        axes_grad = theano.gradient.grad_undefined(self, 1, axes)
+        return [grads[0] - tensor.sum(grads[0], axis=axes.eval(), keepdims=True) * sm, axes_grad]
+
+    def R_op(self, inputs, eval_points):
+        # I think the Jacobian is symmetric so the R_op
+        # is the same as the grad
+        if None in eval_points:
+            return [None]
+        return self.grad(inputs, eval_points)
+
+    def infer_shape(self, node, shape):
+        return [shape[0]]
+
+abstract_logsoftmax_op = Abstract_logsoftmax()
+
+
+class LogSoftmax(Abstract_logsoftmax):
     """
     LogSoftmax activation function
     :math:`\\varphi(\\mathbf{x})_j =
@@ -907,28 +858,6 @@ class LogSoftmax(gof.Op):
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
         return Apply(self, [x, axis], [x.type()])
-
-    def perform(self, node, input_storage, output_storage):
-        x, ax = input_storage
-        xdev = x - x.max(axis=ax, keepdims=True)
-        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=ax, keepdims=True))
-        output_storage[0][0] = lsm
-
-    def grad(self, inp, grads):
-        x, axis = inp
-        sm = softmax_op(x, axis.eval())
-        axis_grad = theano.gradient.grad_undefined(self, 1, axis)
-        return [grads[0] - tensor.sum(grads[0], axis=-1, keepdims=True) * sm, axis_grad]
-
-    def R_op(self, inputs, eval_points):
-        # I think the Jacobian is symmetric so the R_op
-        # is the same as the grad
-        if None in eval_points:
-            return [None]
-        return self.grad(inputs, eval_points)
-
-    def infer_shape(self, node, shape):
-        return [shape[0]]
 
     def c_headers(self):
         return ['<cmath>']
