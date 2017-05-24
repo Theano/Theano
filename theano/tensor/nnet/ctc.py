@@ -69,8 +69,7 @@ class ConnectionistTemporalClassification(gof.COp):
         t_activations = cpu_contiguous(t_activations)
 
         t_labels = T.as_tensor_variable(labels)
-        t_input_lengths = T.cast(activations.shape[0], dtype="int32") * \
-            T.ones_like(activations[0, :, 0], dtype=np.int32)
+        t_input_lengths = T.as_tensor_variable(input_lengths)
 
         # Return only the cost. Gradient will be returned by grad()
         self.default_output = 0
@@ -92,7 +91,7 @@ class ConnectionistTemporalClassification(gof.COp):
                 grad_undefined(self, 2, inputs[2])]
 
 
-def ctc(activations, labels, input_lengths=None):
+def ctc(activations, labels, input_lengths):
     return ConnectionistTemporalClassification()(activations, labels, input_lengths)
 
 
