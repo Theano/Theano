@@ -242,9 +242,8 @@ def fast_inplace_check(inputs):
 
     """
     fgraph = inputs[0].fgraph
-    Supervisor = theano.compile.function_module.Supervisor
     protected_inputs = [f.protected for f in fgraph._features
-                        if isinstance(f, Supervisor)]
+                        if isinstance(f, DestroyHandler)]
     protected_inputs = sum(protected_inputs, [])  # flatten the list
     protected_inputs.extend(fgraph.outputs)
 
@@ -279,7 +278,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
           be aliased to many variables? for example, don't switch and ifelse
           have to do this?
 
-    The original DestroyHandler (if 0'ed out above) computed several data
+    The original DestroyHandler (removed) computed several data
     structures from scratch each time it was asked to validate the graph.
     Because this happens potentially thousands of times and each graph to
     validate is extremely similar to the previous one, computing the
@@ -288,6 +287,10 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
     This implementation computes the data structures once at initialization
     and then incrementally updates them.
+
+    New feature: Now the destroy handler will also do the job of the
+    original Supervisor class. It makes sure that the output of the
+    function graph (protected variables) is never overwritten.
 
     It is a work in progress. The following data structures have been
     converted to use the incremental strategy:
@@ -299,9 +302,10 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
     """
     pickle_rm_attr = ["destroyers"]
 
-    def __init__(self, do_imports_on_attach=True, algo=None):
+    def __init__(self, protected=[], do_imports_on_attach=True, algo=None):
         self.fgraph = None
         self.do_imports_on_attach = do_imports_on_attach
+        self.protected = list(protected)
 
         """
         Maps every variable in the graph to its "foundation" (deepest
@@ -598,6 +602,12 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         b) orderings cannot be topologically sorted.
 
         """
+        if not hasattr(fgraph, 'destroyers'):
+            return True
+        for r in self.protected + list(fgraph.outputs):
+            if fgraph.destroyers(r):
+                raise InconsistencyError("Trying to destroy a protected"
+                                         "Variable.", r)
         if self.destroyers:
             if self.algo == 'fast':
                 if self.fail_validate:
