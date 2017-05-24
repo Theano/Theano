@@ -1477,11 +1477,19 @@ AddConfigVar('compile.wait',
              """Time to wait before retrying to aquire the compile lock.""",
              IntParam(5, lambda i: i > 0, allow_override=False),
              in_c_key=False)
+"""
+If cycle_detection is set to regular, most inplaces are allowed,
+but it is slower. If cycle_detection is set to faster,
+less inplaces are allowed, but it makes the compilation faster.
 
+The interaction of which one give the lower peak memory usage is complicated and
+not predictable, so if you are close to the peak memory usage, triyng both
+could give you a small gain.
+"""
 AddConfigVar('cycle_detection',
              """If true it disables the cycle detection in graph.
              """,
-             EnumStr('topo', 'fast'),
+             EnumStr('regular', 'fast'),
              in_c_key=False)
 
 

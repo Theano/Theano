@@ -425,7 +425,6 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
         For now:
         - Destroyed variables can have only 1 clients.
-        - Allow sequence of destroy variables.
         - Allow view to have multiple clients.
         - Allow sequence of view.
         - But don't allow to destroy view
