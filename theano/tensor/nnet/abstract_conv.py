@@ -1536,8 +1536,8 @@ class BaseAbstractConv(Op):
                             for im0 in xrange(input_channel_offset):
                                 # some cast generates a warning here
                                 out[b, g * output_channel_offset + n, ...] += _convolve2d(img[b, g * input_channel_offset + im0, ...],
-                                                                                        dilated_kern[n, g * input_channel_offset + im0, ...],
-                                                                                        1, val, bval, 0)
+                                                                                          dilated_kern[n, g * input_channel_offset + im0, ...],
+                                                                                          1, val, bval, 0)
         elif self.convdim == 3:
             for b in xrange(img.shape[0]):
                 for n in xrange(kern.shape[0]):
