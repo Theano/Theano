@@ -5073,7 +5073,7 @@ class Flatten(Op):
         """ % locals()
 
 
-def is_flat(var, outdim=1):
+def is_flat(var, ndim=None, outdim=None):
     """
     Verifies the dimensionality of the var is equal to
     outdim. This method is usually called after flatten method on a
@@ -5096,7 +5096,15 @@ def is_flat(var, outdim=1):
         the comparison result of var's dim
         and the expected outdim.
     """
-    return var.ndim == outdim
+    if outdim is None and ndim is None:
+        ndim = 1
+    elif outdim is not None and ndim is not None:
+        raise ValueError("You should only specify ndim")
+    elif outdim is not None:
+        warnings.warn(
+            "flatten outdim parameter is deprecated, use ndim instead.")
+        ndim = outdim
+    return var.ndim == ndim
 
 
 def flatten(x, ndim=None, outdim=None):
