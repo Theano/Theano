@@ -1359,7 +1359,7 @@ class FunctionMaker(object):
             # "excess cached variables" errors. Works that way
             # but once again the error couldbe worth
             # investigating.
-            before_opt = self.fgraph.clone(check_integrity=False)
+            before_opt = self.fgraph.clone(check_integrity=False, attach_feature=False)
             optimizer_profile = optimizer(self.fgraph)
             graph_db.update({before_opt: self.fgraph})
             with open(graph_db_file, 'wb') as f:

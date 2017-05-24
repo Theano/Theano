@@ -362,7 +362,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         if self.fgraph is not None:
             raise Exception(
                 "A DestroyHandler instance can only serve one"
-                " FunctionGraph. (Matthew 6:24)")
+                " FunctionGraph.")
         for attr in ('destroyers', 'destroy_handler'):
             if hasattr(fgraph, attr):
                 already_there = True
@@ -602,12 +602,12 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         b) orderings cannot be topologically sorted.
 
         """
-        if not hasattr(fgraph, 'destroyers'):
-            return True
         for r in self.protected + list(fgraph.outputs):
             if fgraph.destroyers(r):
                 raise InconsistencyError("Trying to destroy a protected"
                                          "Variable.", r)
+        if not hasattr(fgraph, 'destroyers'):
+            return True
         if self.destroyers:
             if self.algo == 'fast':
                 if self.fail_validate:

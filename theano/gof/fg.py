@@ -743,12 +743,12 @@ class FunctionGraph(utils.object2):
         return self.__str__()
 
     # clone #
-    def clone(self, check_integrity=True):
+    def clone(self, check_integrity=True, attach_feature=True):
         """
         Clone the graph and get a memo( a dict )that map old node to new node
 
         """
-        return self.clone_get_equiv(check_integrity)[0]
+        return self.clone_get_equiv(check_integrity, attach_feature)[0]
 
     def clone_get_equiv(self, check_integrity=True, attach_feature=True):
         """Clone the graph and get a dict that maps old nodes to new ones
