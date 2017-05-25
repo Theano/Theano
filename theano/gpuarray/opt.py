@@ -2123,7 +2123,7 @@ matrix_ops_db = LocalGroupDB()
 matrix_ops_db2 = LocalGroupDB(local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
 matrix_ops_db2.__name__ = "matrix_ops_db2"
 
-# For Cholesky decomposition, magma is slower than cusolver (tested for
+# For Cholesky decomposition, magma 2.2 is slower than cusolver 8 (tested for
 # matrices of size 1000). Thus, cusolver is prioritized during graph
 # optimizations. To explicitly use magma, you should disable cusolver using
 # `optimizer_excluding=cusolver` in Theano config.
