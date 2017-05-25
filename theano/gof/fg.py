@@ -675,7 +675,7 @@ class FunctionGraph(utils.object2):
                                 " will be non-deterministic.")
         if len(all_orderings) == 1:
             # If there is only 1 ordering, we reuse it directly.
-            return all_orderings[0]
+            return all_orderings[0].copy()
         else:
             # If there is more than 1 ordering, combine them.
             ords = OrderedDict()
