@@ -110,7 +110,7 @@ class SoftmaxWithBias(gof.Op):
 
         dx = softmax_grad(g_sm, outputs[0], ax)
         db = tensor.sum(dx, axis=0)
-        g_ax = DisconnectedType()()
+        g_ax = theano.gradient.grad_undefined(self, 2, ax)
         return dx, db, g_ax
 
     def infer_shape(self, node, shape):
@@ -352,7 +352,6 @@ class Abstract_SoftmaxGrad(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         dy, sm, axes = input_storage
-        axes = tuple(axes)
         if (dy.shape != sm.shape):
             raise ValueError('dy and the softmax output should have the same shape.')
         dx = np.zeros_like(sm)
@@ -561,7 +560,6 @@ class Abstract_softmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
-        axes = tuple(axes)
         # Apply softmax on the specified dimension
         e_x = np.exp(x - x.max(axis=axes, keepdims=True))
         sm = e_x / e_x.sum(axis=axes, keepdims=True)
@@ -569,7 +567,11 @@ class Abstract_softmax(gof.Op):
 
     def L_op(self, inp, outputs, grads):
         x, axes = inp
-        g_sm, = grads
+        # To investigate
+        if len(grads) == 2:
+            g_sm, tmp = grads
+        else:
+            g_sm, = grads
         axes_grad = theano.gradient.grad_undefined(self, 1, axes)
         return [abstract_softmax_grad(g_sm, outputs[0], axes), axes_grad]
 
@@ -577,7 +579,8 @@ class Abstract_softmax(gof.Op):
         # I think the Jacobian is symmetric so the R_op
         # is the same as the grad
         if None in eval_points:
-            return [None]
+            return [None, None]
+        print(eval_points)
         return self.L_op(inputs, [self(*inputs)], eval_points)
 
     def infer_shape(self, node, shape):
@@ -612,7 +615,11 @@ class Softmax(Abstract_softmax):
 
     def L_op(self, inp, outputs, grads):
         x, axes = inp
-        g_sm, = grads
+        # To investigate
+        if len(grads) == 2:
+            g_sm, tmp = grads
+        else:
+            g_sm, = grads
         axes_grad = theano.gradient.grad_undefined(self, 1, axes)
         return [softmax_grad(g_sm, outputs[0], axes), axes_grad]
 
@@ -818,7 +825,6 @@ class Abstract_logsoftmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
-        axes = tuple(axes)
         xdev = x - x.max(axis=axes, keepdims=True)
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
         output_storage[0][0] = lsm
@@ -1051,7 +1057,7 @@ def local_logabstractsoftmax(node):
     """
     if (isinstance(node.op, tensor.Elemwise) and
             isinstance(node.op.scalar_op, scalar.basic.Log) and
-            len(node.inputs) == 1 and
+            len(node.inputs) == 2 and
             node.inputs[0].owner is not None and
             isinstance(node.inputs[0].owner.op, Abstract_softmax)):
         new_op = Abstract_logsoftmax()
