@@ -335,7 +335,7 @@ class Abstract_SoftmaxGrad(gof.Op):
     nout = 1
     __props__ = ()
 
-    def make_node(self, dy, sm, axis=(-1,)):
+    def make_node(self, dy, sm, axis=-1):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
         if dy.type.dtype not in tensor.float_dtypes:
@@ -351,13 +351,10 @@ class Abstract_SoftmaxGrad(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         dy, sm, axes = input_storage
+        axes = tuple(axes)
         if (dy.shape != sm.shape):
             raise ValueError('dy and the softmax output should have the same shape.')
         dx = np.zeros_like(sm)
-        if axes is None:
-            axes = (sm.ndim - 1,)
-        else:
-            axes = tuple(int(ax) for ax in axes)
         # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
         dy_times_sm = dy * sm
         dx = dy_times_sm - (np.sum(dy_times_sm, axis=axes, keepdims=True) * sm)
@@ -547,7 +544,7 @@ class Abstract_softmax(gof.Op):
     E_axis = 'invalid axis'
     __props__ = ()
 
-    def make_node(self, x, axis=(-1,)):
+    def make_node(self, x, axis=-1):
         x = tensor.as_tensor_variable(x)
         axis = tensor.as_tensor_variable(axis)
         # TODO : Delete this and modify the test accordly
@@ -559,6 +556,7 @@ class Abstract_softmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
+        axes = tuple(axes)
         # Apply softmax on the specified dimension
         e_x = np.exp(x - x.max(axis=axes, keepdims=True))
         sm = e_x / e_x.sum(axis=axes, keepdims=True)
@@ -597,7 +595,7 @@ class Softmax(Abstract_softmax):
     nout = 1
     __props__ = ()
 
-    def make_node(self, x, axis=(-1,)):
+    def make_node(self, x, axis=-1):
         x = tensor.as_tensor_variable(x)
         axis = tensor.as_tensor_variable(axis)
         if x.ndim == 1:
@@ -812,6 +810,7 @@ class Abstract_logsoftmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
+        axes = tuple(axes)
         xdev = x - x.max(axis=axes, keepdims=True)
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
         output_storage[0][0] = lsm
