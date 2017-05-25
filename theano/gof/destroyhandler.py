@@ -478,8 +478,6 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
             self.destroyers.add(app)
             if self.algo == 'fast':
                 self.fast_destroy(app, reason)
-        elif getattr(app.op, 'view_map', None) and self.algo == 'fast':
-            self.fast_destroy(app, reason)
 
         # add this symbol to the forward and backward maps
         for o_idx, i_idx_list in iteritems(getattr(app.op, 'view_map', {})):
