@@ -5,8 +5,6 @@ import numpy as np
 import theano
 from theano import scalar
 from theano.compat import izip
-from theano.tensor import as_tensor_variable
-from theano.tensor.var import TensorConstant
 from theano.gof import Variable
 from theano.gof.utils import hash_from_code
 from theano.tensor.type_other import NoneConst
@@ -113,7 +111,7 @@ def check_and_normalize_axes(x, axis):
     -------
     axis: list of integers
     """
-    x = as_tensor_variable(x)
+    x = tensor.as_tensor_variable(x)
     if axis is None:
         axis = []
     elif (isinstance(axis, (integer_types, np.integer)) or
@@ -124,7 +122,7 @@ def check_and_normalize_axes(x, axis):
     elif isinstance(axis, Variable):
         if NoneConst.equals(axis):
             axis = []
-        elif not isinstance(axis, TensorConstant):
+        elif not isinstance(axis, tensor.var.TensorConstant):
             raise TypeError("Computation needs a constant axis. Got %s" % axis)
         else:
             assert axis.dtype in integer_dtypes
@@ -133,6 +131,8 @@ def check_and_normalize_axes(x, axis):
                 axis = [int(axis.data)]
             elif isinstance(axis.data, (list, np.ndarray)):
                 axis = [int(i) for i in axis.data]
+    else:
+        axis = []
     if len(axis) > 0:
         for i in range(len(axis)):
             if axis[i] < 0:

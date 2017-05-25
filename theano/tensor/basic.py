@@ -18,6 +18,7 @@ from theano.gof import Apply, Constant, Op, Variable
 from theano.gof.type import Generic
 
 from theano.tensor import elemwise
+from theano.tensor.utils import check_and_normalize_axes
 from theano.tensor.var import (AsTensorError, TensorVariable,
                                TensorConstant, TensorConstantSignature,
                                _tensor_py_operators)
@@ -1382,54 +1383,13 @@ class Argmax(Op):
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
-
-        if isinstance(axis, (integer_types, np.integer)):
-            axis = [int(axis)]
-        elif isinstance(axis, np.ndarray) and axis.ndim == 0:
-            axis = [int(axis)]
-        elif isinstance(axis, (tuple, list, np.ndarray)):
-            axis = [int(a) for a in axis]
-            if axis == list(range(x.type.ndim)):
-                axis = None
-        elif isinstance(axis, Variable):
-            if NoneConst.equals(axis):
-                axis = None
-            elif not isinstance(axis, TensorConstant):
-                raise TypeError(
-                    "Argmax needs a constant axis. Got %s" % axis)
-            else:
-                assert axis.dtype in integer_dtypes
-                if isinstance(axis.data, (integer_types, np.integer)) or \
-                   (isinstance(axis.data, np.ndarray) and
-                        axis.data.ndim == 0):
-                    axis = [int(axis.data)]
-                elif isinstance(axis.data, (list, np.ndarray)):
-                    axis = [int(i) for i in axis.data]
-
-        # Make axis entries non-negative, and sort them
-        if isinstance(axis, list):
-            for idx in xrange(len(axis)):
-                if axis[idx] < 0:
-                    axis[idx] += x.type.ndim
-            axis.sort()
-
-        # Verify that axes are valid
-        all_axes = []
-        if isinstance(axis, list):
-            for ax in axis:
-                if ax < 0 or ax >= x.type.ndim:
-                    raise ValueError(
-                        'Invalid axis: %s (the number of dimensions of the '
-                        'input is: %s)' % (ax, x.type.ndim))
-                if ax not in all_axes:
-                    all_axes.append(ax)
-        else:
-            all_axes = list(range(x.ndim))
-
-        if axis is None or axis == list(range(x.type.ndim)):
+        # Check axis and convert it to a Python list of integers.
+        axis = check_and_normalize_axes(x, axis)
+        if len(axis) == 0:
             axis = NoneConst.clone()
+            all_axes = list(range(x.ndim))
         else:
-            axis = _as_tensor_variable(all_axes)
+            axis = _as_tensor_variable(axis)
             assert axis.ndim == 1
         inputs = [x, axis]
 
@@ -1591,36 +1551,9 @@ def max_and_argmax(a, axis=None, keepdims=False):
     # Check axis and convert it to a Python list of integers.
     # Axis will be used as an op param of MaxAndArgmax.
     a = as_tensor_variable(a)
-    if axis is None:
-        axis = list(range(a.type.ndim))
-    elif (isinstance(axis, (integer_types, np.integer)) or
-            (isinstance(axis, np.ndarray) and axis.ndim == 0)):
-        axis = [int(axis)]
-    elif isinstance(axis, (tuple, list, np.ndarray)):
-        axis = [int(i) for i in axis]
-    elif isinstance(axis, Variable):
-        if NoneConst.equals(axis):
-            axis = list(range(a.type.ndim))
-        elif not isinstance(axis, TensorConstant):
-            raise TypeError("max and argmax computation needs a constant axis. Got %s" % axis)
-        else:
-            assert axis.dtype in integer_dtypes
-            if (isinstance(axis.data, (integer_types, np.integer)) or
-                    (isinstance(axis.data, np.ndarray) and axis.data.ndim == 0)):
-                axis = [int(axis.data)]
-            elif isinstance(axis.data, (list, np.ndarray)):
-                axis = [int(i) for i in axis.data]
+    axis = check_and_normalize_axes(a, axis)
     if len(axis) == 0:
         axis = list(range(a.type.ndim))
-    else:
-        for i in range(len(axis)):
-            if axis[i] < 0:
-                axis[i] += a.type.ndim
-            if axis[i] < 0 or axis[i] >= a.type.ndim:
-                raise ValueError("max and argmax computation needs a valid axis number for %d-D tensor. Got %d"
-                                 % (a.type.ndim, axis[i]))
-        axis = list(set(axis))
-        axis.sort()
     out, argout = MaxAndArgmax(axis)(a)
 
     if keepdims:
