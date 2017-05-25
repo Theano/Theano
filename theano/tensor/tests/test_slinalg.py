@@ -10,7 +10,7 @@ from numpy import inf
 import itertools
 
 import theano
-from theano import tensor, function
+from theano import tensor, function, grad
 from theano.tensor.basic import _allclose
 from theano.tests.test_rop import break_op
 from theano.tests import unittest_tools as utt
@@ -67,6 +67,23 @@ def test_cholesky():
     chol = Cholesky(lower=False)(x)
     ch_f = function([x], chol)
     yield check_upper_triangular, pd, ch_f
+    chol = Cholesky(lower=False, on_error='nan')(x)
+    ch_f = function([x], chol)
+    yield check_upper_triangular, pd, ch_f
+
+
+def test_cholesky_indef():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the Cholesky op.")
+    x = tensor.matrix()
+    matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
+    cholesky = Cholesky(lower=True, on_error='raise')
+    chol_f = function([x], cholesky(x))
+    with assert_raises(scipy.linalg.LinAlgError):
+        chol_f(matrix)
+    cholesky = Cholesky(lower=True, on_error='nan')
+    chol_f = function([x], cholesky(x))
+    assert np.all(np.isnan(chol_f(matrix)))
 
 
 def test_cholesky_grad():
@@ -86,6 +103,20 @@ def test_cholesky_grad():
     # Explicit upper-triangular.
     yield (lambda: utt.verify_grad(lambda r: Cholesky(lower=False)(r.dot(r.T)),
                                    [r], 3, rng))
+
+
+def test_cholesky_grad_indef():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the Cholesky op.")
+    x = tensor.matrix()
+    matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
+    cholesky = Cholesky(lower=True, on_error='raise')
+    chol_f = function([x], grad(cholesky(x).sum(), [x]))
+    with assert_raises(scipy.linalg.LinAlgError):
+        chol_f(matrix)
+    cholesky = Cholesky(lower=True, on_error='nan')
+    chol_f = function([x], grad(cholesky(x).sum(), [x]))
+    assert np.all(np.isnan(chol_f(matrix)))
 
 
 @attr('slow')

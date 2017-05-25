@@ -1,12 +1,12 @@
 from __future__ import absolute_import, print_function, division
 import theano
-import numpy
+import numpy as np
 from unittest import TestCase
 from theano.gof import Op, COp, Apply
 from theano import Generic
 from theano.scalar import Scalar
 from theano.tensor import TensorType
-from theano.gof import ParamsType, Params
+from theano.gof import ParamsType, Params, EnumList
 from theano import tensor
 from theano.tests import unittest_tools as utt
 
@@ -121,21 +121,21 @@ class TestParamsType(TestCase):
                          npy_scalar=TensorType('float64', tuple()))
         wp2 = ParamsType(a=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
                          npy_scalar=TensorType('float64', tuple()))
-        w1 = Params(wp1, a=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
-        w2 = Params(wp2, a=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
+        w1 = Params(wp1, a=1, array=np.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=np.asarray(12))
+        w2 = Params(wp2, a=1, array=np.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=np.asarray(12))
         assert w1 == w2
         assert not (w1 != w2)
         assert hash(w1) == hash(w2)
         # Changing attributes names only (a -> other_name).
         wp2_other = ParamsType(other_name=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
                                npy_scalar=TensorType('float64', tuple()))
-        w2 = Params(wp2_other, other_name=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
+        w2 = Params(wp2_other, other_name=1, array=np.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=np.asarray(12))
         assert w1 != w2
         # Changing attributes values only (now a=2).
-        w2 = Params(wp2, a=2, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
+        w2 = Params(wp2, a=2, array=np.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=np.asarray(12))
         assert w1 != w2
         # Changing NumPy array values (5 -> -5).
-        w2 = Params(wp2, a=1, array=numpy.asarray([1, 2, 4, -5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
+        w2 = Params(wp2, a=1, array=np.asarray([1, 2, 4, -5, 7]), floatting=-4.5, npy_scalar=np.asarray(12))
         assert w1 != w2
 
     def test_hash_and_eq_params_type(self):
@@ -168,7 +168,7 @@ class TestParamsType(TestCase):
     def test_params_type_filtering(self):
         shape_tensor5 = (1, 2, 2, 3, 2)
         size_tensor5 = shape_tensor5[0] * shape_tensor5[1] * shape_tensor5[2] * shape_tensor5[3] * shape_tensor5[4]
-        random_tensor = numpy.random.normal(size=size_tensor5).reshape(shape_tensor5)
+        random_tensor = np.random.normal(size=size_tensor5).reshape(shape_tensor5)
 
         w = ParamsType(a1=TensorType('int32', (False, False)),
                        a2=TensorType('float64', (False, False, False, False, False)),
@@ -176,7 +176,7 @@ class TestParamsType(TestCase):
 
         # With a value that does not match the params type.
         o = Params(w,
-                   a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int64'),
+                   a1=np.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int64'),
                    a2=random_tensor.astype('float32'),
                    a3=2000)
         # should fail (o.a1 is not int32, o.a2 is not float64)
@@ -188,7 +188,7 @@ class TestParamsType(TestCase):
 
         # With a value that matches the params type.
         o1 = Params(w,
-                    a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
+                    a1=np.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
                     a2=random_tensor.astype('float64'),
                     a3=2000)
         # All should pass.
@@ -198,7 +198,7 @@ class TestParamsType(TestCase):
 
         # Check values_eq and values_eq_approx.
         o2 = Params(w,
-                    a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
+                    a1=np.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
                     a2=random_tensor.astype('float64'),
                     a3=2000)
         assert w.values_eq(o1, o2)
@@ -208,10 +208,39 @@ class TestParamsType(TestCase):
         # NB: I don't know exactly which kind of differences is rejected by values_eq but accepted by values_eq_approx.
         # So, I just play a little with float values.
         o3 = Params(w,
-                    a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
+                    a1=np.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
                     a2=(random_tensor.astype('float32') * 10 / 2.2 * 2.19999999999 / 10).astype('float64'),
                     a3=2000.0 - 0.00000000000000001)
         assert w.values_eq_approx(o1, o3)
+
+    def test_params_type_with_enums(self):
+        # Test that we fail if we create a params type with common enum names inside different enum types.
+        try:
+            ParamsType(enum1=EnumList('A', 'B', 'C'), enum2=EnumList('A', 'B', 'F'))
+        except AttributeError:
+            pass
+        else:
+            raise Exception('ParamsType should fail with common enum names inside different enum types.')
+
+        # Test that we fail if we create a params type with common names in both aliases and constants.
+        try:
+            ParamsType(enum1=EnumList(('A', 'a'), ('B', 'b')), enum2=EnumList(('ONE', 'a'), ('TWO', 'two')))
+        except AttributeError:
+            ParamsType(enum1=EnumList(('A', 'a'), ('B', 'b')), enum2=EnumList(('ONE', 'one'), ('TWO', 'two')))
+        else:
+            raise Exception('ParamsType should fail when there are aliases with same names as some constants.')
+
+        # Test that we can access enum values through wrapper directly.
+        w = ParamsType(enum1=EnumList('A', ('B', 'beta'), 'C'), enum2=EnumList(('D', 'delta'), 'E', 'F'))
+        assert w.A == 0 and w.B == 1 and w.C == 2
+        assert w.D == 0 and w.E == 1 and w.F == 2
+        # Test constants access through aliases.
+        assert w.enum_from_alias('beta') == w.B
+        assert w.enum_from_alias('delta') == w.D
+        assert w.enum_from_alias('C') == w.C  # C is not an alias, so it should return a constant named C.
+        # Test that other regular wrapper attributes are still available.
+        assert len(w.fields) == len(w.types) == w.length
+        assert w.name
 
     def test_op_params(self):
         a, b, c = 2, 3, -7
@@ -221,7 +250,7 @@ class TestParamsType(TestCase):
         f1 = theano.function([x], y1)
         f2 = theano.function([x], y2)
         shape = (100, 100)
-        vx = numpy.random.normal(size=shape[0] * shape[1]).astype('float64').reshape(*shape)
+        vx = np.random.normal(size=shape[0] * shape[1]).astype('float64').reshape(*shape)
         vy1 = f1(vx)
         vy2 = f2(vx)
         ref = a * (vx**2) + b * vx + c

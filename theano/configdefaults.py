@@ -3,7 +3,7 @@ import errno
 import os
 import sys
 import logging
-import numpy
+import numpy as np
 import platform
 import textwrap
 import re
@@ -93,11 +93,17 @@ class DeviceParam(ConfigParam):
                 val.startswith('opencl') or
                     val.startswith('cuda')):
                 return val
+            elif val.startswith('gpu'):
+                raise ValueError(
+                    'You are tring to use the old GPU back-end. '
+                    'It was removed from Theano. Use device=cuda* now. '
+                    'See https://github.com/Theano/Theano/wiki/Converting-to-the-new-gpu-back-end%28gpuarray%29 '
+                    'for more information.')
             else:
                 raise ValueError(('Invalid value ("%s") for configuration '
                                   'variable "%s". Valid options start with '
-                                  'one of "%s", "opencl", "cuda"'
-                                  % (self.default, val, self.fullname)))
+                                  'one of "cpu", "opencl" or "cuda".'
+                                  % (val, self.fullname)))
         over = kwargs.get("allow_override", True)
         super(DeviceParam, self).__init__(default, filter, over)
 
@@ -359,6 +365,22 @@ AddConfigVar('dnn.enabled',
              " If False, disable cudnn even if present."
              " If no_check, assume present and the version between header and library match (so less compilation at context init)",
              EnumStr("auto", "True", "False", "no_check"),
+             in_c_key=False)
+
+AddConfigVar('magma.include_path',
+             "Location of the magma header",
+             StrParam(''),
+             in_c_key=False)
+
+AddConfigVar('magma.library_path',
+             "Location of the magma library",
+             StrParam(''),
+             in_c_key=False)
+
+AddConfigVar('magma.enabled',
+             " If True, use magma for matrix computation."
+             " If False, disable magma",
+             BoolParam(False),
              in_c_key=False)
 
 # This flag determines whether or not to raise error/warning message if
@@ -637,10 +659,17 @@ AddConfigVar('warn.ignore_bug_before',
               "bugs found after that version. "
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
-             EnumStr('0.7', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
-                     '0.7', '0.8', '0.8.1', '0.8.2', '0.9',
+             EnumStr('0.8', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
+                     '0.7', '0.8', '0.8.1', '0.8.2', '0.9', '0.10',
                      allow_override=False),
              in_c_key=False)
+
+
+def split_version(version):
+    """
+    Take version as a dot-separated string, return a tuple of int
+    """
+    return tuple(int(i) for i in version.split('.'))
 
 
 def warn_default(version):
@@ -651,7 +680,8 @@ def warn_default(version):
         return True
     if config.warn.ignore_bug_before == 'all':
         return False
-    if config.warn.ignore_bug_before >= version:
+    if (split_version(config.warn.ignore_bug_before) >=
+            split_version(version)):
         return False
     return True
 
@@ -743,10 +773,20 @@ AddConfigVar('warn.inc_set_subtensor1',
              in_c_key=False)
 
 AddConfigVar('warn.round',
-             "Round changed its default from Seed to use for randomized unit tests. "
-             "Special value 'random' means using a seed of None.",
+             "Warn when using `tensor.round` with the default mode. "
+             "Round changed its default from `half_away_from_zero` to "
+             "`half_to_even` to have the same default as NumPy.",
              BoolParam(warn_default('0.9')),
              in_c_key=False)
+
+AddConfigVar(
+    'warn.inc_subtensor1_opt',
+    "Warn if previous versions of Theano (before 0.10) could have "
+    "given incorrect results when computing "
+    "inc_subtensor(zeros[idx], x)[idx], when idx is an array of integers "
+    "with duplicated values.",
+    BoolParam(warn_default('0.10')),
+    in_c_key=False)
 
 
 AddConfigVar(
@@ -1052,7 +1092,7 @@ AddConfigVar('profiling.ignore_first_call',
 AddConfigVar('optdb.position_cutoff',
              'Where to stop eariler during optimization. It represent the'
              ' position of the optimizer where to stop.',
-             FloatParam(numpy.inf),
+             FloatParam(np.inf),
              in_c_key=False)
 
 AddConfigVar('optdb.max_use_ratio',
@@ -1106,11 +1146,11 @@ def default_blas_ldflags():
     global numpy
     warn_record = []
     try:
-        if (hasattr(numpy.distutils, '__config__') and
-                numpy.distutils.__config__):
+        if (hasattr(np.distutils, '__config__') and
+                np.distutils.__config__):
             # If the old private interface is available use it as it
             # don't print information to the user.
-            blas_info = numpy.distutils.__config__.blas_opt_info
+            blas_info = np.distutils.__config__.blas_opt_info
         else:
             # We do this import only here, as in some setup, if we
             # just import theano and exit, with the import at global
@@ -1494,7 +1534,7 @@ compiledir_format_dict = {
     "python_bitwidth": local_bitwidth(),
     "python_int_bitwidth": python_int_bitwidth(),
     "theano_version": theano.__version__,
-    "numpy_version": numpy.__version__,
+    "numpy_version": np.__version__,
     "gxx_version": gcc_version_str.replace(" ", "_"),
     "hostname": socket.gethostname()}
 

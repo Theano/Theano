@@ -81,18 +81,19 @@ def test_cdata():
 
 class MyOpEnumList(Op):
     __props__ = ('op_chosen',)
-    params_type = EnumList('ADD', 'SUB', 'MULTIPLY', 'DIVIDE', ctype='unsigned long long')
+    params_type = EnumList(('ADD', '+'), ('SUB', '-'), ('MULTIPLY', '*'), ('DIVIDE', '/'), ctype='unsigned long long')
 
     def __init__(self, choose_op):
         assert self.params_type.ADD == 0
         assert self.params_type.SUB == 1
         assert self.params_type.MULTIPLY == 2
         assert self.params_type.DIVIDE == 3
-        op_to_const = {'+': self.params_type.ADD,
-                       '-': self.params_type.SUB,
-                       '*': self.params_type.MULTIPLY,
-                       '/': self.params_type.DIVIDE}
-        self.op_chosen = op_to_const[choose_op]
+        assert self.params_type.fromalias('+') == self.params_type.ADD
+        assert self.params_type.fromalias('-') == self.params_type.SUB
+        assert self.params_type.fromalias('*') == self.params_type.MULTIPLY
+        assert self.params_type.fromalias('/') == self.params_type.DIVIDE
+        assert self.params_type.has_alias(choose_op)
+        self.op_chosen = choose_op
 
     def get_params(self, node):
         return self.op_chosen
@@ -116,6 +117,7 @@ class MyOpEnumList(Op):
                 o[0] = a // b
         else:
             raise NotImplementedError('Unknown op id ' + str(op))
+        o[0] = np.float64(o[0])
 
     def c_code_cache_version(self):
         return (1,)
@@ -204,7 +206,7 @@ class TestEnumTypes(TestCase):
         # Check that invalid enum value raises exception.
         try:
             EnumType(INVALID_VALUE='string is not allowed.')
-        except ValueError:
+        except TypeError:
             pass
         else:
             raise Exception('EnumType with invalid value should fail.')
@@ -217,6 +219,23 @@ class TestEnumTypes(TestCase):
         assert hash(e1) == hash(e2)
         # Check access to attributes.
         assert len((e1.ctype, e1.C1, e1.C2, e1.C3, e1.C4, e1.C5, e1.C6)) == 7
+
+        # Check enum with aliases.
+        e1 = EnumType(A=('alpha', 0), B=('beta', 1), C=2)
+        e2 = EnumType(A=('alpha', 0), B=('beta', 1), C=2)
+        e3 = EnumType(A=('a', 0), B=('beta', 1), C=2)
+        assert e1 == e2
+        assert e1 != e3
+        assert e1.filter('beta') == e1.fromalias('beta') == e1.B == 1
+        assert e1.filter('C') == e1.fromalias('C') == e1.C == 2
+
+        # Check that invalid alias (same as a constant) raises exception.
+        try:
+            EnumList(('A', 'a'), ('B', 'B'))
+        except TypeError:
+            EnumList(('A', 'a'), ('B', 'b'))
+        else:
+            raise Exception('Enum with an alias name equal to a constant name should fail.')
 
     def test_op_with_enumlist(self):
         a = scalar.int32()

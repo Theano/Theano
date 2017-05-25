@@ -105,8 +105,8 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
                 " warn.signal_conv2d_interface to False",
                 stacklevel=3)
 
-        output = tensor.flatten(output.T, outdim=2).T
+        output = tensor.flatten(output.T, ndim=2).T
     elif input.ndim == 2 or filters.ndim == 2:
-        output = tensor.flatten(output.T, outdim=3).T
+        output = tensor.flatten(output.T, ndim=3).T
 
     return output

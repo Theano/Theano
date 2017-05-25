@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
+import itertools
 import numpy as np
 import numpy.linalg
 from numpy.testing import assert_array_almost_equal
@@ -20,7 +21,7 @@ from theano.tensor.nlinalg import (
     AllocDiag, alloc_diag, ExtractDiag, extract_diag, diag,
     trace, Det, det, Eig, eig, Eigh, EighGrad, eigh,
     matrix_dot, _zero_disconnected, qr, matrix_power,
-    norm, svd, TensorInv, tensorinv, tensorsolve)
+    norm, svd, SVD, TensorInv, tensorinv, tensorsolve)
 from nose.plugins.attrib import attr
 
 from nose.plugins.skip import SkipTest
@@ -128,18 +129,46 @@ def test_qr_modes():
         assert "name 'complete' is not defined" in str(e)
 
 
-def test_svd():
-    rng = np.random.RandomState(utt.fetch_seed())
-    A = tensor.matrix("A", dtype=theano.config.floatX)
-    U, V, T = svd(A)
-    fn = function([A], [U, V, T])
-    a = rng.rand(4, 4).astype(theano.config.floatX)
-    n_u, n_v, n_t = np.linalg.svd(a)
-    t_u, t_v, t_t = fn(a)
+class test_SVD(utt.InferShapeTester):
+    op_class = SVD
+    dtype = 'float32'
 
-    assert _allclose(n_u, t_u)
-    assert _allclose(n_v, t_v)
-    assert _allclose(n_t, t_t)
+    def setUp(self):
+        super(test_SVD, self).setUp()
+        self.rng = np.random.RandomState(utt.fetch_seed())
+        self.A = theano.tensor.matrix(dtype=self.dtype)
+        self.op = svd
+
+    def test_svd(self):
+        A = tensor.matrix("A", dtype=self.dtype)
+        U, S, VT = svd(A)
+        fn = function([A], [U, S, VT])
+        a = self.rng.rand(4, 4).astype(self.dtype)
+        n_u, n_s, n_vt = np.linalg.svd(a)
+        t_u, t_s, t_vt = fn(a)
+
+        assert _allclose(n_u, t_u)
+        assert _allclose(n_s, t_s)
+        assert _allclose(n_vt, t_vt)
+
+        fn = function([A], svd(A, compute_uv=False))
+        t_s = fn(a)
+        assert _allclose(n_s, t_s)
+
+    def test_svd_infer_shape(self):
+        self.validate_shape((4, 4), full_matrices=True, compute_uv=True)
+        self.validate_shape((4, 4), full_matrices=False, compute_uv=True)
+        self.validate_shape((2, 4), full_matrices=False, compute_uv=True)
+        self.validate_shape((4, 2), full_matrices=False, compute_uv=True)
+        self.validate_shape((4, 4), compute_uv=False)
+
+    def validate_shape(self, shape, compute_uv=True, full_matrices=True):
+        A = self.A
+        A_v = self.rng.rand(*shape).astype(self.dtype)
+        outputs = self.op(A, full_matrices=full_matrices, compute_uv=compute_uv)
+        if not compute_uv:
+            outputs = [outputs]
+        self._compile_and_check([A], outputs, [A_v], self.op_class, warn=False)
 
 
 def test_tensorsolve():
@@ -403,8 +432,7 @@ class test_Eig(utt.InferShapeTester):
         super(test_Eig, self).setUp()
         self.rng = np.random.RandomState(utt.fetch_seed())
         self.A = theano.tensor.matrix(dtype=self.dtype)
-        self.X = np.asarray(self.rng.rand(5, 5),
-                               dtype=self.dtype)
+        self.X = np.asarray(self.rng.rand(5, 5), dtype=self.dtype)
         self.S = self.X.dot(self.X.T)
 
     def test_infer_shape(self):

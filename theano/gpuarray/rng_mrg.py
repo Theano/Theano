@@ -7,7 +7,7 @@ http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 """
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 
 from theano import Apply, tensor
 from theano.gof import local_optimizer
@@ -38,9 +38,6 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         return Apply(self,
                      [rstate, size],
                      [rstate.type(), output_type])
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
@@ -170,7 +167,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         o_rstate, o_sample = out
         inplace = int(self.inplace)
         ndim = self.output_type.ndim
-        o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
+        o_type_num = np.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
         ctx = sub['params']
         kname = self.gpu_kernels(node, nodename)[0].objvar

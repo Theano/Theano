@@ -4822,33 +4822,46 @@ class Reshape(Op):
             return [(1,) * self.ndim]
 
         requ = node.inputs[1]
+        input_size = mul(*ishapes[0])
         if isinstance(requ, theano.tensor.TensorConstant):
             requ = list(requ.data)
             requ_part = [ele for ele in requ if ele != -1]
             crit = len(requ) - len(requ_part)
             if crit == 1 and len(requ_part) > 0:
-                missing = mul(*ishapes[0]) // mul(*requ_part)
+                # If there are both 0 and -1 in requ_size, it is impossible
+                # to determine a right output, but we can at least prevent
+                # a division by 0. We do not want to keep a negative
+                # size here as it could lead to further weird errors
+                # after other optimizations.
+                requ_size = mul(*requ_part)
+                missing = input_size // (1 if requ_size == 0 else requ_size)
                 for i, ele in enumerate(requ):
                     if ele == -1:
                         requ[i] = missing
             elif crit == 1:  # we reshape to -1
-                requ = [mul(*ishapes[0])] if ishapes[0] else [1]
+                requ = [input_size] if ishapes[0] else [1]
             elif crit > 1:
                 raise ValueError('shape argument to Reshape.perform'
                                  ' must have at most one entry equal to -1')
             return [requ]
         else:
-            new_dims = [node.inputs[1][i] for i in xrange(self.ndim)]
+            requ = [requ[i] for i in xrange(self.ndim)]
             # since new_dims can have negative value (-1), the
             # multiplication of all values should be negated
             # to give a positive value.
             # To avoid optimization complexity, we avoid checking
             # for the case when there are two or more '-1' values.
             if self.ndim:
-                rest_size = (mul(*ishapes[0]) // -mul(*new_dims))
-            return [tuple([switch(eq(new_dims[i], -1),
+                requ_size = -mul(*requ)
+                # If there are both 0 and -1 in requ_size, it is impossible
+                # to determine a right output, but we can at least prevent
+                # a division by 0. We do not want to keep a negative
+                # size here as it could lead to further weird errors
+                # after other optimizations.
+                rest_size = input_size // maximum(requ_size, 1)
+            return [tuple([switch(eq(requ[i], -1),
                                   rest_size,
-                                  new_dims[i])
+                                  requ[i])
                            for i in xrange(self.ndim)])]
 
     def c_code_cache_version(self):
@@ -5060,7 +5073,7 @@ class Flatten(Op):
         """ % locals()
 
 
-def is_flat(var, outdim=1):
+def is_flat(var, ndim=None, outdim=None):
     """
     Verifies the dimensionality of the var is equal to
     outdim. This method is usually called after flatten method on a
@@ -5083,10 +5096,18 @@ def is_flat(var, outdim=1):
         the comparison result of var's dim
         and the expected outdim.
     """
-    return var.ndim == outdim
+    if outdim is None and ndim is None:
+        ndim = 1
+    elif outdim is not None and ndim is not None:
+        raise ValueError("You should only specify ndim")
+    elif outdim is not None:
+        warnings.warn(
+            "flatten outdim parameter is deprecated, use ndim instead.")
+        ndim = outdim
+    return var.ndim == ndim
 
 
-def flatten(x, outdim=1):
+def flatten(x, ndim=None, outdim=None):
     """
     Reshapes the variable x by keeping
     the first outdim-1 dimension size(s) of x the same,
@@ -5098,31 +5119,42 @@ def flatten(x, outdim=1):
         x : theano.tensor.var.TensorVariable
             the variable that should be reshaped.
 
-        outdim : int
+        ndim : int
             the number of dimensions of the returned variable
-
+            Default 1.
+        outdim : int
+            DEPRECATED synonym for ndim
     Returns
     -------
     theano.tensor.var.TensorVariable
         the flattend variable with dimensionality of outdim
     """
-    # Any input variable can be flattened to have outdim of 1,
-    # even if it's a scalar. Otherwise, outdim must be positive
-    # and smaller than x.ndim.
-    if outdim < 1 or (outdim > 1 and outdim > x.ndim):
-        raise ValueError('outdim %s out of bound [1, %d)'
-                         % (outdim, x.ndim + 1))
+    if outdim is None and ndim is None:
+        ndim = 1
+    elif outdim is not None and ndim is not None:
+        raise ValueError("You should only specify ndim")
+    elif outdim is not None:
+        warnings.warn(
+            "flatten outdim parameter is deprecated, use ndim instead.")
 
-    if outdim > 1:
-        dims = tuple(x.shape[:outdim - 1]) + (-1,)
+        ndim = outdim
+    # Any input variable can be flattened to have ndim of 1,
+    # even if it's a scalar. Otherwise, ndim must be positive
+    # and smaller than x.ndim.
+    if ndim < 1 or (ndim > 1 and ndim > x.ndim):
+        raise ValueError('ndim %s out of bound [1, %d)'
+                         % (ndim, x.ndim + 1))
+
+    if ndim > 1:
+        dims = tuple(x.shape[:ndim - 1]) + (-1,)
     else:
         dims = (-1,)
     x_reshaped = x.reshape(dims)
-    bcast_kept_dims = x.broadcastable[:outdim - 1]
-    bcast_new_dim = python_all(x.broadcastable[outdim - 1:])
+    bcast_kept_dims = x.broadcastable[:ndim - 1]
+    bcast_new_dim = python_all(x.broadcastable[ndim - 1:])
     broadcastable = bcast_kept_dims + (bcast_new_dim,)
     x_reshaped = theano.tensor.addbroadcast(
-        x_reshaped, *filter(lambda i: broadcastable[i], range(outdim)))
+        x_reshaped, *filter(lambda i: broadcastable[i], range(ndim)))
     return x_reshaped
 
 

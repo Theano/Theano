@@ -363,7 +363,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             self.assertRaises(ValueError, f, neibs,
                               (1, 1, 3, 320, 320))
             # End up with a step of 0
-            self.assertRaises(ValueError, f, neibs,
+            # This can lead to division by zero in DebugMode
+            self.assertRaises((ValueError, ZeroDivisionError), f, neibs,
                               (3, 320, 320, 1))
 
     def speed_neibs(self):

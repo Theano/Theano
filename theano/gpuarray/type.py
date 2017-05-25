@@ -292,7 +292,10 @@ class GpuArrayType(Type):
                 raise TypeError("Non-unit value on shape on a broadcastable"
                                 " dimension.", shp, self.broadcastable)
         if not isinstance(data, gpuarray.GpuArray):
-            if old_data is not None and old_data.shape == data.shape:
+            if old_data is not None and old_data.shape == data.shape and (
+                # write() only work if the destitation is contiguous.
+                    old_data.flags['C_CONTIGUOUS'] or
+                    old_data.flags['F_CONTIGUOUS']):
                 old_data.write(data)
                 data = old_data
             else:
@@ -658,7 +661,7 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
         notset object.
 
     """
-    if target == 'gpu' or target == 'cpu':
+    if target == 'cpu':
         raise TypeError('not for me')
 
     if not isinstance(value, (np.ndarray, pygpu.gpuarray.GpuArray)):
@@ -667,6 +670,8 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
     if target is notset:
         target = None
         if not gpu_supported(value):
+            raise TypeError('The GPU do not support that value.')
+        if not move_to_gpu(value):
             raise TypeError('We do not move that data by default to the GPU')
     try:
         get_context(target)

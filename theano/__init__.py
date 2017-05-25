@@ -134,7 +134,7 @@ if (config.device.startswith('cuda') or
     import theano.gpuarray
 
 # Use config.numpy to call numpy.seterr
-import numpy
+import numpy as np
 
 if config.numpy.seterr_all == 'None':
     _all = None
@@ -156,7 +156,7 @@ if config.numpy.seterr_invalid == 'None':
     _invalid = None
 else:
     _invalid = config.numpy.seterr_invalid
-numpy.seterr(
+np.seterr(
     all=_all,
     divide=_divide,
     over=_over,

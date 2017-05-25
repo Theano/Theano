@@ -74,9 +74,6 @@ class GpuPool(CGpuKernelBase):
 
         return Apply(self, [inp, ws, stride, pad], [inp.type()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def get_op_params(self):
         ignore_border = int(self.ignore_border)
         max_pool = int(self.mode == 'max')
@@ -194,9 +191,6 @@ class GpuMaxPoolGrad(CGpuKernelBase):
 
         return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
 
@@ -272,9 +266,6 @@ class GpuAveragePoolGrad(CGpuKernelBase):
         pad = theano.tensor.cast(pad, 'int64')
 
         return Apply(self, [inp, out_grad, ws, stride, pad], [inp.type()])
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     def get_op_params(self):
         inc_pad = int(self.mode == 'average_inc_pad')
@@ -355,9 +346,6 @@ class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
 
         return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
     def infer_shape(self, node, in_shapes):
         return [in_shapes[1]]
 
@@ -433,9 +421,6 @@ class GpuMaxPoolRop(CGpuKernelBase):
         pad = theano.tensor.cast(pad, 'int64')
 
         return Apply(self, [inp, eval_point, ws, stride, pad], [eval_point.type()])
-
-    def get_params(self, node):
-        return node.inputs[0].type.context
 
     def get_op_params(self):
         ignore_border = int(self.ignore_border)

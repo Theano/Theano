@@ -526,9 +526,9 @@ import theano and print the config variable, as in:
 .. attribute:: config.warn.ignore_bug_before
 
     String value: ``'None'``, ``'all'``, ``'0.3'``, ``'0.4'``, ``'0.4.1'``, ``'0.5'``,
-    ``'0.6'``, ``'0.7'``, ``'0.8'``, ``'0.8.1'``, ``'0.8.2'``, ``'0.9'``
+    ``'0.6'``, ``'0.7'``, ``'0.8'``, ``'0.8.1'``, ``'0.8.2'``, ``'0.9'``, ``'0.10'``
 
-    Default: ``'0.7'``
+    Default: ``'0.8'``
 
     When we fix a Theano bug that generated bad results under some
     circumstances, we also make Theano raise a warning when it encounters
@@ -678,6 +678,29 @@ import theano and print the config variable, as in:
     3d convolution only support ``'none'``, ``'winograd'``,
     ``'guess_once'``, ``'guess_on_shape_change'``, ``'time_once'``,
     ``'time_on_shape_change'``.
+
+.. attribute:: config.magma.enabled
+
+    String value: ``'True'``, ``'False'``
+
+    Default: ``'False'``
+
+    If ``'True'``, use `magma <http://icl.cs.utk.edu/magma/>`_ for matrix
+    computations.
+
+    If ``'False'``, disable magma.
+
+.. attribute:: config.magma.include_path
+
+    Default: ``''``
+
+    Location of the magma headers.
+
+.. attribute:: config.magma.library_path
+
+    Default: ``''``
+
+    Location of the magma library.
 
 .. attribute:: config.gcc.cxxflags
 

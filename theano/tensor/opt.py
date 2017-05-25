@@ -1069,7 +1069,13 @@ class ShapeFeature(object):
             if s_i < 0:
                 msg = "There is a negative shape in the graph!"
                 msg += gof.utils.get_variable_trace_string(var)
-                raise ValueError(msg)
+                # The rest of the pipeline don't handle correctly this
+                # case.  So we have 2 choices, stop compilation or
+                # consider the shape as unknow.  As we have more
+                # chance to give the stack trace here then later, I
+                # choose that options as it would give better error
+                # message.
+                raise AssertionError(msg)
             return T.constant(s_i, dtype='int64')
         if type(s_i) in (tuple, list):
             # this dimension is the same as many of the inputs
@@ -2954,7 +2960,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
             # sl.stop backwards
             n_val = sl1.stop - 1 - sl2 * sl1.step
             if config.warn.subtensor_merge_bug:
-                _logger.warn((
+                warnings.warn((
                     'Your current code is fine, but Theano versions '
                     'prior to 0.5rc2 might have given an incorrect result. '
                     'To disable this warning, set the Theano flag '
@@ -3467,9 +3473,8 @@ def local_setsubtensor_of_constants(node):
 @register_stabilize
 @gof.local_optimizer([AdvancedSubtensor1])
 def local_adv_sub1_adv_inc_sub1(node):
-    """Optimize the possible AdvSub1(AdvIncSub1(...), ...).
+    """Optimize the possible AdvSub1(AdvSetSub1(...), ...).
 
-    AdvancedSubtensor1(AdvancedIncSubtensor1(0s, y, idx), idx) -> y
     AdvancedSubtensor1(AdvancedSetSubtensor1(x, y, idx), idx) -> y
 
     Notes
@@ -3477,6 +3482,12 @@ def local_adv_sub1_adv_inc_sub1(node):
     This opt add AssertOp. Otherwise, it would remove shape and
     index error. If you want to get rid of them, see the
     :ref:`unsafe_optimization` section.
+
+    WARNING:
+    A previous version of this optimization also matched
+    AdvancedSubtensor1(AdvancedIncSubtensor1(0s, y, idx), idx) -> y
+    This is incorrect when there are duplicate indices.
+    The current version warns the user about potential past issues.
 
     """
     if not isinstance(node.op, AdvancedSubtensor1):
@@ -3496,6 +3507,22 @@ def local_adv_sub1_adv_inc_sub1(node):
             # investigate Alloc of 0s but with non constant shape.
             T.extract_constant(x, elemwise=False) != 0):
         return
+
+    if not inp.owner.op.set_instead_of_inc:
+        if config.warn.inc_subtensor1_opt:
+            warnings.warn(
+                'Your current code is fine, but Theano versions '
+                'between 0.7rc1 and 0.10 (or development versions '
+                'between Nov. 2014 and May 2017) '
+                'might have given incorrect results. This graph has '
+                'following pattern: inc_subtensor(zeros[idx], x)[idx], '
+                'where idx is an array of integers. This used to be '
+                'optimized to "x", which is incorrect if there are '
+                'duplicated indices in idx. '
+                'To disable this warning, set the Theano flag '
+                'warn.inc_subtensor1_opt to False.')
+        return
+
     cond = [T.all(T.and_(T.lt(idx, x.shape[0]), T.ge(idx, -x.shape[0])))]
     if not node.fgraph.shape_feature.same_shape(idx, y, 0, 0):
         cond.append(T.eq(idx.shape[0], y.shape[0]))
@@ -5683,41 +5710,50 @@ def local_opt_alloc(node):
         if node_inps.owner and isinstance(node_inps.owner.op, T.Alloc):
             input = node_inps.owner.inputs[0]
             shapes = node_inps.owner.inputs[1:]
-            if (node.op.axis is None or
-                    node.op.axis == tuple(range(input.ndim))):
-                try:
-                    val = get_scalar_constant_value(input,
-                                                    only_process_constants=True)
-                    assert val.size == 1
-                    # check which type of op
-                    casted = T.mul(*shapes).astype(str(input.dtype))
+            try:
+                val = get_scalar_constant_value(input,
+                                                only_process_constants=True)
+                assert val.size == 1
+                val = val.reshape(1)[0]
+                # check which type of op
+                size = T.mul(*shapes)
+                if input.dtype in ["float16", "float32"]:
+                    # shapes are ints and normally int64.
+                    # We don't want to have a float64 upcast
+                    # We don't want to downcast to float16
+                    # as we fear it could loose too much precision
+                    # that will be amplified by the mul/pow below.
+                    size = size.astype('float32')
+                if (node.op.axis is None or
+                        node.op.axis == tuple(range(input.ndim))):
                     if isinstance(node.op, T.Sum):
-                        val = val.reshape(1)[0] * casted
+                        val = val * size
                     else:
-                        val = val.reshape(1)[0] ** casted
+                        val = val ** size
+                    # Sum can change the input dtype (upcast or bool
+                    # -> float32) by default or by user request.
+                    # We can ignore the acc_dtype, as there is only 1
+                    # elemwise we will do and not a sequence, so there is no
+                    # accumulation of errors.
+                    # So mostly, we just need to cast the output to the old
+                    # dtype.
+                    val = val.astype(node.outputs[0].dtype)
                     return [val]
-
-                except NotScalarConstantError:
-                    pass
-            else:
-                try:
-                    val = get_scalar_constant_value(input,
-                                                    only_process_constants=True)
-                    assert val.size == 1
-                    val = val.reshape(1)[0]
-                    to_prod = [shapes[i] for i in xrange(len(shapes))
-                               if i in node.op.axis]
-                    if to_prod:
-                        casted = T.mul(*to_prod).astype(str(input.dtype))
-                        if isinstance(node.op, T.Sum):
-                            val *= casted
-                        else:
-                            val = val ** casted
-                    return [T.alloc(val,
-                                    *[shapes[i] for i in xrange(len(shapes))
-                                      if i not in node.op.axis])]
-                except NotScalarConstantError:
-                    pass
+                to_prod = [shapes[i] for i in xrange(len(shapes))
+                           if i in node.op.axis]
+                if to_prod:
+                    size = T.mul(*to_prod)
+                    if isinstance(node.op, T.Sum):
+                        val *= size
+                    else:
+                        val = val ** size
+                # See comments above.
+                val = val.astype(node.outputs[0].dtype)
+                return [T.alloc(val,
+                                *[shapes[i] for i in xrange(len(shapes))
+                                  if i not in node.op.axis])]
+            except NotScalarConstantError:
+                pass
 
 
 @register_specialize
@@ -7154,7 +7190,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
                                                 "test_presence_of_c_code",
                                                 ["x" for x in i.owner.inputs],
                                                 ["z" for z in i.owner.outputs],
-                                                {})
+                                                {"fail": "%(fail)s"})
                 except MethodNotDefined:
                     catch = True
                 except NotImplementedError:
@@ -7218,7 +7254,8 @@ your code will run correctly, but may be slower.""")
             s_new_out[0].owner.op.c_code(s_new_out[0].owner,
                                          "test_presence_of_c_code",
                                          ["x" for x in s_g],
-                                         ["z" for x in s_new_out], {})
+                                         ["z" for x in s_new_out],
+                                         {"fail": "%(fail)s"})
         except MethodNotDefined:
             _logger.info(("%s does not implement the c_code function."
                           " As well as being potentially slow, this disables "

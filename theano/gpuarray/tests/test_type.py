@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import os
 
+import nose
 import numpy as np
 
 import theano
@@ -58,6 +59,16 @@ def test_filter_float():
         theano.function([], updates=[(s, 0.0)])
     finally:
         del theano.compile.sharedvalue.shared.constructors[-1]
+
+
+def test_gpuarray_shared_scalar():
+    # By default, we don't put scalar as shared variable on the GPU
+    nose.tools.assert_raises(
+        TypeError, gpuarray_shared_constructor, np.asarray(1, dtype='float32'))
+
+    # But we can force that
+    gpuarray_shared_constructor(np.asarray(1, dtype='float32'),
+                                target=test_ctx_name)
 
 
 def test_unpickle_gpuarray_as_numpy_ndarray_flag0():
@@ -121,3 +132,14 @@ class test_shared_options(object):
 class test_shared_options2(object):
     pass
 """
+
+
+def test_set_value_non_contiguous():
+    s = gpuarray_shared_constructor(
+        np.asarray([[1., 2.], [1., 2.], [5, 6]]))
+    s.set_value(s.get_value(borrow=True, return_internal_type=True)[::2],
+                borrow=True)
+    assert not s.get_value(borrow=True,
+                           return_internal_type=True).flags["C_CONTIGUOUS"]
+    # In the past, this failed
+    s.set_value([[0, 0], [1, 1]])

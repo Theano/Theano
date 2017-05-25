@@ -2658,7 +2658,12 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
 
             dx = np.random.rand(4, 5).astype(dtype1)
             dy = np.random.rand(2, 5).astype(dtype2)
-            didx = np.asarray([1, 3], "int32")
+            # Duplicate the last row of dy
+            dy = np.vstack([dy, dy[-1:]])
+            # Use the same index twice, with the same corresponding value.
+            # That makes set_subtensor well-defined, and tests
+            # duplication for inc_subtensor.
+            didx = np.asarray([1, 3, 3], "int32")
 
             # set_subtensor
             inc = tensor.set_subtensor(x[idx], y)
@@ -2668,11 +2673,8 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             res = f(dx, dy, didx)
             utt.assert_allclose(dy, res)
             topo = f.maker.fgraph.toposort()
-            if opt:
-                assert len(topo) == 1
-                assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
-            else:
-                assert len(topo) == 2
+            assert len(topo) == 1
+            assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
 
             # inc_subtensor(data[idx], y)
             inc = tensor.inc_subtensor(x[idx], y)
@@ -2680,7 +2682,9 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
-            utt.assert_allclose((dx[didx] + dy), res)
+            _dx = dx.copy()
+            np.add.at(_dx, didx, dy)
+            utt.assert_allclose(_dx[didx], res)
             topo = f.maker.fgraph.toposort()
             len(topo) == 2
 
@@ -2690,13 +2694,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
-            utt.assert_allclose(dy, res)
-            topo = f.maker.fgraph.toposort()
-            if opt:
-                assert len(topo) == 1
-                assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
-            else:
-                assert len(topo) > 2
+            utt.assert_allclose(np.vstack([dy[0], 2 * dy[1], 2 * dy[2]]), res)
 
     def test_assert(self):
             x = tensor.matrix("x")
@@ -5560,9 +5558,11 @@ class T_local_sum_prod(unittest.TestCase):
 
 
 class T_local_opt_alloc(unittest.TestCase):
+    dtype = 'float32'
+
     def test_sum_upcast(self):
         s = theano.tensor.lscalar()
-        a = theano.tensor.alloc(np.asarray(5, dtype='float32'), s, s)
+        a = theano.tensor.alloc(np.asarray(5, dtype=self.dtype), s, s)
         orig = theano.config.warn_float64
         theano.config.warn_float64 = "raise"
         try:
@@ -5573,7 +5573,7 @@ class T_local_opt_alloc(unittest.TestCase):
 
     def test_prod_upcast(self):
         s = theano.tensor.lscalar()
-        a = theano.tensor.alloc(np.asarray(5, dtype='float32'), s, s)
+        a = theano.tensor.alloc(np.asarray(5, dtype=self.dtype), s, s)
         orig = theano.config.warn_float64
         theano.config.warn_float64 = "raise"
         try:
@@ -5581,6 +5581,24 @@ class T_local_opt_alloc(unittest.TestCase):
             f(5)
         finally:
             theano.config.warn_float64 = orig
+
+    @theano.configparser.change_flags(on_opt_error='raise')
+    def test_sum_bool_upcast(self):
+        s = theano.tensor.lscalar()
+        a = theano.tensor.alloc(np.asarray(True, dtype='bool'), s, s)
+        f = theano.function([s], a.sum())
+        f(5)
+        # test with user specified dtype
+        f = theano.function([s], a.sum(dtype=self.dtype))
+        f(5)
+        # test only 1 axis summed
+        f = theano.function([s], a.sum(axis=0, dtype=self.dtype))
+        f(5)
+        print(self.dtype)
+
+
+class T_local_opt_alloc_f16(T_local_opt_alloc):
+    dtype = 'float16'
 
 
 class T_local_reduce(unittest.TestCase):
@@ -6224,7 +6242,7 @@ def test_local_flatten_lift():
 
         reshape_nodes = [n for n in topo if isinstance(n.op, tensor.Reshape)]
         assert (len(reshape_nodes) == 1 and
-                tensor.is_flat(reshape_nodes[0].outputs[0], outdim=i))
+                tensor.is_flat(reshape_nodes[0].outputs[0], ndim=i))
         assert isinstance(topo[-1].op, tensor.Elemwise)
 
 

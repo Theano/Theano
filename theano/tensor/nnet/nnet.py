@@ -2452,6 +2452,31 @@ def binary_crossentropy(output, target):
     return -(target * tensor.log(output) + (1.0 - target) * tensor.log(1.0 - output))
 
 
+def sigmoid_binary_crossentropy(output, target):
+    """
+    Compute the cross-entropy of binary random variables.
+
+    `output` should be real-valued (range (-inf, +inf)); `sigmoid` will be
+    applied to produce a (0, 1) valued input.
+
+    `target` is assumed to be probabilities in [0, 1].
+
+    Notes
+    -----
+    Mathematically equivalent to `binary_crossentropy(sigmoid(output), target)`,
+    but with more efficient and numerically stable computation.
+    """
+    def grad(inputs, out_grads):
+        (output, target), (out_grad,) = inputs, out_grads
+        g_output = out_grad * (sigmoid(output) - target)
+        g_target = out_grad * (-output)
+        return [g_output, g_target]
+    inp = [output, target]
+    outp = softplus(-abs(output)) + output * ((output > 0) - target)
+    return theano.OpFromGraph(inp, [outp], grad_overrides=grad, inline=True,
+                              name='sigmoid_binary_crossentropy')(*inp)
+
+
 def categorical_crossentropy(coding_dist, true_dist):
     """
     Return the cross-entropy between an approximating distribution and a true

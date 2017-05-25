@@ -1795,7 +1795,7 @@ class Compiler(object):
             if err is None:
                 err = str(e)
             else:
-                err += "\n" + str(e)
+                err = str(err) + "\n" + str(e)
             compilation_ok = False
 
         if not try_run and not output:

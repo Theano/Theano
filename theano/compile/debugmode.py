@@ -270,9 +270,12 @@ class InvalidValueError(DebugModeError):
     Exception: some Op an output value that is inconsistent with
     the Type of that output.
 
+    Note: If there is only one parameter and it is a string, then we
+    will use it as the error message. This is needed when we catch,
+    extend, and reraise an error.
     """
 
-    def __init__(self, r, v, client_node=None, hint='none',
+    def __init__(self, r, v=None, client_node=None, hint='none',
                  specific_hint='none'):
         super(InvalidValueError, self).__init__()
         self.r = r
@@ -281,7 +284,20 @@ class InvalidValueError(DebugModeError):
         self.hint = hint
         self.specific_hint = specific_hint
 
+        # To allow extending th error message of an existing error.
+        self.full_err = None
+        if isinstance(r, str):
+            assert (v is None and
+                    client_node is None and
+                    hint == 'none' and
+                    specific_hint == 'none')
+            self.full_err = r
+
     def __str__(self):
+        # We have a pre-made message
+        if getattr(self, 'full_err', None) is not None:
+            return self.full_err
+
         r, v = self.r, self.v
         type_r = r.type
         type_v = type(v)

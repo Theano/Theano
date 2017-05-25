@@ -1674,7 +1674,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
             return np.array(plain, o_output.dtype)
         return plain
 
-    t_r = shared(random_projection())
+    t_r = shared(random_projection(), borrow=True)
     t_r.name = 'random_projection'
 
     # random projection of o onto t_r
@@ -1992,6 +1992,38 @@ def zero_grad(x):
         is now truncated to 0.
     """
     return zero_grad_(x)
+
+
+class UndefinedGrad(ViewOp):
+    def grad(self, args, g_outs):
+        return [grad_undefined(self, i, arg) for i, arg in enumerate(args)]
+
+    def R_op(self, inputs, eval_points):
+        return [None]
+
+    def connection_pattern(self, node):
+        return [[True]]
+
+
+undefined_grad_ = UndefinedGrad()
+
+
+def undefined_grad(x):
+    """
+    Consider the gradient of this variable undefined and
+    generate an error message if its gradient is taken.
+
+    The expression itself is unaffected, but when its gradient is
+    computed, or the gradient of another expression that this
+    expression is a subexpression of, an error message will be generated
+    specifying such gradient is not defined.
+
+    :param x: A Theano expression whose gradient should be undefined.
+
+    :return: The expression is returned unmodified, but its gradient
+        is now undefined.
+    """
+    return undefined_grad_(x)
 
 
 class DisconnectedGrad(ViewOp):

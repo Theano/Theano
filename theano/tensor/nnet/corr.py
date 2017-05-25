@@ -7,6 +7,8 @@ from six import integer_types
 import theano
 from theano import Apply
 from theano import gof
+from theano.gof import ParamsType, EnumList
+from theano.scalar import int64
 from theano.tensor import as_tensor_variable, TensorType
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor import blas_headers
@@ -19,6 +21,16 @@ class BaseCorrMM(gof.OpenMPOp):
     """
     Base class for `CorrMM`, `CorrMM_gradWeights` and
     `CorrMM_gradInputs`. Cannot be used directly.
+
+    Every sub-class must define internal attribute ``_direction`` out of __init__().
+    ``_direction`` must take one of following values:
+
+     - "forward" to correlate bottom with weights and store results in top.
+     - "backprop weights" to do a valid convolution of bottom with top
+       (swapping the first two dimensions) and store results in weights.
+     - "backprop inputs" to do a full convolution of top with weights
+       (swapping the first two dimensions) and store results in bottom.
+
     Parameters
     ----------
     border_mode : {'valid', 'full', 'half'}
@@ -31,6 +43,15 @@ class BaseCorrMM(gof.OpenMPOp):
     """
     check_broadcast = False
     __props__ = ('border_mode', 'subsample', 'filter_dilation')
+
+    _direction = None
+
+    params_type = ParamsType(direction=EnumList(('DIRECTION_FORWARD', 'forward'),  # 0
+                                                ('DIRECTION_BACKPROP_WEIGHTS', 'backprop weights'),  # 1
+                                                ('DIRECTION_BACKPROP_INPUTS', 'backprop inputs')),  # 2
+                             dH=int64, dW=int64,
+                             dilH=int64, dilW=int64,
+                             padH=int64, padW=int64)
 
     def __init__(self, border_mode="valid", subsample=(1, 1),
                  filter_dilation=(1, 1), openmp=None):
@@ -73,11 +94,34 @@ class BaseCorrMM(gof.OpenMPOp):
             else:
                 self.blas_type = ''
 
+        if self._direction not in ["forward", "backprop weights", "backprop inputs"]:
+            raise ValueError("_direction must be one of 'forward', "
+                             "'backprop weights', 'backprop inputs'")
+
     @property
     def pad(self):
-        if self.border_mode != 'valid':
+        if self.border_mode == "half":
+            return (-1, -1)
+        elif self.border_mode == "full":
+            return (-2, -2)
+        elif isinstance(self.border_mode, tuple):
             return self.border_mode
-        return (0, 0)
+        else:
+            assert self.border_mode == "valid"
+            return (0, 0)
+
+    # Direction should be converted to real enum value,
+    # as it is compared to integer later in c_code_helper().
+    direction = property(lambda self: self.params_type.enum_from_alias(self._direction))
+
+    dH = property(lambda self: self.subsample[0])
+    dW = property(lambda self: self.subsample[1])
+
+    dilH = property(lambda self: self.filter_dilation[0])
+    dilW = property(lambda self: self.filter_dilation[1])
+
+    padH = property(lambda self: self.pad[0])
+    padW = property(lambda self: self.pad[1])
 
     def __str__(self):
         return '%s{%s, %s, %s}' % (
@@ -123,7 +167,7 @@ class BaseCorrMM(gof.OpenMPOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (5, self.openmp, blas_header_version())
+        return (6, self.openmp, blas_header_version())
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -173,7 +217,7 @@ class BaseCorrMM(gof.OpenMPOp):
             final_code += code
         return final_code % sub
 
-    def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
+    def c_code_helper(self, bottom, weights, top, sub, height=None, width=None):
         """
         This generates the C code for CorrMM (direction="forward"),
         CorrMM_gradWeights (direction="backprop weights"), and
@@ -187,12 +231,6 @@ class BaseCorrMM(gof.OpenMPOp):
             or the gradient of the filters in backprop wrt. weights
         :param top: Variable name of the output images / feature maps in the
             forward pass, or the gradient of the outputs in the backprop passes
-        :param direction: "forward" to correlate bottom with weights and store
-            results in top,
-            "backprop weights" to do a valid convolution of bottom with top
-            (swapping the first two dimensions) and store results in weights,
-            and "backprop inputs" to do a full convolution of top with weights
-            (swapping the first two dimensions) and store results in bottom.
         :param sub: Dictionary of substitutions useable to help generating the
             C code.
         :param height: If self.subsample[0] != 1, a variable giving the height
@@ -208,63 +246,56 @@ class BaseCorrMM(gof.OpenMPOp):
             If self.border_mode == 'half', a variable giving the width of the
             filters for direction="backprop weights".  Ignored otherwise.
         """
-        dH, dW = self.subsample
-        dilH, dilW = self.filter_dilation
-        if self.border_mode == "half":
-            padH = padW = -1
-        elif self.border_mode == "full":
-            padH = padW = -2
-        elif isinstance(self.border_mode, tuple):
-            padH, padW = self.border_mode
-        else:
-            assert self.border_mode == "valid"
-            padH = padW = 0
-        if direction == "forward":
-            direction = 0
-            out = top
-        elif direction == "backprop weights":
-            direction = 1
-            out = weights
-        elif direction == "backprop inputs":
-            direction = 2
-            out = bottom
-        else:
-            raise ValueError("direction must be one of 'forward', "
-                             "'backprop weights', 'backprop inputs'")
+
         # When subsampling, we cannot unambiguously infer the height and width
         # of bottom and weights from top, so we require them to be given.
         # Similarly, when border_mode="half", we cannot infer the weight size.
         if height:
             height = '(*(npy_int64 *)(PyArray_DATA(%s)))' % height
         else:
-            if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
+            if ((self.direction != 0) and (self.dH != 1)) or ((self.direction == 1) and (self.padH == -1)):
                 raise ValueError("height must be given for backprop with vertical sampling or border_mode='half'")
             height = '-1'
         if width:
             width = '(*(npy_int64 *)(PyArray_DATA(%s)))' % width
         else:
-            if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
+            if ((self.direction != 0) and (self.dW != 1)) or ((self.direction == 1) and (self.padW == -1)):
                 raise ValueError("width must be given for backprop with horizontal sampling or border_mode='half'")
             width = '-1'
-        sub = sub.copy()
-        sub.update(locals())
 
         return """
     // Mandatory args
-    int direction = %(direction)s;  // forward, bprop weights, bprop inputs
+    int direction = %(params)s->direction;  // forward, bprop weights, bprop inputs
 
     // Optional args
-    int dH = %(dH)s;
-    int dW = %(dW)s;
-    int dilH = %(dilH)s;
-    int dilW = %(dilW)s;
-    int padH = %(padH)s;
-    int padW = %(padW)s;
+    int dH = %(params)s->dH;
+    int dW = %(params)s->dW;
+    int dilH = %(params)s->dilH;
+    int dilW = %(params)s->dilW;
+    int padH = %(params)s->padH;
+    int padW = %(params)s->padW;
 
     PyArrayObject * bottom = %(bottom)s;
     PyArrayObject * weights = %(weights)s;
     PyArrayObject * top = %(top)s;
     PyArrayObject * out2 = NULL;
+    PyArrayObject **out = NULL;
+
+    switch(%(params)s->direction) {
+        case DIRECTION_FORWARD:
+            out = &%(top)s;
+            break;
+        case DIRECTION_BACKPROP_WEIGHTS:
+            out = &%(weights)s;
+            break;
+        case DIRECTION_BACKPROP_INPUTS:
+            out = &%(bottom)s;
+            break;
+        default:
+            PyErr_SetString(PyExc_ValueError, "CPU CorrMM: Invalid direction.");
+            {%(fail)s}
+            break;
+    }
 
     // Obtain or infer kernel width and height
     // (we need to know it early to be able to handle auto-padding)
@@ -404,15 +435,15 @@ class BaseCorrMM(gof.OpenMPOp):
 
     // Prepare output array
     int typenum;
-    if ( !(%(out)s
-           && PyArray_NDIM(%(out)s)==4
-           && PyArray_IS_C_CONTIGUOUS(%(out)s)
-           && PyArray_DIMS(%(out)s)[0]==out_dim[0]
-           && PyArray_DIMS(%(out)s)[1]==out_dim[1]
-           && PyArray_DIMS(%(out)s)[2]==out_dim[2]
-           && PyArray_DIMS(%(out)s)[3]==out_dim[3]))
+    if ( !(*out
+           && PyArray_NDIM(*out)==4
+           && PyArray_IS_C_CONTIGUOUS(*out)
+           && PyArray_DIMS(*out)[0]==out_dim[0]
+           && PyArray_DIMS(*out)[1]==out_dim[1]
+           && PyArray_DIMS(*out)[2]==out_dim[2]
+           && PyArray_DIMS(*out)[3]==out_dim[3]))
     {
-        Py_XDECREF(%(out)s);
+        Py_XDECREF(*out);
         if (direction != 1) {
           typenum = PyArray_TYPE(weights);
         }
@@ -420,11 +451,11 @@ class BaseCorrMM(gof.OpenMPOp):
           typenum = PyArray_TYPE(bottom);
         }
         //Change to PyArray_ZEROS which is faster than PyArray_EMPTY.
-        %(out)s = (PyArrayObject*)PyArray_ZEROS(4,
+        *out = (PyArrayObject*)PyArray_ZEROS(4,
                                           out_dim,
                                           typenum,
                                           0);
-        if (NULL == %(out)s)
+        if (NULL == *out)
         {
             PyErr_Format(PyExc_RuntimeError,
                     "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
@@ -438,9 +469,10 @@ class BaseCorrMM(gof.OpenMPOp):
     if (out2==NULL){
        %(fail)s
     }
-    assert (out2 == %(out)s);
+    assert (out2 == *out);
 
-""" % sub
+""" % dict(bottom=bottom, weights=weights, top=top, height=height, width=width,
+           fail=sub['fail'], params=sub['params'])
 
 
 class CorrMM(BaseCorrMM):
@@ -472,6 +504,8 @@ class CorrMM(BaseCorrMM):
 
     """
 
+    _direction = "forward"
+
     def make_node(self, img, kern):
         img = as_tensor_variable(img)
         kern = as_tensor_variable(kern)
@@ -500,8 +534,7 @@ class CorrMM(BaseCorrMM):
     def c_code(self, node, nodename, inp, out_, sub):
         bottom, weights = inp
         top, = out_
-        direction = "forward"
-        return super(CorrMM, self).c_code_helper(bottom, weights, top, direction, sub)
+        return super(CorrMM, self).c_code_helper(bottom, weights, top, sub)
 
     def grad(self, inp, grads):
         bottom, weights = inp
@@ -528,6 +561,8 @@ class CorrMM_gradWeights(BaseCorrMM):
     use it as needed.
 
     """
+
+    _direction = "backprop weights"
 
     def make_node(self, img, topgrad, shape=None):
         img = as_tensor_variable(img)
@@ -588,9 +623,8 @@ class CorrMM_gradWeights(BaseCorrMM):
         bottom, top = inp[:2]
         height, width = inp[2:] or (None, None)
         weights, = out_
-        direction = "backprop weights"
         return super(CorrMM_gradWeights,
-                     self).c_code_helper(bottom, weights, top, direction,
+                     self).c_code_helper(bottom, weights, top,
                                          sub, height, width)
 
     def grad(self, inp, grads):
@@ -625,6 +659,8 @@ class CorrMM_gradInputs(BaseCorrMM):
     use it as needed.
 
     """
+
+    _direction = "backprop inputs"
 
     def make_node(self, kern, topgrad, shape=None):
         kern = as_tensor_variable(kern)
@@ -692,9 +728,8 @@ class CorrMM_gradInputs(BaseCorrMM):
         weights, top = inp[:2]
         height, width = inp[2:] or (None, None)
         bottom, = out_
-        direction = "backprop inputs"
         return super(CorrMM_gradInputs,
-                     self).c_code_helper(bottom, weights, top, direction, sub,
+                     self).c_code_helper(bottom, weights, top, sub,
                                          height,
                                          width)
 

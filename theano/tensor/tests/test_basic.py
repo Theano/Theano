@@ -5530,7 +5530,7 @@ def test_flatten_scalar():
     # utt.verify_grad(flatten, [a_val]) #TODO: fix verify_grd to work on scalars
 
 
-def test_flatten_outdim1():
+def test_flatten_ndim1():
     a = dmatrix()
     c = flatten(a, 1)
     f = inplace_func([a], c)
@@ -5543,7 +5543,7 @@ def test_flatten_outdim1():
     utt.verify_grad(flatten, [a_val])
 
 
-def test_flatten_outdim2():
+def test_flatten_ndim2():
     a = dmatrix()
     c = flatten(a, 2)
     f = inplace_func([a], c)
@@ -5552,11 +5552,11 @@ def test_flatten_outdim2():
     f = inplace_func([a], c)
     assert np.all(f(a_val) == a_val)
 
-    flatten_2 = partial(flatten, outdim=2)
+    flatten_2 = partial(flatten, ndim=2)
     utt.verify_grad(flatten_2, [a_val])
 
 
-def test_flatten_outdim2_of_3():
+def test_flatten_ndim2_of_3():
     a = TensorType('float64', (False, False, False))()
     c = flatten(a, 2)
     f = inplace_func([a], c)
@@ -5567,6 +5567,9 @@ def test_flatten_outdim2_of_3():
     f = inplace_func([a], c)
     assert np.all(f(a_val) == c_val)
 
+    flatten_2 = partial(flatten, ndim=2)
+    utt.verify_grad(flatten_2, [a_val])
+    # test outdim parameter name
     flatten_2 = partial(flatten, outdim=2)
     utt.verify_grad(flatten_2, [a_val])
 
@@ -5576,27 +5579,27 @@ def test_flatten_broadcastable():
     # that of the input
 
     inp = TensorType('float64', (False, False, False, False))()
-    out = flatten(inp, outdim=2)
+    out = flatten(inp, ndim=2)
     assert out.broadcastable == (False, False)
 
     inp = TensorType('float64', (False, False, False, True))()
-    out = flatten(inp, outdim=2)
+    out = flatten(inp, ndim=2)
     assert out.broadcastable == (False, False)
 
     inp = TensorType('float64', (False, True, False, True))()
-    out = flatten(inp, outdim=2)
+    out = flatten(inp, ndim=2)
     assert out.broadcastable == (False, False)
 
     inp = TensorType('float64', (False, True, True, True))()
-    out = flatten(inp, outdim=2)
+    out = flatten(inp, ndim=2)
     assert out.broadcastable == (False, True)
 
     inp = TensorType('float64', (True, False, True, True))()
-    out = flatten(inp, outdim=3)
+    out = flatten(inp, ndim=3)
     assert out.broadcastable == (True, False, True)
 
 
-def test_flatten_outdim_invalid():
+def test_flatten_ndim_invalid():
     a = dmatrix()
     assert_raises(ValueError, flatten, a, 3)
     assert_raises(ValueError, flatten, a, 0)
@@ -5610,25 +5613,25 @@ def test_is_flat():
     # Constant variable
     assert tensor.is_flat(tensor.as_tensor_variable(np.zeros((10))))
     assert tensor.is_flat(tensor.as_tensor_variable(np.zeros((10, 10, 10))),
-                          outdim=3)
+                          ndim=3)
     assert not tensor.is_flat(
         tensor.as_tensor_variable(np.zeros((10, 10, 10))))
 
     # Symbolic variable
     assert tensor.is_flat(tensor.vector())
-    assert tensor.is_flat(tensor.tensor3(), outdim=3)
+    assert tensor.is_flat(tensor.tensor3(), ndim=3)
     assert not tensor.is_flat(tensor.tensor3())
 
     # Reshape with constant shape
     X = tensor.tensor4()
     assert tensor.is_flat(X.reshape((-1, )))
-    assert tensor.is_flat(X.reshape((10, 10, -1)), outdim=3)
+    assert tensor.is_flat(X.reshape((10, 10, -1)), ndim=3)
     assert not tensor.is_flat(X.reshape((10, 10, -1)))
 
     # Reshape with symbolic shape
     X = tensor.tensor4()
     assert tensor.is_flat(X.reshape((tensor.iscalar(), )))
-    assert tensor.is_flat(X.reshape((tensor.iscalar(), ) * 3), outdim=3)
+    assert tensor.is_flat(X.reshape((tensor.iscalar(), ) * 3), ndim=3)
     assert not tensor.is_flat(X.reshape((tensor.iscalar(), ) * 3))
 
 

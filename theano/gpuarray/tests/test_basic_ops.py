@@ -351,12 +351,19 @@ class G_Join_and_Split(test_basic.T_Join_and_Split):
         # this is to avoid errors with limited devices
         self.floatX = 'float32'
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
-        self.shared = gpuarray_shared_constructor
+
+        def shared(x, **kwargs):
+            return gpuarray_shared_constructor(x, target=test_ctx_name,
+                                               **kwargs)
+        self.shared = shared
 
     def test_gpusplit_opt(self):
+        # Test that we move the node to the GPU
+        # Also test float16 computation at the same time.
         rng = np.random.RandomState(seed=utt.fetch_seed())
-        m = self.shared(rng.rand(4, 6).astype(self.floatX))
+        m = self.shared(rng.rand(4, 6).astype('float16'))
         o = T.Split(2)(m, 0, [2, 2])
+        assert o[0].dtype == 'float16'
         f = theano.function([], o, mode=self.mode)
         assert any([isinstance(node.op, self.split_op_class)
                     for node in f.maker.fgraph.toposort()])
@@ -474,13 +481,12 @@ def test_hostfromgpu_shape_i():
 
 
 def test_Gpujoin_inplace():
-    """Test Gpujoin to work inplace.
-
-    This function tests the case when several elements are passed to the
-    Gpujoin function but all except one of them are empty. In this case
-    Gpujoin should work inplace and the output should be the view of the
-    non-empty element.
-    """
+    # Test Gpujoin to work inplace.
+    #
+    # This function tests the case when several elements are passed to the
+    # Gpujoin function but all except one of them are empty. In this case
+    # Gpujoin should work inplace and the output should be the view of the
+    # non-empty element.
     s = T.lscalar()
     data = np.array([3, 4, 5], dtype=theano.config.floatX)
     x = gpuarray_shared_constructor(data, borrow=True)
@@ -490,5 +496,6 @@ def test_Gpujoin_inplace():
     c = join(0, x, z)
 
     f = theano.function([s], theano.Out(c, borrow=True))
-    assert x.get_value(borrow=True, return_internal_type=True) is f(0)
+    if not isinstance(mode_with_gpu, theano.compile.DebugMode):
+        assert x.get_value(borrow=True, return_internal_type=True) is f(0)
     assert np.allclose(f(0), [3, 4, 5])
