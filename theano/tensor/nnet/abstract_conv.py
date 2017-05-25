@@ -1397,7 +1397,7 @@ class BaseAbstractConv(Op):
 
     def __init__(self, convdim,
                  imshp=None, kshp=None, border_mode="valid",
-                 subsample=None, filter_flip=True, filter_dilation=None, num_groups=2):
+                 subsample=None, filter_flip=True, filter_dilation=None, num_groups=1):
 
         self.convdim = convdim
         if convdim not in (2, 3):
