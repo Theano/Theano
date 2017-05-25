@@ -56,6 +56,8 @@ def get_conv_output_shape(image_shape, kernel_shape,
         possibly depth) axis.
     filter_dilation: tuple of int (symbolic or numeric). Its two or three
         elements correspond respectively to the dilation on height and width axis.
+    num_groups: An int which specifies the number of separate groups the
+        inputs and filters need to be divided into.
 
     Returns
     -------
