@@ -271,6 +271,7 @@ class OpFromGraph(gof.Op):
         is_inline = self.is_inline
         return '%(name)s{inline=%(is_inline)s}' % locals()
 
+    @theano.configparser.change_flags(compute_test_value='off')
     def _recompute_grad_op(self):
         '''
         converts self._grad_op from user supplied form to type(self) instance
