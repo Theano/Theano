@@ -66,6 +66,7 @@ class SoftmaxWithBias(gof.Op):
         x = tensor.as_tensor_variable(x)
         b = tensor.as_tensor_variable(b)
         axis = tensor.as_tensor_variable(axis)
+        # Check if axis is an integer
         if axis.type.dtype not in tensor.int_dtypes:
             raise ValueError('axis must be an integer. Got ', axis.type)
         if x.type.dtype not in tensor.float_dtypes:
@@ -367,7 +368,7 @@ class Abstract_SoftmaxGrad(gof.Op):
         g_dy = tmp * sm
         tmp2 = tensor.sum(dy * sm, axis=ax.eval(), keepdims=True)
         g_sm = tmp * dy - g * tmp2
-        g_ax = DisconnectedType()()
+        g_ax = theano.gradient.grad_undefined(self, 2, ax)
         return g_dy, g_sm, g_ax
 
     def infer_shape(self, node, shape):
@@ -389,6 +390,7 @@ class SoftmaxGrad(Abstract_SoftmaxGrad):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
         axis = tensor.as_tensor_variable(axis)
+        # Check if axis is an integer
         if axis.type.dtype not in tensor.int_dtypes:
             raise ValueError('axis must be an integer. Got ', axis.type)
         if dy.type.dtype not in tensor.float_dtypes:
@@ -537,7 +539,11 @@ softmax_grad = SoftmaxGrad()
 
 class Abstract_softmax(gof.Op):
     """
-    Similar to Argmax Op
+    Softmax activation function
+    :math:`\\varphi(\\mathbf{x})_j =
+    \\frac{e^{\mathbf{x}_j}}{\sum_{k=1}^K e^{\mathbf{x}_k}}`
+    where :math:`K` is the total number of neurons in the layer. This
+    activation function gets applied on the selected axes (Default axis is the last).
     """
     nin = 2  # tensor, axis
     nout = 1
@@ -550,7 +556,6 @@ class Abstract_softmax(gof.Op):
         # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
-
         inputs = [x, axis]
         return Apply(self, inputs, [x.type()])
 
@@ -563,10 +568,10 @@ class Abstract_softmax(gof.Op):
         output_storage[0][0] = sm
 
     def L_op(self, inp, outputs, grads):
-        x, ax = inp
+        x, axes = inp
         g_sm, = grads
-        # TO INVESTIGATE
-        return [abstract_softmax_grad(g_sm, outputs[0], ax.eval()), DisconnectedType()()]
+        axes_grad = theano.gradient.grad_undefined(self, 1, axes)
+        return [abstract_softmax_grad(g_sm, outputs[0], axes), axes_grad]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
@@ -587,8 +592,8 @@ class Softmax(Abstract_softmax):
     :math:`\\varphi(\\mathbf{x})_j =
     \\frac{e^{\mathbf{x}_j}}{\sum_{k=1}^K e^{\mathbf{x}_k}}`
     where :math:`K` is the total number of neurons in the layer. This
-    activation function gets applied row-wise.
-
+    activation function gets applied on the selected axis (Default axis is the last).
+    This function get applied when axis is a scalar and uses a fast C optimization.
     """
 
     nin = 2
@@ -600,12 +605,16 @@ class Softmax(Abstract_softmax):
         axis = tensor.as_tensor_variable(axis)
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
-        if axis.type.dtype not in tensor.int_dtypes:
-            raise ValueError('axis must be an integer. Got ', axis.type)
-        # Make axis entries non-negative, and sort them
+        # Check if axis is an integer
         if axis.type.dtype not in tensor.int_dtypes:
             raise ValueError('axis must be an integer. Got ', axis.type)
         return Apply(self, [x, axis], [x.type()])
+
+    def L_op(self, inp, outputs, grads):
+        x, axes = inp
+        g_sm, = grads
+        axes_grad = theano.gradient.grad_undefined(self, 1, axes)
+        return [softmax_grad(g_sm, outputs[0], axes), axes_grad]
 
     def c_headers(self):
         return ['<iostream>', '<cmath>']
@@ -793,8 +802,7 @@ class Abstract_logsoftmax(gof.Op):
     :math:`\\varphi(\\mathbf{x})_j =
     \\e^{(\mathbf{x}_j - log{\sum_{k=1}^K e^{\mathbf{x}_k})}}
     where :math:`K` is the total number of neurons in the layer. This
-    activation function gets applied row-wise.
-
+    activation function gets applied on the selected axes (Default axis is the last).
     """
     __props__ = ()
 
@@ -839,15 +847,16 @@ class LogSoftmax(Abstract_logsoftmax):
     LogSoftmax activation function
     :math:`\\varphi(\\mathbf{x})_j =
     \\e^{(\mathbf{x}_j - log{\sum_{k=1}^K e^{\mathbf{x}_k})}}
-    where :math:`K` is the total number of neurons in the layer. This
-    activation function gets applied row-wise.
-
+    where :math:`K` is the total number of neurons in the layer.  This
+    activation function gets applied on the selected axis (Default axis is the last).
+    This function get applied when axis is a scalar and uses a fast C optimization.
     """
     __props__ = ()
 
     def make_node(self, x, axis=-1):
         x = tensor.as_tensor_variable(x)
         axis = tensor.as_tensor_variable(axis)
+        # Check if axis is an integer
         if axis.type.dtype not in tensor.int_dtypes:
             raise ValueError('axis must be an integer. Got ', axis.type)
         if x.type.dtype not in tensor.float_dtypes:
@@ -1180,7 +1189,7 @@ def softmax(c, axis=(-1)):
                     'Invalid axis: %s (the number of dimensions of the '
                     'input is: %s)' % (ax, c.type.ndim))
 
-    return abstract_softmax_op(c, axis)
+    return softmax_op(c, axis)
 
 
 def logsoftmax(c, axis=(-1,)):
@@ -1225,7 +1234,7 @@ def logsoftmax(c, axis=(-1,)):
                     'Invalid axis: %s (the number of dimensions of the '
                     'input is: %s)' % (ax, c.type.ndim))
 
-    return abstract_logsoftmax_op(c, axis)
+    return logsoftmax_op(c, axis)
 
 
 @opt.register_specialize('fast_compile_gpu')
