@@ -132,6 +132,7 @@ fail:
     magma_free_pinned(work_data);
   if (iwork_data != NULL)
     magma_free_cpu(iwork_data);
+  Py_XDECREF(A);
   cuda_exit(c->ctx);
   return res;
 }
