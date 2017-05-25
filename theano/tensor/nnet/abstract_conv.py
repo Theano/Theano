@@ -1523,6 +1523,8 @@ class BaseAbstractConv(Op):
                      ] = kern
 
         if self.convdim == 2:
+            if img.shape[1] % self.num_groups != 0:
+                raise ValueError("Number of input channels must be divisible by num_groups")
             val = _valfrommode(mode)
             bval = _bvalfromboundary('fill')
             input_channel_offset = img.shape[1] // self.num_groups
