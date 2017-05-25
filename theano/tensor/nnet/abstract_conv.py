@@ -66,7 +66,7 @@ def get_conv_output_shape(image_shape, kernel_shape,
     """
     bsize, imshp = image_shape[0], image_shape[2:]
     nkern, kshp = kernel_shape[0], kernel_shape[2:]
-    if nkern is not None:
+    if nkern is not None and num_groups > 1:
         nkern = nkern * num_groups
     if filter_dilation is None:
         filter_dilation = np.ones(len(subsample), dtype='int')
