@@ -18,7 +18,6 @@ from theano.gof import Apply, Constant, Op, Variable
 from theano.gof.type import Generic
 
 from theano.tensor import elemwise
-from theano.tensor.utils import check_and_normalize_axes
 from theano.tensor.var import (AsTensorError, TensorVariable,
                                TensorConstant, TensorConstantSignature,
                                _tensor_py_operators)
@@ -967,6 +966,53 @@ def _pack(x):
         return list(x)
     except TypeError:
         return [x]
+
+
+def check_and_normalize_axes(x, axis):
+    """
+    Check axes, normalize and convert them to a Python list of integers.
+    Return an empty list if argument is None.
+
+    Parameters
+    ----------
+    x: Tensor variable
+    axis = Integer, tuple or list of integers
+
+    Returns
+    -------
+    axis: list of integers
+    """
+    x = as_tensor_variable(x)
+    if axis is None:
+        axis = []
+    elif (isinstance(axis, (integer_types, np.integer)) or
+            (isinstance(axis, np.ndarray) and axis.ndim == 0)):
+                axis = [int(axis)]
+    elif isinstance(axis, (tuple, list, np.ndarray)):
+        axis = [int(i) for i in axis]
+    elif isinstance(axis, Variable):
+        if NoneConst.equals(axis):
+            axis = []
+        elif not isinstance(axis, TensorConstant):
+            raise TypeError("Computation needs a constant axis. Got %s" % axis)
+        else:
+            assert axis.dtype in integer_dtypes
+            if (isinstance(axis.data, (integer_types, np.integer)) or
+                    (isinstance(axis.data, np.ndarray) and axis.data.ndim == 0)):
+                        axis = [int(axis.data)]
+            elif isinstance(axis.data, (list, np.ndarray)):
+                axis = [int(i) for i in axis.data]
+    else:
+        axis = []
+    if len(axis) > 0:
+        for i in range(len(axis)):
+            if axis[i] < 0:
+                axis[i] += x.type.ndim
+            if axis[i] < 0 or axis[i] >= x.type.ndim:
+                raise ValueError("Computation needs a valid axis number for %d-D tensor. Got %d" % (x.type.ndim, axis[i]))
+        axis = list(set(axis))
+        axis.sort()
+    return axis
 
 
 #########################
