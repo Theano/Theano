@@ -800,6 +800,15 @@ AddConfigVar(
 
 
 AddConfigVar(
+    'build_infer_shape',
+    ("If 'True', Theano will try to infer the shape while building the graph."
+     "In the future, that will be the default."),
+    # TODO: set False by default! (currently shared var consider shp constant).
+    BoolParam(True),
+    in_c_key=False)
+
+
+AddConfigVar(
     'print_test_value',
     ("If 'True', the __eval__ of a Theano variable will return its test_value "
      "when this is available. This has the practical conseguence that, e.g., "
