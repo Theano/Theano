@@ -58,7 +58,7 @@ class SoftmaxWithBias(gof.Op):
 
     """
 
-    nin = 3
+    nin = 3 # Tensor, bias, axis
     nout = 1
     __props__ = ()
 
@@ -567,21 +567,15 @@ class Abstract_softmax(gof.Op):
 
     def L_op(self, inp, outputs, grads):
         x, axes = inp
-        # To investigate
-        if len(grads) == 2:
-            g_sm, tmp = grads
-        else:
-            g_sm, = grads
+        g_sm, = grads
         axes_grad = theano.gradient.grad_undefined(self, 1, axes)
         return [abstract_softmax_grad(g_sm, outputs[0], axes), axes_grad]
 
     def R_op(self, inputs, eval_points):
-        # I think the Jacobian is symmetric so the R_op
-        # is the same as the grad
-        if None in eval_points:
-            return [None, None]
-        print(eval_points)
-        return self.L_op(inputs, [self(*inputs)], eval_points)
+        # The Jacobian is symmetric so the R_op is the same as the grad
+        if eval_points[0] is None:
+            return [None]
+        return self.L_op(inputs, [self(*inputs)], [eval_points[0]])
 
     def infer_shape(self, node, shape):
         return [shape[0]]
@@ -599,7 +593,7 @@ class Softmax(Abstract_softmax):
     This function get applied when axis is a scalar and uses a fast C optimization.
     """
 
-    nin = 2
+    nin = 2 # tensor, axis
     nout = 1
     __props__ = ()
 
@@ -615,11 +609,7 @@ class Softmax(Abstract_softmax):
 
     def L_op(self, inp, outputs, grads):
         x, axes = inp
-        # To investigate
-        if len(grads) == 2:
-            g_sm, tmp = grads
-        else:
-            g_sm, = grads
+        g_sm, = grads
         axes_grad = theano.gradient.grad_undefined(self, 1, axes)
         return [softmax_grad(g_sm, outputs[0], axes), axes_grad]
 
@@ -1612,7 +1602,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 class CrossentropySoftmax1HotWithBiasDx(gof.Op):
     """
     Gradient wrt x of the CrossentropySoftmaxArgmax1HotWithBias Op.
-
+    It is applied on the last axis.
     """
 
     nin = 4
@@ -1623,6 +1613,7 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
         y_idx = tensor.as_tensor_variable(y_idx)
+        # Select the last axis
         axis = tensor.constant(-1)
         if (dy.type.ndim > 1 or
                 dy.type.dtype not in tensor.float_dtypes):
