@@ -640,9 +640,10 @@ class PureOp(object):
                     if s is None:
                         s = theano.scalar.int64()
                         s = theano.tensor.lscalar()
-                        shp[idx] = s
                     else:
                         assert s >= 0
+                        s = theano.tensor.constant(s, dtype='int64')
+                    shp[idx] = s
                 return tuple(shp)
 
             inp_shps = [get_shape(x) for x in node.inputs]
@@ -661,6 +662,7 @@ class PureOp(object):
                         s = theano.tensor.get_scalar_constant_value(s)
                         # We want python int, not numpy array.
                         s = int(s)
+                        assert s >= 0
                     except theano.tensor.NotScalarConstantError:
                         s = None
                     shp[idx] = s
