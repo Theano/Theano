@@ -1435,6 +1435,7 @@ class Argmax(Op):
             axis = NoneConst.clone()
             all_axes = list(range(x.ndim))
         else:
+            all_axes = axis
             axis = _as_tensor_variable(axis)
             assert axis.ndim == 1
         inputs = [x, axis]
