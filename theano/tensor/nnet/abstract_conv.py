@@ -1478,6 +1478,9 @@ class BaseAbstractConv(Op):
     def flops(self, inp, outp):
         """ Useful with the hack in profiling to print the MFlops"""
         if self.convdim == 2:
+            if self.num_groups > 1:
+                raise NotImplementedError(
+                    'flops not implemented for grouped convolution')
             # if the output shape is correct, then this gives the correct
             # flops for any direction, sampling, padding, and border mode
             inputs, filters = inp
@@ -1648,6 +1651,9 @@ class AbstractConv(BaseAbstractConv):
         o[0] = node.outputs[0].type.filter(conv_out)
 
     def R_op(self, inputs, eval_points):
+        if self.num_groups > 1:
+            raise NotImplementedError(
+                'Rop not implemented for grouped convolutions')
         rval = None
         if eval_points[0] is not None:
             rval = self.make_node(eval_points[0], inputs[1]).outputs[0]
