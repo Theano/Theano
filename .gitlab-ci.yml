@@ -189,12 +189,6 @@ L0_convnet_benchmarks_googlenet:
       TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-googlenet.sh"
 
-L0_convnet_benchmarks_pylearn2:
-    <<: *L0_TEST
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
-      TEST_SCRIPT: "./test-pylearn2.sh"
-
 L1_mnist_sgd:
     <<: *L1_TEST
     variables:
