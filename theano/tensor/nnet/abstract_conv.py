@@ -33,7 +33,8 @@ _logger = logging.getLogger("theano.tensor.nnet.abstract_conv")
 
 def get_conv_output_shape(image_shape, kernel_shape,
                           border_mode, subsample,
-                          filter_dilation=None, num_groups=1):
+                          filter_dilation=None,
+                          num_groups=1):
     """
     This function compute the output shape of convolution operation.
 
@@ -515,7 +516,8 @@ def conv2d(input,
            border_mode='valid',
            subsample=(1, 1),
            filter_flip=True,
-           filter_dilation=(1, 1), num_groups=1):
+           filter_dilation=(1, 1),
+           num_groups=1):
     """This function will build the symbolic graph for convolving a mini-batch of a
     stack of 2D inputs with a set of 2D filters. The implementation is modelled
     after Convolutional Neural Networks (CNN).
@@ -530,7 +532,8 @@ def conv2d(input,
                              border_mode=border_mode,
                              subsample=subsample,
                              filter_flip=filter_flip,
-                             filter_dilation=filter_dilation, num_groups=num_groups)
+                             filter_dilation=filter_dilation,
+                             num_groups=num_groups)
     return conv_op(input, filters)
 
 
@@ -1567,13 +1570,15 @@ class AbstractConv(BaseAbstractConv):
                  border_mode="valid",
                  subsample=None,
                  filter_flip=True,
-                 filter_dilation=None, num_groups=1):
+                 filter_dilation=None,
+                 num_groups=1):
         super(AbstractConv, self).__init__(convdim=convdim,
                                            imshp=imshp, kshp=kshp,
                                            border_mode=border_mode,
                                            subsample=subsample,
                                            filter_flip=filter_flip,
-                                           filter_dilation=filter_dilation, num_groups=num_groups)
+                                           filter_dilation=filter_dilation,
+                                           num_groups=num_groups)
 
     def make_node(self, img, kern):
         # Make sure both inputs are Variables with the same Type
@@ -1682,13 +1687,15 @@ class AbstractConv2d(AbstractConv):
                  border_mode="valid",
                  subsample=(1, 1),
                  filter_flip=True,
-                 filter_dilation=(1, 1), num_groups=1):
+                 filter_dilation=(1, 1),
+                 num_groups=1):
         super(AbstractConv2d, self).__init__(convdim=2,
                                              imshp=imshp, kshp=kshp,
                                              border_mode=border_mode,
                                              subsample=subsample,
                                              filter_flip=filter_flip,
-                                             filter_dilation=filter_dilation, num_groups=num_groups)
+                                             filter_dilation=filter_dilation,
+                                             num_groups=num_groups)
 
     def grad(self, inp, grads):
         bottom, weights = inp
@@ -1698,13 +1705,15 @@ class AbstractConv2d(AbstractConv):
                                              self.border_mode,
                                              self.subsample,
                                              self.filter_flip,
-                                             self.filter_dilation, num_groups=self.num_groups)(
+                                             self.filter_dilation,
+                                             num_groups=self.num_groups)(
             weights, top, bottom.shape[-2:], add_assert_shape=False)
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
                                                self.border_mode,
                                                self.subsample,
                                                self.filter_flip,
-                                               self.filter_dilation, num_groups=self.num_groups)(
+                                               self.filter_dilation,
+                                               num_groups=self.num_groups)(
 
             bottom, top, weights.shape[-2:], add_assert_shape=False)
 
@@ -1786,13 +1795,15 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                  border_mode="valid",
                  subsample=None,
                  filter_flip=True,
-                 filter_dilation=None, num_groups=1):
+                 filter_dilation=None,
+                 num_groups=1):
         super(AbstractConv_gradWeights, self).__init__(convdim=convdim,
                                                        imshp=imshp, kshp=kshp,
                                                        border_mode=border_mode,
                                                        subsample=subsample,
                                                        filter_flip=filter_flip,
-                                                       filter_dilation=filter_dilation, num_groups=num_groups)
+                                                       filter_dilation=filter_dilation,
+                                                       num_groups=num_groups)
 
     # Update shape/height_width
     def make_node(self, img, topgrad, shape, add_assert_shape=True):
@@ -1930,13 +1941,15 @@ class AbstractConv2d_gradWeights(AbstractConv_gradWeights):
                  border_mode="valid",
                  subsample=(1, 1),
                  filter_flip=True,
-                 filter_dilation=(1, 1), num_groups=1):
+                 filter_dilation=(1, 1),
+                 num_groups=1):
         super(AbstractConv2d_gradWeights, self).__init__(convdim=2,
                                                          imshp=imshp, kshp=kshp,
                                                          border_mode=border_mode,
                                                          subsample=subsample,
                                                          filter_flip=filter_flip,
-                                                         filter_dilation=filter_dilation, num_groups=num_groups)
+                                                         filter_dilation=filter_dilation,
+                                                         num_groups=num_groups)
 
     def grad(self, inp, grads):
         bottom, top = inp[:2]
@@ -2040,13 +2053,15 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                  border_mode="valid",
                  subsample=None,
                  filter_flip=True,
-                 filter_dilation=None, num_groups=1):
+                 filter_dilation=None,
+                 num_groups=1):
         super(AbstractConv_gradInputs, self).__init__(convdim=convdim,
                                                       imshp=imshp, kshp=kshp,
                                                       border_mode=border_mode,
                                                       subsample=subsample,
                                                       filter_flip=filter_flip,
-                                                      filter_dilation=filter_dilation, num_groups=num_groups)
+                                                      filter_dilation=filter_dilation,
+                                                      num_groups=num_groups)
 
     # Update shape/height_width
     def make_node(self, kern, topgrad, shape, add_assert_shape=True):
@@ -2180,13 +2195,15 @@ class AbstractConv2d_gradInputs(AbstractConv_gradInputs):
                  border_mode="valid",
                  subsample=(1, 1),
                  filter_flip=True,
-                 filter_dilation=(1, 1), num_groups=1):
+                 filter_dilation=(1, 1),
+                 num_groups=1):
         super(AbstractConv2d_gradInputs, self).__init__(convdim=2,
                                                         imshp=imshp, kshp=kshp,
                                                         border_mode=border_mode,
                                                         subsample=subsample,
                                                         filter_flip=filter_flip,
-                                                        filter_dilation=filter_dilation, num_groups=num_groups)
+                                                        filter_dilation=filter_dilation,
+                                                        num_groups=num_groups)
 
     def grad(self, inp, grads):
         weights, top = inp[:2]
