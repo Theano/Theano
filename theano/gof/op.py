@@ -8,6 +8,7 @@ compatible with `gof`'s :doc:`graph` routines.
 from __future__ import absolute_import, print_function, division
 
 import inspect
+from itertools import count
 import logging
 import numpy as np
 import os
@@ -615,7 +616,6 @@ class PureOp(object):
         node = self.make_node(*inputs, **kwargs)
 
         # Infer shape
-        # TODO: Re-init auto_name temporary.
         if hasattr(node.op, 'infer_shape') and theano.config.build_infer_shape:
             def get_shape(x):
                 shp = None
@@ -636,14 +636,21 @@ class PureOp(object):
                 if shp is None:
                     return shp
                 shp = list(shp)
-                for idx, s in enumerate(shp):
-                    if s is None:
-                        s = theano.scalar.int64()
-                        s = theano.tensor.lscalar()
-                    else:
-                        assert s >= 0
-                        s = theano.tensor.constant(s, dtype='int64')
-                    shp[idx] = s
+                try:
+                    # Don't change the auto_name
+                    autoname_id = next(graph.Variable.__count__)
+                    graph.Variable.__count__ = count(autoname_id)
+
+                    for idx, s in enumerate(shp):
+                        if s is None:
+                            s = theano.scalar.int64()
+                            s = theano.tensor.lscalar()
+                        else:
+                            assert s >= 0
+                            s = theano.tensor.constant(s, dtype='int64')
+                        shp[idx] = s
+                finally:
+                    graph.Variable.__count__ = count(autoname_id)
                 return tuple(shp)
 
             inp_shps = [get_shape(x) for x in node.inputs]
