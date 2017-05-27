@@ -12,7 +12,7 @@ class SparseTensorSharedVariable(_sparse_py_operators, SharedVariable):
 
 @shared_constructor
 def sparse_constructor(value, name=None, strict=False, allow_downcast=None,
-                       borrow=False, format=None):
+                       borrow=False, format=None, const_shape=None):
     """
     SharedVariable Constructor for SparseType.
 
