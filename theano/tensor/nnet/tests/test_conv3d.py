@@ -122,15 +122,20 @@ class TestConv3D(utt.InferShapeTester):
         mode = copy.copy(theano.compile.mode.get_default_mode())
         mode.check_py_code = False
 
-        self.W = shared(N.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX))
+        self.W = shared(N.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX),
+                        const_shape=False)
         self.W.name = 'W'
-        self.b = shared(N.zeros(1, dtype=floatX))
+        self.b = shared(N.zeros(1, dtype=floatX),
+                        const_shape=False)
         self.b.name = 'b'
-        self.rb = shared(N.zeros(1, dtype=floatX))
+        self.rb = shared(N.zeros(1, dtype=floatX),
+                         const_shape=False)
         self.rb.name = 'rb'
-        self.V = shared(N.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX))
+        self.V = shared(N.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX),
+                        const_shape=False)
         self.V.name = 'V'
-        self.d = shared(N.ndarray(shape=(3, ), dtype=int))
+        self.d = shared(N.ndarray(shape=(3, ), dtype=int),
+                        const_shape=False)
         self.d.name = 'd'
 
         self.H = conv3D(self.V, self.W, self.b, self.d)

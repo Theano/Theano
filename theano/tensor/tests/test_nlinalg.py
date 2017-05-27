@@ -353,7 +353,7 @@ class test_diag(unittest.TestCase):
     def test_extract_diag(self):
         rng = np.random.RandomState(utt.fetch_seed())
         m = rng.rand(2, 3).astype(self.floatX)
-        x = self.shared(m)
+        x = self.shared(m, const_shape=False)
         g = extract_diag(x)
         f = theano.function([], g)
         assert [isinstance(node.inputs[0].type, self.type)

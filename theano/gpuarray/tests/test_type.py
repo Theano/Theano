@@ -136,7 +136,8 @@ class test_shared_options2(object):
 
 def test_set_value_non_contiguous():
     s = gpuarray_shared_constructor(
-        np.asarray([[1., 2.], [1., 2.], [5, 6]]))
+        np.asarray([[1., 2.], [1., 2.], [5, 6]]),
+        const_shape=False)
     s.set_value(s.get_value(borrow=True, return_internal_type=True)[::2],
                 borrow=True)
     assert not s.get_value(borrow=True,

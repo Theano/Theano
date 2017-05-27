@@ -1799,12 +1799,12 @@ class TestBlasStrides(TestCase):
         bv = self.rand(*b_shp)
         cv = self.rand(*c_shp)
 
-        a = self.shared(av, 'a')
-        b = self.shared(bv, 'b')
-        c = self.shared(cv, 'c')
+        a = self.shared(av, 'a', const_shape=False)
+        b = self.shared(bv, 'b', const_shape=False)
+        c = self.shared(cv, 'c', const_shape=False)
 
-        b_t = self.shared(bv.T, 'b.T')
-        c_t = self.shared(cv.T, 'c.T')
+        b_t = self.shared(bv.T, 'b.T', const_shape=False)
+        c_t = self.shared(cv.T, 'c.T', const_shape=False)
 
         b_dev = b.get_value(borrow=False, return_internal_type=True)
         c_dev = c.get_value(borrow=False, return_internal_type=True)
@@ -1870,12 +1870,12 @@ class TestBlasStrides(TestCase):
         cv = self.rand(*c_shp)
         l = np.float32(0.2)
 
-        a = self.shared(av, 'a')
-        b = self.shared(bv, 'b')
-        c = self.shared(cv, 'c')
+        a = self.shared(av, 'a', const_shape=False)
+        b = self.shared(bv, 'b', const_shape=False)
+        c = self.shared(cv, 'c', const_shape=False)
 
-        b_t = self.shared(bv.T, 'b.T')
-        c_t = self.shared(cv.T, 'c.T')
+        b_t = self.shared(bv.T, 'b.T', const_shape=False)
+        c_t = self.shared(cv.T, 'c.T', const_shape=False)
 
         b_dev = b.get_value(borrow=False, return_internal_type=True)
         c_dev = c.get_value(borrow=False, return_internal_type=True)
@@ -1940,13 +1940,13 @@ class TestBlasStrides(TestCase):
         cv = self.rand(*c_shp)
         l = np.float32(0.2)
 
-        a = self.shared(av, 'a')
-        b = self.shared(bv, 'b')
-        c = self.shared(cv, 'c')
+        a = self.shared(av, 'a', const_shape=False)
+        b = self.shared(bv, 'b', const_shape=False)
+        c = self.shared(cv, 'c', const_shape=False)
 
-        a_t = self.shared(av.T, 'a.T')
-        b_t = self.shared(bv.T, 'b.T')
-        c_t = self.shared(cv.T, 'c.T')
+        a_t = self.shared(av.T, 'a.T', const_shape=False)
+        b_t = self.shared(bv.T, 'b.T', const_shape=False)
+        c_t = self.shared(cv.T, 'c.T', const_shape=False)
 
         a_dev = a.get_value(borrow=False, return_internal_type=True)
         b_dev = b.get_value(borrow=False, return_internal_type=True)
@@ -2056,10 +2056,10 @@ class TestBlasStrides(TestCase):
         cv = self.rand(c_shp)
         l = np.float32(0.2)
 
-        a = self.shared(av, 'a')
-        b = self.shared(bv, 'b')
-        c = self.shared(cv, 'c')
-        b_t = self.shared(bv.T, 'b.T')
+        a = self.shared(av, 'a', const_shape=False)
+        b = self.shared(bv, 'b', const_shape=False)
+        c = self.shared(cv, 'c', const_shape=False)
+        b_t = self.shared(bv.T, 'b.T', const_shape=False)
 
         a_dev = a.get_value(borrow=False, return_internal_type=True)
         b_dev = b.get_value(borrow=False, return_internal_type=True)
@@ -2111,10 +2111,10 @@ class TestBlasStrides(TestCase):
         cv = self.rand(c_shp)
         l = np.float32(0.2)
 
-        a = self.shared(av, 'a')
-        b = self.shared(bv, 'b')
-        c = self.shared(cv, 'c')
-        a_t = self.shared(av.T, 'a.T')
+        a = self.shared(av, 'a', const_shape=False)
+        b = self.shared(bv, 'b', const_shape=False)
+        c = self.shared(cv, 'c', const_shape=False)
+        a_t = self.shared(av.T, 'a.T', const_shape=False)
 
         a_dev = a.get_value(borrow=False, return_internal_type=True)
         b_dev = b.get_value(borrow=False, return_internal_type=True)
