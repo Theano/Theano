@@ -432,11 +432,15 @@ class Container(object):
         downcasting of float to floatX scalar.
     name : str
         A string (for pretty-printing?)
-
+    const_shape : bool
+        If True, when the value is changed by .data or .value, we assert
+        that the shape do not change.
+        Note, this don't cover all cases. theano.function updates and
+        direct access to .storage do not assert.
     """
 
     def __init__(self, r, storage, readonly=False, strict=False,
-                 allow_downcast=None, name=None):
+                 allow_downcast=None, name=None, const_shape=False):
         if not isinstance(storage, list) or not len(storage) >= 1:
             raise TypeError("storage must be a list of length at least one")
         # self.r = r
@@ -454,6 +458,7 @@ class Container(object):
         self.readonly = readonly
         self.strict = strict
         self.allow_downcast = allow_downcast
+        self.const_shape = const_shape
 
     def __get__(self):
         return self.storage[0]
@@ -462,6 +467,8 @@ class Container(object):
         if self.readonly:
             raise Exception("Cannot set readonly storage: %s" % self.name)
         try:
+            if self.const_shape:
+                old_shape = self.storage[0].shape
             if value is None:
                 self.storage[0] = None
                 return
@@ -472,12 +479,17 @@ class Container(object):
             if self.allow_downcast is not None:
                 kwargs['allow_downcast'] = self.allow_downcast
             if hasattr(self.type, 'filter_inplace'):
-                self.storage[0] = self.type.filter_inplace(value,
-                                                           self.storage[0],
-                                                           **kwargs)
+                value = self.type.filter_inplace(value,
+                                                 self.storage[0],
+                                                 **kwargs)
             else:
-                self.storage[0] = self.type.filter(value, **kwargs)
-
+                value = self.type.filter(value, **kwargs)
+            if self.const_shape:
+                if value.shape != old_shape:
+                    raise ValueError(
+                        "Trying to change the shapes of a SharedVariable that"
+                        "have a constant shape.")
+            self.storage[0] = value
         except Exception as e:
             e.args = e.args + (('Container name "%s"' % self.name),)
             raise

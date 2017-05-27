@@ -143,3 +143,28 @@ def test_set_value_non_contiguous():
                            return_internal_type=True).flags["C_CONTIGUOUS"]
     # In the past, this failed
     s.set_value([[0, 0], [1, 1]])
+
+
+def test_const_shape():
+    shared = gpuarray_shared_constructor
+
+    # test const_shape=True
+    s = shared(np.ones((2, 4)), const_shape=True)
+    assert s.container.const_shape
+    nose.tools.assert_raises(ValueError, s.set_value, np.zeros((1, 4)))
+    s.set_value(np.zeros((2, 4)))
+
+    # test const_shape=False
+    s = shared(np.ones((2, 4)), const_shape=False)
+    assert not s.container.const_shape
+    s.set_value(np.zeros((1, 4)))
+
+    # test const_shape default
+    s = shared(np.ones((2, 4)))
+    if theano.config.build_infer_shape:
+        assert s.container.const_shape
+        nose.tools.assert_raises(ValueError, s.set_value, np.zeros((1, 4)))
+        s.set_value(np.zeros((2, 4)))
+    else:
+        assert not s.container.const_shape
+        s.set_value(np.zeros((1, 4)))

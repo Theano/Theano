@@ -12,6 +12,7 @@ import logging
 import numpy as np
 
 # Theano imports
+import theano
 from theano.gof import Container, Variable, generic, utils
 
 _logger = logging.getLogger('theano.compile.sharedvalue')
@@ -44,6 +45,11 @@ class SharedVariable(Variable):
     container
         The container to use for this variable. Illegal to pass this as well as
         a value.
+    const_shape : bool or None
+        If None (default) use theano.config.build_infer_shape if value have a
+        shape.
+        If True, when using public interface, assert that the shape do not
+        change.
 
     Notes
     -----
@@ -66,7 +72,8 @@ class SharedVariable(Variable):
     # or the "no_default_updates" list passed to "function" contains it.
 
     def __init__(self, name, type, value, strict,
-                 allow_downcast=None, container=None):
+                 allow_downcast=None, container=None,
+                 const_shape=None):
         super(SharedVariable, self).__init__(type=type, name=name,
                                              owner=None, index=None)
 
@@ -76,13 +83,16 @@ class SharedVariable(Variable):
                 raise TypeError('value and strict are ignored if you pass '
                                 'a container here')
         else:
+            if const_shape is None and hasattr(value, 'shape'):
+                const_shape = theano.config.build_infer_shape
             self.container = Container(
                 self,
                 storage=[type.filter(value, strict=strict,
                                      allow_downcast=allow_downcast)],
                 readonly=False,
                 strict=strict,
-                allow_downcast=allow_downcast)
+                allow_downcast=allow_downcast,
+                const_shape=const_shape)
 
     def get_value(self, borrow=False, return_internal_type=False):
         """
@@ -255,6 +265,7 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     This parameter allows you to create for example a `row` or `column` 2d
     tensor.
 
+    Some shared variable have ``const_shape`` as extra kwargs.
     """
 
     try:

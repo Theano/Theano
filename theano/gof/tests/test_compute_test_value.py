@@ -100,7 +100,8 @@ class TestComputeTestValue(unittest.TestCase):
             y = T.matrix('y')
             y.tag.test_value = np.random.rand(4, 5).astype(config.floatX)
 
-            z = theano.shared(np.random.rand(5, 6).astype(config.floatX))
+            z = theano.shared(np.random.rand(5, 6).astype(config.floatX),
+                              const_shape=False)
 
             # should work
             out = T.dot(T.dot(x, y), z)
@@ -127,7 +128,7 @@ class TestComputeTestValue(unittest.TestCase):
             x = T.matrix('x')
             x.tag.test_value = np.random.rand(3, 4).astype(config.floatX)
             y = theano.shared(np.random.rand(4, 6).astype(config.floatX),
-                              'y')
+                              'y', const_shape=False)
 
             # should work
             z = T.dot(x, y)
