@@ -1323,33 +1323,34 @@ def local_gpua_gemm(op, context_name, inputs, outputs):
 def local_gpua_gemmbatch(op, context_name, inputs, outputs):
     if inputs[0].dtype not in ['float16', 'float32', 'float64']:
         return
-    a, b = inputs
-    # Since GpuGemmBatch only supports 3D inputs and output,
-    # we need to add broadcastable dims to the inputs, and drop
-    # them from outputs
-    output_dims = [0, 1, 2]
-    if a.ndim == 2:
-        a = GpuDimShuffle(a.broadcastable, (0, 'x', 1))(a)
-        del output_dims[1]
-    if b.ndim == 2:
-        b = GpuDimShuffle(b.broadcastable, (0, 1, 'x'))(b)
-        del output_dims[-1]
-    # In case of mismatched dtypes, we also have to upcast
-    out_dtype = outputs[0].dtype
-    if a.dtype != out_dtype or b.dtype != out_dtype:
-        gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
-        if a.dtype != out_dtype:
-            a = gpu_cast_op(a)
-        if b.dtype != out_dtype:
-            b = gpu_cast_op(b)
+    with inherit_stack_trace(outputs):
+        a, b = inputs
+        # Since GpuGemmBatch only supports 3D inputs and output,
+        # we need to add broadcastable dims to the inputs, and drop
+        # them from outputs
+        output_dims = [0, 1, 2]
+        if a.ndim == 2:
+            a = GpuDimShuffle(a.broadcastable, (0, 'x', 1))(a)
+            del output_dims[1]
+        if b.ndim == 2:
+            b = GpuDimShuffle(b.broadcastable, (0, 1, 'x'))(b)
+            del output_dims[-1]
+        # In case of mismatched dtypes, we also have to upcast
+        out_dtype = outputs[0].dtype
+        if a.dtype != out_dtype or b.dtype != out_dtype:
+            gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
+            if a.dtype != out_dtype:
+                a = gpu_cast_op(a)
+            if b.dtype != out_dtype:
+                b = gpu_cast_op(b)
 
-    c = GpuAllocEmpty(out_dtype, context_name)(
-        a.shape[0], a.shape[1], b.shape[2])
-    out = gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=out_dtype),
-                                  a, b, np.asarray(0.0, dtype=out_dtype))
-    if len(output_dims) != 3:
-        out = GpuDimShuffle(out.broadcastable, output_dims)(out)
-    return out
+        c = GpuAllocEmpty(out_dtype, context_name)(
+            a.shape[0], a.shape[1], b.shape[2])
+        out = gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=out_dtype),
+                                      a, b, np.asarray(0.0, dtype=out_dtype))
+        if len(output_dims) != 3:
+            out = GpuDimShuffle(out.broadcastable, output_dims)(out)
+        return out
 
 
 @register_opt()
@@ -2599,8 +2600,9 @@ def local_gpu_solve(op, context_name, inputs, outputs):
 @local_optimizer([GpuCusolverSolve], inplace=True)
 def local_inplace_gpu_solve(node):
     if isinstance(node.op, GpuCusolverSolve) and not node.op.inplace:
-        return [GpuCusolverSolve(A_structure=node.op.A_structure, trans=node.op.trans,
-                                 inplace=True)(*node.inputs)]
+        with inherit_stack_trace(node.outputs):
+            return [GpuCusolverSolve(A_structure=node.op.A_structure, trans=node.op.trans,
+                                     inplace=True)(*node.inputs)]
 
 
 # Cholesky decomposition
@@ -2638,7 +2640,8 @@ register_opt2([slinalg.Solve], 'fast_compile', name='matrix_ops_db2')(matrix_ops
 @local_optimizer([GpuCholesky], inplace=True)
 def local_inplace_gpu_cholesky(node):
     if isinstance(node.op, GpuCholesky) and not node.op.inplace:
-        return [node.op.clone_inplace()(*node.inputs)]
+        with inherit_stack_trace(node.outputs):
+            return [node.op.clone_inplace()(*node.inputs)]
 
 
 def local_gpu_magma_cholesky(op, context_name, inputs, outputs):
@@ -2721,7 +2724,8 @@ def local_gpu_magma_matrix_inverse(op, context_name, inputs, outputs):
 @local_optimizer([GpuMagmaMatrixInverse])
 def local_inplace_gpu_magma_matrix_inverse(node):
     if isinstance(node.op, GpuMagmaMatrixInverse) and not node.op.inplace:
-        return [node.op.clone_inplace()(*node.inputs)]
+        with inherit_stack_trace(node.outputs):
+            return [node.op.clone_inplace()(*node.inputs)]
 
 
 # Eigen decomposition of a symmetric matrix

@@ -41,6 +41,7 @@ def _check_stack_trace(thing):
                                    theano.ifelse.IfElse,
                                    GpuFromHost, HostFromGpu,
                                    GpuCAReduceCuda,
+                                   basic_ops.GpuContiguous,
                                    GpuElemwise,
                                    theano.printing.Print,
                                    PdbBreakpoint,
