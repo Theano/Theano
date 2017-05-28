@@ -15,7 +15,8 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         LocalGroupDB,
                         SequenceDB, Optimizer, DB, toolbox, graph)
-from theano.gof.opt import LocalMetaOptimizer, copy_stack_trace, with_stack_trace
+from theano.gof.opt import (LocalMetaOptimizer, copy_stack_trace,
+                            with_stack_trace, inherit_stack_trace)
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -421,8 +422,6 @@ class GraphToGPU(Optimizer):
 
             if isinstance(new_ops, theano.Op):
                 outputs = new_ops(*[mapping[i] for i in node.inputs], return_list=True)
-                for old_output, new_output in zip(node.outputs, outputs):
-                    copy_stack_trace(old_output, new_output)
             elif not new_ops:
                 newnode = node.clone_with_new_inputs([mapping.get(i) for i in node.inputs])
                 outputs = newnode.outputs
@@ -430,6 +429,10 @@ class GraphToGPU(Optimizer):
                 outputs = new_ops
             elif isinstance(new_ops, theano.Variable):
                 outputs = [new_ops]
+
+            for old_output, new_output in zip(node.outputs, outputs):
+                copy_stack_trace(old_output, new_output)
+                new_output.tag.tracefrom = old_output
 
             if new_ops:
                 node_created[lopt] += len(graph.ops([mapping[i] for i in node.inputs], outputs))
@@ -662,9 +665,8 @@ def local_gpualloc_memset_0(node):
                 inp.data.size == 1 and
                 (np.asarray(inp.data) == 0).all()):
             new_op = GpuAlloc(node.op.context_name, memset_0=True)
-            new_output = new_op(*node.inputs)
-            copy_stack_trace(node.outputs[0], new_output)
-            return [new_output]
+            with inherit_stack_trace(node.outputs):
+                return new_op(*node.inputs, return_list=True)
 
 
 # Don't register by default.
@@ -673,10 +675,9 @@ def local_gpua_alloc_empty_to_zeros(node):
     if isinstance(node.op, GpuAllocEmpty):
         context_name = infer_context_name(*node.inputs)
         z = np.asarray(0, dtype=node.outputs[0].dtype)
-        return [GpuAlloc(context_name)(as_gpuarray_variable(z, context_name),
-                                       *node.inputs)]
-
-
+        with inherit_stack_trace(node.outputs):
+            return [GpuAlloc(context_name)(as_gpuarray_variable(z, context_name),
+                                            *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.
@@ -1220,7 +1221,8 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
             op.scalar_op, axis=op.axis,
             dtype=odtype,
             acc_dtype=adtype)
-        gvar = with_stack_trace(outputs, greduce(x))
+        with inherit_stack_trace(outputs):
+            gvar = greduce(x)
         # We need to have the make node called, otherwise the mask can
         # be None
         if (op2 is GpuCAReduceCPY or
@@ -1260,30 +1262,27 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
                 dtype=getattr(op, 'dtype', outputs[0].dtype),
                 acc_dtype=getattr(op, 'acc_dtype', None))
 
-            reshaped_x = with_stack_trace(
-                outputs, x.reshape(tensor.stack(new_in_shp)))
-            gpu_reshaped_x = with_stack_trace(
-                outputs, as_gpuarray_variable(reshaped_x, context_name))
-            gvar = with_stack_trace(outputs, greduce(gpu_reshaped_x))
-            # We need to have the make node called, otherwise the mask can
-            # be None
-            reshaped_gpu_inputs = [gpu_reshaped_x]
-            if greduce.supports_c_code(reshaped_gpu_inputs):
-                reduce_reshaped_x = with_stack_trace(
-                    outputs, greduce(gpu_reshaped_x))
+            with inherit_stack_trace(outputs):
+                reshaped_x = x.reshape(tensor.stack(new_in_shp))
+                gpu_reshaped_x = as_gpuarray_variable(reshaped_x, context_name)
+                # We need to have the make node called, otherwise the mask can
+                # be None
+                gvar = greduce(gpu_reshaped_x)
+                reshaped_gpu_inputs = [gpu_reshaped_x]
+                if greduce.supports_c_code(reshaped_gpu_inputs):
+                    reduce_reshaped_x = greduce(gpu_reshaped_x)
 
-                if reduce_reshaped_x.ndim != outputs[0].ndim:
-                    out_shp = []
-                    for i in range(x.ndim):
-                        if i not in op.axis:
-                            out_shp.append(shape_i(x, i))
-                    unreshaped_reduce = with_stack_trace(
-                        outputs, GpuReshape(len(out_shp))(
+                    if reduce_reshaped_x.ndim != outputs[0].ndim:
+                        out_shp = []
+                        for i in range(x.ndim):
+                            if i not in op.axis:
+                                out_shp.append(shape_i(x, i))
+                        unreshaped_reduce = GpuReshape(len(out_shp))(
                             reduce_reshaped_x,
-                            tensor.stack(out_shp)))
-                else:
-                    unreshaped_reduce = reduce_reshaped_x
-                return [unreshaped_reduce]
+                            tensor.stack(out_shp))
+                    else:
+                        unreshaped_reduce = reduce_reshaped_x
+                    return [unreshaped_reduce]
 
 
 @register_opt('fast_compile')
@@ -1356,25 +1355,29 @@ def local_gpua_gemmbatch(op, context_name, inputs, outputs):
 @register_opt()
 @alpha_merge(GpuGemm, alpha_in=1, beta_in=4)
 def local_gpua_gemm_alpha_merge(node, *inputs):
-    return [gpugemm_no_inplace(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        return [gpugemm_no_inplace(*inputs)]
 
 
 @register_opt()
 @output_merge(GpuGemm, alpha_in=1, beta_in=4, out_in=0)
 def local_gpua_gemm_output_merge(node, *inputs):
-    return [gpugemm_no_inplace(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        return [gpugemm_no_inplace(*inputs)]
 
 
 @register_opt()
 @alpha_merge(GpuGemmBatch, alpha_in=1, beta_in=4)
 def local_gpua_gemmbatch_alpha_merge(node, *inputs):
-    return [gpugemmbatch_no_inplace(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        return [gpugemmbatch_no_inplace(*inputs)]
 
 
 @register_opt()
 @output_merge(GpuGemmBatch, alpha_in=1, beta_in=4, out_in=0)
 def local_gpua_gemmbatch_output_merge(node, *inputs):
-    return [gpugemmbatch_no_inplace(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        return [gpugemmbatch_no_inplace(*inputs)]
 
 
 @register_opt('fast_compile')
@@ -2403,8 +2406,8 @@ def local_gpu_elemwise_careduce(node):
         props = node.op._props_dict()
         props["pre_scalar_op"] = scalar.basic.sqr
         out = GpuCAReduceCuda(**props)(inp)
-        return with_stack_trace(
-            node.outputs, out)
+        with inherit_stack_trace(node.outputs):
+        return out
 
 
 @local_optimizer(None)

@@ -33,10 +33,20 @@ def _check_stack_trace(thing):
         if not isinstance(op, theano.gof.Op):
             op = op.op # assume node
         return not isinstance(op, (theano.compile.ops.Shape_i,
+                                   theano.compile.ops.Shape,
+                                   theano.compile.ops.DeepCopyOp,
+                                   theano.tensor.opt.MakeVector,
+                                   theano.tensor.subtensor.Subtensor,
+                                   theano.tensor.elemwise.Elemwise,
                                    theano.ifelse.IfElse,
                                    GpuFromHost, HostFromGpu,
-                                   GpuElemwise))
-    return check_stack_trace(thing, ops_to_check=_ops_to_check)
+                                   GpuCAReduceCuda,
+                                   GpuElemwise,
+                                   theano.printing.Print,
+                                   PdbBreakpoint,
+                                   ))
+    return check_stack_trace(thing, ops_to_check=_ops_to_check,
+                             bug_print="ignore")
 
 def test_local_assert():
     x = theano.tensor.fmatrix()

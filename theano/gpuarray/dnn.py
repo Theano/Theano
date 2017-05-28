@@ -18,6 +18,7 @@ from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp, ParamsType, EnumList
 from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
+from theano.gof.opt import inherit_stack_trace
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
@@ -3132,12 +3133,13 @@ def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    if node.op.unshared:
-        return None
-    if isinstance(node.op, AbstractConv2d):
-        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
-    elif isinstance(node.op, AbstractConv3d):
-        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    with inherit_stack_trace(node.outputs):
+        if node.op.unshared:
+            return None
+        if isinstance(node.op, AbstractConv2d):
+            return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        elif isinstance(node.op, AbstractConv3d):
+            return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
@@ -3356,12 +3358,13 @@ def local_abstractconv_gw_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    if node.op.unshared:
-        return None
-    if isinstance(node.op, AbstractConv2d_gradWeights):
-        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
-    elif isinstance(node.op, AbstractConv3d_gradWeights):
-        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    with inherit_stack_trace(node.outputs):
+        if node.op.unshared:
+            return None
+        if isinstance(node.op, AbstractConv2d_gradWeights):
+            return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        elif isinstance(node.op, AbstractConv3d_gradWeights):
+            return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @local_optimizer([AbstractConv2d_gradInputs, AbstractConv3d_gradInputs])
@@ -3369,28 +3372,31 @@ def local_abstractconv_gi_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    if node.op.unshared:
-        return None
-    if isinstance(node.op, AbstractConv2d_gradInputs):
-        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
-    elif isinstance(node.op, AbstractConv3d_gradInputs):
-        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    with inherit_stack_trace(node.outputs):
+        if node.op.unshared:
+            return None
+        if isinstance(node.op, AbstractConv2d_gradInputs):
+            return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        elif isinstance(node.op, AbstractConv3d_gradInputs):
+            return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @inplace_allocempty(GpuDnnConv, 2)
 def local_dnn_conv_inplace(node, inputs):
-    return [GpuDnnConv(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        return [GpuDnnConv(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
 
 
 @inplace_allocempty(GpuDnnConvGradW, 2)
 def local_dnn_convgw_inplace(node, inputs):
-    return [GpuDnnConvGradW(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        return [GpuDnnConvGradW(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
 
 
 @inplace_allocempty(GpuDnnConvGradI, 2)
 def local_dnn_convgi_inplace(node, inputs):
-    return [GpuDnnConvGradI(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
-
+    with inherit_stack_trace(node.outputs):
+        return [GpuDnnConvGradI(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
 
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
@@ -3403,40 +3409,43 @@ optdb.register('local_dnna_conv_inplace',
 @register_opt('cudnn')
 @alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5)
 def local_dnn_conv_alpha_merge(node, *inputs):
-    return [GpuDnnConv(algo=node.op.algo, num_groups=node.op.num_groups)(*inputs)]
-
+    with inherit_stack_trace(node.outputs):
+        return [GpuDnnConv(algo=node.op.algo, num_groups=node.op.num_groups)(*inputs)]
 
 @register_opt('cudnn')
 @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5)
 def local_dnn_convw_alpha_merge(node, *inputs):
-    return [GpuDnnConvGradW(algo=node.op.algo, num_groups=node.op.num_groups)(*inputs)]
-
+    with inherit_stack_trace(node.outputs):
+        return [GpuDnnConvGradW(algo=node.op.algo, num_groups=node.op.num_groups)(*inputs)]
 
 @register_opt('cudnn')
 @alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5)
 def local_dnn_convi_alpha_merge(node, *inputs):
-    return [GpuDnnConvGradI(algo=node.op.algo, num_groups=node.op.num_groups)(*inputs)]
-
+    with inherit_stack_trace(node.outputs):
+        return [GpuDnnConvGradI(algo=node.op.algo, num_groups=node.op.num_groups)(*inputs)]
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_conv_output_merge(node, *inputs):
-    inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-    return [GpuDnnConv(algo=node.op.algo)(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
+        return [GpuDnnConv(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_convw_output_merge(node, *inputs):
-    inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-    return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
+        return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_convi_output_merge(node, *inputs):
-    inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-    return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
+        return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
 
 
 def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):

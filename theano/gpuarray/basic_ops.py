@@ -89,13 +89,13 @@ def as_gpuarray_variable(x, context_name):
         if x.context.ptr != ctx.ptr:
             x = x.transfer(ctx)
 
-    x = with_stack_trace(x, gpuarray.asarray(x, context=ctx))
+    x = gpuarray.asarray(x, context=ctx)
 
     bcast = [(s == 1) for s in x.shape]
-    return with_stack_trace(x, GpuArrayConstant(GpuArrayType(dtype=x.dtype,
-                                                             broadcastable=bcast,
-                                                             context_name=context_name),
-                                                x))
+    return GpuArrayConstant(GpuArrayType(dtype=x.dtype,
+                                         broadcastable=bcast,
+                                         context_name=context_name),
+                            x)
 
 
 def infer_context_name(*vars):

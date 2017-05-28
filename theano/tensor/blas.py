@@ -146,6 +146,7 @@ from theano.gof import (utils, Op, view_roots,
                         EquilibriumOptimizer, Apply,
                         ReplacementDidntRemovedError)
 from theano.gof.params_type import ParamsType
+from theano.gof.opt import inherit_stack_trace
 from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 import theano.scalar
@@ -1625,19 +1626,20 @@ def local_dot_to_dot22(node):
         return
 
     if y.type.dtype in ['float16', 'float32', 'float64', 'complex64', 'complex128']:
-        if x.ndim == 2 and y.ndim == 2:
-            # print "local_dot_to_dot22: MM"
-            return [_dot22(*node.inputs)]
-        if x.ndim == 2 and y.ndim == 1:
-            # print "local_dot_to_dot22: MV"
-            return [_dot22(x, y.dimshuffle(0, 'x')).dimshuffle(0)]
-        if x.ndim == 1 and y.ndim == 2:
-            # print "local_dot_to_dot22: VM"
-            return [_dot22(x.dimshuffle('x', 0), y).dimshuffle(1)]
-        if x.ndim == 1 and y.ndim == 1:
-            # print "local_dot_to_dot22: VV"
-            return [_dot22(x.dimshuffle('x', 0),
-                           y.dimshuffle(0, 'x')).dimshuffle()]
+        with inherit_stack_trace(node.outputs):
+            if x.ndim == 2 and y.ndim == 2:
+                # print "local_dot_to_dot22: MM"
+                return [_dot22(*node.inputs)]
+            if x.ndim == 2 and y.ndim == 1:
+                # print "local_dot_to_dot22: MV"
+                return [_dot22(x, y.dimshuffle(0, 'x')).dimshuffle(0)]
+            if x.ndim == 1 and y.ndim == 2:
+                # print "local_dot_to_dot22: VM"
+                return [_dot22(x.dimshuffle('x', 0), y).dimshuffle(1)]
+            if x.ndim == 1 and y.ndim == 1:
+                # print "local_dot_to_dot22: VV"
+                return [_dot22(x.dimshuffle('x', 0),
+                               y.dimshuffle(0, 'x')).dimshuffle()]
 
     _logger.info('Not optimizing dot with inputs %s %s %s %s',
                  x, y, x.type, y.type)
@@ -1646,19 +1648,22 @@ def local_dot_to_dot22(node):
 @local_optimizer([gemm_no_inplace], inplace=True)
 def local_inplace_gemm(node):
     if node.op == gemm_no_inplace:
-        return [gemm_inplace(*node.inputs)]
+        with inherit_stack_trace(node.outputs):
+            return [gemm_inplace(*node.inputs)]
 
 
 @local_optimizer([gemv_no_inplace], inplace=True)
 def local_inplace_gemv(node):
     if node.op == gemv_no_inplace:
-        return [gemv_inplace(*node.inputs)]
+        with inherit_stack_trace(node.outputs):
+            return [gemv_inplace(*node.inputs)]
 
 
 @local_optimizer([ger], inplace=True)
 def local_inplace_ger(node):
     if node.op == ger:
-        return [ger_destructive(*node.inputs)]
+        with inherit_stack_trace(node.outputs):
+            return [ger_destructive(*node.inputs)]
 
 
 @local_optimizer([gemm_no_inplace])
@@ -1666,12 +1671,13 @@ def local_gemm_to_gemv(node):
     """GEMM acting on row or column matrices -> GEMV."""
     if node.op == gemm_no_inplace:
         z, a, x, y, b = node.inputs
-        if z.broadcastable == x.broadcastable == (True, False):
-            r = gemv_no_inplace(z.dimshuffle(1), a, y.T, x.dimshuffle(1), b)
-            return [r.dimshuffle('x', 0)]
-        if z.broadcastable == y.broadcastable == (False, True):
-            r = gemv_no_inplace(z.dimshuffle(0), a, x, y.dimshuffle(0), b)
-            return [r.dimshuffle(0, 'x')]
+        with inherit_stack_trace(node.outputs):
+            if z.broadcastable == x.broadcastable == (True, False):
+                r = gemv_no_inplace(z.dimshuffle(1), a, y.T, x.dimshuffle(1), b)
+                return [r.dimshuffle('x', 0)]
+            if z.broadcastable == y.broadcastable == (False, True):
+                r = gemv_no_inplace(z.dimshuffle(0), a, x, y.dimshuffle(0), b)
+                return [r.dimshuffle(0, 'x')]
 
 
 @local_optimizer([gemm_no_inplace])
@@ -1680,26 +1686,27 @@ def local_gemm_to_ger(node):
     if node.op == gemm_no_inplace:
         z, a, x, y, b = node.inputs
         if x.broadcastable[1] and y.broadcastable[0]:
-            # x and y are both vectors so this might qualifies for a GER
-            xv = x.dimshuffle(0)
-            yv = y.dimshuffle(1)
-            try:
-                bval = T.get_scalar_constant_value(b)
-            except T.NotScalarConstantError:
-                # b isn't a constant, GEMM is doing useful pre-scaling
-                return
+            with inherit_stack_trace(node.outputs):
+                # x and y are both vectors so this might qualifies for a GER
+                xv = x.dimshuffle(0)
+                yv = y.dimshuffle(1)
+                try:
+                    bval = T.get_scalar_constant_value(b)
+                except T.NotScalarConstantError:
+                    # b isn't a constant, GEMM is doing useful pre-scaling
+                    return
 
-            if bval == 1:   # best case a natural GER
-                rval = ger(z, a, xv, yv)
-                return [rval]
-            elif bval == 0:   # GER on zeros_like should be faster than GEMM
-                zeros = T.zeros([x.shape[0], y.shape[1]], x.dtype)
-                rval = ger(zeros, a, xv, yv)
-                return [rval]
-            else:
-                # if bval is another constant, then z is being usefully
-                # pre-scaled and GER isn't really the right tool for the job.
-                return
+                if bval == 1:   # best case a natural GER
+                    rval = ger(z, a, xv, yv)
+                    return [rval]
+                elif bval == 0:   # GER on zeros_like should be faster than GEMM
+                    zeros = T.zeros([x.shape[0], y.shape[1]], x.dtype)
+                    rval = ger(zeros, a, xv, yv)
+                    return [rval]
+                else:
+                    # if bval is another constant, then z is being usefully
+                    # pre-scaled and GER isn't really the right tool for the job.
+                    return
 
 
 # TODO: delete this optimization when we have the proper dot->gemm->ger pipeline
@@ -1708,37 +1715,38 @@ def local_gemm_to_ger(node):
 def local_dot22_to_ger_or_gemv(node):
     """dot22 computing an outer-product -> GER."""
     if node.op == _dot22:
-        x, y = node.inputs
-        xb = x.broadcastable
-        yb = y.broadcastable
-        one = T.as_tensor_variable(np.asarray(1, dtype=x.dtype))
-        zero = T.as_tensor_variable(np.asarray(0, dtype=x.dtype))
-        if xb[1] and yb[0]:
-            # x and y are both vectors so this might qualifies for a GER
-            xv = x.dimshuffle(0)
-            yv = y.dimshuffle(1)
-            zeros = T.zeros([x.shape[0], y.shape[1]], dtype=x.dtype)
-            rval = ger(zeros, one, xv, yv)
-            return [rval]
-        if xb[0] and yb[1]:
-            # x and y are both vectors so this qualifies for a sdot / ddot
-            # TODO: Theano doesn't have a sdot, but gemv is better than _dot22
-            xv = x.dimshuffle(1)
-            zeros = T.AllocEmpty(x.dtype)(1)
-            rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
-            return [rval.dimshuffle('x', 0)]
-        if xb[0] and not yb[0] and not yb[1]:
-            # x is vector, y is matrix so try gemv
-            xv = x.dimshuffle(1)
-            zeros = T.AllocEmpty(x.dtype)(y.shape[1])
-            rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
-            return [rval.dimshuffle('x', 0)]
-        if not xb[0] and not xb[1] and yb[1]:
-            # x is matrix, y is vector, try gemv
-            yv = y.dimshuffle(0)
-            zeros = T.AllocEmpty(x.dtype)(x.shape[0])
-            rval = gemv_no_inplace(zeros, one, x, yv, zero)
-            return [rval.dimshuffle(0, 'x')]
+        with inherit_stack_trace(node.outputs):
+            x, y = node.inputs
+            xb = x.broadcastable
+            yb = y.broadcastable
+            one = T.as_tensor_variable(np.asarray(1, dtype=x.dtype))
+            zero = T.as_tensor_variable(np.asarray(0, dtype=x.dtype))
+            if xb[1] and yb[0]:
+                # x and y are both vectors so this might qualifies for a GER
+                xv = x.dimshuffle(0)
+                yv = y.dimshuffle(1)
+                zeros = T.zeros([x.shape[0], y.shape[1]], dtype=x.dtype)
+                rval = ger(zeros, one, xv, yv)
+                return [rval]
+            if xb[0] and yb[1]:
+                # x and y are both vectors so this qualifies for a sdot / ddot
+                # TODO: Theano doesn't have a sdot, but gemv is better than _dot22
+                xv = x.dimshuffle(1)
+                zeros = T.AllocEmpty(x.dtype)(1)
+                rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
+                return [rval.dimshuffle('x', 0)]
+            if xb[0] and not yb[0] and not yb[1]:
+                # x is vector, y is matrix so try gemv
+                xv = x.dimshuffle(1)
+                zeros = T.AllocEmpty(x.dtype)(y.shape[1])
+                rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
+                return [rval.dimshuffle('x', 0)]
+            if not xb[0] and not xb[1] and yb[1]:
+                # x is matrix, y is vector, try gemv
+                yv = y.dimshuffle(0)
+                zeros = T.AllocEmpty(x.dtype)(x.shape[0])
+                rval = gemv_no_inplace(zeros, one, x, yv, zero)
+                return [rval.dimshuffle(0, 'x')]
 
 
 #################################

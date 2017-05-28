@@ -7,6 +7,7 @@ from theano import Apply, Op
 from theano.compile import optdb
 from theano.gof import LocalOptGroup, ParamsType
 from theano.scalar import bool as bool_t
+from theano.gof.opt import inherit_stack_trace
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.opt import in2out
 
@@ -1830,17 +1831,20 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
 
 @inplace_allocempty(GpuGemv, 0)
 def local_inplace_gpuagemv(node, inputs):
-    return [gpugemv_inplace(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        return [gpugemv_inplace(*inputs)]
 
 
 @inplace_allocempty(GpuGemm, 0)
 def local_inplace_gpuagemm(node, inputs):
-    return [gpugemm_inplace(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        return [gpugemm_inplace(*inputs)]
 
 
 @inplace_allocempty(GpuGer, 0)
 def local_inplace_gpuager(node, inputs):
-    return [gpuger_inplace(*inputs)]
+    with inherit_stack_trace(node.outputs):
+        return [gpuger_inplace(*inputs)]
 
 
 @inplace_allocempty(GpuGemmBatch, 0)
