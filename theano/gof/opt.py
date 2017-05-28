@@ -6,6 +6,7 @@ amount of useful generic optimization tools.
 from __future__ import absolute_import, print_function, division
 
 from collections import deque, defaultdict, OrderedDict
+import contextlib
 import copy
 import inspect
 import logging
@@ -2975,6 +2976,24 @@ def with_stack_trace(from_var, to_var):
     """
     copy_stack_trace(from_var, to_var)
     return to_var
+
+
+@contextlib.contextmanager
+def inherit_stack_trace(from_var):
+    """
+    Contextmanager that copies the stack trace from one or more tensor variables to all tensor
+    variables constructed in the body.
+
+    Parameters
+    ----------
+    from_var
+        Tensor variable or list of tensor variables to copy stack traces from.
+
+    """
+    with graph.nodes_constructed() as new_nodes:
+        yield
+    copy_stack_trace(from_var, new_nodes)
+
 
 def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
     """

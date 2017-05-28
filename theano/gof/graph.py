@@ -4,6 +4,7 @@ Node classes (`Apply`, `Variable`) and expression graph algorithms.
 from __future__ import absolute_import, print_function, division
 
 from collections import deque
+import contextlib
 from copy import copy
 from itertools import count
 
@@ -390,6 +391,8 @@ class Variable(Node):
         self.name = name
         self.auto_name = 'auto_' + str(next(self.__count__))
 
+        Variable.notify_construction_observers(self)
+
     def __str__(self):
         """Return a str representation of the Variable.
 
@@ -535,6 +538,21 @@ class Variable(Node):
             del t.test_value
             d["tag"] = t
         return d
+
+    construction_observers = []
+
+    @classmethod
+    def append_construction_observer(cls, observer):
+        cls.construction_observers.append(observer)
+
+    @classmethod
+    def remove_construction_observer(cls, observer):
+        cls.construction_observers.remove(observer)
+
+    @classmethod
+    def notify_construction_observers(cls, instance):
+        for observer in cls.construction_observers:
+            observer(instance)
 
 
 class Constant(Variable):
@@ -1426,3 +1444,13 @@ def is_in_ancestors(l_node, f_node):
             todo.append(cur)
             todo.extend(i.owner for i in cur.inputs if i.owner)
     return False
+
+
+@contextlib.contextmanager
+def nodes_constructed():
+    new_nodes = []
+    def observer(node):
+        new_nodes.append(node)
+    Variable.append_construction_observer(observer)
+    yield new_nodes
+    Variable.remove_construction_observer(observer)
