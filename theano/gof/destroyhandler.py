@@ -602,6 +602,9 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         b) orderings cannot be topologically sorted.
 
         """
+        # temporarily hack for setting fgraph.protected
+        if not hasattr(fgraph, "protected"):
+            fgraph.protected = []
         for r in fgraph.protected + list(fgraph.outputs):
             if fgraph.destroyers(r):
                 raise InconsistencyError("Trying to destroy a protected"
