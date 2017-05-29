@@ -155,7 +155,9 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
 
     fgraph = gof.fg.FunctionGraph(orig_inputs, orig_outputs,
                                   update_mapping=update_mapping)
-
+    fgraph.protected = [input for spec, input in zip(input_specs, fgraph.inputs)
+                        if not (spec.mutable or (hasattr(fgraph, 'destroyers') and
+                                fgraph.destroyers(input)))]
     for node in fgraph.apply_nodes:
         if getattr(node.op, 'destroy_map', None):
             if not accept_inplace:

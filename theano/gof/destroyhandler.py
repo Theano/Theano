@@ -302,7 +302,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
     """
     pickle_rm_attr = ["destroyers"]
 
-    def __init__(self, protected=[], do_imports_on_attach=True, algo=None):
+    def __init__(self, protected=(), do_imports_on_attach=True, algo=None):
         self.fgraph = None
         self.do_imports_on_attach = do_imports_on_attach
         self.protected = list(protected)
@@ -602,7 +602,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         b) orderings cannot be topologically sorted.
 
         """
-        for r in self.protected + list(fgraph.outputs):
+        for r in fgraph.protected + list(fgraph.outputs):
             if fgraph.destroyers(r):
                 raise InconsistencyError("Trying to destroy a protected"
                                          "Variable.", r)
