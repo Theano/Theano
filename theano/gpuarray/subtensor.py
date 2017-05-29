@@ -589,7 +589,7 @@ class GpuAdvancedIncSubtensor1(Op):
     Implement AdvancedIncSubtensor1 on the gpu.
 
     """
-    _f16_ok = False
+    _f16_ok = True
     __props__ = ('inplace', 'set_instead_of_inc')
     params_type = gpu_context_type
 
@@ -799,7 +799,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
     only avail on compute capability 2.0 and more recent.
 
     """
-    _f16_ok = False
+    _f16_ok = True
 
     def make_node(self, x, y, ilist):
         """
