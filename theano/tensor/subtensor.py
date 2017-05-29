@@ -22,6 +22,8 @@ from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType, NoneTypeT, make_slice
 from theano import config
 
+from .inc_code import inc_code
+
 _logger = logging.getLogger("theano.tensor.subtensor")
 
 # Do a lazy import of the sparse module
@@ -1939,8 +1941,7 @@ class AdvancedIncSubtensor1(Op):
                 NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
 
     def c_support_code(self):
-        from theano.gof.cutils import compile_cutils_code
-        return compile_cutils_code()
+        return inc_code()
 
     def c_code(self, node, name, input_names, output_names, sub):
         numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
@@ -1972,17 +1973,14 @@ class AdvancedIncSubtensor1(Op):
             Py_XDECREF(%(out)s);
             %(out)s = %(copy_of_x)s;
         }
-        PyObject *arglist = Py_BuildValue("OOOi",%(out)s, %(idx)s, %(y)s, %(inc_or_set)d);
-        rval = inplace_increment(NULL, arglist);
-        Py_XDECREF(arglist);
-        if (rval == NULL) {
+        if (inplace_increment(%(out)s, (PyObject *)%(idx)s, %(y)s, %(inc_or_set)d)) {
             %(fail)s;
         }
         Py_XDECREF(rval);
         """ % locals()
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
