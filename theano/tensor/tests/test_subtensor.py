@@ -1503,9 +1503,6 @@ class TestAdvancedSubtensor(unittest.TestCase):
         utt.assert_allclose(rval, aval)
 
     def test_inc_adv_subtensor_w_2vec(self):
-        if not config.cxx:
-            raise SkipTest('config.cxx empty')
-
         subt = self.m[self.ix1, self.ix12]
         a = inc_subtensor(subt, subt)
 
@@ -1524,9 +1521,6 @@ class TestAdvancedSubtensor(unittest.TestCase):
                             [.5, .3 * 2, .15]]), aval
 
     def test_inc_adv_subtensor_with_broadcasting(self):
-        if not config.cxx:
-            raise SkipTest('config.cxx empty')
-
         inc = dscalar()
         a = inc_subtensor(self.m[self.ix1, self.ix12], inc)
         g_inc = tensor.grad(a.sum(), inc)
@@ -1547,9 +1541,6 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert np.allclose(gval, 3.0), gval
 
     def test_inc_adv_subtensor1_with_broadcasting(self):
-        if not config.cxx:
-            raise SkipTest('config.cxx empty')
-
         inc = dscalar()
         a = inc_subtensor(self.m[self.ix1], inc)
         g_inc = tensor.grad(a.sum(), inc)
@@ -1569,9 +1560,6 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert np.allclose(gval, 9.0), gval
 
     def test_inc_adv_subtensor_with_index_broadcasting(self):
-        if not config.cxx:
-            raise SkipTest('config.cxx empty')
-
         a = inc_subtensor(self.m[self.ix1, self.ix2], 2.1)
 
         assert a.type == self.m.type, (a.type, self.m.type)
