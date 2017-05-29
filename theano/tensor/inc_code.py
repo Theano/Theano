@@ -2,16 +2,12 @@ from __future__ import absolute_import, print_function, division
 
 
 def inc_code():
-    types = ['npy_' + t for t in ['int8', 'int16', 'int32', 'int64', 'int128',
-                                  'int256', 'uint8', 'uint16', 'uint32',
-                                  'uint64', 'uint128', 'uint256',
-                                  'float16', 'float32', 'float64',
-                                  'float80', 'float96', 'float128',
-                                  'float256']]
+    types = ['npy_' + t for t in ['int8', 'int16', 'int32', 'int64',
+                                  'uint8', 'uint16', 'uint32', 'uint64',
+                                  'float16', 'float32', 'float64']]
 
     complex_types = ['npy_' + t for t in ['complex32', 'complex64',
-                                          'complex128', 'complex160',
-                                          'complex192', 'complex512']]
+                                          'complex128']]
 
     inplace_map_template = """
     #if defined(%(typen)s)
@@ -71,7 +67,6 @@ def inc_code():
                                   for t in types + complex_types]) + "-1000};")
 
     code = ("""
-        #if NPY_API_VERSION >= 0x00000008
         typedef void (*inplace_map_binop)(PyArrayMapIterObject *,
                                           PyArrayIterObject *, int inc_or_set);
         """ + fns + fn_array + type_number_array + """
@@ -162,7 +157,6 @@ fail:
 
     return -1;
 }
-        #endif
 """)
 
     return code
