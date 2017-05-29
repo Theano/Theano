@@ -981,7 +981,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
 
 def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1, 1, 1),
                conv_mode='conv', direction_hint=None,
-               algo='none', precision=None):
+               algo=None, precision=None):
     """
     GPU convolution using cuDNN from NVIDIA.
 
