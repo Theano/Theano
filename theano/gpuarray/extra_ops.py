@@ -35,7 +35,7 @@ class GpuCumOp(GpuKernelBase, Op):
         return hash(self.axis) ^ hash(self.mode)
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', '<gpuarray_helper.h>']
@@ -380,8 +380,8 @@ class GpuCumOp(GpuKernelBase, Op):
                     size_t dimGrid[3] = {dimGridX, localDimGridY, localDimGridZ};
                     size_t dimBlock[3] = {dimBlockX, 1, 1};  // One cum op per block.
                     size_t sharedBytes = (2*dimBlockX) * sizeof(float);
-                    void* kernel_params[] = {(void*) input->ga.data,
-                                             (void*) output->ga.data,
+                    void* kernel_params[] = {(void*) ((char *)(input->ga.data) + input->ga.offset),
+                                             (void*) ((char *)(output->ga.data) + output->ga.offset),
                                              (void*) &nbElementsPerCumOp,
                                              (void*) &inputStrides_x,
                                              (void*) &inputStrides_y,
@@ -391,7 +391,7 @@ class GpuCumOp(GpuKernelBase, Op):
                                              (void*) &outputStrides_z,
                                              (void*) &offsetY,
                                              (void*) &offsetZ,
-                                             (void*) deviceBlockSum->ga.data
+                                             (void*) ((char*)(deviceBlockSum->ga.data) + deviceBlockSum->ga.offset)
                         };
                     int err = GpuKernel_call(&k_blockCumOp_%(nodename)s, 3, dimGrid, dimBlock, sharedBytes, kernel_params);
                     if (err != GA_NO_ERROR){
@@ -409,8 +409,8 @@ class GpuCumOp(GpuKernelBase, Op):
                         //  report partial cum ops of previous blocks to subsequents ones.
                         size_t dimGrid[3] = {dimGridX, localDimGridY, localDimGridZ};
                         size_t dimBlock[3] = {dimBlockX, 1, 1};
-                        void* kernel_params[] = {(void*) output->ga.data,
-                                                 (void*) deviceBlockSum->ga.data,
+                        void* kernel_params[] = {(void*) ((char *)(output->ga.data) + output->ga.offset),
+                                                 (void*) ((char *)(deviceBlockSum->ga.data) + deviceBlockSum->ga.offset),
                                                  (void*) &nbElementsPerCumOp,
                                                  (void*) &outputStrides_x,
                                                  (void*) &outputStrides_y,
@@ -430,8 +430,8 @@ class GpuCumOp(GpuKernelBase, Op):
                         size_t dimBlock[3] = {1, 1, 1};
                         size_t tmp0 = shape[axis]-2;
                         size_t tmp1 = shape[axis]-1;
-                        void* kernel_params[] = {(void*) input->ga.data,
-                                                 (void*) output->ga.data,
+                        void* kernel_params[] = {(void*) ((char *)(input->ga.data) + input->ga.offset),
+                                                 (void*) ((char *)(output->ga.data) + output->ga.offset),
                                                  (void*) &inputStrides_x,
                                                  (void*) &inputStrides_y,
                                                  (void*) &inputStrides_z,
