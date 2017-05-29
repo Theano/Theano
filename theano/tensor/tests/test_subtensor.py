@@ -5,7 +5,6 @@ import sys
 import unittest
 
 import numpy as np
-from nose.plugins.skip import SkipTest
 from nose.tools import assert_equal
 from numpy.testing import assert_array_equal
 from six import StringIO
