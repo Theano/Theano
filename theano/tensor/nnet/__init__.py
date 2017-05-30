@@ -39,7 +39,7 @@ from .abstract_conv import conv3d
 
 def conv2d(input, filters, input_shape=None, filter_shape=None,
            border_mode='valid', subsample=(1, 1), filter_flip=True,
-           image_shape=None, filter_dilation=(1, 1), **kwargs):
+           image_shape=None, filter_dilation=(1, 1), num_groups=1, **kwargs):
     """
     This function will build the symbolic graph for convolving a mini-batch of a
     stack of 2D inputs with a set of 2D filters. The implementation is modelled
@@ -152,7 +152,7 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
 
     return abstract_conv2d(input, filters, input_shape, filter_shape,
                            border_mode, subsample, filter_flip,
-                           filter_dilation)
+                           filter_dilation, num_groups)
 
 
 def conv2d_transpose(input, filters, output_shape, filter_shape=None,
