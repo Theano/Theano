@@ -141,7 +141,7 @@ def _dnn_check_version():
         warnings.warn("Your cuDNN version is more recent than "
                       "Theano. If you encounter problems, try "
                       "updating Theano or downgrading cuDNN to "
-                      "a version >= v5 and < v6.1.")
+                      "a version >= v5 and <= v6.")
     return True, None
 
 

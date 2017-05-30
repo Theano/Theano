@@ -47,7 +47,7 @@ class CuDNNV51(object):
                                           ('CUDNN_CONVOLUTION_FWD_ALGO_FFT', 'fft'),
                                           ('CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING', 'fft_tiling'),
                                           ('CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD', 'winograd'),
-                                          # Not yet tested/documented:
+                                          # TODO: Not yet tested/documented:
                                           ('CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED', 'winograd_non_fused'),
                                           ctype='cudnnConvolutionFwdAlgo_t')
 
@@ -59,7 +59,7 @@ class CuDNNV51(object):
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3', 'small'),
                                                 # not implemented:
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD'),
-                                                # not yet tested/documented:
+                                                # TODO: not yet tested/documented:
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED', 'winograd_non_fused'),
                                                 ctype='cudnnConvolutionBwdFilterAlgo_t')
 
@@ -70,7 +70,7 @@ class CuDNNV51(object):
                                               ('CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT', 'fft'),
                                               ('CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING', 'fft_tiling'),
                                               ('CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD', 'winograd'),
-                                              # not yet tested/documented:
+                                              # TODO: not yet tested/documented:
                                               ('CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED', 'winograd_non_fused'),
                                               ctype='cudnnConvolutionBwdDataAlgo_t')
 
@@ -101,7 +101,6 @@ class CuDNNV6(CuDNNV51):
     cudnnPoolingMode_t = CEnumType(('CUDNN_POOLING_MAX', 'max'),
                                    ('CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING', 'average_inc_pad'),
                                    ('CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING', 'average_exc_pad'),
-                                   # tested but not yet documented:
                                    # new in v6:
                                    ('CUDNN_POOLING_MAX_DETERMINISTIC', 'max_deterministic'),
                                    ctype='cudnnPoolingMode_t')
@@ -112,7 +111,7 @@ class CuDNNV6(CuDNNV51):
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3', 'small'),
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD'),
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED', 'winograd_non_fused'),
-                                                # not yet tested/documented:
+                                                # TODO: not yet tested/documented:
                                                 # new in v6:
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING', 'fft_tiling'),
                                                 ctype='cudnnConvolutionBwdFilterAlgo_t')
