@@ -6,6 +6,7 @@ export THEANO_FLAGS=init_gpu_device=cuda
 
 # CUDA
 export PATH=/usr/local/cuda/bin:$PATH
+export CPATH=/usr/local/cuda/include/:$CPATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
 
@@ -78,6 +79,9 @@ FLAGS=${FLAGS},device=cpu,floatX=float64
 
 # Only use elements in the cache for < 7 days
 FLAGS=${FLAGS},cmodule.age_thresh_use=604800
+
+# Enable magma GPU library
+FLAGS=${FLAGS},magma.enabled=true
 
 #we change the seed and record it everyday to test different combination. We record it to be able to reproduce bug caused by different seed. We don't want multiple test in DEBUG_MODE each day as this take too long.
 seed=$RANDOM
