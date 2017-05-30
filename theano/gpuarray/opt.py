@@ -1065,7 +1065,8 @@ def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.AdvancedIncSubtensor1, tensor.AdvancedIncSubtensor])
+@op_lifter([tensor.AdvancedIncSubtensor1])
+@op_lifter([tensor.AdvancedIncSubtensor])
 @register_opt2([tensor.AdvancedIncSubtensor1, tensor.AdvancedIncSubtensor], 'fast_compile')
 def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
     if isinstance(op, (tensor.AdvancedIncSubtensor1)):

@@ -78,44 +78,23 @@ class G_subtensorF16(test_subtensor.T_subtensor):
 
 
 def test_advinc_subtensor():
-    x_shp = (20, 15, 10, 5)
-    idx = ([[0, 1],
-            [2, 3]],
-           [[0, 1],
-            [2, 3]])
-
-    for y_shp in [(2, 2, 10, 5),
-                  (2, 10, 5),
-                  (10, 5), (5,), (1,)]:
-        shared = gpuarray_shared_constructor
-        xval = np.arange(np.prod(x_shp), dtype='float32').reshape(x_shp) + 1
-        yval = np.arange(np.prod(y_shp), dtype='float32').reshape(y_shp) + 1
-        rep = xval.copy()
-        rep[idx] += yval
-        x = shared(xval, name='x')
-        y = tensor.tensor(dtype='float32',
-                          broadcastable=(False,) * len(yval.shape),
-                          name='y')
-        expr = tensor.advanced_inc_subtensor(x, y, *idx)
-        f = theano.function([y], expr, mode=mode_with_gpu)
-        assert sum([isinstance(node.op, GpuAdvancedIncSubtensor)
-                    for node in f.maker.fgraph.toposort()]) == 1
-        rval = f(yval)
-        assert np.allclose(rval, rep)
+    shp = (3, 3, 3)
     shared = gpuarray_shared_constructor
-    xval = np.arange(np.prod(x_shp), dtype='float32').reshape(x_shp) + 1
-    rep = xval.copy()
-    rep[idx] += 1.
+    xval = np.arange(np.prod(shp), dtype='float32').reshape(shp) + 1
+    yval = np.arange(np.prod(shp[1:]), dtype='float32').reshape(shp[1:])
+    idx = ([0, 1, 2], [0, 1, 2])
     x = shared(xval, name='x')
-    y = tensor.scalar(dtype='float32',
+    y = tensor.tensor(dtype='float32',
+                      broadcastable=(False, False),
                       name='y')
     expr = tensor.advanced_inc_subtensor(x, y, *idx)
     f = theano.function([y], expr, mode=mode_with_gpu)
     assert sum([isinstance(node.op, GpuAdvancedIncSubtensor)
                 for node in f.maker.fgraph.toposort()]) == 1
-    rval = f(np.float32(1.))
+    rval = f(yval)
+    rep = xval.copy()
+    rep[idx] += yval
     assert np.allclose(rval, rep)
->>>>>>> Initial additions for `GpuAdvancedIncSubtensor`
 
 
 def test_advinc_subtensor1():

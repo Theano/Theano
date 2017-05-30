@@ -602,7 +602,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         y = as_gpuarray_variable(y, ctx_name)
         return gof.Apply(self, [x, y] + rval.inputs[2:], [otype()])
 
-    def perform(self, node, inp, out_, ctx=None):
+    def perform(self, node, inp, out_):
         out, = out_
         x = inp[0]
         y = inp[1]
@@ -614,7 +614,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
             if isinstance(idx[i], gpuarray.GpuArray):
                 idx[i] = np.asarray(idx[i])
 
-        # Copied code from AdvancedSubtensor
+        # Insert axes for None indexing
         nidx = []
         nshp = list(x.shape)
         for k, i in enumerate(idx):
@@ -626,41 +626,30 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
 
         x_ = x.reshape(nshp)
 
-        narrays = 0
-        transp = list(range(x_.ndim))
+        # Bring array indices to front
+        transp = []
+        nidx_ = []
         p = 0
-        ap = 0
         for k, i in enumerate(list(nidx)):
-            if (isinstance(i, np.ndarray) and
-                    i.ndim != 0):
-                transp.remove(k)
-                transp.insert(p, k)
-                ap += k
-                i = nidx.pop(k)
-                nidx.insert(p, i)
+            if isinstance(i, np.ndarray) and i.ndim != 0:
+                transp.append(k)
+                nidx_.append(i)
                 p += 1
-                narrays += 1
-            else:
-                if narrays == 0:
-                    try:
-                        i.__index__()
-                        if ap >= 0:
-                            ap -= 1
-                        narrays = 2
-                    except Exception:
-                        pass
-        # End of copied code from AdvancedSubtensor
+        for k, i in enumerate(list(nidx)):
+            if not (isinstance(i, np.ndarray) and i.ndim != 0):
+                transp.append(k)
+                nidx_.append(i)
+        transp = transp + range(len(transp), x_.ndim)
+        rtransp = [i for i, _ in sorted(enumerate(transp), key=lambda x:x[1])]
+        nidx = nidx_
+
         # transp: order to shuffle axes of x so that single dimension
         #         subarrays are extracted first
         # p: number of axes with array indexing
-
         x_ = x_.transpose(*transp)
         idx_ = ([slice(None)] * p + nidx[p:])
-        x_ = x_.__getitem__(idx_)
-
         # flatten the array-indexed dimensions
         x_flat = x_.reshape((np.prod(x_.shape[0: p]),) + x_.shape[p:])
-
         # process y so that last axes are the same
         if y.shape != (1,):
             y_shape_reverse = []
@@ -677,7 +666,6 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                     y_shape_reverse.append(int(np.prod(y.shape)))
 
             y_shape = y_shape_reverse[::-1]
-            assert(np.prod(y_shape) == np.prod(y.shape))
             y_flat = y.reshape(y_shape)
         else:
             y_flat = y[0]
@@ -689,24 +677,32 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
             strides.insert(0, stride)
 
         # build the indices and use it
+        index = idx_[p:] + [slice(None)] * (len(x_flat.shape) - len(idx_[p:]) - 1)
         take_idx = sum(i * s for i, s in zip(nidx, strides))
-
+        k = get_iadd(node.inputs[0], node.inputs[1])
         if x_flat.shape[-len(y_flat.shape):] == y_flat.shape or y_flat.shape == ():
             # y_flat has to be broadcast over axes of x_flat[i]
+
             for i in take_idx.flatten():
+                if len(idx_[p:]) > 0:
+                    x_flat_sub = x_flat[i].__getitem__(index)
+                else:
+                    x_flat_sub = x_flat[i]
                 tmp = pygpu.elemwise.elemwise2(
-                    x_flat[i], '+', y_flat, x_flat[i],
+                    x_flat_sub, '+', y_flat, x_flat_sub,
                     broadcast=True
                 )
-                x_flat.__setitem__(i, tmp)
+                x_flat[i].__setitem__(index, tmp)
         else:
             # y_flat's first axis corresponds to first exist of x_flat
-            k = get_iadd(node.inputs[0], node.inputs[1])
             for j, i in enumerate(take_idx.flatten()):
-                k(x_flat[i], y_flat[j % y_flat.shape[0]], broadcast=True)
-
-        # updating the view updates the original
-        out[0] = x
+                if len(idx_[p:]) > 0:
+                    x_flat_sub = x_flat[i].__getitem__(index)
+                else:
+                    x_flat_sub = x_flat[i]
+                k(x_flat_sub, y_flat[j % y_flat.shape[0]], broadcast=True)
+        x_ = x_flat.reshape(x_.shape).transpose(*rtransp)
+        out[0] = x_
 
 
 class GpuAdvancedIncSubtensor1(Op):
