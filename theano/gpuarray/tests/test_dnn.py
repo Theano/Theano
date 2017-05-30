@@ -31,6 +31,20 @@ mode_with_gpu = mode_with_gpu.including()
 mode_with_gpu.check_py_code = False
 
 
+# This variable will store the list of pooling modes available with the current runtime cuDNN version.
+# Don't use this variable directly, always call `get_dnn_pool_modes()` instead.
+dnn_pool_modes = None
+
+
+def get_dnn_pool_modes():
+    # This function is called only by pooling tests to initialize and/or get dnn_pool_modes.
+    global dnn_pool_modes
+    if dnn_pool_modes is None:
+        from .. import cudnn_defs
+        dnn_pool_modes = cudnn_defs.get_definitions(dnn.version(raises=False)).cudnnPoolingMode_t.get_aliases()
+    return dnn_pool_modes
+
+
 # If using float16, set CUDNN precision to float32
 def set_precision(floatX):
     if floatX == "float16":
@@ -155,11 +169,7 @@ def test_pooling():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    # 'average_exc_pad' is disabled for versions < 4004
-    if dnn.version(raises=False) < 4004:
-        modes = ('max', 'average_inc_pad')
-    else:
-        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+    modes = get_dnn_pool_modes()
 
     x = T.tensor4()
     for mode, pad in product(modes,
@@ -242,7 +252,9 @@ def test_pooling():
                         for node in fg.maker.fgraph.toposort()])
 
 
-def test_pooling_with_tensor_vars():
+# This test will be run with different values of 'mode'
+# (see next test below).
+def run_pooling_with_tensor_vars(mode):
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
@@ -251,7 +263,6 @@ def test_pooling_with_tensor_vars():
     ws = theano.shared(np.array([2, 2], dtype='int32'))
     stride = theano.shared(np.array([1, 1], dtype='int32'))
     pad = theano.shared(np.array([0, 0], dtype='int32'))
-    mode = 'max'
 
     def fn(x):
         dnn_op = dnn.dnn_pool(
@@ -297,6 +308,12 @@ def test_pooling_with_tensor_vars():
         i += 1
 
 
+def test_pooling_with_tensor_vars():
+    # Let's test for mode 'max' and also for 'max_deterministic' if available.
+    for mode in [m for m in get_dnn_pool_modes() if m in ('max', 'max_deterministic')]:
+        yield (run_pooling_with_tensor_vars, mode)
+
+
 def test_pooling3d():
     # 3d pooling requires version 3 or newer.
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 3000:
@@ -307,11 +324,7 @@ def test_pooling3d():
     mode_without_gpu_ref = theano.compile.mode.get_mode(
         'FAST_RUN').excluding('gpuarray')
 
-    # 'average_exc_pad' is disabled for versions < 4004
-    if dnn.version(raises=False) < 4004:
-        modes = ('max', 'average_inc_pad')
-    else:
-        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+    modes = get_dnn_pool_modes()
 
     x = T.tensor5()
     for mode, pad in product(modes,
@@ -467,11 +480,7 @@ def test_pooling_opt_arbitrary_dimensions():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    # 'average_exc_pad' is disabled for versions < 4004
-    if dnn.version(raises=False) < 4004:
-        modes = ('max', 'average_inc_pad')
-    else:
-        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+    modes = get_dnn_pool_modes()
 
     for n_non_pool_dims in (0, 1, 2, 3):
         for ws in ((2, 2), (3, 3, 3)):
@@ -498,7 +507,7 @@ def test_pooling_opt_arbitrary_dimensions():
                 fc = theano.function([], out, mode=mode_without_gpu)
                 assert any([isinstance(node.op, Pool)
                            for node in fc.maker.fgraph.toposort()])
-                if mode == 'max':
+                if mode in ('max', 'max_deterministic'):
                     assert any([isinstance(node.op, MaxPoolGrad)
                                for node in fc.maker.fgraph.toposort()])
                 else:
@@ -780,11 +789,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dtype=theano.config.floatX
         )
 
-        # 'average_exc_pad' is disabled for versions < 4004
-        if dnn.version(raises=False) < 4004:
-            modes = ['max', 'average_inc_pad']
-        else:
-            modes = ['max', 'average_inc_pad', 'average_exc_pad']
+        modes = get_dnn_pool_modes()
 
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
@@ -807,11 +812,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dtype=theano.config.floatX
         )
 
-        # 'average_exc_pad' is disabled for versions < 4004
-        if dnn.version(raises=False) < 4004:
-            modes = ['max', 'average_inc_pad']
-        else:
-            modes = ['max', 'average_inc_pad', 'average_exc_pad']
+        modes = get_dnn_pool_modes()
 
         for params in product(
             [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
@@ -847,7 +848,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
             [(1, 1), (2, 2), (3, 3)],
-            ['max', 'average_inc_pad']
+            # modes without `average_exc_pad`
+            [m for m in get_dnn_pool_modes() if m != 'average_exc_pad']
         ):
             pool_grad = dnn.GpuDnnPoolGrad(mode=params[2])(
                 img,
@@ -886,7 +888,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         for params in product(
             [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
             [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
-            ['max', 'average_inc_pad']
+            # modes without `average_exc_pad`
+            [m for m in get_dnn_pool_modes() if m != 'average_exc_pad']
         ):
             pool_grad = dnn.GpuDnnPoolGrad(mode=params[2])(
                 img,
