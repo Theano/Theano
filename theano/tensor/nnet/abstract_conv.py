@@ -1913,7 +1913,7 @@ class AbstractConv_gradWeights(BaseAbstractConv):
         imshp = input_shapes[0]
         topshp = input_shapes[1]
         kshp = self.kshp[:] if self.kshp is not None else [None] * (2 + self.convdim)
-        fallback_kshp = ([topshp[1], imshp[1]] +
+        fallback_kshp = ([topshp[1], imshp[1] // self.num_groups] +
                          [node.inputs[2][i] for i in range(self.convdim)])
         kshp = [fallback_kshp[i] if kshp[i] is None else kshp[i]
                 for i in range(2 + self.convdim)]
@@ -2169,7 +2169,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
         kshp = input_shapes[0]
         topshp = input_shapes[1]
         imshp = self.imshp[:] if self.imshp is not None else [None] * (2 + self.convdim)
-        fallback_imshp = ([topshp[0], kshp[1]] +
+        fallback_imshp = ([topshp[0], kshp[1] * self.num_groups] +
                           [node.inputs[2][i] for i in range(self.convdim)])
         imshp = [fallback_imshp[i] if imshp[i] is None else imshp[i]
                  for i in range(2 + self.convdim)]
