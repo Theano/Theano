@@ -2104,6 +2104,74 @@ class Prod(CAReduceDtype):
 
             return [final_grad]
 
+    def R_op(self, inputs, eval_points):
+        prod_in, = inputs
+        d_in, = eval_points
+
+        # Prepare the broadcasting that is used everywhere to broadcast
+        # over the original groups (ie. broadcast over the elements of a given
+        # product)
+        axis = self.axis
+        if axis is None:
+            axis = list(range(prod_in.type.ndim))
+        if axis == ():
+            return prod_in,
+        new_dims = []
+        i = 0
+        for j, _ in enumerate(prod_in.type.broadcastable):
+            if j in axis:
+                new_dims.append('x')
+            else:
+                new_dims.append(i)
+                i += 1
+
+        # Prepare the broadcasting that is used everywhere to broadcast
+        # over the original groups (ie. broadcast over the elements of a given
+        # product)
+        prod_out = self(prod_in)
+
+        if d_in is None:
+            return [None]
+        rop_case_without_zeros = prod_out * theano.tensor.basic.sum(d_in / prod_in, axis=self.axis)
+        if self.no_zeros_in_input:
+            return [rop_case_without_zeros]
+        else:
+            T = theano.tensor
+
+            where_zeros = T.eq(prod_in, 0.0)
+            sum_where_zeros = T.sum(where_zeros, axis=self.axis)
+            gwsz = T.eq(sum_where_zeros, 1)
+            groups_with_single_zero = gwsz.dimshuffle(new_dims)
+            # tensor with 0 everywhere except for those places where
+            # a 0 part of a group with a single zero was to be found
+            # further optimization to avoid computing ProdWithoutZeros
+            # if the incoming gradient is 0
+            where_gz_not_zero = T.neq(d_in, 0.0)
+            # only take ProdWithoutZeros for the groups with single zeros
+            # with non-null incoming gradient
+            where_to_take_prod_without_zeros = (
+                groups_with_single_zero * where_gz_not_zero)
+            # preprocess the original input so that we set 0 everywhere
+            # except for groups that contain a single zero, to avoid computing
+            # multiplications on other groups
+            prod_without_zeros_in = where_to_take_prod_without_zeros * prod_in
+            # TODO: put lazy switch here, if it'd work
+            # this is pretty efficient already (no multiplication if 0), but
+            # it'd be even better if we had a lazy if per element
+            prod_without_zeros = ProdWithoutZeros(axis=self.axis)(
+                prod_without_zeros_in)
+            prod_without_zeros = prod_without_zeros
+
+            groups_without_zeros = T.eq(sum_where_zeros, 0)
+
+            # Need to extract the deltas where we have single_zeros
+            deltas = T.sum(d_in * where_zeros, axis=self.axis)
+            final_rop = T.switch(
+                groups_without_zeros,
+                rop_case_without_zeros,
+                T.switch(gwsz, prod_without_zeros, 0.0) * deltas)
+            return [final_rop]
+
     def c_code_cache_version(self):
         return (1,)
 

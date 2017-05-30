@@ -620,6 +620,21 @@ class test_Prod(unittest.TestCase):
 
         unittest_tools.verify_grad(fn, [x_val], mode=self.mode)
 
+    def test_verify_rop(self):
+        # including zeros, as the case with zeros is important
+        # (and special cases: 1 zero in the row, more than 1 zero in the row)
+        x_val = np.asarray([[.1, .2, .3], [.4, .5, .6], [.7, .8, .9]],
+                           dtype='float32')
+        # now with verify_rop
+        unittest_tools.verify_rop(Prod(axis=1), [x_val], mode=self.mode)
+
+        # second time, with some added complexity
+        # verify_rop takes the sum of the matrices anyway
+        def fn(x2):
+            return theano.tensor.sqr(Prod(axis=1)(x2))
+
+        unittest_tools.verify_rop(fn, [x_val], mode=self.mode)
+
     def test_verify_grad_with_zeros(self):
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
@@ -661,6 +676,27 @@ class test_Prod(unittest.TestCase):
         # print(fn4(x2_val))
 
         # unittest_tools.verify_grad(fn5, [x_val])
+
+    def test_verify_rop_with_zeros(self):
+        # including zeros, as the case with zeros is important
+        # (and special cases: 1 zero in the row, more than 1 zero in the row)
+        x_val = np.asarray([[1., 2., 3.], [0., 5., 6.], [0., 0., 9.]],
+                           dtype='float32')
+        x = theano.tensor.dmatrix()
+
+        # sanity check
+        p = Prod(axis=1)(x)
+
+        fn3 = theano.function([x], [p], mode=self.mode)
+        assert np.allclose(fn3(x_val), [6., 0., 0.])
+
+        # now with verify_rop
+        unittest_tools.verify_rop(Prod(axis=1), [x_val], mode=self.mode)
+
+        def fn5(x5):
+            return theano.tensor.sqr(Prod(axis=1)(x5))
+
+        unittest_tools.verify_rop(fn5, [x_val])
 
     @attr('slow')
     def test_prod_no_zeros_in_input(self):
@@ -740,6 +776,27 @@ class test_Prod(unittest.TestCase):
             [[0., 400., 0.], [63., 160., 0.], [0., 100., 0.], [0., 80., 0.]])
 
         tensor.verify_grad(p, [x_val1], rng=rng, mode=self.mode)
+
+    def test_other_rop_tests(self):
+        x = theano.tensor.dmatrix()
+        x_val1 = np.array([[1, 2, 3], [0, 5, 6], [0, 0, 9]],
+                          dtype='float32')
+        x_val2 = np.array([[1, 2, 0], [0, 5, 6], [7, 8, 9], [9, 10, 0]],
+                          dtype='float32')
+        rng = np.random.RandomState(43)
+
+        p_axis0 = Prod(axis=0)
+        rop_p_axis0 = theano.tensor.Rop(p_axis0(x), x, x)
+        d = theano.tensor.cast(x.shape[0], x.dtype)
+        out_fn = theano.function([x], p_axis0(x) * d, mode=self.mode)
+        rop_fn_axis0 = theano.function([x], rop_p_axis0, mode=self.mode)
+
+        print(rop_fn_axis0(x_val1), out_fn(x_val1))
+        assert np.allclose(rop_fn_axis0(x_val1), out_fn(x_val1))
+        assert np.allclose(rop_fn_axis0(x_val2), out_fn(x_val2))
+
+        tensor.verify_rop(p_axis0, [x_val1], rng=rng, mode=self.mode)
+        tensor.verify_rop(p_axis0, [x_val2], rng=rng, mode=self.mode)
 
     def test_mul_without_zeros_zeros(self):
         a = np.zeros((3, 3))
