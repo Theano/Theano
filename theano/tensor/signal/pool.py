@@ -59,7 +59,8 @@ def pool_2d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0),
     stride : tuple of two ints or theano vector of ints of size 2.
         Stride size, which is the number of shifts over rows/cols to get the
         next pool region. If stride is None, it is considered equal to ws
-        (no overlap on pooling regions).
+        (no overlap on pooling regions), eg: stride=(1,1) will shifts over
+        one row and one col for every iteration.
     pad : tuple of two ints or theano vector of ints of size 2.
         (pad_h, pad_w), pad zeros to extend beyond four borders of the
         images, pad_h is the size of the top and bottom margins, and
