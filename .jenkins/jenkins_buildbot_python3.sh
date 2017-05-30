@@ -8,6 +8,7 @@ export THEANO_FLAGS=init_gpu_device=cuda
 
 # CUDA
 export PATH=/usr/local/cuda/bin:$PATH
+export CPATH=/usr/local/cuda/include/:$CPATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
 
@@ -19,4 +20,4 @@ echo
 
 FILE=${BUILDBOT_DIR}/theano_python3_tests.xml
 set -x
-PYTHONPATH= THEANO_FLAGS=$THEANO_FLAGS,compiledir=$HOME/.theano/buildbot_theano_python3,mode=FAST_COMPILE,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise python3 bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE}
+PYTHONPATH= THEANO_FLAGS=$THEANO_FLAGS,compiledir=$HOME/.theano/buildbot_theano_python3,mode=FAST_COMPILE,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,magma.enabled=true python3 bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE}

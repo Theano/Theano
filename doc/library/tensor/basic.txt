@@ -629,23 +629,23 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
 
 .. autofunction:: patternbroadcast(x, broadcastable)
 
-.. function:: flatten(x, outdim=1)
+.. function:: flatten(x, ndim=1)
 
     Similar to :func:`reshape`, but the shape is inferred from the shape of `x`.
 
     :param x: variable to be flattened
     :type x: any TensorVariable (or compatible)
 
-    :type outdim: int
-    :param outdim: the number of dimensions in the returned variable
+    :type ndim: int
+    :param ndim: the number of dimensions in the returned variable
 
-    :rtype: variable with same dtype as `x` and `outdim` dimensions
-    :returns: variable with the same shape as `x` in the leading `outdim-1`
+    :rtype: variable with same dtype as `x` and `ndim` dimensions
+    :returns: variable with the same shape as `x` in the leading `ndim-1`
         dimensions, but with all remaining dimensions of `x` collapsed into
         the last dimension.
 
     For example, if we flatten a tensor of shape (2, 3, 4, 5) with flatten(x,
-    outdim=2), then we'll have the same (2-1=1) leading dimensions (2,), and the
+    ndim=2), then we'll have the same (2-1=1) leading dimensions (2,), and the
     remaining dimensions are collapsed.  So the output in this example would
     have shape (2, 60).
 
