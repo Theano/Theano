@@ -19,6 +19,10 @@ from theano.gof.null_type import NullType
 from theano.tensor import elemwise_cgen as cgen
 from theano.misc.frozendict import frozendict
 from theano.gof.type import Generic
+from theano.gof import ParamsType
+
+from theano.scalar import Scalar
+
 
 config = theano.config
 
@@ -411,10 +415,11 @@ pprint.assign(DimShuffle, DimShufflePrinter())
 class ElemwiseParams(object):
     def __init__(self, inplace_pattern):
         self.inplace_pattern = inplace_pattern
-
+        
     def __hash__(self):
-        return hash_from_dict(self.inplace_pattern)
+        return hash(self.inplace_pattern)
 
+    
 
 class Elemwise(OpenMPOp):
     """
@@ -466,7 +471,7 @@ second dimension
     """
 
     __props__ = ("scalar_op", "inplace_pattern")
-
+    params_type = Generic()
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
         if inplace_pattern is None:
@@ -475,8 +480,11 @@ second dimension
         self.scalar_op = scalar_op
 
         self.inplace_pattern = frozendict(inplace_pattern)
+        
+        
         self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
-
+        self.test = frozendict(self.destroy_map)
+        
         self.ufunc = None
         self.nfunc = None
         if nfunc_spec is None:
@@ -486,6 +494,12 @@ second dimension
             self.nfunc = getattr(np, nfunc_spec[0])
 
         super(Elemwise, self).__init__(openmp=openmp)
+
+    def get_params(self, node):
+        if(not hasattr(self, 'params')):
+            self.params = ElemwiseParams(self.inplace_pattern)
+            
+        return self.params
 
     def __getstate__(self):
         d = copy(self.__dict__)
@@ -505,13 +519,6 @@ second dimension
             self.ufunc = np.frompyfunc(self.scalar_op.impl,
                                        self.scalar_op.nin,
                                        self.scalar_op.nout)
-
-
-    def get_params(self, node):
-        if(not hasattr(self, 'params')):
-            self.params = ElemwiseParams(self.inplace_pattern)
-
-        return self.params
 
     def get_output_info(self, dim_shuffle, *inputs):
         """Return the outputs dtype and broadcastable pattern and the
