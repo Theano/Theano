@@ -10,6 +10,9 @@ except ImportError:
 
 from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape, infer_context_name)
 from .opt import register_opt, op_lifter, register_opt2
+from .type import gpu_context_type
+from theano.gof import ParamsType
+import theano.scalar as scalar
 
 
 class GpuCumOp(GpuKernelBase, Op):
@@ -21,9 +24,11 @@ class GpuCumOp(GpuKernelBase, Op):
     """
     SUPPORTED_NDIMS = 3
     __props__ = ('axis', 'mode')
+    params_type = ParamsType(axis=scalar.int32,
+                             context=gpu_context_type)
 
     def __init__(self, axis, mode='add'):
-        self.axis = axis if axis else 0
+        self.axis = int(axis) if axis is not None else 0
         self.mode = mode
 
     def __eq__(self, other):
@@ -42,6 +47,10 @@ class GpuCumOp(GpuKernelBase, Op):
 
     def c_header_dirs(self):
         return [os.path.dirname(__file__)]
+
+    def get_params(self, node):
+        context = node.inputs[0].type.context
+        return self.params_type.get_params(axis=self.axis, context=context)
 
     def make_node(self, x):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumOp"
@@ -245,24 +254,18 @@ class GpuCumOp(GpuKernelBase, Op):
     def c_code(self, node, nodename, inp, out, sub):
         if node.inputs[0].type.context.kind != b'cuda':
             raise NotImplementedError("cuda only")
-        x, = inp
-        z, = out
-        axis = self.axis if self.axis is not None else 0
-        fail = sub['fail']
-        ctx = sub['params']
-
-        code = """
-
+        return """
             const size_t* shape = PyGpuArray_DIMS(%(x)s);
             bool needAllocation = !%(z)s || PyGpuArray_NDIM(%(x)s) != PyGpuArray_NDIM(%(z)s);
 
-            int axis = %(axis)s;
+            int axis = %(params)s->axis;
             if (axis < 0) {
                 // Convert negative axis to positive axis.
                 axis += PyGpuArray_NDIM(%(x)s);
             }
 
-            if (theano_prep_output(&%(z)s, PyGpuArray_NDIM(%(x)s), PyGpuArray_DIMS(%(x)s), %(x)s->ga.typecode, GA_C_ORDER, %(ctx)s) != 0){
+            if (theano_prep_output(&%(z)s, PyGpuArray_NDIM(%(x)s), PyGpuArray_DIMS(%(x)s),
+                                   %(x)s->ga.typecode, GA_C_ORDER, %(params)s->context) != 0) {
                 %(fail)s;
             }
 
@@ -271,17 +274,17 @@ class GpuCumOp(GpuKernelBase, Op):
                 size_t max_grid_size1;
                 size_t max_grid_size2;
                 int err;
-                err = gpucontext_property(%(ctx)s->ctx, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim0);
+                err = gpucontext_property(%(params)s->context->ctx, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim0);
                 if (err != GA_NO_ERROR){
                     PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_threads_dims0");
                     %(fail)s;
                 }
-                err = gpucontext_property(%(ctx)s->ctx, GA_CTX_PROP_MAXGSIZE1, &max_grid_size1);
+                err = gpucontext_property(%(params)s->context->ctx, GA_CTX_PROP_MAXGSIZE1, &max_grid_size1);
                 if (err != GA_NO_ERROR){
                     PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_grid_size1");
                     %(fail)s;
                 }
-                err = gpucontext_property(%(ctx)s->ctx, GA_CTX_PROP_MAXGSIZE2, &max_grid_size2);
+                err = gpucontext_property(%(params)s->context->ctx, GA_CTX_PROP_MAXGSIZE2, &max_grid_size2);
                 if (err != GA_NO_ERROR){
                     PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_grid_size2");
                     %(fail)s;
@@ -290,9 +293,7 @@ class GpuCumOp(GpuKernelBase, Op):
                     %(fail)s;
                 }
             }
-        """ % locals()
-
-        return code
+        """ % dict(x=inp[0], z=out[0], nodename=nodename, fail=sub['fail'], params=sub['params'])
 
     def c_support_code_struct(self, node, nodename):
         code = """

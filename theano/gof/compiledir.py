@@ -146,7 +146,49 @@ def print_compiledir_content():
                     if len(ops) == 1:
                         table.append((dir, ops[0], types, compile_time))
                     else:
-                        ops_to_str = '[%s]' % ', '.join(sorted(str(op) for op in ops))
+                        # Instead of printing all Ops (which can result in very long lines),
+                        # we will just print every Op class name with the number of times
+                        # this op class is present in current Ops list, and the value or list
+                        # of values passed to each prop of this op.
+                        # Examples:
+                        # "54*GpuDnnConvDesc" (no props).
+                        # "54*GpuDnnConvDesc{a=1, b=2}" (props a and b have received only 1 and 2 in this entire ops list).
+                        # "54*GpuDnnConvDesc{a=1, b:(1, 2, 3)}" (a receives 1 and b either 1 or 2 or 3 in this entire ops list).
+                        ops_counts = {}
+                        ops_props = {}
+                        for op in ops:
+                            op_name = type(op).__name__
+                            ops_counts.setdefault(op_name, 0)
+                            ops_counts[op_name] += 1
+
+                            if hasattr(op, '__props__'):
+                                ops_props.setdefault(op_name, {})
+                                try:
+                                    for prop_name in op.__props__:
+                                        prop_value = getattr(op, prop_name)
+                                        ops_props[op_name].setdefault(prop_name, set())
+                                        ops_props[op_name][prop_name].add(prop_value)
+                                except Exception:
+                                    pass
+
+                        def props_to_str(op_name):
+                            r = ''
+                            if op_name in ops_props:
+                                props_strings = []
+                                for prop_name, prop_value in ops_props[op_name].items():
+                                    # prop_valus is the set of props values received by this op in this ops list.
+                                    if len(prop_value) == 1:
+                                        # Only 1 value for this prop. Print prop=value
+                                        props_strings += ['%s=%s' % (prop_name, prop_value.pop())]
+                                    else:
+                                        # Many values for this prop. Print prop:(valu1, valu2, ...)
+                                        props_strings += ['%s:%s' % (prop_name, tuple(sorted(list(prop_value))))]
+                                        pass
+                                r = '{%s}' % ', '.join(props_strings)
+                            return r
+
+                        ops_to_str = '[%s]' % '; '.join('%s*%s%s' % (ops_counts[k], k, props_to_str(k))
+                                                        for k in sorted(ops_counts.keys()))
                         types_to_str = '[%s]' % ', '.join(sorted(str(t) for t in types))
                         table_multiple_ops.append((dir, ops_to_str, types_to_str, compile_time))
 
@@ -175,6 +217,7 @@ def print_compiledir_content():
     table_multiple_ops = sorted(table_multiple_ops, key=lambda t: (t[1], t[2]))
     for dir, ops_to_str, types_to_str, compile_time in table_multiple_ops:
         print(dir, '%.3fs' % compile_time, ops_to_str, types_to_str)
+        print()
 
     print()
     print_title(("List of %d compiled Op classes and "

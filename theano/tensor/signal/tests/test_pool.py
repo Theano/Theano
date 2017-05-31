@@ -364,7 +364,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             utt.assert_allclose(np.asarray(output_shape), numpy_output_val.shape)
             f = function([], maxpool_op)
             output_val = f()
-            utt.assert_allclose(output_val, numpy_output_val)
+            utt.assert_allclose(numpy_output_val, output_val)
 
     def test_DownsampleFactorMaxStride(self):
         rng = np.random.RandomState(utt.fetch_seed())

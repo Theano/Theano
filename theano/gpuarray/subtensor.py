@@ -7,9 +7,11 @@ from six import integer_types
 from six.moves import StringIO
 
 from theano import tensor, gof, Op
+from theano.gof import ParamsType
 from theano.gradient import grad_not_implemented
 import theano.tensor as T
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
+from theano.scalar import bool as bool_t, int32 as int_t, uint32 as size_t
 
 try:
     import pygpu
@@ -589,7 +591,15 @@ class GpuAdvancedIncSubtensor1(Op):
     """
     _f16_ok = True
     __props__ = ('inplace', 'set_instead_of_inc')
-    params_type = gpu_context_type
+    params_type = ParamsType(inplace=bool_t,
+                             set_instead_of_inc=bool_t,
+                             context=gpu_context_type,
+                             # following params are used into c_init_code_struct(),
+                             # as inputs are not available in that function.
+                             ndim_input_0=size_t,
+                             ndim_input_1=size_t,
+                             typecode_input_0=int_t,
+                             typecode_input_1=int_t)
 
     def __init__(self, inplace=False, set_instead_of_inc=False):
         self.inplace = inplace
@@ -629,12 +639,17 @@ class GpuAdvancedIncSubtensor1(Op):
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def get_params(self, node):
-        return node.outputs[0].type.context
+        return self.params_type.get_params(self, context=node.outputs[0].type.context,
+                                           # following params are used into c_init_code_struct().
+                                           ndim_input_0=node.inputs[0].ndim,
+                                           ndim_input_1=node.inputs[1].ndim,
+                                           typecode_input_0=node.inputs[0].type.typecode,
+                                           typecode_input_1=node.inputs[1].type.typecode)
 
     # We can't use the parent version that loops on each index
     # as we also need to loop when set_instead_of_inc is True and the
     # parent doesn't loop in that case.
-    def perform(self, node, inp, out_, ctx=None):
+    def perform(self, node, inp, out_, params=None):
         # TODO opt to make this inplace
         x, y, idx = inp
         out, = out_
@@ -695,21 +710,18 @@ class GpuAdvancedIncSubtensor1(Op):
         return """
         gpuelemwise_arg args[2] = {{0}};
         args[0].name = "a";
-        args[0].typecode = %(type1)s;
+        args[0].typecode = %(params)s->typecode_input_0;
         args[0].flags = GE_READ|GE_WRITE;
         args[1].name = "b";
-        args[1].typecode = %(type2)s;
+        args[1].typecode = %(params)s->typecode_input_1;
         args[1].flags = GE_READ;
-        iadd = GpuElemwise_new(%(ctx)s->ctx, "", "a += b",
-                               2, args, %(nd)s, GE_CONVERT_F16);
+        iadd = GpuElemwise_new(%(params)s->context->ctx, "", "a += b",
+                               2, args, %(params)s->ndim_input_1, GE_CONVERT_F16);
         if (iadd == NULL) {
           PyErr_SetString(PyExc_RuntimeError, "Could not intialize inplace add support");
           %(fail)s
         }
-        """ % dict(ctx=sub['params'], fail=sub['fail'],
-                   type1=node.inputs[0].type.typecode,
-                   type2=node.inputs[1].type.typecode,
-                   nd=node.inputs[1].ndim)
+        """ % dict(params=sub['params'], fail=sub['fail'])
 
     def c_code(self, node, name, inputs, outputs, sub):
         if (node.inputs[0].ndim != node.inputs[1].ndim):
@@ -717,18 +729,26 @@ class GpuAdvancedIncSubtensor1(Op):
 
         return """
         PyGpuArrayObject *row_x, *row_y;
-        ssize_t start[%(nd)s], step[%(nd)s];
+        size_t nd = %(params)s->ndim_input_0;
+        ssize_t *start = NULL, *step = NULL;
         size_t num_indices, j;
         int ret;
         int broadcast_y;
 
-        for (j = 0; j < %(nd)s; j++) {
+        start = (ssize_t*)malloc(nd * sizeof(ssize_t));
+        step = (ssize_t*)malloc(nd * sizeof(ssize_t));
+        if (start == NULL || step == NULL) {
+            PyErr_NoMemory();
+            %(fail)s
+        }
+
+        for (j = 0; j < nd; ++j) {
           start[j] = 0;
           step[j] = 1;
         }
         step[0] = 0;
         num_indices = PyArray_SIZE(%(ind)s);
-        if (!%(inplace)s) {
+        if (!%(params)s->inplace) {
           %(out)s = theano_try_copy(%(out)s, %(x)s);
           if (%(out)s == NULL)
             %(fail)s
@@ -767,7 +787,7 @@ class GpuAdvancedIncSubtensor1(Op):
               %(fail)s;
             }
 
-            if (%(set_instead_of_inc)s) {
+            if (%(params)s->set_instead_of_inc) {
               ret = GpuArray_setarray(&row_x->ga, &row_y->ga);
             } else {
               void *args[2];
@@ -781,13 +801,21 @@ class GpuAdvancedIncSubtensor1(Op):
               PyErr_SetString(PyExc_RuntimeError, "Failed to set/inc elements");
           }
         }
+
+        free(start);
+        free(step);
         """ % dict(x=inputs[0], y=inputs[1], ind=inputs[2], out=outputs[0],
-                   fail=sub['fail'], inplace=int(self.inplace),
-                   nd=node.inputs[0].ndim,
-                   set_instead_of_inc=int(self.set_instead_of_inc))
+                   params=sub['params'],
+                   fail="""
+                   {
+                        free(start);
+                        free(step);
+                        %(fail)s
+                   }
+                   """ % dict(fail=sub['fail']))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (3, 1)
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
@@ -798,6 +826,8 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
 
     """
     _f16_ok = True
+    params_type = GpuAdvancedIncSubtensor1.params_type
+    get_params = GpuAdvancedIncSubtensor1.get_params
 
     def make_node(self, x, y, ilist):
         """
@@ -830,14 +860,11 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
 
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
-    def get_params(self, node):
-        return node.outputs[0].type.context
-
-    def perform(self, node, inp, out, ctx):
+    def perform(self, node, inp, out, params):
         return super(GpuAdvancedIncSubtensor1_dev20, self).perform(node, inp, out)
 
     def c_code_cache_version(self):
-        return (9,)
+        return (11,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>',
@@ -847,7 +874,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         return [os.path.dirname(__file__)]
 
     def c_code(self, node, name, inputs, outputs, sub):
-        ctx = self.get_params(node)
+        ctx = self.get_params(node).context
         if ctx.kind != b'cuda':
             raise NotImplementedError("cuda only")
         if (node.inputs[0].ndim != node.inputs[1].ndim or
@@ -855,16 +882,9 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
                 int(ctx.bin_id[-2]) < 2):
             raise NotImplementedError("This case does not have C code yet.")
 
-        x = inputs[0]
-        y = inputs[1]
-        ind = inputs[2]
-        out = outputs[0]
-        fail = sub['fail']
-        set_instead_of_inc = int(self.set_instead_of_inc)
-        inplace = int(self.inplace)
         return """
 int err;
-if (%(inplace)s) {
+if (%(params)s->inplace) {
   Py_XDECREF(%(out)s);
   %(out)s = %(x)s;
   Py_INCREF(%(out)s);
@@ -874,25 +894,19 @@ if (%(inplace)s) {
 if (!%(out)s) {
   %(fail)s
 }
-if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(set_instead_of_inc)s)) {
+if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of_inc)) {
   %(fail)s
 }
-        """ % locals()
+        """ % dict(x=inputs[0], y=inputs[1], ind=inputs[2], out=outputs[0], fail=sub['fail'], params=sub['params'])
 
     def gpu_kernels(self, node, nodename):
         dtype_x = node.inputs[0].dtype
         dtype_y = node.inputs[1].dtype
         dtype_ind = node.inputs[2].dtype
-        dtype_out = node.outputs[0].dtype
-        itemsize_x = np.dtype(dtype_x).itemsize
-        itemsize_y = np.dtype(dtype_y).itemsize
-        itemsize_ind = np.dtype(dtype_ind).itemsize
-        itemsize_out = np.dtype(dtype_out).itemsize
-        flags = Kernel.get_flags(dtype_x, dtype_y, dtype_ind)
         type_x = gpuarray.dtype_to_ctype(dtype_x)
         type_y = gpuarray.dtype_to_ctype(dtype_y)
         type_ind = gpuarray.dtype_to_ctype(dtype_ind)
-        type_out = gpuarray.dtype_to_ctype(dtype_out)
+        flags = Kernel.get_flags(dtype_x, dtype_y, dtype_ind)
         kname = "k_vector_add_fast"
         k_var = "k_vector_add_fast_" + nodename
         code = """
@@ -1000,7 +1014,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
              }
              return;
         }
-        """ % locals()
+        """ % dict(type_x=type_x, type_y=type_y, type_ind=type_ind)
         params = [
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
@@ -1010,26 +1024,19 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
                        flags=flags, objvar=k_var)]
 
     def c_support_code_struct(self, node, nodename):
-        dtype_x = node.inputs[0].dtype
-        dtype_y = node.inputs[1].dtype
-        dtype_ind = node.inputs[2].dtype
-        dtype_out = node.outputs[0].dtype
-        itemsize_x = np.dtype(dtype_x).itemsize
-        itemsize_y = np.dtype(dtype_y).itemsize
-        itemsize_ind = np.dtype(dtype_ind).itemsize
-        itemsize_out = np.dtype(dtype_out).itemsize
-        k_var = "k_vector_add_fast_" + nodename
-
         return super(GpuAdvancedIncSubtensor1_dev20, self).c_support_code_struct(node, nodename) + """
         int GpuArray_vector_add_fast(PyGpuArrayObject* py_self,
                                      PyGpuArrayObject* py_other,
-                                     PyGpuArrayObject *indices_arr,
+                                     PyGpuArrayObject* indices_arr,
                                      const int set_instead_of_inc)
         {
             size_t threads_per_block[3] = {std::min(PyGpuArray_DIMS(py_self)[1], (size_t)256), 1, 1};
             size_t n_blocks[3] = {std::min(PyGpuArray_SIZE(indices_arr), (size_t)4096), 1, 1};
             gpudata *errbuf;
             int err, kerr = 0;
+            size_t itemsize_x = GpuArray_ITEMSIZE(&py_self->ga);
+            size_t itemsize_y = GpuArray_ITEMSIZE(&py_other->ga);
+            size_t itemsize_ind = GpuArray_ITEMSIZE(&indices_arr->ga);
 
             if (threads_per_block[0] > 0 && n_blocks[0] > 0) {
               err = gpudata_property(py_self->ga.data,
@@ -1039,11 +1046,11 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
                 return 1;
               }
 
-              ssize_t stride_X0 = PyGpuArray_STRIDES(py_self)[0] / %(itemsize_x)s;
-              ssize_t stride_X1 = PyGpuArray_STRIDES(py_self)[1] / %(itemsize_x)s;
-              ssize_t stride_Y0 = PyGpuArray_DIMS(py_other)[0] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[0] / %(itemsize_y)s;
-              ssize_t stride_Y1 = PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / %(itemsize_y)s;
-              ssize_t stride_ind = PyGpuArray_STRIDES(indices_arr)[0] / %(itemsize_ind)s;
+              ssize_t stride_X0 = PyGpuArray_STRIDES(py_self)[0] / itemsize_x;
+              ssize_t stride_X1 = PyGpuArray_STRIDES(py_self)[1] / itemsize_x;
+              ssize_t stride_Y0 = PyGpuArray_DIMS(py_other)[0] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[0] / itemsize_y;
+              ssize_t stride_Y1 = PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / itemsize_y;
+              ssize_t stride_ind = PyGpuArray_STRIDES(indices_arr)[0] / itemsize_ind;
               void *kernel_params[] = {(void *)&PyGpuArray_DIMS(py_self)[0],
                                        (void *)&PyGpuArray_DIMS(py_self)[1],
                                        (void *)&stride_X0,
@@ -1083,7 +1090,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
             }
           return 0;
         }
-        """ % locals()
+        """ % dict(k_var="k_vector_add_fast_" + nodename)
 
 
 class GpuExtractDiag(Op):
