@@ -7,7 +7,7 @@ import numpy as np
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
-from theano.tensor.blas import gemm, gemv_inplace, gemm_inplace, _dot22, batched_dot
+from theano.tensor.blas import gemv, gemv_inplace, gemm_inplace, _dot22, batched_dot
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
 from .. import gpuarray_shared_constructor
@@ -50,7 +50,7 @@ def test_float16():
                     np.asarray(0.5, dtype=np.float32)]
     float16_shared = [gpuarray_shared_constructor(val, target=test_ctx_name)
                       for val in float16_data]
-    o = gemm(*float16_shared)
+    o = gemv(*float16_shared)
     f = theano.function([], o, mode=mode_with_gpu)
     y, alpha, A, x, beta = float16_data
     out = f()
