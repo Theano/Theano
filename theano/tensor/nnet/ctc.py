@@ -1,6 +1,5 @@
 from __future__ import (division, absolute_import, print_function)
 import os
-import numpy as np
 import theano.tensor as T
 from theano import config
 from theano import gof
