@@ -342,16 +342,23 @@ class TopKOp(theano.Op):
     def __init__(
             self,
             axis=-1,
-            idx_dtype='int64'):
+            idx_dtype='int64',
+            return_values=True,
+            return_indices=True
+            ):
         if not isinstance(axis, int):
             raise TypeError(
                 '"axis" parameter must be integer, got "%s"' % type(axis))
         if idx_dtype not in theano.tensor.integer_dtypes:
             raise TypeError(
                 '"idx_dtype" parameter must be an integer dtype, got "%s"' % idx_dtype)
+
+        if not (return_indices or return_values):
+            raise ValueError("Neither return_values nor return_indices is True, this isn't allowd")
+
         self.axis = axis
-        self.return_indices = True
-        self.return_values = True
+        self.return_values = return_values
+        self.return_indices = return_indices
         self.idx_dtype = idx_dtype
 
     def __str__(self):

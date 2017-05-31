@@ -30,13 +30,17 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
     __props__ = TopKOp.__props__
     _f16_ok = True
 
-    def __init__(self, axis=-1, idx_dtype='int64'):
+    def __init__(
+        self, axis=-1,
+        idx_dtype='int64',
+        return_values=True,
+        return_indices=True):
         GpuKernelBase.__init__(self)
         TopKOp.__init__(
             self, axis=axis,
-            idx_dtype=idx_dtype)
-        self.return_values = True
-        self.return_indices = True
+            idx_dtype=idx_dtype,
+            return_values=return_values,
+            return_indices=return_indices)
 
     def c_headers(self):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
@@ -291,8 +295,10 @@ def local_gpua_topkop(op, ctx_name, inputs, outputs):
     x, k = inputs
     x = as_gpuarray_variable(x, ctx_name)
 
-    op = GpuTopKOp(axis=axis, idx_dtype=op.idx_dtype)
-    op.return_values = rv
-    op.return_indices = ri
-    rets = op(x, k)
+    gpu_op = GpuTopKOp(
+        axis=axis,
+        idx_dtype=op.idx_dtype,
+        return_values=rv,
+        return_indices=ri)
+    rets = gpu_op(x, k)
     return rets
