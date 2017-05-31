@@ -45,11 +45,11 @@ class TestCTC(unittest.TestCase):
                                   [[0, 0, 0, 0, 0], [11, 12, 13, 14, 15], [-15, -14, -13, -12, -11]]],
                                  dtype=np.float32)
         # Duration of each sequence
-        activation_times = np.asarray([1, 3, 3], dtype=np.int)
+        activation_times = np.asarray([1, 3, 3], dtype=np.int32)
         # Labels for each sequence
         labels = np.asarray([[1, -1],
                              [3, 3],
-                             [2, 3]], dtype=np.int)
+                             [2, 3]], dtype=np.int32)
 
         expected_costs = np.asarray([1.609437943, 7.355742931, 4.938849926],
                                     dtype=np.float32)

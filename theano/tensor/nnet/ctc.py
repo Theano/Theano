@@ -1,4 +1,5 @@
 from __future__ import (division, absolute_import, print_function)
+import os
 import numpy as np
 import theano.tensor as T
 from theano import config
@@ -8,8 +9,6 @@ from theano.tensor.opt import register_canonicalize
 from theano.tensor.opt import register_stabilize
 from theano.tensor.extra_ops import cpu_contiguous
 from theano.gradient import grad_undefined
-
-import os
 
 ctc_enabled = config.ctc.enabled
 
@@ -71,6 +70,15 @@ class ConnectionistTemporalClassification(gof.COp):
         t_labels = T.as_tensor_variable(labels)
         t_input_lengths = T.as_tensor_variable(input_lengths)
 
+        if t_activations.type.dtype != 'float32':
+            raise TypeError('Activations must use the float32 type!')
+
+        if t_labels.type.dtype != 'int32':
+            raise TypeError('Labels must use the int32 type!')
+
+        if t_input_lengths.type.dtype != 'int32':
+            raise TypeError('Label lengths must use the int32 type!')
+
         # Return only the cost. Gradient will be returned by grad()
         self.default_output = 0
 
@@ -82,11 +90,7 @@ class ConnectionistTemporalClassification(gof.COp):
             raise RuntimeError('Baidu CTC is not enabled and '
                                'ConnectionistTemporalClassification Op '
                                'can not be constructed.')
-        # self.gradients.shape = [seqLen, batchSize, outputSize]
-        # output_grads[0].shape = [batchSize]  (one cost per sequence)
-        # So, reshape output_grads to [1, batchSize, 1] for broadcasting
-        output_grad = output_grads[0].reshape((1, -1, 1))
-        return [output_grad * self.gradients,
+        return [self.gradients,
                 grad_undefined(self, 1, inputs[1]),
                 grad_undefined(self, 2, inputs[2])]
 
