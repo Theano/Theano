@@ -57,8 +57,6 @@ class CuDNNV51(object):
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1', 'deterministic'),
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT', 'fft'),
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3', 'small'),
-                                                # not implemented:
-                                                ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD'),
                                                 # TODO: not yet tested/documented:
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED', 'winograd_non_fused'),
                                                 ctype='cudnnConvolutionBwdFilterAlgo_t')
@@ -109,6 +107,7 @@ class CuDNNV6(CuDNNV51):
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1', 'deterministic'),
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT', 'fft'),
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3', 'small'),
+                                                # not implemented:
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD'),
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED', 'winograd_non_fused'),
                                                 # TODO: not yet tested/documented:
