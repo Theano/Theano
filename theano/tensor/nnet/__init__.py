@@ -103,6 +103,10 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         Factor by which to subsample (stride) the input.
         Also called dilation elsewhere.
 
+    num_groups : int
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
+
     kwargs: Any other keyword arguments are accepted for backwards
             compatibility, but will be ignored.
 
