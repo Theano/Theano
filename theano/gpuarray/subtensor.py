@@ -809,7 +809,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         """
         ctx_name = infer_context_name(x, y, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)
-        y_ = as_gpuarray_variable(y, ctx_name)
+        y_ = as_gpuarray_variable(y.astype(x.dtype), ctx_name)
         ilist_ = as_gpuarray_variable(ilist, ctx_name)
 
         assert x_.type.ndim >= y_.type.ndim
