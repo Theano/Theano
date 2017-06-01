@@ -804,8 +804,8 @@ theano.compile.register_specify_shape_c_code(
             PyErr_Format(PyExc_AssertionError,
                          "SpecifyShape: vector of shape has %%d elements,"
                          " but the input has %%d dimensions.",
-                         PyArray_NDIM(%(iname)s),
-                         PyArray_DIMS(%(shape)s)[0]);
+                         PyArray_DIMS(%(shape)s)[0],
+                         PyArray_NDIM(%(iname)s));
             %(fail)s;
         }
         for(int i = 0; i < PyArray_NDIM(%(iname)s); i++){

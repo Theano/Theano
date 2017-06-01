@@ -963,6 +963,12 @@ class EnumType(Type, dict):
         """
         return alias in self.aliases
 
+    def get_aliases(self):
+        """
+        Return the list of all aliases in this enumeration.
+        """
+        return self.aliases.keys()
+
     def __repr__(self):
         names_to_aliases = {constant_name: '' for constant_name in self}
         for alias in self.aliases:
@@ -1184,4 +1190,6 @@ class CEnumType(EnumList):
                    fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (1, super(CEnumType, self).c_code_cache_version())
+        # C code depends on (C constant name, Python value) associations (given by `self.items()`),
+        # so we should better take them into account in C code version.
+        return (1, tuple(self.items()), super(CEnumType, self).c_code_cache_version())
