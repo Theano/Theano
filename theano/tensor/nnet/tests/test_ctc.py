@@ -74,7 +74,7 @@ class TestCTC(unittest.TestCase):
 
         self.run_ctc(activations, labels, activation_times, expected_costs, expected_gradients)
 
-    def simple_test(self):
+    def test_ctc(self):
         activations = np.asarray([[[0.1, 0.6, 0.1, 0.1, 0.1], [0.1, 0.1, 0.6, 0.1, 0.1]],
                                   [[0.6, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.5, 0.2, 0.1]]],
                                  dtype=np.float32)
