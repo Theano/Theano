@@ -35,10 +35,8 @@ class TestCTC(unittest.TestCase):
         t_grad = T.grad(T.mean(t_cost), t_activations)
         # Compile symbolic functions
         train = theano.function([], [t_cost, t_grad])
-        test = theano.function([], [t_cost])
 
         cost, grad = train()
-        test_cost, = test()
 
         utt.assert_allclose(expected_grads, grad)
         utt.assert_allclose(expected_costs, cost)
