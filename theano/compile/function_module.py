@@ -121,26 +121,6 @@ def fgraph_updated_vars(fgraph, expanded_inputs):
     return updated_vars
 
 
-class Supervisor:
-    """
-    Listener for FunctionGraph events which makes sure that no
-    operation overwrites the contents of protected Variables. The
-    outputs of the FunctionGraph are protected by default.
-
-    """
-
-    def __init__(self, protected):
-        self.protected = list(protected)
-
-    def validate(self, fgraph):
-        if not hasattr(fgraph, 'destroyers'):
-            return True
-        for r in self.protected + list(fgraph.outputs):
-            if fgraph.destroyers(r):
-                raise gof.InconsistencyError("Trying to destroy a protected"
-                                             "Variable.", r)
-
-
 def std_fgraph(input_specs, output_specs, accept_inplace=False):
     """
     Makes an FunctionGraph corresponding to the input specs and the output
@@ -175,7 +155,9 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
 
     fgraph = gof.fg.FunctionGraph(orig_inputs, orig_outputs,
                                   update_mapping=update_mapping)
-
+    fgraph.protected = [input for spec, input in zip(input_specs, fgraph.inputs)
+                        if not (spec.mutable or (hasattr(fgraph, 'destroyers') and
+                                fgraph.destroyers(input)))]
     for node in fgraph.apply_nodes:
         if getattr(node.op, 'destroy_map', None):
             if not accept_inplace:
@@ -187,11 +169,11 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
 
     # We need to protect all immutable inputs from inplace operations.
     fgraph.attach_feature(
-        Supervisor(input
-                   for spec, input in zip(input_specs, fgraph.inputs)
-                   if not (spec.mutable or
-                           (hasattr(fgraph, 'destroyers') and
-                            fgraph.destroyers(input)))))
+        gof.DestroyHandler(input
+                           for spec, input in zip(input_specs, fgraph.inputs)
+                           if not (spec.mutable or
+                                   (hasattr(fgraph, 'destroyers') and
+                                    fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
     for feature in std_fgraph.features:
@@ -1379,7 +1361,7 @@ class FunctionMaker(object):
             # "excess cached variables" errors. Works that way
             # but once again the error couldbe worth
             # investigating.
-            before_opt = self.fgraph.clone(check_integrity=False)
+            before_opt = self.fgraph.clone(check_integrity=False, attach_feature=False)
             optimizer_profile = optimizer(self.fgraph)
             graph_db.update({before_opt: self.fgraph})
             with open(graph_db_file, 'wb') as f:

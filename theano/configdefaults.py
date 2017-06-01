@@ -1476,6 +1476,12 @@ AddConfigVar('compile.wait',
              IntParam(5, lambda i: i > 0, allow_override=False),
              in_c_key=False)
 
+AddConfigVar('cycle_detection',
+             """If true it disables the cycle detection in graph.
+             """,
+             EnumStr('topo', 'fast'),
+             in_c_key=False)
+
 
 def _timeout_default():
     return theano.config.compile.wait * 24
