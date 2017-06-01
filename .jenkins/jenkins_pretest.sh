@@ -5,6 +5,9 @@
 # Print commands as they are executed
 set -x
 
+# Anaconda python
+export PATH=/usr/local/miniconda2/bin:$PATH
+
 # Test flake8
 echo "===== Testing flake8"
 bin/theano-nose theano/tests/test_flake8.py --with-xunit --xunit-file=theano_pre_tests.xml || exit 1

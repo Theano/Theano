@@ -7,7 +7,7 @@ import numpy as np
 import theano
 from theano.compat import PY3
 from theano import config
-from theano.compile import DeepCopyOp, Rebroadcast, ViewOp
+from theano.compile import DeepCopyOp
 from theano.misc.pkl_utils import CompatUnpickler
 
 # Disabled for now
@@ -21,45 +21,16 @@ import pygpu
 
 
 def test_deep_copy():
-    for dtype in ['float16', 'float32']:
-        a = rand_gpuarray(20, dtype=dtype)
-        g = GpuArrayType(dtype=dtype, broadcastable=(False,))('g')
+    a = rand_gpuarray(20, dtype='float32')
+    g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
 
-        f = theano.function([g], g)
+    f = theano.function([g], g)
 
-        assert isinstance(f.maker.fgraph.toposort()[0].op, DeepCopyOp)
+    assert isinstance(f.maker.fgraph.toposort()[0].op, DeepCopyOp)
 
-        res = f(a)
+    res = f(a)
 
-        assert GpuArrayType.values_eq(res, a)
-
-
-def test_view():
-    for dtype in ['float16', 'float32']:
-        a = rand_gpuarray(20, dtype=dtype)
-        g = GpuArrayType(dtype=dtype, broadcastable=(False,))('g')
-
-        f = theano.function([g], ViewOp()(g))
-
-        assert isinstance(f.maker.fgraph.toposort()[0].op, ViewOp)
-
-        res = f(a)
-
-        assert GpuArrayType.values_eq(res, a)
-
-
-def test_rebroadcast():
-    for dtype in ['float16', 'float32']:
-        a = rand_gpuarray(1, dtype=dtype)
-        g = GpuArrayType(dtype=dtype, broadcastable=(False,))('g')
-
-        f = theano.function([g], Rebroadcast((0, True))(g))
-
-        assert isinstance(f.maker.fgraph.toposort()[0].op, Rebroadcast)
-
-        res = f(a)
-
-        assert GpuArrayType.values_eq(res, a)
+    assert GpuArrayType.values_eq(res, a)
 
 
 def test_values_eq_approx():
@@ -74,11 +45,10 @@ def test_values_eq_approx():
 
 
 def test_specify_shape():
-    for dtype in ['float16', 'float32']:
-        a = rand_gpuarray(20, dtype=dtype)
-        g = GpuArrayType(dtype=dtype, broadcastable=(False,))('g')
-        f = theano.function([g], theano.tensor.specify_shape(g, [20]))
-        f(a)
+    a = rand_gpuarray(20, dtype='float32')
+    g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
+    f = theano.function([g], theano.tensor.specify_shape(g, [20]))
+    f(a)
 
 
 def test_filter_float():
@@ -162,14 +132,3 @@ class test_shared_options(object):
 class test_shared_options2(object):
     pass
 """
-
-
-def test_set_value_non_contiguous():
-    s = gpuarray_shared_constructor(
-        np.asarray([[1., 2.], [1., 2.], [5, 6]]))
-    s.set_value(s.get_value(borrow=True, return_internal_type=True)[::2],
-                borrow=True)
-    assert not s.get_value(borrow=True,
-                           return_internal_type=True).flags["C_CONTIGUOUS"]
-    # In the past, this failed
-    s.set_value([[0, 0], [1, 1]])

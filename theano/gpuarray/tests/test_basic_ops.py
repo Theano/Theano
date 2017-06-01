@@ -481,12 +481,13 @@ def test_hostfromgpu_shape_i():
 
 
 def test_Gpujoin_inplace():
-    # Test Gpujoin to work inplace.
-    #
-    # This function tests the case when several elements are passed to the
-    # Gpujoin function but all except one of them are empty. In this case
-    # Gpujoin should work inplace and the output should be the view of the
-    # non-empty element.
+    """Test Gpujoin to work inplace.
+
+    This function tests the case when several elements are passed to the
+    Gpujoin function but all except one of them are empty. In this case
+    Gpujoin should work inplace and the output should be the view of the
+    non-empty element.
+    """
     s = T.lscalar()
     data = np.array([3, 4, 5], dtype=theano.config.floatX)
     x = gpuarray_shared_constructor(data, borrow=True)
@@ -496,6 +497,5 @@ def test_Gpujoin_inplace():
     c = join(0, x, z)
 
     f = theano.function([s], theano.Out(c, borrow=True))
-    if not isinstance(mode_with_gpu, theano.compile.DebugMode):
-        assert x.get_value(borrow=True, return_internal_type=True) is f(0)
+    assert x.get_value(borrow=True, return_internal_type=True) is f(0)
     assert np.allclose(f(0), [3, 4, 5])

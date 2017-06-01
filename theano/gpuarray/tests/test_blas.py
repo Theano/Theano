@@ -5,20 +5,20 @@ import itertools
 import numpy as np
 
 import theano
-from theano import config
 from theano import tensor
 from theano.tests import unittest_tools as utt
-from theano.tensor.blas import gemv, gemv_inplace, gemm_inplace, _dot22, batched_dot
+from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22, batched_dot
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
 from .. import gpuarray_shared_constructor
 from .config import mode_with_gpu, test_ctx_name
 from .test_basic_ops import makeTester, rand
+
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
                     gpugemm_inplace, gpugemm_no_inplace,
                     gpugemmbatch_no_inplace,
                     gpuger_inplace, gpuger_no_inplace,
-                    GpuGer, GpuGemm, gpu_dot22)
+                    GpuGer, gpu_dot22)
 
 
 GpuGemvTester = makeTester(
@@ -42,22 +42,6 @@ GpuGemvTester = makeTester(
 
 
 def test_float16():
-    # gemv (gemm called)
-    float16_data = [rand(3).astype('float16'),
-                    np.asarray(1, dtype=np.float32),
-                    rand(3, 3).astype('float16'),
-                    rand(3).astype('float16'),
-                    np.asarray(0.5, dtype=np.float32)]
-    float16_shared = [gpuarray_shared_constructor(val, target=test_ctx_name)
-                      for val in float16_data]
-    o = gemv(*float16_shared)
-    f = theano.function([], o, mode=mode_with_gpu)
-    y, alpha, A, x, beta = float16_data
-    out = f()
-    utt.assert_allclose(np.asarray(out), alpha * np.dot(A, x) + beta * y)
-    topo = f.maker.fgraph.toposort()
-    assert any([isinstance(n.op, GpuGemm) for n in topo])
-
     # gemm
     float16_data = [rand(3, 3).astype('float16'),
                     np.asarray(1, dtype=np.float32),
@@ -149,18 +133,6 @@ GpuGemmBatchTester = makeTester(
     gpu_op=gpugemmbatch_no_inplace,
     cases=gemm_batched_tests
     )
-
-
-class TestGpuGemmBatchStrided(TestCase):
-    def test0(self):
-        # Reported in https://github.com/Theano/Theano/issues/5730
-        x = tensor.tensor3()
-        y = tensor.tensor3()
-        z = tensor.batched_dot(x, y[:, 0, :, np.newaxis])
-        f = theano.function([x, y], z, mode=mode_with_gpu)
-        x_num = np.arange(32 * 19 * 600, dtype=config.floatX).reshape((32, 19, 600))
-        y_num = np.arange(7 * 32 * 600, dtype=config.floatX).reshape((32, 7, 600))
-        f(x_num, y_num)
 
 
 class TestGpuSger(TestGer):

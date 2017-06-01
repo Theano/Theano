@@ -369,7 +369,7 @@ commonly used.
 
 .. method:: c_support_code()
 
-    Returns a string or a list of strings containing some support C code for this op. This code
+    Returns a string containing some support C code for this op. This code
     will be included at the global scope level and can be used to define
     functions and structs that will be used by every apply of this op.
 

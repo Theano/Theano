@@ -129,7 +129,7 @@ def test_GPUA_full_fill():
                                               dtype='float32',
                                               size=size)
     rstate_gpu.default_update = new_rstate
-    f_gpu = theano.function([], sample, mode=mode)
+    f_gpu = theano.function([], sample)
 
     utt.assert_allclose(f_cpu(), f_gpu())
 

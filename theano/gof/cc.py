@@ -914,11 +914,7 @@ class CLinker(link.Linker):
         for x in [y.type for y in self.variables] + [
                 y.op for y in self.node_order]:
             try:
-                support_code = x.c_support_code()
-                if isinstance(support_code, list):
-                    ret.extend(support_code)
-                else:
-                    ret.append(support_code)
+                ret.append(x.c_support_code())
             except utils.MethodNotDefined:
                 pass
         return ret

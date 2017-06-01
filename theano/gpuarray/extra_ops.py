@@ -43,6 +43,9 @@ class GpuCumOp(GpuKernelBase, Op):
     def c_header_dirs(self):
         return [os.path.dirname(__file__)]
 
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
     def make_node(self, x):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumOp"
 
@@ -73,8 +76,6 @@ class GpuCumOp(GpuKernelBase, Op):
                               ga_ssize outputStrides_x, ga_ssize outputStrides_y, ga_ssize outputStrides_z,
                               const int offsetY, const int offsetZ,
                               const int beforeLastElementIdx, const int lastElementIdx){
-            input = (float *)(((char *)input) + input_offset);
-            output = (float *)(((char *)output) + output_offset);
             int idY = blockIdx.y + offsetY;
             int idZ = blockIdx.z + offsetZ;
 
@@ -86,10 +87,8 @@ class GpuCumOp(GpuKernelBase, Op):
             output[idx_last_output] = input[idx_last_input] %(op)s output[idx_beforelast];
             }
         """ % locals()
-        params = [gpuarray.GpuArray, gpuarray.SIZE,
-                  gpuarray.GpuArray, gpuarray.SIZE,
-                  gpuarray.SSIZE, gpuarray.SSIZE,
-                  gpuarray.SSIZE, gpuarray.SSIZE,
+        params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SSIZE,
+                  gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE,
                   'intc', 'intc',
                   'intc', 'intc',
@@ -99,11 +98,10 @@ class GpuCumOp(GpuKernelBase, Op):
         # blockCumOp
         kname = "k_blockCumOp"
         k_var = "k_blockCumOp_" + nodename
-        params = [gpuarray.GpuArray, gpuarray.SIZE,
-                  gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE,
+        params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
-                  'int32', 'int32', gpuarray.GpuArray, gpuarray.SIZE]
+                  'int32', 'int32', gpuarray.GpuArray, ]
         code = """
         // helper functions
         WITHIN_KERNEL
@@ -158,17 +156,12 @@ class GpuCumOp(GpuKernelBase, Op):
             output[idx_odd]  = partialCumOp[threadIdx.x*2 + 1];
         }
 
-        KERNEL void k_blockCumOp(float* input, ga_size input_offset,
-                                 float* output, ga_size output_offset,
-                                 size_t nbElementsPerCumOp, ga_ssize inputStrides_x,
-                                 ga_ssize inputStrides_y,  ga_ssize inputStrides_z,
-                                 ga_ssize outputStrides_x, ga_ssize outputStrides_y,
-                                 ga_ssize outputStrides_z, int offsetY,
-                                 int offsetZ, float* blockSum, ga_size blockSum_offset) {
-            input = (float *)(((char *)input) + input_offset);
-            output = (float *)(((char *)output) + output_offset);
-            blockSum = (float *)(((char *)blockSum) + blockSum_offset);
-
+        KERNEL void k_blockCumOp(float* input, float* output,
+                                        size_t nbElementsPerCumOp, ga_ssize inputStrides_x,
+                                        ga_ssize inputStrides_y,  ga_ssize inputStrides_z,
+                                        ga_ssize outputStrides_x, ga_ssize outputStrides_y,
+                                        ga_ssize outputStrides_z, int offsetY,
+                                        int offsetZ, float* blockSum) {
             // Regarding blockIdx and threadIdx, 'CumOp' is always performed along the X axis.
             // The Y and Z axis of the grid will contain all independent cumops of the 2D/3D case.
 
@@ -233,8 +226,7 @@ class GpuCumOp(GpuKernelBase, Op):
             output[idx_odd] %(op)s= currentBlockSum;
         }
         """ % locals()
-        params = [gpuarray.GpuArray, gpuarray.SIZE,
-                  gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE,
+        params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
                   'int32', 'int32', ]
         kernels.append(Kernel(code=code, name=kname, params=params,

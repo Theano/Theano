@@ -1775,9 +1775,9 @@ class T_sigmoid_binary_crossentropy(unittest.TestCase):
         utt.seed_rng()
 
     def _get_test_inputs(self, n=50):
-        pred, target = np.random.randn(2, n).astype(config.floatX)
+        pred, target = numpy.random.randn(2, n).astype(config.floatX)
         # apply sigmoid to target, but not pred
-        return [pred, 1 / (1 + np.exp(-target))]
+        return [pred, 1 / (1 + numpy.exp(-target))]
 
     def test_matches_binary_crossentropy(self):
         """

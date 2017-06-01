@@ -889,10 +889,8 @@ class T_reduce_dtype(unittest.TestCase):
                         (topo, output_dtype)
                     data = np.random.rand(3, 4) * 10
                     data = data.astype(input_dtype)
-                    if (method == 'prod' and output_dtype in
-                            ['float16', 'int8', 'uint8', 'int16', 'uint16']):
+                    if output_dtype == 'float16' and method == 'prod':
                         # We will likely get something infinite,
-                        # or the overflow will be different between CPU and GPU,
                         # and DebugMode will complain.
                         data = data[0:1]
                     f(data)

@@ -1,13 +1,10 @@
 from __future__ import absolute_import, print_function, division
-from copy import copy
-from unittest import TestCase
-
 import numpy as np
 import scipy.special
 
 import theano
 from theano import scalar, gof, tensor
-from theano.compile import DebugMode
+from unittest import TestCase
 from theano.tests.unittest_tools import SkipTest, assert_allclose
 
 from theano.tensor.tests import test_elemwise
@@ -69,32 +66,18 @@ class TestMathErrorFunctions(TestCase):
     expected_erfinv_outputs = {}
     expected_erfcinv_outputs = {}
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
         # NB: erfinv is defined in ]-1;1[, and erfcinv is defined in ]0;2[,
         # so we just take some values in an interval that covers both domains
         # (this will also allow to test some values outside the domains).
         # We take [-5;5[ by default and we concatenate it 1000 times
         # to have the GPU ops run on large data.
         default_array = [x / 10.0 for x in range(-50, 50)] * 1000
-        for dtype in cls.dtypes:
+        for dtype in self.dtypes:
             numpy_array = np.asarray(default_array, dtype=dtype)
-            cls.default_arrays[dtype] = numpy_array
-            cls.expected_erfinv_outputs[dtype] = scipy.special.erfinv(numpy_array)
-            cls.expected_erfcinv_outputs[dtype] = scipy.special.erfcinv(numpy_array)
-
-        # Since there are infinite values, we need to disable that check
-        # in DebugMode if needed
-        if isinstance(mode_with_gpu, DebugMode):
-            cls.mode_with_gpu = copy(mode_with_gpu)
-            cls.mode_with_gpu.check_isfinite = False
-        else:
-            cls.mode_with_gpu = mode_with_gpu
-        if isinstance(mode_without_gpu, DebugMode):
-            cls.mode_without_gpu = copy(mode_without_gpu)
-            cls.mode_without_gpu.check_isfinite = False
-        else:
-            cls.mode_without_gpu = mode_without_gpu
+            self.default_arrays[dtype] = numpy_array
+            self.expected_erfinv_outputs[dtype] = scipy.special.erfinv(numpy_array)
+            self.expected_erfcinv_outputs[dtype] = scipy.special.erfcinv(numpy_array)
 
     def check_gpu_scalar_op(self, theano_function, scalar_optype):
         for node in theano_function.maker.fgraph.apply_nodes:
@@ -107,8 +90,8 @@ class TestMathErrorFunctions(TestCase):
         for dtype in self.dtypes:
             vector = theano.tensor.vector(dtype=dtype)
             output = theano.tensor.erfinv(vector)
-            f_host = theano.function([vector], output, name='HOST/erfinv/' + dtype, mode=self.mode_without_gpu)
-            f_gpu = theano.function([vector], output, name='GPU/erfinv/' + dtype, mode=self.mode_with_gpu)
+            f_host = theano.function([vector], output, name='HOST/erfinv/' + dtype, mode=mode_without_gpu)
+            f_gpu = theano.function([vector], output, name='GPU/erfinv/' + dtype, mode=mode_with_gpu)
             assert len([n for n in f_host.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
             if not theano.config.device.startswith('opencl'):
                 assert self.check_gpu_scalar_op(f_gpu, GpuErfinv), \
@@ -125,8 +108,8 @@ class TestMathErrorFunctions(TestCase):
         for dtype in self.dtypes:
             vector = theano.tensor.vector(dtype=dtype)
             output = theano.tensor.erfcinv(vector)
-            f_host = theano.function([vector], output, name='HOST/erfcinv/' + dtype, mode=self.mode_without_gpu)
-            f_gpu = theano.function([vector], output, name='GPU/erfcinv/' + dtype, mode=self.mode_with_gpu)
+            f_host = theano.function([vector], output, name='HOST/erfcinv/' + dtype, mode=mode_without_gpu)
+            f_gpu = theano.function([vector], output, name='GPU/erfcinv/' + dtype, mode=mode_with_gpu)
             assert len([n for n in f_host.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
             if not theano.config.device.startswith('opencl'):
                 assert self.check_gpu_scalar_op(f_gpu, GpuErfcinv), \

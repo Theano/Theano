@@ -50,7 +50,6 @@ class ViewOp(gof.Op):
     # the output variable is %(oname)s.
     c_code_and_version = {}
     __props__ = ()
-    _f16_ok = True
 
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
@@ -152,7 +151,6 @@ class DeepCopyOp(gof.Op):
 
     check_input = False
     __props__ = ()
-    _f16_ok = True
 
     def __init__(self):
         pass
@@ -661,7 +659,6 @@ class Rebroadcast(gof.Op):
 
     check_input = False
     __props__ = ("axis",)
-    _f16_ok = True
 
     def __init__(self, *axis):
         # Sort them to make sure we merge all possible case.
@@ -823,7 +820,6 @@ class SpecifyShape(gof.Op):
     # the output variable is %(oname)s.
     c_code_and_version = {}
     __props__ = ()
-    _f16_ok = True
 
     def make_node(self, x, shape):
         if not isinstance(x, gof.Variable):
