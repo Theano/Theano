@@ -13,8 +13,11 @@ void ctc_context_init(ctc_context_t * context)
     struct ctcOptions * options = &(context->options);
     memset(options, 0, sizeof(struct ctcOptions));
     options->loc = CTC_CPU;
+#if defined(_OPENMP)
+    options->num_threads = omp_get_num_threads();
+#else
     options->num_threads = 1;
-
+#endif
     context->workspace = NULL;
     context->input_lengths = NULL;
     context->flat_labels = NULL;
