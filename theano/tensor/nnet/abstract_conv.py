@@ -183,7 +183,8 @@ def get_conv_gradweights_shape(image_shape, top_shape,
 
     if filter_dilation is None:
         filter_dilation = np.ones(len(subsample), dtype='int')
-    if num_groups > 1 and len(subsample) == 2:
+    if num_groups > 1:
+        assert len(subsample) == 2
         nchan = nchan // num_groups
 
     if isinstance(border_mode, tuple):
@@ -293,7 +294,8 @@ def get_conv_gradinputs_shape(kernel_shape, top_shape,
 
     if filter_dilation is None:
         filter_dilation = np.ones(len(subsample), dtype='int')
-    if num_groups > 1 and len(subsample) == 2:
+    if num_groups > 1:
+        assert len(subsample) == 2
         nkern = nkern * num_groups
 
     if isinstance(border_mode, tuple):
