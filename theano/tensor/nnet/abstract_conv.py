@@ -1413,7 +1413,7 @@ class BaseAbstractConv(Op):
     """
     check_broadcast = False
     __props__ = ('convdim', 'border_mode', 'subsample', 'filter_flip',
-                 'imshp', 'kshp', 'filter_dilation')
+                 'imshp', 'kshp', 'filter_dilation', 'num_groups')
 
     def __init__(self, convdim,
                  imshp=None, kshp=None, border_mode="valid",
