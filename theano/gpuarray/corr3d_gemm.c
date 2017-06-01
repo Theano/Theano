@@ -95,7 +95,7 @@ KERNEL void im3d2col_kernel(const ga_size n,
     const ga_size stride_h, const ga_size stride_w, const ga_size stride_d,
     const ga_size height_col, const ga_size width_col, const ga_size depth_col,
     GLOBAL_MEM DTYPE_INPUT_0 * data_col,
-    const ga_size data_im_offset) {
+    const ga_size offset_col) {
   data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
   data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
   // grid stride looping
