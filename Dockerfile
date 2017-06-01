@@ -1,4 +1,5 @@
-FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn6-devel-ubuntu16.04--17.06
+# FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn6-devel-ubuntu16.04--17.06
+FROM nvidia/cuda:8.0-cudnn6-devel-ubuntu16.04
 
 ENV THEANO_VERSION 0.9.0
 LABEL com.nvidia.theano.version="${THEANO_VERSION}"
@@ -10,8 +11,17 @@ RUN apt-get update && apt-get install -y --upgrade --no-install-recommends \
         gfortran \
         graphviz \
         libopenblas-dev \
+	apt-utils dvipng time curl \
         python-dev && \
     rm -rf /var/lib/apt/lists/* 
+
+RUN curl -O http://icl.cs.utk.edu/projectsfiles/magma/downloads/magma-2.2.0.tar.gz
+RUN tar xvf magma-2.2.0.tar.gz
+RUN cp magma-2.2.0/make.inc-examples/make.inc.openblas magma-2.2.0/make.inc
+ENV OPENBLASDIR /usr
+ENV CUDADIR /usr/local/cuda
+RUN (cd magma-2.2.0 && make && make install prefix=/usr/local)
+RUN ldconfig
 
 RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
     python get-pip.py && \
