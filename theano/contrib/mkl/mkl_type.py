@@ -4,7 +4,7 @@ import numpy
 from six import StringIO
 
 import theano
-from theano import Type, Variable, config
+from theano import Type, Variable, config, tensor
 from theano.tensor.var import _tensor_py_operators
 
 try:
@@ -52,14 +52,14 @@ class MKLNdarrayType(Type):
     `name` for the type that will be used in printouts.
 
     """
-    context_name = 'mkl'
     Variable = MKLNdarrayVariable
     Constant = None
     SharedVariable = None
-    ndim = None
     broadcastable = None
 
-    def __init__(self, dtype, broadcastable, context_name=None, name=None):
+    ndim = property(lambda self: len(self.broadcastable), doc='number of dimensions')
+
+    def __init__(self, dtype, broadcastable, name=None):
         self.dtype = str(dtype)
         if self.dtype == 'floatX':
             self.dtype = config.floatX
@@ -73,8 +73,6 @@ class MKLNdarrayType(Type):
         self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.name = name
         self.dtype_specs()
-        if not (context_name is None):
-            self.context_name = context_name
 
     def clone(self, dtype=None, broadcastable=None):
         if broadcastable is None:
@@ -83,8 +81,7 @@ class MKLNdarrayType(Type):
         if dtype is None:
             dtype = self.dtype
 
-        return self.__class__(dtype=dtype, broadcastable=broadcastable,
-                              context_name=self.context_name, name=self.name)
+        return self.__class__(dtype=dtype, broadcastable=broadcastable, name=self.name)
 
     def filter(self, data, strict=False, allow_downcast=None):
         """
@@ -120,7 +117,18 @@ class MKLNdarrayType(Type):
 
     @staticmethod
     def values_eq(a, b):
-        raise NotImplementedError('MKLNdarray values_eq')
+        return tensor.TensorType.values_eq(numpy.asarray(a), numpy.asarray(b))
+
+    @staticmethod
+    def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
+                         rtol=None, atol=None):
+        return tensor.TensorType.values_eq_approx(
+            numpy.asarray(a),
+            numpy.asarray(b),
+            allow_remove_inf=allow_remove_inf,
+            allow_remove_nan=allow_remove_nan,
+            rtol=rtol, atol=atol
+        )
 
     def dtype_specs(self):
         """
@@ -156,17 +164,14 @@ class MKLNdarrayType(Type):
         """
         return (type(self) == type(other) and
                 self.dtype == other.dtype and
-                self.broadcastable == other.broadcastable and
-                self.context_name == other.context_name)
+                self.broadcastable == other.broadcastable)
 
     def __hash__(self):
         """
         Hash equal for same kinds of MKLNdarrayType.
 
         """
-        return hash((type(self), self.dtype, self.broadcastable, self.context_name))
-
-    ndim = property(lambda self: len(self.broadcastable), doc='number of dimensions')
+        return hash((type(self), self.dtype, self.broadcastable))
 
     def make_variable(self, name=None):
         """
@@ -286,7 +291,7 @@ class MKLNdarrayType(Type):
         return ['mkl_ndarray']
 
     def c_code_cache_version(self):
-        return (1, 0, 0)
+        return (1, 0, 1)
 
     def c_compile_args(self):
         return ['-Wl,-R' + os.path.dirname(mkl_ndarray.__file__)]
@@ -344,7 +349,53 @@ theano.compile.register_shape_i_c_code(
     """
     if (%(i)s >= MKLNdarray_NDIM(%(iname)s)) {
         PyErr_SetString(PyExc_TypeError, "Number of dimensions lower than expected");
-        %(fail)s
+        %(fail)s;
     }
+    """,
+    version=(1,))
+
+theano.compile.register_deep_copy_op_c_code(
+    MKLNdarrayType,
+    """
+    Py_XDECREF(%(oname)s);
+    %(oname)s = (MKLNdarray*)MKLNdarray_Copy(%(iname)s);
+
+    if (!%(oname)s) {
+        PyErr_SetString(PyExc_RuntimeError,
+                        "DeepCopyOp: copy failed");
+        %(fail)s;
+    }
+    """,
+    version=(1,))
+
+
+theano.compile.register_specify_shape_c_code(
+    MKLNdarrayType,
+    """
+    if (MKLNdarray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
+        PyErr_Format(PyExc_AssertionError,
+                     "SpecifyShape: vector of shape has %%d elements,"
+                     " but the input has %%d dimensions.",
+                     PyArray_DIMS(%(shape)s)[0],
+                     MKLNdarray_NDIM(%(iname)s));
+        %(fail)s;
+    }
+
+    for (int i = 0; i < MKLNdarray_NDIM(%(iname)s); i++) {
+        dtype_%(shape)s shp = ((dtype_%(shape)s*)PyArray_GETPTR1(%(shape)s,
+                                                                 i))[0];
+        if (MKLNdarray_DIMS(%(iname)s)[i] != shp) {
+            PyErr_Format(PyExc_AssertionError,
+                         "SpecifyShape: dim %%d of input has shape %%d,"
+                         " expected %%d.",
+                         i, MKLNdarray_DIMS(%(iname)s)[i],
+                         shp);
+            %(fail)s;
+        }
+    }
+
+    Py_XDECREF(%(oname)s);
+    %(oname)s = %(iname)s;
+    Py_XINCREF(%(oname)s);
     """,
     version=(1,))
