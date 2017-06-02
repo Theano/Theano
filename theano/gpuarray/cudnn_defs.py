@@ -19,6 +19,10 @@ from __future__ import absolute_import, print_function, division
 
 from theano.gof import CEnumType
 
+
+HALF, FLOAT, DOUBLE = ('float16', 'float32', 'float64')
+
+
 # NB: Some cuDNN algorithms are listed in cuDNN enums but not implemented.
 # We still register them here because we try to exactly copy cuDNN enums
 # in Python side, but they will have no aliases associated, to help
@@ -51,6 +55,8 @@ class CuDNNV51(object):
 
     conv3d_fwd_algorithms = ('none', 'small', 'fft_tiling')
 
+    deterministic_fwd_algorithms = cudnnConvolutionFwdAlgo_t.get_aliases()
+
     cudnnConvolutionBwdFilterAlgo_t = CEnumType(('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0', 'none'),
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1', 'deterministic'),
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT', 'fft'),
@@ -60,6 +66,8 @@ class CuDNNV51(object):
                                                 ctype='cudnnConvolutionBwdFilterAlgo_t')
 
     conv3d_bwd_filter_algorithms = ('none', 'small')
+
+    deterministic_bwd_filter_algorithms = ('deterministic', 'fft', 'winograd_non_fused')
 
     cudnnConvolutionBwdDataAlgo_t = CEnumType(('CUDNN_CONVOLUTION_BWD_DATA_ALGO_0', 'none'),
                                               ('CUDNN_CONVOLUTION_BWD_DATA_ALGO_1', 'deterministic'),
@@ -71,6 +79,8 @@ class CuDNNV51(object):
                                               ctype='cudnnConvolutionBwdDataAlgo_t')
 
     conv3d_bwd_data_algorithms = ('none', 'deterministic', 'fft_tiling')
+
+    deterministic_bwd_data_algorithms = ('deterministic', 'fft', 'fft_tiling', 'winograd', 'winograd_non_fused')
 
     cudnnPoolingMode_t = CEnumType(('CUDNN_POOLING_MAX', 'max'),
                                    ('CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING', 'average_inc_pad'),
@@ -92,6 +102,23 @@ class CuDNNV51(object):
     # It was introduced in cudnnv6, but we need to define it with an
     # empty list of enum to don't crash with cudnn 5
     cudnnReduceTensorOp_t = CEnumType()
+
+    def supported_precisions(self, dtype):
+        """
+        Return the tuple of precisions supported by cuDNN for given input data type.
+        This is currently convenient for both cuDNN V5.1 and V6, as Theano does not
+        yet support new data types (like INT8, INT8x4, etc.).
+        """
+        assert dtype in (HALF, FLOAT, DOUBLE)
+        if dtype == HALF:
+            # TRUE_HALF_CONFIG, PSEUDO_HALF_CONFIG
+            return (HALF, FLOAT)
+        if dtype == FLOAT:
+            # FLOAT_CONFIG
+            return (FLOAT,)
+        if dtype == DOUBLE:
+            # DOUBLE_CONFIG
+            return (DOUBLE,)
 
 
 class CuDNNV6(CuDNNV51):
@@ -122,6 +149,8 @@ class CuDNNV6(CuDNNV51):
                                                 # new in v6:
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING', 'fft_tiling'),
                                                 ctype='cudnnConvolutionBwdFilterAlgo_t')
+
+    deterministic_bwd_filter_algorithms = CuDNNV51.deterministic_bwd_filter_algorithms + ('fft_tiling',)
 
     cudnnReduceTensorOp_t = CEnumType(('CUDNN_REDUCE_TENSOR_ADD', 'add'),
                                       ('CUDNN_REDUCE_TENSOR_MUL', 'mul'),
