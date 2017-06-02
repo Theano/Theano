@@ -1,37 +1,121 @@
 from __future__ import absolute_import, print_function, division
 
-from itertools import product, chain
+from itertools import ifilter, product
 
 import numpy as np
 
 import theano
 import theano.tests.unittest_tools as utt
 from theano.compile.ops import shape_i_op
-from theano.configdefaults import (SUPPORTED_DNN_CONV_ALGO_FWD, SUPPORTED_DNN_CONV3D_ALGO_FWD,
-                                   SUPPORTED_DNN_CONV_ALGO_BWD_FILTER, SUPPORTED_DNN_CONV3D_ALGO_BWD_FILTER,
-                                   SUPPORTED_DNN_CONV_ALGO_BWD_DATA, SUPPORTED_DNN_CONV3D_ALGO_BWD_DATA)
+from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_RUNTIME
+from theano.gof import COp, Apply, ParamsType
+from theano.gof.type import CDataType
+from theano.gpuarray import cudnn_defs
+from theano.gpuarray.basic_ops import infer_context_name, as_gpuarray_variable, gpu_contiguous, GpuAllocEmpty
+from theano.gpuarray.dnn import (GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI, version, get_precision,
+                                 DnnBase, handle_type, DNN_CONV_ALGO_CHOOSE_ONCE, DNN_CONV_ALGO_CHOOSE_TIME)
+from theano.gpuarray.tests.check_dnn_doc import check_fwd_algorithm
+from theano.gpuarray.tests.config import mode_with_gpu, ref_cast
+from theano.scalar import bool as bool_t
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape, assert_conv_shape
 from theano.tensor.opt import Assert
-from .config import mode_with_gpu, ref_cast
-from ..basic_ops import infer_context_name, as_gpuarray_variable, gpu_contiguous, GpuAllocEmpty
-from ..dnn import (GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI, version, get_precision)
 
-PRECISIONS = ('float16', 'float32', 'float64')
+cudnn = cudnn_defs.get_definitions(version(raises=False))
 
+cudnnConvolutionFwdAlgo_t = cudnn.cudnnConvolutionFwdAlgo_t
+cudnnConvolutionBwdFilterAlgo_t = cudnn.cudnnConvolutionBwdFilterAlgo_t
+cudnnConvolutionBwdDataAlgo_t = cudnn.cudnnConvolutionBwdDataAlgo_t
 
-def get_available_precisions():
-    # Starting from floatX up to max supported precision (float64).
-    return PRECISIONS[PRECISIONS.index(theano.config.floatX):]
+AVAILABLE_PRECISIONS = cudnn.supported_precisions(theano.config.floatX)
 
 
-def array_like_conv_output(inputs_shape, filters_shape, border_mode, subsample, dilation):
-    # Return an random array with inferred convolution output shape.
-    out_shp = get_conv_output_shape(inputs_shape, filters_shape,
-                                    border_mode,
-                                    subsample,
-                                    filter_dilation=dilation)
-    out_shp = assert_conv_shape(out_shp)
-    return np.random.random(out_shp).astype(theano.config.floatX)
+class DnnCaseGenerator:
+    """
+    Main class used to generate test cases.
+
+    """
+
+    def _sub_size(self, sub_size=None):
+        return int(sub_size) if sub_size is not None else self.input_size // 3 + 1
+
+    def _at_least_one(self, value):
+        return (value,) if value == 1 else (1, value)
+
+    def _shapes(self, size):
+        # Shapes:
+        # [1, 1, ...] (at least)
+        # [size, size, ...]
+        # [..., size + 2, size + 1, size]
+        if size == 1:
+            return ((1,) * self.ndim,
+                    tuple(size + self.ndim - i - 1 for i in range(self.ndim)))
+        return ((1,) * self.ndim,
+                (size,) * self.ndim,
+                tuple(size + self.ndim - i - 1 for i in range(self.ndim)))
+
+    def __init__(self,
+                 ndim=2, alpha=2, beta=-3, batch_size=2, input_channels=3, input_size=8, output_channels=2,
+                 filter_size=None, border_size=None, subsample_size=None, dilation_size=None):
+        self.ndim = int(ndim)
+        self.alpha = float(alpha)
+        self.beta = float(beta)
+        self.batch_size = int(batch_size)
+        self.input_channels = int(input_channels)
+        self.input_size = int(input_size)
+        self.output_channels = int(output_channels)
+        self.filter_size = self._sub_size(filter_size)
+        self.border_size = self._sub_size(border_size)
+        self.subsample_size = self._sub_size(subsample_size)
+        self.dilation_size = self._sub_size(dilation_size)
+
+        assert self.ndim >= 2
+        assert self.alpha != 0
+        assert self.batch_size > 0
+        assert self.input_channels > 0
+        assert self.input_size > 0
+        assert self.output_channels > 0
+        assert self.filter_size > 0
+        assert self.border_size > 0
+        assert self.subsample_size > 0
+        assert self.dilation_size > 0
+
+    @staticmethod
+    def get_if_valid_conv_output_shape(case_tuple):
+        out_shp = get_conv_output_shape(case_tuple[0][0],  # input shape
+                                        case_tuple[0][1],  # filter shape
+                                        case_tuple[1],  # border mode
+                                        case_tuple[0][2],  # subsample
+                                        case_tuple[0][3]  # dilation
+                                        )
+        try:
+            return assert_conv_shape(out_shp)
+        except ValueError:
+            return False
+
+    def get_cases(self):
+        # Generate an iterator of tuples with format:
+        # ( (input shape, filter shape, subsample, dilation), border mode, convolution mode, alpha, beta )
+        all_batch_sizes = (self.batch_size,)
+        all_input_channels = (self.input_channels,)
+        all_input_sizes = self._shapes(self.input_size)
+        all_output_channels = (self.output_channels,)
+        all_filter_sizes = self._shapes(((self.filter_size - 1) * self.dilation_size + 1)
+                                        if cudnn.version < 6
+                                        else self.filter_size)
+        all_subsamples = self._shapes(self.subsample_size)
+        all_dilations = ((1,) * self.ndim,) if cudnn.version < 6 else self._shapes(self.dilation_size)
+        all_border_modes = ('valid', 'full', 'half') + self._shapes(self.border_size)
+        all_conv_modes = ('conv', 'cross')
+        all_alphas = (self.alpha,)
+        all_betas = (0,) if self.beta == 0 else (0, self.beta)
+
+        all_input_shapes = ((bs, ic) + ins
+                            for bs in all_batch_sizes for ic in all_input_channels for ins in all_input_sizes)
+        all_filter_shapes = ((oc, ic) + fis
+                             for oc in all_output_channels for ic in all_input_channels for fis in all_filter_sizes)
+        return ifilter(DnnCaseGenerator.get_if_valid_conv_output_shape,
+                       product(product(all_input_shapes, all_filter_shapes, all_subsamples, all_dilations),
+                               all_border_modes, all_conv_modes, all_alphas, all_betas))
 
 
 # We provide a special implementation of dnn_conv, dnn_gradweight and dnn_gradinput
@@ -123,12 +207,93 @@ def dnn_gradinput(kerns, topgrad, img_shp, alpha=1, beta=0, out=None, border_mod
     return GpuDnnConvGradI(algo=algo)(kerns, topgrad, real_out, desc, alpha, beta)
 
 
+class BaseGpuDnnConvChooseAlgo(DnnBase):
+    """
+    This class and its subclasses allow to retrieve a cuDNN algorithm
+    at runtime without any computation, given the user choose option
+    (time_once, time_on_shape_change, guess_once or guess_on_shape_change).
+    To help reduce whole test time, I suggest we use these classes when
+    algo is one of choose options, as any chosen algorithm would have
+    been tested by the other exhaustive tests.
+    """
+
+    _f16_ok = True
+    check_input = False
+    __props__ = ('choice',)
+    params_type = ParamsType(choose_once=bool_t, choose_time=bool_t, handle=handle_type)
+
+    # Abstract attributes.
+    func_file = None
+    func_name = None
+
+    def __init__(self, choice):
+        COp.__init__(self, ["../dnn_base.c", "../dnn_conv_base.c", self.func_file], self.func_name)
+        assert choice in SUPPORTED_DNN_CONV_ALGO_RUNTIME
+        self.choice = choice
+        self.choose_once = self.choice in DNN_CONV_ALGO_CHOOSE_ONCE
+        self.choose_time = self.choice in DNN_CONV_ALGO_CHOOSE_TIME
+
+    def dnn_context(self, node):
+        return node.inputs[0].type.context_name
+
+    def _prepare_inputs(self, i1, name_i1, i2, name_i2, output, desc):
+        ctx_name = infer_context_name(i1, i2, output)
+        i1 = as_gpuarray_variable(i1, ctx_name)
+        i2 = as_gpuarray_variable(i2, ctx_name)
+        output = as_gpuarray_variable(output, ctx_name)
+        if i1.type.ndim not in (4, 5):
+            raise TypeError('%s must be 4D or 5D tensor' % name_i1)
+        if i2.type.ndim not in (4, 5):
+            raise TypeError('%s must be 4D or 5D tensor' % name_i2)
+        if output.type.ndim not in (4, 5):
+            raise TypeError('output must be 4D or 5D tensor')
+        if i1.type.ndim != i2.type.ndim or i1.type.ndim != output.type.ndim:
+            raise TypeError("The number of dimensions of %s, %s and output must match" % (name_i1, name_i2))
+        if not isinstance(desc.type, CDataType) or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
+            raise TypeError('desc must be cudnnConvolutionDescriptor_t')
+        return (i1, i2, output, desc)
+
+
+class GpuDnnConvChooseFwdAlgo(BaseGpuDnnConvChooseAlgo):
+    func_file = 'dnn_choose_fwd.c'
+    func_name = 'APPLY_SPECIFIC(choose_fwd_algo)'
+
+    def make_node(self, img, kern, output, desc):
+        img, kern, output, desc = self._prepare_inputs(img, 'img', kern, 'kern', output, desc)
+        return Apply(self, [img, kern, output, desc], [cudnn.cudnnConvolutionFwdAlgo_t()])
+
+
+class GpuDnnConvChooseBwdFilterAlgo(BaseGpuDnnConvChooseAlgo):
+    func_file = 'dnn_choose_gw.c'
+    func_name = 'APPLY_SPECIFIC(choose_bwd_filter_algo)'
+
+    def make_node(self, img, topgrad, output, desc):
+        img, topgrad, output, desc = self._prepare_inputs(img, 'img', topgrad, 'topgrad', output, desc)
+        return Apply(self, [img, topgrad, output, desc], [cudnn.cudnnConvolutionBwdFilterAlgo_t()])
+
+
+class GpuDnnConvChooseBwdDataAlgo(BaseGpuDnnConvChooseAlgo):
+    func_file = 'dnn_choose_gi.c'
+    func_name = 'APPLY_SPECIFIC(choose_bwd_data_algo)'
+
+    def make_node(self, kern, topgrad, output, desc):
+        kern, topgrad, output, desc = self._prepare_inputs(kern, 'kern', topgrad, 'topgrad', output, desc)
+        return Apply(self, [kern, topgrad, output, desc], [cudnn.cudnnConvolutionBwdDataAlgo_t()])
+
+
 class BaseTestDnnConv(object):
+    """
+    Base class for exhaustive tests. Use its subclasses
+    to run actual tests.
+    """
+
     _functions_checked_for_fwd = False
     _functions_checked_for_gradinput = False
     _functions_checked_for_gradweight = False
 
     # Abstract attributes.
+
+    ndim = 2
 
     fwd_algorithms = None
     bwd_filter_algorithms = None
@@ -138,14 +303,19 @@ class BaseTestDnnConv(object):
     cpu_gradinput_class = None
     cpu_gradweight_class = None
 
-    # Abstract methods.
-
     def get_cases(self):
-        # Should return an iterable of test cases. Each test case is a tuple (or list) with following syntax:
+        # Return an iterable of test cases. Each test case is a tuple (or list) with following syntax:
         # ( (input shape, filter shape, subsample, dilation), border mode, convolution mode, alpha, beta )
-        raise NotImplementedError
+        generator = DnnCaseGenerator(ndim=self.ndim)
+        return generator.get_cases()
 
-    # Run methods.
+    # Run and utility methods.
+
+    def array_like_conv_output(self, inputs_shape, filters_shape, border_mode, subsample, dilation):
+        # Return an random array with inferred convolution output shape.
+        out_shp = get_conv_output_shape(inputs_shape, filters_shape, border_mode, subsample, dilation)
+        out_shp = assert_conv_shape(out_shp)
+        return np.random.random(out_shp).astype(theano.config.floatX)
 
     def run_conv_fwd(self, algo, precision, parameters):
         (inputs_shape, filters_shape, subsample, dilation), border_mode, conv_mode, alpha, beta = parameters
@@ -161,8 +331,8 @@ class BaseTestDnnConv(object):
         inputs = theano.shared(inputs_val)
         filters = theano.shared(filters_val)
 
-        out = None if beta == 0 else array_like_conv_output(inputs_shape, filters_shape, border_mode, subsample,
-                                                            dilation)
+        out = None if beta == 0 else self.array_like_conv_output(inputs_shape, filters_shape, border_mode, subsample,
+                                                                 dilation)
         # Compile a theano function for the cuDNN implementation
         conv = dnn_conv(img=inputs, kerns=filters, alpha=alpha, beta=beta, out=out, border_mode=border_mode,
                         subsample=subsample, dilation=dilation, conv_mode=conv_mode, algo=algo, precision=precision)
@@ -196,13 +366,16 @@ class BaseTestDnnConv(object):
         # Compare the results of the two implementations
         res_ref = f_ref()
         res = f()
+        if algo in cudnn.deterministic_fwd_algorithms:
+            res2 = f()
+            utt.assert_allclose(res, res2)
 
         # Raise tolerance for float16
         rtol = 6e-2 if theano.config.floatX == 'float16' else None
         if beta == 0:
             utt.assert_allclose(alpha * res_ref, res, rtol=rtol)
         else:
-            print('(conv: beta not null) ', end='')
+            # print('(conv: beta not null) ', end='')
             utt.assert_allclose(alpha * res_ref + beta * out, res, rtol=rtol)
 
     def run_conv_gradinput(self, algo, precision, parameters):
@@ -210,7 +383,7 @@ class BaseTestDnnConv(object):
 
         inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
         filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
-        topgrad_val = array_like_conv_output(inputs_shape, filters_shape, border_mode, subsample, dilation)
+        topgrad_val = self.array_like_conv_output(inputs_shape, filters_shape, border_mode, subsample, dilation)
 
         filters = theano.shared(filters_val)
         topgrad = theano.shared(topgrad_val)
@@ -251,8 +424,9 @@ class BaseTestDnnConv(object):
         # Compare the results of the two implementations
         res_ref = f_ref()
         res = f()
-        # Needed for big size for some seed
-        # raise rtol to make the test pass with more seed.
+        if algo in cudnn.deterministic_bwd_data_algorithms:
+            res2 = f()
+            utt.assert_allclose(res, res2)
 
         # Raise tolerance for float16
         rtol = 5e-2 if theano.config.floatX == 'float16' else None
@@ -263,7 +437,7 @@ class BaseTestDnnConv(object):
 
         inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
         filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
-        topgrad_val = array_like_conv_output(inputs_shape, filters_shape, border_mode, subsample, dilation)
+        topgrad_val = self.array_like_conv_output(inputs_shape, filters_shape, border_mode, subsample, dilation)
 
         inputs = theano.shared(inputs_val)
         topgrad = theano.shared(topgrad_val)
@@ -296,137 +470,168 @@ class BaseTestDnnConv(object):
         # Compare the results of the two implementations
         res_ref = f_ref()
         res = f()
-        # Needed for big size for some seed
-        # raise rtol to make the test pass with more seed.
+        if algo in cudnn.deterministic_bwd_filter_algorithms:
+            res2 = f()
+            utt.assert_allclose(res, res2)
 
         # Raise tolerance for float16
         rtol = 5e-2 if theano.config.floatX == 'float16' else None
         utt.assert_allclose(alpha * res_ref + beta * filters_val, res, rtol=rtol)
 
+    def run_choose_runtime_algos(self, algo, precision, parameters):
+        (inputs_shape, filters_shape, subsample, dilation), border_mode, conv_mode, alpha, beta = parameters
+        out_shp = assert_conv_shape(
+            get_conv_output_shape(inputs_shape, filters_shape, border_mode, subsample, dilation))
+
+        inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
+        filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
+        topgrad_val = self.array_like_conv_output(inputs_shape, filters_shape, border_mode, subsample, dilation)
+
+        inputs = theano.shared(inputs_val)
+        filters = theano.shared(filters_val)
+        topgrad = theano.shared(topgrad_val)
+        ctx_name = infer_context_name(inputs, topgrad)
+
+        desc_filter = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
+                                     conv_mode=conv_mode, precision=precision)(filters_shape)
+
+        array_like_filters = GpuAllocEmpty(dtype=inputs.dtype, context_name=ctx_name)(*filters_shape)
+        array_like_inputs = GpuAllocEmpty(dtype=inputs.dtype, context_name=ctx_name)(*inputs_shape)
+        array_like_conv_output = GpuAllocEmpty(dtype=inputs.dtype, context_name=ctx_name)(*out_shp)
+
+        algo_filter = GpuDnnConvChooseBwdFilterAlgo(algo)(inputs, topgrad, array_like_filters, desc_filter)
+        algo_input = GpuDnnConvChooseBwdDataAlgo(algo)(filters, topgrad, array_like_inputs, desc_filter)
+        algo_conv = GpuDnnConvChooseFwdAlgo(algo)(inputs, filters, array_like_conv_output, desc_filter)
+        f = theano.function([], [algo_filter, algo_input, algo_conv], mode=mode_with_gpu)
+
+        # Just test that it runs.
+        algo_filter_val, algo_input_val, algo_conv_val = f()
+        # How to test if it "works" ?
+
+    def get_expected_tcount(self):
+        """
+        Utility function to get expected test count
+        without actually run nosetests.
+        """
+        len_cases = 0
+        for c in self.get_cases():
+            len_cases += 1
+        print(len_cases, 'conv cases for %dD' % self.ndim)
+        return len(AVAILABLE_PRECISIONS) * len_cases * len(self.fwd_algorithms +
+                                                           self.bwd_data_algorithms +
+                                                           self.bwd_filter_algorithms +
+                                                           SUPPORTED_DNN_CONV_ALGO_RUNTIME)
+
     # Iterable test methods.
 
     def test_fwd(self):
-        for precision in get_available_precisions():
-            for algo in self.fwd_algorithms:
-                for parameters in self.get_cases():
-                    yield (self.run_conv_fwd, algo, precision, parameters)
+        for precision, algo, parameters in product(AVAILABLE_PRECISIONS, self.fwd_algorithms, self.get_cases()):
+            yield (self.run_conv_fwd, algo, precision, parameters)
 
     def test_gradinput(self):
-        for precision in get_available_precisions():
-            for algo in self.bwd_data_algorithms:
-                for parameters in self.get_cases():
-                    yield (self.run_conv_gradinput, algo, precision, parameters)
+        for precision, algo, parameters in product(AVAILABLE_PRECISIONS, self.bwd_data_algorithms, self.get_cases()):
+            yield (self.run_conv_gradinput, algo, precision, parameters)
 
     def test_gradweight(self):
-        for precision in get_available_precisions():
-            for algo in self.bwd_filter_algorithms:
-                for parameters in self.get_cases():
-                    yield (self.run_conv_gradweight, algo, precision, parameters)
+        for precision, algo, parameters in product(AVAILABLE_PRECISIONS, self.bwd_filter_algorithms, self.get_cases()):
+            yield (self.run_conv_gradweight, algo, precision, parameters)
+
+    def test_choose_runtime_algos(self):
+        for precision, algo, parameters in product(AVAILABLE_PRECISIONS, SUPPORTED_DNN_CONV_ALGO_RUNTIME,
+                                                   self.get_cases()):
+            yield (self.run_choose_runtime_algos, algo, precision, parameters)
+
+    def check_fwd_predictions(self):
+        """
+        Call this method to check if tests fail when they
+        don't follow cuDNN V5.1 doc conditions for FWD algorithms.
+        Script will exit as soon as there is a test that does not fail when expected.
+        """
+
+        print()
+        print('TESTING FWD FAILURES PREDICTED FOR %dD' % self.ndim)
+        count = 0
+        for precision, algo, parameters in product(AVAILABLE_PRECISIONS, self.fwd_algorithms,
+                                                   self.get_cases()):
+            (inputs_shape, filters_shape, subsample, dilation), border_mode, conv_mode, alpha, beta = parameters
+
+            inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
+            filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
+            # Scale down the input values to prevent very large absolute errors
+            # due to float rounding
+            inputs_val /= 10
+            filters_val /= 10
+            out = self.array_like_conv_output(inputs_shape, filters_shape, border_mode, subsample, dilation)
+            desc_op = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
+                                     conv_mode=conv_mode, precision=precision)
+            should_compute = check_fwd_algorithm(inputs_val, filters_val, out, desc_op,
+                                                 algo, precision, subsample, dilation)
+
+            if not should_compute.ok:
+                infos = ['ndim               : %s' % (len(inputs_shape) - 2),
+                         'precision          : %s' % precision]
+                infos += should_compute.messages
+                try:
+                    self.run_conv_fwd(algo, precision, parameters)
+                except Exception as e:
+                    print('(FAILS as expected)', algo, precision, parameters)
+                    print(e.message.split('\n')[0])
+                    for info in infos:
+                        print(info)
+                        # exit(0)
+                else:
+                    print('**SHOULD FAIL**|', algo, precision, parameters)
+                    for info in infos:
+                        print(info)
+                    exit(-1)
+            count += 1
+            if count % 200 == 0:
+                print(count, 'passed')
+        print(count, 'finished')
 
 
 class TestDnnConv2D(BaseTestDnnConv):
-    fwd_algorithms = SUPPORTED_DNN_CONV_ALGO_FWD
-    bwd_filter_algorithms = SUPPORTED_DNN_CONV_ALGO_BWD_FILTER
-    bwd_data_algorithms = SUPPORTED_DNN_CONV_ALGO_BWD_DATA
+    ndim = 2
+
+    fwd_algorithms = cudnn.cudnnConvolutionFwdAlgo_t.get_aliases()
+    bwd_filter_algorithms = cudnn.cudnnConvolutionBwdFilterAlgo_t.get_aliases()
+    bwd_data_algorithms = cudnn.cudnnConvolutionBwdDataAlgo_t.get_aliases()
 
     cpu_conv_class = theano.tensor.nnet.corr.CorrMM
     cpu_gradinput_class = theano.tensor.nnet.corr.CorrMM_gradInputs
     cpu_gradweight_class = theano.tensor.nnet.corr.CorrMM_gradWeights
 
-    def get_cases(self):
-        # Inspired from:
-        # - theano.tensor.nnet.tests.test_abstract_conv.BaseTestConv2d#setup_class
-        # - theano.tensor.nnet.tests.test_abstract_conv.BaseTestConv#test_all
-
-        inputs_shapes = [(8, 1, 6, 6), (8, 1, 8, 8), (2, 1, 7, 7),
-                         (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9),
-                         (0, 1, 6, 6), (1, 0, 6, 6), (1, 1, 6, 6)]
-        filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
-                          (1, 1, 2, 3), (4, 1, 1, 3), (4, 5, 3, 2),
-                          (1, 1, 2, 2), (1, 0, 2, 2), (0, 1, 2, 2)]
-        subsamples = [(1, 1), (2, 2), (2, 4)]
-        dilations = [(1, 1), (1, 2), (2, 1)]
-        default_subsample = (1, 1)
-        default_dilation = (1, 1)
-        border_modes = ["valid", "half", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
-        conv_modes = ['conv', 'cross']
-
-        assert len(inputs_shapes) == len(filters_shapes)
-
-        iterables = []
-
-        for input_shape, filter_shape in zip(inputs_shapes, filters_shapes):
-            if 0 not in input_shape and 0 not in filter_shape:
-                local_subsamples = subsamples
-                local_dilations = dilations
-            else:
-                local_subsamples = [default_subsample]
-                local_dilations = [default_dilation]
-            iterables += [product(product([input_shape], [filter_shape], local_subsamples, local_dilations),
-                                  border_modes,
-                                  conv_modes, [1], [0])]
-
-        return chain(*iterables)
-
 
 class TestDnnConv3D(BaseTestDnnConv):
-    fwd_algorithms = SUPPORTED_DNN_CONV3D_ALGO_FWD
-    bwd_filter_algorithms = SUPPORTED_DNN_CONV3D_ALGO_BWD_FILTER
-    bwd_data_algorithms = SUPPORTED_DNN_CONV3D_ALGO_BWD_DATA
+    ndim = 3
+
+    fwd_algorithms = cudnn.conv3d_fwd_algorithms
+    bwd_filter_algorithms = cudnn.conv3d_bwd_filter_algorithms
+    bwd_data_algorithms = cudnn.conv3d_bwd_data_algorithms
 
     cpu_conv_class = theano.tensor.nnet.corr3d.Corr3dMM
     cpu_gradinput_class = theano.tensor.nnet.corr3d.Corr3dMM_gradInputs
     cpu_gradweight_class = theano.tensor.nnet.corr3d.Corr3dMM_gradWeights
 
-    def get_cases(self):
-        # small case for quick test.
-        input_shape = (128, 3, 5, 5, 5)
-        filter_shape = (64, 3, 1, 2, 4)
-        subsample = (1, 1, 1)
-        dilation = (1, 1, 1)
-        border_mode = 'valid'
-        conv_mode = 'conv'
-        return (((input_shape, filter_shape, subsample, dilation), border_mode, conv_mode, 2.1, -5.7),)
 
-    def get_cases_real(self):
-        # Copy of: theano.gpuarray.tests.test_dnn.get_conv3d_test_cases
+if __name__ == '__main__':
+    test_2d = TestDnnConv2D()
+    test_3d = TestDnnConv3D()
+    print('2D algorithms:')
+    print('FWD       :', test_2d.fwd_algorithms)
+    print('BWD FILTER:', test_2d.bwd_filter_algorithms)
+    print('BWD DATA  :', test_2d.bwd_data_algorithms)
+    print('3D algorithms:')
+    print('FWD       :', test_3d.fwd_algorithms)
+    print('BWD FILTER:', test_3d.bwd_filter_algorithms)
+    print('BWD DATA  :', test_3d.bwd_data_algorithms)
+    count_tests_2d = test_2d.get_expected_tcount()
+    count_tests_3d = test_3d.get_expected_tcount()
+    print(count_tests_2d, 'total cases for 2D.')
+    print(count_tests_3d, 'total cases for 3D.')
+    print(count_tests_2d + count_tests_3d, 'total cases.')
+    import sys
 
-        # Every element of test_shapes follows the format
-        # [input_shape, filter_shape, subsample, dilation]
-        test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1), (1, 1, 1)],
-                       [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2), (1, 1, 1)],
-                       [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3), (1, 1, 1)],
-                       [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1), (1, 1, 1)],
-                       # Test with 1x1x1 filters
-                       [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1), (1, 1, 1)],
-                       # Test with dimensions larger than 1024 (thread block dim)
-                       [(1025, 1, 2, 3, 4), (5, 1, 1, 2, 3), (1, 1, 1), (1, 1, 1)],
-                       [(8, 1, 2, 3, 4), (1025, 1, 1, 2, 3), (1, 1, 1), (1, 1, 1)],
-                       [(8, 1025, 2, 3, 4), (5, 1025, 1, 1, 2), (1, 1, 1), (1, 1, 1)],
-                       [(8, 1, 1030, 3, 4), (5, 1, 1025, 1, 1), (1, 1, 1), (1, 1, 1)],
-                       [(8, 1, 2, 1030, 4), (5, 1, 2, 1025, 1), (1, 1, 1), (1, 1, 1)],
-                       [(8, 1, 2, 3, 1030), (5, 1, 1, 2, 1025), (1, 1, 1), (1, 1, 1)],
-                       # The equivalent of this caused a crash with conv2d
-                       [(1, 1, 1, 44800, 1), (6, 1, 1, 1, 1), (1, 1, 1), (1, 1, 1)]]
-
-        # With border mode 'full', test with kernel bigger than image in some/all
-        # dimensions
-        test_shapes_full = [[(6, 2, 2, 2, 2), (4, 2, 3, 1, 1), (1, 1, 1), (1, 1, 1)],
-                            [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1), (1, 1, 1)],
-                            [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1), (1, 1, 1)],
-                            [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1), (1, 1, 1)]]
-
-        if version() >= 6000:
-            test_shapes.extend([
-                [(8, 1, 20, 12, 15), (5, 1, 6, 3, 4), (1, 1, 2), (3, 2, 1)],
-                [(8, 1, 20, 12, 15), (5, 1, 6, 3, 4), (2, 2, 1), (1, 2, 3)]])
-            test_shapes_full.append(
-                [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1), (3, 2, 1)])
-
-        border_modes = ['valid', 'full', 'half', (1, 2, 3), (3, 2, 1), 1, 2]
-        conv_modes = ['conv', 'cross']
-
-        itt = chain(product(test_shapes, border_modes, conv_modes),
-                    product(test_shapes_full, ['full'], conv_modes))
-
-        return itt
+    if len(sys.argv) == 2 and sys.argv[1] == 'run':
+        test_2d.check_fwd_predictions()
+        test_3d.check_fwd_predictions()
