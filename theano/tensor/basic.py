@@ -1003,7 +1003,7 @@ def check_and_normalize_axes(x, axis):
             elif isinstance(axis.data, (list, np.ndarray)):
                 axis = [int(i) for i in axis.data]
     else:
-        axis = []
+        raise TypeError("Axis must be an integer, tuple, list of integers or a TensorVariable. Got %s" % axis)
     if len(axis) > 0:
         for i in range(len(axis)):
             if axis[i] < 0:
