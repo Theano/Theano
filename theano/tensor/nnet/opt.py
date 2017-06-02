@@ -88,7 +88,9 @@ def local_abstractconv_gemm(node):
         kern = kern[:, :, ::-1, ::-1]
     rval = CorrMM(border_mode=node.op.border_mode,
                   subsample=node.op.subsample,
-                  filter_dilation=node.op.filter_dilation)(img, kern)
+                  filter_dilation=node.op.filter_dilation,
+                  num_groups=node.op.num_groups)(img, kern)
+
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -133,7 +135,8 @@ def local_abstractconv_gradweight_gemm(node):
 
     rval = CorrMM_gradWeights(border_mode=node.op.border_mode,
                               subsample=node.op.subsample,
-                              filter_dilation=node.op.filter_dilation)(img, topgrad, shape)
+                              filter_dilation=node.op.filter_dilation,
+                              num_groups=node.op.num_groups)(img, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     # need to flip the kernel if necessary
@@ -190,8 +193,9 @@ def local_abstractconv_gradinputs_gemm(node):
         kern = kern[:, :, ::-1, ::-1]
     rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
-                             filter_dilation=node.op.filter_dilation)(kern, topgrad,
-                                                                      shape)
+                             filter_dilation=node.op.filter_dilation,
+                             num_groups=node.op.num_groups)(kern, topgrad,
+                                                            shape)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
