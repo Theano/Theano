@@ -132,6 +132,11 @@ class Supervisor:
         self.protected = list(protected)
 
     def validate(self, fgraph):
+        if config.cycle_detection == 'fast' and hasattr(fgraph, 'fast_destroyers_check'):
+            if fgraph.fast_destroyers_check(self.protected):
+                raise gof.InconsistencyError("Trying to destroy a protected"
+                                             "Variable.")
+
         if not hasattr(fgraph, 'destroyers'):
             return True
         for r in self.protected + list(fgraph.outputs):

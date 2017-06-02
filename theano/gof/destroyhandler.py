@@ -297,7 +297,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         <unknown>
 
     """
-    pickle_rm_attr = ["destroyers"]
+    pickle_rm_attr = ["destroyers", "fast_destroyers_check"]
 
     def __init__(self, do_imports_on_attach=True, algo=None):
         self.fgraph = None
@@ -394,6 +394,26 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                 return []
         fgraph.destroyers = get_destroyers_of
 
+        def recursive_destroys_finder(clients_list):
+            for client in clients_list:
+                # client is a tuple (I don't know if its size is always one)
+                for item in client:
+                    if item.op.destroy_map:
+                        return True
+                    if len(item.outputs) == 0:
+                        return False
+                    for output in item.outputs:
+                        if recursive_destroys_finder(output.clients):
+                            return True
+            return False
+
+        def fast_destroyers_check(protected_list):
+            for protected_var in protected_list:
+                if recursive_destroys_finder(protected_var.clients):
+                    return True
+
+        fgraph.fast_destroyers_check = fast_destroyers_check
+
     def refresh_droot_impact(self):
         """
         Makes sure self.droot, self.impact, and self.root_destroyer are up to
@@ -416,6 +436,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         del self.stale_droot
         assert self.fgraph.destroyer_handler is self
         delattr(self.fgraph, 'destroyers')
+        delattr(self.fgraph, 'fast_destroyers_check')
         delattr(self.fgraph, 'destroy_handler')
         self.fgraph = None
 
