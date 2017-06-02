@@ -1709,7 +1709,6 @@ class Grouped_conv_noOptim(unittest.TestCase):
         self.kern_shape = (6, 2, 3, 3)
         self.top_shape = (5, 6, 3, 3)
         self.filter_dilation = (1, 1)
-        self.num_groups = 3
         self.mode = theano.Mode(optimizer=None)
 
     def test_fwd(self):
@@ -1782,9 +1781,9 @@ class Grouped_conv_noOptim(unittest.TestCase):
         def abstract_conv_gradweight(inputs_val, output_val):
             return grouped_abstractconvgrad_func(inputs_val, output_val, self.kern_shape[-2:])
 
-            utt.verify_grad(abstract_conv_gradweight,
-                            [img, top],
-                            mode=self.mode, eps=1)
+        utt.verify_grad(abstract_conv_gradweight,
+                        [img, top],
+                        mode=self.mode, eps=1)
 
     def test_gradinputs(self):
         kern = np.random.random(self.kern_shape).astype('float32')
@@ -1822,6 +1821,6 @@ class Grouped_conv_noOptim(unittest.TestCase):
         def abstract_conv_gradinputs(filters_val, output_val):
             return grouped_abstractconvgrad_func(filters_val, output_val, self.img_shape[2:])
 
-            utt.verify_grad(abstract_conv_gradinputs,
-                            [kern, top],
-                            mode=self.mode, eps=1)
+        utt.verify_grad(abstract_conv_gradinputs,
+                        [kern, top],
+                        mode=self.mode, eps=1)
