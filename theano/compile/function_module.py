@@ -132,11 +132,12 @@ class Supervisor:
         self.protected = list(protected)
 
     def validate(self, fgraph):
-        if config.cycle_detection == 'fast' and hasattr(fgraph, 'fast_destroyers_check'):
-            if fgraph.fast_destroyers_check(self.protected):
+        if config.cycle_detection == 'fast' and hasattr(fgraph, 'has_destroyers'):
+            if fgraph.has_destroyers(self.protected):
                 raise gof.InconsistencyError("Trying to destroy a protected"
                                              "Variable.")
-
+            else:
+                return True
         if not hasattr(fgraph, 'destroyers'):
             return True
         for r in self.protected + list(fgraph.outputs):
@@ -1090,7 +1091,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
 
     # We can't use fgraph.inputs as this don't include Constant Value.
     all_graph_inputs = gof.graph.inputs(fgraph.outputs)
-    has_destroyers = hasattr(fgraph, 'get_destroyers_of')
+    has_get_destroyers = hasattr(fgraph, 'get_destroyers_of')
 
     for i in xrange(len(fgraph.outputs)):
         views_of_output_i = set()
@@ -1121,7 +1122,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
                 #    being updated
                 if input_j in updated_fgraph_inputs:
                     continue
-                if input_j in views_of_output_i and not (has_destroyers and fgraph.get_destroyers_of(input_j)):
+                if input_j in views_of_output_i and not (has_get_destroyers and fgraph.get_destroyers_of(input_j)):
                     # We don't put deep_copy_op if the input and the
                     # output have borrow==True
                     if input_j in fgraph.inputs:
