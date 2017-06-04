@@ -512,7 +512,8 @@ def conv2d(input,
            border_mode='valid',
            subsample=(1, 1),
            filter_flip=True,
-           filter_dilation=(1, 1)):
+           filter_dilation=(1, 1),
+           unshared=False):
     """This function will build the symbolic graph for convolving a mini-batch of a
     stack of 2D inputs with a set of 2D filters. The implementation is modelled
     after Convolutional Neural Networks (CNN).
@@ -527,7 +528,8 @@ def conv2d(input,
                              border_mode=border_mode,
                              subsample=subsample,
                              filter_flip=filter_flip,
-                             filter_dilation=filter_dilation)
+                             filter_dilation=filter_dilation,
+                             unshared=unshared)
     return conv_op(input, filters)
 
 
@@ -637,7 +639,8 @@ def conv2d_grad_wrt_inputs(output_grad,
                            border_mode='valid',
                            subsample=(1, 1),
                            filter_flip=True,
-                           filter_dilation=(1, 1)):
+                           filter_dilation=(1, 1),
+                           unshared=False):
     """Compute conv output gradient w.r.t its inputs
 
     This function builds the symbolic graph for getting the
@@ -710,6 +713,10 @@ def conv2d_grad_wrt_inputs(output_grad,
     filter_dilation : tuple of len 2
         The filter dilation used in the forward pass.
         Also known as input striding.
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different kernel will be used for each region of the
+        input.
 
     Returns
     -------
@@ -907,7 +914,8 @@ def conv2d_grad_wrt_weights(input,
                             border_mode='valid',
                             subsample=(1, 1),
                             filter_flip=True,
-                            filter_dilation=(1, 1)):
+                            filter_dilation=(1, 1),
+                            unshared=False):
     """Compute conv output gradient w.r.t its weights
 
     This function will build the symbolic graph for getting the
@@ -972,6 +980,10 @@ def conv2d_grad_wrt_weights(input,
     filter_dilation : tuple of len 2
         The filter dilation used in the forward pass.
         Also known as input striding.
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different kernel will be used for each region of the
+        input.
 
     Returns
     -------
@@ -1022,7 +1034,8 @@ def conv2d_grad_wrt_weights(input,
                                                border_mode=border_mode,
                                                subsample=subsample,
                                                filter_flip=filter_flip,
-                                               filter_dilation=filter_dilation)
+                                               filter_dilation=filter_dilation,
+                                               unshared=False)
 
     return gradWeight_op(input, output_grad, filter_shape[-2:])
 
@@ -1389,6 +1402,11 @@ class BaseAbstractConv(Op):
     filter_dilation: tuple of len ``convdim``
         Factor by which to subsample (stride) the input.
         Also called dilation factor.
+
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different kernel will be used for each region of the
+        input.
     """
     check_broadcast = False
     __props__ = ('convdim', 'border_mode', 'subsample', 'filter_flip',
@@ -1396,7 +1414,8 @@ class BaseAbstractConv(Op):
 
     def __init__(self, convdim,
                  imshp=None, kshp=None, border_mode="valid",
-                 subsample=None, filter_flip=True, filter_dilation=None):
+                 subsample=None, filter_flip=True, filter_dilation=None,
+                 unshared=False):
 
         self.convdim = convdim
         if convdim not in (2, 3):
@@ -1484,7 +1503,7 @@ class BaseAbstractConv(Op):
             raise NotImplementedError(
                 'flops not implemented for convdim={}', self.convdim)
 
-    def conv(self, img, kern, mode="valid", dilation=1):
+    def conv(self, img, kern, mode="valid", dilation=1, unshared=False):
         """
         Basic slow Python 2D or 3D convolution for DebugMode
         """
@@ -1507,6 +1526,13 @@ class BaseAbstractConv(Op):
         out_shape = get_conv_output_shape(img.shape, kern.shape,
                                           mode, [1] * self.convdim, dilation)
 
+        out_rows = out_shape[self.convdim]
+        out_cols = out_shape[self.convdim+1]
+
+        if unshared == True:
+            if kern.shape[2] != out_rows*out_cols:
+                raise ValueError("No. of Kernel regions does not match output size")
+
         out = np.zeros(out_shape, dtype=img.dtype)
         dil_kern_shp = kern.shape[:-self.convdim] + tuple(
             (kern.shape[-self.convdim + i] - 1) * dilation[i] + 1
@@ -1526,9 +1552,19 @@ class BaseAbstractConv(Op):
                     for n in xrange(kern.shape[0]):
                         for im0 in xrange(img.shape[1]):
                             # some cast generates a warning here
-                            out[b, n, ...] += _convolve2d(img[b, im0, ...],
-                                                          dilated_kern[n, im0, ...],
-                                                          1, val, bval, 0)
+                            if unshared == False:
+                                out[b, n, ...] += _convolve2d(img[b, im0, ...],
+                                                              dilated_kern[n, im0, ...],
+                                                              1, val, bval, 0)
+                            else:
+                                for reg in xrange(kern.shape[1]):
+                                    row = reg // out_cols
+                                    col = reg - row*out_cols
+                                    out[b, n, row, col] += _convolve2d(img[b, im0, row:row+kern.shape[3],
+                                                                       col:col+kern.shape[4]],
+                                                                       dilated_kern[n, im0, reg, ...],
+                                                                       1, val, bval, 0)
+
         elif self.convdim == 3:
             for b in xrange(img.shape[0]):
                 for n in xrange(kern.shape[0]):
@@ -1554,13 +1590,15 @@ class AbstractConv(BaseAbstractConv):
                  border_mode="valid",
                  subsample=None,
                  filter_flip=True,
-                 filter_dilation=None):
+                 filter_dilation=None,
+                 unshared=False):
         super(AbstractConv, self).__init__(convdim=convdim,
                                            imshp=imshp, kshp=kshp,
                                            border_mode=border_mode,
                                            subsample=subsample,
                                            filter_flip=filter_flip,
-                                           filter_dilation=filter_dilation)
+                                           filter_dilation=filter_dilation,
+                                           unshared=unshared)
 
     def make_node(self, img, kern):
         # Make sure both inputs are Variables with the same Type
@@ -1574,8 +1612,15 @@ class AbstractConv(BaseAbstractConv):
 
         if img.type.ndim != 2 + self.convdim:
             raise TypeError('img must be %dD tensor' % (2 + self.convdim))
-        if kern.type.ndim != 2 + self.convdim:
-            raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
+
+        if unshared == True: 
+            if self.convdim == 3:
+                raise NotImplementedError("Unshared 3D convolution not implemented")
+            elif kern.type.ndim != 3 + self.convdim:
+                raise TypeError('kern must be %dD tensor' % (3 + self.convdim))   
+        else:
+            if kern.type.ndim != 2 + self.convdim:
+                raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
 
         img = assert_shape(img, self.imshp,
                            'AbstractConv shape mismatch: shape of '
@@ -1622,7 +1667,7 @@ class AbstractConv(BaseAbstractConv):
             img = new_img
         if not self.filter_flip:
             kern = kern[(slice(None), slice(None)) + (slice(None, None, -1),) * self.convdim]
-        conv_out = self.conv(img, kern, mode="valid", dilation=self.filter_dilation)
+        conv_out = self.conv(img, kern, mode="valid", dilation=self.filter_dilation, unshared=self.unshared)
         conv_out = conv_out[(slice(None), slice(None)) +
                             tuple(slice(None, None, self.subsample[i])
                                   for i in range(self.convdim))]
@@ -1668,13 +1713,15 @@ class AbstractConv2d(AbstractConv):
                  border_mode="valid",
                  subsample=(1, 1),
                  filter_flip=True,
-                 filter_dilation=(1, 1)):
+                 filter_dilation=(1, 1),
+                 unshared=False):
         super(AbstractConv2d, self).__init__(convdim=2,
                                              imshp=imshp, kshp=kshp,
                                              border_mode=border_mode,
                                              subsample=subsample,
                                              filter_flip=filter_flip,
-                                             filter_dilation=filter_dilation)
+                                             filter_dilation=filter_dilation,
+                                             unshared=unshared)
 
     def grad(self, inp, grads):
         bottom, weights = inp
@@ -1684,13 +1731,15 @@ class AbstractConv2d(AbstractConv):
                                              self.border_mode,
                                              self.subsample,
                                              self.filter_flip,
-                                             self.filter_dilation)(
+                                             self.filter_dilation.
+                                             self.unshared)(
             weights, top, bottom.shape[-2:], add_assert_shape=False)
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
                                                self.border_mode,
                                                self.subsample,
                                                self.filter_flip,
-                                               self.filter_dilation)(
+                                               self.filter_dilation,
+                                               self.unshared)(
 
             bottom, top, weights.shape[-2:], add_assert_shape=False)
 
@@ -1772,13 +1821,15 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                  border_mode="valid",
                  subsample=None,
                  filter_flip=True,
-                 filter_dilation=None):
+                 filter_dilation=None,
+                 unshared=False):
         super(AbstractConv_gradWeights, self).__init__(convdim=convdim,
                                                        imshp=imshp, kshp=kshp,
                                                        border_mode=border_mode,
                                                        subsample=subsample,
                                                        filter_flip=filter_flip,
-                                                       filter_dilation=filter_dilation)
+                                                       filter_dilation=filter_dilation,
+                                                       unshared=False)
 
     # Update shape/height_width
     def make_node(self, img, topgrad, shape, add_assert_shape=True):
@@ -1901,13 +1952,15 @@ class AbstractConv2d_gradWeights(AbstractConv_gradWeights):
                  border_mode="valid",
                  subsample=(1, 1),
                  filter_flip=True,
-                 filter_dilation=(1, 1)):
+                 filter_dilation=(1, 1),
+                 unshared=False):
         super(AbstractConv2d_gradWeights, self).__init__(convdim=2,
                                                          imshp=imshp, kshp=kshp,
                                                          border_mode=border_mode,
                                                          subsample=subsample,
                                                          filter_flip=filter_flip,
-                                                         filter_dilation=filter_dilation)
+                                                         filter_dilation=filter_dilation,
+                                                         unshared=unshared)
 
     def grad(self, inp, grads):
         bottom, top = inp[:2]
@@ -1916,7 +1969,8 @@ class AbstractConv2d_gradWeights(AbstractConv_gradWeights):
                                              self.border_mode,
                                              self.subsample,
                                              self.filter_flip,
-                                             self.filter_dilation)(weights,
+                                             self.filter_dilation,
+                                             self.unshared)(weights,
                                                                    top,
                                                                    bottom.shape[-2:])
         d_top = AbstractConv2d(self.imshp,
@@ -1924,7 +1978,8 @@ class AbstractConv2d_gradWeights(AbstractConv_gradWeights):
                                self.border_mode,
                                self.subsample,
                                self.filter_flip,
-                               self.filter_dilation)(bottom, weights)
+                               self.filter_dilation,
+                               self.unshared)(bottom, weights)
         # Make sure that the broadcastable pattern of the inputs is used
         # for the gradients, even if the grad opts are not able to infer
         # that the dimensions are broadcastable.
@@ -2150,7 +2205,8 @@ class AbstractConv2d_gradInputs(AbstractConv_gradInputs):
                                                         border_mode=border_mode,
                                                         subsample=subsample,
                                                         filter_flip=filter_flip,
-                                                        filter_dilation=filter_dilation)
+                                                        filter_dilation=filter_dilation,
+                                                        unshared=unshared)
 
     def grad(self, inp, grads):
         weights, top = inp[:2]
@@ -2159,14 +2215,16 @@ class AbstractConv2d_gradInputs(AbstractConv_gradInputs):
                                                self.border_mode,
                                                self.subsample,
                                                self.filter_flip,
-                                               self.filter_dilation)(
+                                               self.filter_dilation,
+                                               self.unshared)(
                                                    bottom, top,
                                                    weights.shape[-2:])
         d_top = AbstractConv2d(self.imshp, self.kshp,
                                self.border_mode,
                                self.subsample,
                                self.filter_flip,
-                               self.filter_dilation)(bottom, weights)
+                               self.filter_dilation,
+                               self.unshared)(bottom, weights)
         # Make sure that the broadcastable pattern of the inputs is used
         # for the gradients, even if the grad opts are not able to infer
         # that the dimensions are broadcastable.

@@ -39,7 +39,7 @@ from .abstract_conv import conv3d
 
 def conv2d(input, filters, input_shape=None, filter_shape=None,
            border_mode='valid', subsample=(1, 1), filter_flip=True,
-           image_shape=None, filter_dilation=(1, 1), **kwargs):
+           image_shape=None, filter_dilation=(1, 1), unshared=False, **kwargs):
     """
     This function will build the symbolic graph for convolving a mini-batch of a
     stack of 2D inputs with a set of 2D filters. The implementation is modelled
@@ -103,6 +103,11 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         Factor by which to subsample (stride) the input.
         Also called dilation elsewhere.
 
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different kernel will be used for each region of the
+        input.
+
     kwargs: Any other keyword arguments are accepted for backwards
             compatibility, but will be ignored.
 
@@ -152,12 +157,12 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
 
     return abstract_conv2d(input, filters, input_shape, filter_shape,
                            border_mode, subsample, filter_flip,
-                           filter_dilation)
+                           filter_dilation, unshared)
 
 
 def conv2d_transpose(input, filters, output_shape, filter_shape=None,
                      border_mode='valid', input_dilation=(1, 1),
-                     filter_flip=True, filter_dilation=(1, 1)):
+                     filter_flip=True, filter_dilation=(1, 1), unshared=False):
     """
     This function will build the symbolic graph for applying a transposed
     convolution over a mini-batch of a stack of 2D inputs with a set of 2D
@@ -209,6 +214,11 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
         Factor by which to subsample (stride) the input.
         Also called dilation elsewhere.
 
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different kernel will be used for each region of the
+        input.
+
     Returns
     -------
     Symbolic 4D tensor
@@ -235,4 +245,5 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
                                   border_mode=border_mode,
                                   subsample=input_dilation,
                                   filter_flip=filter_flip,
-                                  filter_dilation=filter_dilation)
+                                  filter_dilation=filter_dilation,
+                                  unshared=unshared)
