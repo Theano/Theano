@@ -8,6 +8,7 @@ import theano.tensor as T
 from theano import config
 from theano.tests import unittest_tools as utt
 import theano.gpuarray
+from theano.gpuarray.basic_ops import infer_context_name
 from theano.gpuarray.ctc import (ctc_enabled, ctc)
 
 class TestCTC(unittest.TestCase):
@@ -28,14 +29,20 @@ class TestCTC(unittest.TestCase):
         # Symbolic gradient of CTC cost
         t_grad = T.grad(T.mean(t_cost), t_activations)
         # Compile symbolic functions
-        train = theano.function([], [t_cost, t_grad])
+        #train = theano.function([], [t_cost, t_grad])
         test = theano.function([], [t_cost])
 
-        cost, grad = train()
-        test_cost, = test()
+        #cost, grad = train()
+        cost, = test()
+
+        cpu_cost = np.empty(shape=cost.shape, dtype=np.float32)
+        cost.read(cpu_cost)
+
+        #cpu_grad = np.empty(shape=grad.shape, dtype=np.float32)
+        #grad.read(cpu_grad)
 
         #utt.assert_allclose(expected_grads, grad)
-        #utt.assert_allclose(expected_costs, cost)
+        utt.assert_allclose(expected_costs, cpu_cost)
 
     def simple_test(self):
         activations = np.asarray([[[0.1, 0.6, 0.1, 0.1, 0.1], [0.1, 0.1, 0.6, 0.1, 0.1]],
