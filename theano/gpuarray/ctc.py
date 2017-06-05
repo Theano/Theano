@@ -64,18 +64,20 @@ class GpuConnectionistTemporalClassification(CGpuKernelBase, Op):
         return dirs
 
     def c_libraries(self):
-        return ["warpctc"]
+        return ["warpctc", "gpuarray"]
 
     def c_header_dirs(self):
-        dirs = []
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
         if ctc_enabled:
             # We assume here that the header is available at the include directory
             # of the CTC root directory.
             dirs.append(os.path.join(config.ctc.root, "include"))
+        dirs.append('/usr/local/cuda/include')
         return dirs
 
     def c_headers(self):
-        return ['ctc.h']
+        return ['ctc.h', 'numpy_compat.h', 'gpuarray_helper.h', 'gpuarray/types.h',
+            'gpuarray_api.h', 'gpuarray/array.h', 'gpuarray/util.h', '<cuda_runtime.h>']
 
     def make_node(self, activations, labels, input_lengths):
         if not ctc_enabled:
