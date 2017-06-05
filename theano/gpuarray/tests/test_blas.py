@@ -16,7 +16,7 @@ from .config import mode_with_gpu, test_ctx_name
 from .test_basic_ops import makeTester, rand
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
                     gpugemm_inplace, gpugemm_no_inplace,
-                    gpugemmbatch_no_inplace,
+                    gpugemmbatch_inplace,
                     gpuger_inplace, gpuger_no_inplace,
                     GpuGer, GpuGemm, gpu_dot22)
 
@@ -130,7 +130,12 @@ gemm_batched_tests = dict(
     ("test_b%im%ik%in%i" % (b, m, k, n),
      [rand(b, m, n), rand(), rand(b, m, k), rand(b, k, n), rand()])
     for b, m, k, n in itertools.combinations([2, 3, 5, 7, 11, 13], 4))
-# float16 not supported
+
+gemm_batched_tests['float16'] = [rand(3, 4, 7).astype('float16'),
+                                 rand().astype('float16'),
+                                 rand(3, 4, 4).astype('float16'),
+                                 rand(3, 4, 7).astype('float16'),
+                                 rand().astype('float16')]
 gemm_batched_tests['float32'] = [rand(3, 4, 7).astype('float32'),
                                  rand().astype('float32'),
                                  rand(3, 4, 4).astype('float32'),
@@ -146,7 +151,7 @@ gemm_batched_tests['float64'] = [rand(3, 4, 7).astype('float64'),
 GpuGemmBatchTester = makeTester(
     'GpuGemmBatchTester',
     op=lambda z, alpha, x, y, beta: alpha * batched_dot(x, y) + beta * z,
-    gpu_op=gpugemmbatch_no_inplace,
+    gpu_op=gpugemmbatch_inplace,
     cases=gemm_batched_tests
     )
 

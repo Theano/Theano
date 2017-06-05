@@ -1213,7 +1213,7 @@ def local_gpua_gemm(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.BatchedDot])
 @register_opt2([tensor.blas.BatchedDot], 'fast_compile')
 def local_gpua_gemmbatch(op, context_name, inputs, outputs):
-    if inputs[0].dtype not in ['float32', 'float64']:
+    if inputs[0].dtype not in ['float16', 'float32', 'float64']:
         return
     a, b = inputs
     # Since GpuGemmBatch only supports 3D inputs and output,
