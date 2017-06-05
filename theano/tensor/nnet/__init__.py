@@ -53,12 +53,16 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         (batch size, input channels, input rows, input columns).
         See the optional parameter ``input_shape``.
 
-    filters: symbolic 4D tensor
+    filters: symbolic 4D or 6D tensor
         Set of filters used in CNN layer of shape
-        (output channels, input channels, filter rows, filter columns).
+        (output channels, input channels, filter rows, filter columns)
+        for normal convolution and
+        (output channels, input channels, output rows, output columns,
+        filter rows, filter columns)
+        for unshared convolution.
         See the optional parameter ``filter_shape``.
 
-    input_shape: None, tuple/list of len 4 of int or Constant variable
+    input_shape: None, tuple/list of len 4 or 6 of int or Constant variable
         The shape of the input parameter.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that this

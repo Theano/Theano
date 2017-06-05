@@ -33,7 +33,8 @@ _logger = logging.getLogger("theano.tensor.nnet.abstract_conv")
 
 def get_conv_output_shape(image_shape, kernel_shape,
                           border_mode, subsample,
-                          filter_dilation=None):
+                          filter_dilation=None,
+                          unshared=False):
     """
     This function compute the output shape of convolution operation.
 
@@ -44,9 +45,13 @@ def get_conv_output_shape(image_shape, kernel_shape,
         to: batch size, number of input channels, height and width (and
         possibly depth) of the image. None where undefined.
     kernel_shape: tuple of int (symbolic or numeric) corresponding to the
-        kernel shape. Its four (or five) elements must correspond respectively
-        to: number of output channels, number of input channels, height and
-        width (and possibly depth) of the kernel. None where undefined.
+        kernel shape. For a normal convolution, its four (or five) elements
+        must correspond respectively to : number of output channels, number of
+        input channels, height and width (and possibly depth) of the kernel.
+        For an unshared convolution, its six channels must correspond to :
+        number of output channels, number of input channels, height and width
+        of the output, height and width of the kernel.
+        None where undefined.
     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
         or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
         If it is a tuple, its two (or three) elements respectively correspond
@@ -65,7 +70,11 @@ def get_conv_output_shape(image_shape, kernel_shape,
 
     """
     bsize, imshp = image_shape[0], image_shape[2:]
-    nkern, kshp = kernel_shape[0], kernel_shape[2:]
+    nkern = kernel_shape[0]
+    if unshared is True:
+        kshp = kernel_shape[4:]
+    else:
+        kshp = kernel_shape[2:]
 
     if filter_dilation is None:
         filter_dilation = np.ones(len(subsample), dtype='int')
@@ -1526,12 +1535,12 @@ class BaseAbstractConv(Op):
         out_shape = get_conv_output_shape(img.shape, kern.shape,
                                           mode, [1] * self.convdim, dilation)
 
-        out_rows = out_shape[self.convdim]
-        out_cols = out_shape[self.convdim+1]
+        if unshared is True:
+            out_rows = out_shape[2]
+            out_cols = out_shape[3]
 
-        if unshared == True:
-            if kern.shape[2] != out_rows*out_cols:
-                raise ValueError("No. of Kernel regions does not match output size")
+            if (kern.shape[2] != out_rows) or (kern.shape[3] != out_cols):
+                raise ValueError("Kernel shape does not match output size")
 
         out = np.zeros(out_shape, dtype=img.dtype)
         dil_kern_shp = kern.shape[:-self.convdim] + tuple(
@@ -1552,18 +1561,17 @@ class BaseAbstractConv(Op):
                     for n in xrange(kern.shape[0]):
                         for im0 in xrange(img.shape[1]):
                             # some cast generates a warning here
-                            if unshared == False:
+                            if unshared is True:
+                                for row in xrange(kern.shape[2]):
+                                    for col in xrange(kern.shape[3]):
+                                        out[b, n, row, col] += _convolve2d(img[b, im0, row:row + kern.shape[4],
+                                                                           col:col + kern.shape[5]],
+                                                                           dilated_kern[n, im0, row, col, ...],
+                                                                           1, val, bval, 0)
+                            else:
                                 out[b, n, ...] += _convolve2d(img[b, im0, ...],
                                                               dilated_kern[n, im0, ...],
                                                               1, val, bval, 0)
-                            else:
-                                for reg in xrange(kern.shape[1]):
-                                    row = reg // out_cols
-                                    col = reg - row*out_cols
-                                    out[b, n, row, col] += _convolve2d(img[b, im0, row:row+kern.shape[3],
-                                                                       col:col+kern.shape[4]],
-                                                                       dilated_kern[n, im0, reg, ...],
-                                                                       1, val, bval, 0)
 
         elif self.convdim == 3:
             for b in xrange(img.shape[0]):
@@ -1613,11 +1621,12 @@ class AbstractConv(BaseAbstractConv):
         if img.type.ndim != 2 + self.convdim:
             raise TypeError('img must be %dD tensor' % (2 + self.convdim))
 
-        if unshared == True: 
-            if self.convdim == 3:
-                raise NotImplementedError("Unshared 3D convolution not implemented")
-            elif kern.type.ndim != 3 + self.convdim:
-                raise TypeError('kern must be %dD tensor' % (3 + self.convdim))   
+        if self.unshared is True:
+            if self.convdim != 2:
+                raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                          % self.convdim)
+            elif kern.type.ndim != 6:
+                raise TypeError('kern must be 6D tensor for unshared convolution')
         else:
             if kern.type.ndim != 2 + self.convdim:
                 raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
@@ -1971,8 +1980,8 @@ class AbstractConv2d_gradWeights(AbstractConv_gradWeights):
                                              self.filter_flip,
                                              self.filter_dilation,
                                              self.unshared)(weights,
-                                                                   top,
-                                                                   bottom.shape[-2:])
+                                                            top,
+                                                            bottom.shape[-2:])
         d_top = AbstractConv2d(self.imshp,
                                self.kshp,
                                self.border_mode,
@@ -2199,7 +2208,8 @@ class AbstractConv2d_gradInputs(AbstractConv_gradInputs):
                  border_mode="valid",
                  subsample=(1, 1),
                  filter_flip=True,
-                 filter_dilation=(1, 1)):
+                 filter_dilation=(1, 1),
+                 unshared=False):
         super(AbstractConv2d_gradInputs, self).__init__(convdim=2,
                                                         imshp=imshp, kshp=kshp,
                                                         border_mode=border_mode,
