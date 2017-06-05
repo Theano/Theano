@@ -223,6 +223,17 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         return 1;
     }
 
+    ctc_error = ctc_check_result( compute_ctc_loss( activations, gradients,
+        context->flat_labels, context->label_lengths, context->input_lengths,
+        alphabet_size, minibatch_size, costs, context->workspace,
+        context->options ), "Failed to compute CTC loss function!" );
+
+    if ( ctc_error )  // Exception is set by ctc_check_result, return error here
+    {
+        ctc_context_destroy( context );
+        return 1;
+    }
+
     ctc_context_destroy( context );
 
     return 0;
