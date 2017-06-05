@@ -394,21 +394,27 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                 return []
         fgraph.destroyers = get_destroyers_of
 
-        def recursive_destroys_finder(clients_list):
-            for (app, idx) in clients_list:
-                if app == 'output':
-                    continue
-                destroy_maps = getattr(app.op, 'destroy_map', {}).values()
-                if idx in [dmap for sublist in destroy_maps for dmap in sublist]:
-                    return True
-                for var in getattr(app.op, 'view_map', {}).keys():
-                    if recursive_destroys_finder(app.outputs[var].clients):
-                        return True
-            return False
-
         def has_destroyers(protected_list):
+            visited_app_set = set()
+
+            def recursive_destroys_finder(protected_var):
+                for (app, idx) in protected_var.clients:
+                    if app in visited_app_set:
+                        continue
+                    else:
+                        visited_app_set.add(app)
+                    if app == 'output':
+                        continue
+                    destroy_maps = getattr(app.op, 'destroy_map', {}).values()
+                    if idx in [dmap for sublist in destroy_maps for dmap in sublist]:
+                        return True
+                    for var in getattr(app.op, 'view_map', {}).keys():
+                        if idx in app.op.view_map[var] and recursive_destroys_finder(app.outputs[var]):
+                                return True
+                return False
+
             for protected_var in protected_list:
-                if recursive_destroys_finder(protected_var.clients):
+                if recursive_destroys_finder(protected_var):
                     return True
 
         fgraph.has_destroyers = has_destroyers
