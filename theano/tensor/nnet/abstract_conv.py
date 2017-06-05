@@ -2114,8 +2114,12 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                                 'filters does not match given kshp.')
 
         shape = as_tensor_variable(shape)
-        broadcastable = [topgrad.type.broadcastable[0],
-                         kern.type.broadcastable[1]] + ([False] * self.convdim)
+        if self.num_groups > 1:
+            broadcastable = [topgrad.type.broadcastable[0],
+                             False] + ([False] * self.convdim)
+        else:
+            broadcastable = [topgrad.type.broadcastable[0],
+                             kern.type.broadcastable[1]] + ([False] * self.convdim)
         output = kern.type.clone(broadcastable=broadcastable)()
         return Apply(self, [kern, topgrad, shape], [output])
 
