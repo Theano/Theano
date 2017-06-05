@@ -5,12 +5,12 @@ from nose.plugins.attrib import attr
 from nose.tools import assert_equals
 import numpy as np
 from six import integer_types
-import unittest
 
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, conv
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim
 
 
 class TestCorr2D(utt.InferShapeTester):
@@ -417,95 +417,15 @@ class TestCorr2D(utt.InferShapeTester):
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 2, non_contiguous=True)
 
 
-class TestGroupCorr2d(unittest.TestCase):
+class TestGroupCorr2d(Grouped_conv_noOptim):
     if theano.config.mode == "FAST_COMPILE":
         mode = theano.compile.get_mode("FAST_RUN")
     else:
         mode = None
-
-    def setUp(self):
-        self.img_shape = [(5, 6, 5, 5), (4, 4, 7, 5), (3, 8, 5, 3), (2, 4, 7, 7)]
-        self.kern_shape = [(6, 2, 3, 3), (6, 2, 5, 3), (4, 2, 3, 3), (4, 1, 3, 5)]
-        self.top_shape = [(5, 6, 3, 3), (4, 6, 3, 3), (3, 4, 3, 1), (2, 4, 5, 3)]
-        self.num_groups = [3, 2, 4, 4]
-        self.subsample = (1, 1)
-        self.filter_dilation = (1, 1)
-        self.border_mode = 'valid'
-        self.ref_mode = theano.Mode(optimizer=None)
-
-    def test_fwd(self):
-        for imshp, kshp, groups in zip(self.img_shape, self.kern_shape, self.num_groups):
-            img = np.random.random(imshp)
-            kern = np.random.random(kshp)
-            img_sym = T.tensor4('img')
-            kern_sym = T.tensor4('kern')
-            top_corr_sym = corr.CorrMM(self.border_mode,
-                                       self.subsample,
-                                       self.filter_dilation,
-                                       groups)(img_sym, kern_sym[:, :, ::-1, ::-1])
-            corr_func = theano.function([img_sym, kern_sym], top_corr_sym, mode=self.mode)
-
-            top_ref_sym = theano.tensor.nnet.conv2d(img_sym,
-                                                    kern_sym,
-                                                    border_mode=self.border_mode,
-                                                    subsample=self.subsample,
-                                                    filter_dilation=self.filter_dilation,
-                                                    num_groups=groups)
-            ref_func = theano.function([img_sym, kern_sym], top_ref_sym, mode=self.ref_mode)
-
-            top_corr = corr_func(img, kern)
-            top_ref = ref_func(img, kern)
-            utt.assert_allclose(top_corr, top_ref)
-
-    def test_gradW(self):
-        for imshp, tshp, kshp, groups in zip(self.img_shape, self.top_shape, self.kern_shape, self.num_groups):
-            img = np.random.random(imshp)
-            top = np.random.random(tshp)
-            img_sym = T.tensor4('img')
-            top_sym = T.tensor4('top')
-            kern_corr_sym = corr.CorrMM_gradWeights(self.border_mode,
-                                                    self.subsample,
-                                                    self.filter_dilation,
-                                                    groups)(img_sym, top_sym)
-            kern_corr_sym = kern_corr_sym[:, :, ::-1, ::-1]
-            corr_gradw_func = theano.function([img_sym, top_sym], kern_corr_sym, mode=self.mode)
-
-            kern_ref_sym = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights(imshp=None,
-                                                                                       kshp=None,
-                                                                                       border_mode=self.border_mode,
-                                                                                       subsample=self.subsample,
-                                                                                       filter_dilation=self.filter_dilation,
-                                                                                       num_groups=groups)(img_sym, top_sym, kshp[-2:])
-            ref_gradw_func = theano.function([img_sym, top_sym], kern_ref_sym, mode=self.ref_mode)
-
-            kern_corr = corr_gradw_func(img, top)
-            kern_ref = ref_gradw_func(img, top)
-            utt.assert_allclose(kern_corr, kern_ref)
-
-    def test_gradI(self):
-        for imshp, tshp, kshp, groups in zip(self.img_shape, self.top_shape, self.kern_shape, self.num_groups):
-            kern = np.random.random(kshp)
-            top = np.random.random(tshp)
-            kern_sym = T.tensor4('kern')
-            top_sym = T.tensor4('top')
-            img_corr_sym = corr.CorrMM_gradInputs(self.border_mode,
-                                                  self.subsample,
-                                                  self.filter_dilation,
-                                                  groups)(kern_sym[:, :, ::-1, ::-1], top_sym)
-            corr_gradi_func = theano.function([kern_sym, top_sym], img_corr_sym, mode=self.mode)
-
-            img_ref_sym = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs(imshp=None,
-                                                                                     kshp=None,
-                                                                                     border_mode=self.border_mode,
-                                                                                     subsample=self.subsample,
-                                                                                     filter_dilation=self.filter_dilation,
-                                                                                     num_groups=groups)(kern_sym, top_sym, imshp[-2:])
-            ref_gradi_func = theano.function([kern_sym, top_sym], img_ref_sym, mode=self.ref_mode)
-
-            img_corr = corr_gradi_func(kern, top)
-            img_ref = ref_gradi_func(kern, top)
-            utt.assert_allclose(img_corr, img_ref)
-
+    conv2d = staticmethod(corr.CorrMM)
+    conv2d_gradw = staticmethod(corr.CorrMM_gradWeights)
+    conv2d_gradi = staticmethod(corr.CorrMM_gradInputs)
+    flip_filter = True
 
 if __name__ == '__main__':
 
