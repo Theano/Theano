@@ -165,13 +165,7 @@ def dnn_present():
     if dnn_present.avail:
         dnn_present.avail, dnn_present.msg = _dnn_check_version()
         if not dnn_present.avail:
-            raise RuntimeError(dnn_present.msg)
-
-    if config.dnn.enabled == "True":
-        if not dnn_present.avail:
-            raise RuntimeError(
-                "You enabled cuDNN, but we aren't able to use it: %s" %
-                dnn_present.msg)
+            return False
 
     return dnn_present.avail
 
