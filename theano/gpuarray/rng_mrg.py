@@ -75,10 +75,14 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         code = """
         KERNEL void mrg_uniform(
                 GLOBAL_MEM %(otype)s *sample_data,
+                ga_size sample_offset,
                 GLOBAL_MEM ga_int *state_data,
+                ga_size state_offset,
                 const ga_uint Nsamples,
                 const ga_uint Nstreams_used)
         {
+            sample_data = (GLOBAL_MEM %(otype)s *)(((char *)sample_data) + sample_offset);
+            state_data = (GLOBAL_MEM ga_int *)(((char *)state_data) + state_offset);
             /*
              * The cluda backend makes sure that ga_int corresponds to
              * a 32 bit signed type on the target device.  It is not a
@@ -157,7 +161,8 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         from pygpu import gpuarray
 
         return [Kernel(code=code, name="mrg_uniform",
-                       params=[gpuarray.GpuArray, gpuarray.GpuArray,
+                       params=[gpuarray.GpuArray, gpuarray.SIZE,
+                               gpuarray.GpuArray, gpuarray.SIZE,
                                'uint32', 'uint32'],
                        flags=Kernel.get_flags(self.output_type.dtype, 'int32'))
                 ]
@@ -273,7 +278,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
           }
           // Make sure we run as many blocks as we need to cover the whole n_streams
           gs = (n_streams + ls - 1)/ls;
-          err = mrg_uniform_call(1, &ls, &gs, 0, %(o_sample)s->ga.data, %(o_rstate)s->ga.data, n_elements, n_streams);
+          err = mrg_uniform_call(1, &ls, &gs, 0, %(o_sample)s->ga.data, %(o_sample)s->ga.offset, %(o_rstate)s->ga.data, %(o_rstate)s->ga.offset, n_elements, n_streams);
           if (err != GA_NO_ERROR) {
               PyErr_Format(PyExc_RuntimeError, "mrg_uniform_call: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
@@ -283,7 +288,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (12,)
+        return (13,)
 
 
 @register_opt2([mrg_uniform], 'fast_compile')
