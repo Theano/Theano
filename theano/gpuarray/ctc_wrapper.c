@@ -1,7 +1,5 @@
 #section support_code
 
-struct ctcOptions;
-
 typedef struct ctc_context {
     struct ctcOptions options;
     void * workspace;
@@ -13,8 +11,8 @@ typedef struct ctc_context {
 void ctc_context_init(ctc_context_t * context)
 {
     memset(&(context->options), 0, sizeof(struct ctcOptions));
-    options->loc = CTC_GPU;
-    options->stream = NULL;
+    context->options.loc = CTC_GPU;
+    context->options.stream = 0;
 
     context->workspace = NULL;
     context->input_lengths = NULL;
@@ -62,8 +60,9 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
                                  PyGpuArrayObject   ** out_gradients,
                                  PyGpuContextObject *  ctx)
 {
-    ctc_context_t ctc_ctx;
-    ctc_context_init( &ctc_ctx );
+    ctc_context_t ctc_object;
+    ctc_context_t * context = &ctc_object;
+    ctc_context_init( context );
 
     if ( !PyArray_IS_C_CONTIGUOUS( in_activations ) )
     {
@@ -97,7 +96,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         if ( NULL == *out_costs )
         {
             // Destroy previous CTC context before returning exception
-            ctc_context_destroy( &ctc_ctx );
+            ctc_context_destroy( context );
 
             PyErr_Format( PyExc_MemoryError,
                 "Could not allocate storage for CTC costs");
@@ -119,11 +118,11 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         {
             Py_XDECREF( *out_gradients );
 
-            *out_gradients = pygpu_zeros( 3, PyArray_DIMS( in_activations ), NPY_FLOAT32, 0 );
+            *out_gradients = pygpu_zeros( 3, PyArray_DIMS( in_activations ), GA_FLOAT, 0 );
 
             if ( NULL == *out_gradients )
             {
-                ctc_context_destroy( &ctc_ctx );
+                ctc_context_destroy( context );
 
                 PyErr_Format( PyExc_MemoryError,
                     "Could not allocate storage for CTC gradients!" );
@@ -134,7 +133,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         gradients = (npy_float32 *) PyArray_DATA( *out_gradients );
     }
 
-    ctc_context_destroy( &ctc_ctx );
+    ctc_context_destroy( context );
 
     return 0;
 }
