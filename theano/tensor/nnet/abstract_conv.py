@@ -1419,7 +1419,7 @@ class BaseAbstractConv(Op):
     """
     check_broadcast = False
     __props__ = ('convdim', 'border_mode', 'subsample', 'filter_flip',
-                 'imshp', 'kshp', 'filter_dilation')
+                 'imshp', 'kshp', 'filter_dilation', 'unshared')
 
     def __init__(self, convdim,
                  imshp=None, kshp=None, border_mode="valid",
@@ -1533,7 +1533,7 @@ class BaseAbstractConv(Op):
                                                                  self.convdim))
 
         out_shape = get_conv_output_shape(img.shape, kern.shape,
-                                          mode, [1] * self.convdim, dilation)
+                                          mode, [1] * self.convdim, dilation, unshared)
 
         if unshared is True:
             out_rows = out_shape[2]
@@ -1916,7 +1916,8 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                         (slice(None, None, -1),) * self.convdim)
         topgrad = topgrad.transpose(axes_order)[flip_filters]
         img = img.transpose(axes_order)
-        kern = self.conv(img, topgrad, mode="valid")
+        # Incomplete
+        kern = self.conv(img, topgrad, mode="valid", unshared=self.unshared)
         if any(self.filter_dilation[i] > 1 for i in range(self.convdim)):
             kern = kern[(slice(None), slice(None)) +
                         tuple(slice(None, None, self.filter_dilation[i])
@@ -2164,7 +2165,9 @@ class AbstractConv_gradInputs(BaseAbstractConv):
         kern = kern.transpose(axes_order)
         if self.filter_flip:
             topgrad = topgrad[flip_filters]
-        img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation)
+        # Incomplete
+        img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation,
+                        unshared=self.unshared)
         if self.filter_flip:
             img = img[flip_filters]
         if any(p > 0 for p in pad):
