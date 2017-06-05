@@ -688,8 +688,12 @@ class CorrMM_gradInputs(BaseCorrMM):
             height_width = [as_tensor_variable(shape[0]).astype('int64'),
                             as_tensor_variable(shape[1]).astype('int64')]
 
-        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
-                         False, False]
+        if self.num_groups > 1:
+            broadcastable = [topgrad.type.broadcastable[0], False,
+                             False, False]
+        else:
+            broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+                             False, False]
         dtype = kern.type.dtype
         return Apply(self, [kern, topgrad] + height_width,
                      [TensorType(dtype, broadcastable)()])
