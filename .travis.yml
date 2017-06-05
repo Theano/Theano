@@ -84,8 +84,7 @@ script:
   - cd -; cd Theano
   - python -c 'import theano; print(theano.config.__str__(print_doc=False))'
   - python -c 'import theano; assert(theano.config.blas.ldflags != "")'
-  # - theano-nose -v $PART
-  - theano-nose -v --with-timer $PART
+  - theano-nose -v $PART
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf --check; fi
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test --check; fi
 
