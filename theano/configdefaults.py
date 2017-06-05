@@ -505,7 +505,7 @@ AddConfigVar('allow_gc',
 AddConfigVar(
     'optimizer',
     "Default optimizer. If not None, will use this optimizer with the Mode",
-    EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
+    EnumStr('o4', 'o3', 'o2', 'o1', 'unsafe', 'fast_run', 'fast_compile', 'merge', 'None'),
     in_c_key=False)
 
 AddConfigVar('optimizer_verbose',

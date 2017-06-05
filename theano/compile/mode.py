@@ -65,13 +65,26 @@ OPT_FAST_RUN_STABLE.name = 'OPT_FAST_RUN_STABLE'
 OPT_FAST_COMPILE.name = 'OPT_FAST_COMPILE'
 OPT_STABILIZE.name = 'OPT_STABILIZE'
 
+OPT_O2 = OPT_FAST_COMPILE.including('fusion')
+OPT_O3 = OPT_FAST_RUN.excluding('inplace')
+OPT_UNSAFE = OPT_O3.including('unsafe')
+
+OPT_O2.name = 'OPT_O2'
+OPT_O3.name = 'OPT_O3'
+OPT_UNSAFE.name = 'OPT_UNSAFE'
+
 predefined_optimizers = {
     None: OPT_NONE,
     'None': OPT_NONE,
     'merge': OPT_MERGE,
+    'o4': OPT_FAST_RUN,
+    'o3': OPT_O3,
+    'o2': OPT_O2,
+    'o1': OPT_FAST_COMPILE,
+    'unsafe': OPT_UNSAFE,
+    'fast_compile': OPT_FAST_COMPILE,
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
-    'fast_compile': OPT_FAST_COMPILE,
     'stabilize': OPT_STABILIZE}
 
 
