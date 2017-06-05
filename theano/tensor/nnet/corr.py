@@ -42,7 +42,7 @@ class BaseCorrMM(gof.OpenMPOp):
         Perform dilated correlation (default: (1,1))
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample', 'filter_dilation')
+    __props__ = ('border_mode', 'subsample', 'filter_dilation', 'num_groups')
 
     _direction = None
 
