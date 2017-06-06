@@ -690,7 +690,8 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                     x_flat_sub = x_flat[i]
                 tmp = pygpu.elemwise.elemwise2(
                     x_flat_sub, '+', y_flat, x_flat_sub,
-                    broadcast=True
+                    broadcast=True,
+                    convert_f16=True
                 )
                 x_flat[i].__setitem__(index, tmp)
         else:
