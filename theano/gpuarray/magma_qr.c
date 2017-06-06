@@ -1,9 +1,10 @@
 #section kernels
 
-#kernel triu_kernel : size, size, *:
+#kernel triu_kernel : size, size, size, *:
 
 KERNEL void triu_kernel(const ga_size nthreads, const ga_size ncols,
-                        GLOBAL_MEM DTYPE_INPUT_0 *a) {
+                        const ga_size a_off, GLOBAL_MEM DTYPE_INPUT_0 *a) {
+  a = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)a) + a_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0; index < nthreads;
        index += LDIM_0 * GDIM_0) {
@@ -103,7 +104,7 @@ int APPLY_SPECIFIC(magma_qr)(PyGpuArrayObject *A_,
     goto fail;
   }
   n2 = K * N;
-  res = triu_kernel_scall(1, &n2, 0, n2, N, (*R)->ga.data);
+  res = triu_kernel_scall(1, &n2, 0, n2, N, (*R)->ga.offset, (*R)->ga.data);
   if (res != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError, "GpuMagmaQR: triu_kernel %s.",
                  GpuKernel_error(&k_triu_kernel, res));

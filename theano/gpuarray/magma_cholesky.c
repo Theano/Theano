@@ -1,9 +1,10 @@
 #section kernels
 
-#kernel tril_kernel : size, size, *:
+#kernel tril_kernel : size, size, size, *:
 
 KERNEL void tril_kernel(const ga_size nthreads, const ga_size ncols,
-                        GLOBAL_MEM DTYPE_INPUT_0 *a) {
+                        const ga_size a_off, GLOBAL_MEM DTYPE_INPUT_0 *a) {
+  a = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)a) + a_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0; index < nthreads;
        index += LDIM_0 * GDIM_0) {
@@ -15,10 +16,11 @@ KERNEL void tril_kernel(const ga_size nthreads, const ga_size ncols,
   }
 }
 
-#kernel triu_kernel : size, size, *:
+#kernel triu_kernel : size, size, size, *:
 
 KERNEL void triu_kernel(const ga_size nthreads, const ga_size ncols,
-                        GLOBAL_MEM DTYPE_INPUT_0 *a) {
+                        const ga_size a_off, GLOBAL_MEM DTYPE_INPUT_0 *a) {
+  a = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)a) + a_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0; index < nthreads;
        index += LDIM_0 * GDIM_0) {
@@ -108,14 +110,14 @@ int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
   }
 
 #ifdef LOWER
-  res = tril_kernel_scall(1, &n2, 0, n2, N, (*L)->ga.data);
+  res = tril_kernel_scall(1, &n2, 0, n2, N, (*L)->ga.offset, (*L)->ga.data);
   if (res != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError, "GpuMagmaCholesky: tril_kernel %s.",
                  GpuKernel_error(&k_tril_kernel, res));
     goto fail;
   }
 #else
-  res = triu_kernel_scall(1, &n2, 0, n2, N, (*L)->ga.data);
+  res = triu_kernel_scall(1, &n2, 0, n2, N, (*L)->ga.offset, (*L)->ga.data);
   if (res != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError, "GpuMagmaCholesky: triu_kernel %s.",
                  GpuKernel_error(&k_triu_kernel, res));
