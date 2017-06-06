@@ -70,14 +70,14 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         else:
             f = '' if dtype_x == 'float64' else 'f'
         params = [
-            gpuarray.SIZE, gpuarray.SIZE, 
-            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE, 
+            gpuarray.SIZE, gpuarray.SIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE,
             gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE,
             gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE,
             gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE,
-            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE, 
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE,
             gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE
-            ]
+        ]
         sio = StringIO()
         print("""
         KERNEL void %(kname)s(const ga_size M, const ga_size N,
@@ -183,7 +183,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
           }
         }
         """ % locals(), file=sio)
-        
+
         return [Kernel(code=sio.getvalue(), name=kname, params=params,
                        flags=flags, objvar=k_var)]
 
@@ -424,12 +424,12 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
         kname = "kCrossEntropySoftmax1HotWithBiasDx"
         k_var = "kCrossEntropySoftmax1HotWithBiasDx_" + nodename
         params = [
-            gpuarray.SIZE, gpuarray.SIZE, 
-            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, 
-            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE, 
-            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, 
-            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE, 
-            ]
+            gpuarray.SIZE, gpuarray.SIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE,
+        ]
         sio = StringIO()
         print("""
         KERNEL void %(kname)s(
@@ -469,6 +469,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
         """ % locals(), file=sio)
         return [Kernel(code=sio.getvalue(), name=kname, params=params,
                        flags=flags, objvar=k_var)]
+
 
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
@@ -599,15 +600,17 @@ class GpuSoftmax(GpuKernelBase, Op):
         ctype = gpuarray.dtype_to_ctype(dtype_sm)
 
         params = [
-            gpuarray.SIZE, gpuarray.SIZE, gpuarray.GpuArray, gpuarray.SIZE, 
-            gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE
+            gpuarray.SIZE, gpuarray.SIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE
         ]
         kernels = []
         kname = "kSoftmax"
         k_var = "kSoftmax_" + nodename
         code = """
-        KERNEL void %(kname)s (const ga_size M, const ga_size N, GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x,
-                const ga_ssize sx0, const ga_ssize sx1, GLOBAL_MEM %(type_sm)s * sm, const ga_size offset_sm, const ga_ssize sm_s0, const ga_ssize sm_s1 GA_DECL_SHARED_PARAM(%(type_acc)s, buf))
+        KERNEL void %(kname)s (const ga_size M, const ga_size N,
+                               GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1,
+                               GLOBAL_MEM %(type_sm)s * sm, const ga_size offset_sm, const ga_ssize sm_s0, const ga_ssize sm_s1 GA_DECL_SHARED_PARAM(%(type_acc)s, buf))
         {
             GA_DECL_SHARED_BODY(%(type_acc)s, buf);
 
@@ -685,11 +688,12 @@ class GpuSoftmax(GpuKernelBase, Op):
         kname = "kSoftmax_fixed_shared"
         k_var = "kSoftmax_fixed_shared" + nodename
         code = """
-        KERNEL void %(kname)s (const ga_size M, const ga_size N, GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1, 
-                        GLOBAL_MEM %(type_sm)s * sm, const ga_size offset_sm, const ga_ssize sm_s0, const ga_ssize sm_s1 GA_DECL_SHARED_PARAM(%(type_acc)s, buf))
+        KERNEL void %(kname)s (const ga_size M, const ga_size N,
+                               GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1,
+                               GLOBAL_MEM %(type_sm)s * sm, const ga_size offset_sm, const ga_ssize sm_s0, const ga_ssize sm_s1 GA_DECL_SHARED_PARAM(%(type_acc)s, buf))
         {
             GA_DECL_SHARED_BODY(%(type_acc)s, buf);
-            
+
             x = (GLOBAL_MEM const %(type_x)s *)(((GLOBAL_MEM char *)x)+offset_x);
             sm = (GLOBAL_MEM %(type_sm)s *)(((GLOBAL_MEM char *)sm)+offset_sm);
             for (ga_int blockIDX = GID_0; blockIDX < M; blockIDX += GDIM_0){
@@ -746,7 +750,7 @@ class GpuSoftmax(GpuKernelBase, Op):
                         local_barrier();
                     }
                 }
-                
+
                 local_barrier();
                 %(ctype)s row_sum = buf[0];
                 local_barrier();
@@ -761,6 +765,7 @@ class GpuSoftmax(GpuKernelBase, Op):
         kernels.append(Kernel(code=code, name=kname, params=params,
                               flags=flags, objvar=k_var))
         return kernels
+
 
 gpu_softmax = GpuSoftmax()
 
@@ -909,26 +914,26 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
         type_b = gpuarray.dtype_to_ctype(dtype_b)
         type_sm = gpuarray.dtype_to_ctype(dtype_sm)
         type_acc = gpuarray.dtype_to_ctype(work_sm)
-        
+
         ctype = gpuarray.dtype_to_ctype(dtype_sm)
 
         params = [
-            gpuarray.SIZE, gpuarray.SIZE, 
-            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE, 
-            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, 
-            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE, 
+            gpuarray.SIZE, gpuarray.SIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE,
+            gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE,
         ]
         kernels = []
         kname = "kSoftmaxWithBias"
         k_var = "kSoftmaxWithBias_" + nodename
         code = """
-        KERNEL void %(kname)s (const ga_size M, const ga_size N, 
-                       GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1, 
-                       GLOBAL_MEM const %(type_b)s * b, const ga_size offset_b, const ga_ssize sb0, 
+        KERNEL void %(kname)s (const ga_size M, const ga_size N,
+                       GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1,
+                       GLOBAL_MEM const %(type_b)s * b, const ga_size offset_b, const ga_ssize sb0,
                        GLOBAL_MEM %(type_sm)s * sm, const ga_size offset_sm, const ga_ssize sm_s0, const ga_ssize sm_s1 GA_DECL_SHARED_PARAM(%(type_acc)s, buf))
         {
             GA_DECL_SHARED_BODY(%(type_acc)s, buf);
-            
+
             LOCAL_MEM %(type_acc)s * buf2 = buf + N;
             x = (GLOBAL_MEM const %(type_x)s *)(((GLOBAL_MEM char *)x)+offset_x);
             b = (GLOBAL_MEM const %(type_b)s *)(((GLOBAL_MEM char *)b)+offset_b);
@@ -959,7 +964,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
                         local_barrier();
                     }
                 }
-                
+
                 local_barrier();
                 %(ctype)s row_max = buf[0];
                 local_barrier();
@@ -987,7 +992,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
                         local_barrier();
                     }
                 }
-                
+
                 local_barrier();
                 %(ctype)s row_sum = buf[0];
                 local_barrier();
@@ -1007,13 +1012,13 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
         kname = "kSoftmaxWithBias_fixed_shared"
         k_var = "kSoftmaxWithBias_fixed_shared" + nodename
         code = """
-        KERNEL void %(kname)s (const ga_size M, const ga_size N, 
-                       GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1, 
-                       GLOBAL_MEM const %(type_b)s * b, const ga_size offset_b, const ga_ssize sb0, 
+        KERNEL void %(kname)s (const ga_size M, const ga_size N,
+                       GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1,
+                       GLOBAL_MEM const %(type_b)s * b, const ga_size offset_b, const ga_ssize sb0,
                        GLOBAL_MEM %(type_sm)s * sm, const ga_size offset_sm, const ga_ssize sm_s0, const ga_ssize sm_s1 GA_DECL_SHARED_PARAM(%(type_acc)s, buf))
         {
             GA_DECL_SHARED_BODY(%(type_acc)s, buf);
-            
+
             x = (GLOBAL_MEM const %(type_x)s *)(((GLOBAL_MEM char *)x)+offset_x);
             b = (GLOBAL_MEM const %(type_b)s *)(((GLOBAL_MEM char *)b)+offset_b);
             sm = (GLOBAL_MEM %(type_sm)s *)(((GLOBAL_MEM char *)sm)+offset_sm);
@@ -1044,7 +1049,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
                         local_barrier();
                     }
                 }
-                
+
                 local_barrier();
                 %(ctype)s row_max = buf[0];
                 local_barrier();
@@ -1072,7 +1077,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
                         local_barrier();
                     }
                 }
-                
+
                 local_barrier();
                 %(ctype)s row_sum = buf[0];
                 local_barrier();
@@ -1087,5 +1092,6 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
         kernels.append(Kernel(code=code, name=kname, params=params,
                               flags=flags, objvar=k_var))
         return kernels
+
 
 gpu_softmax_with_bias = GpuSoftmaxWithBias()
