@@ -279,7 +279,7 @@ Theano provides a 'Print' op to do this.
     this is a very important value __str__ = [ 1.  2.  3.]
 
 Since Theano runs your program in a topological order, you won't have precise
-control over the order in which multiple ``Print()`` ops are evaluted.  For a more
+control over the order in which multiple ``Print()`` ops are evaluated.  For a more
 precise inspection of what's being computed where, when, and how, see the discussion
 :ref:`faq_monitormode`.
 
@@ -437,7 +437,7 @@ optimizations. The first is a speed optimization that merges elemwise
 operations together. This makes it harder to know which particular
 elemwise causes the problem. The second optimization makes some ops'
 outputs overwrite their inputs. So, if an op creates a bad output, you
-will not be able to see the input that was overwriten in the ``post_func``
+will not be able to see the input that was overwritten in the ``post_func``
 function. To disable those optimizations (with a Theano version after
 0.6rc3), define the MonitorMode like this:
 
@@ -606,5 +606,5 @@ Then send us filename.
 Breakpoint during Theano function execution
 -------------------------------------------
 
-You can set breakpoing during the execution of a Theano function with
+You can set a breakpoint during the execution of a Theano function with
 :class:`PdbBreakpoint <theano.tests.breakpoint.PdbBreakpoint>`.

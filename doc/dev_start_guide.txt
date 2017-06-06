@@ -18,7 +18,7 @@ sure it is up to date and see if nobody else is working on it. Also,
 we can sometimes provides more information about it.  There is also
 the label `NeedSomeoneToFinish
 <https://github.com/Theano/Theano/labels/NeedSomeoneToFinish>`_ that is
-interresting to check. The difficulty level is variable.
+interesting to check. The difficulty level is variable.
 
 Resources
 =========
@@ -79,10 +79,10 @@ tests passed.
 
 Just because the tests run automatically does not mean you shouldn't
 run them yourself to make sure everything is all right.  You can run
-only the portion you are modifying to go faster and have travis to
+only the portion you are modifying to go faster and have Travis to
 make sure there are no global impacts.
 
-Also, if you are changing GPU code, travis doesn't test that, because
+Also, if you are changing GPU code, Travis doesn't test that, because
 there are no GPUs on the test nodes.
 
 To run the test suite with the default options, see 
@@ -128,7 +128,7 @@ To setup VIM:
 
     pip install "flake8<3"
 
-   .. warning:: Starting version 3.0.0, flake8 changed its dependancies and 
+   .. warning:: Starting version 3.0.0, flake8 changed its dependencies and
       moved its Python API to a legacy module, breaking Theano's flake8 tests.
       We recommend using a version prior to 3.  
 
@@ -395,7 +395,7 @@ patch Theano, you should work in another branch, like described in the
 Configure Git
 -------------
 
-On your local machine, you need to configure git with basic informations:
+On your local machine, you need to configure git with basic information:
 
 .. code-block:: bash
 

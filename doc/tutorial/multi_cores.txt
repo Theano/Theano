@@ -14,7 +14,7 @@ CPU.
 BLAS operation
 ==============
 
-BLAS is an interface for some mathematic operations between two
+BLAS is an interface for some mathematical operations between two
 vectors, a vector and a matrix or two matrices (e.g. the dot product
 between vector/matrix and matrix/matrix). Many different
 implementations of that interface exist and some of them are

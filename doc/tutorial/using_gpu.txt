@@ -477,7 +477,7 @@ The following resources will assist you in this learning process:
   * `practical issues <http://stackoverflow.com/questions/2392250/understanding-cuda-grid-dimensions-block-dimensions-and-threads-organization-s>`_
     (on the relationship between grids, blocks and threads; see also linked and related issues on same page)
 
-  * `CUDA optimisation <http://www.gris.informatik.tu-darmstadt.de/cuda-workshop/slides.html>`_
+  * `CUDA optimization <http://www.gris.informatik.tu-darmstadt.de/cuda-workshop/slides.html>`_
 
 * **PyCUDA: Introductory**
 

@@ -19,7 +19,7 @@ If you would like to add an additional optimization, refer to
 When compiling, we can make a tradeoff between compile-time and run-time.
 Faster compile times will result in fewer optimizations being applied, hence generally slower run-times.
 For making this tradeoff when compiling, we provide a set of 4 optimization modes, 'o1' to 'o4', where 'o1' leads to fastest compile-time and 'o4' leads to fastest run-time in general.
-For an even faster run-time, we could disable assertions (which could be time comsuming) for valid user inputs, using the optimization mode 'unsafe', but this is, as the name suggests, unsafe.
+For an even faster run-time, we could disable assertions (which could be time consuming) for valid user inputs, using the optimization mode 'unsafe', but this is, as the name suggests, unsafe.
 (Also see note at :ref:`unsafe_optimization`.)
 
 ..  note::
@@ -120,7 +120,7 @@ Optimization                                              o4             o3  o2 
         This optimization reorders such graphs so that all increments can be
         done inplace.  
         
-        ``inc_subensor(a,b,idx) + inc_subtensor(a,c,idx) -> inc_subtensor(inc_subtensor(a,b,idx),c,idx)``
+        ``inc_subtensor(a,b,idx) + inc_subtensor(a,c,idx) -> inc_subtensor(inc_subtensor(a,b,idx),c,idx)``
 
         See :func:`local_IncSubtensor_serialize`
 
@@ -285,7 +285,7 @@ Optimization                                              o4             o3  o2 
         For the fastest possible Theano, this optimization can be enabled by
 	setting ``optimizer_including=local_remove_all_assert`` which will
 	remove all assertions in the graph for checking user inputs are valid.
-        Use this optimization if you are sure everthing is valid in your graph.
+        Use this optimization if you are sure everything is valid in your graph.
 	
 	See :ref:`unsafe_optimization`
 

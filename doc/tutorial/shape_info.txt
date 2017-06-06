@@ -96,8 +96,8 @@ optimization, nor most other optimizations) or ``DebugMode`` (it will test
 before and after all optimizations (much slower)).
 
 
-Specifing Exact Shape
-=====================
+Specifying Exact Shape
+======================
 
 Currently, specifying a shape is not as easy and flexible as we wish and we plan some
 upgrade.  Here is the current state of what can be done:

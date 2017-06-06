@@ -45,7 +45,7 @@ web-browsers. ``d3viz`` allows
 
 .. note::
   
-    This userguide is also avaible as
+    This userguide is also available as
     :download:`IPython notebook <index.ipynb>`.
 
 As an example, consider the following multilayer perceptron with one

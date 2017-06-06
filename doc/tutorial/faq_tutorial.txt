@@ -7,7 +7,7 @@ Frequently Asked Questions
 How to update a subset of weights?
 ==================================
 If you want to update only a subset of a weight matrix (such as
-some rows or some columns) that are used in the forward propogation
+some rows or some columns) that are used in the forward propagation
 of each iteration, then the cost function should be defined in a way
 that it only depends on the subset of weights that are used in that
 iteration.

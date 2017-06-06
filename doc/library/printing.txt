@@ -145,7 +145,7 @@ Green ovals are inputs to the graph and blue ovals are outputs.
 
 If your graph uses shared variables, those shared
 variables will appear as inputs.  Future versions of the :func:`pydotprint`
-may distinguish these inplicit inputs from explicit inputs.
+may distinguish these implicit inputs from explicit inputs.
 
 If you give updates arguments when creating your function, these are added as
 extra inputs and outputs to the graph.  

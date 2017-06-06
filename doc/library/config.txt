@@ -109,7 +109,7 @@ import theano and print the config variable, as in:
 
     Default device for computations. If ``'cuda*``, change the default to try
     to move computation to the GPU using CUDA libraries. If ``'opencl*'``,
-    the openCL libraries will be used. To let the driver select the device,
+    the OpenCL libraries will be used. To let the driver select the device,
     use ``'cuda'`` or ``'opencl'``. If we are not able to use the GPU,
     either we fall back on the CPU, or an error is raised, depending
     on the :attr:`force_device` flag.
@@ -236,7 +236,7 @@ import theano and print the config variable, as in:
     less inplaces are allowed, but it makes the compilation faster.
 
     The interaction of which one give the lower peak memory usage is complicated and
-    not predictable, so if you are close to the peak memory usage, triyng both
+    not predictable, so if you are close to the peak memory usage, trying both
     could give you a small gain.
 
 .. attribute:: openmp
@@ -440,7 +440,7 @@ import theano and print the config variable, as in:
 
     .. note::
 
-        The clipping at 95% can be bypassed by specifing the exact
+        The clipping at 95% can be bypassed by specifying the exact
         number of megabytes. If more then 95% are needed, it will try
         automatically to get more memory. But this can cause
         fragmentation, see note above.
@@ -892,8 +892,8 @@ import theano and print the config variable, as in:
     one of the other ``config.numpy.seterr_*`` overrides it), but this behaviour
     can change between numpy releases.
 
-    This flag sets the default behaviour for all kinds of floating-pont
-    errors, and it can be overriden for specific errors by setting one
+    This flag sets the default behaviour for all kinds of floating-point
+    errors, and it can be overridden for specific errors by setting one
     (or more) of the flags below.
 
     This flag's value cannot be modified during the program execution.
