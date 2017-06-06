@@ -25,6 +25,7 @@ static PyGpuArrayObject *pygpu_narrow(PyGpuArrayObject *src, size_t dim,
                                       size_t size) {
   PyGpuArrayObject *src_view = pygpu_view(src, Py_None);
   src_view->ga.dimensions[dim] = size;
+  GpuArray_fix_flags(&src_view->ga);
   return pygpu_copy(src_view, GA_C_ORDER);
 }
 
