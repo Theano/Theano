@@ -14,9 +14,6 @@ except ImportError:
 from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
                         infer_context_name)
 from .type import GpuArrayType
-from .kernel_codegen import (nvcc_kernel,
-                             inline_softmax,
-                             inline_softmax_fixed_shared)
 from .fp16_help import work_dtype, load_w, write_w
 
 
@@ -490,7 +487,7 @@ class GpuSoftmax(GpuKernelBase, Op):
         return shape
 
     def c_code_cache_version(self):
-        return (16,) + inline_softmax.code_version
+        return (16,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -544,7 +541,7 @@ class GpuSoftmax(GpuKernelBase, Op):
         {
             size_t n_blocks[3] = {std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t)(32 * 1024)), 1, 1};
 //TODO, detect the maximum number of thread per block.
-            size_t threads_per_block[3] = {std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)512), 1, 1};
+            size_t threads_per_block[3] = {std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)256), 1, 1}; // TODO: Read GA_CTX_PROP_MAXLSIZE
             size_t shmem_sz = PyGpuArray_DIMS(%(x)s)[1] *
                                      2 * sizeof(npy_%(work_x)s);
             ssize_t stride_X0 = PyGpuArray_STRIDES(%(x)s)[0] / %(itemsize_x)s;
@@ -790,7 +787,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
         return [shape[0]]
 
     def c_code_cache_version(self):
-        return (15,) + inline_softmax.code_version
+        return (15,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -859,7 +856,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
         {
             size_t n_blocks[3] = {std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t)(32*1024)), 1, 1};
 //TODO, detect the maximum number of thread per block.
-            size_t threads_per_block[3] = {std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)512), 1, 1};
+            size_t threads_per_block[3] = {std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)256), 1, 1}; // TODO: Read GA_CTX_PROP_MAXLSIZE
             size_t shmem_sz = PyGpuArray_DIMS(%(x)s)[1] *
                                      2 * sizeof(npy_%(work_x)s);
             ssize_t stride_X0 = PyGpuArray_STRIDES(%(x)s)[0] / %(itemsize_x)s;
