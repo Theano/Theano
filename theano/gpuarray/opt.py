@@ -1066,36 +1066,39 @@ def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.AdvancedIncSubtensor1])
-@op_lifter([tensor.AdvancedIncSubtensor])
-@register_opt2([tensor.AdvancedIncSubtensor1, tensor.AdvancedIncSubtensor], 'fast_compile')
-def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
+@register_opt2([tensor.AdvancedIncSubtensor1], 'fast_compile')
+def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
     if isinstance(op, (tensor.AdvancedIncSubtensor1)):
         context = get_context(context_name)
         # This is disabled on non-cuda contexts
         if context.kind != b'cuda':
             return None
 
-        x, y, ilist = inputs
+    x, y, ilist = inputs
 
-        set_instead_of_inc = op.set_instead_of_inc
+    set_instead_of_inc = op.set_instead_of_inc
 
-        compute_capability = int(context.bin_id[-2])
-        if compute_capability >= 2 and x.ndim == 1 and y.ndim == 0:
-            x = x.dimshuffle(0, 'x')
-            y = y.dimshuffle('x', 'x')
-            ret = GpuAdvancedIncSubtensor1_dev20(
-                set_instead_of_inc=set_instead_of_inc)(x, y, ilist)
-            ret = GpuDimShuffle(ret.type.broadcastable, [0])(ret)
-            return ret
-        elif compute_capability < 2 or x.ndim != 2 or y.ndim != 2:
-            return GpuAdvancedIncSubtensor1(
-                set_instead_of_inc=set_instead_of_inc)
-        else:
-            return GpuAdvancedIncSubtensor1_dev20(
-                set_instead_of_inc=set_instead_of_inc)
+    compute_capability = int(context.bin_id[-2])
+    if compute_capability >= 2 and x.ndim == 1 and y.ndim == 0:
+        x = x.dimshuffle(0, 'x')
+        y = y.dimshuffle('x', 'x')
+        ret = GpuAdvancedIncSubtensor1_dev20(
+            set_instead_of_inc=set_instead_of_inc)(x, y, ilist)
+        ret = GpuDimShuffle(ret.type.broadcastable, [0])(ret)
+        return ret
+    elif compute_capability < 2 or x.ndim != 2 or y.ndim != 2:
+        return GpuAdvancedIncSubtensor1(
+            set_instead_of_inc=set_instead_of_inc)
+    else:
+        return GpuAdvancedIncSubtensor1_dev20(
+            set_instead_of_inc=set_instead_of_inc)
 
-    elif isinstance(op, (tensor.AdvancedIncSubtensor)):
-        return GpuAdvancedIncSubtensor()
+
+@register_opt('fast_compile')
+@op_lifter([tensor.AdvancedIncSubtensor])
+@register_opt2([tensor.AdvancedIncSubtensor], 'fast_compile')
+def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
+    return GpuAdvancedIncSubtensor()
 
 
 @register_inplace()
