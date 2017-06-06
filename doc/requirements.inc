@@ -102,6 +102,6 @@ Install and configure the GPU drivers (recommended)
         program. This folder is called the *cuda root* directory.
 
 2. Fix 'lib' path
-    * Add the 'lib' subdirectory (and/or 'lib64' subdirectory if you have a
+    * Add the CUDA 'lib' subdirectory (and/or 'lib64' subdirectory if you have a
       64-bit OS) to your ``$LD_LIBRARY_PATH`` environment 
-      variable.
+      variable. Example: ``/usr/local/cuda/lib64``

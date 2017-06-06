@@ -5,7 +5,6 @@ import sys
 import unittest
 
 import numpy as np
-from nose.plugins.skip import SkipTest
 from nose.tools import assert_equal
 from numpy.testing import assert_array_equal
 from six import StringIO
@@ -524,10 +523,11 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             gn = theano.grad(t.sum(), n)
             g = self.function([], gn, op=self.adv_incsub1)
             utt.verify_grad(lambda m: m[[1, 3]],
-                            [np.random.rand(5, 5).astype(self.dtype)])
+                            [np.random.rand(5, 5).astype(self.dtype)],
+                            mode=self.mode)
             g()
             utt.verify_grad(lambda m: m[idx],
-                            [data])
+                            [data], mode=self.mode)
 
     def test_noncontiguous_idx(self):
         data = rand(4, 2, 3)
@@ -597,17 +597,20 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(np.allclose(g_00, 2))
 
         utt.verify_grad(lambda m: m[[1, 3]],
-                        [np.random.rand(5, 5).astype(self.dtype)])
+                        [np.random.rand(5, 5).astype(self.dtype)],
+                        mode=self.mode)
 
         def fun(x, y):
             return advanced_inc_subtensor1(x, y, [1, 3])
         utt.verify_grad(fun, [np.random.rand(5, 5).astype(self.dtype),
-                              np.random.rand(2, 5).astype(self.dtype)])
+                              np.random.rand(2, 5).astype(self.dtype)],
+                        mode=self.mode)
 
         def fun(x, y):
             return advanced_set_subtensor1(x, y, [1, 3])
         utt.verify_grad(fun, [np.random.rand(5, 5).astype(self.dtype),
-                              np.random.rand(2, 5).astype(self.dtype)])
+                              np.random.rand(2, 5).astype(self.dtype)],
+                        mode=self.mode)
 
         # test set_subtensor broadcast
         self.dtype = 'float32'
@@ -872,12 +875,12 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
             def fct(t):
                 return theano.tensor.sum(t[idx_])
-            utt.verify_grad(fct, [data])
+            utt.verify_grad(fct, [data], mode=self.mode)
 
             # Test the grad of the grad (e.i. AdvancedIncSubtensor1.grad)
             def fct2(t):
                 return theano.tensor.grad(theano.tensor.sum(t[idx_]), t)
-            utt.verify_grad(fct2, [data])
+            utt.verify_grad(fct2, [data], mode=self.mode)
 
             # Test shape of AdvancedIncSubtensor1 and AdvancedSubtensor1
             if not self.fast_compile:
@@ -958,7 +961,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         # vector
         utt.verify_grad(
             inc_slice(slice(2, 4, None)),
-            (np.asarray([0, 1, 2, 3, 4, 5.]), np.asarray([9, 9.]),))
+            (np.asarray([0, 1, 2, 3, 4, 5.]), np.asarray([9, 9.]),),
+            mode=self.mode)
 
         # matrix
         utt.verify_grad(
@@ -1498,9 +1502,6 @@ class TestAdvancedSubtensor(unittest.TestCase):
         utt.assert_allclose(rval, aval)
 
     def test_inc_adv_subtensor_w_2vec(self):
-        if not config.cxx:
-            raise SkipTest('config.cxx empty')
-
         subt = self.m[self.ix1, self.ix12]
         a = inc_subtensor(subt, subt)
 
@@ -1519,9 +1520,6 @@ class TestAdvancedSubtensor(unittest.TestCase):
                             [.5, .3 * 2, .15]]), aval
 
     def test_inc_adv_subtensor_with_broadcasting(self):
-        if not config.cxx:
-            raise SkipTest('config.cxx empty')
-
         inc = dscalar()
         a = inc_subtensor(self.m[self.ix1, self.ix12], inc)
         g_inc = tensor.grad(a.sum(), inc)
@@ -1542,9 +1540,6 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert np.allclose(gval, 3.0), gval
 
     def test_inc_adv_subtensor1_with_broadcasting(self):
-        if not config.cxx:
-            raise SkipTest('config.cxx empty')
-
         inc = dscalar()
         a = inc_subtensor(self.m[self.ix1], inc)
         g_inc = tensor.grad(a.sum(), inc)
@@ -1564,9 +1559,6 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert np.allclose(gval, 9.0), gval
 
     def test_inc_adv_subtensor_with_index_broadcasting(self):
-        if not config.cxx:
-            raise SkipTest('config.cxx empty')
-
         a = inc_subtensor(self.m[self.ix1, self.ix2], 2.1)
 
         assert a.type == self.m.type, (a.type, self.m.type)
@@ -1640,17 +1632,20 @@ class TestAdvancedSubtensor(unittest.TestCase):
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor))
 
         utt.verify_grad(lambda m: m[[1, 3], [2, 4]],
-                        [np.random.rand(5, 5).astype(self.dtype)])
+                        [np.random.rand(5, 5).astype(self.dtype)],
+                        mode=self.mode)
 
         def fun(x, y):
             return advanced_inc_subtensor(x, y, [1, 3], [2, 4])
         utt.verify_grad(fun, [np.random.rand(5, 5).astype(self.dtype),
-                              np.random.rand(2).astype(self.dtype)])
+                              np.random.rand(2).astype(self.dtype)],
+                        mode=self.mode)
 
         def fun(x, y):
             return advanced_set_subtensor(x, y, [1, 3], [2, 4])
         utt.verify_grad(fun, [np.random.rand(5, 5).astype(self.dtype),
-                              np.random.rand(2).astype(self.dtype)])
+                              np.random.rand(2).astype(self.dtype)],
+                        mode=self.mode)
 
 
 class TestInferShape(utt.InferShapeTester):

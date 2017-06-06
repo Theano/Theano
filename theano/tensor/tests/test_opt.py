@@ -2936,10 +2936,7 @@ def test_local_IncSubtensor_serialize():
     i = T.vector('i', dtype='int64')
     j = T.vector('j', dtype='int64')
     t = T.scalar('t')
-    if theano.tensor.subtensor.inplace_increment:
-        y = (W[i] + W[j] + W[1] + W[i, j]).sum()
-    else:
-        y = (W[i] + W[j] + W[1]).sum()
+    y = (W[i] + W[j] + W[1] + W[i, j]).sum()
     cost = T.sqr(t - y)
     dW = theano.grad(cost, W)
     mode = theano.compile.mode.get_default_mode().excluding('fusion')

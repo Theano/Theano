@@ -225,6 +225,20 @@ import theano and print the config variable, as in:
 
     If True, we will print extra scan debug information.
 
+.. attribute:: cycle_detection
+
+    String value, either ``regular`` or ``fast```
+
+    Default: ``regular``
+
+    If :attr:`cycle_detection` is set to ``regular``, most inplaces are allowed,
+    but it is slower. If :attr:`cycle_detection` is set to ``faster``,
+    less inplaces are allowed, but it makes the compilation faster.
+
+    The interaction of which one give the lower peak memory usage is complicated and
+    not predictable, so if you are close to the peak memory usage, triyng both
+    could give you a small gain.
+
 .. attribute:: openmp
 
     Bool value: either ``True`` or ``False``

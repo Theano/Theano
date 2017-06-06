@@ -8,7 +8,7 @@ import theano
 from theano import config
 from theano import tensor
 from theano.tests import unittest_tools as utt
-from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22, batched_dot
+from theano.tensor.blas import gemv, gemv_inplace, gemm_inplace, _dot22, batched_dot
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
 from .. import gpuarray_shared_constructor
@@ -18,7 +18,7 @@ from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
                     gpugemm_inplace, gpugemm_no_inplace,
                     gpugemmbatch_no_inplace,
                     gpuger_inplace, gpuger_no_inplace,
-                    GpuGer, gpu_dot22)
+                    GpuGer, GpuGemm, gpu_dot22)
 
 
 GpuGemvTester = makeTester(
@@ -42,6 +42,22 @@ GpuGemvTester = makeTester(
 
 
 def test_float16():
+    # gemv (gemm called)
+    float16_data = [rand(3).astype('float16'),
+                    np.asarray(1, dtype=np.float32),
+                    rand(3, 3).astype('float16'),
+                    rand(3).astype('float16'),
+                    np.asarray(0.5, dtype=np.float32)]
+    float16_shared = [gpuarray_shared_constructor(val, target=test_ctx_name)
+                      for val in float16_data]
+    o = gemv(*float16_shared)
+    f = theano.function([], o, mode=mode_with_gpu)
+    y, alpha, A, x, beta = float16_data
+    out = f()
+    utt.assert_allclose(np.asarray(out), alpha * np.dot(A, x) + beta * y)
+    topo = f.maker.fgraph.toposort()
+    assert any([isinstance(n.op, GpuGemm) for n in topo])
+
     # gemm
     float16_data = [rand(3, 3).astype('float16'),
                     np.asarray(1, dtype=np.float32),

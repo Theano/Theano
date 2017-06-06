@@ -232,7 +232,7 @@ class GpuIncSubtensor(IncSubtensor):
             if not self.set_instead_of_inc:
                 # sub_x += y
                 iadd = get_iadd(node.inputs[0], node.inputs[1])
-                iadd(sub_x, y, broadcast=False)
+                iadd(sub_x, y)
             else:
                 # sub_x[...] = y
                 x.__setitem__(cdata, y)
@@ -403,6 +403,8 @@ class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
     """
     AdvancedSubrensor1 on the GPU.
     """
+    _f16_ok = True
+
     def make_node(self, x, ilist):
         ctx_name = infer_context_name(x, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)
@@ -807,7 +809,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         """
         ctx_name = infer_context_name(x, y, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)
-        y_ = as_gpuarray_variable(y, ctx_name)
+        y_ = as_gpuarray_variable(y.astype(x.dtype), ctx_name)
         ilist_ = as_gpuarray_variable(ilist, ctx_name)
 
         assert x_.type.ndim >= y_.type.ndim
@@ -1088,6 +1090,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
 
 class GpuExtractDiag(Op):
     __props__ = ("offset", "axis1", "axis2", "view")
+    _f16_ok = True
 
     def __init__(self, offset=0, axis1=0, axis2=1, view=False):
         self.view = view
