@@ -40,6 +40,8 @@ class BaseCorrMM(gof.OpenMPOp):
         Perform subsampling of the output (default: (1, 1)).
     filter_dilation
         Perform dilated correlation (default: (1,1))
+    num_groups
+        Perform grouped convolutions (default: 1)
     """
     check_broadcast = False
     __props__ = ('border_mode', 'subsample', 'filter_dilation', 'num_groups')
