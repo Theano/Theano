@@ -23,7 +23,7 @@ echo
 
 BASE_COMPILEDIR=$HOME/.theano/buildbot_theano_release
 ROOT_CWD=$WORKSPACE/nightly_build
-FLAGS=base_compiledir=$BASE_COMPILEDIR
+FLAGS=base_compiledir=$BASE_COMPILEDIR,cycle_detection='fast'
 COMPILEDIR=`THEANO_FLAGS=$FLAGS python -c "from __future__ import print_function; import theano; print(theano.config.compiledir)"`
 NOSETESTS=bin/theano-nose
 export PYTHONPATH=${WORKSPACE}:$PYTHONPATH

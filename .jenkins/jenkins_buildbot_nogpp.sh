@@ -47,7 +47,7 @@ NAME=fastrun
 FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
 echo "THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
-THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
+THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},cycle_detection='fast',mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 echo

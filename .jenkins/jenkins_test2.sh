@@ -51,6 +51,6 @@ python -c 'import pygpu; print(pygpu.__file__)'
 THEANO_GPUARRAY_TESTS="theano/gpuarray/tests \
                        theano/scan_module/tests/test_scan.py:T_Scan_Gpuarray \
                        theano/scan_module/tests/test_scan_checkpoints.py:TestScanCheckpoint.test_memory"
-FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800"
+FLAGS="init_gpu_device=$DEVICE,cycle_detection='fast',gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800"
 FLAGS=${FLAGS},magma.enabled=true # Enable magma GPU library
 THEANO_FLAGS=${FLAGS} time nosetests --with-xunit --xunit-file=theanogpuarray_tests.xml ${THEANO_GPUARRAY_TESTS}

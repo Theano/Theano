@@ -13,4 +13,4 @@ echo
 
 FILE=${BUILDBOT_DIR}/theano_python32bit_tests.xml
 set -x
-PYTHONPATH=$HOME/anaconda2_32bit/lib/python2.7/site-packages THEANO_FLAGS=device=cpu,force_device=true,lib.amdlibm=False,compiledir=$HOME/.theano/buildbot_theano_python2_32bit $HOME/anaconda2_32bit/bin/python bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE}
+PYTHONPATH=$HOME/anaconda2_32bit/lib/python2.7/site-packages THEANO_FLAGS=device=cpu,cycle_detection='fast',force_device=true,lib.amdlibm=False,compiledir=$HOME/.theano/buildbot_theano_python2_32bit $HOME/anaconda2_32bit/bin/python bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE}
