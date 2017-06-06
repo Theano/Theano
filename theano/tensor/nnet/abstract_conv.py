@@ -1647,8 +1647,13 @@ class AbstractConv(BaseAbstractConv):
         img, kern = inp
         img = np.asarray(img)
         kern = np.asarray(kern)
-        dil_kernshp = tuple((kern.shape[2 + i] - 1) * self.filter_dilation[i] + 1
-                            for i in range(self.convdim))
+        if self.unshared is True:
+            dil_kernshp = tuple((kern.shape[4 + i] - 1) * self.filter_dilation[i] + 1
+                                for i in range(self.convdim))
+        else:
+            dil_kernshp = tuple((kern.shape[2 + i] - 1) * self.filter_dilation[i] + 1
+                                for i in range(self.convdim))
+
         o, = out_
         mode = self.border_mode
 
@@ -1675,7 +1680,11 @@ class AbstractConv(BaseAbstractConv):
                           for i in range(self.convdim))] = img
             img = new_img
         if not self.filter_flip:
-            kern = kern[(slice(None), slice(None)) + (slice(None, None, -1),) * self.convdim]
+            if self.unshared is True:
+                kern = kern[(slice(None),) * 2 + (slice(None, None, -1),) * self.convdim]
+            else:
+                kern = kern[(slice(None),) * 4 + (slice(None, None, -1),) * self.convdim]
+
         conv_out = self.conv(img, kern, mode="valid", dilation=self.filter_dilation, unshared=self.unshared)
         conv_out = conv_out[(slice(None), slice(None)) +
                             tuple(slice(None, None, self.subsample[i])
@@ -1684,6 +1693,8 @@ class AbstractConv(BaseAbstractConv):
         o[0] = node.outputs[0].type.filter(conv_out)
 
     def R_op(self, inputs, eval_points):
+        if self.unshared is True:
+            raise NotImplementedError('Rop not implemented for unshared convolution')
         rval = None
         if eval_points[0] is not None:
             rval = self.make_node(eval_points[0], inputs[1]).outputs[0]
@@ -1838,7 +1849,7 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                                                        subsample=subsample,
                                                        filter_flip=filter_flip,
                                                        filter_dilation=filter_dilation,
-                                                       unshared=False)
+                                                       unshared=unshared)
 
     # Update shape/height_width
     def make_node(self, img, topgrad, shape, add_assert_shape=True):
@@ -2076,13 +2087,15 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                  border_mode="valid",
                  subsample=None,
                  filter_flip=True,
-                 filter_dilation=None):
+                 filter_dilation=None,
+                 unshared=False):
         super(AbstractConv_gradInputs, self).__init__(convdim=convdim,
                                                       imshp=imshp, kshp=kshp,
                                                       border_mode=border_mode,
                                                       subsample=subsample,
                                                       filter_flip=filter_flip,
-                                                      filter_dilation=filter_dilation)
+                                                      filter_dilation=filter_dilation,
+                                                      unshared=unshared)
 
     # Update shape/height_width
     def make_node(self, kern, topgrad, shape, add_assert_shape=True):
@@ -2095,10 +2108,15 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                                 broadcastable=topgrad.broadcastable)
         topgrad = gtype.filter_variable(topgrad)
 
-        if kern.type.ndim != 2 + self.convdim:
-            raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
-        if topgrad.type.ndim != 2 + self.convdim:
-            raise TypeError('topgrad must be %dD tensor' % (2 + self.convdim))
+        if self.unshared is True:
+            if self.convdim != 2:
+                raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                          % self.convdim)
+            elif kern.type.ndim != 6:
+                raise TypeError('kern must be 6D tensor for unshared convolution')
+        else:
+            if kern.type.ndim != 2 + self.convdim:
+                raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
 
         if add_assert_shape:
             kern = assert_shape(kern, self.kshp,
@@ -2140,8 +2158,13 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                 'has shape {}'.format(tuple(expected_topgrad_shape),
                                       tuple(topgrad.shape)))
 
-        dil_kernshp = tuple((kern.shape[i + 2] - 1) * self.filter_dilation[i] + 1
-                            for i in range(self.convdim))
+        if self.unshared is True:
+            dil_kernshp = tuple((kern.shape[4 + i] - 1) * self.filter_dilation[i] + 1
+                                for i in range(self.convdim))
+        else:
+            dil_kernshp = tuple((kern.shape[2 + i] - 1) * self.filter_dilation[i] + 1
+                                for i in range(self.convdim))
+
         pad = (0,) * self.convdim
         if mode == "full":
             pad = tuple(dil_kernshp[i] - 1 for i in range(self.convdim))
@@ -2159,7 +2182,11 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                               for i in range(self.convdim))] = topgrad
             topgrad = new_topgrad
 
-        axes_order = (1, 0) + tuple(range(2, self.convdim + 2))
+        if self.unshared is True:
+            axes_order = (1, 0) + tuple(range(2, self.convdim + 4))
+        else:
+            axes_order = (1, 0) + tuple(range(2, self.convdim + 2))
+
         flip_filters = ((slice(None), slice(None)) +
                         (slice(None, None, -1),) * self.convdim)
         kern = kern.transpose(axes_order)
