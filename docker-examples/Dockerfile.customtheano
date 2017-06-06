@@ -13,7 +13,7 @@
 #
 # https://docs.docker.com/engine/reference/builder/
 #
-FROM nvcr.io/nvidia/theano:17.05
+FROM nvcr.io/nvidia/theano:17.06
 
 # Bring in changes from outside container to /tmp
 # (assumes my-theano-modifications.patch is in same directory as Dockerfile)
