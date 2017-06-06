@@ -445,3 +445,9 @@ class AttemptManyTimes:
                         current_seed = str(int(current_seed) + 1)
 
         return attempt_multiple_times
+
+def expectedFailure_fast():
+    """A Decorator to handle the test cases that are failing when
+    THEANO_FALGS =cycle_detection='fast'.
+    """
+    return unittest.expectedFailure if theano.config.cycle_detection == 'fast' else lambda x: x
