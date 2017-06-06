@@ -563,6 +563,8 @@ class Abstract_softmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
+        # Be sure to have a tuple
+        axes = tuple(axes)
         # Apply softmax on the specified dimension
         e_x = np.exp(x - x.max(axis=axes, keepdims=True))
         sm = e_x / e_x.sum(axis=axes, keepdims=True)
@@ -818,6 +820,7 @@ class Abstract_logsoftmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
+        axes = tuple(axes)
         xdev = x - x.max(axis=axes, keepdims=True)
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
         output_storage[0][0] = lsm
@@ -859,8 +862,7 @@ class LogSoftmax(Abstract_logsoftmax):
         if axis.type.dtype not in tensor.int_dtypes:
             raise ValueError('axis must be an integer. Got ', axis.type)
         if x.type.dtype not in tensor.float_dtypes:
-            raise ValueError('x must be tensor of floats. Got %s' %
-                             x.type)
+            raise ValueError('x must be tensor of floats. Got %s' % x.type)
         # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
