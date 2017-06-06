@@ -1294,28 +1294,28 @@ def local_gpua_eye(op, context_name, inputs, outputs):
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias], cuda_only=True)
+@op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias])
 @register_opt2([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias], 'fast_compile')
 def local_gpua_crossentropysoftmaxargmax1hotwithbias(op, context_name, inputs, outputs):
     return gpu_crossentropy_softmax_argmax_1hot_with_bias
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx], cuda_only=True)
+@op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
 @register_opt2([tensor.nnet.CrossentropySoftmax1HotWithBiasDx], 'fast_compile')
 def local_gpua_crossentropysoftmax1hotwithbiasdx(op, context_name, inputs, outputs):
     return gpu_crossentropy_softmax_1hot_with_bias_dx
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.Softmax], cuda_only=True)
+@op_lifter([tensor.nnet.Softmax])
 @register_opt2([tensor.nnet.Softmax], 'fast_compile')
 def local_gpua_softmax(op, context_name, inputs, outputs):
     return gpu_softmax
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.SoftmaxWithBias], cuda_only=True)
+@op_lifter([tensor.nnet.SoftmaxWithBias])
 @register_opt2([tensor.nnet.SoftmaxWithBias], 'fast_compile')
 def local_gpua_softmaxwithbias(op, context_name, inputs, outputs):
     return gpu_softmax_with_bias
