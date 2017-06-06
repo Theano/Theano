@@ -408,9 +408,9 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     destroy_maps = getattr(app.op, 'destroy_map', {}).values()
                     if idx in [dmap for sublist in destroy_maps for dmap in sublist]:
                         return True
-                    for var in getattr(app.op, 'view_map', {}).keys():
-                        if idx in app.op.view_map[var] and recursive_destroys_finder(app.outputs[var]):
-                                return True
+                    for var_idx in getattr(app.op, 'view_map', {}).keys():
+                        if idx in app.op.view_map[var_idx] and recursive_destroys_finder(app.outputs[var_idx]):
+                            return True
                 return False
 
             for protected_var in protected_list:
