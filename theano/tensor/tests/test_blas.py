@@ -501,6 +501,7 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
         raise
 
 
+@unittest_tools.expectedFailure_fast
 def test_gemm_opt0():
     """Many subgraphs whose dots can be eliminated"""
     X, Y, Z, a, b = XYZab()

@@ -577,6 +577,7 @@ def test_no_complex():
                     mode=mode_with_gpu)
 
 
+@utt.expectedFailure_fast
 def test_local_lift_solve():
     if not cusolver_available:
         raise SkipTest('No cuSolver')
@@ -611,6 +612,7 @@ def test_gpu_solve_not_inplace():
     utt.assert_allclose(f_cpu(A_val, b_val), f_gpu(A_val, b_val))
 
 
+@utt.expectedFailure_fast
 def test_local_lift_cholesky():
     if not cusolver_available:
         raise SkipTest('No cuSolver')

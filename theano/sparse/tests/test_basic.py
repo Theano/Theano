@@ -3200,6 +3200,7 @@ import theano.tensor.tests.test_sharedvar
     theano_fct_=lambda a: dense_from_sparse(a * 2.),
     ref_fct_=lambda a: np.asarray((a * 2).todense()),
     cast_value_=scipy.sparse.csr_matrix,
+    expect_fail_fast_shape_inplace=False,
 )
 class test_shared_options(object):
     pass

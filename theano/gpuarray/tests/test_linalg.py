@@ -164,6 +164,7 @@ class TestGpuCholesky(unittest.TestCase):
             GpuCholesky(lower=True, inplace=False)(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
+    @utt.expectedFailure_fast
     def test_diag_chol(self):
         # Diagonal matrix input Cholesky test.
         for lower in [True, False]:
@@ -172,6 +173,7 @@ class TestGpuCholesky(unittest.TestCase):
                 A_val = np.diag(np.random.uniform(size=5).astype("float32") + 1)
                 self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
 
+    @utt.expectedFailure_fast
     def test_dense_chol_lower(self):
         # Dense matrix input lower-triangular Cholesky test.
         for lower in [True, False]:

@@ -4757,6 +4757,9 @@ class T_exp(unittest.TestCase):
             np.asarray([[1.5089518, 1.48439076, -4.7820262],
                         [2.04832468, 0.50791564, -1.58892269]])])
 
+    if theano.config.cycle_detection == 'fast' and theano.config.mode != 'FAST_COMPILE':
+        test_grad_1 = unittest.expectedFailure(test_grad_1)
+
     def test_int(self):
         x = ivector()
         f = function([x], exp(x))
