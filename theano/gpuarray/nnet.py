@@ -597,7 +597,7 @@ class GpuSoftmax(GpuKernelBase, Op):
         type_sm = gpuarray.dtype_to_ctype(dtype_sm)
         type_acc = gpuarray.dtype_to_ctype(work_sm)
 
-        ctype = gpuarray.dtype_to_ctype(dtype_sm)
+        ctype = gpuarray.dtype_to_ctype(work_sm)
 
         params = [
             gpuarray.SIZE, gpuarray.SIZE,
@@ -915,7 +915,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
         type_sm = gpuarray.dtype_to_ctype(dtype_sm)
         type_acc = gpuarray.dtype_to_ctype(work_sm)
 
-        ctype = gpuarray.dtype_to_ctype(dtype_sm)
+        ctype = gpuarray.dtype_to_ctype(work_sm)
 
         params = [
             gpuarray.SIZE, gpuarray.SIZE,
