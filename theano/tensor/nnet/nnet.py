@@ -1150,44 +1150,7 @@ def softmax(c, axis=(-1)):
     c = tensor.as_tensor_variable(c)
     if c.broadcastable[-1]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    # Check of the axes
-    if isinstance(axis, (integer_types, np.integer)):
-        axis = [int(axis)]
-    elif isinstance(axis, np.ndarray) and axis.ndim == 0:
-        axis = [int(axis)]
-    elif isinstance(axis, (tuple, list, np.ndarray)):
-        axis = [int(a) for a in axis]
-        if axis == list(range(c.type.ndim)):
-            axis = None
-    elif isinstance(axis, Variable):
-        # If axis is None, we select the last axis
-        if NoneConst.equals(axis):
-            axis = -1
-        elif not isinstance(axis, tensor.TensorConstant):
-            raise TypeError("Softmax needs a constant axis. Got %s" % axis)
-        else:
-            assert axis.dtype in integer_dtypes
-            if isinstance(axis.data, (integer_types, np.integer)) or \
-                    (isinstance(axis.data, np.ndarray) and axis.data.ndim == 0):
-                        axis = [int(axis.data)]
-            elif isinstance(axis.data, (list, np.ndarray)):
-                axis = [int(i) for i in axis.data]
-
-    # Make axis entries non-negative, and sort them
-    if isinstance(axis, list):
-        for idx in xrange(len(axis)):
-            if axis[idx] < 0:
-                axis[idx] += c.type.ndim
-        axis.sort()
-
-    # Verify that axes are valid
-    if isinstance(axis, list):
-        for ax in axis:
-            if ax < 0 or ax >= c.type.ndim:
-                raise ValueError(
-                    'Invalid axis: %s (the number of dimensions of the '
-                    'input is: %s)' % (ax, c.type.ndim))
-
+    axis = tensor.check_and_normalize_axes(c, axis)
     return softmax_op(c, axis)
 
 
@@ -1195,44 +1158,7 @@ def logsoftmax(c, axis=(-1,)):
     c = tensor.as_tensor_variable(c)
     if c.broadcastable[-1]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    # Check of the axes
-    if isinstance(axis, (integer_types, np.integer)):
-        axis = [int(axis)]
-    elif isinstance(axis, np.ndarray) and axis.ndim == 0:
-        axis = [int(axis)]
-    elif isinstance(axis, (tuple, list, np.ndarray)):
-        axis = [int(a) for a in axis]
-        if axis == list(range(c.type.ndim)):
-            axis = None
-    elif isinstance(axis, Variable):
-        # If axis is None, we select the last axis
-        if NoneConst.equals(axis):
-            axis = -1
-        elif not isinstance(axis, tensor.TensorConstant):
-            raise TypeError("Softmax needs a constant axis. Got %s" % axis)
-        else:
-            assert axis.dtype in integer_dtypes
-            if isinstance(axis.data, (integer_types, np.integer)) or \
-                    (isinstance(axis.data, np.ndarray) and axis.data.ndim == 0):
-                        axis = [int(axis.data)]
-            elif isinstance(axis.data, (list, np.ndarray)):
-                axis = [int(i) for i in axis.data]
-
-    # Make axis entries non-negative, and sort them
-    if isinstance(axis, list):
-        for idx in xrange(len(axis)):
-            if axis[idx] < 0:
-                axis[idx] += c.type.ndim
-        axis.sort()
-
-    # Verify that axes are valid
-    if isinstance(axis, list):
-        for ax in axis:
-            if ax < 0 or ax >= c.type.ndim:
-                raise ValueError(
-                    'Invalid axis: %s (the number of dimensions of the '
-                    'input is: %s)' % (ax, c.type.ndim))
-
+    axis = tensor.check_and_normalize_axes(c, axis)
     return logsoftmax_op(c, axis)
 
 
