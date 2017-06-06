@@ -93,7 +93,10 @@ class SoftmaxWithBias(gof.Op):
         if x.dtype == 'float16':
             x = x.astype('float32')
 
-        # We add bias on the last dimension
+        # We make b broadcastable except on the selected axis
+        for dim in [d for d in range(x.ndim) if d != ax]:
+            b = np.expand_dims(b, dim)
+        # We add the bias to x
         x_plus_b = x + b
         e_x = np.exp(x_plus_b - x_plus_b.max(axis=ax, keepdims=True))
         e_x *= 1.0 / e_x.sum(axis=ax, keepdims=True)
@@ -174,11 +177,11 @@ class SoftmaxWithBias(gof.Op):
                 PyErr_SetString(PyExc_TypeError, "b not float");
                 %(fail)s;
             }
-            if ((shape_x[ndim_x - 1] != shape_b[0]))
+            if ((shape_x[axis] != shape_b[0]))
             {
                 PyErr_Format(PyExc_ValueError,
                             "number of columns in x (%%ld) does not match length of b (%%ld)",
-                    (long int)shape_x[ndim_x - 1], (long int)PyArray_DIMS(%(b)s)[0]);
+                    (long int)shape_x[axis], (long int)PyArray_DIMS(%(b)s)[0]);
                 %(fail)s;
             }
 
@@ -322,7 +325,7 @@ class SoftmaxWithBias(gof.Op):
 
     @staticmethod
     def c_code_cache_version():
-        return (9,)
+        return (10,)
 
 softmax_with_bias = SoftmaxWithBias()
 
@@ -1160,7 +1163,7 @@ def softmax(c, axis=(-1)):
         # If axis is None, we select the last axis
         if NoneConst.equals(axis):
             axis = -1
-        elif not isinstance(axis, tensor.var.TensorConstant):
+        elif not isinstance(axis, tensor.TensorConstant):
             raise TypeError("Softmax needs a constant axis. Got %s" % axis)
         else:
             assert axis.dtype in integer_dtypes
@@ -1205,7 +1208,7 @@ def logsoftmax(c, axis=(-1,)):
         # If axis is None, we select the last axis
         if NoneConst.equals(axis):
             axis = -1
-        elif not isinstance(axis, tensor.var.TensorConstant):
+        elif not isinstance(axis, tensor.TensorConstant):
             raise TypeError("Softmax needs a constant axis. Got %s" % axis)
         else:
             assert axis.dtype in integer_dtypes
