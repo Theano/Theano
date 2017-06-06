@@ -379,8 +379,9 @@ class GpuMagmaBase(COp):
         from skcuda.magma import magma_init
         ctx = node.inputs[0].type.context
         if not getattr(ctx, 'is_magma_initialized', False):
-            magma_init()
-            ctx.is_magma_initialized = True
+            with ctx:
+                magma_init()
+                ctx.is_magma_initialized = True
 
     def get_params(self, node):
         return node.inputs[0].type.context
