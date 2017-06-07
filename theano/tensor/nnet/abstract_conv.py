@@ -1486,6 +1486,7 @@ class BaseAbstractConv(Op):
         if len(filter_dilation) != convdim:
             raise ValueError("filter_dilation must have {} elements".format(convdim))
         self.filter_dilation = tuple(filter_dilation)
+        self.unshared = unshared
 
     def do_constant_folding(self, node):
         # Disable constant folding since there is no implementation.
@@ -1714,8 +1715,12 @@ class AbstractConv(BaseAbstractConv):
             imshp = [imshp[i] if self.imshp[i] is None else self.imshp[i]
                      for i in range(2 + self.convdim)]
         if self.kshp is not None:
-            kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
-                    for i in range(2 + self.convdim)]
+            if self.unshared is True:
+                kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
+                        for i in range(4 + self.convdim)]
+            else:
+                kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
+                        for i in range(2 + self.convdim)]
         res = get_conv_output_shape(imshp, kshp, self.border_mode,
                                     self.subsample, self.filter_dilation)
         return [res]
@@ -1927,8 +1932,22 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                         (slice(None, None, -1),) * self.convdim)
         topgrad = topgrad.transpose(axes_order)[flip_filters]
         img = img.transpose(axes_order)
-        # Incomplete
-        kern = self.conv(img, topgrad, mode="valid", unshared=self.unshared)
+
+        if self.unshared is True:
+            kern_shape = (topgrad.shape[1], img.shape[1],
+                          topgrad.shape[2], topgrad.shape[3],
+                          topgrad.shape[2] - img.shape[2] + 1,
+                          topgrad.shape[3] - img.shape[3] + 1)
+            kern = np.zeros((kern_shape), dtype=topgrad.dtype)
+
+            for row in range(0, topgrad.shape[2]):
+                for col in range(0, topgrad.shape[3]):
+                    kern[:, :, row, col] = topgrad[:, :, row, col] * \
+                        img[:, :, row:row + kern.shape[4],
+                            col:col + kern.shape[5]]
+        else:
+            kern = self.conv(img, topgrad, mode="valid")
+
         if any(self.filter_dilation[i] > 1 for i in range(self.convdim)):
             kern = kern[(slice(None), slice(None)) +
                         tuple(slice(None, None, self.filter_dilation[i])
@@ -2190,9 +2209,21 @@ class AbstractConv_gradInputs(BaseAbstractConv):
         flip_filters = ((slice(None), slice(None)) +
                         (slice(None, None, -1),) * self.convdim)
         kern = kern.transpose(axes_order)
+
+        # Rearranging the weights into the correct shape for unshared
+        if self.unshared is True:
+            for i in range(0, kern.shape[2]):
+                for j in range(0, kern.shape[3]):
+                    for m in range(0, kern.shape[4]):
+                        for n in range(0, kern.shape[5]):
+                            if i + m > kern.shape[2] or j + n > kern.shape[3]:
+                                kern[:, :, i, j, m, m] = 0
+                            else:
+                                kern[:, :, i, j, m, m] = kern[:, :, i + m, j + n, m, n]
+
         if self.filter_flip:
             topgrad = topgrad[flip_filters]
-        # Incomplete
+
         img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation,
                         unshared=self.unshared)
         if self.filter_flip:
