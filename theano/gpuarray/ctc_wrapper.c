@@ -116,7 +116,17 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     ctc_context_t * context = &ctc_object;
     ctc_context_init( context );
 
-    npy_float32 * activations = (npy_float32 *) PyGpuArray_DEV_DATA( in_activations );
+    float * activations = NULL;
+    switch (in_activations->ga.typecode)
+    {
+    case GA_FLOAT:
+        activations = (float *) PyGpuArray_DEV_DATA( in_activations );
+        break;
+    default:
+        ctc_context_destroy( context );
+        PyErr_SetString(PyExc_TypeError, "Unsupported type for activations!");
+        return 1;
+    }
 
     create_contiguous_input_lengths( in_input_lengths, &(context->input_lengths) );
 
@@ -143,7 +153,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     const size_t minibatch_size = PyGpuArray_DIMS( in_activations )[1];
     const size_t alphabet_size  = PyGpuArray_DIMS( in_activations )[2];
 
-    npy_float32 * costs = NULL;
+    float * costs = NULL;
     const size_t cost_size = minibatch_size;
 
     if (NULL == *out_costs ||  // symbolic variable has no real backing
@@ -152,8 +162,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     {
         Py_XDECREF( *out_costs );
 
-        // GA_FLOAT is equivalent to Numpy's npy_float32 type
-        *out_costs = pygpu_zeros( 1, &cost_size, GA_FLOAT, GA_C_ORDER,
+        *out_costs = pygpu_empty( 1, &cost_size, GA_FLOAT, GA_C_ORDER,
             ctx, Py_None );
 
         if ( NULL == *out_costs )
@@ -167,9 +176,18 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         }
     }
 
-    costs = (npy_float32 *) PyGpuArray_DEV_DATA( *out_costs );
+    switch ( (*out_costs)->ga.typecode )
+    {
+    case GA_FLOAT:
+        costs = (float *) PyGpuArray_DEV_DATA( *out_costs );
+        break;
+    default:
+        ctc_context_destroy( context );
+        PyErr_SetString(PyExc_TypeError, "Unsupported type for costs!");
+        return 1;
+    }
 
-    npy_float32 * gradients = NULL;
+    float * gradients = NULL;
 
     if ( NULL != out_gradients )  // if gradient computation is not disabled
     {
@@ -182,8 +200,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
             Py_XDECREF( *out_gradients );
 
             const size_t * activation_dims = PyGpuArray_DIMS( in_activations );
-            // GA_FLOAT is equivalent to Numpy's npy_float32 type
-            *out_gradients = pygpu_zeros( 3, activation_dims, GA_FLOAT, GA_C_ORDER,
+            *out_gradients = pygpu_empty( 3, activation_dims, GA_FLOAT, GA_C_ORDER,
                 ctx, Py_None );
 
             if ( NULL == *out_gradients )
@@ -196,7 +213,16 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
             }
         }
 
-        gradients = (npy_float32 *) PyGpuArray_DEV_DATA( *out_gradients );
+        switch ( (*out_gradients)->ga.typecode )
+        {
+        case GA_FLOAT:
+            gradients = (float *) PyGpuArray_DEV_DATA( *out_gradients );
+            break;
+        default:
+            ctc_context_destroy( context );
+            PyErr_SetString(PyExc_TypeError, "Unsupported type for gradients!");
+            return 1;
+        }
     }
 
     size_t gpu_workspace_size;
