@@ -1173,7 +1173,7 @@ class MaxAndArgmax(Op):
     __props__ = ('axis',)
 
     def __init__(self, axis):
-        assert isinstance(axis, list)
+        assert isinstance(axis, (list, tuple))
         self.axis = tuple(axis)
 
     def get_params(self, node):
@@ -1378,11 +1378,14 @@ class Argmax(Op):
     nin = 2  # tensor, axis
     nout = 1
     E_axis = 'invalid axis'
-    __props__ = ()
+    params_type = Generic()
+    __props__ = ('axis',)
 
-    def make_node(self, x, axis=None):
-        x = _as_tensor_variable(x)
+    def __init__(self, axis):
+        assert isinstance(axis, (list, tuple))
+        self.axis = tuple(axis)
 
+    def get_params(self, node):
         if isinstance(axis, (integer_types, np.integer)):
             axis = [int(axis)]
         elif isinstance(axis, np.ndarray) and axis.ndim == 0:
@@ -1426,22 +1429,21 @@ class Argmax(Op):
         else:
             all_axes = list(range(x.ndim))
 
-        if axis is None or axis == list(range(x.type.ndim)):
-            axis = NoneConst.clone()
-        else:
-            axis = _as_tensor_variable(all_axes)
-            assert axis.ndim == 1
-        inputs = [x, axis]
+    def make_node(self, x, axis=None):
+        x = _as_tensor_variable(x)
 
         # We keep the original broadcastable flags for dimensions on which
         # we do not perform the argmax.
+        all_axes = set(self.axis)
         broadcastable = [b for i, b in enumerate(x.type.broadcastable)
                          if i not in all_axes]
+        inputs = [x]
         outputs = [tensor('int64', broadcastable, name='argmax')]
         return Apply(self, inputs, outputs)
 
-    def perform(self, node, inp, outs):
-        x, axes = inp
+    def perform(self, node, inp, outs, params):
+        x = inp[0]
+        axes = params
         max_idx, = outs
         if axes is None:
             axes = tuple(range(x.ndim))
@@ -1464,29 +1466,40 @@ class Argmax(Op):
                                      dtype='int64')
 
     def c_code(self, node, name, inp, out, sub):
-        x, axis = inp
+        if len(self.axis) != 1 and len(self.axis) != node.inputs[0].ndim:
+            raise NotImplementedError("NumPy C-API can compute argmax only for 1 axis or for all axes.")
+        x = inp[0]
+        axis = sub['params']
+
         argmax, = out
         fail = sub["fail"]
-        if NoneConst.equals(node.inputs[1]):
-            axis_code = "axis = NPY_MAXDIMS;"
-        else:
-            assert node.inputs[1].ndim == 1
-            # Fall back to perform() if there are multiple axes
-            if len(node.inputs[1].data) > 1:
-                raise NotImplementedError()
-            axis_code = """
-            axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
-            if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
-                PyErr_SetString(PyExc_ValueError,
-                "Argmax, bad axis argument");
-                %(fail)s
-            }
-            """ % locals()
         ret = """
+        #if PY_MAJOR_VERSION >= 3
+            #ifndef PyInt_AS_LONG
+                #define PyInt_AS_LONG PyLong_AS_LONG
+            #endif
+        #endif
+
         int axis;
 
+        if (PyTuple_GET_SIZE(%(axis)s) == PyArray_NDIM(%(x)s)) {
+            axis = NPY_MAXDIMS;
+        } else if(PyTuple_GET_SIZE(%(axis)s) == 1) {
+            PyObject* axis_object = PyTuple_GET_ITEM(%(axis)s, 0);
+            axis = (int)PyInt_AS_LONG(axis_object);
+            Py_XDECREF(axis_object);
+            if (axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)) {
+                PyErr_SetString(PyExc_ValueError,
+                "Argmax: bad axis argument");
+                %(fail)s
+            }
+        } else {
+            PyErr_SetString(PyExc_NotImplementedError,
+            "Argmax: NumPy C-API can compute argmax only for 1 axis or for all axes.");
+            %(fail)s
+        }
+
         Py_CLEAR(%(argmax)s);//todo pass them as out parameter.
-        %(axis_code)s
 
         %(argmax)s = (PyArrayObject*)PyArray_ArgMax(%(x)s, axis, NULL);
         if(%(argmax)s == NULL){
@@ -1513,16 +1526,14 @@ class Argmax(Op):
         return (0,)
 
     def infer_shape(self, node, shapes):
-        ishape, axis_shape = shapes
-        axis = node.inputs[1]
-        if axis.data is None:
-            return [()]
-        rval = tuple([ishape[i] for (i, b) in enumerate(
-            node.inputs[0].type.broadcastable) if i not in axis.data])
+        ishape = shapes[0]
+        rval = tuple(ishape[i] for (i, b) in enumerate(
+            node.inputs[0].type.broadcastable) if i not in self.axis)
         return [rval]
 
     def grad(self, inp, grads):
-        x, axis = inp
+        x = inp[0]
+        axis = _as_tensor_variable(self.axis)
 
         axis_grad = grad_undefined(
             self, 1, axis,
@@ -1530,8 +1541,6 @@ class Argmax(Op):
             " argmax(x, axis+eps) is undefined")
 
         return [x.zeros_like(), axis_grad]
-
-_argmax = Argmax()
 
 
 def makeKeepDims(x, y, axis):

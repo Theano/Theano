@@ -2019,6 +2019,16 @@ def local_gpu_maxandargmax(op, context_name, inputs, outputs):
     return op
 
 
+@register_opt('fast_compile')
+@op_lifter([tensor.Argmax])
+@register_opt2([tensor.Argmax])
+def local_gpu_argmax(op, context_name, inputs, outputs):
+    inp, = inputs
+    axis = op.get_params(None)
+    argmax = GpuMaxAndArgmax(axis)(inp)[1]
+    return argmax
+
+
 # solve
 @register_opt('fast_compile')
 @op_lifter([slinalg.Solve])
@@ -2103,6 +2113,7 @@ def local_gpu_svd(op, context_name, inputs, outputs):
     if inputs[0].dtype == 'float16':
         return op(inputs[0].astype('float32')).astype('float16')
     return op
+
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.

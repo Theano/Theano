@@ -123,6 +123,15 @@ class BaseTest:
         utt.assert_allclose(ref_max, theano_max)
         utt.assert_allclose(ref_argmax, theano_argmax)
 
+        # tests gpu argmax
+        f2 = theano.function([M], T.argmax(M, axis=axis),
+                             name='shape:' + str(test_gpu_tensor.shape) + '/axis:' + str(axis) + '/GPU', mode=mode_with_gpu)
+        check_if_gpu_maxandargmax_in_graph(f2)
+        f2(test_gpu_tensor)
+        theano_argmax = f2(test_gpu_tensor)
+        _, ref_argmax = numpy_maxandargmax(test_host_tensor, axis=axis)
+        utt.assert_allclose(ref_argmax, theano_argmax)
+
     def compute(self, axis=None):
         # We want to run CPU op and GPU op on the same tensor randomly generated.
         test_gpu_tensor = self.get_gpu_value()
