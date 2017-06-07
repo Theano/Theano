@@ -1,18 +1,15 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy as np
 import theano
 from theano import Op
 from theano import config
 import theano.tensor as T
-from theano.tensor.extra_ops import cpu_contiguous
 from .basic_ops import (gpu_contiguous, as_gpuarray_variable,
                         infer_context_name, CGpuKernelBase)
 import theano.tensor.nnet.ctc
 from .type import GpuArrayType
-from .opt import register_opt, op_lifter, register_opt2
+from .elemwise import GpuDimShuffle
 from theano.gradient import grad_undefined
-from theano import gof
 from theano.gof import local_optimizer
 from theano.tensor.opt import register_canonicalize
 from theano.tensor.opt import register_stabilize
@@ -76,9 +73,27 @@ class GpuConnectionistTemporalClassification(CGpuKernelBase, Op):
 
     def c_headers(self):
         return ['ctc.h', 'numpy_compat.h', 'gpuarray_helper.h', 'gpuarray/types.h',
-            'gpuarray_api.h', 'gpuarray/array.h', 'gpuarray/util.h']
+                'gpuarray_api.h', 'gpuarray/array.h', 'gpuarray/util.h']
 
     def make_node(self, activations, labels, input_lengths):
+        """
+        Parameters
+        ----------
+        activations
+            Three-dimensional tensor, which has a shape of (t, m, p), where
+            t is the time index, m is the minibatch index, and p is the index
+            over the probabilities of each symbol in the alphabet. The memory
+            layout is assumed to be in C-order, which consists in the slowest
+            to the fastest changing dimension, from left to right. In this case,
+            p is the fastest changing dimension.
+        labels
+            A 1-D tensor of all the labels for the minibatch.
+        input_lengths
+            A 1-D tensor with the number of time steps for each sequence in
+            the minibatch.
+
+        """
+
         if not ctc_enabled:
             raise RuntimeError('Baidu CTC is not enabled and '
                                'GpuConnectionistTemporalClassification Op '
@@ -111,19 +126,31 @@ class GpuConnectionistTemporalClassification(CGpuKernelBase, Op):
         out_params = [as_gpuarray_variable(self.costs(), context_name=self.context_name)]
         if self.gradients is not None:
             out_params.append(as_gpuarray_variable(self.gradients(),
-                              context_name=self.context_name))
+                                                   context_name=self.context_name))
 
         return theano.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
                             outputs=out_params)
 
-    def grad(self, inputs, grads):
-        return [as_gpuarray_variable(self.gradients(), context_name=self.context_name),
+    def grad(self, inputs, output_grads):
+        if not ctc_enabled:
+            raise RuntimeError('Baidu CTC is not enabled and '
+                               'GpuConnectionistTemporalClassification Op '
+                               'can not be constructed.')
+        z = output_grads[0]
+        grad_shuffle = GpuDimShuffle(input_broadcastable=(False, False, False),
+                                     new_order=(1, 0, 2))(self.gradients())
+        grad_bdot = T.basic.batched_dot(z, grad_shuffle)
+        grad_shuffle_reverse = GpuDimShuffle(input_broadcastable=(False, False, False),
+                                             new_order=(1, 0, 2))(grad_bdot)
+        return [grad_shuffle_reverse,
                 grad_undefined(self, 1, inputs[1]),
                 grad_undefined(self, 2, inputs[2])]
+
 
 def ctc(activations, labels, input_lengths):
     return GpuConnectionistTemporalClassification()(activations, labels,
                                                     input_lengths)
+
 
 # Disable gradient computation if not needed
 @register_canonicalize
