@@ -414,10 +414,11 @@ pprint.assign(DimShuffle, DimShufflePrinter())
 
 class ElemwiseParams(object):
     def __init__(self, inplace_pattern):
-        self.inplace_pattern = inplace_pattern
-        
+        self._inplace_pattern = inplace_pattern  # frozendict is still useful for hashing method.
+        self.inplace_pattern = self._inplace_pattern._dict  # Now `inplace_pattern` is a real dict.        
+
     def __hash__(self):
-        return hash(self.inplace_pattern)
+        return hash(self._inplace_pattern)
 
     
 
@@ -474,16 +475,14 @@ second dimension
     params_type = Generic()
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
+
         if inplace_pattern is None:
             inplace_pattern = frozendict({})
+
         self.name = name
         self.scalar_op = scalar_op
 
         self.inplace_pattern = frozendict(inplace_pattern)
-        
-        
-        self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
-        self.test = frozendict(self.destroy_map)
         
         self.ufunc = None
         self.nfunc = None
