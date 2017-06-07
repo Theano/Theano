@@ -1976,6 +1976,11 @@ class ZeroGrad(ViewOp):
     def grad(self, args, g_outs):
         return [g_out.zeros_like(g_out) for g_out in g_outs]
 
+    def R_op(self, inputs, eval_points):
+        if eval_points[0] is None:
+            return [None]
+        
+        return theano.tensor.zeros(1)
 
 zero_grad_ = ZeroGrad()
 
