@@ -2,7 +2,6 @@ from __future__ import (division, absolute_import, print_function)
 
 import unittest
 import numpy as np
-import numpy.random
 
 import theano
 import theano.tensor as T
@@ -23,9 +22,6 @@ class TestCTC(unittest.TestCase):
             self.skipTest('Optional library warp-ctc not available')
 
     def run_ctc(self, activations, labels, input_length, expected_costs, expected_grads):
-        # Check if softmax probabilites are approximately equal to the gradients
-        # of the activations, using utt.assert_allclose(a, b)
-
         # Create symbolic variables
         t_activations = theano.shared(activations, name="activations")
         t_activation_times = theano.shared(input_length, name="activation_times")
@@ -39,7 +35,7 @@ class TestCTC(unittest.TestCase):
 
         cost, grad = train()
 
-        utt.assert_allclose(expected_grads, grad)
+        utt.assert_allclose(expected_grads / cost.shape[0], grad)
         utt.assert_allclose(expected_costs, cost)
 
     # Test obtained from Torch tutorial at:
@@ -94,7 +90,7 @@ class TestCTC(unittest.TestCase):
         self.run_ctc(activations, labels, activation_times, expected_costs, expected_gradients)
 
     def test_verify_grad(self):
-        def ctc_op_functor(acts, labels, in_lengths):
+        def ctc_op_functor(labels, in_lengths):
             def wrapper(acts):
                 # Create auxiliary symbolic variables
                 t_activation_times = theano.shared(in_lengths, name="activation_times")
@@ -110,8 +106,6 @@ class TestCTC(unittest.TestCase):
 
         labels = np.asarray([[1, 2], [1, 2]], dtype=np.int32)
 
-        ctc_op = ctc_op_functor(activations, labels, activation_times)
+        ctc_op = ctc_op_functor(labels, activation_times)
 
-        rng = numpy.random.RandomState(42)
-
-        T.verify_grad(ctc_op, [activations], rng=rng)
+        utt.verify_grad(ctc_op, [activations])
