@@ -639,7 +639,6 @@ class GpuSoftmax(GpuKernelBase, Op):
                         local_barrier();
                     }
                 }
-                local_barrier();
                 %(ctype)s row_max = buf[0];
                 local_barrier();
                 for(ga_int __i=LID_0; __i<N; __i+=LDIM_0){
@@ -661,14 +660,12 @@ class GpuSoftmax(GpuKernelBase, Op):
                     local_barrier();
                     //reduce so that LID_0 0 has the reduction of everything
                     for (ga_uint _n = GA_WARP_SIZE / 2; _n > 0; _n /= 2) {
-                    if (LID_0 < _n && LID_0 + _n < N)
-                        buf[LID_0] = buf[LID_0] + buf[LID_0+_n];
-                    local_barrier();
+                        if (LID_0 < _n && LID_0 + _n < N)
+                            buf[LID_0] = buf[LID_0] + buf[LID_0+_n];
+                        local_barrier();
                     }
                 }
-                        local_barrier();
                 %(ctype)s row_sum = buf[0];
-                local_barrier();
                 for(ga_int __i=LID_0; __i<N; __i+=LDIM_0) {
                     buf[__i] = buf2[__i] / row_sum;
                 }
@@ -720,7 +717,6 @@ class GpuSoftmax(GpuKernelBase, Op):
                         local_barrier();
                     }
                 }
-                local_barrier();
                 %(ctype)s row_max = buf[0];
                 local_barrier();
 
@@ -748,13 +744,10 @@ class GpuSoftmax(GpuKernelBase, Op):
                     }
                 }
 
-                local_barrier();
                 %(ctype)s row_sum = buf[0];
-                local_barrier();
                 for (ga_int tx = LID_0; tx< N; tx += LDIM_0){
                     sm_ptr[tx * sm_s1] = %(write_sm)s(exp(%(load_x)s(x_ptr[tx * sx1]) - row_max) / row_sum);
                 }
-                local_barrier();
                 local_barrier();
             }
         }
@@ -962,7 +955,6 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
                     }
                 }
 
-                local_barrier();
                 %(ctype)s row_max = buf[0];
                 local_barrier();
                 for(ga_int __i=LID_0; __i<N; __i+=LDIM_0){;
@@ -990,9 +982,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
                     }
                 }
 
-                local_barrier();
                 %(ctype)s row_sum = buf[0];
-                local_barrier();
                 for(ga_int __i=LID_0; __i<N; __i+=LDIM_0){
                     buf[__i] = buf2[__i] / row_sum;
                 }
@@ -1047,10 +1037,8 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
                     }
                 }
 
-                local_barrier();
                 %(ctype)s row_max = buf[0];
                 local_barrier();
-
                 {
                     // This function trashes buf[1..n_threads],
                     // leaving the reduction result in buf[0].
@@ -1075,13 +1063,10 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
                     }
                 }
 
-                local_barrier();
                 %(ctype)s row_sum = buf[0];
-                local_barrier();
                 for (ga_int tx = LID_0; tx< N; tx += LDIM_0){
                     sm_ptr[tx * sm_s1] = %(write_sm)s(exp(%(load_x)s(x_ptr[tx * sx1]) + %(load_b)s(b[tx * sb0]) - row_max) / row_sum);
                 }
-                local_barrier();
                 local_barrier();
             }
         }
