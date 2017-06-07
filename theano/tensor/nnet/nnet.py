@@ -396,6 +396,11 @@ class SoftmaxGrad(Abstract_SoftmaxGrad):
             dy = tensor.shape_padleft(dy, n_ones=1)
         if sm.ndim == 1:
             sm = tensor.shape_padleft(sm, n_ones=1)
+        # Check if axis is a scalar
+        try:
+            opt.get_scalar_constant_value(axis)
+        except tensor.NotScalarConstantError:
+            raise ValueError('axis must be a scalar. Use abstract_softmax instead Got ', axis.type)
         return Apply(self, [dy, sm, axis], [sm.type()])
 
     def c_code_cache_version(self):
@@ -603,6 +608,11 @@ class Softmax(Abstract_softmax):
         # Check if axis is an integer
         if axis.type.dtype not in tensor.int_dtypes:
             raise ValueError('axis must be an integer. Got ', axis.type)
+        # Check if axis is a scalar
+        try:
+            opt.get_scalar_constant_value(axis)
+        except tensor.NotScalarConstantError:
+            raise ValueError('axis must be a scalar. Use abstract_softmax instead Got ', axis.type)
         return Apply(self, [x, axis], [x.type()])
 
     def L_op(self, inp, outputs, grads):
@@ -858,6 +868,11 @@ class LogSoftmax(Abstract_logsoftmax):
         # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
+        # Check if axis is a scalar
+        try:
+            opt.get_scalar_constant_value(axis)
+        except tensor.NotScalarConstantError:
+            raise ValueError('axis must be a scalar. Use abstract_softmax instead Got ', axis.type)
         return Apply(self, [x, axis], [x.type()])
 
     def c_headers(self):
