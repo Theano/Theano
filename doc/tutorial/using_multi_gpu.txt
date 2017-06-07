@@ -36,7 +36,7 @@ The mapping from context names to devices is done through the
     dev0->cuda0;dev1->cuda1
 
 Let's break it down.  First there is a list of mappings.  Each of
-these mappings is separeted by a semicolon ';'.  There can be any
+these mappings is separated by a semicolon ';'.  There can be any
 number of such mappings, but in the example above we have two of them:
 `dev0->cuda0` and `dev1->cuda1`.
 

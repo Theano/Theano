@@ -347,7 +347,7 @@ RandomStream object (a random number generator) for each such
 variable, and draw from it as necessary. We will call this sort of
 sequence of random numbers a *random stream*. *Random streams* are at
 their core shared variables, so the observations on shared variables
-hold here as well. Theanos's random objects are defined and implemented in
+hold here as well. Theano's random objects are defined and implemented in
 :ref:`RandomStreams<libdoc_tensor_shared_randomstreams>` and, at a lower level,
 in :ref:`RandomStreamsBase<libdoc_tensor_raw_random>`.
 

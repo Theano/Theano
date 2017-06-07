@@ -9,7 +9,7 @@
    :synopsis: various ops relating to neural networks
 .. moduleauthor:: LISA
 
-Theano was originally developped for machine learning applications, particularly
+Theano was originally developed for machine learning applications, particularly
 for the topic of deep learning. As such, our lab has developed many functions
 and ops which are particular to neural networks and deep learning.
 

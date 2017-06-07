@@ -66,14 +66,14 @@ and rows. They have both the same attributes: ``data``, ``indices``, ``indptr`` 
     sparse matrix.
 
   * The ``shape`` attribute is exactly the same as the ``shape`` attribute of a dense (i.e. generic)
-    matrix. It can be explicitly specified at the creation of a sparse matrix if it cannot be infered
+    matrix. It can be explicitly specified at the creation of a sparse matrix if it cannot be inferred
     from the first three attributes.
 
 Which format should I use?
 --------------------------
 
 At the end, the format does not affect the length of the ``data`` and ``indices`` attributes. They are both
-completly fixed by the number of elements you want to store. The only thing that changes with the format
+completely fixed by the number of elements you want to store. The only thing that changes with the format
 is ``indptr``. In ``csc`` format, the matrix is compressed along columns so a lower number of columns will
 result in less memory use. On the other hand, with the ``csr`` format, the matrix is compressed along
 the rows and with a matrix that have a lower number of rows, ``csr`` format is a better choice. So here is the rule:
@@ -83,7 +83,7 @@ the rows and with a matrix that have a lower number of rows, ``csr`` format is a
     If shape[0] > shape[1], use ``csc`` format. Otherwise, use ``csr``.
 
 Sometimes, since the sparse module is young, ops does not exist for both format. So here is
-what may be the most relevent rule:
+what may be the most relevant rule:
 
 .. note::
 

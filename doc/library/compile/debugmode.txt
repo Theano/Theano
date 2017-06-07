@@ -133,7 +133,8 @@ Reference
         Initialize member variables.
 
         If any of these arguments (except optimizer) is not None, it overrides the class default.
-        The linker arguments is not used. It is set their to allow Mode.requiring() and some other fct to work with DebugMode too.
+        The linker arguments is not used. It is set there to allow
+        Mode.requiring() and some other functions to work with DebugMode too.
 
 
 
