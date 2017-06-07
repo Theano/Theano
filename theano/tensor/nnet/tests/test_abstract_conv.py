@@ -1720,8 +1720,8 @@ class Grouped_conv_noOptim(unittest.TestCase):
 
     def test_fwd(self):
         for imshp, kshp, groups in zip(self.img_shape, self.kern_shape, self.num_groups):
-            img = np.random.random(imshp).astype('float32')
-            kern = np.random.random(kshp).astype('float32')
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            kern = np.random.random(kshp).astype(theano.config.floatX)
             split_imgs = np.split(img, groups, axis=1)
             split_kern = np.split(kern, groups, axis=0)
             img_sym = theano.tensor.tensor4('img')
@@ -1757,8 +1757,8 @@ class Grouped_conv_noOptim(unittest.TestCase):
 
     def test_gradweights(self):
         for imshp, kshp, tshp, groups in zip(self.img_shape, self.kern_shape, self.top_shape, self.num_groups):
-            img = np.random.random(imshp).astype('float32')
-            top = np.random.random(tshp).astype('float32')
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            top = np.random.random(tshp).astype(theano.config.floatX)
             split_imgs = np.split(img, groups, axis=1)
             split_top = np.split(top, groups, axis=1)
             img_sym = theano.tensor.tensor4('img')
@@ -1797,8 +1797,8 @@ class Grouped_conv_noOptim(unittest.TestCase):
 
     def test_gradinputs(self):
         for imshp, kshp, tshp, groups in zip(self.img_shape, self.kern_shape, self.top_shape, self.num_groups):
-            kern = np.random.random(kshp).astype('float32')
-            top = np.random.random(tshp).astype('float32')
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+            top = np.random.random(tshp).astype(theano.config.floatX)
             split_kerns = np.split(kern, groups, axis=0)
             split_top = np.split(top, groups, axis=1)
 

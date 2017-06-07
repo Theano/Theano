@@ -430,8 +430,8 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
     def test_graph(self):
         # define common values  first
         groups = 3
-        bottom = np.random.rand(3, 6, 5, 5).astype('float32')
-        kern = np.random.rand(9, 2, 3, 3).astype('float32')
+        bottom = np.random.rand(3, 6, 5, 5).astype(theano.config.floatX)
+        kern = np.random.rand(9, 2, 3, 3).astype(theano.config.floatX)
         bottom_sym = T.tensor4('bottom')
         kern_sym = T.tensor4('kern')
 
