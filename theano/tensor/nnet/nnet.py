@@ -2014,7 +2014,8 @@ def binary_crossentropy(output, target):
     TODO : Rewrite as a scalar, and then broadcast to tensor.
 
     """
-    return -(target * tensor.log(output) + (1.0 - target) * tensor.log(1.0 - output))
+    one = np.asarray(1.0).astype(theano.config.floatX)
+    return -(target * tensor.log(output) + (one - target) * tensor.log(one - output))
 
 
 def sigmoid_binary_crossentropy(output, target):
