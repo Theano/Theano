@@ -17,7 +17,6 @@ import logging
 import warnings
 import numpy as np
 from six.moves import xrange
-from six import integer_types
 
 import theano
 from theano import gof
@@ -28,15 +27,11 @@ from theano.tensor import basic as tensor, subtensor, opt, elemwise
 from theano.tensor.type import (values_eq_approx_remove_inf,
                                 values_eq_approx_remove_nan)
 from theano.compile import optdb
-from theano.gof import Apply, Variable
-from theano.tensor.type_other import NoneConst
+from theano.gof import Apply
 from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
-
-# Define common subsets of dtypes (as strings)
-integer_dtypes = list(map(str, scalar.integer_types))
 
 ############
 #
@@ -58,7 +53,7 @@ class SoftmaxWithBias(gof.Op):
 
     """
 
-    nin = 3 # Tensor, bias, axis
+    nin = 3  # Tensor, bias, axis
     nout = 1
     __props__ = ()
 
@@ -563,8 +558,6 @@ class Abstract_softmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
-        # Be sure to have a tuple
-        axes = tuple(axes)
         # Apply softmax on the specified dimension
         e_x = np.exp(x - x.max(axis=axes, keepdims=True))
         sm = e_x / e_x.sum(axis=axes, keepdims=True)
@@ -598,7 +591,7 @@ class Softmax(Abstract_softmax):
     This function get applied when axis is a scalar and uses a fast C optimization.
     """
 
-    nin = 2 # tensor, axis
+    nin = 2  # tensor, axis
     nout = 1
     __props__ = ()
 
@@ -820,7 +813,6 @@ class Abstract_logsoftmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
-        axes = tuple(axes)
         xdev = x - x.max(axis=axes, keepdims=True)
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
         output_storage[0][0] = lsm
