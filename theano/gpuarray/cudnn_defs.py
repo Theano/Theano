@@ -19,8 +19,27 @@ from __future__ import absolute_import, print_function, division
 
 from theano.gof import CEnumType
 
-
 HALF, FLOAT, DOUBLE = ('float16', 'float32', 'float64')
+TRUE_HALF_CONFIG = (HALF, HALF)
+PSEUDO_HALF_CONFIG = (HALF, FLOAT)
+FLOAT_CONFIG = (FLOAT, FLOAT)
+DOUBLE_CONFIG = (DOUBLE, DOUBLE)
+
+
+def is_true_half_config(dtype, precision):
+    return dtype == precision == HALF
+
+
+def is_pseudo_half_config(dtype, precision):
+    return dtype == HALF and precision == FLOAT
+
+
+def is_float_config(dtype, precision):
+    return dtype == precision == FLOAT
+
+
+def is_double_config(dtype, precision):
+    return dtype == precision == DOUBLE
 
 
 # NB: Some cuDNN algorithms are listed in cuDNN enums but not implemented.
@@ -103,22 +122,97 @@ class CuDNNV51(object):
     # empty list of enum to don't crash with cudnn 5
     cudnnReduceTensorOp_t = CEnumType()
 
-    def supported_precisions(self, dtype):
+    def get_supported_dtype_configs(self):
         """
-        Return the tuple of precisions supported by cuDNN for given input data type.
+        Return the tuple of data type configurations supported by this version of cuDNN.
         This is currently convenient for both cuDNN V5.1 and V6, as Theano does not
         yet support new data types (like INT8, INT8x4, etc.).
         """
-        assert dtype in (HALF, FLOAT, DOUBLE)
-        if dtype == HALF:
-            # TRUE_HALF_CONFIG, PSEUDO_HALF_CONFIG
-            return (HALF, FLOAT)
-        if dtype == FLOAT:
-            # FLOAT_CONFIG
-            return (FLOAT,)
-        if dtype == DOUBLE:
-            # DOUBLE_CONFIG
-            return (DOUBLE,)
+        return (TRUE_HALF_CONFIG, PSEUDO_HALF_CONFIG, FLOAT_CONFIG, DOUBLE_CONFIG)
+
+    def get_fwd_dtype_configs(self, check_runtime=None):
+        # NB: "TRUE_HALF_CONFIG is only supported on architectures with true fp16 support
+        # (compute capability 5.3 and 6.0)". Can be checked at runtime only.
+        if check_runtime is None or check_runtime(*TRUE_HALF_CONFIG):
+            return self.get_supported_dtype_configs()
+        return (PSEUDO_HALF_CONFIG, FLOAT_CONFIG, DOUBLE_CONFIG)
+
+    def get_bwd_filter_dtype_configs(self, check_runtime=None):
+        return self.get_supported_dtype_configs()
+
+    def get_bwd_data_dtype_configs(self, check_runtime=None):
+        return self.get_supported_dtype_configs()
+
+    def fwd_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
+        algorithms = self.cudnnConvolutionFwdAlgo_t
+        algo = algorithms.fromalias(algo)
+        if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM:
+            return not is_true_half_config(dtype, precision)
+        if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM:
+            return ndim == 2 or not is_true_half_config(dtype, precision)
+        if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_GEMM:
+            return ndim == 2 and not is_true_half_config(dtype, precision)
+        # CUDNN_CONVOLUTION_FWD_ALGO_DIRECT: not implemented.
+        if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_FFT:
+            return ndim == 2 and (is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision))
+        if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING:
+            if ndim == 2:
+                return is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision)
+                # NB: For cuDNN V6:
+                # " Data Type Config Support: PSEUDO_HALF_CONFIG, FLOAT_CONFIG
+                # (DOUBLE_CONFIG is also supported when the task can be handled by 1D FFT,
+                # ie, one of the filter dimension, width or height is 1)"
+                # Could be checked only when being in C code.
+            if ndim == 3:
+                return not is_true_half_config(dtype, precision)
+        if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD:
+            return ndim == 2 and (is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision))
+        if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED:
+            # NB: "If wDesc 's filter (height, width) is (5,5), data type config TRUE_HALF_CONFIG is not supported".
+            # We could not check it before being in C code.
+            return ndim == 2 and not is_double_config(dtype, precision)
+        return False
+
+    def bwd_filter_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
+        algorithms = self.cudnnConvolutionBwdFilterAlgo_t
+        algo = algorithms.fromalias(algo)
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0:
+            return not is_true_half_config(dtype, precision)
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1:
+            return ndim == 2
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT:
+            return ndim == 2 and (is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision))
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3:
+            return not is_true_half_config(dtype, precision)
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED:
+            # NB: "If wDesc 's filter (height, width) is (5,5), data type config TRUE_HALF_CONFIG is not supported".
+            # We could not check it before being in C code.
+            return ndim == 2 and not is_double_config(dtype, precision)
+        return False
+
+    def bwd_data_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
+        algorithms = self.cudnnConvolutionBwdDataAlgo_t
+        algo = algorithms.fromalias(algo)
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_0:
+            return not is_true_half_config(dtype, precision)
+        # CUDNN_CONVOLUTION_BWD_DATA_ALGO_1: all data type configs supported.
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT:
+            return ndim == 2 and (is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision))
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING:
+            if ndim == 2:
+                return is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision)
+                # NB: For cuDNN V6: "(DOUBLE_CONFIG is also supported when the task can be handled by 1D FFT,
+                # ie, one of the filter dimension, width or height is 1)"
+                # Could be checked only when being in C code.
+            if ndim == 3:
+                return not is_true_half_config(dtype, precision)
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD:
+            return ndim == 2 and is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision)
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED:
+            # NB: "If wDesc 's filter (height, width) is (5,5), data type config TRUE_HALF_CONFIG is not supported".
+            # We could not check it before being in C code.
+            return ndim == 2 and not is_double_config(dtype, precision)
+        return False
 
 
 class CuDNNV6(CuDNNV51):
@@ -161,6 +255,17 @@ class CuDNNV6(CuDNNV51):
                                       ('CUDNN_REDUCE_TENSOR_NORM1', 'norm1'),
                                       ('CUDNN_REDUCE_TENSOR_NORM2', 'norm2'),
                                       ctype='cudnnReduceTensorOp_t')
+
+    def bwd_filter_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
+        is_supported = super(CuDNNV6, self).bwd_filter_algo_supports_dtype_config(algo, dtype, precision, ndim)
+        if not is_supported:
+            algorithms = self.cudnnConvolutionBwdFilterAlgo_t
+            algo = algorithms.fromalias(algo)
+            if algo == algorithms.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING:
+                return ndim == 2 and (is_pseudo_half_config(dtype, precision) or
+                                      is_float_config(dtype, precision) or
+                                      is_double_config(dtype, precision))
+        return is_supported
 
 
 class CuDNNV7(CuDNNV6):

@@ -909,11 +909,7 @@ class EnumType(Type, dict):
 
     .. note::
 
-        :class:`EnumType` is not complete and should never be used for regular graph operations.
-
-        :class:`EnumList` is not complete and should never be used for regular graph operations.
-
-        **:class:`CEnumType` is complete.**
+        This Type (and subclasses) is not complete and should never be used for regular graph operations.
 
     """
 
@@ -1052,9 +1048,6 @@ class EnumType(Type, dict):
         #endif
         #ifndef PyInt_AsLong
             #define PyInt_AsLong PyLong_AsLong
-        #endif
-        #ifndef PyInt_FromLong
-            #define PyInt_FromLong PyLong_FromLong
         #endif
     #endif
     """
@@ -1247,23 +1240,6 @@ class CEnumType(EnumList):
                    case %(i)d: %(name)s = %(constant_cname)s; break;
                    """ % dict(i=i, name=name, constant_cname=swapped_dict[i]) for i in sorted(swapped_dict.keys())),
                    fail=sub['fail'])
-
-    def c_sync(self, name, sub):
-        return """
-        int py_value = -1;
-        Py_XDECREF(py_%(name)s);
-        /* We assume that ctype is an integer type usable in a switch. */
-        switch (%(name)s) {
-            %(cases)s
-            default:
-                PyErr_SetString(PyExc_ValueError, "CEnumType: cannot map C value to Python constant.");
-                {%(fail)s}
-                break;
-        }
-        py_%(name)s = PyInt_FromLong(py_value);
-        """ % dict(name=name, fail=sub['fail'], cases=''.join("""
-            case %(constant_cname)s: py_value = %(constant_pyvalue)d; break;
-        """ % dict(constant_cname=k, constant_pyvalue=v) for k, v in sorted(self.items(), key=lambda t: t[1])))
 
     def c_code_cache_version(self):
         return (1, super(CEnumType, self).c_code_cache_version())
