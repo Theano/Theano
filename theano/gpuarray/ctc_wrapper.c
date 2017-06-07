@@ -4,7 +4,7 @@
 
 typedef struct ctc_context {
     struct ctcOptions options;
-    void * workspace;
+    PyGpuArrayObject * workspace;
     int * input_lengths;
     int * flat_labels;
     int * label_lengths;
@@ -24,8 +24,7 @@ void ctc_context_init(ctc_context_t * context)
 
 void ctc_context_destroy(ctc_context_t * context)
 {
-    if ( NULL != context->workspace )
-        cudaFree( context->workspace );
+    Py_XDECREF( context->workspace );
 
     if ( NULL != context->input_lengths )
         free( context->input_lengths );
@@ -153,6 +152,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     {
         Py_XDECREF( *out_costs );
 
+        // GA_FLOAT is equivalent to Numpy's npy_float32 type
         *out_costs = pygpu_zeros( 1, &cost_size, GA_FLOAT, GA_C_ORDER,
             ctx, Py_None );
 
@@ -182,6 +182,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
             Py_XDECREF( *out_gradients );
 
             const size_t * activation_dims = PyGpuArray_DIMS( in_activations );
+            // GA_FLOAT is equivalent to Numpy's npy_float32 type
             *out_gradients = pygpu_zeros( 3, activation_dims, GA_FLOAT, GA_C_ORDER,
                 ctx, Py_None );
 
@@ -214,7 +215,10 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         return 1;
     }
 
-    if ( cudaSuccess != cudaMalloc( &(context->workspace), gpu_workspace_size ) )
+    context->workspace = pygpu_empty(1, &gpu_workspace_size, GA_BYTE,
+        GA_C_ORDER, ctx, Py_None );
+
+    if ( NULL == context->workspace )
     {
         ctc_context_destroy( context );
 
@@ -225,7 +229,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
 
     ctc_error = ctc_check_result( compute_ctc_loss( activations, gradients,
         context->flat_labels, context->label_lengths, context->input_lengths,
-        alphabet_size, minibatch_size, costs, context->workspace,
+        alphabet_size, minibatch_size, costs, PyGpuArray_DEV_DATA(context->workspace),
         context->options ), "Failed to compute CTC loss function!" );
 
     if ( ctc_error )  // Exception is set by ctc_check_result, return error here
