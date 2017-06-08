@@ -106,7 +106,7 @@ def contains_nan(arr, node=None, var=None):
     """
     if not _is_numeric_value(arr, var):
         return False
-    elif "int" in getattr(arr, 'dtype', ''):
+    elif "int" in str(getattr(arr, 'dtype', '')):
         return False
     elif pygpu_available and isinstance(arr, GpuArray):
         return np.isnan(f_gpua_min(arr.reshape(arr.size)))
