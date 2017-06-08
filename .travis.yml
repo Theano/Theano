@@ -23,7 +23,7 @@ python:
 
 # command to install dependencies
 before_install:
-  - theano-cache purge # attempt to purge any theano cache before installation
+  - rm -rf ~/.theano # attempt to purge any theano cache before installation
   - ./.travis/travis_before_install.sh
   - export PATH=/home/travis/miniconda2/bin:$PATH
 
