@@ -105,6 +105,7 @@ whitelist_flake8 = [
     "d3viz/__init__.py",
     "d3viz/tests/__init__.py",
     "gof/tests/__init__.py",
+    "contrib/__init__.py",
 ]
 
 

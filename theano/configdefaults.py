@@ -184,7 +184,7 @@ AddConfigVar(
 # Currently, only support "mkl" option.
 # Plan to support other library such as mkl-dnn in future.
 AddConfigVar('mkl.lib',
-             "'mkl', use Intel MKL library for dnn primitive functionality.",
+             "'mkl', choose MKL as the default dnn library for CPU.",
              EnumStr("mkl"),
              in_c_key=False)
 

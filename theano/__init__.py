@@ -126,7 +126,7 @@ else:
         raise ImportError("The nose module is not installed."
                           " It is needed for Theano tests.")
 
-if config.device.startwith('cpu'):
+if config.device.startswith('cpu'):
     try:
         import theano.contrib.mkl
     except (TypeError, NotImplementedError, RuntimeError) as e:
