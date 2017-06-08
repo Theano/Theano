@@ -56,9 +56,6 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         gof.OpenMPOp.__init__(self)
 
         self.compute_grad = compute_grad
-        self.costs = T.fvector(name="ctc_cost")
-        if self.compute_grad:
-            self.gradients = T.ftensor3(name="ctc_grad")
 
         if config.ctc.root == "":
             raise ValueError('ctc.root variable is not set, please set it '
@@ -111,11 +108,16 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         if t_input_lengths.type.dtype != 'int32':
             raise TypeError('Label lengths must use the int32 type!')
 
+        costs = T.fvector(name="ctc_cost")
+
+        if self.compute_grad:
+            gradients = T.ftensor3(name="ctc_grad")
+
         # Return only the cost. Gradient will be returned by grad()
         self.default_output = 0
 
         return gof.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
-                         outputs=[self.costs, self.gradients])
+                         outputs=[costs, gradients])
 
     def L_op(self, inputs, outputs, output_grads):
         if not ctc_enabled:
