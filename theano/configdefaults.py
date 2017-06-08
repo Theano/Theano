@@ -181,6 +181,18 @@ AddConfigVar(
     BoolParam(True, allow_override=False),
     in_c_key=False)
 
+AddConfigVar('mkl.lib',
+             "'mkl', use Intel MKL library for dnn primitive functionality.",
+             EnumStr("mkl"),
+             in_c_key=False)
+
+AddConfigVar('mkl.nn.enabled',
+             "'auto', use MKL dnn primitive if available, but silently fall back"
+             " to not using it if not present."
+             " If True and MKL dnn can not be used, raise an error."
+             " If False, disable MKL dnn",
+             EnumStr("auto", "True", "False"),
+             in_c_key=False)
 
 AddConfigVar('gpuarray.sync',
              """If True, every op will make sure its work is done before
