@@ -1621,6 +1621,7 @@ def test_without_dnn_batchnorm_train_without_running_averages():
     f_abstract(X, Scale, Bias, Dy)
 
 
+@utt.expectedFailure_fast
 def test_dnn_batchnorm_train_inplace():
     # test inplace_running_mean and inplace_running_var
     if not dnn.dnn_available(test_ctx_name):
@@ -1743,6 +1744,7 @@ def test_batchnorm_inference():
                 utt.assert_allclose(outputs_abstract[5], outputs_ref[5], rtol=2e-3, atol=4e-5)  # dvar
 
 
+@utt.expectedFailure_fast
 def test_batchnorm_inference_inplace():
     # test inplace
     if not dnn.dnn_available(test_ctx_name):

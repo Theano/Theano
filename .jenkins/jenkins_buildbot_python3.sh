@@ -57,6 +57,7 @@ echo
 echo
 
 set -x
+<<<<<<< HEAD
 
 # Fast compile and float64
 FILE=${BUILDBOT_DIR}/theano_python3_fastcompile_f64_tests.xml
@@ -66,4 +67,5 @@ THEANO_FLAGS=$THEANO_FLAGS,compiledir=$COMPILEDIR,mode=FAST_COMPILE,warn.ignore_
 # Fast run and float32
 FILE=${BUILDBOT_DIR}/theano_python3_fastrun_f32_tests.xml
 NAME=fastrun_f32
-THEANO_FLAGS=$THEANO_FLAGS,compiledir=$COMPILEDIR,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,magma.enabled=true,floatX=float32 python3 bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
+THEANO_FLAGS=$THEANO_FLAGS,compiledir=$COMPILEDIR,cycle_detection='fast',mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,magma.enabled=true,floatX=float32 python3 bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
+

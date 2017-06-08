@@ -27,6 +27,7 @@ def makeSharedTester(shared_constructor_,
                      theano_fct_,
                      ref_fct_,
                      cast_value_=np.asarray,
+                     expect_fail_fast_shape_inplace=True,
                      ):
     """
     This is a generic fct to allow reusing the same test function
@@ -549,6 +550,10 @@ def makeSharedTester(shared_constructor_,
                 assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo]) == 1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op, tensor.blas.Gemm))
                 assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
+
+        if theano.config.cycle_detection == 'fast' and expect_fail_fast_shape_inplace and theano.config.mode != 'FAST_COMPILE':
+            test_specify_shape_inplace = unittest.expectedFailure(test_specify_shape_inplace)
+
         def test_values_eq(self):
             """ Test the type.values_eq[_approx] function"""
             dtype = self.dtype
