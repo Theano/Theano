@@ -93,7 +93,7 @@ def test_advinc_subtensor1():
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
-        rep[[0, 2]] += yval
+        np.add.at(rep, [0, 2], yval)
         assert np.allclose(rval, rep)
 
 
