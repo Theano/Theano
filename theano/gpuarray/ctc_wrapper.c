@@ -1,5 +1,3 @@
-#section kernels
-
 #section support_code
 
 typedef struct ctc_context {
