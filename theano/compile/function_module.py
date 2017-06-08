@@ -136,8 +136,7 @@ class Supervisor:
             if fgraph.has_destroyers(self.protected):
                 raise gof.InconsistencyError("Trying to destroy a protected"
                                              "Variable.")
-            else:
-                return True
+            return True
         if not hasattr(fgraph, 'destroyers'):
             return True
         for r in self.protected + list(fgraph.outputs):
