@@ -1068,11 +1068,10 @@ def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
 @op_lifter([tensor.AdvancedIncSubtensor1])
 @register_opt2([tensor.AdvancedIncSubtensor1], 'fast_compile')
 def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
-    if isinstance(op, (tensor.AdvancedIncSubtensor1)):
-        context = get_context(context_name)
-        # This is disabled on non-cuda contexts
-        if context.kind != b'cuda':
-            return None
+    context = get_context(context_name)
+    # This is disabled on non-cuda contexts
+    if context.kind != b'cuda':
+        return None
 
     x, y, ilist = inputs
 
