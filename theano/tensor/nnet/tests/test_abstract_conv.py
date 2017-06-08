@@ -1699,3 +1699,49 @@ class TestConv2dGrads(unittest.TestCase):
                                                                                                   )
                         f_new = theano.function([self.x, self.output_grad_wrt], conv_wrt_w_out)
                         utt.assert_allclose(f_new(input_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))
+
+
+class TestUnsharedConv(unittest.TestCase):
+    def setUp(self):
+        self.mode = theano.compile.mode.Mode(optimizer='None')
+
+        self.imshp = (2, 6, 4, 4)
+        self.kshp = (5, 6, 3, 3, 2, 2)
+        self.topgrad_shape = (2, 5, 3, 3)
+
+    def test_fwd(self):
+        tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
+
+        single_kshp = self.kshp[:2] + self.kshp[4:]
+
+        inputs = theano.tensor.tensor4()
+        filters = tensor6()
+        filters_ref = theano.tensor.tensor4()
+
+        inputs_val = np.random.random(self.imshp).astype(theano.config.floatX)
+        filters_val = np.random.random(self.kshp).astype(theano.config.floatX)
+
+        conv_unshared = conv.conv2d(inputs, filters, unshared=True)
+        unshared_func = theano.function([inputs, filters], conv_unshared, mode=self.mode)
+        unshared_val = unshared_func(inputs_val, filters_val)
+
+        conv_ref = conv.conv2d(inputs, filters_ref, unshared=False)
+        ref_func = theano.function([inputs, filters_ref], conv_ref, mode=self.mode)
+
+        for i in range(0, self.kshp[2]):
+            for j in range(0, self.kshp[3]):
+                single_filter = filters_val[:, :, i, j].reshape(single_kshp)
+                ref_val = ref_func(inputs_val, single_filter)
+                utt.assert_allclose(ref_val[:, :, i, j], unshared_val[:, :, i, j])
+
+    def test_gradweight(self):
+        inputs = theano.tensor.tensor4()
+        topgrad = theano.tensor.tensor4()
+
+        inputs_val = np.random.random(self.imshp).astype(theano.config.floatX)
+        topgrad_val = np.random.random(self.topgrad_shape).astype(theano.config.floatX)
+
+        grad_weights = conv.conv2d_grad_wrt_weights(inputs, topgrad,
+                                                    self.kshp, unshared=True)
+        grad_func = theano.function([inputs, topgrad], grad_weights, mode=self.mode)
+        grad_val = grad_func(inputs_val, topgrad_val)

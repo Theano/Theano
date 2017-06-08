@@ -776,7 +776,8 @@ def conv2d_grad_wrt_inputs(output_grad,
                                               border_mode=border_mode,
                                               subsample=subsample,
                                               filter_flip=filter_flip,
-                                              filter_dilation=filter_dilation)
+                                              filter_dilation=filter_dilation,
+                                              unshared=unshared)
 
     return grad_input_op(filters, output_grad, input_shape[-2:])
 
@@ -1537,11 +1538,10 @@ class BaseAbstractConv(Op):
                                           mode, [1] * self.convdim, dilation, unshared)
 
         if unshared is True:
-            out_rows = out_shape[2]
-            out_cols = out_shape[3]
-
-            if (kern.shape[2] != out_rows) or (kern.shape[3] != out_cols):
-                raise ValueError("Kernel shape does not match output size")
+            if (kern.shape[2], kern.shape[3]) != (out_shape[2], out_shape[3]):
+                raise ValueError('Kernel shape ({},{}) does not match '
+                                 'output size ({},{})'.format(kern.shape[2], kern.shape[3],
+                                                              out_shape[2], out_shape[3]))
 
         out = np.zeros(out_shape, dtype=img.dtype)
         dil_kern_shp = kern.shape[:-self.convdim] + tuple(
@@ -1565,6 +1565,7 @@ class BaseAbstractConv(Op):
                             if unshared is True:
                                 for row in xrange(kern.shape[2]):
                                     for col in xrange(kern.shape[3]):
+                                        val = _valfrommode('valid')
                                         out[b, n, row, col] += _convolve2d(img[b, im0, row:row + kern.shape[4],
                                                                            col:col + kern.shape[5]],
                                                                            dilated_kern[n, im0, row, col, ...],
@@ -1756,7 +1757,7 @@ class AbstractConv2d(AbstractConv):
                                              self.border_mode,
                                              self.subsample,
                                              self.filter_flip,
-                                             self.filter_dilation.
+                                             self.filter_dilation,
                                              self.unshared)(
             weights, top, bottom.shape[-2:], add_assert_shape=False)
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
@@ -2169,7 +2170,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                  for i in range(2 + self.convdim)]
         expected_topgrad_shape = get_conv_output_shape(
             imshp, kern.shape,
-            self.border_mode, self.subsample, self.filter_dilation)
+            self.border_mode, self.subsample, self.filter_dilation, self.unshared)
         if not tuple(expected_topgrad_shape) == tuple(topgrad.shape):
             raise ValueError(
                 'invalid input_shape for gradInputs: the given input_shape '
@@ -2212,18 +2213,23 @@ class AbstractConv_gradInputs(BaseAbstractConv):
 
         # Rearranging the weights into the correct shape for unshared
         if self.unshared is True:
-            for i in range(0, kern.shape[2]):
-                for j in range(0, kern.shape[3]):
-                    for m in range(0, kern.shape[4]):
-                        for n in range(0, kern.shape[5]):
-                            if i + m > kern.shape[2] or j + n > kern.shape[3]:
-                                kern[:, :, i, j, m, m] = 0
+            new_kshp = (kern.shape[0], kern.shape[1],
+                        kern.shape[4] + topgrad.shape[2] - 1,
+                        kern.shape[5] + topgrad.shape[3] - 1,
+                        kern.shape[4], kern.shape[5])
+            new_kern = np.zeros((new_kshp), dtype=topgrad.dtype)
+            for i in range(0, new_kshp[2]):
+                for j in range(0, new_kshp[3]):
+                    for m in range(0, new_kshp[4]):
+                        for n in range(0, new_kshp[5]):
+                            if i + m >= kern.shape[2] or j + n >= kern.shape[3]:
+                                new_kern[:, :, i, j, m, n] = 0
                             else:
-                                kern[:, :, i, j, m, m] = kern[:, :, i + m, j + n, m, n]
+                                new_kern[:, :, i, j, m, n] = kern[:, :, i + m, j + n, m, n]
+            kern = new_kern
 
         if self.filter_flip:
             topgrad = topgrad[flip_filters]
-
         img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation,
                         unshared=self.unshared)
         if self.filter_flip:
