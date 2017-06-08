@@ -27,10 +27,8 @@ class TestCTC(unittest.TestCase):
         t_grad = T.grad(T.mean(t_cost), t_activations)
         # Compile symbolic functions
         train = theano.function([], [t_cost, t_grad])
-        test = theano.function([], [t_cost])
 
         cost, grad = train()
-        cost, = test()
 
         cpu_cost = np.empty(shape=cost.shape, dtype=np.float32)
         # Transfer costs from GPU memory to host
