@@ -22,6 +22,26 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
     configuration variables `config.ctc.enabled` and `config.ctc.root` be properly
     set.
 
+    Parameters
+    ----------
+    activations
+        Three-dimensional tensor, which has a shape of (t, m, p), where
+        t is the time index, m is the minibatch index, and p is the index
+        over the probabilities of each symbol in the alphabet. The memory
+        layout is assumed to be in C-order, which consists in the slowest
+        to the fastest changing dimension, from left to right. In this case,
+        p is the fastest changing dimension.
+    labels
+        A 1-D tensor of all the labels for the minibatch.
+    input_lengths
+        A 1-D tensor with the number of time steps for each sequence in
+        the minibatch.
+
+    Returns
+    -------
+    3D tensor
+        Cost of each example in the minibatch. Tensor is of shape
+        (time index, minibatch index, probabilities).
     """
     __props__ = ('compute_grad',)
 
@@ -71,23 +91,6 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         return ["ctc.h"] + gof.OpenMPOp.c_headers(self)
 
     def make_node(self, activations, labels, input_lengths):
-        """
-        Parameters
-        ----------
-        activations
-            Three-dimensional tensor, which has a shape of (t, m, p), where
-            t is the time index, m is the minibatch index, and p is the index
-            over the probabilities of each symbol in the alphabet. The memory
-            layout is assumed to be in C-order, which consists in the slowest
-            to the fastest changing dimension, from left to right. In this case,
-            p is the fastest changing dimension.
-        labels
-            A 1-D tensor of all the labels for the minibatch.
-        input_lengths
-            A 1-D tensor with the number of time steps for each sequence in
-            the minibatch.
-
-        """
         if not ctc_enabled:
             raise RuntimeError('Baidu CTC is not enabled and '
                                'ConnectionistTemporalClassification Op '
@@ -114,13 +117,14 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         return gof.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
                          outputs=[self.costs, self.gradients])
 
-    def grad(self, inputs, output_grads):
+    def L_op(self, inputs, outputs, output_grads):
         if not ctc_enabled:
             raise RuntimeError('Baidu CTC is not enabled and '
                                'ConnectionistTemporalClassification Op '
                                'can not be constructed.')
+        gradients = outputs[1]
         grad_op = output_grads[0]
-        total_grad = T.basic.batched_dot(grad_op, self.gradients.dimshuffle(1, 0, 2)).dimshuffle(1, 0, 2)
+        total_grad = T.basic.batched_dot(grad_op, gradients.dimshuffle(1, 0, 2)).dimshuffle(1, 0, 2)
         return [total_grad,
                 grad_undefined(self, 1, inputs[1]),
                 grad_undefined(self, 2, inputs[2])]
