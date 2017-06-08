@@ -744,6 +744,21 @@ import theano and print the config variable, as in:
 
     Location of the magma library.
 
+.. attribute:: config.ctc.enabled
+
+    Default: ``'False'``
+
+    If ``'True'``, use `warp-ctc <https://github.com/baidu-research/warp-ctc>`_ for CTC
+    loss computations.
+
+    If ``'False'``, disable warp-ctc.
+
+.. attribute:: config.ctc.root
+
+    Default: ``''``
+
+    Location of the warp-ctc library.
+
 .. attribute:: config.gcc.cxxflags
 
     Default: ``""``
