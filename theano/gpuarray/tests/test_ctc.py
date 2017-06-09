@@ -92,3 +92,24 @@ class TestCTC(unittest.TestCase):
         expected_gradients = np.asarray(grads, dtype=np.float32)
 
         self.run_ctc(activations, labels, activation_times, expected_costs, expected_gradients)
+
+    def test_verify_grad(self):
+        def ctc_op_functor(labels, in_lengths):
+            def wrapper(acts):
+                # Create auxiliary symbolic variables
+                t_activation_times = theano.shared(in_lengths, name="activation_times")
+                t_labels = theano.shared(labels, name="labels")
+                return ctc(acts, t_labels, t_activation_times)
+            return wrapper
+
+        activations = np.asarray([[[0.1, 0.6, 0.1, 0.1, 0.1], [0.1, 0.1, 0.6, 0.1, 0.1]],
+                                  [[0.6, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.5, 0.2, 0.1]]],
+                                 dtype=np.float32)
+
+        activation_times = np.asarray([2, 2], dtype=np.int32)
+
+        labels = np.asarray([[1, 2], [1, 2]], dtype=np.int32)
+
+        ctc_op = ctc_op_functor(labels, activation_times)
+
+        utt.verify_grad(ctc_op, [activations])
