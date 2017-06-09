@@ -39,7 +39,7 @@ class GpuConnectionistTemporalClassification(gof.COp):
 
     Returns
     -------
-    3D tensor
+    1-D tensor
         Cost of each example in the minibatch. Tensor is of shape
         (time index, minibatch index, probabilities).
     """
