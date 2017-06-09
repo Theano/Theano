@@ -2,7 +2,7 @@ FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn6-devel-ubuntu16.04--17.06
 
 ENV THEANO_VERSION 0.9.0
 LABEL com.nvidia.theano.version="${THEANO_VERSION}"
-ENV NVIDIA_THEANO_VERSION 17.06
+ENV NVIDIA_THEANO_VERSION 17.07
 
 RUN apt-get update && apt-get install -y --upgrade --no-install-recommends \
         cmake \
