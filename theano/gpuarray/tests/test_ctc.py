@@ -8,7 +8,6 @@ import theano.tensor as T
 from theano.tests import unittest_tools as utt
 import theano.gpuarray
 from theano.gpuarray.ctc import (ctc_enabled, ctc)
-from theano.gpuarray.basic_ops import gpu_contiguous
 
 
 class TestCTC(unittest.TestCase):
