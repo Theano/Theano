@@ -57,7 +57,7 @@ News
 
 * We support cuDNN if it is installed by the user.
 
-* Open Machine Learning Workshop 2014 `presentation <omlw2014/omlw_presentation.pdf>`_.
+* Open Machine Learning Workshop 2014 :download:`presentation <omlw2014/omlw_presentation.pdf>`.
 
 * Colin Raffel `tutorial on Theano <http://nbviewer.ipython.org/github/craffel/theano-tutorial/blob/master/Theano%20Tutorial.ipynb>`_.
 
