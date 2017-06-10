@@ -56,7 +56,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         return node.inputs[0].type.context
 
     def c_code_cache_version(self):
-        return (13,)
+        return (12, )
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
