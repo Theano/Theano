@@ -1717,6 +1717,8 @@ class Grouped_conv_noOptim(unittest.TestCase):
         self.top_shape = [(5, 6, 3, 3), (4, 6, 3, 3), (3, 4, 3, 1), (2, 4, 5, 3)]
         self.filter_dilation = (1, 1)
         self.ref_mode = 'FAST_RUN'
+        if theano.config.cxx == "" or not theano.config.blas.ldflags:
+            raise SkipTest("CorrMM needs cxx and blas")
 
     def test_fwd(self):
         for imshp, kshp, groups in zip(self.img_shape, self.kern_shape, self.num_groups):
