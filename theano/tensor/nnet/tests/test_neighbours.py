@@ -94,7 +94,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         shape = (2, 3, 5, 5)
         for dtype in self.dtypes:
             images = shared(np.asarray(np.arange(np.prod(
-                            shape)).reshape(shape), dtype=dtype))
+                shape)).reshape(shape), dtype=dtype))
             neib_shape = T.as_tensor_variable((3, 3))
             neib_step = T.as_tensor_variable((2, 2))
             for border in ['valid', 'ignore_borders']:
@@ -213,7 +213,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             for dtype in self.dtypes:
 
                 images = shared(np.asarray(np.arange(np.prod(
-                                shape)).reshape(shape), dtype=dtype))
+                    shape)).reshape(shape), dtype=dtype))
                 neib_shape = T.as_tensor_variable(neib_shape)
                 neib_step = T.as_tensor_variable(neib_step)
                 expected = np.asarray(expected)
@@ -261,13 +261,38 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                     f = theano.function([], close, mode=self.mode)
                     assert f()
 
+    def test_neibs_full_step_by_valid(self):
+        for shp_idx, (shape, neib_step) in enumerate([
+            [(7, 8, 11, 11), (1, 1)],
+            [(7, 8, 11, 11), (2, 2)],
+            [(7, 8, 11, 11), (3, 3)],
+            [(7, 8, 11, 11), (1, 3)],
+            [(7, 8, 11, 11), (3, 1)],
+            [(80, 90, 11, 11), (1, 2)],
+            [(1025, 9, 11, 11), (2, 1)],
+            [(1, 1, 11, 1037), (2, 3)],
+            [(1, 1, 1043, 11), (3, 2)]]
+        ):
+            for neib_shape in [(3, 3), (3, 9), (9, 3)]:
+                for dtype in self.dtypes:
+                    x = theano.shared(np.random.randn(*shape).astype(dtype))
+                    extra = (neib_shape[0] - 1, neib_shape[1] - 1)
+                    padded_shape = (x.shape[0], x.shape[1], x.shape[2] + 2 * extra[0], x.shape[3] + 2 * extra[1])
+                    padded_x = T.zeros(padded_shape)
+                    padded_x = T.set_subtensor(padded_x[:, :, extra[0]:-extra[0], extra[1]:-extra[1]], x)
+                    x_using_valid = images2neibs(padded_x, neib_shape, neib_step, mode="valid")
+                    x_using_full = images2neibs(x, neib_shape, neib_step, mode="full")
+                    close = T.allclose(x_using_valid, x_using_full)
+                    f = theano.function([], close, mode=self.mode)
+                    assert f()
+
     def test_neibs_bad_shape_wrap_centered(self):
         shape = (2, 3, 10, 10)
 
         for dtype in self.dtypes:
             images = shared(np.arange(
                 np.prod(shape), dtype=dtype
-                ).reshape(shape))
+            ).reshape(shape))
 
             for neib_shape in [(3, 2), (2, 3)]:
                 neib_shape = T.as_tensor_variable(neib_shape)
@@ -313,6 +338,17 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
 
         def fn(images):
             return images2neibs(images, (3, 3), mode='half')
+
+        self.assertRaises(TypeError, unittest_tools.verify_grad,
+                          fn, [images_val], mode=self.mode)
+
+    def test_grad_full(self):
+        # It is not implemented for now. So test that we raise an error.
+        shape = (2, 3, 6, 6)
+        images_val = np.random.rand(*shape).astype('float32')
+
+        def fn(images):
+            return images2neibs(images, (3, 3), mode='full')
 
         self.assertRaises(TypeError, unittest_tools.verify_grad,
                           fn, [images_val], mode=self.mode)
@@ -382,6 +418,17 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                             mode=self.mode)
         self.assertRaises(TypeError, f, images_val)
 
+    def test_neibs_full_with_inconsistent_borders(self):
+        shape = (2, 3, 5, 5)
+        images = T.dtensor4()
+        images_val = np.arange(np.prod(shape),
+                               dtype='float32').reshape(shape)
+
+        f = theano.function([images],
+                            T.sqr(images2neibs(images, (2, 2), mode='full')),
+                            mode=self.mode)
+        self.assertRaises(TypeError, f, images_val)
+
     def test_can_not_infer_nb_dim(self):
         # Was reported in gh-5613. Test that we do not crash
         # or that we crash in a few other case found while
@@ -408,13 +455,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                               (1, 1, 3, 320, 320))
             # End up with a step of 0
             # This can lead to division by zero in DebugMode
-            # This can not be ran on the GPU since from the C code we get
-            # no ZeroDivisionError, but rather the whole processes crashes
-            # with floating point exception.
-            if "gpu" not in self.mode.provided_optimizer.include and \
-                    "gpuarray" not in self.mode.provided_optimizer.include:
-                self.assertRaises((ValueError, ZeroDivisionError), f, neibs,
-                                  (3, 320, 320, 1))
+            self.assertRaises((ValueError, ZeroDivisionError), f, neibs,
+                              (3, 320, 320, 1))
 
     def speed_neibs(self):
         shape = (100, 40, 18, 18)
@@ -449,6 +491,19 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
 
         f = function([],
                      images2neibs(images, neib_shape, mode="half"),
+                     mode=self.mode)
+
+        for i in range(1000):
+            f()
+
+    def speed_neibs_full(self):
+        shape = (100, 40, 18, 18)
+        images = shared(np.arange(np.prod(shape),
+                                  dtype='float32').reshape(shape))
+        neib_shape = T.as_tensor_variable((3, 3))
+
+        f = function([],
+                     images2neibs(images, neib_shape, mode="full"),
                      mode=self.mode)
 
         for i in range(1000):
@@ -501,6 +556,15 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             [images], Images2Neibs)
         self._compile_and_check(
             [x], [images2neibs(x, neib_shape=(2, 3), mode='half')],
+            [images], Images2Neibs)
+        shape = (100, 40, 6, 5)
+        images = np.ones(shape).astype('float32')
+        x = T.ftensor4()
+        self._compile_and_check(
+            [x], [images2neibs(x, neib_shape=(2, 1), mode='full')],
+            [images], Images2Neibs)
+        self._compile_and_check(
+            [x], [images2neibs(x, neib_shape=(2, 3), mode='full')],
             [images], Images2Neibs)
 
 if __name__ == '__main__':
