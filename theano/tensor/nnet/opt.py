@@ -242,6 +242,8 @@ def local_conv2d_cpu(node):
     if not node.op.filter_flip:
         # Not tested yet
         return None
+    if node.op.num_groups > 1:
+        return None
 
     rval = conv2d(img, kern,
                   node.op.imshp, node.op.kshp,
@@ -299,6 +301,8 @@ def local_conv2d_gradweight_cpu(node):
     if not node.op.filter_flip:
         # Not tested yet
         return
+    if node.op.num_groups > 1:
+        return None
 
     if node.op.border_mode == 'valid' and \
             (node.op.subsample != (1, 1)):
@@ -450,6 +454,8 @@ def local_conv2d_gradinputs_cpu(node):
         return None
     if not node.op.filter_flip:
         # Not tested yet
+        return None
+    if node.op.num_groups > 1:
         return None
 
     # Conv 3d implementation, needed when subsample > 2
