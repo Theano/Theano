@@ -20,7 +20,7 @@ RUN tar xvf magma-2.2.0.tar.gz
 RUN cp magma-2.2.0/make.inc-examples/make.inc.openblas magma-2.2.0/make.inc
 ENV OPENBLASDIR /usr
 ENV CUDADIR /usr/local/cuda
-RUN (cd magma-2.2.0 && make && make install prefix=/usr/local)
+RUN (cd magma-2.2.0 && make GPU_TARGET="sm50 sm52 sm60 sm61" && make install prefix=/usr/local)
 RUN ldconfig
 
 WORKDIR /tmp
