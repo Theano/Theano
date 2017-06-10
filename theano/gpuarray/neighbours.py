@@ -31,6 +31,9 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step=None):
+        # TODO: I don't know why, but without this the tests fail?
+        neib_shape.eval()
+        ####
         ten4 = as_gpuarray_variable(ten4, infer_context_name(ten4))
         neib_shape = T.as_tensor_variable(neib_shape)
         if neib_step is None:
@@ -53,7 +56,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         return node.inputs[0].type.context
 
     def c_code_cache_version(self):
-        return (11,)
+        return (13,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
