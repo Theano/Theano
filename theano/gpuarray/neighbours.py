@@ -30,10 +30,13 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                       " GpuImages2Neibs")
         self.mode = mode
 
-    def make_node(self, ten4, neib_shape, neib_step):
+    def make_node(self, ten4, neib_shape, neib_step=None):
         ten4 = as_gpuarray_variable(ten4, infer_context_name(ten4))
         neib_shape = T.as_tensor_variable(neib_shape)
-        neib_step = T.as_tensor_variable(neib_step)
+        if neib_step is None:
+            neib_step = neib_shape
+        else:
+            neib_step = T.as_tensor_variable(neib_step)
 
         assert ten4.ndim == 4
         assert neib_shape.ndim == 1
@@ -136,7 +139,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                     ga_int z_idx = z_col * out_s1 +
                                                 z_row * out_s0;
                                     if(ten4_2 < 0 || ten4_2 >= height || ten4_3 < 0 || ten4_3 >= width){
-                                        global_ot[z_idx] = 0;
+                                        global_out[z_idx] = 0;
                                     } else {
                                         ga_int ten4_idx = stride3*ten4_3 +
                                                        stride2*ten4_2 +
@@ -232,7 +235,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                     ga_int z_idx = z_col * out_s1 +
                                                 z_row * out_s0;
                                     if(ten4_2 < 0 || ten4_2 >= height || ten4_3 < 0 || ten4_3 >= width){
-                                        global_ot[z_idx] = 0;
+                                        global_out[z_idx] = 0;
                                     } else {
                                         ga_int ten4_idx = stride3*ten4_3 +
                                                        stride2*ten4_2 +
