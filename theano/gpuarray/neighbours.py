@@ -23,17 +23,14 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
 
     """
     def __init__(self, mode='valid'):
-        if mode not in ['valid', 'ignore_borders', 'wrap_centered', 'half']:
-            raise NotImplementedError("Only the mode valid, ignore_borders"
-                                      ", wrap_centered and half"
-                                      " have been implemented for the op"
-                                      " GpuImages2Neibs")
+        if mode not in ['valid', 'half', 'full',
+                        'ignore_borders', 'wrap_centered']:
+            raise NotImplementedError("Only the mode valid, half, full, "
+                                      "ignore_borders and wrap_centered have "
+                                      "been implemented for GpuImages2Neibs")
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step=None):
-        # TODO: I don't know why, but without this the tests fail?
-        neib_shape.eval()
-        ####
         ten4 = as_gpuarray_variable(ten4, infer_context_name(ten4))
         neib_shape = T.as_tensor_variable(neib_shape)
         if neib_step is None:
@@ -56,7 +53,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         return node.inputs[0].type.context
 
     def c_code_cache_version(self):
-        return (12, )
+        return (12,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -124,6 +121,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                         ten4_2 -= height;
                                 } else if ("%(mode)s"=="half"){
                                     ten4_2 -= wrap_centered_half_idx_shift_x;
+                                } else if ("%(mode)s"=="full"){
+                                    ten4_2 -= c - 1;
                                 }
                                 ga_int j = LID_0;  // loop over d
                                 {
@@ -136,6 +135,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                             ten4_3 -= width;
                                     } else if ("%(mode)s"=="half"){
                                         ten4_3 -= wrap_centered_half_idx_shift_y;
+                                    } else if ("%(mode)s"=="full"){
+                                        ten4_3 -= d - 1;
                                     }
 
                                     ga_int z_col = j + d * i;
@@ -219,6 +220,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                         ten4_2 -= height;
                                 } else if ("%(mode)s"=="half"){
                                     ten4_2 -= wrap_centered_half_idx_shift_x;
+                                } else if ("%(mode)s"=="full"){
+                                    ten4_2 -= c - 1;
                                 }
                                 // loop over d
                                 for (ga_int j = LID_0; j < d; j+=LDIM_0)
@@ -232,6 +235,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                             ten4_3 -= width;
                                     } else if ("%(mode)s"=="half"){
                                         ten4_3 -= wrap_centered_half_idx_shift_y;
+                                    } else if ("%(mode)s"=="full"){
+                                        ten4_3 -= d - 1;
                                     }
 
                                     ga_int z_col = j + d * i;
@@ -333,6 +338,22 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             const npy_intp step_y = (npy_intp) *(npy_%(dtype_neib_step)s*)
                                          PyArray_GETPTR1(%(neib_step)s, 1);
 
+            if (step_x <=0 || step_y <=0)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "neib_step wrong step ; values <= 0. Got %%lld %%lld.",
+                             (long long) step_x, (long long) step_y);
+                %(fail)s;
+            }
+
+            if (c <=0 || d <=0)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "neib_shape values <= 0. Got %%lld %%lld.",
+                             (long long)c, (long long)d);
+                %(fail)s;
+            }
+
             if ( "%(mode)s" == "wrap_centered") {
                 if (c%%2!=1 || d%%2!=1){
                     PyErr_Format(PyExc_TypeError,
@@ -412,6 +433,31 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                 grid_c = 1+(((PyGpuArray_DIMS(%(ten4)s))[2]-(c%%2))/step_x);
                 //number of patch in width
                 grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]-(d%%2))/step_y);
+            }else if ( "%(mode)s" == "full") {
+                if ( ((PyGpuArray_DIMS(%(ten4)s))[2] < c) ||
+                 ( (((PyGpuArray_DIMS(%(ten4)s))[2]+c-2) %% step_x)!=0))
+                {
+                    PyErr_Format(PyExc_TypeError,
+                                 "neib_shape[0]=%%ld, neib_step[0]=%%ld and"
+                                 " ten4.shape[2]=%%ld not consistent",
+                                 (long int)c, (long int)step_x,
+                                 (long int)(PyGpuArray_DIMS(%(ten4)s)[2]));
+                    %(fail)s;
+                }
+                if ( ((PyGpuArray_DIMS(%(ten4)s))[3] < d) ||
+                     ( (((PyGpuArray_DIMS(%(ten4)s))[3]+d-2) %% step_y)!=0))
+                {
+                    PyErr_Format(PyExc_TypeError,
+                                 "neib_shape[1]=%%ld, neib_step[1]=%%ld and"
+                                 " ten4.shape[3]=%%ld not consistent",
+                                 (long int)d, (long int)step_y,
+                                 (long int)(PyGpuArray_DIMS(%(ten4)s)[3]));
+                    %(fail)s;
+                }
+                //number of patch in height
+                grid_c = 1+(((PyGpuArray_DIMS(%(ten4)s))[2]+c-2)/step_x);
+                //number of patch in width
+                grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]+d-2)/step_y);
             }else{
                 PyErr_Format(PyExc_TypeError,
                              "GpuImages2Neibs:: unknown mode '%(mode)s'");
@@ -530,5 +576,5 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
 @op_lifter([Images2Neibs])
 @register_opt2([Images2Neibs], 'fast_compile')
 def local_gpua_images2neibs(op, context_name, inputs, outputs):
-    if op.mode in ['valid', 'ignore_borders', 'wrap_centered', 'half']:
+    if op.mode in ['valid', 'half', 'full', 'ignore_borders', 'wrap_centered']:
         return GpuImages2Neibs(op.mode)
