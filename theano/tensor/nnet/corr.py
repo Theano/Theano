@@ -130,11 +130,12 @@ class BaseCorrMM(gof.OpenMPOp):
     padW = property(lambda self: self.pad[1])
 
     def __str__(self):
-        return '%s{%s, %s, %s}' % (
+        return '%s{%s, %s, %s, %s}' % (
             self.__class__.__name__,
             self.border_mode,
             str(self.subsample),
-            str(self.filter_dilation))
+            str(self.filter_dilation),
+            str(self.num_groups))
 
     @staticmethod
     def as_common_dtype(in1, in2):
