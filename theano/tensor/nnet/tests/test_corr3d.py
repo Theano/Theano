@@ -224,24 +224,22 @@ class TestCorr3D(utt.InferShapeTester):
 
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3), filter_dilation=(2, 2, 2))
 
-    @attr('slow')
-    def test_shape_Constant_tensor(self):
-        """
-        Tests correlation where the {image,filter}_shape is a Constant tensor.
-        """
+    @parameterized.expand([('valid',), ('full',), ('half',), ((1, 1, 1),),
+                           ((2, 1, 1),), ((1, 2, 1),), ((1, 1, 2),),
+                           ((3, 3, 3),), (1,)])
+#    @attr('slow')
+    def test_shape_Constant_tensor(self, border_mode):
+        # Tests correlation where the {image,filter}_shape is a Constant tensor
         as_t = T.as_tensor_variable
-        border_modes = ['valid', 'full', 'half', (1, 1, 1), (2, 1, 1),
-                        (1, 2, 1), (1, 1, 2), (3, 3, 3), 1]
-
-        for border_mode in border_modes:
-            self.validate((as_t(3), as_t(2), as_t(7), as_t(5), as_t(5)),
-                          (5, 2, 2, 3, 3), border_mode)
-            self.validate(as_t([3, 2, 7, 5, 5]), (5, 2, 2, 3, 3), border_mode)
-            self.validate(as_t((3, 2, 7, 5, 5)), (5, 2, 2, 3, 3), border_mode)
-            self.validate((3, 2, 7, 5, 5), (as_t(5), as_t(2), as_t(2),
-                          as_t(3), as_t(3)), 'valid')
-            self.validate((3, 2, 7, 5, 5), as_t([5, 2, 2, 3, 3]), border_mode)
-            self.validate(as_t([3, 2, 7, 5, 5]), as_t([5, 2, 2, 3, 3]), border_mode)
+        self.validate((as_t(3), as_t(2), as_t(7), as_t(5), as_t(5)),
+                      (5, 2, 2, 3, 3), border_mode)
+        self.validate(as_t([3, 2, 7, 5, 5]), (5, 2, 2, 3, 3), border_mode)
+        self.validate(as_t((3, 2, 7, 5, 5)), (5, 2, 2, 3, 3), border_mode)
+        self.validate((3, 2, 7, 5, 5), (as_t(5), as_t(2), as_t(2),
+                                        as_t(3), as_t(3)), 'valid')
+        self.validate((3, 2, 7, 5, 5), as_t([5, 2, 2, 3, 3]), border_mode)
+        self.validate(as_t([3, 2, 7, 5, 5]), as_t([5, 2, 2, 3, 3]),
+                      border_mode)
 
     def test_invalid_filter_shape(self):
         """
