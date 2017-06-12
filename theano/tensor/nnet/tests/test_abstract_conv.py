@@ -1712,8 +1712,6 @@ class TestUnsharedConv(unittest.TestCase):
     def test_fwd(self):
         tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
 
-        single_kshp = self.kshp[:2] + self.kshp[4:]
-
         inputs = theano.tensor.tensor4()
         filters = tensor6()
         filters_ref = theano.tensor.tensor4()
@@ -1730,7 +1728,8 @@ class TestUnsharedConv(unittest.TestCase):
 
         for i in range(0, self.kshp[2]):
             for j in range(0, self.kshp[3]):
-                single_filter = filters_val[:, :, i, j].reshape(single_kshp)
+                single_kshp = self.kshp[:2] + self.kshp[4:]
+                single_filter = filters_val[:, :, i, j, ...].reshape(single_kshp)
                 ref_val = ref_func(inputs_val, single_filter)
                 utt.assert_allclose(ref_val[:, :, i, j], unshared_val[:, :, i, j])
 
@@ -1745,3 +1744,26 @@ class TestUnsharedConv(unittest.TestCase):
                                                     self.kshp, unshared=True)
         grad_func = theano.function([inputs, topgrad], grad_weights, mode=self.mode)
         grad_val = grad_func(inputs_val, topgrad_val)
+
+        single_kshp = self.kshp[:2] + self.kshp[4:]
+
+        conv_ref = conv.conv2d_grad_wrt_weights(inputs, topgrad, single_kshp, unshared=False)
+        ref_func = theano.function([inputs, topgrad], conv_ref, mode=self.mode)
+        ref_val = ref_func(inputs_val, topgrad_val)
+
+        utt.assert_allclose(grad_val.sum(axis=(2, 3)), ref_val)
+
+    # TO BE COMPLETED
+    def test_gradinput(self):
+        tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
+
+        filters = tensor6()
+        topgrad = theano.tensor.tensor4()
+
+        filters_val = np.random.random(self.kshp).astype(theano.config.floatX)
+        topgrad_val = np.random.random(self.topgrad_shape).astype(theano.config.floatX)
+
+        grad_inputs = conv.conv2d_grad_wrt_inputs(topgrad, filters,
+                                                  self.imshp, unshared=True)
+        grad_func = theano.function([topgrad, filters], grad_inputs, mode=self.mode)
+        grad_func(topgrad_val, filters_val)
