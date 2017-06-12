@@ -395,15 +395,10 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         fgraph.destroyers = get_destroyers_of
 
         def has_destroyers(protected_list):
-            visited_app_set = set()
 
             def recursive_destroys_finder(protected_var):
                 # protected_var is the idx'th input of app.
                 for (app, idx) in protected_var.clients:
-                    if app in visited_app_set:
-                        continue
-                    else:
-                        visited_app_set.add(app)
                     if app == 'output':
                         continue
                     destroy_maps = getattr(app.op, 'destroy_map', {}).values()
