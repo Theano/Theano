@@ -489,11 +489,11 @@ class BaseGpuCorrMM(CGpuKernelBase):
         Perform subsampling of the input, also known as dilation (default: (1, 1)).
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample', 'filter_dilation')
+    __props__ = ('border_mode', 'subsample', 'filter_dilation', 'num_groups')
     _f16_ok = True
 
     def __init__(self, border_mode="valid", subsample=(1, 1),
-                 filter_dilation=(1, 1)):
+                 filter_dilation=(1, 1), num_groups=1):
         if isinstance(border_mode, integer_types):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
@@ -512,6 +512,9 @@ class BaseGpuCorrMM(CGpuKernelBase):
             raise ValueError("filter_dilation must have two elements")
         self.subsample = tuple(subsample)
         self.filter_dilation = tuple(filter_dilation)
+        if num_groups < 1:
+            raise ValueError("Number of groups should be greater than 0")
+        self.num_groups = num_groups
         CGpuKernelBase.__init__(self, ['corr_gemm.c'])
 
     @property
@@ -521,11 +524,12 @@ class BaseGpuCorrMM(CGpuKernelBase):
         return (0, 0)
 
     def __str__(self):
-        return '%s{%s, %s, %s}' % (
+        return '%s{%s, %s, %s, %s}' % (
             self.__class__.__name__,
             self.border_mode,
             str(self.subsample),
-            str(self.filter_dilation))
+            str(self.filter_dilation),
+            str(self.num_groups))
 
     def flops(self, inp, outp):
         """
@@ -600,6 +604,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
         """
         dH, dW = self.subsample
         dilH, dilW = self.filter_dilation
+        numgroups = self.num_groups
         if self.border_mode == "half":
             padH = padW = -1
         elif self.border_mode == "full":
@@ -660,6 +665,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
     size_t dilW = %(dilW)s;
     int padH = %(padH)s;
     int padW = %(padW)s;
+    int numgroups = %(numgroups)s;
 
     PyGpuArrayObject * bottom = %(bottom)s;
     PyGpuArrayObject * weights = %(weights)s;
@@ -759,7 +765,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
         // output is weights: (num_filters, num_channels, height, width)
         // height and width: weights = (bottom + 2*pad - (top - 1) * sample - 1) / dil + 1
         out_dim[0] = PyGpuArray_DIMS(top)[1];
-        out_dim[1] = PyGpuArray_DIMS(bottom)[1];
+        out_dim[1] = PyGpuArray_DIMS(bottom)[1] / numgroups;
         out_dim[2] = kH;  // already inferred further above
         out_dim[3] = kW;  // how convenient
         out_typecode = top->ga.typecode;
@@ -783,7 +789,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
         // output is bottom: (batchsize, num_channels, height, width)
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = PyGpuArray_DIMS(top)[0];
-        out_dim[1] = PyGpuArray_DIMS(weights)[1];
+        out_dim[1] = PyGpuArray_DIMS(weights)[1] * numgroups;
         out_dim[2] = (%(height)s != -1) ? %(height)s : (PyGpuArray_DIMS(top)[2] - 1) * dH + (PyGpuArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
         out_dim[3] = (%(width)s != -1) ? %(width)s : (PyGpuArray_DIMS(top)[3] - 1) * dW + (PyGpuArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
         out_typecode = top->ga.typecode;
@@ -827,7 +833,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
     }
 
     // Call GPU code
-    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW, padH, padW);
+    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW, padH, padW, numgroups);
     if (out2==NULL){
        %(fail)s
     }
@@ -883,9 +889,9 @@ class GpuCorrMM(BaseGpuCorrMM):
     """
     def __init__(self, border_mode="valid",
                  subsample=(1, 1),
-                 filter_dilation=(1, 1)):
+                 filter_dilation=(1, 1), num_groups=1):
         super(GpuCorrMM, self).__init__(border_mode, subsample,
-                                        filter_dilation)
+                                        filter_dilation, num_groups)
 
     def make_node(self, img, kern):
         ctx_name = infer_context_name(img, kern)
@@ -914,11 +920,13 @@ class GpuCorrMM(BaseGpuCorrMM):
         top = gpu_contiguous(top)
         d_bottom = GpuCorrMM_gradInputs(self.border_mode,
                                         self.subsample,
-                                        self.filter_dilation)(
+                                        self.filter_dilation,
+                                        self.num_groups)(
             weights, top, bottom.shape[-2:])
         d_weights = GpuCorrMM_gradWeights(self.border_mode,
                                           self.subsample,
-                                          self.filter_dilation)(
+                                          self.filter_dilation,
+                                          self.num_groups)(
             bottom, top, weights.shape[-2:])
         return d_bottom, d_weights
 
@@ -936,10 +944,11 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
 
     def __init__(self, border_mode="valid",
                  subsample=(1, 1),
-                 filter_dilation=(1, 1)):
+                 filter_dilation=(1, 1),
+                 num_groups=1):
         super(GpuCorrMM_gradWeights, self).__init__(border_mode,
                                                     subsample,
-                                                    filter_dilation)
+                                                    filter_dilation, num_groups)
 
     def make_node(self, img, topgrad, shape=None):
         ctx_name = infer_context_name(img, topgrad)
@@ -978,11 +987,12 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
         weights = gpu_contiguous(weights)
         d_bottom = GpuCorrMM_gradInputs(self.border_mode,
                                         self.subsample,
-                                        self.filter_dilation)(weights,
-                                                              top,
-                                                              bottom.shape[-2:])
+                                        self.filter_dilation,
+                                        self.num_groups)(weights,
+                                                         top,
+                                                         bottom.shape[-2:])
         d_top = GpuCorrMM(
-            self.border_mode, self.subsample, self.filter_dilation)(bottom, weights)
+            self.border_mode, self.subsample, self.filter_dilation, self.num_groups)(bottom, weights)
         d_height_width = (
             theano.gradient.DisconnectedType()(),
             ) * 2 if len(inp) == 4 else ()
@@ -1008,9 +1018,10 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
 
     def __init__(self, border_mode="valid",
                  subsample=(1, 1),
-                 filter_dilation=(1, 1)):
+                 filter_dilation=(1, 1),
+                 num_groups=1):
         super(GpuCorrMM_gradInputs, self).__init__(border_mode, subsample,
-                                                   filter_dilation)
+                                                   filter_dilation, num_groups)
 
     def make_node(self, kern, topgrad, shape=None):
         ctx_name = infer_context_name(kern, topgrad)
@@ -1029,8 +1040,12 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
             assert shape[0].ndim == 0
             assert shape[1].ndim == 0
 
-        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
-                         False, False]
+        if self.num_groups > 1:
+            broadcastable = [topgrad.type.broadcastable[0], False,
+                             False, False]
+        else:
+            broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+                             False, False]
         return Apply(self, [kern, topgrad] + height_width, [GpuArrayType(dtype=topgrad.dtype,
                                                                          context_name=ctx_name,
                                                                          broadcastable=broadcastable)()])
@@ -1048,12 +1063,14 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
         bottom = gpu_contiguous(bottom)
         d_weights = GpuCorrMM_gradWeights(self.border_mode,
                                           self.subsample,
-                                          self.filter_dilation)(bottom,
-                                                                top,
-                                                                weights.shape[-2:])
+                                          self.filter_dilation,
+                                          self.num_groups)(bottom,
+                                                           top,
+                                                           weights.shape[-2:])
         d_top = GpuCorrMM(self.border_mode,
                           self.subsample,
-                          self.filter_dilation)(bottom, weights)
+                          self.filter_dilation,
+                          self.num_groups)(bottom, weights)
         d_height_width = (
             theano.gradient.DisconnectedType()(),
             ) * 2 if len(inp) == 4 else ()
