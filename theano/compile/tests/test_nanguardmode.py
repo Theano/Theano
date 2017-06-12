@@ -69,14 +69,3 @@ def test_NanGuardMode():
         assert_raises(AssertionError, fun, biga)  # big values
     finally:
         _logger.propagate = True
-
-    # Test with uint, we should not crash
-    x = T.matrix(dtype='uint8')
-    w = theano.shared(np.random.randn(5, 7).astype(theano.config.floatX))
-    y = T.dot(x, w)
-    a = (np.random.randn(3, 5).astype(theano.config.floatX) * 10).astype('uint8')
-    fun = theano.function(
-        [x], y,
-        mode=NanGuardMode(nan_is_error=True, inf_is_error=True)
-    )
-    fun(a)  # normal values
