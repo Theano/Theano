@@ -120,6 +120,7 @@ class OutputGuard(ViewOp):
 
     """
     destroy_map = {0: [0]}
+    view_map = {}
 
     check_input = False
 
