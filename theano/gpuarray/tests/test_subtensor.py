@@ -118,7 +118,7 @@ def test_advinc_subtensor1_dtype():
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
-        rep[[0, 2]] += yval
+        np.add.at(rep, [[0, 2]], yval)
         assert np.allclose(rval, rep)
 
 
@@ -140,7 +140,7 @@ def test_deterministic_flag():
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
-        rep[[0, 2]] += yval
+        np.add.at(rep, [[0, 2]], yval)
         assert np.allclose(rval, rep)
 
 
@@ -184,7 +184,7 @@ def test_incsub_f16():
                 for node in f.maker.fgraph.toposort()]) == 1
     rval = f(yval)
     rep = xval.copy()
-    rep[[0, 2]] += yval
+    np.add.at(rep, [[0, 2]], yval)
     assert np.allclose(rval, rep)
 
     expr = tensor.inc_subtensor(x[1:], y)
