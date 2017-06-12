@@ -37,6 +37,8 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_INPUT_0 * data_im,
     const ga_size offset_im,
     const ga_size data_im_offset,
+    // offset_im is the pointer offset for data_im.
+    // data_im_offset is an offset of elements in the array
     const ga_size height, const ga_size width,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size dilation_h, const ga_size dilation_w,
@@ -75,10 +77,13 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
 }
 
 #kernel im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, *, size :
+
 KERNEL void im2col_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_INPUT_0 * data_im,
     const ga_size offset_im,
     const ga_size data_im_offset,
+    // offset_im is the pointer offset for data_im.
+    // data_im_offset is an offset of elements in the array
     const ga_size height, const ga_size width,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size pad_h, const ga_size pad_w,
@@ -128,6 +133,8 @@ KERNEL void dilated_col2im_kernel(const ga_size n,
     GLOBAL_MEM DTYPE_INPUT_0 * data_im,
     const ga_size offset_im,
     const ga_size data_im_offset) {
+    // offset_im is the pointer offset for data_im.
+    // data_im_offset is an offset of elements in the array
   data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
   data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
   // grid stride looping
@@ -165,6 +172,7 @@ KERNEL void dilated_col2im_kernel(const ga_size n,
 }
 
 #kernel col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, *, size, size :
+
 KERNEL void col2im_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_INPUT_0 * data_col, const ga_size offset_col,
     const ga_size height, const ga_size width, const ga_size channels,
@@ -175,6 +183,8 @@ KERNEL void col2im_kernel(const ga_size n,
     GLOBAL_MEM DTYPE_INPUT_0 * data_im,
     const ga_size offset_im,
     const ga_size data_im_offset) {
+    // offset_im is the pointer offset for data_im.
+    // data_im_offset is an offset of elements in the array
   data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
   data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
   // grid stride looping
