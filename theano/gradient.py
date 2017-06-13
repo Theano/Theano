@@ -1482,7 +1482,11 @@ class numeric_grad(object):
         The tuple (abs_err, rel_err) is returned
         """
         abs_err = abs(a - b)
-        rel_err = abs_err / np.maximum(abs(a) + abs(b), 1e-8)
+        # 1e-8 is to prevent division by zeros.
+        # [] is to make sure that if a and b are float16, 1e-8 don't get
+        # dowcasted to float16 as that give 0! This would add back the
+        # division by zero
+        rel_err = abs_err / np.maximum(abs(a) + abs(b), [1e-8])
         # The numpy.asarray are needed as if a or b is a sparse matrix
         # this would result in a numpy.matrix and not a numpy.ndarray
         # and the behave differently causing problem later.

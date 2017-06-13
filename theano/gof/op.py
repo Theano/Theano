@@ -1413,7 +1413,10 @@ class COp(Op):
         return []
 
     def c_code_cache_version(self):
-        return hash(tuple(self.func_codes))
+        version = (hash(tuple(self.func_codes)), )
+        if hasattr(self, 'params_type'):
+            version += (self.params_type.c_code_cache_version(), )
+        return version
 
     def c_init_code(self):
         """

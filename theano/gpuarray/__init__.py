@@ -71,6 +71,10 @@ def init_dev(dev, name=None, preallocate=None):
             avail = dnn.dnn_available(name)
             if avail:
                 context.cudnn_handle = dnn._make_handle(context)
+            elif config.dnn.enabled == 'True':
+                raise RuntimeError(
+                    "You enabled cuDNN, but we aren't able to use it: %s" %
+                    dnn.dnn_available.msg)
             if config.print_active_device:
                 if avail:
                     print("Using cuDNN version %d on context %s" % (dnn.version(), name),

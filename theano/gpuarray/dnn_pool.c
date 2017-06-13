@@ -42,7 +42,7 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
                              PyArrayObject *stride,
                              PyArrayObject *pad,
                              PyGpuArrayObject **out,
-                             cudnnHandle_t _handle) {
+                             PARAMS_TYPE* params) {
   PyGpuContextObject *c = img->context;
   size_t dims[5];
   cudnnStatus_t err;
@@ -90,7 +90,7 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
   if (c_set_tensorNd(*out, APPLY_SPECIFIC(output)) != 0)
     return 1;
 
-  err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), MODE_FLAG, CUDNN_PROPAGATE_NAN, ndims, w, p, s);
+  err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), params->mode, CUDNN_PROPAGATE_NAN, ndims, w, p, s);
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor %s", cudnnGetErrorString(err));
@@ -124,7 +124,7 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
     cuda_wait((*out)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
     err = cudnnPoolingForward(
-      _handle, APPLY_SPECIFIC(pool),
+      params->handle, APPLY_SPECIFIC(pool),
       alpha,
       APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(img),
       beta,

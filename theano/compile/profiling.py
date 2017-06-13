@@ -830,7 +830,6 @@ class ProfileStats(object):
 
             """
             from theano.gpuarray import GpuArrayType
-
             # Initial Mem info values [CPU, GPU]
             node_memory_size = [0, 0]
             running_memory_size = [0, 0]

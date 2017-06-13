@@ -197,6 +197,36 @@ DebugMode      no         yes                VERY HIGH  Make many checks on what
 
 For more detail, see :ref:`Mode<libdoc_compile_mode>` in the library.
 
+.. _optimizers:
+
+Optimizers
+==========
+
+Theano allows compilations with a number of predefined optimizers.
+An optimizer consists of a particular set of optimizations, that speed
+up execution of Theano programs.
+
+The optimizers Theano provides are summarized below to indicate the trade-offs
+one might make between compilation time and execution time.
+
+These optimizers can be enabled globally with the Theano flag: ``optimizer=name``
+or per call to theano functions with ``theano.function(...mode=theano.Mode(optimizer="name"))``.
+
+=================  ============  ==============  ==================================================
+optimizer          Compile time  Execution time  Description
+=================  ============  ==============  ==================================================
+None               "++++++"      "+"             Applies none of Theano's opts
+o1 (fast_compile)  "+++++"       "++"            Applies only basic opts
+o2                 "++++"        "+++"           Applies few basic opts and some that compile fast
+o3                 "+++"         "++++"          Applies all opts except ones that compile slower
+o4 (fast_run)      "++"          "+++++"         Applies all opts
+unsafe             "+"           "++++++"        Applies all opts, and removes safety checks
+stabilize          "+++++"       "++"            Only applies stability opts
+=================  ============  ==============  ==================================================
+
+For a detailed list of the specific optimizations applied for each of these
+optimizers, see :ref:`optimizations`. Also, see :ref:`unsafe_optimization`.
+
 
 .. _using_debugmode:
 

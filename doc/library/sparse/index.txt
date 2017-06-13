@@ -44,7 +44,7 @@ attributes: ``data``, ``indices``, ``indptr`` and ``shape``.
   * The ``shape`` attribute is exactly the same as the ``shape``
     attribute of a dense (i.e. generic) matrix. It can be explicitly
     specified at the creation of a sparse matrix if it cannot be
-    infered from the first three attributes.
+    inferred from the first three attributes.
 
 
 CSC Matrix
@@ -173,7 +173,7 @@ List of Implemented Operations
       The grad implemented is regular.
     - :func:`col_scale <theano.sparse.basic.col_scale>` to multiply by a vector along the columns.
       The grad implemented is structured.
-    - :func:`row_slace <theano.sparse.basic.row_scale>` to multiply by a vector along the rows.
+    - :func:`row_scale <theano.sparse.basic.row_scale>` to multiply by a vector along the rows.
       The grad implemented is structured.
 
 - Monoid (Element-wise operation with only one sparse input).

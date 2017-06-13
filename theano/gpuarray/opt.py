@@ -1181,6 +1181,14 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.Gemv, tensor.blas_c.CGemv])
 @register_opt2([tensor.blas.Gemv], 'fast_compile')
 def local_gpua_gemv(op, context_name, inputs, outputs):
+    if inputs[0].dtype == 'float16':
+        # Use gemm implementation as cublas gemv don't support float16
+        return gpugemm_no_inplace(inputs[0][:, None],
+                                  inputs[1],
+                                  inputs[2],
+                                  inputs[3][:, None],
+                                  inputs[4]).dimshuffle(0)
+
     if inputs[0].dtype not in ['float32', 'float64']:
         return
     if op.inplace:
@@ -1351,6 +1359,8 @@ theano.tensor.nnet.conv2d()
 @op_lifter([SparseBlockGemv])
 @register_opt2([SparseBlockGemv], 'fast_compile')
 def local_gpua_sparseblockgemv(op, context_name, inputs, outputs):
+    if inputs[0].dtype == 'float16':
+        return
     if op.inplace:
         return gpu_sparse_block_gemv_inplace
     else:
@@ -1361,6 +1371,8 @@ def local_gpua_sparseblockgemv(op, context_name, inputs, outputs):
 @op_lifter([SparseBlockOuter])
 @register_opt2([SparseBlockOuter], 'fast_compile')
 def local_gpua_sparseblockouter(op, context_name, inputs, outputs):
+    if inputs[0].dtype == 'float16':
+        return
     if op.inplace:
         return gpu_sparse_block_outer_inplace
     else:
@@ -1998,7 +2010,13 @@ def _scan_type_infer(node):
 @op_lifter([tensor.MaxAndArgmax])
 @register_opt2([tensor.MaxAndArgmax], 'fast_compile')
 def local_gpu_maxandargmax(op, context_name, inputs, outputs):
-    return GpuMaxAndArgmax(op.get_params(None))
+    op = GpuMaxAndArgmax(op.get_params(None))
+    if inputs[0].dtype == "float16":
+        # For now it is better to copy/cast on the GPU then transfer to the CPU
+        casted_inputs = inputs[0].astype('float32')
+        ret = op(casted_inputs)
+        return [ret[0].astype('float16'), ret[1]]
+    return op
 
 
 # solve
@@ -2008,9 +2026,15 @@ def local_gpu_maxandargmax(op, context_name, inputs, outputs):
 def local_gpu_solve(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
     if op.A_structure not in MATRIX_STRUCTURES_SOLVE:
         return
-    return GpuCusolverSolve(A_structure=op.A_structure)
+    op = GpuCusolverSolve(A_structure=op.A_structure)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32'),
+                  inputs[1].astype('float32')).astype('float16')
+    return op
 
 
 @register_inplace()
@@ -2028,7 +2052,13 @@ def local_inplace_gpu_solve(node):
 def local_gpu_cholesky(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
-    return GpuCholesky(lower=op.lower, inplace=op.destructive)
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuCholesky(lower=op.lower, inplace=op.destructive)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+
+    return op
 
 
 @register_inplace()
@@ -2044,7 +2074,12 @@ def local_inplace_cholesky(node):
 def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
-    return GpuMagmaMatrixInverse()
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaMatrixInverse()
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
 
 
 @register_inplace()
@@ -2061,9 +2096,13 @@ def local_inplace_matrix_inverse_inplace(node):
 def local_gpu_svd(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
-    return GpuMagmaSVD(full_matrices=op.full_matrices,
-                       compute_uv=op.compute_uv)
-
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaSVD(full_matrices=op.full_matrices,
+                     compute_uv=op.compute_uv)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.

@@ -148,7 +148,7 @@ matrix which corresponds to the Jacobian.
 Computing the Hessian
 =====================
 
-In Theano, the term *Hessian* has the usual mathematical acception: It is the 
+In Theano, the term *Hessian* has the usual mathematical meaning: It is the 
 matrix comprising the second order partial derivative of a function with scalar
 output and vector input. Theano implements :func:`theano.gradient.hessian` macro that does all
 that is needed to compute the Hessian. The following text explains how

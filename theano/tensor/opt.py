@@ -2087,16 +2087,16 @@ def local_subtensor_make_vector(node):
 @gof.local_optimizer([T.Elemwise])
 def local_useless_elemwise(node):
     """
-    eq(x,x) -> 1
-    neq(x,x) -> 0
+    eq(x, x) -> 1
+    neq(x, x) -> 0
     mul(x) -> x
     add(x) -> x
     identity(x) -> x
-    and(x,1) -> x
-    and(x,0) -> zeros_like(x)
-    or(x,0) -> x
-    or(x,1) -> ones_like(x)
-    xor(x,x) -> zeros_like(x)
+    and(x, 1) -> x  (if x.dtype == 'bool')
+    and(x, 0) -> zeros_like(x)
+    or(x, 0) -> x
+    or(x, 1) -> ones_like(x)  (if x.dtype == 'bool')
+    xor(x, x) -> zeros_like(x)
 
     """
     if isinstance(node.op, T.Elemwise):
@@ -2141,7 +2141,9 @@ def local_useless_elemwise(node):
                     if const_val == 0:
                         return [T.zeros_like(node.inputs[1], dtype=dtype,
                                              opt=True)]
-                    else:
+                    elif node.outputs[0].dtype == 'bool':
+                        # If the output is not Boolean, it is the bitwise AND,
+                        # and this optimization would be wrong
                         return [node.inputs[1].astype(node.outputs[0].dtype)]
 
             if isinstance(node.inputs[1], T.TensorConstant):
@@ -2150,7 +2152,9 @@ def local_useless_elemwise(node):
                     if const_val == 0:
                         return [T.zeros_like(node.inputs[0], dtype=dtype,
                                              opt=True)]
-                    else:
+                    elif node.outputs[0].dtype == 'bool':
+                        # If the output is not Boolean, it is the bitwise AND,
+                        # and this optimization would be wrong
                         return [node.inputs[0].astype(node.outputs[0].dtype)]
 
         elif (isinstance(node.op.scalar_op, scalar.OR) and
@@ -2161,7 +2165,9 @@ def local_useless_elemwise(node):
                 if not isinstance(const_val, Variable):
                     if const_val == 0:
                         return [node.inputs[1].astype(node.outputs[0].dtype)]
-                    else:
+                    elif node.outputs[0].dtype == 'bool':
+                        # If the output is not Boolean, it is the bitwise OR,
+                        # and this optimization would be wrong
                         return [T.ones_like(node.inputs[1], dtype=dtype,
                                             opt=True)]
 
@@ -2170,7 +2176,9 @@ def local_useless_elemwise(node):
                 if not isinstance(const_val, Variable):
                     if const_val == 0:
                         return [node.inputs[0].astype(node.outputs[0].dtype)]
-                    else:
+                    elif node.outputs[0].dtype == 'bool':
+                        # If the output is not Boolean, it is the bitwise OR,
+                        # and this optimization would be wrong
                         return [T.ones_like(node.inputs[0], dtype=dtype,
                                             opt=True)]
 
@@ -5710,41 +5718,50 @@ def local_opt_alloc(node):
         if node_inps.owner and isinstance(node_inps.owner.op, T.Alloc):
             input = node_inps.owner.inputs[0]
             shapes = node_inps.owner.inputs[1:]
-            if (node.op.axis is None or
-                    node.op.axis == tuple(range(input.ndim))):
-                try:
-                    val = get_scalar_constant_value(input,
-                                                    only_process_constants=True)
-                    assert val.size == 1
-                    # check which type of op
-                    casted = T.mul(*shapes).astype(str(input.dtype))
+            try:
+                val = get_scalar_constant_value(input,
+                                                only_process_constants=True)
+                assert val.size == 1
+                val = val.reshape(1)[0]
+                # check which type of op
+                size = T.mul(*shapes)
+                if input.dtype in ["float16", "float32"]:
+                    # shapes are ints and normally int64.
+                    # We don't want to have a float64 upcast
+                    # We don't want to downcast to float16
+                    # as we fear it could loose too much precision
+                    # that will be amplified by the mul/pow below.
+                    size = size.astype('float32')
+                if (node.op.axis is None or
+                        node.op.axis == tuple(range(input.ndim))):
                     if isinstance(node.op, T.Sum):
-                        val = val.reshape(1)[0] * casted
+                        val = val * size
                     else:
-                        val = val.reshape(1)[0] ** casted
+                        val = val ** size
+                    # Sum can change the input dtype (upcast or bool
+                    # -> float32) by default or by user request.
+                    # We can ignore the acc_dtype, as there is only 1
+                    # elemwise we will do and not a sequence, so there is no
+                    # accumulation of errors.
+                    # So mostly, we just need to cast the output to the old
+                    # dtype.
+                    val = val.astype(node.outputs[0].dtype)
                     return [val]
-
-                except NotScalarConstantError:
-                    pass
-            else:
-                try:
-                    val = get_scalar_constant_value(input,
-                                                    only_process_constants=True)
-                    assert val.size == 1
-                    val = val.reshape(1)[0]
-                    to_prod = [shapes[i] for i in xrange(len(shapes))
-                               if i in node.op.axis]
-                    if to_prod:
-                        casted = T.mul(*to_prod).astype(str(input.dtype))
-                        if isinstance(node.op, T.Sum):
-                            val *= casted
-                        else:
-                            val = val ** casted
-                    return [T.alloc(val,
-                                    *[shapes[i] for i in xrange(len(shapes))
-                                      if i not in node.op.axis])]
-                except NotScalarConstantError:
-                    pass
+                to_prod = [shapes[i] for i in xrange(len(shapes))
+                           if i in node.op.axis]
+                if to_prod:
+                    size = T.mul(*to_prod)
+                    if isinstance(node.op, T.Sum):
+                        val *= size
+                    else:
+                        val = val ** size
+                # See comments above.
+                val = val.astype(node.outputs[0].dtype)
+                return [T.alloc(val,
+                                *[shapes[i] for i in xrange(len(shapes))
+                                  if i not in node.op.axis])]
+            except NotScalarConstantError:
+                pass
 
 
 @register_specialize

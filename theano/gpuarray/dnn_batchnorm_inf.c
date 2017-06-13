@@ -3,7 +3,7 @@
 int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
                      PyGpuArrayObject *bias, PyGpuArrayObject *est_mean,
                      PyGpuArrayObject *est_var, npy_float64 epsilon, 
-                     PyGpuArrayObject **outp, cudnnHandle_t _handle) {
+                     PyGpuArrayObject **outp, PARAMS_TYPE* params) {
   PyGpuContextObject *c = inp->context;
 
   if (c_set_tensorNd(inp, bn_input) != 0)
@@ -16,14 +16,14 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
     return 1;
   }
 
-#ifdef INPLACE_OUTPUT
-  Py_XDECREF(*outp);
-  *outp = inp;
-  Py_INCREF(*outp);
-#else
-  if (theano_prep_output(outp, inp->ga.nd, inp->ga.dimensions, inp->ga.typecode, GA_C_ORDER, c) != 0)
-    return 1;
-#endif
+  if (params->inplace) {
+    Py_XDECREF(*outp);
+    *outp = inp;
+    Py_INCREF(*outp);
+  } else {
+    if (theano_prep_output(outp, inp->ga.nd, inp->ga.dimensions, inp->ga.typecode, GA_C_ORDER, c) != 0)
+      return 1;
+  }
 
   if (c_set_tensorNd(*outp, bn_output) != 0)
     return 1;
@@ -43,8 +43,8 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
       beta = (void *)&fbeta;
     }
     cudnnStatus_t err = cudnnBatchNormalizationForwardInference(
-      _handle,
-      MODE,
+      params->handle,
+      params->mode,
       alpha,
       beta,
       bn_input,

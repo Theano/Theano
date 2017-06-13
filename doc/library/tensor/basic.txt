@@ -269,7 +269,7 @@ For additional information, see the :func:`shared() <shared.shared>` documentati
 
 .. _libdoc_tensor_autocasting:
 
-Finally, when you use a numpy ndarry or a Python number together with
+Finally, when you use a numpy ndarray or a Python number together with
 :class:`TensorVariable` instances in arithmetic expressions, the result is a
 :class:`TensorVariable`. What happens to the ndarray or the number?
 Theano requires that the inputs to all expressions be Variable instances, so
@@ -893,7 +893,7 @@ Reductions
     :Parameter: *keepdims* - (boolean) If this is set to True, the axis which is reduced is
 		left in the result as a dimension with size one. With this option, the result
 		will broadcast correctly against the original tensor.
-    :Returns: the maxium value along a given axis and its index.
+    :Returns: the maximum value along a given axis and its index.
 
     if axis=None, Theano 0.5rc1 or later: max_and_argmax over the flattened tensor (like numpy)
                   older: then axis is assumed to be ndim(x)-1
@@ -1209,7 +1209,7 @@ Casting
     Cast any tensor `x` to a Tensor of the same shape, but with a different
     numerical type `dtype`.
 
-    This is not a reinterpret cast, but a coersion cast, similar to
+    This is not a reinterpret cast, but a coercion cast, similar to
     ``numpy.asarray(x, dtype=dtype)``.
 
     .. testcode:: cast

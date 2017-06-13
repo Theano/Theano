@@ -268,19 +268,18 @@ def safe_no_dnn_algo_bwd(algo):
             '`dnn.conv.algo_bwd_filter` and `dnn.conv.algo_bwd_data` instead.')
     return True
 
+# Those are the options provided by Theano to choose algorithms at runtime.
+SUPPORTED_DNN_CONV_ALGO_RUNTIME = ('guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change')
+
 # Those are the supported algorithm by Theano,
 # The tests will reference those lists.
-SUPPORTED_DNN_CONV_ALGO_FWD = ('small', 'none', 'large', 'fft', 'fft_tiling',
-                               'winograd', 'guess_once', 'guess_on_shape_change',
-                               'time_once', 'time_on_shape_change')
+SUPPORTED_DNN_CONV_ALGO_FWD = ('small', 'none', 'large', 'fft', 'fft_tiling', 'winograd') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
 
-SUPPORTED_DNN_CONV_ALGO_BWD_DATA = ('none', 'deterministic', 'fft', 'fft_tiling',
-                                    'winograd', 'guess_once', 'guess_on_shape_change',
-                                    'time_once', 'time_on_shape_change')
+SUPPORTED_DNN_CONV_ALGO_BWD_DATA = ('none', 'deterministic', 'fft', 'fft_tiling', 'winograd') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
 
-SUPPORTED_DNN_CONV_ALGO_BWD_FILTER = ('none', 'deterministic', 'fft', 'small',
-                                      'guess_once', 'guess_on_shape_change',
-                                      'time_once', 'time_on_shape_change')
+SUPPORTED_DNN_CONV_ALGO_BWD_FILTER = ('none', 'deterministic', 'fft', 'small') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
+
+SUPPORTED_DNN_CONV_PRECISION = ('as_input_f32', 'as_input', 'float16', 'float32', 'float64')
 
 AddConfigVar('dnn.conv.algo_bwd',
              "This flag is deprecated; use dnn.conv.algo_bwd_data and "
@@ -311,8 +310,7 @@ AddConfigVar('dnn.conv.precision',
              "Default data precision to use for the computation in cuDNN "
              "convolutions (defaults to the same dtype as the inputs of the "
              "convolutions, or float32 if inputs are float16).",
-             EnumStr('as_input_f32', 'as_input', 'float16', 'float32',
-                     'float64'),
+             EnumStr(*SUPPORTED_DNN_CONV_PRECISION),
              in_c_key=False)
 
 
@@ -507,7 +505,7 @@ AddConfigVar('allow_gc',
 AddConfigVar(
     'optimizer',
     "Default optimizer. If not None, will use this optimizer with the Mode",
-    EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
+    EnumStr('o4', 'o3', 'o2', 'o1', 'unsafe', 'fast_run', 'fast_compile', 'merge', 'None'),
     in_c_key=False)
 
 AddConfigVar('optimizer_verbose',
@@ -1476,6 +1474,17 @@ AddConfigVar('scan.debug',
 AddConfigVar('compile.wait',
              """Time to wait before retrying to aquire the compile lock.""",
              IntParam(5, lambda i: i > 0, allow_override=False),
+             in_c_key=False)
+
+AddConfigVar('cycle_detection',
+             "If cycle_detection is set to regular, most inplaces are allowed,"
+             "but it is slower. If cycle_detection is set to faster, less inplaces"
+             "are allowed, but it makes the compilation faster."
+
+             "The interaction of which one give the lower peak memory usage is"
+             "complicated and not predictable, so if you are close to the peak"
+             "memory usage, triyng both could give you a small gain. ",
+             EnumStr('regular', 'fast'),
              in_c_key=False)
 
 

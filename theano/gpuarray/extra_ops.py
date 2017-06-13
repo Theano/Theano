@@ -35,7 +35,7 @@ class GpuCumOp(GpuKernelBase, Op):
         return hash(self.axis) ^ hash(self.mode)
 
     def c_code_cache_version(self):
-        return (3,)
+        return (6,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', '<gpuarray_helper.h>']
@@ -67,13 +67,14 @@ class GpuCumOp(GpuKernelBase, Op):
         dtype_x = node.inputs[0].dtype
         flags = Kernel.get_flags(dtype_x)
         code = """
-        KERNEL void %(kname)s(float* input, float* output,
-                              ga_ssize inputStrides_x,
-                              ga_ssize inputStrides_y,
-                              ga_ssize inputStrides_z,
-                              ga_ssize outputStrides_x, ga_ssize outputStrides_y,
-                              ga_ssize outputStrides_z, const int offsetY, const int offsetZ,
+        KERNEL void %(kname)s(float* input, ga_size input_offset,
+                              float* output, ga_size output_offset,
+                              ga_ssize inputStrides_x, ga_ssize inputStrides_y, ga_ssize inputStrides_z,
+                              ga_ssize outputStrides_x, ga_ssize outputStrides_y, ga_ssize outputStrides_z,
+                              const int offsetY, const int offsetZ,
                               const int beforeLastElementIdx, const int lastElementIdx){
+            input = (float *)(((char *)input) + input_offset);
+            output = (float *)(((char *)output) + output_offset);
             int idY = blockIdx.y + offsetY;
             int idZ = blockIdx.z + offsetZ;
 
@@ -85,8 +86,10 @@ class GpuCumOp(GpuKernelBase, Op):
             output[idx_last_output] = input[idx_last_input] %(op)s output[idx_beforelast];
             }
         """ % locals()
-        params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SSIZE,
-                  gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
+        params = [gpuarray.GpuArray, gpuarray.SIZE,
+                  gpuarray.GpuArray, gpuarray.SIZE,
+                  gpuarray.SSIZE, gpuarray.SSIZE,
+                  gpuarray.SSIZE, gpuarray.SSIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE,
                   'intc', 'intc',
                   'intc', 'intc',
@@ -96,10 +99,11 @@ class GpuCumOp(GpuKernelBase, Op):
         # blockCumOp
         kname = "k_blockCumOp"
         k_var = "k_blockCumOp_" + nodename
-        params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SIZE,
+        params = [gpuarray.GpuArray, gpuarray.SIZE,
+                  gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
-                  'int32', 'int32', gpuarray.GpuArray, ]
+                  'int32', 'int32', gpuarray.GpuArray, gpuarray.SIZE]
         code = """
         // helper functions
         WITHIN_KERNEL
@@ -154,12 +158,17 @@ class GpuCumOp(GpuKernelBase, Op):
             output[idx_odd]  = partialCumOp[threadIdx.x*2 + 1];
         }
 
-        KERNEL void k_blockCumOp(float* input, float* output,
-                                        size_t nbElementsPerCumOp, ga_ssize inputStrides_x,
-                                        ga_ssize inputStrides_y,  ga_ssize inputStrides_z,
-                                        ga_ssize outputStrides_x, ga_ssize outputStrides_y,
-                                        ga_ssize outputStrides_z, int offsetY,
-                                        int offsetZ, float* blockSum) {
+        KERNEL void k_blockCumOp(float* input, ga_size input_offset,
+                                 float* output, ga_size output_offset,
+                                 size_t nbElementsPerCumOp, ga_ssize inputStrides_x,
+                                 ga_ssize inputStrides_y,  ga_ssize inputStrides_z,
+                                 ga_ssize outputStrides_x, ga_ssize outputStrides_y,
+                                 ga_ssize outputStrides_z, int offsetY,
+                                 int offsetZ, float* blockSum, ga_size blockSum_offset) {
+            input = (float *)(((char *)input) + input_offset);
+            output = (float *)(((char *)output) + output_offset);
+            blockSum = (float *)(((char *)blockSum) + blockSum_offset);
+
             // Regarding blockIdx and threadIdx, 'CumOp' is always performed along the X axis.
             // The Y and Z axis of the grid will contain all independent cumops of the 2D/3D case.
 
@@ -197,9 +206,15 @@ class GpuCumOp(GpuKernelBase, Op):
         kname = "k_finalCumOp"
         k_var = "k_finalCumOp_" + nodename
         code = """
-        KERNEL void k_finalCumOp(float* output, float* blockSum, size_t nbElementsPerCumOp,
-                                               ga_ssize dataStrides_x,  ga_ssize dataStrides_y,  ga_ssize dataStrides_z,
-                                               int offsetY, int offsetZ) {
+        KERNEL void k_finalCumOp(float* output, ga_size output_offset,
+                                 float* blockSum, ga_size blockSum_offset,
+                                 size_t nbElementsPerCumOp,
+                                 ga_ssize dataStrides_x,  ga_ssize dataStrides_y,  ga_ssize dataStrides_z,
+                                 int offsetY, int offsetZ) {
+
+            output = (float *)(((char *)output) + output_offset);
+            blockSum = (float *)(((char *)blockSum) + blockSum_offset);
+
             int globalThreadID = (blockIdx.x + 1) * blockDim.x + threadIdx.x;
 
             // Check if current has data to process.
@@ -218,7 +233,8 @@ class GpuCumOp(GpuKernelBase, Op):
             output[idx_odd] %(op)s= currentBlockSum;
         }
         """ % locals()
-        params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SIZE,
+        params = [gpuarray.GpuArray, gpuarray.SIZE,
+                  gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
                   'int32', 'int32', ]
         kernels.append(Kernel(code=code, name=kname, params=params,
@@ -380,20 +396,8 @@ class GpuCumOp(GpuKernelBase, Op):
                     size_t dimGrid[3] = {dimGridX, localDimGridY, localDimGridZ};
                     size_t dimBlock[3] = {dimBlockX, 1, 1};  // One cum op per block.
                     size_t sharedBytes = (2*dimBlockX) * sizeof(float);
-                    void* kernel_params[] = {(void*) input->ga.data,
-                                             (void*) output->ga.data,
-                                             (void*) &nbElementsPerCumOp,
-                                             (void*) &inputStrides_x,
-                                             (void*) &inputStrides_y,
-                                             (void*) &inputStrides_z,
-                                             (void*) &outputStrides_x,
-                                             (void*) &outputStrides_y,
-                                             (void*) &outputStrides_z,
-                                             (void*) &offsetY,
-                                             (void*) &offsetZ,
-                                             (void*) deviceBlockSum->ga.data
-                        };
-                    int err = GpuKernel_call(&k_blockCumOp_%(nodename)s, 3, dimGrid, dimBlock, sharedBytes, kernel_params);
+
+                    int err = k_blockCumOp_call(3, dimGrid, dimBlock, sharedBytes, input->ga.data, input->ga.offset, output->ga.data, output->ga.offset, nbElementsPerCumOp, inputStrides_x, inputStrides_y, inputStrides_z, outputStrides_x, outputStrides_y, outputStrides_z, offsetY, offsetZ, deviceBlockSum->ga.data, deviceBlockSum->ga.offset);
                     if (err != GA_NO_ERROR){
                         PyErr_SetString(PyExc_RuntimeError, "blockCumOp call failed");
                         return -1;
@@ -409,16 +413,8 @@ class GpuCumOp(GpuKernelBase, Op):
                         //  report partial cum ops of previous blocks to subsequents ones.
                         size_t dimGrid[3] = {dimGridX, localDimGridY, localDimGridZ};
                         size_t dimBlock[3] = {dimBlockX, 1, 1};
-                        void* kernel_params[] = {(void*) output->ga.data,
-                                                 (void*) deviceBlockSum->ga.data,
-                                                 (void*) &nbElementsPerCumOp,
-                                                 (void*) &outputStrides_x,
-                                                 (void*) &outputStrides_y,
-                                                 (void*) &outputStrides_z,
-                                                 (void*) &offsetY,
-                                                 (void*) &offsetZ
-                            };
-                        int err = GpuKernel_call(&k_finalCumOp_%(nodename)s, 3, dimGrid, dimBlock, sharedBytes, kernel_params);
+
+                        int err = k_finalCumOp_call(3, dimGrid, dimBlock, sharedBytes, output->ga.data, output->ga.offset, deviceBlockSum->ga.data, deviceBlockSum->ga.offset, nbElementsPerCumOp, outputStrides_x, outputStrides_y, outputStrides_z, offsetY, offsetZ);
                         if (err != GA_NO_ERROR){
                             PyErr_SetString(PyExc_RuntimeError, "finalCumOp call failed");
                             return -1;
@@ -428,22 +424,8 @@ class GpuCumOp(GpuKernelBase, Op):
                     if (shape[axis] != nbElementsPerCumOp){
                         size_t dimGrid[3] = {1, localDimGridY, localDimGridZ};
                         size_t dimBlock[3] = {1, 1, 1};
-                        size_t tmp0 = shape[axis]-2;
-                        size_t tmp1 = shape[axis]-1;
-                        void* kernel_params[] = {(void*) input->ga.data,
-                                                 (void*) output->ga.data,
-                                                 (void*) &inputStrides_x,
-                                                 (void*) &inputStrides_y,
-                                                 (void*) &inputStrides_z,
-                                                 (void*) &outputStrides_x,
-                                                 (void*) &outputStrides_y,
-                                                 (void*) &outputStrides_z,
-                                                 (void*) &offsetY,
-                                                 (void*) &offsetZ,
-                                                 (void*) &(tmp0),
-                                                 (void*) &(tmp1)
-                        };
-                        int err = GpuKernel_call(&k_cumadd_%(nodename)s, 3, dimGrid, dimBlock, sharedBytes, kernel_params);
+
+                        int err = k_cumadd_call(3, dimGrid, dimBlock, sharedBytes, input->ga.data, input->ga.offset, output->ga.data, output->ga.offset, inputStrides_x, inputStrides_y, inputStrides_z, outputStrides_x, outputStrides_y, outputStrides_z, offsetY, offsetZ, shape[axis] - 2, shape[axis] - 1);
                         if (err != GA_NO_ERROR){
                             PyErr_SetString(PyExc_RuntimeError, "cumadd call failed");
                             return -1;
