@@ -1716,6 +1716,8 @@ class TestUnsharedConv(unittest.TestCase):
         filters = tensor6()
         filters_ref = theano.tensor.tensor4()
 
+        single_kshp = self.kshp[:2] + self.kshp[4:]
+
         inputs_val = np.random.random(self.imshp).astype(theano.config.floatX)
         filters_val = np.random.random(self.kshp).astype(theano.config.floatX)
 
@@ -1728,7 +1730,6 @@ class TestUnsharedConv(unittest.TestCase):
 
         for i in range(0, self.kshp[2]):
             for j in range(0, self.kshp[3]):
-                single_kshp = self.kshp[:2] + self.kshp[4:]
                 single_filter = filters_val[:, :, i, j, ...].reshape(single_kshp)
                 ref_val = ref_func(inputs_val, single_filter)
                 utt.assert_allclose(ref_val[:, :, i, j], unshared_val[:, :, i, j])
@@ -1753,17 +1754,28 @@ class TestUnsharedConv(unittest.TestCase):
 
         utt.assert_allclose(grad_val.sum(axis=(2, 3)), ref_val)
 
-    # TO BE COMPLETED
     def test_gradinput(self):
         tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
 
         filters = tensor6()
         topgrad = theano.tensor.tensor4()
+        filters_ref = theano.tensor.tensor4()
 
-        filters_val = np.random.random(self.kshp).astype(theano.config.floatX)
+        single_kshp = self.kshp[:2] + self.kshp[4:]
+
+        # Applying the same filter to all regions
+        single_filter = np.random.random(single_kshp).astype(theano.config.floatX)
+        filters_val = single_filter.reshape((self.kshp[:2] + (1, 1) + self.kshp[4:]))
+        filters_val = np.tile(filters_val, (1, 1, self.kshp[2], self.kshp[3], 1, 1))
+
         topgrad_val = np.random.random(self.topgrad_shape).astype(theano.config.floatX)
 
-        grad_inputs = conv.conv2d_grad_wrt_inputs(topgrad, filters,
-                                                  self.imshp, unshared=True)
+        grad_inputs = conv.conv2d_grad_wrt_inputs(topgrad, filters, self.imshp, unshared=True)
         grad_func = theano.function([topgrad, filters], grad_inputs, mode=self.mode)
-        grad_func(topgrad_val, filters_val)
+        grad_val = grad_func(topgrad_val, filters_val)
+
+        conv_ref = conv.conv2d_grad_wrt_inputs(topgrad, filters_ref, self.imshp, unshared=False)
+        ref_func = theano.function([topgrad, filters_ref], conv_ref, mode=self.mode)
+        ref_val = ref_func(topgrad_val, single_filter)
+
+        utt.assert_allclose(ref_val, grad_val)

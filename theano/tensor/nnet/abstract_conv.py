@@ -2232,8 +2232,9 @@ class AbstractConv_gradInputs(BaseAbstractConv):
             topgrad_pad[:, :, (kern.shape[4] - 1):(1 - kern.shape[4]),
                         (kern.shape[5] - 1):(1 - kern.shape[5])] = topgrad
             topgrad = topgrad_pad
-            kern = kern[(slice(None),) * 4 +
-                        (slice(None, None, -1),) * self.convdim]
+            if not self.filter_flip:
+                kern = kern[(slice(None),) * 4 +
+                            (slice(None, None, -1),) * self.convdim]
             for b in xrange(topgrad.shape[0]):
                 for n in xrange(topgrad.shape[1]):
                     for im0 in xrange(kern.shape[1]):
@@ -2248,7 +2249,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                                         reg_col = max(0, min(reg_col, kern.shape[3] - 1))
                                         img[b, im0, row, col] += kern[n, im0, reg_row,
                                                                       reg_col, k_row, k_col] * \
-                                            topgrad[b, n, row, col]
+                                            topgrad[b, n, row + k_row, col + k_col]
         else:
             flip_filters = ((slice(None), slice(None)) +
                             (slice(None, None, -1),) * self.convdim)
