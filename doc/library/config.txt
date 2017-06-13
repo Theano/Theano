@@ -757,7 +757,9 @@ import theano and print the config variable, as in:
 
     Default: ``''``
 
-    Location of the warp-ctc library.
+    Location of the warp-ctc folder. The folder should contain a build
+    subfolder with the shared library (libwarpctc.so), and another
+    subfolder called include, with the CTC library header.
 
 .. attribute:: config.gcc.cxxflags
 
