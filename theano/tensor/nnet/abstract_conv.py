@@ -2243,7 +2243,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                                     for k_col in xrange(kern.shape[5]):
                                         # Deciding which kernel to select
                                         reg_row = row - ((kern.shape[4] - 1) - k_row)
-                                        reg_col = col - ((kern.shape[45] - 1) - k_col)
+                                        reg_col = col - ((kern.shape[5] - 1) - k_col)
                                         reg_row = max(0, min(reg_row, kern.shape[2] - 1))
                                         reg_col = max(0, min(reg_col, kern.shape[3] - 1))
                                         img[b, im0, row, col] += kern[n, im0, reg_row,
