@@ -636,6 +636,18 @@ import theano and print the config variable, as in:
 
     If ``'no_check'``, assume present and the version between header and library match (so less compilation at context init)",
 
+.. attribute:: config.dnn.include_path
+
+    Default: ``''``
+
+    Location of the cudnn header (defaults to the cuda root).
+
+.. attribute:: config.dnn.library_path
+
+    Default: ``''``
+
+    Location of the cudnn library (defaults to the cuda root).
+
 .. attribute:: config.conv.assert_shape
 
     If True, AbstractConv* ops will verify that user-provided
