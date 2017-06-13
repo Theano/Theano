@@ -8,11 +8,14 @@ typedef struct ctc_context {
     int * label_lengths;
 } ctc_context_t;
 
-void ctc_context_init(ctc_context_t * context)
+void ctc_context_init(ctc_context_t * context, PyGpuContextObject * gpu_context)
 {
     memset(&(context->options), 0, sizeof(struct ctcOptions));
     context->options.loc = CTC_GPU;
-    context->options.stream = 0;
+
+    // Get CUDA function pointer to obtain stream
+    CUstream (*getstream_func_ptr)(void *) = (CUstream (*)(void *)) gpuarray_get_extension( "cuda_get_stream" );
+    context->options.stream = getstream_func_ptr(gpu_context->ctx);
 
     context->workspace = NULL;
     context->input_lengths = NULL;
@@ -108,11 +111,11 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
                                  PyArrayObject      *  in_input_lengths,
                                  PyGpuArrayObject   ** out_costs,
                                  PyGpuArrayObject   ** out_gradients,
-                                 PyGpuContextObject *  ctx)
+                                 PyGpuContextObject *  gpu_context)
 {
     ctc_context_t ctc_object;
     ctc_context_t * context = &ctc_object;
-    ctc_context_init( context );
+    ctc_context_init( context, gpu_context );
 
     float * activations = NULL;
     switch (in_activations->ga.typecode)
@@ -161,7 +164,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         Py_XDECREF( *out_costs );
 
         *out_costs = pygpu_empty( 1, &cost_size, GA_FLOAT, GA_C_ORDER,
-            ctx, Py_None );
+            gpu_context, Py_None );
 
         if ( NULL == *out_costs )
         {
@@ -199,7 +202,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
 
             const size_t * activation_dims = PyGpuArray_DIMS( in_activations );
             *out_gradients = pygpu_zeros( 3, activation_dims, GA_FLOAT, GA_C_ORDER,
-                ctx, Py_None );
+                gpu_context, Py_None );
 
             if ( NULL == *out_gradients )
             {
@@ -240,7 +243,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     }
 
     context->workspace = pygpu_empty(1, &gpu_workspace_size, GA_BYTE,
-        GA_C_ORDER, ctx, Py_None );
+        GA_C_ORDER, gpu_context, Py_None );
 
     if ( NULL == context->workspace )
     {
@@ -271,12 +274,12 @@ int APPLY_SPECIFIC(ctc_cost_gpu_no_grad)(PyGpuArrayObject   *  in_activations,
                                          PyArrayObject      *  in_labels,
                                          PyArrayObject      *  in_input_lengths,
                                          PyGpuArrayObject   ** out_costs,
-                                         PyGpuContextObject *  ctx)
+                                         PyGpuContextObject *  gpu_context)
 {
     return APPLY_SPECIFIC(ctc_cost_gpu)(in_activations,
                                         in_labels,
                                         in_input_lengths,
                                         out_costs,
                                         NULL,
-                                        ctx);
+                                        gpu_context);
 }
