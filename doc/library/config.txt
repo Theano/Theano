@@ -638,15 +638,15 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.dnn.include_path
 
-    Default: ``''``
+    Default: ``include`` sub-folder in CUDA root directory.
 
-    Location of the cudnn header (defaults to the cuda root).
+    Location of the cudnn header.
 
 .. attribute:: config.dnn.library_path
 
-    Default: ``''``
+    Default: Library sub-folder (``lib64`` on Linux) in CUDA root directory.
 
-    Location of the cudnn library (defaults to the cuda root).
+    Location of the cudnn library.
 
 .. attribute:: config.conv.assert_shape
 
