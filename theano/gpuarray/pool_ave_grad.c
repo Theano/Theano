@@ -1,6 +1,6 @@
 #section kernels
 
-#kernel ave_pool2d_grad_kernel : size, size, size, size, size, size, size, *, *, size, size, size, size, size, size, size, size, * :
+#kernel ave_pool2d_grad_kernel : size, size, size, size, size, size, size, *, *, size, size, size, size, size, size, bool, bool, * :
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void ave_pool2d_grad_kernel(const ga_size nthreads,
@@ -46,7 +46,7 @@ KERNEL void ave_pool2d_grad_kernel(const ga_size nthreads,
   }
 }
 
-#kernel ave_pool3d_grad_kernel : size, size, size, size, size, size, size, size, size, *, *, size, size, size, size, size, size, size, size, size, size, size, * :
+#kernel ave_pool3d_grad_kernel : size, size, size, size, size, size, size, size, size, *, *, size, size, size, size, size, size, size, size, size, bool, bool, * :
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void ave_pool3d_grad_kernel(const ga_size nthreads,
