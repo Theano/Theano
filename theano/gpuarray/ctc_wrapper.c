@@ -198,7 +198,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
             Py_XDECREF( *out_gradients );
 
             const size_t * activation_dims = PyGpuArray_DIMS( in_activations );
-            *out_gradients = pygpu_empty( 3, activation_dims, GA_FLOAT, GA_C_ORDER,
+            *out_gradients = pygpu_zeros( 3, activation_dims, GA_FLOAT, GA_C_ORDER,
                 ctx, Py_None );
 
             if ( NULL == *out_gradients )
