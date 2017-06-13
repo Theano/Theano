@@ -181,8 +181,9 @@ def as_tensor_variable(x, name=None, ndim=None):
 
     if isinstance(x, bool):
         raise AsTensorError(
-            "Cannot cast True or False as a tensor variable. Please use 1 or "
-            "0. This error might be caused by using the == operator on "
+            "Cannot cast True or False as a tensor variable. Please use "
+            "np.array(True) or np.array(False) if you need these constants. "
+            "This error might be caused by using the == operator on "
             "Variables. v == w does not do what you think it does, "
             "use theano.tensor.eq(v, w) instead.")
 
