@@ -29,15 +29,10 @@ class TestCTC(unittest.TestCase):
 
         cost, grad = train()
 
-        cpu_cost = np.empty(shape=cost.shape, dtype=np.float32)
         # Transfer costs from GPU memory to host
-        cost.read(cpu_cost)
-        cost.sync()
-
-        cpu_grad = np.empty(shape=grad.shape, dtype=np.float32)
+        cpu_cost = np.asarray(cost)
         # Transfer gradients from GPU memory to host
-        grad.read(cpu_grad)
-        grad.sync()
+        cpu_grad = np.asarray(grad)
 
         utt.assert_allclose(expected_grads / cost.shape[0], cpu_grad)
         utt.assert_allclose(expected_costs, cpu_cost)
