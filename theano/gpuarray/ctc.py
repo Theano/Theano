@@ -120,14 +120,16 @@ class GpuConnectionistTemporalClassification(gof.COp):
         costs = GpuArrayType(dtype='float32',
                              broadcastable=(False,),
                              context_name=context)()
+        outputs = [costs]
 
         if self.compute_grad:
             gradients = GpuArrayType(dtype='float32',
                                      broadcastable=(False, False, False,),
                                      context_name=context)()
+            outputs += [gradients]
 
         return theano.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
-                            outputs=[costs, gradients])
+                            outputs=outputs)
 
     def L_op(self, inputs, outputs, output_grads):
         if not ctc_enabled:
