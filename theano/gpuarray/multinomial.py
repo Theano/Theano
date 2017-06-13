@@ -71,16 +71,22 @@ class GPUAMultinomialFromUniform(GpuKernelBase, Op):
 KERNEL void k_multi_warp_multinomial(
     const ga_size nb_multi,
     const ga_size nb_outcomes,
-    GLOBAL_MEM %(in_ctype)s * global_pvals,
+    GLOBAL_MEM %(in_ctype)s *global_pvals,
+    const ga_size global_pvals_offset,
     const ga_ssize pvals_row_stride,
     const ga_ssize pvals_col_stride,
-    GLOBAL_MEM %(in_ctype)s * global_unis,
+    GLOBAL_MEM %(in_ctype)s *global_unis,
+    const ga_size global_unis_offset,
     const ga_ssize unis_stride,
-    GLOBAL_MEM %(out_ctype)s * global_outs,
+    GLOBAL_MEM %(out_ctype)s *global_outs,
+    const ga_size global_outs_offset,
     const ga_ssize outs_row_stride,
     const ga_ssize outs_col_stride
 )
 {
+    global_pvals = (GLOBAL_MEM %(in_ctype)s *)(((char *)global_pvals) + global_pvals_offset);
+    global_unis = (GLOBAL_MEM %(in_ctype)s *)(((char *)global_unis) + global_unis_offset);
+    global_outs = (GLOBAL_MEM %(out_ctype)s *)(((char *)global_outs) + global_outs_offset);
     // each thread takes care of one multinomial draw
     int n = LDIM_0*GID_0 + LID_0;
     if (n < nb_multi)
@@ -113,11 +119,14 @@ KERNEL void k_multi_warp_multinomial(
             params=[pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.GpuArray,
+                    pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.GpuArray,
+                    pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.GpuArray,
+                    pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.SSIZE],
             flags=Kernel.get_flags(node.outputs[0].dtype),
@@ -193,27 +202,8 @@ KERNEL void k_multi_warp_multinomial(
 
         assert(nb_blocks*nb_threads >= nb_multi);
 
-        void *args[10];
-        ssize_t strides[5] = {
-            PyGpuArray_STRIDES(pvals)[0]/gpuarray_get_elsize(%(in_typecode)s),
-            PyGpuArray_STRIDES(pvals)[1]/gpuarray_get_elsize(%(in_typecode)s),
-            PyGpuArray_STRIDES(unis)[0]/gpuarray_get_elsize(%(in_typecode)s),
-            PyGpuArray_STRIDES(out)[0]/gpuarray_get_elsize(%(out_typecode)s),
-            PyGpuArray_STRIDES(out)[1]/gpuarray_get_elsize(%(out_typecode)s)
-        };
-        int err;
-        args[0] = (void*)&PyGpuArray_DIMS(out)[1];
-        args[1] = (void*)&PyGpuArray_DIMS(out)[0];
-        args[2] = pvals->ga.data; //PyGpuArray_DEV_DATA(pvals);
-        args[3] = (void*)&strides[0];
-        args[4] = (void*)&strides[1];
-        args[5] = unis->ga.data; //PyGpuArray_DEV_DATA(unis);
-        args[6] = (void*)&strides[2];
-        args[7] = out->ga.data; //PyGpuArray_DEV_DATA(out);
-        args[8] = (void*)&strides[3];
-        args[9] = (void*)&strides[4];
+        int err = k_multi_warp_multinomial_call(1, &nb_blocks, &nb_threads, 0,  PyGpuArray_DIMS(out)[1], PyGpuArray_DIMS(out)[0], pvals->ga.data, pvals->ga.offset, PyGpuArray_STRIDES(pvals)[0]/gpuarray_get_elsize(%(in_typecode)s), PyGpuArray_STRIDES(pvals)[1]/gpuarray_get_elsize(%(in_typecode)s), unis->ga.data, unis->ga.offset, PyGpuArray_STRIDES(unis)[0]/gpuarray_get_elsize(%(in_typecode)s), out->ga.data, out->ga.offset, PyGpuArray_STRIDES(out)[0]/gpuarray_get_elsize(%(out_typecode)s), PyGpuArray_STRIDES(out)[1]/gpuarray_get_elsize(%(out_typecode)s));
 
-        err = GpuKernel_call(&%(kname)s, 1, &nb_blocks, &nb_threads, 0, args);
         if (err != GA_NO_ERROR) {
            PyErr_Format(
                 PyExc_RuntimeError,
@@ -230,7 +220,7 @@ KERNEL void k_multi_warp_multinomial(
         return s
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 
 class GPUAChoiceFromUniform(GpuKernelBase, Op):
@@ -295,15 +285,21 @@ KERNEL void k_multi_warp_multinomial_wor(
     const ga_size nb_outcomes,
     const ga_size n_samples,
     GLOBAL_MEM float * global_pvals_copy,
+    const ga_size global_pvals_offset,
     const ga_ssize pvals_row_stride,
     const ga_ssize pvals_col_stride,
     GLOBAL_MEM float * global_unis,
+    const ga_size global_unis_offset,
     const ga_ssize unis_stride,
     GLOBAL_MEM ga_long * global_outs,
+    const ga_size global_outs_offset,
     const ga_ssize outs_row_stride,
     const ga_ssize outs_col_stride
 )
 {
+    global_pvals_copy = (GLOBAL_MEM float *)(((char *)global_pvals_copy) + global_pvals_offset);
+    global_unis = (GLOBAL_MEM float *)(((char *)global_unis) + global_unis_offset);
+    global_outs = (GLOBAL_MEM ga_long *)(((char *)global_outs) + global_outs_offset);
     // each thread takes care of one multinomial-wor n_samples-draw
     int n = LDIM_0*GID_0 + LID_0;
 
@@ -344,11 +340,14 @@ KERNEL void k_multi_warp_multinomial_wor(
                     pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.GpuArray,
+                    pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.GpuArray,
+                    pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.GpuArray,
+                    pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.SSIZE
                     ],
@@ -438,28 +437,7 @@ KERNEL void k_multi_warp_multinomial_wor(
 
         assert(nb_blocks*nb_threads >= nb_multi);
 
-        void *args[11];
-        ssize_t strides[5] = {
-            PyGpuArray_STRIDES(pvals)[0]/sizeof(float),
-            PyGpuArray_STRIDES(pvals)[1]/sizeof(float),
-            PyGpuArray_STRIDES(unis)[0]/sizeof(float),
-            PyGpuArray_STRIDES(out)[0]/8,
-            PyGpuArray_STRIDES(out)[1]/8
-        };
-        int err;
-        args[0] = (void*)&PyGpuArray_DIMS(pvals)[0];
-        args[1] = (void*)&PyGpuArray_DIMS(pvals)[1];
-        args[2] = (void*)&n_samples;
-        args[3] = pvals_copy->ga.data; //PyGpuArray_DEV_DATA(pvals);
-        args[4] = (void*)&strides[0];
-        args[5] = (void*)&strides[1];
-        args[6] = unis->ga.data; //PyGpuArray_DEV_DATA(unis);
-        args[7] = (void*)&strides[2];
-        args[8] = out->ga.data; //PyGpuArray_DEV_DATA(out);
-        args[9] = (void*)&strides[3];
-        args[10] = (void*)&strides[4];
-
-        err = GpuKernel_call(&%(kname)s, 1, &nb_blocks, &nb_threads, 0, args);
+        int err = k_multi_warp_multinomial_wor_call(1, &nb_blocks, &nb_threads, 0, PyGpuArray_DIMS(pvals)[0], PyGpuArray_DIMS(pvals)[1], n_samples, pvals_copy->ga.data, pvals_copy->ga.offset, PyGpuArray_STRIDES(pvals)[0]/sizeof(float), PyGpuArray_STRIDES(pvals)[1]/sizeof(float), unis->ga.data, unis->ga.offset, PyGpuArray_STRIDES(unis)[0]/sizeof(float), out->ga.data, out->ga.offset, PyGpuArray_STRIDES(out)[0]/8, PyGpuArray_STRIDES(out)[1]/8);
         if (err != GA_NO_ERROR) {
            PyErr_Format(
                 PyExc_RuntimeError,
@@ -477,7 +455,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         return s
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 @register_opt('fast_compile')

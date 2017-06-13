@@ -1,15 +1,19 @@
 #section kernels
 
-#kernel max_pool2d_grad_kernel : size, size, size, size, size, size, size, *, *, *, size, size, size, size, size, size, * :
+#kernel max_pool2d_grad_kernel : size, size, size, size, size, size, size, *, size, *, size, *, size, size, size, size, size, size, size, *, size :
 
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void max_pool2d_grad_kernel(const ga_size nthreads,
    const ga_size num, const ga_size channels, const ga_size height,
    const ga_size width, const ga_size pooled_height, const ga_size pooled_width,
-   GLOBAL_MEM const DTYPE_INPUT_0 *x, GLOBAL_MEM const DTYPE_INPUT_1 *z, GLOBAL_MEM const DTYPE_INPUT_2 *gz,
+   GLOBAL_MEM const DTYPE_INPUT_0 *x, const ga_size x_off, GLOBAL_MEM const DTYPE_INPUT_1 *z, const ga_size z_off, GLOBAL_MEM const DTYPE_INPUT_2 *gz, const ga_size gz_off,
    const ga_size kernel_h, const ga_size kernel_w, const ga_size stride_h, const ga_size stride_w,
-   const ga_size pad_h, const ga_size pad_w, GLOBAL_MEM DTYPE_OUTPUT_0 *gx)
+   const ga_size pad_h, const ga_size pad_w, GLOBAL_MEM DTYPE_OUTPUT_0 *gx, const ga_size gx_off)
 {
+  x = (GLOBAL_MEM const DTYPE_INPUT_0 *)(((char *)x) + x_off);
+  z = (GLOBAL_MEM const DTYPE_INPUT_1 *)(((char *)z) + z_off);
+  gz = (GLOBAL_MEM const DTYPE_INPUT_2 *)(((char *)gz) + gz_off);
+  gx = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)gx) + gx_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads; index += LDIM_0 * GDIM_0) {
@@ -38,19 +42,23 @@ KERNEL void max_pool2d_grad_kernel(const ga_size nthreads,
   }
 }
 
-#kernel max_pool3d_grad_kernel : size, size, size, size, size, size, size, size, size, *, *, *, size, size, size, size, size, size, size, size, size, * :
+#kernel max_pool3d_grad_kernel : size, size, size, size, size, size, size, size, size, *, size, *, size, *, size, size, size, size, size, size, size, size, size, size, *, size :
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void max_pool3d_grad_kernel(const ga_size nthreads,
    const ga_size num, const ga_size channels, const ga_size depth,
    const ga_size height, const ga_size width, const ga_size pooled_depth,
    const ga_size pooled_height, const ga_size pooled_width,
-   GLOBAL_MEM const DTYPE_INPUT_0 *x, GLOBAL_MEM const DTYPE_INPUT_1 *z, GLOBAL_MEM const DTYPE_INPUT_2 *gz,
+   GLOBAL_MEM const DTYPE_INPUT_0 *x, const ga_size x_off, GLOBAL_MEM const DTYPE_INPUT_1 *z, const ga_size z_off, GLOBAL_MEM const DTYPE_INPUT_2 *gz, const ga_size gz_off,
    const ga_size kernel_d, const ga_size kernel_h, const ga_size kernel_w,
    const ga_size stride_d, const ga_size stride_h, const ga_size stride_w,
    const ga_size pad_d, const ga_size pad_h, const ga_size pad_w,
-   GLOBAL_MEM DTYPE_OUTPUT_0 *gx)
+   GLOBAL_MEM DTYPE_OUTPUT_0 *gx, const ga_size gx_off)
 {
+  x = (GLOBAL_MEM const DTYPE_INPUT_0 *)(((char *)x) + x_off);
+  z = (GLOBAL_MEM const DTYPE_INPUT_1 *)(((char *)z) + z_off);
+  gz = (GLOBAL_MEM const DTYPE_INPUT_2 *)(((char *)gz) + gz_off);
+  gx = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)gx) + gx_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads; index += LDIM_0 * GDIM_0) {
@@ -138,9 +146,11 @@ int APPLY_SPECIFIC(max_pool_grad)(PyGpuArrayObject *x,
       err = max_pool2d_grad_kernel_scall(1, &num_kernels, 0, num_kernels,
                                          x_dims[0], x_dims[1], x_dims[2], x_dims[3],
                                          z_dims[2], z_dims[3],
-                                         x->ga.data, z->ga.data, gz->ga.data,
+                                         x->ga.data, x->ga.offset,
+                                         z->ga.data, z->ga.offset,
+                                         gz->ga.data, gz->ga.offset,
                                          w[0], w[1], s[0], s[1], p[0], p[1],
-                                         (*gx)->ga.data);
+                                         (*gx)->ga.data, (*gx)->ga.offset);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "GpuMaxPoolGrad: max_pool2d_grad_kernel %s.",
@@ -152,9 +162,11 @@ int APPLY_SPECIFIC(max_pool_grad)(PyGpuArrayObject *x,
       err = max_pool3d_grad_kernel_scall(1, &num_kernels, 0, num_kernels,
                                          x_dims[0], x_dims[1], x_dims[2], x_dims[3], x_dims[4],
                                          z_dims[2], z_dims[3], z_dims[4],
-                                         x->ga.data, z->ga.data, gz->ga.data,
+                                         x->ga.data, x->ga.offset,
+                                         z->ga.data, z->ga.offset,
+                                         gz->ga.data, gz->ga.offset,
                                          w[0], w[1], w[2], s[0], s[1], s[2],
-                                         p[0], p[1], p[2], (*gx)->ga.data);
+                                         p[0], p[1], p[2], (*gx)->ga.data, (*gx)->ga.offset);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "GpuMaxPoolGrad: max_pool3d_grad_kernel %s.",

@@ -1,6 +1,6 @@
 #section kernels
 
-#kernel dilated_im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, * : 
+#kernel dilated_im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size :
 // TODO check kernel flags
 // This uses a lot of code from Caffe (http://caffe.berkeleyvision.org/);
 // sources are clearly marked. Below we reproduce the original license of
@@ -35,14 +35,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // GPU kernel for the case of dilation
 KERNEL void dilated_im2col_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_INPUT_0 * data_im,
+    const ga_size offset_im,
     const ga_size data_im_offset,
+    // offset_im is the pointer offset for data_im.
+    // data_im_offset is an offset of elements in the array
     const ga_size height, const ga_size width,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size dilation_h, const ga_size dilation_w,
     const ga_size pad_h, const ga_size pad_w,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
-    GLOBAL_MEM DTYPE_INPUT_0 * data_col) {
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col,
+    const ga_size offset_col) {
+  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
+  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
@@ -70,16 +76,23 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
   }
 }
 
-#kernel im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, * : 
+#kernel im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, *, size :
+
 KERNEL void im2col_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_INPUT_0 * data_im,
+    const ga_size offset_im,
     const ga_size data_im_offset,
+    // offset_im is the pointer offset for data_im.
+    // data_im_offset is an offset of elements in the array
     const ga_size height, const ga_size width,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size pad_h, const ga_size pad_w,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
-    GLOBAL_MEM DTYPE_INPUT_0 * data_col) {
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col,
+    const ga_size offset_col) {
+  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
+  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
@@ -108,9 +121,9 @@ KERNEL void im2col_kernel(const ga_size n,
 }
 
 // GPU kernel for the case of dilation
-#kernel dilated_col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size : 
+#kernel dilated_col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size, size :
 KERNEL void dilated_col2im_kernel(const ga_size n,
-    GLOBAL_MEM const DTYPE_INPUT_0 * data_col,
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_col, const ga_size offset_col,
     const ga_size height, const ga_size width, const ga_size channels,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size dilation_h, const ga_size dilation_w,
@@ -118,7 +131,12 @@ KERNEL void dilated_col2im_kernel(const ga_size n,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
     GLOBAL_MEM DTYPE_INPUT_0 * data_im,
+    const ga_size offset_im,
     const ga_size data_im_offset) {
+    // offset_im is the pointer offset for data_im.
+    // data_im_offset is an offset of elements in the array
+  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
+  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
@@ -153,16 +171,22 @@ KERNEL void dilated_col2im_kernel(const ga_size n,
   }
 }
 
-#kernel col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, *, size : 
+#kernel col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, *, size, size :
+
 KERNEL void col2im_kernel(const ga_size n,
-    GLOBAL_MEM const DTYPE_INPUT_0 * data_col,
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_col, const ga_size offset_col,
     const ga_size height, const ga_size width, const ga_size channels,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size pad_h, const ga_size pad_w,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
     GLOBAL_MEM DTYPE_INPUT_0 * data_im,
+    const ga_size offset_im,
     const ga_size data_im_offset) {
+    // offset_im is the pointer offset for data_im.
+    // data_im_offset is an offset of elements in the array
+  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
+  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
@@ -191,16 +215,48 @@ KERNEL void col2im_kernel(const ga_size n,
   }
 }
 
+#section support_code
 
+int rgemm(cb_order o, cb_transpose tA, cb_transpose tB,
+          size_t M, size_t N, size_t K, double alpha,
+          GpuArray *A, size_t offA, size_t lda,
+          GpuArray *B, size_t offB, size_t ldb,
+          double beta, GpuArray *C, size_t offC, size_t ldc) {
+  switch (A->typecode) {
+  case GA_FLOAT:
+    return gpublas_sgemm(o, tA, tB,
+                         M, N, K, alpha,
+                         A->data, (A->offset / 4) + offA, lda,
+                         B->data, (B->offset / 4) + offB, ldb,
+                         beta,
+                         C->data, (C->offset / 4) + offC, ldc);
+  case GA_DOUBLE:
+    return gpublas_dgemm(o, tA, tB,
+                         M, N, K, alpha,
+                         A->data, (A->offset / 8) + offA, lda,
+                         B->data, (B->offset / 8) + offB, ldb,
+                         beta,
+                         C->data, (C->offset / 8) + offC, ldc);
+  case GA_HALF:
+    return gpublas_hgemm(o, tA, tB,
+                         M, N, K, alpha,
+                         A->data, (A->offset / 2) + offA, lda,
+                         B->data, (B->offset / 2) + offB, ldb,
+                         beta,
+                         C->data, (C->offset / 2) + offC, ldc);
+  default:
+    return GA_UNSUPPORTED_ERROR;
+  }
+}
 
 #section support_code_struct
 
-int im2col(gpudata *data_im, const size_t data_im_offset, const size_t channels,
+int im2col(GpuArray *data_im, const size_t data_im_offset, const size_t channels,
     const size_t height, const size_t width, const size_t kernel_h, const size_t kernel_w,
     const size_t dilation_h, const size_t dilation_w,
     const size_t pad_h, const size_t pad_w,
     const size_t stride_h, const size_t stride_w,
-    gpudata * data_col) {
+    GpuArray *data_col) {
   // We are going to launch channels * height_col * width_col kernels, each
   // kernel responsible for copying a single-channel grid.
   size_t dil_kernel_h = (kernel_h - 1) * dilation_h + 1;
@@ -212,9 +268,10 @@ int im2col(gpudata *data_im, const size_t data_im_offset, const size_t channels,
   if (dilation_h != 1 || dilation_w != 1) {
     err = dilated_im2col_kernel_scall(
       1, &num_kernels, 0,
-      num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
+      num_kernels, data_im->data, data_im->offset, data_im_offset,
+      height, width, kernel_h, kernel_w,
       dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w, height_col,
-      width_col, data_col);
+      width_col, data_col->data, data_col->offset);
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "gpuarray error: dilated_im2col_kernel: %s.",
@@ -223,9 +280,10 @@ int im2col(gpudata *data_im, const size_t data_im_offset, const size_t channels,
   } else {
     err = im2col_kernel_scall(
       1, &num_kernels, 0,
-      num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
+      num_kernels, data_im->data, data_im->offset, data_im_offset,
+      height, width, kernel_h, kernel_w,
       pad_h, pad_w, stride_h, stride_w, height_col,
-      width_col, data_col);
+      width_col, data_col->data, data_col->offset);
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "gpuarray error: im2col_kernel: %s.",
@@ -235,11 +293,11 @@ int im2col(gpudata *data_im, const size_t data_im_offset, const size_t channels,
   return err;
 }
 
-int col2im(gpudata * data_col, const size_t channels,
+int col2im(GpuArray *data_col, const size_t channels,
     const size_t height, const size_t width, const size_t patch_h, const size_t patch_w,
     const size_t dilation_h, const size_t dilation_w,
     const size_t pad_h, const size_t pad_w, const size_t stride_h,
-    const size_t stride_w, gpudata * data_im, const size_t data_im_offset) {
+    const size_t stride_w, GpuArray *data_im, const size_t data_im_offset) {
   size_t dil_patch_h = (patch_h - 1) * dilation_h + 1;
   size_t dil_patch_w = (patch_w - 1) * dilation_w + 1;
   size_t height_col = (height + 2 * pad_h - dil_patch_h) / stride_h + 1;
@@ -251,9 +309,10 @@ int col2im(gpudata * data_col, const size_t channels,
   if (dilation_h != 1 || dilation_w != 1) {
     err = dilated_col2im_kernel_scall(
       1, &num_kernels, 0,
-      num_kernels, data_col, height, width, channels, patch_h, patch_w,
+      num_kernels, data_col->data, data_col->offset,
+      height, width, channels, patch_h, patch_w,
       dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w,
-      height_col, width_col, data_im, data_im_offset);
+      height_col, width_col, data_im->data, data_im->offset, data_im_offset);
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "gpuarray error: dilated_col2im_kernel: %s.",
@@ -262,9 +321,10 @@ int col2im(gpudata * data_col, const size_t channels,
   } else {
     err = col2im_kernel_scall(
       1, &num_kernels, 0,
-      num_kernels, data_col, height, width, channels, patch_h, patch_w,
+      num_kernels, data_col->data, data_col->offset,
+      height, width, channels, patch_h, patch_w,
       pad_h, pad_w, stride_h, stride_w,
-      height_col, width_col, data_im, data_im_offset);
+      height_col, width_col, data_im->data, data_im->offset, data_im_offset);
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "gpuarray error: col2im_kernel: %s.",
@@ -433,43 +493,21 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
             // First, im2col
-            err = im2col(bottom->ga.data, n * bottom_stride,
-                         nChannels, bottomHeight,
-                         bottomWidth, kH, kW, dilH, dilW,
-                         padH, padW, dH, dW, col->ga.data);
+	  err = im2col(&bottom->ga, n * bottom_stride,
+		       nChannels, bottomHeight,
+		       bottomWidth, kH, kW, dilH, dilW,
+		       padH, padW, dH, dW, &col->ga);
             if (err != GA_NO_ERROR) {
                 Py_DECREF(col);
                 return NULL;
             }
             // Second, gemm
-            switch (col->ga.typecode) {
-            case GA_FLOAT:
-              err = gpublas_sgemm(cb_fortran, cb_no_trans, cb_no_trans,
-                                  N_, M_, K_, 1,
-                                  col->ga.data, 0, N_,
-                                  weight->ga.data, 0, K_,
-                                  0,
-                                  top->ga.data, n * top_stride, N_);
-              break;
-            case GA_DOUBLE:
-              err = gpublas_dgemm(cb_fortran, cb_no_trans, cb_no_trans,
-                                  N_, M_, K_, 1,
-                                  col->ga.data, 0, N_,
-                                  weight->ga.data, 0, K_,
-                                  0,
-                                  top->ga.data, n * top_stride, N_);
-              break;
-            case GA_HALF:
-              err = gpublas_hgemm(cb_fortran, cb_no_trans, cb_no_trans,
-                                  N_, M_, K_, 1,
-                                  col->ga.data, 0, N_,
-                                  weight->ga.data, 0, K_,
-                                  0,
-                                  top->ga.data, n * top_stride, N_);
-              break;
-            default:
-              err = GA_UNSUPPORTED_ERROR;
-            }
+            err = rgemm(cb_fortran, cb_no_trans, cb_no_trans,
+                        N_, M_, K_, 1,
+                        &col->ga, 0, N_,
+                        &weight->ga, 0, K_,
+                        0,
+                        &top->ga, n * top_stride, N_);
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
                              "GpuCorrMM forward encountered an error running gemm: %d", err);
@@ -495,10 +533,10 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
             // First, im2col
-            err = im2col(bottom->ga.data, n * bottom_stride,
+            err = im2col(&bottom->ga, n * bottom_stride,
                          nChannels, bottomHeight,
                          bottomWidth, kH, kW, dilH, dilW,
-                         padH, padW, dH, dW, col->ga.data);
+                         padH, padW, dH, dW, &col->ga);
             if (err != GA_NO_ERROR) {
                 Py_DECREF(col);
                 return NULL;
@@ -507,34 +545,12 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
-            switch (col->ga.typecode) {
-            case GA_FLOAT:
-              err = gpublas_sgemm(cb_fortran, cb_trans, cb_no_trans,
-                                  K_, M_, N_, 1,
-                                  col->ga.data, 0, N_,
-                                  top->ga.data, n * top_stride, N_,
-                                  (n == 0) ? 0 : 1,
-                                  weight->ga.data, 0, K_);
-              break;
-            case GA_DOUBLE:
-              err = gpublas_dgemm(cb_fortran, cb_trans, cb_no_trans,
-                                  K_, M_, N_, 1,
-                                  col->ga.data, 0, N_,
-                                  top->ga.data, n * top_stride, N_,
-                                  (n == 0) ? 0 : 1,
-                                  weight->ga.data, 0, K_);
-              break;
-            case GA_HALF:
-              err = gpublas_hgemm(cb_fortran, cb_trans, cb_no_trans,
-                                  K_, M_, N_, 1,
-                                  col->ga.data, 0, N_,
-                                  top->ga.data, n * top_stride, N_,
-                                  (n == 0) ? 0 : 1,
-                                  weight->ga.data, 0, K_);
-              break;
-            default:
-                err = GA_UNSUPPORTED_ERROR;
-            }
+            err = rgemm(cb_fortran, cb_trans, cb_no_trans,
+                        K_, M_, N_, 1,
+                        &col->ga, 0, N_,
+                        &top->ga, n * top_stride, N_,
+                        (n == 0) ? 0 : 1,
+                        &weight->ga, 0, K_);
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
                              "GpuCorrMM grad weights encountered an error running gemm: %d", err);
@@ -559,35 +575,13 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         // full convolution: gemm, then col2im
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
-            // gemm into columns
-          switch (top->ga.typecode) {
-          case GA_FLOAT:
-            err = gpublas_sgemm(cb_fortran, cb_no_trans, cb_trans,
-                                N_, K_, M_, 1,
-                                top->ga.data, n * top_stride, N_,
-                                weight->ga.data, 0, K_,
-                                0,
-                                col->ga.data, 0, N_);
-            break;
-          case GA_DOUBLE:
-            err = gpublas_dgemm(cb_fortran, cb_no_trans, cb_trans,
-                                N_, K_, M_, 1,
-                                top->ga.data, n * top_stride, N_,
-                                weight->ga.data, 0, K_,
-                                0,
-                                col->ga.data, 0, N_);
-            break;
-          case GA_HALF:
-            err = gpublas_hgemm(cb_fortran, cb_no_trans, cb_trans,
-                                N_, K_, M_, 1,
-                                top->ga.data, n * top_stride, N_,
-                                weight->ga.data, 0, K_,
-                                0,
-                                col->ga.data, 0, N_);
-            break;
-          default:
-            err = GA_UNSUPPORTED_ERROR;
-          }
+          // gemm into columns
+          err = rgemm(cb_fortran, cb_no_trans, cb_trans,
+                      N_, K_, M_, 1,
+                      &top->ga, n * top_stride, N_,
+                      &weight->ga, 0, K_,
+                      0,
+                      &col->ga, 0, N_);
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
                              "GpuCorrMM grad inputs encountered an error running gemm: %d", err);
@@ -595,9 +589,9 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                 return NULL;
             }
             // col2im back to the data
-            err = col2im(col->ga.data, nChannels, bottomHeight, bottomWidth,
+            err = col2im(&col->ga, nChannels, bottomHeight, bottomWidth,
                          kH, kW, dilH, dilW, padH, padW,
-                         dH, dW, bottom->ga.data, n * bottom_stride);
+                         dH, dW, &bottom->ga, n * bottom_stride);
             if (err != GA_NO_ERROR) {
                 Py_DECREF(col);
                 return NULL;
