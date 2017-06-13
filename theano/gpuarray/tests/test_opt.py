@@ -689,7 +689,6 @@ def test_crossentropycategorical1hot_lifter():
     z = tensor.nnet.crossentropy_categorical_1hot(x, y)
     gx = theano.grad(z.mean(), x)
     f = theano.function([x, y], [z, gx], mode=mode_with_gpu)
-    theano.printing.debugprint(f, print_type=1)
     assert not any(isinstance(n.op, (tensor.nnet.CrossentropyCategorical1Hot,
                                      tensor.nnet.CrossentropyCategorical1HotGrad))
                    for n in f.maker.fgraph.apply_nodes)
