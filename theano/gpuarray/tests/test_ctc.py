@@ -7,7 +7,7 @@ import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 import theano.gpuarray
-from theano.gpuarray.ctc import (ctc_enabled, ctc)
+from theano.gpuarray.ctc import (ctc_enabled, gpu_ctc)
 
 
 class TestCTC(unittest.TestCase):
@@ -21,7 +21,7 @@ class TestCTC(unittest.TestCase):
         t_activation_times = theano.shared(input_length, name="activation_times")
         t_labels = theano.shared(labels, name="labels")
 
-        t_cost = ctc(t_activations, t_labels, t_activation_times)
+        t_cost = gpu_ctc(t_activations, t_labels, t_activation_times)
         # Symbolic gradient of CTC cost
         t_grad = T.grad(T.mean(t_cost), t_activations)
         # Compile symbolic functions
@@ -99,7 +99,7 @@ class TestCTC(unittest.TestCase):
                 # Create auxiliary symbolic variables
                 t_activation_times = theano.shared(in_lengths, name="activation_times")
                 t_labels = theano.shared(labels, name="labels")
-                return ctc(acts, t_labels, t_activation_times)
+                return gpu_ctc(acts, t_labels, t_activation_times)
             return wrapper
 
         activations = np.asarray([[[0.1, 0.6, 0.1, 0.1, 0.1], [0.1, 0.1, 0.6, 0.1, 0.1]],
