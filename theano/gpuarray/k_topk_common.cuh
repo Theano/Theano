@@ -48,6 +48,76 @@ POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 
+__device__ __forceinline__ int lane_id() {
+  int id;
+  asm("mov.s32 %0, %laneid;" : "=r"(id) );
+  return id;
+}
+
+__device__ __forceinline__ unsigned lane_mask_lt() {
+  unsigned mask;
+  asm("mov.u32 %0, %%lanemask_lt;" : "=r"(mask));
+  return mask;
+}
+
+__device__ __forceinline__ unsigned lane_mask_le() {
+  unsigned mask;
+  asm("mov.u32 %0, %%lanemask_le;" : "=r"(mask));
+  return mask;
+}
+
+__device__ __forceinline__ unsigned lane_mask_gt() {
+  unsigned mask;
+  asm("mov.u32 %0, %%lanemask_gt;" : "=r"(mask));
+  return mask;
+}
+
+__device__ __forceinline__ unsigned lane_mask_ge() {
+  unsigned mask;
+  asm("mov.u32 %0, %%lanemask_ge;" : "=r"(mask));
+  return mask;
+}
+
+template <typename T>
+struct Bitfield {};
+
+template <>
+struct Bitfield<unsigned int> {
+  static __device__ __forceinline__
+  unsigned int get(unsigned int val, int pos, int len) {
+    unsigned int ret;
+    asm("bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(val), "r"(pos), "r"(len));
+    return ret;
+  }
+
+  static __device__ __forceinline__
+  unsigned int set(unsigned int val, unsigned int toInsert, int pos, int len) {
+    unsigned int ret;
+    asm("bfi.b32 %0, %1, %2, %3, %4;" :
+        "=r"(ret) : "r"(toInsert), "r"(val), "r"(pos), "r"(len));
+    return ret;
+  }
+};
+
+template <>
+struct Bitfield<unsigned long long int> {
+  static __device__ __forceinline__
+  unsigned long long int get(unsigned long long int val, int pos, int len) {
+    unsigned long long int ret;
+    asm("bfe.u64 %0, %1, %2, %3;" : "=l"(ret) : "l"(val), "r"(pos), "r"(len));
+    return ret;
+  }
+
+  static __device__ __forceinline__
+  unsigned long long int set(unsigned long long int val, unsigned long long int toInsert, int pos, int len) {
+    unsigned long long int ret;
+    asm("bfi.b64 %0, %1, %2, %3, %4;" :
+        "=l"(ret) : "l"(toInsert), "l"(val), "r"(pos), "r"(len));
+    return ret;
+  }
+};
+
+
 template <typename T>
 struct RadixConfig {
 // Converts a type (maybe float) to an integer representation with the same
@@ -182,10 +252,6 @@ struct RadixConfig<ga_half> {
 #define INPUT_TYPE      $inp_t
 #define INDEX_TYPE      $out_t
 #define bitsof(T)       (sizeof(T)*8)
-#define RADIX_BITS      2
-#define RADIX_SIZE      (1<<RADIX_BITS)
-#define RADIX_MASK(n)   ((RADIX_SIZE-1) << (n*RADIX_BITS))
-#define RADIX_DIGITS(T) (bitsof(T)/RADIX_BITS)
 #define radix_t         RadixConfig<INPUT_TYPE>::RadixType
 #define WRITE_VALUE     $write_value
 #define WRITE_INDEX     $write_index
@@ -194,28 +260,28 @@ struct RadixConfig<ga_half> {
 #error "RADIX_SIZE must be smaller than warp size (32)"
 #endif
 
-static inline __device__ ga_size binary_cumsum(
-    int idx, int warp_id, int lane_id, ga_size* smem, bool value) {
+template <typename T>
+static inline __device__ T binary_cumsum(
+    int idx, int warp_id, T* smem, bool value) {
     // cumsum within 1D thread block, which adds up `value` of all threads
     // whose id is *no greater than* the current thread
     // binary_cumsum(1, 0, 1, 0, 1) -> (1, 1, 2, 2, 3)
 
     // cumsum within warp
     ga_uint warp_bits = __ballot(value);
-    ga_size warp_sum = __popc(((2<<lane_id)-1) & warp_bits);
+    T warp_sum = __popc(lane_mask_le() & warp_bits);
 
-    if (lane_id == 0)
+    if (lane_id() == 0)
         smem[warp_id] = __popc(warp_bits);
 
     local_barrier();
 
     // cumsum across warps in one thread
     if (idx == 0) {
-        int current = 0;
-        for (int i = 0; i < LDIM_0 / GA_WARP_SIZE; ++i) {
-            ga_size v = smem[i];
-            smem[i] = smem[i]+current;
-            current = current+v;
+        T sum = smem[0];
+        for (int i = 1; i < LDIM_0 / GA_WARP_SIZE; ++i) {
+            sum += smem[i];
+            smem[i] = sum;
         }
     }
 
@@ -229,28 +295,28 @@ static inline __device__ ga_size binary_cumsum(
     return warp_sum;
 }
 
-static inline __device__ ga_size binary_cumsum_exclusive(
-    int idx, int warp_id, int lane_id, ga_size* smem, bool value) {
+template <typename T>
+static inline __device__ T binary_cumsum_exclusive(
+    int idx, int warp_id, T* smem, bool value) {
     // cumsum within 1D thread block, which adds up `value` of all threads
     // whose id is *less than* the current thread
     // binary_cumsum_excl(1, 0, 1, 0, 1) -> (0, 1, 1, 2, 2)
 
     // cumsum within warp
     ga_uint warp_bits = __ballot(value);
-    ga_size warp_sum = __popc(((1<<lane_id)-1) & warp_bits);
+    T warp_sum = __popc(lane_mask_lt() & warp_bits);
 
-    if (lane_id == 0)
+    if (lane_id() == 0)
         smem[warp_id] = __popc(warp_bits);
 
     local_barrier();
 
     // cumsum across warps in one thread
     if (idx == 0) {
-        int current = 0;
-        for (int i = 0; i < LDIM_0 / GA_WARP_SIZE; ++i) {
-            ga_size v = smem[i];
-            smem[i] = smem[i]+current;
-            current = current+v;
+        T sum = smem[0];
+        for (int i = 1; i < LDIM_0 / GA_WARP_SIZE; ++i) {
+            sum += smem[i];
+            smem[i] = sum;
         }
     }
 

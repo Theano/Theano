@@ -1,4 +1,9 @@
-// works when length on axis is larger than max allowed threads in block (1024)
+#define RADIX_BITS 2
+#define RADIX_SIZE      (1<<RADIX_BITS)
+#define RADIX_MASK(n)   ((RADIX_SIZE-1) << (n*RADIX_BITS))
+#define RADIX_DIGITS(T) (bitsof(T)/RADIX_BITS)
+
+// works when length on axis is in [1025, 2^31-1]
 KERNEL void k_topk_dense_large(
         $dims
         // ga_size dims_1, ga_ssize dims_2, ... , dims_$${NDIM}
@@ -15,23 +20,22 @@ KERNEL void k_topk_dense_large(
         $src_strides
         // ga_ssize src_strides_0, ga_ssize src_strides_1, ... , src_strides_$${NDIM}
         ga_size size, ga_ushort inp_per_thread) {
-    LOCAL_MEM ga_size smem[32 * RADIX_SIZE];
-    LOCAL_MEM radix_t known_bits, known_bits_mask;
-    ga_size out_idx;
-    ga_size LOCAL_MEM write_base;
+    LOCAL_MEM ga_int smem[32];
+    LOCAL_MEM radix_t known_bits;
+    LOCAL_MEM ga_uint k2;
+    int counts[RADIX_SIZE];
+    unsigned out_idx;
     INPUT_TYPE xval;
     radix_t x;
-    ga_int i;
     bool in_range, is_topk;
 
-    const ga_size idx = LID_0;
-    ga_size LOCAL_MEM k2;
-    const ga_ushort warp_id = idx / GA_WARP_SIZE;
-    const ga_ushort lane_id = idx % GA_WARP_SIZE;
+    const ga_uint idx = LID_0;
+    const ga_uint inp_idx = idx * inp_per_thread;
+    const ga_int warp_id = idx / GA_WARP_SIZE;
 
     // 0. get the slice for thread block to work on
     // TODO if ndim <= 3, use native indexing ? (blockIdx.[xyz])
-    ga_size gid = GID_0, gidx;
+    ga_uint gid = GID_0, gidx;
     $set_slice
     //for(int i=1; i<NDIM; i++) {
         // gidx = gid % dims_$${i};
@@ -42,55 +46,45 @@ KERNEL void k_topk_dense_large(
     //}
     src = ptr_add(src, idx*inp_per_thread*src_strides_0);
 
-    LOCAL_MEM radix_t inv_bits;
     if (idx==0) {
-        known_bits = known_bits_mask = 0;
-        k2 = abs(k);
-        inv_bits = (k>=0) ? 0 : (~0);
-        write_base = 0;
+        known_bits = 0;
+        k2 = (k>=0) ? k : -k;
     }
+    const radix_t inv_bits = (k>=0) ? 0 : ~0;
     if (k<0) { k = -k; }
 
     local_barrier();
 
     // 1. find bits of top-k-th value using radix select
     #pragma unroll
-    for (i=bitsof(INPUT_TYPE)-RADIX_BITS; i>=0; i-=RADIX_BITS) {
-    /*for (i=bitsof(INPUT_TYPE)-RADIX_BITS; i>=0; i*=-1) {*/
-        if (lane_id == 0) {
-            #pragma unroll
-            for (int bin=0; bin<RADIX_SIZE; ++bin) {
-                smem[bin + warp_id*RADIX_SIZE] = 0;
-            }
-        }
+    for (int i=bitsof(INPUT_TYPE)-RADIX_BITS; i>=0; i-=RADIX_BITS) {
+        #pragma unroll
+        for (int j=0; j<RADIX_SIZE; ++j)
+            counts[j] = 0;
+        if (warp_id == 0)
+            smem[idx] = 0;
         local_barrier();
 
+        // count within warp
         for (int j=0; j<inp_per_thread; ++j) {
-            in_range = (idx*inp_per_thread+j) < size;
+            in_range = (inp_idx+j) < size;
             xval = in_range ? ptr_read(src, j*src_strides_0) : (INPUT_TYPE)0;
             x = inv_bits^RadixConfig<INPUT_TYPE>::convert(xval);
             ga_int digit = (int)((x>>i) & (RADIX_SIZE-1));
 
-            // count within warp
             #pragma unroll
             for (int bin=0; bin<RADIX_SIZE; ++bin) {
                 bool incr_bin = (
                     (bin == digit) &&
-                    ((x&known_bits_mask) == known_bits) &&
-                    in_range);
-                ga_uint incr_bin_warp = __ballot(incr_bin);
-                if (lane_id==0)
-                    smem[bin + RADIX_SIZE*warp_id] += __popc(incr_bin_warp);
+                    ((x >> (i+RADIX_BITS)) == known_bits) && in_range);
+                counts[bin] += __popc(__ballot(incr_bin));
             }
         }
         local_barrier();
+
         // sum counts across all warps
-        // TODO: test in-block parallel sum?
-        if (idx < RADIX_SIZE) {
-            for(int w=RADIX_SIZE;
-                w<(LDIM_0/ GA_WARP_SIZE)*RADIX_SIZE;
-                w+=RADIX_SIZE)
-                smem[idx] += smem[idx + w];
+        if (lane_id() < RADIX_SIZE) {
+            atomicAdd(&smem[lane_id()], counts[lane_id()]);
         }
         local_barrier();
 
@@ -99,8 +93,7 @@ KERNEL void k_topk_dense_large(
             #pragma unroll
             for (int bin=RADIX_SIZE-1; bin>=0; --bin) {
                 if (smem[bin] >= k2) {
-                    known_bits |= (((radix_t)bin) << i);
-                    known_bits_mask |= (((radix_t)(RADIX_SIZE-1)) << i);
+                    known_bits = (known_bits << RADIX_BITS) | bin;
                     break;
                 } else
                     k2 -= smem[bin];
@@ -109,50 +102,55 @@ KERNEL void k_topk_dense_large(
         local_barrier();
     }
 
+    // now we use k2 for base index to write output
+    if (idx == 0)
+        k2 = 0;
+    local_barrier();
+
     // 2. write values smaller than top-kth
-    for (i=0; i<inp_per_thread; ++i) {
-        in_range = (idx*inp_per_thread+i) < size;
+    for (int i=0; i<inp_per_thread; ++i) {
+        in_range = (inp_idx+i) < size;
         xval = in_range ? ptr_read(src, i*src_strides_0) : (INPUT_TYPE)0;
         x = inv_bits ^ RadixConfig<INPUT_TYPE>::convert(xval);
         is_topk = (x > known_bits) && in_range;
-        out_idx = binary_cumsum(idx, warp_id, lane_id, smem, is_topk);
+        out_idx = binary_cumsum(idx, warp_id, smem, is_topk);
         if (is_topk) {
 #if WRITE_VALUE == 1
-            ptr_at(dstv, (out_idx+write_base-1) * dstv_strides_0) = xval;
+            ptr_at(dstv, (out_idx+k2-1) * dstv_strides_0) = xval;
 #endif
 #if WRITE_INDEX == 1
-            ptr_at(dsti, (out_idx+write_base-1) * dsti_strides_0) = (INDEX_TYPE)(idx*inp_per_thread + i);
+            ptr_at(dsti, (out_idx+k2-1) * dsti_strides_0) = (INDEX_TYPE)(idx*inp_per_thread + i);
 #endif
         }
         local_barrier();
 
         if (idx == blockDim.x - 1)
-            write_base += out_idx;
+            k2 += out_idx;
         local_barrier();
     }
     // 3. write values equal to top-kth
-    for (i=0; i<inp_per_thread; ++i) {
-        in_range = (idx*inp_per_thread+i) < size;
+    for (int i=0; i<inp_per_thread; ++i) {
+        in_range = (inp_idx+i) < size;
         xval = in_range ? ptr_read(src, i*src_strides_0) : (INPUT_TYPE)0;
         x = inv_bits ^ RadixConfig<INPUT_TYPE>::convert(xval);
         is_topk = (x == known_bits) && in_range;
-        out_idx = binary_cumsum(idx, warp_id, lane_id, smem, is_topk);
-        is_topk = ((out_idx+write_base) <= abs(k)) && is_topk;
+        out_idx = binary_cumsum(idx, warp_id, smem, is_topk);
+        is_topk &= (out_idx+k2) <= k;
         if (is_topk) {
 #if WRITE_VALUE == 1
-        ptr_at(dstv, (out_idx+write_base-1) * dstv_strides_0) = xval;
+        ptr_at(dstv, (out_idx+k2-1) * dstv_strides_0) = xval;
 #endif
 #if WRITE_INDEX == 1
-        ptr_at(dsti, (out_idx+write_base-1) * dsti_strides_0) = (INDEX_TYPE)(idx*inp_per_thread + i);
+        ptr_at(dsti, (out_idx+k2-1) * dsti_strides_0) = (INDEX_TYPE)(inp_idx+ i);
 #endif
         }
         local_barrier();
 
         if (idx == blockDim.x - 1)
-            write_base += out_idx;
+            k2 += out_idx;
         local_barrier();
 
-        if(write_base >= abs(k))
+        if(k2 >= k)
             break;
     }
 }

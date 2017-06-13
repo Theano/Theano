@@ -20,6 +20,7 @@ except ImportError as e:
     pass
 
 # TODO GPU sort / argsort
+# TODO support when k >= 2^31
 
 
 class GpuTopKOp(GpuKernelBase, TopKOp):
@@ -34,7 +35,8 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         self, axis=-1,
         idx_dtype='int64',
         return_values=True,
-        return_indices=True):
+        return_indices=True
+    ):
         GpuKernelBase.__init__(self)
         TopKOp.__init__(
             self, axis=axis,
@@ -206,10 +208,14 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             PyExc_ValueError,
             "topk: k cannot larger than size on specified axis %(axis)d");
         %(fail)s;
+    } else if (odims[%(axis)d] > 0x7fffffffu) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "topk: on GPU, k cannot larger or equal than 2^31");
+        %(fail)s;
     }
     %(prep_output)s
 
-    // TODO better scheduling?
     size_t blk[6];
     size_t *grd = blk+3;
     blk[0] = blk[1] = blk[2] = 1;
@@ -227,7 +233,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
     %(def_distrides)s;
     const ssize_t *sstrides = PyGpuArray_STRIDES(%(x)s);
     // inputs per thread
-    unsigned short ipt = (dims[%(axis)d] + (%(MAX_TPB)d/2)-1) / (%(MAX_TPB)d/2);
+    unsigned short ipt = (dims[%(axis)d] + (%(MAX_TPB)d / 2)-1) / (%(MAX_TPB)d / 2);
     void* args[] = {
         %(dims)s
         %(params_dv)s
