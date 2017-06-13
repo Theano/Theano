@@ -1,10 +1,21 @@
 #!/usr/bin/env python
-# You can pass nosetests args when running this script. Examples:
-# python theano/gpuarray/tests/check_dnn.py       # Normal mode.
-# python theano/gpuarray/tests/check_dnn.py -xvs  # Verbose mode, capture output, exit at first error.
+
+# Without args, this script executes all its tests like `nosetests -vs`
+# python check_dnn.py       # nosetests mode.
+
+# You can pass args for nosetests as long as your first arg is not in `help, infos, fwd, bwd-filter, bwd-data`.
+# python check_dnn.py -xvs  # nosetests: verbose mode, capture output, exit at first error.
+
+# Else, this script uses its own args and can be used to run a specific test case.
+# python check_dnn.py help   # Print help for script mode.
+# python check_dnn.py infos  # Print infos about algorithms and number of test cases.
+# python check_dnn.py {fwd|bwd-filter|bwd-data} {2d|3d} -a <algo> -i <inputShape> -f <filterShape> ...
+
 from __future__ import absolute_import, print_function, division
 
-from itertools import ifilter, product, chain
+import argparse
+import sys
+from itertools import product, chain
 
 import nose
 import numpy as np
@@ -24,55 +35,63 @@ from theano.tensor.opt import Assert
 cudnn = cudnn_defs.get_definitions(version(raises=False))
 
 
+def ifilter(function, sequence):
+    # For compatibility with Python 3.
+    return (element for element in sequence if function(element))
+
+
 class DnnCaseGenerator:
     """
     Main class used to generate test cases.
 
     """
 
-    def _sub_size(self, sub_size=None):
-        return int(sub_size) if sub_size is not None else self.input_size // 3 + 1
-
-    def _at_least_one(self, value):
-        return (value,) if value == 1 else (1, value)
-
-    def _shapes(self, size):
-        # Shapes:
-        # [1, 1, ...] (at least)
-        # [size, size, ...]
-        # [..., size + 2, size + 1, size]
-        if size == 1:
-            return ((1,) * self.ndim,
-                    tuple(size + self.ndim - i - 1 for i in range(self.ndim)))
-        return ((1,) * self.ndim,
-                (size,) * self.ndim,
-                tuple(size + self.ndim - i - 1 for i in range(self.ndim)))
+    def as_tuple_of_tuples(self, iterable):
+        return tuple(tuple(sequence) for sequence in iterable)
 
     def __init__(self,
-                 ndim=2, alpha=2, beta=-3, batch_size=2, input_channels=3, input_size=8, output_channels=2,
-                 filter_size=None, border_size=None, subsample_size=None, dilation_size=None):
+                 ndim=2, alpha=2, beta=-3, batch_size=2, input_channels=3, inputs_sizes=None, output_channels=2,
+                 filters_sizes=None, borders=None, subsamples=None, dilations=None):
         self.ndim = int(ndim)
         self.alpha = float(alpha)
         self.beta = float(beta)
         self.batch_size = int(batch_size)
         self.input_channels = int(input_channels)
-        self.input_size = int(input_size)
         self.output_channels = int(output_channels)
-        self.filter_size = self._sub_size(filter_size)
-        self.border_size = self._sub_size(border_size)
-        self.subsample_size = self._sub_size(subsample_size)
-        self.dilation_size = self._sub_size(dilation_size)
 
         assert self.ndim >= 2
         assert self.alpha != 0
         assert self.batch_size > 0
         assert self.input_channels > 0
-        assert self.input_size > 0
         assert self.output_channels > 0
-        assert self.filter_size > 0
-        assert self.border_size > 0
-        assert self.subsample_size > 0
-        assert self.dilation_size > 0
+
+        if inputs_sizes is None:
+            inputs_sizes = ((5,) * self.ndim,
+                            (300, 5) + (2,) * (self.ndim - 2))
+        if filters_sizes is None:
+            filters_sizes = ((4,) * self.ndim,
+                             (40, 4) + (2,) * (self.ndim - 2))
+        if borders is None:
+            borders = ((1,) * self.ndim,
+                       tuple(range(1, self.ndim + 1)))
+        if subsamples is None:
+            subsamples = ((1,) * self.ndim,
+                          tuple(range(1, self.ndim + 1)))
+        if dilations is None:
+            dilations = ((1,) * self.ndim,)
+            if cudnn.version >= 6:
+                dilations += (tuple(range(1, self.ndim + 1)),)
+
+        for sequence_list in (inputs_sizes, filters_sizes, borders, subsamples, dilations):
+            assert (isinstance(sequence_list, (tuple, list)) and
+                    all(isinstance(sequence, (tuple, list)) and len(sequence) == self.ndim
+                        for sequence in sequence_list)), sequence_list
+
+        self.inputs_sizes = self.as_tuple_of_tuples(inputs_sizes)
+        self.filters_sizes = self.as_tuple_of_tuples(filters_sizes)
+        self.borders = self.as_tuple_of_tuples(borders)
+        self.subsamples = self.as_tuple_of_tuples(subsamples)
+        self.dilations = self.as_tuple_of_tuples(dilations)
 
     @staticmethod
     def get_if_valid_conv_output_shape(case_tuple):
@@ -92,14 +111,12 @@ class DnnCaseGenerator:
         # (input shape, filter shape, subsample, dilation, border mode, convolution mode, alpha, beta)
         all_batch_sizes = (self.batch_size,)
         all_input_channels = (self.input_channels,)
-        all_input_sizes = self._shapes(self.input_size)
+        all_input_sizes = self.inputs_sizes
         all_output_channels = (self.output_channels,)
-        all_filter_sizes = self._shapes(((self.filter_size - 1) * self.dilation_size + 1)
-                                        if cudnn.version < 6
-                                        else self.filter_size)
-        all_subsamples = self._shapes(self.subsample_size)
-        all_dilations = ((1,) * self.ndim,) if cudnn.version < 6 else self._shapes(self.dilation_size)
-        all_border_modes = ('valid', 'full', 'half') + self._shapes(self.border_size)
+        all_filter_sizes = self.filters_sizes
+        all_subsamples = self.subsamples
+        all_dilations = self.dilations
+        all_border_modes = ('valid', 'full', 'half') + self.borders
         all_conv_modes = ('conv', 'cross')
         all_alphas = (self.alpha,)
         all_betas = (0,) if self.beta == 0 else (0, self.beta)
@@ -399,7 +416,10 @@ class BaseTestDnnConv(object):
                                                filter_dilation=dilation)(ref_cast(inputs), ref_cast(topgrad),
                                                                          filters_shape[2:])
         if conv_mode == 'conv':
-            grad_w_ref = grad_w_ref[:, :, ::-1, ::-1, ::-1]
+            if inputs.ndim == 5:
+                grad_w_ref = grad_w_ref[:, :, ::-1, ::-1, ::-1]
+            else:
+                grad_w_ref = grad_w_ref[:, :, ::-1, ::-1]
         f_ref = theano.function([], grad_w_ref, mode="FAST_RUN")
 
         # Compare the results of the two implementations
@@ -488,8 +508,12 @@ class TestDnnConv3D(BaseTestDnnConv):
     cpu_gradweight_class = theano.tensor.nnet.corr3d.Corr3dMM_gradWeights
 
 
-if __name__ == '__main__':
+class CheckDnn():
+    """
+    Utility functions for scripting and infos printing.
+    """
 
+    @staticmethod
     def dtype_config_to_str(dtype_config):
         dtype, precision = dtype_config
         if dtype == precision == 'float16':
@@ -502,26 +526,160 @@ if __name__ == '__main__':
             return 'DOUBLE_CONFIG'
         raise ValueError
 
-    test_2d = TestDnnConv2D()
-    test_3d = TestDnnConv3D()
-    print()
-    print('Available data type configurations     :',
-          ', '.join(dtype_config_to_str(d) for d in cudnn.get_supported_dtype_configs()))
-    print()
-    print('2D algorithms:')
-    print('FWD        :', ', '.join(test_2d.fwd_algorithms))
-    print('BWD FILTER :', ', '.join(test_2d.bwd_filter_algorithms))
-    print('BWD DATA   :', ', '.join(test_2d.bwd_data_algorithms))
-    print()
-    print('3D algorithms:')
-    print('FWD        :', ', '.join(test_3d.fwd_algorithms))
-    print('BWD FILTER :', ', '.join(test_3d.bwd_filter_algorithms))
-    print('BWD DATA   :', ', '.join(test_3d.bwd_data_algorithms))
-    print()
-    count_tests_2d = test_2d.get_expected_tcount()
-    count_tests_3d = test_3d.get_expected_tcount()
-    print(count_tests_2d, 'conv2D test cases.')
-    print(count_tests_3d, 'conv3D test cases.')
-    print(count_tests_2d + count_tests_3d, 'total conv test cases.')
-    print()
-    nose.main(defaultTest='theano.gpuarray.tests.check_dnn')
+    @staticmethod
+    def print_infos():
+        # Print infos about tests and cuDNN supported algorithms and configurations.
+        test_2d = TestDnnConv2D()
+        test_3d = TestDnnConv3D()
+        print()
+        print('Available data type configurations:',
+              ', '.join(CheckDnn.dtype_config_to_str(d) for d in cudnn.get_supported_dtype_configs()))
+        print()
+        print('2D algorithms:')
+        print('FWD        :', ', '.join(test_2d.fwd_algorithms))
+        print('BWD FILTER :', ', '.join(test_2d.bwd_filter_algorithms))
+        print('BWD DATA   :', ', '.join(test_2d.bwd_data_algorithms))
+        print()
+        print('3D algorithms:')
+        print('FWD        :', ', '.join(test_3d.fwd_algorithms))
+        print('BWD FILTER :', ', '.join(test_3d.bwd_filter_algorithms))
+        print('BWD DATA   :', ', '.join(test_3d.bwd_data_algorithms))
+        print()
+        count_tests_2d = test_2d.get_expected_tcount()
+        count_tests_3d = test_3d.get_expected_tcount()
+        print(count_tests_2d, 'conv2D test cases.')
+        print(count_tests_3d, 'conv3D test cases.')
+        print(count_tests_2d + count_tests_3d, 'total conv test cases.')
+        print()
+
+    class TupleAction(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            values = tuple(int(v) for v in values.split(','))
+            setattr(namespace, self.dest, values)
+
+    class BorderAction(TupleAction):
+        def __call__(self, parser, namespace, values, option_string=None):
+            if values not in ('valid', 'full', 'half'):
+                super(CheckDnn.BorderAction, self).__call__(parser, namespace, values, option_string)
+            else:
+                setattr(namespace, self.dest, values)
+
+
+if __name__ == '__main__':
+
+    computations = FWD, BWD_FILTER, BWD_DATA = ('fwd', 'bwd-filter', 'bwd-data')
+
+    # We remove programe name from args.
+    args = sys.argv[1:]
+
+    if len(args) == 0 or args[0] not in computations + ('help', 'infos'):
+        # We run all tests with nosetests.
+        module_name = sys.modules[__name__].__file__
+        if len(args) == 0:
+            # No args given: run nosetests -vs
+            args = ['--verbose', '--nocapture']
+        # Else, use given args.
+        argv = [sys.argv[0], module_name] + args
+
+        CheckDnn.print_infos()
+        nose.main(argv=argv)
+    elif len(args) == 1 and args[0] == 'infos':
+        CheckDnn.print_infos()
+    else:
+        # User wants to run a specific test.
+
+        dimensions = ('2D', '2d', '3D', '3d')
+        algorithms = (tuple(sorted(list(set(cudnn.cudnnConvolutionFwdAlgo_t.get_aliases() +
+                                            cudnn.cudnnConvolutionBwdFilterAlgo_t.get_aliases() +
+                                            cudnn.cudnnConvolutionBwdDataAlgo_t.get_aliases())))) +
+                      SUPPORTED_DNN_CONV_ALGO_RUNTIME)
+        types = ('float16', 'float32', 'float64')
+
+        parser = argparse.ArgumentParser()
+
+        parser.add_argument('computation', choices=computations,
+                            help='Computation to run.')
+        parser.add_argument('ndim', choices=dimensions,
+                            help='Number od dimensions ("2D" or "3D", case ignored).')
+
+        parser.add_argument('-a', '--algo', choices=algorithms, required=True,
+                            help='Algorithm to use for computation.')
+        parser.add_argument('-i', '--input-shape', action=CheckDnn.TupleAction, required=True,
+                            help='Input shape. Comma-separated list of integers (no spaces).')
+        parser.add_argument('-f', '--filter-shape', action=CheckDnn.TupleAction, required=True,
+                            help='Filter shape. Comma-separated list of integers (no spaces).')
+
+        parser.add_argument('-t', '--dtype', choices=types, default=theano.config.floatX,
+                            help='Data type (default theano floatX).')
+        parser.add_argument('-p', '--precision', choices=types, default=theano.config.floatX,
+                            help='Precision (default theano floatX).')
+        parser.add_argument('-s', '--subsample', action=CheckDnn.TupleAction,
+                            help='Subsample. Comma-separated list of integers (no spaces).')
+        parser.add_argument('-d', '--dilation', action=CheckDnn.TupleAction,
+                            help='Dilation. Comma-separated list of integers (no spaces).')
+        parser.add_argument('-b', '--border-mode', default='valid', action=CheckDnn.BorderAction,
+                            help='Border mode. "valid" (default), "full", "half" '
+                                 'or a comma-separated list of integers (no spaces).')
+        parser.add_argument('-c', '--conv-mode', choices=('conv', 'cross'), default='conv',
+                            help='Conv mode (default: conv).')
+        parser.add_argument('-A', '--alpha', type=float, default=1,
+                            help="alpha (floating), must not be zero. Default 1.")
+        parser.add_argument('-B', '--beta', type=float, default=0,
+                            help='beta (floating). Default 0.')
+
+        parser.add_argument('--print-infos', action='store_true', default=False,
+                            help='Print some infos before testing.')
+
+        if len(args) == 1 and args[0] == 'help':
+            parser.parse_args(['-h'])
+            exit(0)
+        args = parser.parse_args(args)
+
+        test = args.computation
+        ndim = int(args.ndim[0])
+        if ndim == 2:
+            tests = TestDnnConv2D()
+        if ndim == 3:
+            tests = TestDnnConv3D()
+        if args.subsample is None:
+            args.subsample = (1,) * ndim
+        if args.dilation is None:
+            args.dilation = (1,) * ndim
+        if not (ndim == len(args.input_shape[2:]) == len(args.filter_shape[2:]) == len(args.subsample) == len(
+                args.dilation)):
+            raise ValueError('Expected parameters sized for %d dimensions.' % ndim)
+        if isinstance(args.border_mode, tuple) and ndim != len(args.border_mode):
+            raise ValueError('Expected borders sized for %d dimensions.' % ndim)
+        if args.alpha == 0:
+            raise ValueError('Nothing could be computed if alpha is 0.')
+
+        if (args.dtype, args.precision) not in cudnn.get_supported_dtype_configs():
+            raise ValueError('Unsupported data type configuration %s %s.' % (args.dtype, args.precision))
+        if args.algo not in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+            check_config = False
+            if test == FWD:
+                check_config = cudnn.fwd_algo_supports_dtype_config(args.algo, args.dtype, args.precision, ndim)
+            if test == BWD_FILTER:
+                check_config = cudnn.bwd_filter_algo_supports_dtype_config(args.algo, args.dtype, args.precision, ndim)
+            if test == BWD_DATA:
+                check_config = cudnn.bwd_data_algo_supports_dtype_config(args.algo, args.dtype, args.precision, ndim)
+            if not check_config:
+                raise ValueError('%s computation does not support configuration (%s, %s) for algo %s.' % (
+                    test, args.dtype, args.precision, args.algo))
+        algo = args.algo
+        dtype = args.dtype
+        precision = args.precision
+        parameters = (
+            args.input_shape, args.filter_shape, args.subsample, args.dilation, args.border_mode, args.conv_mode,
+            args.alpha, args.beta)
+        if args.print_infos:
+            CheckDnn.print_infos()
+        print('======================')
+        print('Running %s %s %s %s %s' % (test, algo, dtype, precision, str(parameters)))
+        if test == FWD:
+            tests.run_conv_fwd(algo, dtype, precision, parameters)
+        if test == BWD_FILTER:
+            tests.run_conv_gradweight(algo, dtype, precision, parameters)
+        if test == BWD_DATA:
+            tests.run_conv_gradinput(algo, dtype, precision, parameters)
+        print('... OK')
