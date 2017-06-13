@@ -1,5 +1,7 @@
 # Test that normaly could be outside gpuarray, to have all gpuarray
 # tests in the same directory, we put them here.
+from __future__ import absolute_import, print_function, division
+
 import numpy as np
 
 import theano
