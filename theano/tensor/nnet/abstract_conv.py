@@ -1496,6 +1496,8 @@ class BaseAbstractConv(Op):
 
     def flops(self, inp, outp):
         """ Useful with the hack in profiling to print the MFlops"""
+        if self.unshared is True:
+            raise NotImplementedError('flops not implemented for unshared convolution')
         if self.convdim == 2:
             # if the output shape is correct, then this gives the correct
             # flops for any direction, sampling, padding, and border mode
