@@ -213,6 +213,10 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
                 return 1;
             }
         }
+        else
+        {
+            GpuArray_memset( &((*out_gradients)->ga), 0 );
+        }
 
         switch ( (*out_gradients)->ga.typecode )
         {
