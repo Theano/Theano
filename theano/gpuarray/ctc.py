@@ -150,7 +150,7 @@ class GpuConnectionistTemporalClassification(gof.COp):
                 grad_undefined(self, 2, inputs[2])]
 
 
-def ctc(activations, labels, input_lengths):
+def gpu_ctc(activations, labels, input_lengths):
     return GpuConnectionistTemporalClassification()(activations, labels,
                                                     input_lengths)
 
