@@ -377,7 +377,7 @@ def is_same_entry(entry_1, entry_2):
 
 def get_module_hash(src_code, key):
     """
-    Return a SHA256 hash that uniquely identifies a module.
+    Return a SHA256 (for FIPS compatibility) hash that uniquely identifies a module.
 
     This hash takes into account:
         1. The C source code of the module (`src_code`).

@@ -1374,6 +1374,10 @@ class CLinker(link.Linker):
         # parameters from the rest of the key. If you want to add more key
         # elements, they should be before this md5 hash if and only if they
         # can lead to a different compiled file with the same source code.
+		
+		# NOTE: config md5 is not using md5 hash, but sha256 instead. Function
+		# names and string instances of md5 will be updated at a later release. 
+		# See PR#5916 for details.
         if insert_config_md5:
             sig.append('md5:' + theano.configparser.get_config_md5())
         else:
