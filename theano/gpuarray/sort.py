@@ -208,10 +208,10 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             PyExc_ValueError,
             "topk: k cannot larger than size on specified axis %(axis)d");
         %(fail)s;
-    } else if (dims[%(axis)d] > 0x7fffffffu) {
+    } else if (dims[%(axis)d] > INT_MAX) {
         PyErr_SetString(
             PyExc_ValueError,
-            "topk: on GPU, array size cannot larger or equal than 2^31");
+            "topk: on GPU, array size on specified axis cannot larger or equal than 2^31");
         %(fail)s;
     }
     %(prep_output)s

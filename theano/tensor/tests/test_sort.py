@@ -405,8 +405,6 @@ class Test_TopK(unittest.TestCase):
             if k == 0:
                 continue
 
-            print('shape:', shp, 'k:', k, 'axis:', axis)
-
             # make input away from undefined gradient (where some inputs are equal)
             xval = gen_unique_vector(
                 reduce(int.__mul__, shp),
