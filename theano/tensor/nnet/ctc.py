@@ -127,9 +127,8 @@ def ctc(activations, labels, input_lengths):
 
     Notes
     -----
-    Using the wrapper requires that Baidu's warp-ctc library is installed and the
-    configuration variables `config.ctc.enabled` and `config.ctc.root` be properly
-    set.
+    Using the loss function requires that Baidu's warp-ctc library is installed and the
+    configuration variables `config.ctc.enabled` and `config.ctc.root` be properly set.
 
     Parameters
     ----------
