@@ -377,7 +377,7 @@ def is_same_entry(entry_1, entry_2):
 
 def get_module_hash(src_code, key):
     """
-    Return an MD5 hash that uniquely identifies a module.
+    Return a SHA256 hash that uniquely identifies a module.
 
     This hash takes into account:
         1. The C source code of the module (`src_code`).
@@ -416,8 +416,10 @@ def get_module_hash(src_code, key):
             to_hash += list(key_element)
         elif isinstance(key_element, string_types):
             if key_element.startswith('md5:'):
-                # This is the md5 hash of the config options. We can stop
-                # here.
+                # This is actually a sha256 hash of the config options. 
+				# Ref PR#5916. String and function names will be updated in 
+				# future release.
+				# We can stop here.
                 break
             elif (key_element.startswith('NPY_ABI_VERSION=0x') or
                   key_element.startswith('c_compiler_str=')):
@@ -435,17 +437,19 @@ def get_safe_part(key):
 
     This tuple should only contain objects whose __eq__ and __hash__ methods
     can be trusted (currently: the version part of the key, as well as the
-    md5 hash of the config options).
+    SHA256 hash of the config options).
     It is used to reduce the amount of key comparisons one has to go through
     in order to find broken keys (i.e. keys with bad implementations of __eq__
     or __hash__).
+
 
     """
     version = key[0]
     # This function should only be called on versioned keys.
     assert version
 
-    # Find the md5 hash part.
+    # Find the hash part, which is using sha256, not md5.
+	# Instances of md5 will be replaced in future release.
     c_link_key = key[1]
     for key_element in c_link_key[1:]:
         if (isinstance(key_element, string_types) and

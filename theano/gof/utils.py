@@ -567,7 +567,7 @@ else:
 
 def hash_from_file(file_path):
     """
-    Return the MD5 hash of a file.
+    Return the SHA256 hash of a file.
 
     """
     with open(file_path, 'rb') as f:
