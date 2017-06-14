@@ -19,6 +19,7 @@ from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
 from theano.scalar.basic import Scalar, Pow, Cast
+from theano.scalar.basic import log, neg, true_div
 from theano.scalar.basic_scipy import Erfinv, Erfcinv
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
@@ -163,6 +164,8 @@ gpu_optimizer.register('local_remove_all_assert',
                        'unsafe')
 
 
+# Define a few operations to use in optimizations,
+# in order to avoid introducin new CPU Ops, or useless ones.
 def safe_to_gpu(x, ctx_name):
     if isinstance(x.type, tensor.TensorType):
         return GpuFromHost(ctx_name)(x)
@@ -175,6 +178,10 @@ def safe_to_cpu(x):
         return x.transfer('cpu')
     else:
         return x
+
+gpu_log = GpuElemwise(log)
+gpu_neg = GpuElemwise(neg)
+gpu_true_div = GpuElemwise(true_div)
 
 
 def op_lifter(OP, cuda_only=False):
@@ -1327,6 +1334,38 @@ def local_gpua_softmax(op, context_name, inputs, outputs):
 @register_opt2([tensor.nnet.SoftmaxWithBias], 'fast_compile')
 def local_gpua_softmaxwithbias(op, context_name, inputs, outputs):
     return gpu_softmax_with_bias
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.nnet.CrossentropyCategorical1Hot])
+@register_opt2([tensor.nnet.CrossentropyCategorical1Hot], 'fast_compile')
+def local_gpu_crossentropycategorical1hot(op, context_name, inputs, outputs):
+    # There is no corresponding GPU Op, but we can express it as:
+    #   coding, one_of_n = inputs
+    #   -log(coding[arange(coding.shape[0]), one_of_n])
+    coding, one_of_n = inputs
+    idx0 = theano.tensor.arange(shape_i(coding, 0))
+    return [gpu_neg(gpu_log(coding[idx0, one_of_n]))]
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.nnet.CrossentropyCategorical1HotGrad])
+@register_opt2([tensor.nnet.CrossentropyCategorical1HotGrad], 'fast_compile')
+def local_gpu_crossentropycategorical1hotgrad(op, context_name, inputs, outputs):
+    # There is no corresponding GPU Op, but we can express it as:
+    #   gy, coding, one_of_n = inputs
+    #   gcoding = zeros_like(coding)
+    #   gcoding[arange(coding.shape[0]), one_of_n] = -g / (
+    #       coding[arange(coding.shape[0]), one_of_n])
+    gy, coding, one_of_n = inputs
+    idx0 = theano.tensor.arange(shape_i(coding, 0))
+    z = GpuAlloc(context_name, memset_0=True)(
+        as_gpuarray_variable(np.zeros((), dtype=coding.dtype), context_name),
+        *[shape_i(coding, i) for i in xrange(coding.ndim)])
+    gcoding = tensor.set_subtensor(
+        z[idx0, one_of_n],
+        gpu_neg(gpu_true_div(gy, coding[idx0, one_of_n])))
+    return [gcoding.transfer(context_name)]
 
 
 @register_opt('fast_compile')
