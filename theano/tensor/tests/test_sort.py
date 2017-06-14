@@ -235,7 +235,6 @@ class Test_TopK(unittest.TestCase):
 
     def setUp(self):
         pass
-    '''
 
     @utt.parameterized.expand(product(
         _all_dtypes, tensor.integer_dtypes, [-1, 0, None]))
@@ -391,7 +390,6 @@ class Test_TopK(unittest.TestCase):
             goal = np.argsort(xval, axis=axis)[idx].astype(idx_dtype)
 
             assert np.all(np.sort(yval, axis=axis) == np.sort(goal, axis=axis))
-    '''
 
     @utt.parameterized.expand(product(
         ((257,), (17, 15), (5, 3, 5, 3), (2, 3, 5, 7, 11)),
