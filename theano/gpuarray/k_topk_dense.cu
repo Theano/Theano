@@ -100,10 +100,9 @@ KERNEL void k_topk_dense(
     if (idx==0) {
         #pragma unroll
         for (int bin=RADIX_SIZE-1; bin>=0; --bin) {
-            if (smem[bin] <= 0) {
-                k2 = -smem[bin];
+            if (smem[bin] <= 0)
                 break;
-            }
+            k2 = smem[bin];
         }
     }
     local_barrier();

@@ -126,13 +126,13 @@ struct RadixConfig {
 // We use this to enable radix selection of floating-point values.
 // This also gives a relative order for NaNs, but that's ok, as they
 // will all be adjacent
-  typedef T RadixType;
+  typedef ga_uint RadixType;
   static inline __device__ RadixType convert(T v) {
-      return v;
+      return (RadixType)v;
   }
 
   static inline __device__ float deconvert(RadixType v) {
-      return v;
+      return (T)v;
   }
 };
 
@@ -173,7 +173,7 @@ struct RadixConfig<ga_double> {
 
 template <>
 struct RadixConfig<ga_byte> {
-  typedef ga_ubyte RadixType;
+  typedef ga_uint RadixType;
 
   static inline __device__ RadixType convert(ga_byte v) {
     return 128u + v;
@@ -186,7 +186,7 @@ struct RadixConfig<ga_byte> {
 
 template <>
 struct RadixConfig<ga_short> {
-  typedef ga_ushort RadixType;
+  typedef ga_uint RadixType;
 
   static inline __device__ RadixType convert(ga_short v) {
     assert(sizeof(ga_short) == 2);
@@ -232,7 +232,7 @@ struct RadixConfig<ga_long> {
 // since ga_half is ushort, use macro to protect this part is necessary
 template <>
 struct RadixConfig<ga_half> {
-  typedef ga_ushort RadixType;
+  typedef ga_uint RadixType;
 
   static inline __device__ RadixType convert(ga_half v) {
     RadixType mask = -(((RadixType)v >> 15)) | 0x8000;
