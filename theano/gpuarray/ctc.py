@@ -13,7 +13,7 @@ from theano.tensor.opt import register_canonicalize
 from theano.tensor.opt import register_stabilize
 
 import os
-import pygpu
+from . import pygpu
 
 ctc_enabled = config.ctc.enabled
 
