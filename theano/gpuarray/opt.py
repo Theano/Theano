@@ -2301,7 +2301,8 @@ def local_gpu_ctc(op, context_name, inputs, outputs):
     if not config.ctc.enabled:
         return
     op = GpuConnectionistTemporalClassification(compute_grad=op.compute_grad)
-    return list(op(*inputs))
+    apply_node = op.make_node(*inputs)
+    return apply_node.outputs
 
 
 # Do not register in fast_run or fast_compile.
