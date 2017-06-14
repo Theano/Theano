@@ -1223,8 +1223,8 @@ class CLinker(link.Linker):
             (opK, input_signatureK, output_signatureK),
         }}}
 
-		Note that config md5 uses sha256, and not md5. Function names will
-		updated in a future release to reflect the use of hashlib.sha256. 
+	Note that config md5 uses sha256, and not md5. Function names will
+	updated in a future release to reflect the use of hashlib.sha256. 
 		
         The signature is a tuple, some elements of which are sub-tuples.
 
@@ -1366,18 +1366,14 @@ class CLinker(link.Linker):
         if c_compiler:
             sig.append('c_compiler_str=' + c_compiler.version_str())
 
-		# NOTE: config md5 is not using md5 hash, but sha256 instead. Function
-		# names and string instances of md5 will be updated at a later release. 
-		# See PR#5916 for details.
-		
         # IMPORTANT: The 'md5' prefix is used to isolate the compilation
         # parameters from the rest of the key. If you want to add more key
         # elements, they should be before this md5 hash if and only if they
         # can lead to a different compiled file with the same source code.
 		
-		# NOTE: config md5 is not using md5 hash, but sha256 instead. Function
-		# names and string instances of md5 will be updated at a later release. 
-		# See PR#5916 for details.
+	# NOTE: config md5 is not using md5 hash, but sha256 instead. Function
+	# names and string instances of md5 will be updated at a later release. 
+	# See PR#5916 for details.
         if insert_config_md5:
             sig.append('md5:' + theano.configparser.get_config_md5())
         else:
