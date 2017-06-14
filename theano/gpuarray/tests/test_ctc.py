@@ -7,8 +7,8 @@ import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 import theano.gpuarray
-from theano.gpuarray.ctc import (ctc_enabled, gpu_ctc)
-from theano.tensor.nnet.ctc import ctc
+from theano.gpuarray.ctc import (ctc_enabled, gpu_ctc, GpuConnectionistTemporalClassification)
+from theano.tensor.nnet.ctc import (ctc, ConnectionistTemporalClassification)
 from .config import (mode_with_gpu, mode_without_gpu)
 
 
@@ -17,41 +17,104 @@ class TestCTC(unittest.TestCase):
         if not ctc_enabled:
             self.skipTest('Optional library warp-ctc not available')
 
-    def run_ctc(self, activations, labels, input_length, expected_costs, expected_grads):
+    def check_ctc(self, activations, labels, input_length, expected_costs, expected_grads):
         # Create symbolic variables
         t_activations = theano.shared(activations, name="activations")
         t_activation_times = theano.shared(input_length, name="activation_times")
         t_labels = theano.shared(labels, name="labels")
 
+        inputs = [t_activations, t_labels, t_activation_times]
+
+        # Execute several tests for each test case
+        self.check_expected_values(*inputs, expected_costs, expected_grads)
+        self.compare_gpu_and_cpu_values(*inputs)
+        self.run_gpu_optimization_with_grad(*inputs)
+        self.run_gpu_optimization_no_grad(*inputs)
+
+    def setup_cpu_op(self, activations, labels, input_length, compute_grad=True, mode=mode_without_gpu):
         # Compute CTC costs and gradients on the CPU to compare with GPU
-        cpu_ctc_cost = ctc(t_activations, t_labels, t_activation_times)
-        # Symbolic gradient of CTC cost
-        cpu_ctc_grad = T.grad(T.mean(cpu_ctc_cost), t_activations)
+        cpu_ctc_cost = ctc(activations, labels, input_length)
+        outputs = [cpu_ctc_cost]
+        if compute_grad:
+            # Symbolic gradient of CTC cost
+            cpu_ctc_grad = T.grad(T.mean(cpu_ctc_cost), activations)
+            outputs += [cpu_ctc_grad]
+        return theano.function([], outputs, mode=mode)
 
-        # Compile CPU function without optimization
-        cpu_train = theano.function([], [cpu_ctc_cost, cpu_ctc_grad], mode=mode_without_gpu)
-        cpu_cost, cpu_grad = cpu_train()
+    def setup_gpu_op(self, activations, labels, input_length, compute_grad=True):
+        # Compute CTC costs and gradients on the CPU to compare with GPU
+        gpu_ctc_cost = gpu_ctc(activations, labels, input_length)
+        outputs = [gpu_ctc_cost]
+        if compute_grad:
+            # Symbolic gradient of CTC cost
+            gpu_ctc_grad = T.grad(T.mean(gpu_ctc_cost), activations)
+            outputs += [gpu_ctc_grad]
+        return theano.function([], outputs)
 
-        gpu_ctc_cost = gpu_ctc(t_activations, t_labels, t_activation_times)
-        # Symbolic gradient of CTC cost
-        gpu_ctc_grad = T.grad(T.mean(gpu_ctc_cost), t_activations)
-        # Compile symbolic functions
-        gpu_train = theano.function([], [gpu_ctc_cost, gpu_ctc_grad])
-
+    def check_expected_values(self, activations, labels, input_length, expected_costs, expected_grads):
+        gpu_train = self.setup_gpu_op(activations, labels, input_length)
         gpu_cost, gpu_grad = gpu_train()
-
         # Transfer costs from GPU memory to host
         cost_from_gpu = np.asarray(gpu_cost)
         # Transfer gradients from GPU memory to host
         grad_from_gpu = np.asarray(gpu_grad)
-
         # Check that results are in conformance with expected values
         utt.assert_allclose(expected_grads / cost_from_gpu.shape[0], grad_from_gpu)
         utt.assert_allclose(expected_costs, cost_from_gpu)
 
-        # Compare values obtained from CPU and GPU implementations
+    def compare_gpu_and_cpu_values(self, activations, labels, input_length):
+        cpu_train = self.setup_cpu_op(activations, labels, input_length)
+        cpu_cost, cpu_grad = cpu_train()
+
+        gpu_train = self.setup_gpu_op(activations, labels, input_length)
+        gpu_cost, gpu_grad = gpu_train()
+        # Transfer costs from GPU memory to host
+        cost_from_gpu = np.asarray(gpu_cost)
+        # Transfer gradients from GPU memory to host
+        grad_from_gpu = np.asarray(gpu_grad)
+        # Check that results are in conformance with expected values
+        utt.assert_allclose(cpu_grad, grad_from_gpu)
+        utt.assert_allclose(cpu_cost, cost_from_gpu)
+
+    def run_gpu_optimization_with_grad(self, activations, labels, input_length):
+        cpu_train = self.setup_cpu_op(activations, labels, input_length)
+        cpu_cost, cpu_grad = cpu_train()
+        # Compile CPU function without optimization
+        cpu_lifted_train = self.setup_cpu_op(activations, labels, input_length, mode=mode_with_gpu)
+        # Check whether Op is lifted to the GPU
+        assert self.has_only_gpu_op(cpu_lifted_train)
+        gpu_cost, gpu_grad = cpu_lifted_train()
+        # Transfer costs from GPU memory to host
+        cost_from_gpu = np.asarray(gpu_cost)
+        # Transfer gradients from GPU memory to host
+        grad_from_gpu = np.asarray(gpu_grad)
+        # Compare values from CPU and GPU Ops
         utt.assert_allclose(cpu_cost, cost_from_gpu)
         utt.assert_allclose(cpu_grad, grad_from_gpu)
+
+    def run_gpu_optimization_no_grad(self, activations, labels, input_length):
+        cpu_test = self.setup_cpu_op(activations, labels, input_length, compute_grad=False)
+        cpu_cost = cpu_test()
+        # Compile CPU function without optimization
+        cpu_lifted_test = self.setup_cpu_op(activations, labels, input_length, compute_grad=False, mode=mode_with_gpu)
+        # Check whether Op is lifted to the GPU
+        assert self.has_only_gpu_op(cpu_lifted_test)
+        gpu_cost = cpu_lifted_test()
+        # Transfer costs from GPU memory to host
+        cost_from_gpu = np.asarray(gpu_cost)
+        # Compare values from CPU and GPU Ops
+        utt.assert_allclose(cpu_cost, cost_from_gpu)
+
+    def has_only_gpu_op(self, function):
+        has_cpu_instance = False
+        has_gpu_instance = False
+        for node in function.maker.fgraph.apply_nodes:
+            if isinstance(node.op, ConnectionistTemporalClassification):
+                has_gpu_instance = True
+
+            if isinstance(node.op, GpuConnectionistTemporalClassification):
+                has_cpu_instance = True
+        return has_gpu_instance and (not has_cpu_instance)
 
     # Test obtained from Torch tutorial at:
     # https://github.com/baidu-research/warp-ctc/blob/master/torch_binding/TUTORIAL.md
@@ -82,7 +145,7 @@ class TestCTC(unittest.TestCase):
                   [-0.02115798369, 0.03168492019, 0.08612854034, -0.7330639958, 0.636408627]]]
         expected_gradients = np.asarray(grads, dtype=np.float32)
 
-        self.run_ctc(activations, labels, activation_times, expected_costs, expected_gradients)
+        self.check_ctc(activations, labels, activation_times, expected_costs, expected_gradients)
 
     def test_ctc(self):
         activations = np.asarray([[[0.1, 0.6, 0.1, 0.1, 0.1], [0.1, 0.1, 0.6, 0.1, 0.1]],
@@ -102,7 +165,7 @@ class TestCTC(unittest.TestCase):
 
         expected_gradients = np.asarray(grads, dtype=np.float32)
 
-        self.run_ctc(activations, labels, activation_times, expected_costs, expected_gradients)
+        self.check_ctc(activations, labels, activation_times, expected_costs, expected_gradients)
 
     def test_verify_grad(self):
         def ctc_op_functor(labels, in_lengths):
