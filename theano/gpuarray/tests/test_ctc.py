@@ -26,13 +26,13 @@ class TestCTC(unittest.TestCase):
         inputs = [t_activations, t_labels, t_activation_times]
 
         # Execute several tests for each test case
-        self.check_expected_values(*inputs, expected_costs, expected_grads)
+        self.check_expected_values(t_activations, t_labels, t_activation_times, expected_costs, expected_grads)
         self.compare_gpu_and_cpu_values(*inputs)
+        self.check_grads_disabled(*inputs)
         self.run_gpu_optimization_with_grad(*inputs)
         self.run_gpu_optimization_no_grad(*inputs)
 
     def setup_cpu_op(self, activations, labels, input_length, compute_grad=True, mode=mode_without_gpu):
-        # Compute CTC costs and gradients on the CPU to compare with GPU
         cpu_ctc_cost = ctc(activations, labels, input_length)
         outputs = [cpu_ctc_cost]
         if compute_grad:
@@ -42,7 +42,6 @@ class TestCTC(unittest.TestCase):
         return theano.function([], outputs, mode=mode)
 
     def setup_gpu_op(self, activations, labels, input_length, compute_grad=True):
-        # Compute CTC costs and gradients on the CPU to compare with GPU
         gpu_ctc_cost = gpu_ctc(activations, labels, input_length)
         outputs = [gpu_ctc_cost]
         if compute_grad:
@@ -76,26 +75,26 @@ class TestCTC(unittest.TestCase):
         utt.assert_allclose(cpu_grad, grad_from_gpu)
         utt.assert_allclose(cpu_cost, cost_from_gpu)
 
+    def check_grads_disabled(self, activations, labels, input_length):
+        """
+        Check if optimization to disable gradients is working
+        """
+        gpu_ctc_cost = gpu_ctc(activations, labels, input_length)
+        gpu_ctc_function = theano.function([], [gpu_ctc_cost])
+        for node in gpu_ctc_function.maker.fgraph.apply_nodes:
+            if isinstance(node.op, GpuConnectionistTemporalClassification):
+                assert (node.op.compute_grad is False)
+
     def run_gpu_optimization_with_grad(self, activations, labels, input_length):
-        cpu_train = self.setup_cpu_op(activations, labels, input_length)
-        cpu_cost, cpu_grad = cpu_train()
-        # Compile CPU function without optimization
+        # Compile CPU function with optimization
         cpu_lifted_train = self.setup_cpu_op(activations, labels, input_length, mode=mode_with_gpu)
         # Check whether Op is lifted to the GPU
         assert self.has_only_gpu_op(cpu_lifted_train)
-        gpu_cost, gpu_grad = cpu_lifted_train()
-        # Transfer costs from GPU memory to host
-        cost_from_gpu = np.asarray(gpu_cost)
-        # Transfer gradients from GPU memory to host
-        grad_from_gpu = np.asarray(gpu_grad)
-        # Compare values from CPU and GPU Ops
-        utt.assert_allclose(cpu_cost, cost_from_gpu)
-        utt.assert_allclose(cpu_grad, grad_from_gpu)
 
     def run_gpu_optimization_no_grad(self, activations, labels, input_length):
-        cpu_test = self.setup_cpu_op(activations, labels, input_length, compute_grad=False)
-        cpu_cost = cpu_test()
-        # Compile CPU function without optimization
+        cpu_train = self.setup_cpu_op(activations, labels, input_length, compute_grad=False)
+        cpu_cost = cpu_train()
+        # Compile CPU function with optimization
         cpu_lifted_test = self.setup_cpu_op(activations, labels, input_length, compute_grad=False, mode=mode_with_gpu)
         # Check whether Op is lifted to the GPU
         assert self.has_only_gpu_op(cpu_lifted_test)
@@ -110,10 +109,10 @@ class TestCTC(unittest.TestCase):
         has_gpu_instance = False
         for node in function.maker.fgraph.apply_nodes:
             if isinstance(node.op, ConnectionistTemporalClassification):
-                has_gpu_instance = True
+                has_cpu_instance = True
 
             if isinstance(node.op, GpuConnectionistTemporalClassification):
-                has_cpu_instance = True
+                has_gpu_instance = True
         return has_gpu_instance and (not has_cpu_instance)
 
     # Test obtained from Torch tutorial at:
