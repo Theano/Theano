@@ -2534,3 +2534,18 @@ def confusion_matrix(actual, pred):
 
     conf_mat = tensor.dot(oneHotA.T, oneHotP)
     return [conf_mat, order]
+
+def get_one_hot(inp, nb_samples, nb_class):
+    m = tensor.zeros((nb_samples, nb_class))
+    m = tensor.set_subtensor(m[tensor.arange(nb_samples), tensor.argmax(inp, -1)], 1)
+    return m
+
+def gumbel_softmax(inp, temperature, epsilon, nb_classes, hard=False):
+    uniform_sample = srng.uniform(inp.shape, low=0, high=1).astype('float32')
+    gumbel_dist = -tensor.log(-tensor.log(uniform_sample + epsilon) + epsilon)
+    soft = tensor.nnet.softmax((inp + gumbel_dist) / temperature)
+    if hard:
+        gumbel_trick = get_one_hot(softm, softm.shape[0], nb_classes)
+        return gumbel_trick
+    return soft
+
