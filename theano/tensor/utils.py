@@ -19,8 +19,9 @@ def hash_from_ndarray(data):
     # We also need to add the dtype to make the distinction between
     # uint32 and int32 of zeros with the same shape and strides.
 
-    # python hash are not strong, so I always use md5 in order not to have a
-    # too long hash, I call it again on the concatenation of all parts.
+    # python hash are not strong, so use sha256 (md5 is not
+    # FIPS compatible). To not have too long of hash, I call it again on 
+	# the concatenation of all parts.
     if not data.flags["C_CONTIGUOUS"]:
         # hash_from_code needs a C-contiguous array.
         data = np.ascontiguousarray(data)

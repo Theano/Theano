@@ -185,9 +185,12 @@ def _config_print(thing, buf, print_doc=True):
 
 def get_config_md5():
     """
-    Return a string md5 of the current config options. It should be such that
-    we can safely assume that two different config setups will lead to two
-    different strings.
+    Return a string sha256 of the current config options. hash_from_code uses
+	sha256, and not md5. Updated in PR#5916. Function names will be properly
+	updated in future release. 
+	
+	The string should be such that we can safely assume that two different 
+	config setups will lead to two different strings.
 
     We only take into account config options for which `in_c_key` is True.
     """
