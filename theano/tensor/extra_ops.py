@@ -456,8 +456,8 @@ class DiffOp(theano.Op):
         z = outputs_gradients[0]
 
         def _grad_helper(z):
-            pre = basic.concatenate([T.zeros(T.sum(z,axis=self.axis,keepdims=True).shape), z],axis=self.axis)
-            app = basic.concatenate([z, T.zeros(T.sum(z,axis=self.axis,keepdims=True).shape)],axis=self.axis)
+            pre = basic.concatenate([theano.tensor.zeros(theano.tensor.sum(z, axis=self.axis, keepdims=True).shape), z], axis=self.axis)
+            app = basic.concatenate([z, theano.tensor.zeros(theano.tensor.sum(z, axis=self.axis, keepdims=True).shape)], axis=self.axis)
             return pre - app
 
         for k in range(self.n):
