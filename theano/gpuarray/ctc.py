@@ -24,24 +24,12 @@ class GpuConnectionistTemporalClassification(gof.COp):
 
     Parameters
     ----------
-    activations
-        Three-dimensional tensor, which has a shape of (t, m, p), where
-        t is the time index, m is the minibatch index, and p is the index
-        over the probabilities of each symbol in the alphabet. The memory
-        layout is assumed to be in C-order, which consists in the slowest
-        to the fastest changing dimension, from left to right. In this case,
-        p is the fastest changing dimension.
-    labels
-        A 1-D tensor of all the labels for the minibatch.
-    input_lengths
-        A 1-D tensor with the number of time steps for each sequence in
-        the minibatch.
-
+    compute_grad
+        If set to True, enables the computation of gradients of the CTC loss function.
     Returns
     -------
-    1-D tensor
-        Cost of each example in the minibatch. Tensor is of shape
-        (time index, minibatch index, probabilities).
+    GPU Op
+        An instance of the GPU CTC loss computation Op
     """
     __props__ = ('compute_grad',)
 
@@ -151,6 +139,30 @@ class GpuConnectionistTemporalClassification(gof.COp):
 
 
 def gpu_ctc(activations, labels, input_lengths):
+    """
+    Compute CTC loss function on the GPU.
+
+    Parameters
+    ----------
+    activations
+        Three-dimensional tensor, which has a shape of (t, m, p), where
+        t is the time index, m is the minibatch index, and p is the index
+        over the probabilities of each symbol in the alphabet. The memory
+        layout is assumed to be in C-order, which consists in the slowest
+        to the fastest changing dimension, from left to right. In this case,
+        p is the fastest changing dimension.
+    labels
+        A 1-D tensor of all the labels for the minibatch.
+    input_lengths
+        A 1-D tensor with the number of time steps for each sequence in
+        the minibatch.
+
+    Returns
+    -------
+    1-D tensor
+        Cost of each example in the minibatch. Tensor is of shape
+        (time index, minibatch index, probabilities).
+    """
     return GpuConnectionistTemporalClassification()(activations, labels,
                                                     input_lengths)
 
