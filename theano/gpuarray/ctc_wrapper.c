@@ -163,7 +163,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     {
         Py_XDECREF( *out_costs );
 
-        *out_costs = pygpu_empty( 1, &cost_size, GA_FLOAT, GA_C_ORDER,
+        *out_costs = pygpu_zeros( 1, &cost_size, GA_FLOAT, GA_C_ORDER,
             gpu_context, Py_None );
 
         if ( NULL == *out_costs )
@@ -175,6 +175,10 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
                 "Could not allocate storage for CTC costs");
             return 1;
         }
+    }
+    else
+    {
+        GpuArray_memset( &((*out_costs)->ga), 0 ); 
     }
 
     switch ( (*out_costs)->ga.typecode )
