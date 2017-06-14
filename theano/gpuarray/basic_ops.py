@@ -1632,7 +1632,7 @@ class GpuEye(GpuKernelBase, Op):
         code = """
 KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size a_off,
                 ga_size n, ga_size m, ga_ssize k) {
-    a = (GLOBAL_MEM %(ctype)s *)(((char *)a) + a_off);
+    a = (GLOBAL_MEM %(ctype)s *)(((GLOBAL_MEM char *)a) + a_off);
     ga_ssize coff = max(k, (ga_ssize) 0);
     ga_ssize roff = -min(k, (ga_ssize) 0);
     ga_size nb = (ga_size) min(n - roff, m - coff);

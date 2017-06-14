@@ -81,8 +81,8 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                 const ga_uint Nsamples,
                 const ga_uint Nstreams_used)
         {
-            sample_data = (GLOBAL_MEM %(otype)s *)(((char *)sample_data) + sample_offset);
-            state_data = (GLOBAL_MEM ga_int *)(((char *)state_data) + state_offset);
+            sample_data = (GLOBAL_MEM %(otype)s *)(((GLOBAL_MEM char *)sample_data) + sample_offset);
+            state_data = (GLOBAL_MEM ga_int *)(((GLOBAL_MEM char *)state_data) + state_offset);
             /*
              * The cluda backend makes sure that ga_int corresponds to
              * a 32 bit signed type on the target device.  It is not a
