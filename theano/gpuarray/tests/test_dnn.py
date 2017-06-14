@@ -1067,6 +1067,55 @@ def get_conv3d_test_cases():
     return itt
 
 
+def run_conv_batched_vs_multicall(inputs_shape, filters_shape, batch_sub, subsample):
+    # Run function for issue $5985 (see tests below): https://github.com/Theano/Theano/issues/5985
+
+    # We use GPU RNG to help create big arrays on GPU directly and then avoid transfer.
+    from ..rng_mrg import GPUA_mrg_uniform
+    # Inspired from gpuarray/tests/tesr_rng_mrg.py
+    seed = 12345
+    curr_rstate = np.array([[seed] * 6], dtype='int32')
+    rstate = gpuarray_shared_constructor(curr_rstate)
+
+    algo = 'small'
+
+    rstate_inputs, inputs = GPUA_mrg_uniform.new(rstate, dtype='float32',
+                                                 size=inputs_shape, ndim=len(inputs_shape))
+    rstate_filters, filters = GPUA_mrg_uniform.new(rstate_inputs, dtype='float32',
+                                                   size=filters_shape, ndim=len(filters_shape))
+
+    inputs_size = 4.0  # sizeof(float32)
+    for i in inputs_shape:
+        inputs_size *= i
+    print('Input size:', (inputs_size / 1024 / 1024 / 1024), 'Gb')
+
+    conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, subsample=subsample)
+    # Just compute last inputs to reduce execution time.
+    size = inputs_shape[0]
+    batched_outputs = [dnn.dnn_conv(img=inputs[i:(i + 1)], kerns=filters, algo=algo, subsample=subsample)
+                       for i in range(size - batch_sub, size)]
+    f = theano.function([], [conv] + batched_outputs, mode=mode_with_gpu)
+    print('Computing')
+    outputs = f()
+    res_all = outputs[0]
+    res_batch = outputs[1:]
+    print("Output shapes:", res_all.shape, res_batch[0].shape)
+    for i in range(batch_sub):
+        utt.assert_allclose(res_batch[i], res_all[size - batch_sub + i], atol=1e-6, rtol=1e-6)
+
+
+def test_batched_conv_success():
+    # With 10 000 inputs. Should pass (tested on GeForce GTX TITAN X, cuDNN 6020).
+    # Subsample is set to (3, 3) to reduce output size.
+    yield (run_conv_batched_vs_multicall, (10000, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))
+
+
+def test_batched_conv_fail():
+    # With 70 000 inputs (vs 10 000 above). Should fail (tested on GeForce GTX TITAN X, cuDNN 6020).
+    # Subsample is set to (3, 3) to reduce output size (useful when error is printed).
+    yield (run_conv_batched_vs_multicall, (70000, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))
+
+
 def test_conv3d_fwd():
 
     if not dnn.dnn_available(test_ctx_name):
