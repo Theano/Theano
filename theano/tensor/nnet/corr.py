@@ -8,7 +8,7 @@ import theano
 from theano import Apply
 from theano import gof
 from theano.gof import ParamsType, EnumList
-from theano.scalar import int64
+from theano.scalar import int64, int8
 from theano.tensor import as_tensor_variable, TensorType
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor import blas_headers
@@ -42,7 +42,7 @@ class BaseCorrMM(gof.OpenMPOp):
         Perform dilated correlation (default: (1,1))
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample', 'filter_dilation')
+    __props__ = ('border_mode', 'subsample', 'filter_dilation', 'unshared')
 
     _direction = None
 
@@ -51,10 +51,11 @@ class BaseCorrMM(gof.OpenMPOp):
                                                 ('DIRECTION_BACKPROP_INPUTS', 'backprop inputs')),  # 2
                              dH=int64, dW=int64,
                              dilH=int64, dilW=int64,
-                             padH=int64, padW=int64)
+                             padH=int64, padW=int64,
+                             unshared=int8)
 
     def __init__(self, border_mode="valid", subsample=(1, 1),
-                 filter_dilation=(1, 1), openmp=None):
+                 filter_dilation=(1, 1), unshared=False, openmp=None):
         super(BaseCorrMM, self).__init__(openmp=openmp)
         if isinstance(border_mode, integer_types):
             if border_mode < 0:
@@ -82,6 +83,7 @@ class BaseCorrMM(gof.OpenMPOp):
             raise ValueError("filter_dilation must have two elements")
         self.subsample = tuple(subsample)
         self.filter_dilation = tuple(filter_dilation)
+        self.unshared = unshared
 
         if not theano.config.blas.ldflags:
             # Theano will use a NumPy C implementation of [sd]gemm_ instead.
@@ -123,12 +125,15 @@ class BaseCorrMM(gof.OpenMPOp):
     padH = property(lambda self: self.pad[0])
     padW = property(lambda self: self.pad[1])
 
+    unshared = property(lambda self: self.unshared)
+
     def __str__(self):
-        return '%s{%s, %s, %s}' % (
+        return '%s{%s, %s, %s, %s}' % (
             self.__class__.__name__,
             self.border_mode,
             str(self.subsample),
-            str(self.filter_dilation))
+            str(self.filter_dilation),
+            str(self.unshared))
 
     @staticmethod
     def as_common_dtype(in1, in2):
@@ -274,6 +279,7 @@ class BaseCorrMM(gof.OpenMPOp):
     int dilW = %(params)s->dilW;
     int padH = %(params)s->padH;
     int padW = %(params)s->padW;
+    int unshared = %(params)s->unshared;
 
     PyArrayObject * bottom = %(bottom)s;
     PyArrayObject * weights = %(weights)s;
@@ -465,7 +471,7 @@ class BaseCorrMM(gof.OpenMPOp):
     }
 
     // Call corrMM code
-    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW, padH, padW);
+    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW, padH, padW, unshared);
     if (out2==NULL){
        %(fail)s
     }
@@ -501,6 +507,9 @@ class CorrMM(BaseCorrMM):
         The filter dilation operation applied to each input image.
         Should be a tuple with 2 elements.
         Set to `(1, 1)` to disable filter dilation.
+    unshared:
+        Boolean value. If true, then a different kernel will be applied to
+        each region of the input image.
 
     """
 
@@ -528,7 +537,8 @@ class CorrMM(BaseCorrMM):
             kshp,
             self.border_mode,
             self.subsample,
-            self.filter_dilation)
+            self.filter_dilation,
+            self.unshared)
         return [res]
 
     def c_code(self, node, nodename, inp, out_, sub):
@@ -541,12 +551,14 @@ class CorrMM(BaseCorrMM):
         top, = grads
         d_bottom = CorrMM_gradInputs(self.border_mode,
                                      self.subsample,
-                                     self.filter_dilation)(weights, top,
-                                                           bottom.shape[-2:])
+                                     self.filter_dilation,
+                                     self.unshared)(weights, top,
+                                                    bottom.shape[-2:])
         d_weights = CorrMM_gradWeights(self.border_mode,
                                        self.subsample,
-                                       self.filter_dilation)(bottom, top,
-                                                             weights.shape[-2:])
+                                       self.filter_dilation,
+                                       self.unshared)(bottom, top,
+                                                      weights.shape[-2:])
         return d_bottom, d_weights
 
 
@@ -632,11 +644,13 @@ class CorrMM_gradWeights(BaseCorrMM):
         weights, = grads
         d_bottom = CorrMM_gradInputs(self.border_mode,
                                      self.subsample,
-                                     self.filter_dilation)(weights, top,
-                                                           bottom.shape[-2:])
+                                     self.filter_dilation,
+                                     self.unshared)(weights, top,
+                                                    bottom.shape[-2:])
         d_top = CorrMM(self.border_mode,
                        self.subsample,
-                       self.filter_dilation)(bottom, weights)
+                       self.filter_dilation,
+                       self.unshared)(bottom, weights)
         d_height_width = ((theano.gradient.DisconnectedType()(),) * 2
                           if len(inp) == 4 else ())
         return (d_bottom, d_top) + d_height_width
@@ -738,12 +752,14 @@ class CorrMM_gradInputs(BaseCorrMM):
         bottom, = grads
         d_weights = CorrMM_gradWeights(self.border_mode,
                                        self.subsample,
-                                       self.filter_dilation)(bottom,
-                                                             top,
-                                                             weights.shape[-2:])
+                                       self.filter_dilation,
+                                       self.unshared)(bottom,
+                                                      top,
+                                                      weights.shape[-2:])
         d_top = CorrMM(self.border_mode,
                        self.subsample,
-                       self.filter_dilation)(bottom, weights)
+                       self.filter_dilation,
+                       self.unshared)(bottom, weights)
         d_height_width = ((theano.gradient.DisconnectedType()(),) *
                           2 if len(inp) == 4 else ())
         return (d_weights, d_top) + d_height_width

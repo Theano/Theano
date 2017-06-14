@@ -106,7 +106,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                       const int dilH = 1,
                       const int dilW = 1,
                       const int padH = 0,
-                      const int padW = 0)
+                      const int padW = 0,
+                      const int unshared = 0)
 {
     if (PyArray_NDIM(bottom) != 4)
     {
