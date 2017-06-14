@@ -870,6 +870,11 @@ class GpuCorrMM(BaseGpuCorrMM):
         The filter dilation operation applied to each input image.
         Should be a tuple with 2 elements.
         Set to `(1, 1)` to disable filter dilation.
+    num_groups
+        The number of distinct groups the image and kernel must be
+        divided into.
+        should be an int
+        set to 1 to disable grouped convolution
 
     Notes
     -----
