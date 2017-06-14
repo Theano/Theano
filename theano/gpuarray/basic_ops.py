@@ -1706,4 +1706,4 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size a_off,
         return s
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)

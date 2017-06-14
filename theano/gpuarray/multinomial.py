@@ -220,7 +220,7 @@ KERNEL void k_multi_warp_multinomial(
         return s
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 
 class GPUAChoiceFromUniform(GpuKernelBase, Op):
@@ -455,7 +455,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         return s
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 
 @register_opt('fast_compile')

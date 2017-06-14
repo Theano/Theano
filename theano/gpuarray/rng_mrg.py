@@ -288,7 +288,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (13,)
+        return (14,)
 
 
 @register_opt2([mrg_uniform], 'fast_compile')
