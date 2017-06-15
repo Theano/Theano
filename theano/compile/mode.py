@@ -123,18 +123,6 @@ class AddDestroyHandler(gof.Optimizer):
                           "use some_op.optimize(fgraph). Instead use theano.function"
                           "to add the optimiztions.",
                           stacklevel=3)
-        for o in fgraph.outputs:
-            try:
-                fgraph.replace_validate(o, _output_guard(o),
-                                        reason='output_guard')
-                _logger.info("Output variable %s required output_guard, "
-                             "how was this output left unprotected against "
-                             "destructive operations?"
-                             % o)
-            except gof.InconsistencyError:
-                # This output is already impossible to destroy.
-                # No guard necessary
-                pass
 
     def add_requirements(self, fgraph):
         super(AddDestroyHandler, self).add_requirements(fgraph)
