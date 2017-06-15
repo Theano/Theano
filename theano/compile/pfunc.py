@@ -283,7 +283,8 @@ class Param(In):
 def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
           no_default_updates=False, accept_inplace=False, name=None,
           rebuild_strict=True, allow_input_downcast=None,
-          profile=None, on_unused_input=None, output_keys=None):
+          profile=None, on_unused_input=None, output_keys=None,
+          inputs_not_used=()):
     """
     Function-constructor for graphs with shared variables.
 
@@ -328,6 +329,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         be available via self.profile.
     on_unused_input : {'raise', 'warn','ignore', None}
         What to do if a variable in the 'inputs' list is not used in the graph.
+    inputs_not_used : See theano.function() description
 
     Returns
     -------
@@ -440,8 +442,12 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
             out_list = [outputs]
     extended_outputs = out_list + additional_outputs
 
+    extra_inputs = []
+    if inputs_not_used != "auto":
+        extra_inputs = list(inputs_not_used)
+
     output_vars = rebuild_collect_shared(extended_outputs,
-                                         in_variables,
+                                         in_variables + extra_inputs,
                                          replace=givens,
                                          updates=updates,
                                          rebuild_strict=rebuild_strict,
@@ -450,6 +456,9 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     # extracting the arguments
     input_variables, cloned_extended_outputs, other_stuff = output_vars
     clone_d, update_d, update_expr, shared_inputs = other_stuff
+    if inputs_not_used != "auto":
+        inputs_not_used = input_variables[len(in_variables):]
+        input_variables = input_variables[:len(in_variables)]
 
     # Recover only the clones of the original outputs
     if outputs is None:
@@ -483,7 +492,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     return orig_function(inputs, cloned_outputs, mode,
                          accept_inplace=accept_inplace, name=name,
                          profile=profile, on_unused_input=on_unused_input,
-                         output_keys=output_keys)
+                         output_keys=output_keys, inputs_not_used=inputs_not_used)
 
 
 def _pfunc_param_to_in(param, strict=False, allow_downcast=None):

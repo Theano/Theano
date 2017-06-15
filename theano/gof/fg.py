@@ -18,7 +18,7 @@ from six import iteritems, itervalues
 from six.moves import StringIO
 from theano.gof.utils import get_variable_trace_string
 from theano.misc.ordered_set import OrderedSet
-NullType = None
+from .null_type import NullType
 
 
 class CachedConstantError(Exception):
@@ -347,9 +347,6 @@ class FunctionGraph(utils.object2):
         elif (variable.owner is None and
                 not isinstance(variable, graph.Constant) and
                 variable not in self.inputs):
-            global NullType
-            if NullType is None:
-                from .null_type import NullType
             if isinstance(variable.type, NullType):
                 raise TypeError("Computation graph contains a NaN. " +
                                 variable.type.why_null)

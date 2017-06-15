@@ -1391,7 +1391,7 @@ class FunctionMaker(object):
     def __init__(self, inputs, outputs,
                  mode=None, accept_inplace=False, function_builder=Function,
                  profile=None, on_unused_input=None, fgraph=None,
-                 output_keys=None):
+                 output_keys=None, inputs_not_used=()):
         mode = theano.compile.mode.get_mode(mode)
 
         # Assert old way of working isn't used
@@ -1419,24 +1419,29 @@ class FunctionMaker(object):
         if not isinstance(outputs, (list, tuple)):
             unpack_single = True
             outputs = [outputs]
-        if not isinstance(inputs, (list, tuple)):
-            inputs = [inputs]
+
+        # Find missing inputs and delay the error to after optimization
+        # in case we are able to remove there need during optimization
+        if inputs_not_used == "auto":
+            blockers = [i if isinstance(i, gof.Variable) else i.variable
+                        for i in inputs]
+            all_inputs = theano.gof.graph.inputs([o.variable for o in outputs],
+                                                 blockers=blockers)
+            missing_inputs = [i for i in all_inputs
+                              if i not in blockers and
+                              not isinstance(i, (gof.Constant,
+                                                 theano.compile.SharedVariable)) and
+                              not isinstance(i.type, gof.null_type.NullType)]
+        else:
+            missing_inputs = list(inputs_not_used)
+            assert all([isinstance(v, gof.Variable) for v in inputs_not_used])
 
         # Wrap them in In or Out instances if needed.
-        inputs = [self.wrap_in(i) for i in inputs]
+        inputs = [self.wrap_in(i) for i in inputs + missing_inputs]
         outputs = [self.wrap_out(o) for o in outputs]
-        _inputs = gof.graph.inputs([o.variable for o in outputs] +
-                                   [i.update for i in inputs
-                                    if getattr(i, 'update', False)])
 
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
-
-        # Make a list of (SymbolicInput|SymblicInputKits, indices,
-        # [SymbolicInput,...]), one tuple for each input. (See
-        # Function.indices for more details)
-        indices = [[input] + self.expand_in(input, _inputs)
-                   for input in inputs]
 
         if fgraph is None:
             need_opt = True
@@ -1450,6 +1455,7 @@ class FunctionMaker(object):
             need_opt = False
             updates = [spec.update for spec in inputs if spec.update]
             additional_outputs = list(map(SymbolicOutput, updates))
+            assert len(missing_inputs) == 0
 
         self.fgraph = fgraph
 
@@ -1505,7 +1511,19 @@ class FunctionMaker(object):
                     warnings.warn((
                         "config.profile_optimizer requires config.profile to "
                         " be set to True as well"), stacklevel=3)
+            # Assert that missing inputs aren't used and remove them.
+            for idx, mi in enumerate(missing_inputs[::-1]):
+                clients = fgraph.inputs[-1].clients
+                if len(clients) > 0:
+                    error_msg = ("Input %d of compute %s, was not "
+                                 "provided and not given a value."
+                                 % (clients[0][1],
+                                    str(clients[0][0]),))
+                    raise gof.fg.MissingInputError(error_msg, variable=mi)
+                fgraph.inputs.pop()
+                inputs.pop()
 
+        assert len(inputs) == len(fgraph.inputs)
         # initialize the linker
         if not hasattr(linker, 'accept'):
             raise ValueError("'linker' parameter of FunctionMaker should be "
@@ -1530,6 +1548,15 @@ class FunctionMaker(object):
             # hacky thing so VMLinker knows about updates
             self.linker.accept_var_updates(
                 fgraph_updated_vars(fgraph, inputs))
+
+        # Make a list of (SymbolicInput|SymblicInputKits, indices,
+        # [SymbolicInput,...]), one tuple for each input. (See
+        # Function.indices for more details)
+        _inputs = gof.graph.inputs([o.variable for o in outputs] +
+                                   [i.update for i in inputs
+                                    if getattr(i, 'update', False)])
+        indices = [[input] + self.expand_in(input, _inputs)
+                   for input in inputs]
 
         self.indices = indices
         self.inputs = inputs
@@ -1734,7 +1761,7 @@ def register_checker(checker):
 
 def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   name=None, profile=None, on_unused_input=None,
-                  output_keys=None):
+                  output_keys=None, inputs_not_used=()):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -1805,7 +1832,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   accept_inplace=accept_inplace,
                   profile=profile,
                   on_unused_input=on_unused_input,
-                  output_keys=output_keys)
+                  output_keys=output_keys,
+                  inputs_not_used=inputs_not_used)
         with theano.configparser.change_flags(compute_test_value="off"):
             fn = m.create(defaults)
     finally:

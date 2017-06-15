@@ -514,7 +514,8 @@ class Variable(Node):
 
         inputs = tuple(sorted(inputs_to_values.keys(), key=id))
         if inputs not in self._fn_cache:
-            self._fn_cache[inputs] = theano.function(inputs, self)
+            self._fn_cache[inputs] = theano.function(
+                inputs, self, inputs_not_used='auto')
         args = [inputs_to_values[param] for param in inputs]
 
         rval = self._fn_cache[inputs](*args)

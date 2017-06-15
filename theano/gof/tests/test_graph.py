@@ -7,8 +7,10 @@ from nose.plugins.skip import SkipTest
 import numpy as np
 
 from theano import (
+    function,
     sparse,
     shared, tensor)
+from theano.gof import MissingInputError
 from theano.gof.graph import (
     Apply,
     as_string, clone, general_toposort, inputs, io_toposort,
@@ -322,6 +324,17 @@ class TestEval(unittest.TestCase):
                         "variable must have cache after eval")
         self.assertFalse(hasattr(pickle.loads(pickle.dumps(self.w)), '_fn_cache'),
                          "temporary functions must not be serialized")
+
+    def test_inputs_not_used(self):
+        m = tensor.matrix()
+        x_with_const_shape = tensor.specify_shape(m, (2, 3))
+        print(x_with_const_shape.shape.eval())
+
+        # Test explicit inputs_not_used
+        function([m], x_with_const_shape.shape)
+        function([], x_with_const_shape.shape, inputs_not_used=[m])
+        self.assertRaises(MissingInputError,
+                          function, [], x_with_const_shape.shape)
 
 
 ################

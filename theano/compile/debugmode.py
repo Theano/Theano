@@ -2222,7 +2222,10 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                  profile=None,
                  on_unused_input=None,
                  fgraph=None,  # If present the optimized graph. we ignore it.
-                 output_keys=None):
+                 output_keys=None,
+                 inputs_not_used=()):
+        if inputs_not_used:
+            _logger.warning("DebugMode ignore inputs_not_used")
         self.profile = profile
         optimizer = mode.optimizer
         # Handle the case where inputs and/or outputs is a single
