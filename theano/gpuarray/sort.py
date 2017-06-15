@@ -62,12 +62,12 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         kernel_src = {}
         for kname in knames:
             with open(os.path.join(
-                os.path.dirname(__file__), kname + kernel_ext
+                os.path.dirname(__file__), 'c_code', kname + kernel_ext
             ), 'r') as f:
                 kernel_src[kname] = f.read()
 
         with open(os.path.join(
-            os.path.dirname(__file__), 'k_topk_common' + common_ext
+            os.path.dirname(__file__), 'c_code', 'k_topk_common' + common_ext
         ), 'r') as f:
             common_src = f.read()
 
