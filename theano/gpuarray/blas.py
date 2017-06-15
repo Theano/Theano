@@ -1735,6 +1735,7 @@ def local_inplace_gpuagemm(node, inputs):
 def local_inplace_gpuager(node, inputs):
     return [gpuger_inplace(*inputs)]
 
+
 @inplace_allocempty(GpuGemmBatch, 0)
 def local_inplace_gpuagemmbatch(node, inputs):
     return [gpugemmbatch_inplace(*inputs)]

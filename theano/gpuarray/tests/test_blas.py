@@ -166,6 +166,7 @@ class TestGpuGemmBatchStrided(TestCase):
         x_num = np.arange(32 * 19 * 600, dtype=config.floatX).reshape((32, 19, 600))
         y_num = np.arange(7 * 32 * 600, dtype=config.floatX).reshape((32, 7, 600))
         f(x_num, y_num)
+        assert f.maker.fgraph.toposort()[-2].op.inplace
 
 
 class TestGpuSger(TestGer):

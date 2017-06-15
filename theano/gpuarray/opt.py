@@ -1235,7 +1235,8 @@ def local_gpua_gemmbatch(op, context_name, inputs, outputs):
         if b.dtype != out_dtype:
             b = gpu_cast_op(b)
 
-    c = tensor.AllocEmpty(out_dtype)(a.shape[0], a.shape[1], b.shape[2])
+    c = GpuAllocEmpty(out_dtype, context_name)(
+        a.shape[0], a.shape[1], b.shape[2])
     out = gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=out_dtype),
                                   a, b, np.asarray(0.0, dtype=out_dtype))
     if len(output_dims) != 3:
