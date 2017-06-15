@@ -305,29 +305,39 @@ KERNEL void k_multi_warp_multinomial_wor(
 
     if (n < nb_multi)
     {
-        // Sum of the remaining p_vals in global_pvals_copy[n]
-        float pvals_sum = 1.;
         for (int c = 0; c < n_samples; ++c)
         {
             float cummul = 0.;
-            const float unis_n = global_unis[(c * nb_multi + n)*unis_stride] * pvals_sum;
+            bool done = false;
+            const float unis_n = global_unis[(c * nb_multi + n)*unis_stride];
             for (ga_size m = 0; m < nb_outcomes; ++m)
             {
                 float pvals_nm = global_pvals_copy[m * pvals_col_stride + n * pvals_row_stride];
                 cummul += pvals_nm;
 
-                if (unis_n < cummul)
+                if (!done && unis_n < cummul)
                 {
-                    // write out transposed for speed.
+                    //write out transposed for speed.
                     global_outs[n * outs_col_stride +
                                 c * outs_row_stride] = m;
 
                     if (! %(replace)s )
                     {
                         global_pvals_copy[m * pvals_col_stride + n * pvals_row_stride] = 0.0;
-                        pvals_sum -= pvals_nm;
+                        cummul -= pvals_nm;
                     }
-                    break;
+                    done = true;
+                }
+            }
+            // No need to renormalize after the last samples.
+            if (c == (n_samples - 1))
+                break;
+            if (! %(replace)s )
+            {
+                // parallel renormalize the multinomial
+                for (ga_int k = LID_1; k < nb_outcomes; k+=LDIM_1)
+                {
+                    global_pvals_copy[k * pvals_col_stride + n * pvals_row_stride] /= cummul;
                 }
             }
         }
@@ -391,12 +401,9 @@ KERNEL void k_multi_warp_multinomial_wor(
         PyErr_Format(PyExc_ValueError, "unis.shape[0] != pvals.shape[0] * n");
         %(fail)s
     }
-    if (! %(replace)s) {
-        pvals_copy = pygpu_copy(pvals, GA_C_ORDER);
-    } else {
-        pvals_copy = pvals;
-        Py_INCREF(pvals_copy);
-    }
+
+    pvals_copy = pygpu_copy(pvals, GA_C_ORDER);
+
     dims[0] = n_samples;
     dims[1] = PyGpuArray_DIMS(pvals)[0];
 
@@ -488,7 +495,7 @@ def local_gpua_multinomial_wor(op, context_name, inputs, outputs):
     p, u, n = inputs
     m, = outputs
     if ((p.dtype == u.dtype == 'float32') and (m.dtype == 'int64')):
-        gpu_op = GPUAChoiceFromUniform(**op._props_dict())
+        gpu_op = GPUAChoiceFromUniform(op.odtype)
         return GpuDimShuffle([False, False], [1, 0])(
             gpu_op(p, u, n))
 

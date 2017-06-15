@@ -914,11 +914,7 @@ class CLinker(link.Linker):
         for x in [y.type for y in self.variables] + [
                 y.op for y in self.node_order]:
             try:
-                support_code = x.c_support_code()
-                if isinstance(support_code, list):
-                    ret.extend(support_code)
-                else:
-                    ret.append(support_code)
+                ret.append(x.c_support_code())
             except utils.MethodNotDefined:
                 pass
         return ret
@@ -1227,10 +1223,13 @@ class CLinker(link.Linker):
             (opK, input_signatureK, output_signatureK),
         }}}
 
+	Note that config md5 uses sha256, and not md5. Function names will
+	updated in a future release to reflect the use of hashlib.sha256. 
+		
         The signature is a tuple, some elements of which are sub-tuples.
 
         The outer tuple has a brief header, containing the compilation options
-        passed to the compiler, the libraries to link against, an md5 hash
+        passed to the compiler, the libraries to link against, a sha256 hash
         of theano.config (for all config options where "in_c_key" is True).
         It is followed by elements for every node in the topological ordering
         of `self.fgraph`.
@@ -1371,6 +1370,10 @@ class CLinker(link.Linker):
         # parameters from the rest of the key. If you want to add more key
         # elements, they should be before this md5 hash if and only if they
         # can lead to a different compiled file with the same source code.
+		
+	# NOTE: config md5 is not using md5 hash, but sha256 instead. Function
+	# names and string instances of md5 will be updated at a later release. 
+	# See PR#5916 for details.
         if insert_config_md5:
             sig.append('md5:' + theano.configparser.get_config_md5())
         else:

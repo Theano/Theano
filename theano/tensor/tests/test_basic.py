@@ -5613,25 +5613,25 @@ def test_is_flat():
     # Constant variable
     assert tensor.is_flat(tensor.as_tensor_variable(np.zeros((10))))
     assert tensor.is_flat(tensor.as_tensor_variable(np.zeros((10, 10, 10))),
-                          ndim=3)
+                          outdim=3)
     assert not tensor.is_flat(
         tensor.as_tensor_variable(np.zeros((10, 10, 10))))
 
     # Symbolic variable
     assert tensor.is_flat(tensor.vector())
-    assert tensor.is_flat(tensor.tensor3(), ndim=3)
+    assert tensor.is_flat(tensor.tensor3(), outdim=3)
     assert not tensor.is_flat(tensor.tensor3())
 
     # Reshape with constant shape
     X = tensor.tensor4()
     assert tensor.is_flat(X.reshape((-1, )))
-    assert tensor.is_flat(X.reshape((10, 10, -1)), ndim=3)
+    assert tensor.is_flat(X.reshape((10, 10, -1)), outdim=3)
     assert not tensor.is_flat(X.reshape((10, 10, -1)))
 
     # Reshape with symbolic shape
     X = tensor.tensor4()
     assert tensor.is_flat(X.reshape((tensor.iscalar(), )))
-    assert tensor.is_flat(X.reshape((tensor.iscalar(), ) * 3), ndim=3)
+    assert tensor.is_flat(X.reshape((tensor.iscalar(), ) * 3), outdim=3)
     assert not tensor.is_flat(X.reshape((tensor.iscalar(), ) * 3))
 
 

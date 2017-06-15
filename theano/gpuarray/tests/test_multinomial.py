@@ -327,34 +327,30 @@ def test_gpu_opt_wor():
     p = tensor.fmatrix()
     u = tensor.fvector()
     n = tensor.iscalar()
-    for replace in [False, True]:
-        m = multinomial.ChoiceFromUniform(odtype='auto',
-                                          replace=replace)(p, u, n)
-        assert m.dtype == 'int64', m.dtype
+    m = multinomial.ChoiceFromUniform(odtype='auto')(p, u, n)
+    assert m.dtype == 'int64', m.dtype
 
-        f = function([p, u, n], m, allow_input_downcast=True,
-                     mode=mode_with_gpu)
-        assert any([type(node.op) is GPUAChoiceFromUniform
-                    for node in f.maker.fgraph.toposort()])
-        n_samples = 3
-        pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
-        pval = pval / pval.sum(axis=1)[:, None]
-        uval = np.ones(pval.shape[0] * n_samples) * 0.5
-        f(pval, uval, n_samples)
+    f = function([p, u, n], m, allow_input_downcast=True, mode=mode_with_gpu)
+    assert any([type(node.op) is GPUAChoiceFromUniform
+                for node in f.maker.fgraph.toposort()])
+    n_samples = 3
+    pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+    pval = pval / pval.sum(axis=1)[:, None]
+    uval = np.ones(pval.shape[0] * n_samples) * 0.5
+    f(pval, uval, n_samples)
 
-        # Test with a row, it was failing in the past.
-        r = tensor.frow()
-        m = multinomial.ChoiceFromUniform('auto', replace=replace)(r, u, n)
-        assert m.dtype == 'int64', m.dtype
+    # Test with a row, it was failing in the past.
+    r = tensor.frow()
+    m = multinomial.ChoiceFromUniform('auto')(r, u, n)
+    assert m.dtype == 'int64', m.dtype
 
-        f = function([r, u, n], m, allow_input_downcast=True,
-                     mode=mode_with_gpu)
-        assert any([type(node.op) is GPUAChoiceFromUniform
-                    for node in f.maker.fgraph.toposort()])
-        pval = np.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
-        pval = pval / pval.sum(axis=1)[:, None]
-        uval = np.ones_like(pval[:, 0]) * 0.5
-        f(pval, uval, 1)
+    f = function([r, u, n], m, allow_input_downcast=True, mode=mode_with_gpu)
+    assert any([type(node.op) is GPUAChoiceFromUniform
+                for node in f.maker.fgraph.toposort()])
+    pval = np.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
+    pval = pval / pval.sum(axis=1)[:, None]
+    uval = np.ones_like(pval[:, 0]) * 0.5
+    f(pval, uval, 1)
 
 
 def test_unpickle_legacy_op():

@@ -93,17 +93,11 @@ class DeviceParam(ConfigParam):
                 val.startswith('opencl') or
                     val.startswith('cuda')):
                 return val
-            elif val.startswith('gpu'):
-                raise ValueError(
-                    'You are tring to use the old GPU back-end. '
-                    'It was removed from Theano. Use device=cuda* now. '
-                    'See https://github.com/Theano/Theano/wiki/Converting-to-the-new-gpu-back-end%28gpuarray%29 '
-                    'for more information.')
             else:
                 raise ValueError(('Invalid value ("%s") for configuration '
                                   'variable "%s". Valid options start with '
-                                  'one of "cpu", "opencl" or "cuda".'
-                                  % (val, self.fullname)))
+                                  'one of "%s", "opencl", "cuda"'
+                                  % (self.default, val, self.fullname)))
         over = kwargs.get("allow_override", True)
         super(DeviceParam, self).__init__(default, filter, over)
 
@@ -268,18 +262,19 @@ def safe_no_dnn_algo_bwd(algo):
             '`dnn.conv.algo_bwd_filter` and `dnn.conv.algo_bwd_data` instead.')
     return True
 
-# Those are the options provided by Theano to choose algorithms at runtime.
-SUPPORTED_DNN_CONV_ALGO_RUNTIME = ('guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change')
-
 # Those are the supported algorithm by Theano,
 # The tests will reference those lists.
-SUPPORTED_DNN_CONV_ALGO_FWD = ('small', 'none', 'large', 'fft', 'fft_tiling', 'winograd') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
+SUPPORTED_DNN_CONV_ALGO_FWD = ('small', 'none', 'large', 'fft', 'fft_tiling',
+                               'winograd', 'guess_once', 'guess_on_shape_change',
+                               'time_once', 'time_on_shape_change')
 
-SUPPORTED_DNN_CONV_ALGO_BWD_DATA = ('none', 'deterministic', 'fft', 'fft_tiling', 'winograd') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
+SUPPORTED_DNN_CONV_ALGO_BWD_DATA = ('none', 'deterministic', 'fft', 'fft_tiling',
+                                    'winograd', 'guess_once', 'guess_on_shape_change',
+                                    'time_once', 'time_on_shape_change')
 
-SUPPORTED_DNN_CONV_ALGO_BWD_FILTER = ('none', 'deterministic', 'fft', 'small') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
-
-SUPPORTED_DNN_CONV_PRECISION = ('as_input_f32', 'as_input', 'float16', 'float32', 'float64')
+SUPPORTED_DNN_CONV_ALGO_BWD_FILTER = ('none', 'deterministic', 'fft', 'small',
+                                      'guess_once', 'guess_on_shape_change',
+                                      'time_once', 'time_on_shape_change')
 
 AddConfigVar('dnn.conv.algo_bwd',
              "This flag is deprecated; use dnn.conv.algo_bwd_data and "
@@ -310,7 +305,8 @@ AddConfigVar('dnn.conv.precision',
              "Default data precision to use for the computation in cuDNN "
              "convolutions (defaults to the same dtype as the inputs of the "
              "convolutions, or float32 if inputs are float16).",
-             EnumStr(*SUPPORTED_DNN_CONV_PRECISION),
+             EnumStr('as_input_f32', 'as_input', 'float16', 'float32',
+                     'float64'),
              in_c_key=False)
 
 
@@ -657,17 +653,10 @@ AddConfigVar('warn.ignore_bug_before',
               "bugs found after that version. "
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
-             EnumStr('0.8', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
-                     '0.7', '0.8', '0.8.1', '0.8.2', '0.9', '0.10',
+             EnumStr('0.7', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
+                     '0.7', '0.8', '0.8.1', '0.8.2', '0.9',
                      allow_override=False),
              in_c_key=False)
-
-
-def split_version(version):
-    """
-    Take version as a dot-separated string, return a tuple of int
-    """
-    return tuple(int(i) for i in version.split('.'))
 
 
 def warn_default(version):
@@ -678,8 +667,7 @@ def warn_default(version):
         return True
     if config.warn.ignore_bug_before == 'all':
         return False
-    if (split_version(config.warn.ignore_bug_before) >=
-            split_version(version)):
+    if config.warn.ignore_bug_before >= version:
         return False
     return True
 
@@ -771,20 +759,10 @@ AddConfigVar('warn.inc_set_subtensor1',
              in_c_key=False)
 
 AddConfigVar('warn.round',
-             "Warn when using `tensor.round` with the default mode. "
-             "Round changed its default from `half_away_from_zero` to "
-             "`half_to_even` to have the same default as NumPy.",
+             "Round changed its default from Seed to use for randomized unit tests. "
+             "Special value 'random' means using a seed of None.",
              BoolParam(warn_default('0.9')),
              in_c_key=False)
-
-AddConfigVar(
-    'warn.inc_subtensor1_opt',
-    "Warn if previous versions of Theano (before 0.10) could have "
-    "given incorrect results when computing "
-    "inc_subtensor(zeros[idx], x)[idx], when idx is an array of integers "
-    "with duplicated values.",
-    BoolParam(warn_default('0.10')),
-    in_c_key=False)
 
 
 AddConfigVar(

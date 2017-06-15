@@ -760,46 +760,36 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         gpu_output = res(*new_inputs)
         return [gpu_output]
     elif op.scalar_op in (scalar.add, scalar.mul):
-        try:
-            return [split_inputs(inputs, max_inputs_to_GpuElemwise(outputs), res)]
-        except ValueError:
-            return False
+        max_nb_inputs = max_inputs_to_GpuElemwise(outputs)
+        if max_nb_inputs > 1:
+            while len(inputs) > max_nb_inputs:
+                inputs = inputs[:-max_nb_inputs] + [res(*inputs[-max_nb_inputs:])]
+        return res(*inputs)
     else:
         return res
 
 
-def split_inputs(inputs, max_nb_inputs, op):
+def split_huge_add_or_mul(node):
     """
-    For some ops like add and mul, a large number of inputs can make nvcc fail
-    compilation of our current code. We don't want node in the graph that can't
-    execute as this break DebugMode.
+    For add and mul, it can happen that we have too much input
+    That will make nvcc fail compilation of our current code.
+    We don't want node in the graph that can't execute
+    as this break DebugMode.
 
     This should not happen for other GpuElemwise as their is only the fusion
     that can generate op with too much input and it check for that.
 
-    Parameters
-    ----------
-    inputs: List of theano variables.
-            List of inputs to node.
-    max_nb_inputs: int
-                   Maximum number of inputs the node can handle without
-                   compilation fail.
-    op : Theano operator instance.
-         Operator that should be used to rebuild the computation graph with smaller
-         number of inputs per node.
     """
-    if max_nb_inputs <= 1 and len(inputs) > 1:
-        raise ValueError("Can not split nodes because inputs' dimensionality and/or"
-                         " number of outputs is too large")
-
-    while len(inputs) > max_nb_inputs:
-        inner_ops = []
-        for i in range(0, len(inputs), max_nb_inputs):
-            inner_ops.append(op(*inputs[i: i + max_nb_inputs]))
-        inputs = inner_ops
-
-    return op(*inputs)
-
+    if node.op.scalar_op in (scalar.add, scalar.mul):
+        max_nb_inputs = max_inputs_to_GpuElemwise(node)
+        if max_nb_inputs <= 1 and len(node.inputs) > 1:
+            return False
+        while len(node.inputs) > max_nb_inputs:
+            inner_op = []
+            for i in range(0, len(node.inputs), max_nb_inputs):
+                inner_op.append(node.op(*node.inputs[i: i + max_nb_inputs]))
+            node = node.op(*inner_op).owner
+    return node
 
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
     GpuElemwise,
@@ -1188,14 +1178,6 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.Gemv, tensor.blas_c.CGemv])
 @register_opt2([tensor.blas.Gemv], 'fast_compile')
 def local_gpua_gemv(op, context_name, inputs, outputs):
-    if inputs[0].dtype == 'float16':
-        # Use gemm implementation as cublas gemv don't support float16
-        return gpugemm_no_inplace(inputs[0][:, None],
-                                  inputs[1],
-                                  inputs[2],
-                                  inputs[3][:, None],
-                                  inputs[4]).dimshuffle(0)
-
     if inputs[0].dtype not in ['float32', 'float64']:
         return
     if op.inplace:
@@ -1223,31 +1205,9 @@ def local_gpua_gemmbatch(op, context_name, inputs, outputs):
     if inputs[0].dtype not in ['float32', 'float64']:
         return
     a, b = inputs
-    # Since GpuGemmBatch only supports 3D inputs and output,
-    # we need to add broadcastable dims to the inputs, and drop
-    # them from outputs
-    output_dims = [0, 1, 2]
-    if a.ndim == 2:
-        a = GpuDimShuffle(a.broadcastable, (0, 'x', 1))(a)
-        del output_dims[1]
-    if b.ndim == 2:
-        b = GpuDimShuffle(b.broadcastable, (0, 1, 'x'))(b)
-        del output_dims[-1]
-    # In case of mismatched dtypes, we also have to upcast
-    out_dtype = outputs[0].dtype
-    if a.dtype != out_dtype or b.dtype != out_dtype:
-        gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
-        if a.dtype != out_dtype:
-            a = gpu_cast_op(a)
-        if b.dtype != out_dtype:
-            b = gpu_cast_op(b)
-
-    c = tensor.AllocEmpty(out_dtype)(a.shape[0], a.shape[1], b.shape[2])
-    out = gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=out_dtype),
-                                  a, b, np.asarray(0.0, dtype=out_dtype))
-    if len(output_dims) != 3:
-        out = GpuDimShuffle(out.broadcastable, output_dims)(out)
-    return out
+    c = tensor.AllocEmpty(a.dtype)(a.shape[0], a.shape[1], b.shape[2])
+    return gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=a.dtype),
+                                   a, b, np.asarray(0.0, dtype=a.dtype))
 
 
 @register_opt()
@@ -1398,8 +1358,6 @@ theano.tensor.nnet.conv2d()
 @op_lifter([SparseBlockGemv])
 @register_opt2([SparseBlockGemv], 'fast_compile')
 def local_gpua_sparseblockgemv(op, context_name, inputs, outputs):
-    if inputs[0].dtype == 'float16':
-        return
     if op.inplace:
         return gpu_sparse_block_gemv_inplace
     else:
@@ -1410,8 +1368,6 @@ def local_gpua_sparseblockgemv(op, context_name, inputs, outputs):
 @op_lifter([SparseBlockOuter])
 @register_opt2([SparseBlockOuter], 'fast_compile')
 def local_gpua_sparseblockouter(op, context_name, inputs, outputs):
-    if inputs[0].dtype == 'float16':
-        return
     if op.inplace:
         return gpu_sparse_block_outer_inplace
     else:
@@ -2049,13 +2005,7 @@ def _scan_type_infer(node):
 @op_lifter([tensor.MaxAndArgmax])
 @register_opt2([tensor.MaxAndArgmax], 'fast_compile')
 def local_gpu_maxandargmax(op, context_name, inputs, outputs):
-    op = GpuMaxAndArgmax(op.get_params(None))
-    if inputs[0].dtype == "float16":
-        # For now it is better to copy/cast on the GPU then transfer to the CPU
-        casted_inputs = inputs[0].astype('float32')
-        ret = op(casted_inputs)
-        return [ret[0].astype('float16'), ret[1]]
-    return op
+    return GpuMaxAndArgmax(op.get_params(None))
 
 
 # solve
@@ -2065,15 +2015,9 @@ def local_gpu_maxandargmax(op, context_name, inputs, outputs):
 def local_gpu_solve(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
-    if inputs[0].dtype not in ['float16', 'float32']:
-        return
     if op.A_structure not in MATRIX_STRUCTURES_SOLVE:
         return
-    op = GpuCusolverSolve(A_structure=op.A_structure)
-    if inputs[0].dtype == 'float16':
-        return op(inputs[0].astype('float32'),
-                  inputs[1].astype('float32')).astype('float16')
-    return op
+    return GpuCusolverSolve(A_structure=op.A_structure)
 
 
 @register_inplace()
@@ -2091,13 +2035,7 @@ def local_inplace_gpu_solve(node):
 def local_gpu_cholesky(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
-    if inputs[0].dtype not in ['float16', 'float32']:
-        return
-    op = GpuCholesky(lower=op.lower, inplace=op.destructive)
-    if inputs[0].dtype == 'float16':
-        return op(inputs[0].astype('float32')).astype('float16')
-
-    return op
+    return GpuCholesky(lower=op.lower, inplace=op.destructive)
 
 
 @register_inplace()
@@ -2113,12 +2051,7 @@ def local_inplace_cholesky(node):
 def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
-    if inputs[0].dtype not in ['float16', 'float32']:
-        return
-    op = GpuMagmaMatrixInverse()
-    if inputs[0].dtype == 'float16':
-        return op(inputs[0].astype('float32')).astype('float16')
-    return op
+    return GpuMagmaMatrixInverse()
 
 
 @register_inplace()
@@ -2135,13 +2068,9 @@ def local_inplace_matrix_inverse_inplace(node):
 def local_gpu_svd(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
-    if inputs[0].dtype not in ['float16', 'float32']:
-        return
-    op = GpuMagmaSVD(full_matrices=op.full_matrices,
-                     compute_uv=op.compute_uv)
-    if inputs[0].dtype == 'float16':
-        return op(inputs[0].astype('float32')).astype('float16')
-    return op
+    return GpuMagmaSVD(full_matrices=op.full_matrices,
+                       compute_uv=op.compute_uv)
+
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.

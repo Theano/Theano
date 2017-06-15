@@ -23,6 +23,7 @@ python:
 
 # command to install dependencies
 before_install:
+  - rm -rf ~/.theano # attempt to purge any theano cache before installation
   - ./.travis/travis_before_install.sh
   - export PATH=/home/travis/miniconda2/bin:$PATH
 
@@ -41,6 +42,8 @@ install:
   - pip install flake8-future-import nose-parameterized==0.5.0 sphinx_rtd_theme
   # nose-exclude plugin allow us to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
   - pip install nose-exclude
+  # nose-timer to time every test
+  - pip install nose-timer==0.5.0 
 
 # command to run tests
 env:
@@ -82,7 +85,7 @@ script:
   - cd -; cd Theano
   - python -c 'import theano; print(theano.config.__str__(print_doc=False))'
   - python -c 'import theano; assert(theano.config.blas.ldflags != "")'
-  - theano-nose -v $PART
+  - theano-nose -v --with-timer $PART
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf --check; fi
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test --check; fi
 

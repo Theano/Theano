@@ -749,7 +749,7 @@ class PushOutScanOutput(gof.Optimizer):
                         # dot is usually faster on two large matrices than
                         # a bunch of small ones
                         outer_dot_inputs[0] = theano.tensor.flatten(
-                            outer_dot_inputs[0].dimshuffle(1, 0, 2), ndim=2)
+                            outer_dot_inputs[0].dimshuffle(1, 0, 2), outdim=2)
 
                         shape_input1 = theano.tensor.shape(outer_dot_inputs[1])
                         outer_dot_inputs[1] =\

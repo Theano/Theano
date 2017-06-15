@@ -22,7 +22,9 @@ from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType, NoneTypeT, make_slice
 from theano import config
 
-from .inc_code import inc_code
+if config.cxx:
+    import theano.gof.cutils  # needed to import cutils_ext
+    from cutils_ext.cutils_ext import inplace_increment
 
 _logger = logging.getLogger("theano.tensor.subtensor")
 
@@ -1941,7 +1943,8 @@ class AdvancedIncSubtensor1(Op):
                 NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
 
     def c_support_code(self):
-        return inc_code()
+        from theano.gof.cutils import compile_cutils_code
+        return compile_cutils_code()
 
     def c_code(self, node, name, input_names, output_names, sub):
         numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
@@ -1973,14 +1976,17 @@ class AdvancedIncSubtensor1(Op):
             Py_XDECREF(%(out)s);
             %(out)s = %(copy_of_x)s;
         }
-        if (inplace_increment(%(out)s, (PyObject *)%(idx)s, %(y)s, %(inc_or_set)d)) {
+        PyObject *arglist = Py_BuildValue("OOOi",%(out)s, %(idx)s, %(y)s, %(inc_or_set)d);
+        rval = inplace_increment(NULL, arglist);
+        Py_XDECREF(arglist);
+        if (rval == NULL) {
             %(fail)s;
         }
         Py_XDECREF(rval);
         """ % locals()
 
     def c_code_cache_version(self):
-        return (4,)
+        return (3,)
 
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
@@ -1995,9 +2001,35 @@ class AdvancedIncSubtensor1(Op):
         if self.set_instead_of_inc:
             x[idx] = y
         else:
-            np.add.at(x, idx, y)
+            if config.cxx:
+                increment = inplace_increment
+            else:
+                increment = self.inplace_increment1d_slow
+
+            increment(x, idx, y)
 
         out[0] = x
+
+    def inplace_increment1d_slow(self, x, idx, y):
+        # If `y` has as many dimensions as `x`, then we want to iterate
+        # jointly on `x` and `y`. Otherwise, it means `y` should be
+        # broadcasted to fill all relevant rows of `x`.
+        assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
+        if y.ndim == x.ndim:
+            if len(y) == 1:
+                # Allow broadcasting of y[0]
+                y_0 = y[0]
+                for i in idx:
+                    x[i] += y_0
+            else:
+                assert len(y) == len(idx)
+                j = 0
+                for i in idx:
+                    x[i] += y[j]
+                    j += 1
+        else:
+            for i in idx:
+                x[i] += y
 
     def infer_shape(self, node, ishapes):
         x, y, ilist = ishapes
@@ -2137,14 +2169,9 @@ class AdvancedSubtensor(Op):
 
     def perform(self, node, inputs, out_):
         out, = out_
-        rval = inputs[0].__getitem__(inputs[1:])
-        # When there are no arrays, we are not actually doing advanced
-        # indexing, so __getitem__ will not return a copy.
-        # Since no view_map is set, we need to copy the returned value
-        if not any(isinstance(v.type, TensorType) and v.ndim > 0
-                   for v in node.inputs[1:]):
-            rval = rval.copy()
-        out[0] = rval
+        # TODO: in general, we need to re-pack the inputs into a valid
+        # index, just like subtensor
+        out[0] = inputs[0].__getitem__(inputs[1:])
 
     def connection_pattern(self, node):
         rval = [[True]]
@@ -2214,8 +2241,14 @@ class AdvancedIncSubtensor(Op):
 
         if self.set_instead_of_inc:
             out[0][inputs[2:]] = inputs[1]
+        elif config.cxx:
+            inplace_increment(out[0], tuple(inputs[2:]), inputs[1])
         else:
-            np.add.at(out[0], tuple(inputs[2:]), inputs[1])
+            raise NotImplementedError(
+                'Could not import inplace_increment, so advanced '
+                'indexing is disabled. '
+                'Please make sure that you have a working C++ compiler '
+                'and that config.cxx is correctly set.')
 
     def infer_shape(self, node, ishapes):
         return [ishapes[0]]

@@ -11,7 +11,7 @@ from theano.gradient import grad_undefined
 from theano.tensor.basic import (
     Alloc, AllocEmpty, alloc_validate_shape, Join, Split)
 
-from theano.gof import HideC, COp, ParamsType
+from theano.gof import HideC, COp
 from theano.gof.utils import MethodNotDefined
 
 from collections import deque
@@ -293,36 +293,6 @@ class GpuKernelBase(object):
     """
     params_type = gpu_context_type
 
-    def get_params(self, node):
-        # Default implementation, suitable for most sub-classes.
-        # To be necessarly overridden in a subclass that uses a ParamsType.
-        assert (self.params_type is gpu_context_type and
-                node.inputs and
-                isinstance(node.inputs[0].type, GpuArrayType))
-        return node.inputs[0].type.context
-
-    def get_gpu_context(self, node):
-        # Private method used to retrieve GPU context, instead of
-        # directly using self.get_params(node), as this latter may be overridden.
-        if isinstance(self.params_type, ParamsType) and self.params_type.has_type(gpu_context_type):
-            # Get field name of gpu_context_type into ParamsType object.
-            gpu_context_field = self.params_type.get_field(gpu_context_type)
-            # Get Params object (self.get_params() should have been overridden).
-            wrap = self.get_params(node)
-            # Get GPU context from Params object.
-            return getattr(wrap, gpu_context_field)
-        assert self.params_type is gpu_context_type
-        return self.get_params(node)
-
-    def get_gpu_context_c_name(self, params_c_name):
-        # Private method used to retrieve C name of GPU context variable,
-        # instead of directly using sub['params'], as params may not be a GPU context
-        # (e.g. for sub-classes that use ParamsType).
-        if isinstance(self.params_type, ParamsType) and self.params_type.has_type(gpu_context_type):
-            return "(%s->%s)" % (params_c_name, self.params_type.get_field(gpu_context_type))
-        assert self.params_type is gpu_context_type
-        return params_c_name
-
     def gpu_kernels(self, node, name):
         """
         This is the method to override. This should return an iterable
@@ -427,7 +397,7 @@ int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
             flags=k._get_c_flags(), fail=fail, ctx=ctx)
 
     def c_init_code_struct(self, node, name, sub):
-        ctx = self.get_gpu_context_c_name(sub['params'])
+        ctx = sub['params']
         kernels = self.gpu_kernels(node, name)
         inits_0 = '\n'.join(self._generate_zeros(k) for k in kernels)
         inits = '\n'.join(self._generate_kernel_init(k, sub['fail'], ctx)
@@ -462,7 +432,7 @@ int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
             The node that we need the cache version for.
 
         """
-        return (8, self.get_gpu_context(node).bin_id)
+        return (8, self.get_params(node).bin_id)
 
 
 def forward_string_meth(name):
@@ -500,7 +470,6 @@ class CGpuKernelBase(COp, GpuKernelBase):
 
     kernel_re = re.compile(r'^#kernel ([a-zA-Z_].*?)$', re.MULTILINE)
 
-    get_params = GpuKernelBase.get_params
     c_support_code_apply = forward_string_meth('c_support_code_apply')
     c_support_code_struct = forward_string_meth('c_support_code_struct')
     c_init_code_struct = forward_string_meth('c_init_code_struct')

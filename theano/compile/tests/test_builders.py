@@ -2,7 +2,6 @@ from __future__ import absolute_import, print_function, division
 from functools import partial
 import numpy as np
 
-import theano
 from theano import config, shared
 
 from theano.gradient import DisconnectedType
@@ -314,14 +313,3 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
                                 [np.ones([3, 4], dtype=config.floatX),
                                  np.ones([3, 4], dtype=config.floatX)],
                                 OpFromGraph)
-
-    @theano.configparser.change_flags(compute_test_value='raise')
-    def test_compute_test_value(self):
-        x = T.scalar('x')
-        x.tag.test_value = np.array(1., dtype=config.floatX)
-        op = OpFromGraph([x], [x ** 3])
-        y = T.scalar('y')
-        y.tag.test_value = np.array(1., dtype=config.floatX)
-        f = op(y)
-        grad_f = T.grad(f, y)
-        assert grad_f.tag.test_value is not None

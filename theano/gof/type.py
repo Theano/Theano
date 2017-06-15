@@ -653,16 +653,12 @@ class CDataType(Type):
         A function to call to free the pointer. This function must
         have a `void` return and take a single pointer argument.
 
-    version
-        The version to use in Theano cache system.
     """
     __props__ = ('ctype', 'freefunc', 'headers', 'header_dirs',
-                 'libraries', 'lib_dirs', 'extra_support_code',
-                 'version')
+                 'libraries', 'lib_dirs', 'extra_support_code')
 
     def __init__(self, ctype, freefunc=None, headers=None, header_dirs=None,
-                 libraries=None, lib_dirs=None, extra_support_code="",
-                 version=None):
+                 libraries=None, lib_dirs=None, extra_support_code=""):
         assert isinstance(ctype, string_types)
         self.ctype = ctype
         if freefunc is not None:
@@ -682,7 +678,6 @@ class CDataType(Type):
         self.lib_dirs = tuple(lib_dirs)
         self.extra_support_code = extra_support_code
         self._fn = None
-        self.version = None
 
     def filter(self, data, strict=False, allow_downcast=None):
         if data is not None and not isinstance(data, _cdata_type):
@@ -788,10 +783,7 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
         return self.lib_dirs
 
     def c_code_cache_version(self):
-        v = (3, )
-        if self.version is not None:
-            v = v + (self.version,)
-        return v
+        return (3,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.ctype)
@@ -962,12 +954,6 @@ class EnumType(Type, dict):
         return True if and only if this enum has this alias.
         """
         return alias in self.aliases
-
-    def get_aliases(self):
-        """
-        Return the list of all aliases in this enumeration.
-        """
-        return self.aliases.keys()
 
     def __repr__(self):
         names_to_aliases = {constant_name: '' for constant_name in self}
@@ -1190,6 +1176,4 @@ class CEnumType(EnumList):
                    fail=sub['fail'])
 
     def c_code_cache_version(self):
-        # C code depends on (C constant name, Python value) associations (given by `self.items()`),
-        # so we should better take them into account in C code version.
-        return (1, tuple(self.items()), super(CEnumType, self).c_code_cache_version())
+        return (1, super(CEnumType, self).c_code_cache_version())

@@ -618,6 +618,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                               ret.outputs[0].type.broadcastable,
                                               context_name=x.type.context_name)()])
 
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
     def perform(self, node, inp, out, ctx):
         theano.Op.perform(self, node, inp, out, ctx)
 
@@ -2766,7 +2769,6 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
 
         if (%(cast_out)d) {
             err = GpuArray_move(&%(output)s->ga, &tmp->ga);
-            Py_XDECREF(tmp);
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
                              "gpuarray error: GpuCAReduceCPY [cast]: %%s.",

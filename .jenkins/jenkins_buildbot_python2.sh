@@ -6,43 +6,8 @@ export THEANO_FLAGS=init_gpu_device=cuda
 
 # CUDA
 export PATH=/usr/local/cuda/bin:$PATH
-export CPATH=/usr/local/cuda/include/:$CPATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
-
-GPUARRAY_CONFIG="Release"
-DEVICE=cuda
-LIBDIR=${WORKSPACE}/local
-
-# Make fresh clones of libgpuarray (with no history since we don't need it)
-rm -rf libgpuarray
-git clone --depth 1 "https://github.com/Theano/libgpuarray.git"
-
-# Clean up previous installs (to make sure no old files are left)
-rm -rf $LIBDIR
-mkdir $LIBDIR
-
-# Build libgpuarray
-mkdir libgpuarray/build
-(cd libgpuarray/build && cmake .. -DCMAKE_BUILD_TYPE=${GPUARRAY_CONFIG} -DCMAKE_INSTALL_PREFIX=$LIBDIR && make)
-
-# Finally install
-(cd libgpuarray/build && make install)
-
-# Export paths
-export CPATH=$CPATH:$LIBDIR/include
-export LIBRARY_PATH=$LIBRARY_PATH:$LIBDIR/lib
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBDIR/lib
-
-# Build the pygpu modules
-(cd libgpuarray && python setup.py build_ext --inplace -I$LIBDIR/include -L$LIBDIR/lib)
-ls $LIBDIR
-mkdir $LIBDIR/lib/python
-export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
-# Then install
-(cd libgpuarray && python setup.py install --home=$LIBDIR)
-
-python -c 'import pygpu; print(pygpu.__file__)'
 
 # nosetests xunit for test profiling
 XUNIT="--with-xunit --xunit-file="
@@ -67,7 +32,7 @@ echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
 # We don't want warnings in the buildbot for errors already fixed.
-FLAGS=${THEANO_FLAGS},warn.ignore_bug_before=all,$FLAGS
+FLAGS=${THEANO_FLAGS},warn.argmax_pushdown_bug=False,warn.gpusum_01_011_0111_bug=False,warn.sum_sum_bug=False,warn.sum_div_dimshuffle_bug=False,warn.subtensor_merge_bug=False,$FLAGS
 
 # We want to see correctly optimization/shape errors, so make make them raise an
 # error.
@@ -79,9 +44,6 @@ FLAGS=on_shape_error=raise,$FLAGS
 #   2. We explicitly add 'floatX=float32' in one run of the test suite below,
 #      while we want all other runs to run with 'floatX=float64'.
 FLAGS=${FLAGS},device=cpu,floatX=float64
-
-# Enable magma GPU library
-FLAGS=${FLAGS},magma.enabled=true
 
 # Only use elements in the cache for < 7 days
 FLAGS=${FLAGS},cmodule.age_thresh_use=604800
@@ -119,13 +81,12 @@ echo
 #We put this at the end as it have a tendency to loop infinitly.
 #Until we fix the root of the problem we let the rest run, then we can kill this one in the morning.
 # with --batch=1000" # The buildbot freeze sometimes when collecting the tests to run
-# force_device=True as it would be useless to test the gpuarray back-end.
 echo "Executing tests with mode=FAST_COMPILE"
 NAME=fastcompile
 FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
-echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE,force_device=True ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
+echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
-THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE,force_device=True ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
+THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
 
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
