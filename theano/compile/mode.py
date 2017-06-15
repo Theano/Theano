@@ -4,6 +4,7 @@ WRITEME
 """
 from __future__ import absolute_import, print_function, division
 import logging
+import warnings
 
 import theano
 from theano import gof
@@ -11,6 +12,7 @@ import theano.gof.vm
 from theano.configparser import config
 from theano.compile.ops import _output_guard
 from six import string_types
+from theano.compile.function_module import Supervisor
 
 
 _logger = logging.getLogger('theano.compile.mode')
@@ -111,6 +113,16 @@ class AddDestroyHandler(gof.Optimizer):
 
     """
     def apply(self, fgraph):
+        supervisor_added = False
+        for feature in fgraph._features:
+            if isinstance(feature, Supervisor):
+                supervisor_added = True
+                return
+        if not supervisor_added:
+            warnings.warn("WARNING: Supervisor is not added. Please do not"
+                          "use some_op.optimize(fgraph). Instead use theano.function"
+                          "to add the optimiztions.",
+                          stacklevel=3)
         for o in fgraph.outputs:
             try:
                 fgraph.replace_validate(o, _output_guard(o),
