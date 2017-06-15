@@ -250,7 +250,7 @@ def fast_inplace_check(inputs):
 
     inputs = [i for i in inputs if
               not isinstance(i, graph.Constant) and
-              not fgraph.destroyers(i) and
+              not fgraph.has_destroyers([i]) and
               i not in protected_inputs]
     return inputs
 
