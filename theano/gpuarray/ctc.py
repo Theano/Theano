@@ -171,7 +171,7 @@ def gpu_ctc(activations, labels, input_lengths):
 @register_canonicalize
 @register_stabilize
 @local_optimizer([GpuConnectionistTemporalClassification])
-def local_GpuConnectionistTemporalClassification_no_grad(node):
+def local_gpu_ctc_no_grad(node):
     if isinstance(node.op, GpuConnectionistTemporalClassification):
         if len(node.outputs) > 1:
             if len(node.outputs[1].clients) == 0:   # gradient is not used
