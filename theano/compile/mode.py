@@ -116,7 +116,7 @@ class AddDestroyHandler(gof.Optimizer):
         for feature in fgraph._features:
             if isinstance(feature, Supervisor):
                 supervisor_added = True
-                return
+                break
         if not supervisor_added:
             warnings.warn("WARNING: Supervisor is not added. Please do not"
                           "use some_op.optimize(fgraph). Instead use theano.function"
