@@ -413,7 +413,7 @@ class TopKOp(theano.Op):
         x, k = inputs
         k_grad = grad_undefined(self, 1, k, 'topk: k is not differentiable')
 
-        if not (self.return_indices and self.return_values):
+        if not (self.return_indices or self.return_values):
             x_grad = grad_undefined(
                 self, 0, x, 'topk: cannot get gradient'
                 ' without both indices and values')
@@ -469,7 +469,7 @@ def topk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
         raise NotImplementedError("sorted=True is not supported yet.")
     if axis is None:
         x = theano.tensor.flatten(x)
-        axis = -1
+        axis = 0
     return TopKOp(axis=axis, idx_dtype=idx_dtype)(x, kth)[0]
 
 

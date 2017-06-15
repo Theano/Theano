@@ -283,6 +283,9 @@ class Test_TopK(unittest.TestCase):
         x = theano.tensor.vector(name='x', dtype=dtype)
         y = topk(x, k, sorted=sorted)
         fn = theano.function([x], y)
+        # assert local_useless_topk opt is done properly
+        assert 1 == len(fn.maker.fgraph.outputs[0].owner.outputs)
+
         # generate a all-unique array
         xval = gen_unique_vector(size, dtype)
         yval = fn(xval)
@@ -307,6 +310,10 @@ class Test_TopK(unittest.TestCase):
         x = theano.tensor.vector(name='x', dtype=dtype)
         y = argtopk(x, k, sorted=sorted, idx_dtype=idx_dtype)
         fn = theano.function([x], y)
+
+        # assert local_useless_topk opt is done properly
+        assert 1 == len(fn.maker.fgraph.outputs[0].owner.outputs)
+
         # generate a all-unique array
         xval = gen_unique_vector(size, dtype)
         yval = fn(xval)
