@@ -237,30 +237,30 @@ class Test_TopK(unittest.TestCase):
         pass
 
     @utt.parameterized.expand(product(
-        _all_dtypes, tensor.integer_dtypes, [-1, 0, None]))
-    def test_argtopk_sanity(self, dtype, idx_dtype, axis):
+        _all_dtypes, tensor.integer_dtypes, [-1, 0, None], [False]))
+    def test_argtopk_sanity(self, dtype, idx_dtype, axis, sorted):
         x = tensor.vector(name='x', dtype=dtype)
-        fn = theano.function([x], argtopk(x, 1, axis=axis, idx_dtype=idx_dtype))
+        fn = theano.function([x], argtopk(x, 1, axis=axis, sorted=sorted, idx_dtype=idx_dtype))
         xval = np.asarray([1]).astype(dtype)
         yval = fn(xval)
         assert yval == np.asarray([0], dtype=idx_dtype)
         assert yval.dtype == np.dtype(idx_dtype)
 
     @utt.parameterized.expand(product(
-        _all_dtypes, [-1, 0, None]))
-    def test_topk_sanity(self, dtype, axis):
+        _all_dtypes, [-1, 0, None], [False]))
+    def test_topk_sanity(self, dtype, axis, sorted):
         x = tensor.vector(name='x', dtype=dtype)
-        fn = theano.function([x], topk(x, 1, axis=axis))
+        fn = theano.function([x], topk(x, 1, axis=axis, sorted=sorted))
         xval = np.asarray([1]).astype(dtype)
         yval = fn(xval)
         assert yval == xval
         assert yval.dtype == xval.dtype
 
     @utt.parameterized.expand(product(
-        _all_dtypes, tensor.integer_dtypes, [-1, 0, None]))
-    def test_combined_sanity(self, dtype, idx_dtype, axis):
+        _all_dtypes, tensor.integer_dtypes, [-1, 0, None], [False]))
+    def test_combined_sanity(self, dtype, idx_dtype, axis, sorted):
         x = tensor.vector(name='x', dtype=dtype)
-        yv, yi = topk_and_argtopk(x, 1, axis=axis, idx_dtype=idx_dtype)
+        yv, yi = topk_and_argtopk(x, 1, axis=axis, sorted=sorted, idx_dtype=idx_dtype)
         fn = theano.function([x], [yv, yi])
         xval = np.asarray([1]).astype(dtype)
         yvval, yival = fn(xval)
@@ -273,14 +273,15 @@ class Test_TopK(unittest.TestCase):
         product(
             (16, 61, 257),
             (1, -1, -10, 'n//2', 'n-1', '-n', '1-n'),
-            ('float64', 'float16', 'int16', 'int8')),
-        ((2049, 1337, 'float64'),)))
-    def test_topk_1d(self, size, k, dtype):
+            ('float64', 'float16', 'int16', 'int8'),
+            (False,)),
+        ((2049, 1337, 'float64', False),)))
+    def test_topk_1d(self, size, k, dtype, sorted):
         if isinstance(k, str):
             k = eval(k.replace('n', str(size)))
 
         x = theano.tensor.vector(name='x', dtype=dtype)
-        y = topk(x, k)
+        y = topk(x, k, sorted=sorted)
         fn = theano.function([x], y)
         # generate a all-unique array
         xval = gen_unique_vector(size, dtype)
@@ -296,14 +297,15 @@ class Test_TopK(unittest.TestCase):
             (16, 61, 257),
             (1, -1, -10, 'n//2', 'n-1', '-n'),
             ('float32', 'int32'),
+            (False,),
             ('int32', 'int64')),
-        ((2049, 1337, 'float32', 'int32'),)))
-    def test_argtopk_1d(self, size, k, dtype, idx_dtype):
+        ((2049, 1337, 'float32', False, 'int32'),)))
+    def test_argtopk_1d(self, size, k, dtype, sorted, idx_dtype):
         if isinstance(k, str):
             k = eval(k.replace('n', str(size)))
 
         x = theano.tensor.vector(name='x', dtype=dtype)
-        y = argtopk(x, k, idx_dtype=idx_dtype)
+        y = argtopk(x, k, sorted=sorted, idx_dtype=idx_dtype)
         fn = theano.function([x], y)
         # generate a all-unique array
         xval = gen_unique_vector(size, dtype)
@@ -319,14 +321,15 @@ class Test_TopK(unittest.TestCase):
             (16, 61, 257),
             (1, -1, 10, 'n//2', 'n-1', '1-n'),
             ('float32', 'int32'),
+            (False,),
             ('int32', 'int64')),
-        ((2049, 1337, 'float32', 'int32'),)))
-    def test_combined_1d(self, size, k, dtype, idx_dtype):
+        ((2049, 1337, 'float32', False, 'int32'),)))
+    def test_combined_1d(self, size, k, dtype, sorted, idx_dtype):
         if isinstance(k, str):
             k = eval(k.replace('n', str(size)))
 
         x = theano.tensor.vector(name='x', dtype=dtype)
-        yv, yi = topk_and_argtopk(x, k, idx_dtype=idx_dtype)
+        yv, yi = topk_and_argtopk(x, k, sorted=sorted, idx_dtype=idx_dtype)
         fn = theano.function([x], [yv, yi])
         # generate a all-unique array
         xval = gen_unique_vector(size, dtype)
@@ -343,15 +346,16 @@ class Test_TopK(unittest.TestCase):
         product(
             (18, 62, 258),
             (1, -1, 'n//2'),
-            ('int32', 'float32')),
-        ((2048, 1337, 'float32'),)))
-    def test_argtopk_1d_collision(self, size, k, dtype):
+            ('int32', 'float32'),
+            (False,)),
+        ((2048, 1337, 'float32', False),)))
+    def test_argtopk_1d_collision(self, size, k, dtype, sorted):
         # with non-unique kth max value
         if isinstance(k, str):
             k = eval(k.replace('n', str(size)))
 
         x = theano.tensor.vector(name='x', dtype=dtype)
-        y = argtopk(x, k, idx_dtype='int32')
+        y = argtopk(x, k, sorted=sorted, idx_dtype='int32')
         fn = theano.function([x], y)
         xval = np.repeat(np.random.uniform(-100., 100., size=size // 2).astype(dtype), 2)
         xval = xval[np.random.permutation(size)]
@@ -364,8 +368,9 @@ class Test_TopK(unittest.TestCase):
         ((17, 15), (2, 3, 5, 7, 11), (2017, 5, 3)),
         (-1, '(1+n)//2', '-n', '1-n'),
         ('float32', 'int32'),
+        (False,),
         ('int32', 'int64')))
-    def test_argtopk_nd(self, shp, k_, dtype, idx_dtype):
+    def test_argtopk_nd(self, shp, k_, dtype, sorted, idx_dtype):
         ndim = len(shp)
         for axis in range(-ndim, ndim):
             if isinstance(k_, str):
@@ -378,7 +383,7 @@ class Test_TopK(unittest.TestCase):
 
             x = theano.tensor.tensor(
                 name='x', broadcastable=(False,) * len(shp), dtype=dtype)
-            y = argtopk(x, k, axis=axis, idx_dtype=idx_dtype)
+            y = argtopk(x, k, axis=axis, sorted=sorted, idx_dtype=idx_dtype)
             fn = theano.function([x], y)
             size = reduce(int.__mul__, shp)
             xval = gen_unique_vector(size, dtype).reshape(shp)
@@ -393,8 +398,8 @@ class Test_TopK(unittest.TestCase):
 
     @utt.parameterized.expand(product(
         ((257,), (17, 15), (5, 3, 5, 3), (2, 3, 5, 7, 11)),
-        (1, -1, '(1+n)//2', 'n-1', '-n', '1-n')))
-    def test_grad(self, shp, k_):
+        (1, -1, '(1+n)//2', 'n-1', '-n', '1-n'), (False,)))
+    def test_grad(self, shp, k_, sorted):
         ndim = len(shp)
         for axis in range(-ndim, ndim):
             if isinstance(k_, str):
@@ -410,7 +415,7 @@ class Test_TopK(unittest.TestCase):
                 reduce(int.__mul__, shp),
                 dtype=theano.config.floatX
             ).reshape(shp)
-            utt.verify_grad(lambda x: topk(x, k, axis=axis), [xval], eps=1e-2)
+            utt.verify_grad(lambda x: topk(x, k, axis=axis, sorted=sorted), [xval], eps=1e-2)
 
 
 class TopKInferShapeTester(utt.InferShapeTester):
@@ -431,7 +436,7 @@ class TopKInferShapeTester(utt.InferShapeTester):
             x = theano.tensor.tensor(
                 name='x', broadcastable=(False,) * len(shp),
                 dtype=theano.config.floatX)
-            yv, yi = topk_and_argtopk(x, k, axis=axis, idx_dtype='int32')
+            yv, yi = topk_and_argtopk(x, k, axis=axis, sorted=False, idx_dtype='int32')
             size = reduce(int.__mul__, shp)
             xval = gen_unique_vector(size, theano.config.floatX).reshape(shp)
             self._compile_and_check(

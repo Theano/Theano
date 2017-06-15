@@ -3,6 +3,7 @@ import numpy as np
 import theano
 from theano.tensor.basic import mul, arange
 from theano.gradient import grad_undefined
+from theano.tensor.subtensor import set_subtensor
 
 
 def _variable_is_none(var):
@@ -319,9 +320,9 @@ class TopKOp(theano.Op):
     # TODO more params
     '''
     sorted: bool
-        Defaults to ``False``
+        Defaults to ``True``
 
-        If True, the result array would be incremental-sorted.
+        If True, the result array would be sorted in descending order.
 
     only_top_kth: bool
         Defaults to ``False``
@@ -335,7 +336,6 @@ class TopKOp(theano.Op):
     #      also if k is axis size, just copy input tensor
     # TODO add opt to merge argtopk / topk, or split topk_and_argtopk when only
     #      one result is needed
-    # TODO R_op
 
     __props__ = ('axis', 'return_values', 'return_indices', 'idx_dtype')
 
@@ -346,6 +346,8 @@ class TopKOp(theano.Op):
             return_values=True,
             return_indices=True
             ):
+        # numpy always uses int64 as output dtype for arg*() routines
+        # however, we add "idx_dtype" param as memory is more precious on gpu
         if not isinstance(axis, int):
             raise TypeError(
                 '"axis" parameter must be integer, got "%s"' % type(axis))
@@ -366,8 +368,6 @@ class TopKOp(theano.Op):
             op=self.__class__.__name__, axis=self.axis)
 
     def make_node(self, inp, kth):
-        # numpy always uses int64 as output dtype for arg*() routines
-        # however, we add this option as memory is more precious on gpu
         inp = theano.tensor.as_tensor_variable(inp)
         ndim = inp.ndim
         if ndim == 0:
@@ -378,6 +378,7 @@ class TopKOp(theano.Op):
                 ' expected integer within [%d, %d]' % (-ndim, ndim - 1))
 
         kth = theano.tensor.as_tensor_variable(kth)
+        _check_tensor_is_scalar(kth)
         bcast = inp.type.broadcastable
         outs = []
         if self.return_values:
@@ -403,7 +404,6 @@ class TopKOp(theano.Op):
             pzi[0] = _topk_py_impl(self, x, k, axis, node.outputs[0].dtype)
 
     def infer_shape(self, node, inp_shapes):
-        _check_tensor_is_scalar(node.inputs[1])
         shp = list(inp_shapes[0])
         shp[self.axis] = np.abs(node.inputs[1])
         shp = tuple(shp)
@@ -412,16 +412,11 @@ class TopKOp(theano.Op):
     def L_op(self, inputs, outputs, out_grads):
         x, k = inputs
         k_grad = grad_undefined(self, 1, k, 'topk: k is not differentiable')
-        if not (self.return_indices, self.return_values):
+
+        if not (self.return_indices and self.return_values):
             x_grad = grad_undefined(
                 self, 0, x, 'topk: cannot get gradient'
                 ' without both indices and values')
-        elif x.ndim == 1:
-            z_grad = out_grads[0]
-            indices = outputs[-1]
-            x_grad = x.zeros_like(dtype=z_grad.dtype)
-            x_grad = theano.tensor.advanced_set_subtensor1(
-                x_grad, z_grad, indices)
         else:
             x_shp = theano.tensor.shape(x)
             z_grad = out_grads[0]
@@ -431,12 +426,12 @@ class TopKOp(theano.Op):
                 arange(x_shp[i]).dimshuffle([0] + ['x'] * (ndim - i - 1))
                 if i != axis else outputs[-1] for i in range(ndim)]
             x_grad = x.zeros_like(dtype=z_grad.dtype)
-            x_grad = theano.tensor.advanced_set_subtensor(
-                x_grad, z_grad, *grad_indices)
+            x_grad = set_subtensor(x_grad[tuple(grad_indices)], z_grad)
+
         return [x_grad, k_grad]
 
 
-def topk(x, kth, axis=-1, idx_dtype='int64'):
+def topk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
     """
     Returns the k-largest elements along an axis.
 
@@ -452,6 +447,11 @@ def topk(x, kth, axis=-1, idx_dtype='int64'):
         Upon which axis shall the operation be performed on.
         If ``None``, works on flattened array.
 
+    sorted: bool
+        Defaults to ``True``
+
+        If True, the result array would be sorted in descending order.
+
     idx_dtype: string
         Specify output dtype used in indices, defaults to ``int64``, must be integer type.
         This option is here because indices are needed for gradient.
@@ -462,16 +462,18 @@ def topk(x, kth, axis=-1, idx_dtype='int64'):
 
     Notes
     -----
-    - The returned values are not sorted.
+    - ``sorted=True`` is not supported yet.
 
     """
+    if sorted:
+        raise NotImplementedError("sorted=True is not supported yet.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = -1
     return TopKOp(axis=axis, idx_dtype=idx_dtype)(x, kth)[0]
 
 
-def argtopk(x, kth, axis=-1, idx_dtype='int64'):
+def argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
     """
     Returns the indices of k-largest elements along an axis.
 
@@ -482,6 +484,12 @@ def argtopk(x, kth, axis=-1, idx_dtype='int64'):
 
     kth: integer constant/variable
         Must not be 0. If negative, gives k-smallest elements instead.
+
+    sorted: bool
+        Defaults to ``True``
+
+        If True, the result array of corresponding indices would be sorted in descending order.
+
 
     axis: integer, tuple/list of integers, or ``None``
         Upon which axis shall the operation be performed on.
@@ -496,21 +504,23 @@ def argtopk(x, kth, axis=-1, idx_dtype='int64'):
 
     Notes
     -----
-    - The corresponding values of returned indices are not sorted.
+    - ``sorted=True`` is not supported yet.
 
     - If the top-k-th value is not unique, we cannot guarantee the output
       indices are deterministically chosen.
 
     """
+    if sorted:
+        raise NotImplementedError("sorted=True is not supported yet.")
     if axis is None:
         x = theano.tensor.flatten(x)
-        axis = -1
+        axis = 0
     return TopKOp(
         axis=axis,
         idx_dtype=idx_dtype)(x, kth)[1]
 
 
-def topk_and_argtopk(x, kth, axis=-1, idx_dtype='int64'):
+def topk_and_argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
     """
     Returns the results of both topk() and argtopk() in one Op.
 
@@ -521,9 +531,11 @@ def topk_and_argtopk(x, kth, axis=-1, idx_dtype='int64'):
     tuple: (values, indices)
 
     """
+    if sorted:
+        raise NotImplementedError("sorted=True is not supported yet.")
     if axis is None:
         x = theano.tensor.flatten(x)
-        axis = -1
+        axis = 0
     return TopKOp(
         axis=axis,
         idx_dtype=idx_dtype)(x, kth)
