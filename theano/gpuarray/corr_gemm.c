@@ -413,7 +413,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     const size_t kH = PyGpuArray_DIMS(weight)[2];
     const size_t kW = PyGpuArray_DIMS(weight)[3];
     if (nChannels != (PyGpuArray_DIMS(weight)[1] * numgroups)) {
-        PyErr_Format(PyExc_ValueError,
+        PyErr_SetString(PyExc_ValueError,
                 "GpuCorrMM images and kernel must have the same stack size\n");
         return NULL;
     }
