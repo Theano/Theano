@@ -1572,13 +1572,10 @@ class BaseAbstractConv(Op):
                             if unshared is True:
                                 for row in xrange(kern.shape[2]):
                                     for col in xrange(kern.shape[3]):
-                                        for k_row in xrange(kern.shape[4]):
-                                            for k_col in xrange(kern.shape[5]):
-                                                out[b, n, row, col] += img[b, im0, row + k_row,
-                                                                           col + k_col] * \
-                                                    dilated_kern[n, im0, row, col,
-                                                                 kern.shape[4] - k_row - 1,
-                                                                 kern.shape[5] - k_col - 1]
+                                        out[b, n, row, col] += np.sum(np.multiply(
+                                            img[b, im0, row:row + dilated_kern.shape[4],
+                                                col:col + dilated_kern.shape[5]],
+                                            dilated_kern[n, im0, row, col, ::-1, ::-1]))
                             else:
                                 out[b, n, ...] += _convolve2d(img[b, im0, ...],
                                                               dilated_kern[n, im0, ...],
@@ -1633,8 +1630,9 @@ class AbstractConv(BaseAbstractConv):
             raise TypeError('img must be %dD tensor' % (2 + self.convdim))
 
         if self.unshared is True:
-            if kern.type.ndim != 6:
-                raise TypeError('kern must be 6D tensor for unshared convolution')
+            if kern.type.ndim != 2 + 2 * self.convdim:
+                raise TypeError('kern must be %dD tensor for unshared convolution'
+                                % (2 + 2 * self.convdim))
         else:
             if kern.type.ndim != 2 + self.convdim:
                 raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
@@ -1655,13 +1653,13 @@ class AbstractConv(BaseAbstractConv):
         img, kern = inp
         img = np.asarray(img)
         kern = np.asarray(kern)
-        if self.unshared is True:
-            dil_kernshp = tuple((kern.shape[2 + self.convdim + i] - 1) * self.filter_dilation[i] + 1
-                                for i in range(self.convdim))
-        else:
-            dil_kernshp = tuple((kern.shape[2 + i] - 1) * self.filter_dilation[i] + 1
-                                for i in range(self.convdim))
 
+        dil_kernshp = tuple((kern.shape[kern.ndim - self.convdim + i] - 1) * self.filter_dilation[i] + 1
+                            for i in range(self.convdim))
+        if self.unshared is True:
+            if self.convdim != 2:
+                raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                          % self.convdim)
         o, = out_
         mode = self.border_mode
 
@@ -1904,6 +1902,10 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a tuple of'
                 ' integers'.format(mode))
+        if self.unshared is True:
+            if self.convdim != 2:
+                raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                          % self.convdim)
 
         dil_shape = tuple((shape[i] - 1) * self.filter_dilation[i] + 1
                           for i in range(self.convdim))
@@ -2142,8 +2144,9 @@ class AbstractConv_gradInputs(BaseAbstractConv):
             if self.convdim != 2:
                 raise NotImplementedError('Unshared convolution not implemented for %dD'
                                           % self.convdim)
-            elif kern.type.ndim != 6:
-                raise TypeError('kern must be 6D tensor for unshared convolution')
+            elif kern.type.ndim != 2 + 2 * self.convdim:
+                raise TypeError('kern must be %dD tensor for unshared convolution'
+                                % (2 + 2 * self.convdim))
         else:
             if kern.type.ndim != 2 + self.convdim:
                 raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
@@ -2172,6 +2175,10 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a tuple of'
                 ' integers'.format(mode))
+        if self.unshared is True:
+            if self.convdim != 2:
+                raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                          % self.convdim)
 
         imshp = self.imshp[:] if self.imshp is not None else [None] * (2 + self.convdim)
         fallback_imshp = ([topgrad.shape[0], kern.shape[1]] +
@@ -2228,12 +2235,11 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                                         # Deciding which kernel to select
                                         reg_row = row - ((kern.shape[4] - 1) - k_row)
                                         reg_col = col - ((kern.shape[5] - 1) - k_col)
-                                        if reg_row not in range(kern.shape[2]) or \
-                                                reg_col not in range(kern.shape[3]):
-                                            continue
-                                        img[b, im0, row, col] += kern[n, im0, reg_row,
-                                                                      reg_col, k_row, k_col] * \
-                                            topgrad[b, n, reg_row, reg_col]
+                                        if (reg_row >= 0 and reg_row < kern.shape[2]) and \
+                                                (reg_col >= 0 and reg_col < kern.shape[3]):
+                                            img[b, im0, row, col] += kern[n, im0, reg_row,
+                                                                          reg_col, k_row, k_col] * \
+                                                topgrad[b, n, reg_row, reg_col]
         else:
             flip_filters = ((slice(None), slice(None)) +
                             (slice(None, None, -1),) * self.convdim)

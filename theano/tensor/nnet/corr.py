@@ -125,8 +125,6 @@ class BaseCorrMM(gof.OpenMPOp):
     padH = property(lambda self: self.pad[0])
     padW = property(lambda self: self.pad[1])
 
-    unshared = property(lambda self: self.unshared)
-
     def __str__(self):
         return '%s{%s, %s, %s, %s}' % (
             self.__class__.__name__,
