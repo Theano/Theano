@@ -7583,6 +7583,5 @@ def local_useless_topk(node):
         axis=op.axis,
         idx_dtype=op.idx_dtype,
         return_values=ret_val,
-        return_indices=ret_idx)(x, k)[0]
-
+        return_indices=ret_idx)(x, k)
     return {old_output:new_output}

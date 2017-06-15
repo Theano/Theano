@@ -1366,21 +1366,27 @@ class LocalOptGroup(LocalOptimizer):
                     self.process_count[opt] += 1
                 if not new_repl:
                     continue
-                else:
-                    if self.profile:
-                        self.node_created[opt] += len(graph.ops(fgraph.variables, new_repl))
-                        self.applied_true[opt] += 1
-                    break  # break from the for loop over optimization.
+                if isinstance(new_repl, (tuple, list)):
+                    new_vars = new_repl
+                else:  # It must be a dict
+                    new_vars = new_repl.values()
+                if self.profile:
+                    self.node_created[opt] += len(graph.ops(fgraph.variables, new_vars))
+                    self.applied_true[opt] += 1
+                break  # break from the for loop over optimization.
             if not new_repl:  # No optimization applied in the last iteration
                 return repl
-            # only 1 iteration or we are at the start of the graph.
-            if not self.apply_all_opts or not new_repl[0].owner:
+            # only 1 iteration
+            if not self.apply_all_opts:
+                return new_repl
+            if not new_vars[0].owner:
+                # We are at the start of the graph.
                 return new_repl
             if len(new_repl) > 1:
                 s = set([v.owner for v in new_repl])
                 assert len(s) == 1
             repl = new_repl
-            node = repl[0].owner
+            node = new_vars[0].owner
 
     @staticmethod
     def print_profile(stream, prof, level=0):
