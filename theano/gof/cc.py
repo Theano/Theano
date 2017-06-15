@@ -1372,9 +1372,9 @@ class CLinker(link.Linker):
         # elements, they should be before this md5 hash if and only if they
         # can lead to a different compiled file with the same source code.
         if insert_config_md5:
-            sig.append('md5:' + theano.configparser.get_config_md5())
+            sig.append('sha256:' + theano.configparser.get_config_md5())
         else:
-            sig.append('md5: <omitted>')
+            sig.append('sha256: <omitted>')
 
         error_on_play = [False]
 

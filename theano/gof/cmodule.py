@@ -415,7 +415,7 @@ def get_module_hash(src_code, key):
             # libraries to link against.
             to_hash += list(key_element)
         elif isinstance(key_element, string_types):
-            if key_element.startswith('md5:'):
+            if key_element.startswith('sha256:'):
                 # This is the md5 hash of the config options. We can stop
                 # here.
                 break
@@ -450,6 +450,10 @@ def get_safe_part(key):
     for key_element in c_link_key[1:]:
         if (isinstance(key_element, string_types) and
                 key_element.startswith('md5:')):
+            md5 = key_element[4:]
+            break
+        elif (isinstance(key_element, string_types) and
+                key_element.startswith('sha256:')):
             md5 = key_element[4:]
             break
 
