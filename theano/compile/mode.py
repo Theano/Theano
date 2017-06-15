@@ -118,9 +118,9 @@ class AddDestroyHandler(gof.Optimizer):
                 supervisor_added = True
                 break
         if not supervisor_added:
-            warnings.warn("WARNING: Supervisor is not added. Please do not"
-                          "use some_op.optimize(fgraph). Instead use theano.function"
-                          "to add the optimiztions.",
+            warnings.warn("WARNING: Supervisor is not added. Please build a FunctionGraph"
+                          "via theano.compile.function_module.std_graph()"
+                          "or add the Supervisor class manually.",
                           stacklevel=3)
 
     def add_requirements(self, fgraph):
