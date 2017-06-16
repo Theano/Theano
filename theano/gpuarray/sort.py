@@ -33,6 +33,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
     def __init__(
         self, axis=-1,
+        sorted=True,
         idx_dtype='int64',
         return_values=True,
         return_indices=True
@@ -40,6 +41,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         GpuKernelBase.__init__(self)
         TopKOp.__init__(
             self, axis=axis,
+            sorted=sorted,
             idx_dtype=idx_dtype,
             return_values=return_values,
             return_indices=return_indices)
@@ -205,12 +207,12 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
     } else if (dims[%(axis)d] < odims[%(axis)d]){
         PyErr_SetString(
             PyExc_ValueError,
-            "topk: kth cannot larger than size on specified axis %(axis)d");
+            "topk: kth cannot be larger than the size of specified axis %(axis)d");
         %(fail)s;
     } else if (dims[%(axis)d] >= (1u << 31)) {
         PyErr_SetString(
             PyExc_ValueError,
-            "topk: on GPU, array size on specified axis cannot larger or equal than 2^31");
+            "topk: on GPU, array size of specified axis cannot larger or equal than 2^31");
         %(fail)s;
     }
     %(prep_output)s
@@ -250,18 +252,16 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         blk[0] = %(MAX_TPB)d / 2;
         err = GpuKernel_call(
             &k_topk_dense_large_%(nodename)s, 3,
-            grd, blk, 0,
-            args);
+            grd, blk, 0, args);
     } else {
         err = GpuKernel_call(
             &k_topk_dense_%(nodename)s, 3,
-            grd, blk, 0,
-            args);
+            grd, blk, 0, args);
     }
     if (err != GA_NO_ERROR) {
         PyErr_SetString(
             PyExc_RuntimeError,
-            "gpu kernel topk_kernel failed to execute");
+            "topk: gpu kernel failed to execute");
         %(fail)s;
     }
 }
@@ -302,6 +302,7 @@ def local_gpua_topkop(op, ctx_name, inputs, outputs):
 
     gpu_op = GpuTopKOp(
         axis=axis,
+        sorted=op.sorted,
         idx_dtype=op.idx_dtype,
         return_values=rv,
         return_indices=ri)

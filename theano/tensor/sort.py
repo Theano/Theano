@@ -297,6 +297,12 @@ class TopKOp(theano.Op):
     idx_dtype: string
         Specify output dtype for indices, defaults to ``int64``, must be integer type.
 
+    sorted: bool
+        NOTE: NOT IMPLEMENTED YET
+        Defaults to ``True``
+
+        If True, the result array would be sorted in descending order.
+
 
     Notes
     -----
@@ -319,11 +325,6 @@ class TopKOp(theano.Op):
 
     # TODO more params
     '''
-    sorted: bool
-        Defaults to ``True``
-
-        If True, the result array would be sorted in descending order.
-
     only_top_kth: bool
         Defaults to ``False``
 
@@ -335,11 +336,12 @@ class TopKOp(theano.Op):
     # TODO add opt, if k==1, use max/min reduce
     #      also if k is axis size, just copy input tensor
     # TODO add opt, to merge argtopk / topk
-    __props__ = ('axis', 'return_values', 'return_indices', 'idx_dtype')
+    __props__ = ('axis', 'sorted', 'return_values', 'return_indices', 'idx_dtype')
 
     def __init__(
             self,
             axis=-1,
+            sorted=True,
             idx_dtype='int64',
             return_values=True,
             return_indices=True
@@ -354,16 +356,19 @@ class TopKOp(theano.Op):
                 '"idx_dtype" parameter must be an integer dtype, got "%s"' % idx_dtype)
 
         if not (return_indices or return_values):
-            raise ValueError("Neither return_values nor return_indices is True, this isn't allowd")
+            raise ValueError("Neither return_values nor return_indices is True, this isn't allowed")
 
         self.axis = axis
+        self.sorted=sorted
         self.return_values = return_values
         self.return_indices = return_indices
         self.idx_dtype = idx_dtype
 
     def __str__(self):
-        return '%(op)s{axis=%(axis)d}' % dict(
-            op=self.__class__.__name__, axis=self.axis)
+        return '%(op)s{axis=%(axis)d, sorted=%(sorted)s}' % dict(
+            op=self.__class__.__name__,
+            axis=self.axis,
+            sorted=self.sorted)
 
     def make_node(self, inp, kth):
         inp = theano.tensor.as_tensor_variable(inp)
@@ -446,6 +451,7 @@ def topk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
         If ``None``, works on flattened array.
 
     sorted: bool
+        NOTE: NOT IMPLEMENTED YET
         Defaults to ``True``
 
         If True, the result array would be sorted in descending order.
@@ -469,7 +475,10 @@ def topk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0
-    return TopKOp(axis=axis, idx_dtype=idx_dtype)(x, kth)[0]
+    return TopKOp(
+        axis=axis,
+        sorted=sorted,
+        idx_dtype=idx_dtype)(x, kth)[0]
 
 
 def argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
@@ -517,6 +526,7 @@ def argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
         axis = 0
     return TopKOp(
         axis=axis,
+        sorted=sorted,
         idx_dtype=idx_dtype)(x, kth)[1]
 
 
@@ -539,4 +549,5 @@ def topk_and_argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
         axis = 0
     return TopKOp(
         axis=axis,
+        sorted=sorted,
         idx_dtype=idx_dtype)(x, kth)
