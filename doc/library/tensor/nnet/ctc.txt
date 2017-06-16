@@ -4,6 +4,18 @@
 :mod:`ctc` -- Operation to compute CTC loss and its gradients
 ===============================================================================
 
+.. note::
+
+    Usage of connectionist temporal classification (CTC) loss Op, requires that
+    the `warp-ctc <https://github.com/baidu-research/warp-ctc>`_ library is
+    available. Also, the `config.ctc.enabled` and `config.ctc.root` configuration
+    options must be appropriately set.
+
+.. note::
+
+    Unfortunately, Windows platforms are not yet supported by the underlying
+    library.
+
 .. module:: ctc
    :platform: Unix
    :synopsis: Connectionist temporal classification (CTC) loss Op, using the warp-ctc library
