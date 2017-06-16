@@ -33,7 +33,7 @@ class GpuConnectionistTemporalClassification(gof.COp):
     """
     __props__ = ('compute_grad',)
 
-    func_file = "./ctc_wrapper.c"
+    func_file = "./c_code/ctc_wrapper.c"
     func_name = "APPLY_SPECIFIC(ctc_cost_gpu)"
 
     params_type = gpu_context_type
