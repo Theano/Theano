@@ -334,9 +334,7 @@ class TopKOp(theano.Op):
     # TODO c_code
     # TODO add opt, if k==1, use max/min reduce
     #      also if k is axis size, just copy input tensor
-    # TODO add opt to merge argtopk / topk, or split topk_and_argtopk when only
-    #      one result is needed
-
+    # TODO add opt, to merge argtopk / topk
     __props__ = ('axis', 'return_values', 'return_indices', 'idx_dtype')
 
     def __init__(
@@ -466,7 +464,8 @@ def topk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
 
     """
     if sorted:
-        raise NotImplementedError("sorted=True is not supported yet.")
+        raise NotImplementedError(
+            "We are still working on sorted topk. Use sorted=False for now.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0
@@ -511,7 +510,8 @@ def argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
 
     """
     if sorted:
-        raise NotImplementedError("sorted=True is not supported yet.")
+        raise NotImplementedError(
+            "We are still working on sorted topk. Use sorted=False for now.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0
@@ -532,7 +532,8 @@ def topk_and_argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
 
     """
     if sorted:
-        raise NotImplementedError("sorted=True is not supported yet.")
+        raise NotImplementedError(
+            "We are still working on sorted topk. Use sorted=False for now.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0

@@ -7566,12 +7566,8 @@ def local_useless_topk(node):
         return False
 
     x, k = node.inputs
-    ret_val = False
-    ret_idx = False
-    if op.return_values:
-        ret_val = bool(node.outputs[0].clients)
-    if op.return_indices:
-        ret_idx = bool(node.outputs[-1].clients)
+    ret_val = bool(node.outputs[0].clients)
+    ret_idx = bool(node.outputs[1].clients)
 
     if not (ret_val ^ ret_idx):
         # both true -> nothing to remove
@@ -7584,4 +7580,4 @@ def local_useless_topk(node):
         idx_dtype=op.idx_dtype,
         return_values=ret_val,
         return_indices=ret_idx)(x, k)
-    return {old_output:new_output}
+    return {old_output: new_output}

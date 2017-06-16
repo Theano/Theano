@@ -1369,7 +1369,7 @@ class LocalOptGroup(LocalOptimizer):
                 if isinstance(new_repl, (tuple, list)):
                     new_vars = new_repl
                 else:  # It must be a dict
-                    new_vars = new_repl.values()
+                    new_vars = list(new_repl.values())
                 if self.profile:
                     self.node_created[opt] += len(graph.ops(fgraph.variables, new_vars))
                     self.applied_true[opt] += 1

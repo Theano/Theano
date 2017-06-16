@@ -151,7 +151,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         fail = sub['fail']
         ctx = sub['params']
         k_dtype = node.inputs[1].type.dtype_specs()[1]
-        MAX_TPB = 1024  # max thread per block
+        MAX_TPB = 1024  # max threads per block
         WARP_SIZE = 32
 
         ndim = node.inputs[0].ndim
@@ -195,20 +195,19 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
     for (int i=0; i<%(ndim)d; i++)
         odims[i] = dims[i];
 
-
     odims[%(axis)d] = k_>=0 ? k_ : -k_;
 
     if (0 == odims[%(axis)d]) {
         PyErr_SetString(
             PyExc_ValueError,
-            "topk: k must not be zero");
+            "topk: kth must not be zero");
         %(fail)s;
     } else if (dims[%(axis)d] < odims[%(axis)d]){
         PyErr_SetString(
             PyExc_ValueError,
-            "topk: k cannot larger than size on specified axis %(axis)d");
+            "topk: kth cannot larger than size on specified axis %(axis)d");
         %(fail)s;
-    } else if (dims[%(axis)d] > INT_MAX) {
+    } else if (dims[%(axis)d] >= (1u << 31)) {
         PyErr_SetString(
             PyExc_ValueError,
             "topk: on GPU, array size on specified axis cannot larger or equal than 2^31");
