@@ -16,6 +16,7 @@ stages:
     - build base
     - build devel
     - L0
+    - trigger
     - L1
     - L2
     - L3
@@ -69,6 +70,24 @@ theano:
     except:
     - tags
 
+cuda9:
+    stage: trigger
+    script:
+    - export BRANCH="${CI_BUILD_REF_NAME/-devel/-${CI_BUILD_NAME}-devel}"
+    - mkdir triggers
+    - cd triggers
+    - git config --global user.name "gitlab-runner"
+    - git config --global user.email "gitlab-runner@${REPO%%/*}"
+    - git config --global push.default simple
+    - git clone ${ORIGIN_SSH} --recursive --branch ${BRANCH} ${BRANCH}
+    - cd ${BRANCH}
+    - git rebase ${CI_BUILD_REF}
+    - git push --force
+    only:
+    - /^.*-devel$/
+    except:
+    - tags
+
 stage:
     stage: staging
     environment: staging
@@ -98,17 +117,19 @@ stage:
     when: manual
 
 .test_template: &TEST_TEMPLATE
+    environment: "${CI_BUILD_NAME}"
     variables:
       TEST_WORK_DIR: "/opt/${CI_PROJECT_NAME}/qa/${CI_BUILD_NAME}/"
       TEST_SCRIPT: "./test.sh"
     script:
+    - export TEST_WORK_DIR="${TEST_WORK_DIR%%--*}"
     - docker run --rm $(eval ${NV_DOCKER_ARGS})
              -v $DATADIR:/data
              $(eval echo ${EXTRA_DOCKER_RUN_ARGS})
              ${DEVEL_IMAGE_NAME_VERSIONED}
              /bin/bash -c "cd ${TEST_WORK_DIR} && exec bash -ex ${TEST_SCRIPT}"
     tags:
-    - has_gpu
+    - must_specify_runner
     except:
     - tags
 
@@ -131,6 +152,61 @@ stage:
     <<: *TEST_TEMPLATE
     when: manual
 
+.P100_R375_4GPU: &P100_R375_4GPU
+    tags:
+    - P100
+    - R375
+    - 4GPU
+    allow_failure: false
+
+.P100_R384_4GPU: &P100_R384_4GPU
+    tags:
+    - P100
+    - R384
+    - 4GPU
+    allow_failure: false
+
+.1080Ti_R384_1GPU: &1080Ti_R384_1GPU
+    tags:
+    - 1080Ti
+    - R384
+    - 1GPU
+    allow_failure: true
+
+.TitanXP_R384_2GPU: &TitanXP_R384_2GPU
+    tags:
+    - TitanXP
+    - R384
+    - 2GPU
+    allow_failure: true
+
+.M60_R384_2GPU: &M60_R384_2GPU
+    tags:
+    - M60
+    - R384
+    - 2GPU
+    allow_failure: true
+
+.K80_R384_2GPU: &K80_R384_2GPU
+    tags:
+    - K80
+    - R384
+    - 2GPU
+    allow_failure: true
+
+.P40_R384_1GPU: &P40_R384_1GPU
+    tags:
+    - P40
+    - R384
+    - 1GPU
+    allow_failure: true
+
+.M40_R384_1GPU: &M40_R384_1GPU
+    tags:
+    - M40
+    - R384
+    - 1GPU
+    allow_failure: true
 
 ######################################################
 ##
@@ -159,60 +235,508 @@ stage:
 ##
 ######################################################
 
-L0_imdb_lstm:
-    <<: *L0_TEST
+#### P100_R375_4GPU ####
 
-L0_regression:
+L0_imdb_lstm--P100_R375_4GPU:
     <<: *L0_TEST
+    <<: *P100_R375_4GPU
 
-L0_convnet_benchmarks_alexnet:
+L0_regression--P100_R375_4GPU:
     <<: *L0_TEST
+    <<: *P100_R375_4GPU
+
+L0_convnet_benchmarks_alexnet--P100_R375_4GPU:
+    <<: *L0_TEST
+    <<: *P100_R375_4GPU
     variables:
       TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-alexnet.sh"
 
-L0_convnet_benchmarks_overfeat:
+L0_convnet_benchmarks_overfeat--P100_R375_4GPU:
     <<: *L0_TEST
+    <<: *P100_R375_4GPU
     variables:
       TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-overfeat.sh"
 
-L0_convnet_benchmarks_vgga:
+L0_convnet_benchmarks_vgga--P100_R375_4GPU:
     <<: *L0_TEST
+    <<: *P100_R375_4GPU
     variables:
       TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-vgga.sh"
 
-L0_convnet_benchmarks_googlenet:
+L0_convnet_benchmarks_googlenet--P100_R375_4GPU:
     <<: *L0_TEST
+    <<: *P100_R375_4GPU
     variables:
       TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-googlenet.sh"
 
-L1_mnist_sgd:
+L1_mnist_sgd--P100_R375_4GPU:
     <<: *L1_TEST
+    <<: *P100_R375_4GPU
     variables:
       TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
       TEST_SCRIPT: "./test-sgd.sh"
 
-L1_mnist_mlp:
+L1_mnist_mlp--P100_R375_4GPU:
     <<: *L1_TEST
+    <<: *P100_R375_4GPU
     variables:
       TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
       TEST_SCRIPT: "./test-mlp.sh"
 
-L1_mnist_lenet:
+L1_mnist_lenet--P100_R375_4GPU:
     <<: *L1_TEST
+    <<: *P100_R375_4GPU
     variables:
       TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
       TEST_SCRIPT: "./test-lenet.sh"
 
-L2_self_test_verbose:
+L2_self_test_verbose--P100_R375_4GPU:
     <<: *L2_TEST
+    <<: *P100_R375_4GPU
 
-##
-## Same as the verbose test, except collects all the tests first and then
-## runs them in batches of 100 at a time, non-verbose
-##
-#L2_self_test_batches:
-#    <<: *L2_TEST
+#### P100_R384_4GPU ####
+
+L0_imdb_lstm--P100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *P100_R384_4GPU
+
+L0_regression--P100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *P100_R384_4GPU
+
+L0_convnet_benchmarks_alexnet--P100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *P100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-alexnet.sh"
+
+L0_convnet_benchmarks_overfeat--P100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *P100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-overfeat.sh"
+
+L0_convnet_benchmarks_vgga--P100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *P100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-vgga.sh"
+
+L0_convnet_benchmarks_googlenet--P100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *P100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-googlenet.sh"
+
+L1_mnist_sgd--P100_R384_4GPU:
+    <<: *L1_TEST
+    <<: *P100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L1_mnist_mlp--P100_R384_4GPU:
+    <<: *L1_TEST
+    <<: *P100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L1_mnist_lenet--P100_R384_4GPU:
+    <<: *L1_TEST
+    <<: *P100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
+
+L2_self_test_verbose--P100_R384_4GPU:
+    <<: *L2_TEST
+    <<: *P100_R384_4GPU
+
+#### 1080Ti_R384_1GPU ####
+
+L0_imdb_lstm--1080Ti_R384_1GPU:
+    <<: *L0_TEST
+    <<: *1080Ti_R384_1GPU
+
+L0_regression--1080Ti_R384_1GPU:
+    <<: *L0_TEST
+    <<: *1080Ti_R384_1GPU
+
+L0_convnet_benchmarks_alexnet--1080Ti_R384_1GPU:
+    <<: *L0_TEST
+    <<: *1080Ti_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-alexnet.sh"
+
+L0_convnet_benchmarks_overfeat--1080Ti_R384_1GPU:
+    <<: *L0_TEST
+    <<: *1080Ti_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-overfeat.sh"
+
+L0_convnet_benchmarks_vgga--1080Ti_R384_1GPU:
+    <<: *L0_TEST
+    <<: *1080Ti_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-vgga.sh"
+
+L0_convnet_benchmarks_googlenet--1080Ti_R384_1GPU:
+    <<: *L0_TEST
+    <<: *1080Ti_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-googlenet.sh"
+
+L1_mnist_sgd--1080Ti_R384_1GPU:
+    <<: *L1_TEST
+    <<: *1080Ti_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L1_mnist_mlp--1080Ti_R384_1GPU:
+    <<: *L1_TEST
+    <<: *1080Ti_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L1_mnist_lenet--1080Ti_R384_1GPU:
+    <<: *L1_TEST
+    <<: *1080Ti_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
+
+L2_self_test_verbose--1080Ti_R384_1GPU:
+    <<: *L2_TEST
+    <<: *1080Ti_R384_1GPU
+
+#### TitanXP_R384_2GPU ####
+
+L0_imdb_lstm--TitanXP_R384_2GPU:
+    <<: *L0_TEST
+    <<: *TitanXP_R384_2GPU
+
+L0_regression--TitanXP_R384_2GPU:
+    <<: *L0_TEST
+    <<: *TitanXP_R384_2GPU
+
+L0_convnet_benchmarks_alexnet--TitanXP_R384_2GPU:
+    <<: *L0_TEST
+    <<: *TitanXP_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-alexnet.sh"
+
+L0_convnet_benchmarks_overfeat--TitanXP_R384_2GPU:
+    <<: *L0_TEST
+    <<: *TitanXP_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-overfeat.sh"
+
+L0_convnet_benchmarks_vgga--TitanXP_R384_2GPU:
+    <<: *L0_TEST
+    <<: *TitanXP_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-vgga.sh"
+
+L0_convnet_benchmarks_googlenet--TitanXP_R384_2GPU:
+    <<: *L0_TEST
+    <<: *TitanXP_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-googlenet.sh"
+
+L1_mnist_sgd--TitanXP_R384_2GPU:
+    <<: *L1_TEST
+    <<: *TitanXP_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L1_mnist_mlp--TitanXP_R384_2GPU:
+    <<: *L1_TEST
+    <<: *TitanXP_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L1_mnist_lenet--TitanXP_R384_2GPU:
+    <<: *L1_TEST
+    <<: *TitanXP_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
+
+L2_self_test_verbose--TitanXP_R384_2GPU:
+    <<: *L2_TEST
+    <<: *TitanXP_R384_2GPU
+
+#### M60_R384_2GPU ####
+
+L0_imdb_lstm--M60_R384_2GPU:
+    <<: *L0_TEST
+    <<: *M60_R384_2GPU
+
+L0_regression--M60_R384_2GPU:
+    <<: *L0_TEST
+    <<: *M60_R384_2GPU
+
+L0_convnet_benchmarks_alexnet--M60_R384_2GPU:
+    <<: *L0_TEST
+    <<: *M60_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-alexnet.sh"
+
+L0_convnet_benchmarks_overfeat--M60_R384_2GPU:
+    <<: *L0_TEST
+    <<: *M60_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-overfeat.sh"
+
+L0_convnet_benchmarks_vgga--M60_R384_2GPU:
+    <<: *L0_TEST
+    <<: *M60_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-vgga.sh"
+
+L0_convnet_benchmarks_googlenet--M60_R384_2GPU:
+    <<: *L0_TEST
+    <<: *M60_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-googlenet.sh"
+
+L1_mnist_sgd--M60_R384_2GPU:
+    <<: *L1_TEST
+    <<: *M60_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L1_mnist_mlp--M60_R384_2GPU:
+    <<: *L1_TEST
+    <<: *M60_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L1_mnist_lenet--M60_R384_2GPU:
+    <<: *L1_TEST
+    <<: *M60_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
+
+L2_self_test_verbose--M60_R384_2GPU:
+    <<: *L2_TEST
+    <<: *M60_R384_2GPU
+
+#### K80_R384_2GPU ####
+
+L0_imdb_lstm--K80_R384_2GPU:
+    <<: *L0_TEST
+    <<: *K80_R384_2GPU
+
+L0_regression--K80_R384_2GPU:
+    <<: *L0_TEST
+    <<: *K80_R384_2GPU
+
+L0_convnet_benchmarks_alexnet--K80_R384_2GPU:
+    <<: *L0_TEST
+    <<: *K80_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-alexnet.sh"
+
+L0_convnet_benchmarks_overfeat--K80_R384_2GPU:
+    <<: *L0_TEST
+    <<: *K80_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-overfeat.sh"
+
+L0_convnet_benchmarks_vgga--K80_R384_2GPU:
+    <<: *L0_TEST
+    <<: *K80_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-vgga.sh"
+
+L0_convnet_benchmarks_googlenet--K80_R384_2GPU:
+    <<: *L0_TEST
+    <<: *K80_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-googlenet.sh"
+
+L1_mnist_sgd--K80_R384_2GPU:
+    <<: *L1_TEST
+    <<: *K80_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L1_mnist_mlp--K80_R384_2GPU:
+    <<: *L1_TEST
+    <<: *K80_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L1_mnist_lenet--K80_R384_2GPU:
+    <<: *L1_TEST
+    <<: *K80_R384_2GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
+
+L2_self_test_verbose--K80_R384_2GPU:
+    <<: *L2_TEST
+    <<: *K80_R384_2GPU
+
+#### P40_R384_1GPU ####
+
+L0_imdb_lstm--P40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *P40_R384_1GPU
+
+L0_regression--P40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *P40_R384_1GPU
+
+L0_convnet_benchmarks_alexnet--P40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *P40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-alexnet.sh"
+
+L0_convnet_benchmarks_overfeat--P40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *P40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-overfeat.sh"
+
+L0_convnet_benchmarks_vgga--P40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *P40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-vgga.sh"
+
+L0_convnet_benchmarks_googlenet--P40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *P40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-googlenet.sh"
+
+L1_mnist_sgd--P40_R384_1GPU:
+    <<: *L1_TEST
+    <<: *P40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L1_mnist_mlp--P40_R384_1GPU:
+    <<: *L1_TEST
+    <<: *P40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L1_mnist_lenet--P40_R384_1GPU:
+    <<: *L1_TEST
+    <<: *P40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
+
+L2_self_test_verbose--P40_R384_1GPU:
+    <<: *L2_TEST
+    <<: *P40_R384_1GPU
+
+#### M40_R384_1GPU ####
+
+L0_imdb_lstm--M40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *M40_R384_1GPU
+
+L0_regression--M40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *M40_R384_1GPU
+
+L0_convnet_benchmarks_alexnet--M40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *M40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-alexnet.sh"
+
+L0_convnet_benchmarks_overfeat--M40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *M40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-overfeat.sh"
+
+L0_convnet_benchmarks_vgga--M40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *M40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-vgga.sh"
+
+L0_convnet_benchmarks_googlenet--M40_R384_1GPU:
+    <<: *L0_TEST
+    <<: *M40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-googlenet.sh"
+
+L1_mnist_sgd--M40_R384_1GPU:
+    <<: *L1_TEST
+    <<: *M40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L1_mnist_mlp--M40_R384_1GPU:
+    <<: *L1_TEST
+    <<: *M40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L1_mnist_lenet--M40_R384_1GPU:
+    <<: *L1_TEST
+    <<: *M40_R384_1GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
+
+L2_self_test_verbose--M40_R384_1GPU:
+    <<: *L2_TEST
+    <<: *M40_R384_1GPU
+
+
