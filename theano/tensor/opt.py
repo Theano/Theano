@@ -265,7 +265,7 @@ class InplaceElemwiseOptimizer(Optimizer):
                 candidate_inputs = [i for i in xrange(len(node.inputs))
                                     if i not in baseline.values() and
                                     not isinstance(node.inputs[i], Constant) and
-                                    # Is next line costly? (used to be fgraph.get_destroyers)
+                                    # the next line should not be costly most of the time.
                                     not fgraph.has_destroyers([node.inputs[i]]) and
                                     node.inputs[i] not in protected_inputs]
             else:
