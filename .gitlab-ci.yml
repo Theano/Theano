@@ -16,7 +16,6 @@ stages:
     - build base
     - build devel
     - L0
-    - trigger
     - L1
     - L2
     - L3
@@ -67,24 +66,6 @@ theano:
                    -f Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME} .
     - docker push "${DEVEL_IMAGE_NAME}"
     - docker push "${DEVEL_IMAGE_NAME_VERSIONED}"
-    except:
-    - tags
-
-cuda9:
-    stage: trigger
-    script:
-    - export BRANCH="${CI_BUILD_REF_NAME/-devel/-${CI_BUILD_NAME}-devel}"
-    - mkdir triggers
-    - cd triggers
-    - git config --global user.name "gitlab-runner"
-    - git config --global user.email "gitlab-runner@${REPO%%/*}"
-    - git config --global push.default simple
-    - git clone ${ORIGIN_SSH} --recursive --branch ${BRANCH} ${BRANCH}
-    - cd ${BRANCH}
-    - git rebase ${CI_BUILD_REF}
-    - git push --force
-    only:
-    - /^.*-devel$/
     except:
     - tags
 
@@ -153,16 +134,16 @@ stage:
     <<: *TEST_TEMPLATE
     when: manual
 
-.P100_R375_4GPU: &P100_R375_4GPU
-    tags:
-    - P100
-    - R375
-    - 4GPU
-    allow_failure: false
-
 .P100_R384_4GPU: &P100_R384_4GPU
     tags:
     - P100
+    - R384
+    - 4GPU
+    allow_failure: false
+
+.V100_R384_4GPU: &V100_R384_4GPU
+    tags:
+    - V100
     - R384
     - 4GPU
     allow_failure: false
@@ -236,69 +217,6 @@ stage:
 ##
 ######################################################
 
-#### P100_R375_4GPU ####
-
-L0_imdb_lstm--P100_R375_4GPU:
-    <<: *L0_TEST
-    <<: *P100_R375_4GPU
-
-L0_regression--P100_R375_4GPU:
-    <<: *L0_TEST
-    <<: *P100_R375_4GPU
-
-L0_convnet_benchmarks_alexnet--P100_R375_4GPU:
-    <<: *L0_TEST
-    <<: *P100_R375_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
-      TEST_SCRIPT: "./test-alexnet.sh"
-
-L0_convnet_benchmarks_overfeat--P100_R375_4GPU:
-    <<: *L0_TEST
-    <<: *P100_R375_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
-      TEST_SCRIPT: "./test-overfeat.sh"
-
-L0_convnet_benchmarks_vgga--P100_R375_4GPU:
-    <<: *L0_TEST
-    <<: *P100_R375_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
-      TEST_SCRIPT: "./test-vgga.sh"
-
-L0_convnet_benchmarks_googlenet--P100_R375_4GPU:
-    <<: *L0_TEST
-    <<: *P100_R375_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
-      TEST_SCRIPT: "./test-googlenet.sh"
-
-L1_mnist_sgd--P100_R375_4GPU:
-    <<: *L1_TEST
-    <<: *P100_R375_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
-      TEST_SCRIPT: "./test-sgd.sh"
-
-L1_mnist_mlp--P100_R375_4GPU:
-    <<: *L1_TEST
-    <<: *P100_R375_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
-      TEST_SCRIPT: "./test-mlp.sh"
-
-L1_mnist_lenet--P100_R375_4GPU:
-    <<: *L1_TEST
-    <<: *P100_R375_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
-      TEST_SCRIPT: "./test-lenet.sh"
-
-L2_self_test_verbose--P100_R375_4GPU:
-    <<: *L2_TEST
-    <<: *P100_R375_4GPU
-
 #### P100_R384_4GPU ####
 
 L0_imdb_lstm--P100_R384_4GPU:
@@ -361,6 +279,69 @@ L1_mnist_lenet--P100_R384_4GPU:
 L2_self_test_verbose--P100_R384_4GPU:
     <<: *L2_TEST
     <<: *P100_R384_4GPU
+
+#### V100_R384_4GPU ####
+
+L0_imdb_lstm--V100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *V100_R384_4GPU
+
+L0_regression--V100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *V100_R384_4GPU
+
+L0_convnet_benchmarks_alexnet--V100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *V100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-alexnet.sh"
+
+L0_convnet_benchmarks_overfeat--V100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *V100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-overfeat.sh"
+
+L0_convnet_benchmarks_vgga--V100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *V100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-vgga.sh"
+
+L0_convnet_benchmarks_googlenet--V100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *V100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-googlenet.sh"
+
+L1_mnist_sgd--V100_R384_4GPU:
+    <<: *L1_TEST
+    <<: *V100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L1_mnist_mlp--V100_R384_4GPU:
+    <<: *L1_TEST
+    <<: *V100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L1_mnist_lenet--V100_R384_4GPU:
+    <<: *L1_TEST
+    <<: *V100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
+
+L2_self_test_verbose--V100_R384_4GPU:
+    <<: *L2_TEST
+    <<: *V100_R384_4GPU
 
 #### 1080Ti_R384_1GPU ####
 
