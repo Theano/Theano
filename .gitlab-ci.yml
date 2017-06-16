@@ -123,6 +123,8 @@ stage:
       TEST_SCRIPT: "./test.sh"
     script:
     - export TEST_WORK_DIR="${TEST_WORK_DIR%%--*}"
+    - cat /proc/driver/nvidia/version
+    - nvidia-smi
     - docker run --rm $(eval ${NV_DOCKER_ARGS})
              -v $DATADIR:/data
              $(eval echo ${EXTRA_DOCKER_RUN_ARGS})
