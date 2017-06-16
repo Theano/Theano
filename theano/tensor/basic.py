@@ -397,7 +397,7 @@ def get_scalar_constant_value(orig_v, elemwise=True,
     """Return the constant scalar(0-D) value underlying variable `v`.
 
     If `v` is the output of dimshuffles, fills, allocs, rebroadcasts,
-    cast, DeepCopyOp, ScalarFromTensor, ScalarOp, Elemwise
+    cast, OutputGuard, DeepCopyOp, ScalarFromTensor, ScalarOp, Elemwise
     and some pattern with Subtensor, this function digs through them.
 
     If `v` is not some view of constant scalar data, then raise a
@@ -447,6 +447,9 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 max_recur > 0):
             max_recur -= 1
             if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
+                                       # outputguard is only used in debugmode but we
+                                       # keep it here to avoid problems with old pickels.
+                                       compile.ops.OutputGuard,
                                        compile.DeepCopyOp)):
                 v = v.owner.inputs[0]
                 continue
