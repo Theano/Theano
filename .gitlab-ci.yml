@@ -124,12 +124,11 @@ stage:
     script:
     - export TEST_WORK_DIR="${TEST_WORK_DIR%%--*}"
     - cat /proc/driver/nvidia/version
-    - nvidia-smi
     - docker run --rm $(eval ${NV_DOCKER_ARGS})
              -v $DATADIR:/data
              $(eval echo ${EXTRA_DOCKER_RUN_ARGS})
              ${DEVEL_IMAGE_NAME_VERSIONED}
-             /bin/bash -c "cd ${TEST_WORK_DIR} && exec bash -ex ${TEST_SCRIPT}"
+             /bin/bash -c "/usr/local/nvidia/bin/nvidia-smi && cd ${TEST_WORK_DIR} && exec bash -ex ${TEST_SCRIPT}"
     tags:
     - must_specify_runner
     except:
