@@ -1,5 +1,6 @@
 from __future__ import (division, absolute_import, print_function)
 import os
+import os.path
 import theano.tensor as T
 from theano import config
 from theano import gof
@@ -53,9 +54,19 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
     def c_lib_dirs(self):
         dirs = []
         if ctc_enabled:
-            # We assume here that the compiled library (libwarpctc.so) is available
-            # at the build directory of the CTC root directory.
-            dirs.append(os.path.join(config.ctc.root, "build"))
+            # Find the directory that contains libwarpctc.so
+            lib_found = False
+            for lib_dir in ["build", "lib", "lib64"]:
+                lib_path = os.path.join(config.ctc.root, lib_dir)
+                if os.path.isdir(lib_path) and os.path.exists(lib_path):
+                    lib_found = os.path.exists(os.path.join(lib_path, "libwarpctc.so"))
+                    if lib_found:
+                        dirs.append(lib_path)
+                        break
+
+            if not lib_found:
+                raise RuntimeError('libwarpctc.so could not be found. ',
+                                   'Please check the config.ctc.root variable.')
         return dirs
 
     def c_libraries(self):

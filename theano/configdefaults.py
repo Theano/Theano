@@ -1773,8 +1773,8 @@ AddConfigVar(
 AddConfigVar(
     'ctc.root',
     'Directory which contains the root of Baidu CTC library. It is assumed \
-    that the compiled library is inside the build directory, and the header \
-    inside the include directory.',
+    that the compiled library is either inside the build, lib or lib64 \
+    subdirectory, and the header inside the include directory.',
     StrParam('', allow_override=False))
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
