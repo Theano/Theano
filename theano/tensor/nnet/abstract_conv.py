@@ -33,7 +33,8 @@ _logger = logging.getLogger("theano.tensor.nnet.abstract_conv")
 
 def get_conv_output_shape(image_shape, kernel_shape,
                           border_mode, subsample,
-                          filter_dilation=None):
+                          filter_dilation=None,
+                          unshared=False):
     """
     This function compute the output shape of convolution operation.
 
@@ -70,8 +71,10 @@ def get_conv_output_shape(image_shape, kernel_shape,
     """
     bsize, imshp = image_shape[0], image_shape[2:]
     nkern = kernel_shape[0]
-
-    kshp = kernel_shape[-2:]
+    if unshared is True:
+        kshp = kernel_shape[4:]
+    else:
+        kshp = kernel_shape[2:]
 
     if filter_dilation is None:
         filter_dilation = np.ones(len(subsample), dtype='int')
@@ -1544,7 +1547,7 @@ class BaseAbstractConv(Op):
                          img.shape[3] - kern.shape[3] + 1)
         else:
             out_shape = get_conv_output_shape(img.shape, kern.shape,
-                                              mode, [1] * self.convdim, dilation)
+                                              mode, [1] * self.convdim, dilation, unshared)
 
         dil_kern_shp = kern.shape[:-self.convdim] + tuple(
             (kern.shape[-self.convdim + i] - 1) * dilation[i] + 1
@@ -1759,7 +1762,7 @@ class AbstractConv(BaseAbstractConv):
                 kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
                         for i in range(2 + self.convdim)]
         res = get_conv_output_shape(imshp, kshp, self.border_mode,
-                                    self.subsample, self.filter_dilation)
+                                    self.subsample, self.filter_dilation, self.unshared)
         return [res]
 
 
@@ -2179,6 +2182,9 @@ class AbstractConv_gradInputs(BaseAbstractConv):
             if kern.type.ndim != 2 + self.convdim:
                 raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
 
+        if topgrad.type.ndim != 2 + self.convdim:
+                raise TypeError('topgrad must be %dD tensor' % (2 + self.convdim))
+
         if add_assert_shape:
             kern = assert_shape(kern, self.kshp,
                                 'AbstractConv_gradInputs shape mismatch: shape of '
@@ -2215,7 +2221,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                  for i in range(2 + self.convdim)]
         expected_topgrad_shape = get_conv_output_shape(
             imshp, kern.shape,
-            self.border_mode, self.subsample, self.filter_dilation)
+            self.border_mode, self.subsample, self.filter_dilation, self.unshared)
         if not tuple(expected_topgrad_shape) == tuple(topgrad.shape):
             raise ValueError(
                 'invalid input_shape for gradInputs: the given input_shape '
