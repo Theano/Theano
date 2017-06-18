@@ -1758,8 +1758,8 @@ verify_grad.E_grad = GradientError
 def jacobian(expression, wrt, consider_constant=None,
              disconnected_inputs='raise'):
     """
-    :type expression: Vector (1-dimensional) Variable
-    :type wrt: Variable or list of Variables
+    :type expression: Vector (1-dimensional) Variable (expression with tensorvariable)
+    :type wrt: Variable or list of Variables (tensorvariable- With respect to )
 
     :param consider_constant: a list of expressions not to backpropagate
         through
