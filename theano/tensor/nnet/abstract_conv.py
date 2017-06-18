@@ -33,8 +33,7 @@ _logger = logging.getLogger("theano.tensor.nnet.abstract_conv")
 
 def get_conv_output_shape(image_shape, kernel_shape,
                           border_mode, subsample,
-                          filter_dilation=None,
-                          unshared=False):
+                          filter_dilation=None):
     """
     This function compute the output shape of convolution operation.
 
@@ -71,10 +70,8 @@ def get_conv_output_shape(image_shape, kernel_shape,
     """
     bsize, imshp = image_shape[0], image_shape[2:]
     nkern = kernel_shape[0]
-    if unshared is True:
-        kshp = kernel_shape[4:]
-    else:
-        kshp = kernel_shape[2:]
+
+    kshp = kernel_shape[-2:]
 
     if filter_dilation is None:
         filter_dilation = np.ones(len(subsample), dtype='int')
@@ -1520,7 +1517,7 @@ class BaseAbstractConv(Op):
             raise NotImplementedError(
                 'flops not implemented for convdim={}', self.convdim)
 
-    def conv(self, img, kern, mode="valid", dilation=1, unshared=False):
+    def conv(self, img, kern, mode="valid", dilation=1, unshared=False, direction=0):
         """
         Basic slow Python 2D or 3D convolution for DebugMode
         """
@@ -1540,14 +1537,14 @@ class BaseAbstractConv(Op):
                 'invalid dilation {}, expected {} values'.format(dilation,
                                                                  self.convdim))
 
-        out_shape = get_conv_output_shape(img.shape, kern.shape,
-                                          mode, [1] * self.convdim, dilation, unshared)
-
-        if unshared is True:
-            if (kern.shape[2], kern.shape[3]) != (out_shape[2], out_shape[3]):
-                raise ValueError('Kernel shape ({},{}) does not match '
-                                 'output size ({},{})'.format(kern.shape[2], kern.shape[3],
-                                                              out_shape[2], out_shape[3]))
+        if direction == 1:
+            out_shape = (img.shape[0], kern.shape[0],
+                         kern.shape[2], kern.shape[3],
+                         img.shape[2] - kern.shape[2] + 1,
+                         img.shape[3] - kern.shape[3] + 1)
+        else:
+            out_shape = get_conv_output_shape(img.shape, kern.shape,
+                                              mode, [1] * self.convdim, dilation)
 
         dil_kern_shp = kern.shape[:-self.convdim] + tuple(
             (kern.shape[-self.convdim + i] - 1) * dilation[i] + 1
@@ -1568,15 +1565,12 @@ class BaseAbstractConv(Op):
                 for b in xrange(img.shape[0]):
                     for n in xrange(kern.shape[0]):
                         for im0 in xrange(img.shape[1]):
-                            # some cast generates a warning here
                             if unshared is True:
-                                for row in xrange(kern.shape[2]):
-                                    for col in xrange(kern.shape[3]):
-                                        out[b, n, row, col] += np.sum(np.multiply(
-                                            img[b, im0, row:row + dilated_kern.shape[4],
-                                                col:col + dilated_kern.shape[5]],
-                                            dilated_kern[n, im0, row, col, ::-1, ::-1]))
+                                out[b, n, ...] += self.unshared2d(img[b, im0, ...],
+                                                                  dilated_kern[n, im0, ...],
+                                                                  out_shape[2:], direction)
                             else:
+                                # some cast generates a warning here
                                 out[b, n, ...] += _convolve2d(img[b, im0, ...],
                                                               dilated_kern[n, im0, ...],
                                                               1, val, bval, 0)
@@ -1590,6 +1584,47 @@ class BaseAbstractConv(Op):
                                                    mode)
         else:
             raise NotImplementedError('only 2D and 3D convolution are implemented')
+        return out
+
+    def unshared2d(self, inp, kern, out_shape, direction=0):
+        '''
+        Basic slow Python unshared 2d convolution.
+        direction can be 0, 1 or 2 for forward pass,
+        gradWeights or gradInputs respectively
+        '''
+        if self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
+        if direction == 0:
+            if (kern.shape[0], kern.shape[1]) != (out_shape[0], out_shape[1]):
+                raise ValueError('Kernel shape ({},{}) does not match '
+                                 'output size ({},{})'.format(kern.shape[0], kern.shape[1],
+                                                              out_shape[0], out_shape[1]))
+        if direction not in (0, 1, 2):
+            raise ValueError("Direction must be one of 0, 1 or 2.")
+
+        out = np.zeros(out_shape, dtype=inp.dtype)
+
+        for row in xrange(out_shape[0]):
+            for col in xrange(out_shape[1]):
+                if direction == 0:
+                    out[row, col] += np.sum(np.multiply(inp[row:row + kern.shape[2],
+                                                        col:col + kern.shape[3]],
+                                            kern[row, col, ::-1, ::-1]))
+                elif direction == 1:
+                    out[row, col, ...] += kern[row, col] * \
+                        inp[row:row + out_shape[2], col:col + out_shape[3]]
+
+                else:  # direction = 2
+                    for k_row in xrange(kern.shape[2]):
+                        for k_col in xrange(kern.shape[3]):
+                            # Deciding which kernel to select
+                            reg_row = row - ((kern.shape[2] - 1) - k_row)
+                            reg_col = col - ((kern.shape[3] - 1) - k_col)
+                            if (reg_row >= 0 and reg_row < kern.shape[0]) and \
+                                    (reg_col >= 0 and reg_col < kern.shape[1]):
+                                out[row, col] += kern[reg_row, reg_col, k_row, k_col] * \
+                                    inp[reg_row, reg_col]
         return out
 
 
@@ -1654,7 +1689,7 @@ class AbstractConv(BaseAbstractConv):
         img = np.asarray(img)
         kern = np.asarray(kern)
 
-        dil_kernshp = tuple((kern.shape[kern.ndim - self.convdim + i] - 1) * self.filter_dilation[i] + 1
+        dil_kernshp = tuple((kern.shape[-self.convdim + i] - 1) * self.filter_dilation[i] + 1
                             for i in range(self.convdim))
         if self.unshared is True:
             if self.convdim != 2:
@@ -1937,36 +1972,29 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                               for i in range(self.convdim))] = topgrad
             topgrad = new_topgrad
 
+        axes_order = (1, 0) + tuple(range(2, self.convdim + 2))
+        topgrad = topgrad.transpose(axes_order)
+        img = img.transpose(axes_order)
+
         if self.unshared is True:
             flip_kern = ((slice(None), slice(None)) +
                          (slice(None, None, -1),) * 2 * self.convdim)
-            kern_shape = (topgrad.shape[1], img.shape[1],
-                          topgrad.shape[2], topgrad.shape[3],
-                          img.shape[2] - topgrad.shape[2] + 1,
-                          img.shape[3] - topgrad.shape[3] + 1)
-            kern = np.zeros((kern_shape), dtype=topgrad.dtype)
-
-            for b in xrange(img.shape[0]):
-                for n in xrange(topgrad.shape[1]):
-                    for im0 in xrange(img.shape[1]):
-                        for row in xrange(topgrad.shape[2]):
-                            for col in xrange(topgrad.shape[3]):
-                                kern[n, im0, row, col, ...] += topgrad[b, n, row, col] * \
-                                    img[b, im0, row:row + kern.shape[4],
-                                        col:col + kern.shape[5]]
+            kern = self.conv(img, topgrad, mode="valid", unshared=True, direction=1)
+            kern_axes = (1, 0) + tuple(range(2, 2 + 2 * self.convdim))
         else:
-            axes_order = (1, 0) + tuple(range(2, self.convdim + 2))
             flip_topgrad = flip_kern = ((slice(None), slice(None)) +
                                         (slice(None, None, -1),) * self.convdim)
-            topgrad = topgrad.transpose(axes_order)[flip_topgrad]
-            img = img.transpose(axes_order)
+            topgrad = topgrad[flip_topgrad]
             kern = self.conv(img, topgrad, mode="valid")
-            kern = kern.transpose(axes_order)
+            kern_axes = (1, 0) + tuple(range(2, self.convdim + 2))
+
+        kern = kern.transpose(kern_axes)
 
         if any(self.filter_dilation[i] > 1 for i in range(self.convdim)):
             kern = kern[(slice(None),) * (kern.ndim - self.convdim) +
                         tuple(slice(None, None, self.filter_dilation[i])
                               for i in range(self.convdim))]
+
         if self.filter_flip:
             kern = kern[flip_kern]
         o[0] = node.outputs[0].type.filter(kern)
@@ -2187,7 +2215,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                  for i in range(2 + self.convdim)]
         expected_topgrad_shape = get_conv_output_shape(
             imshp, kern.shape,
-            self.border_mode, self.subsample, self.filter_dilation, self.unshared)
+            self.border_mode, self.subsample, self.filter_dilation)
         if not tuple(expected_topgrad_shape) == tuple(topgrad.shape):
             raise ValueError(
                 'invalid input_shape for gradInputs: the given input_shape '
@@ -2195,12 +2223,8 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                 'has shape {}'.format(tuple(expected_topgrad_shape),
                                       tuple(topgrad.shape)))
 
-        if self.unshared is True:
-            dil_kernshp = tuple((kern.shape[4 + i] - 1) * self.filter_dilation[i] + 1
-                                for i in range(self.convdim))
-        else:
-            dil_kernshp = tuple((kern.shape[2 + i] - 1) * self.filter_dilation[i] + 1
-                                for i in range(self.convdim))
+        dil_kernshp = tuple((kern.shape[2 + i] - 1) * self.filter_dilation[i] + 1
+                            for i in range(self.convdim))
 
         pad = (0,) * self.convdim
         if mode == "full":
@@ -2219,34 +2243,21 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                               for i in range(self.convdim))] = topgrad
             topgrad = new_topgrad
 
+        axes_order = (1, 0) + tuple(range(2, kern.ndim))
+        kern = kern.transpose(axes_order)
+
         if self.unshared is True:
-            img = np.zeros(imshp, dtype=topgrad.dtype)
             if not self.filter_flip:
                 kern = kern[(slice(None),) * (kern.ndim - self.convdim) +
                             (slice(None, None, -1),) * self.convdim]
 
-            for b in xrange(topgrad.shape[0]):
-                for n in xrange(topgrad.shape[1]):
-                    for im0 in xrange(kern.shape[1]):
-                        for row in xrange(img.shape[2]):
-                            for col in xrange(img.shape[3]):
-                                for k_row in xrange(kern.shape[4]):
-                                    for k_col in xrange(kern.shape[5]):
-                                        # Deciding which kernel to select
-                                        reg_row = row - ((kern.shape[4] - 1) - k_row)
-                                        reg_col = col - ((kern.shape[5] - 1) - k_col)
-                                        if (reg_row >= 0 and reg_row < kern.shape[2]) and \
-                                                (reg_col >= 0 and reg_col < kern.shape[3]):
-                                            img[b, im0, row, col] += kern[n, im0, reg_row,
-                                                                          reg_col, k_row, k_col] * \
-                                                topgrad[b, n, reg_row, reg_col]
+            img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation,
+                            unshared=True, direction=2)
         else:
             flip_filters = ((slice(None), slice(None)) +
                             (slice(None, None, -1),) * self.convdim)
             if self.filter_flip:
                 topgrad = topgrad[flip_filters]
-            axes_order = (1, 0) + tuple(range(2, self.convdim + 2))
-            kern = kern.transpose(axes_order)
             img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation)
             if self.filter_flip:
                 img = img[flip_filters]
