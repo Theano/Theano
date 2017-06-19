@@ -107,7 +107,10 @@ class GpuSubtensor(HideC, Subtensor):
             return """
         Py_XDECREF(%(out)s);
         %(out)s = pygpu_copy(%(inp)s, GA_ANY_ORDER);
-        if (!%(out)s) { %(fail)s }
+        if (!%(out)s) {
+            // Exception already set
+            %(fail)s
+        }
 """ % dict(out=outputs[0], inp=inp, fail=sub['fail'])
 
         sio = StringIO()
@@ -175,7 +178,7 @@ class GpuSubtensor(HideC, Subtensor):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (6,)
+        return (8,)
 
 
 class GpuIncSubtensor(IncSubtensor):
@@ -732,8 +735,10 @@ class GpuAdvancedIncSubtensor1(Op):
         num_indices = PyArray_SIZE(%(ind)s);
         if (!%(inplace)s) {
           %(out)s = theano_try_copy(%(out)s, %(x)s);
-          if (%(out)s == NULL)
+          if (%(out)s == NULL) {
+            // Exception already set
             %(fail)s
+            }
         } else {
           Py_XDECREF(%(out)s);
           %(out)s = %(x)s;
@@ -789,7 +794,7 @@ class GpuAdvancedIncSubtensor1(Op):
                    set_instead_of_inc=int(self.set_instead_of_inc))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (3,)
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
@@ -839,7 +844,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         return super(GpuAdvancedIncSubtensor1_dev20, self).perform(node, inp, out)
 
     def c_code_cache_version(self):
-        return (9,)
+        return (11,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>',
@@ -874,6 +879,7 @@ if (%(inplace)s) {
   %(out)s = theano_try_copy(%(out)s, %(x)s);
 }
 if (!%(out)s) {
+  // Exception already set
   %(fail)s
 }
 if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(set_instead_of_inc)s)) {
