@@ -195,7 +195,9 @@ class CuDNNV51(object):
         algo = algorithms.fromalias(algo)
         if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_0:
             return not is_true_half_config(dtype, precision)
-        # CUDNN_CONVOLUTION_BWD_DATA_ALGO_1: all data type configs supported.
+        if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_1:
+            # CUDNN_CONVOLUTION_BWD_DATA_ALGO_1: all data type configs supported.
+            return True
         if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT:
             return ndim == 2 and (is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision))
         if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING:
