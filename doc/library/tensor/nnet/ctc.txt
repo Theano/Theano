@@ -1,8 +1,8 @@
 .. _libdoc_tensor_nnet_ctc:
 
-===============================================================================
-:mod:`ctc` -- Operation to compute CTC loss and its gradients
-===============================================================================
+===============================================================
+:mod:`ctc` -- Connectionist Temporal Classification (CTC) loss
+===============================================================
 
 .. note::
 
@@ -22,7 +22,5 @@
 .. moduleauthor:: `João Victor Risso <https://github.com/joaovictortr>`_
 
 .. autofunction:: theano.tensor.nnet.ctc.ctc
-.. autofunction:: theano.tensor.nnet.ctc.ConnectionistTemporalClassification
+.. autoclass:: theano.tensor.nnet.ctc.ConnectionistTemporalClassification
 
-.. automodule:: theano.tensor.nnet.ctc
-    :members:
