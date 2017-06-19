@@ -639,7 +639,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
             if not (isinstance(i, np.ndarray) and i.ndim != 0):
                 transp.append(k)
                 nidx_.append(i)
-        transp = transp + range(len(transp), x_.ndim)
+        transp = transp + list(range(len(transp), x_.ndim))
         rtransp = [i for i, _ in sorted(enumerate(transp), key=lambda x:x[1])]
         nidx = nidx_
 
