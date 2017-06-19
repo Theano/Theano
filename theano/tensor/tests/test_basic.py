@@ -2479,16 +2479,12 @@ class TestAlloc(unittest.TestCase):
             grad_derp = theano.grad(derp, some_vector)
             fgrad = theano.function([some_vector], grad_derp,
                                     mode=self.mode)
-            topo_obj = fobj.maker.fgraph.toposort()
-            # <= is needed as the GPU currently don't implement
-            # AdvancedIncSubtensor. When this is the case it can be
-            # replaced with ==.
-            assert np.sum([isinstance(node.op, type(alloc_))
-                           for node in topo_obj]) <= 1
-            topo_grad = fgrad.maker.fgraph.toposort()
 
-            # print subtensor
-            # theano.printing.debugprint(fgrad)
+            topo_obj = fobj.maker.fgraph.toposort()
+            assert np.sum([isinstance(node.op, type(alloc_))
+                           for node in topo_obj]) == 0
+
+            topo_grad = fgrad.maker.fgraph.toposort()
             assert np.sum([isinstance(node.op, type(alloc_))
                            for node in topo_grad]) == n_alloc, (
                                alloc_, subtensor, n_alloc, topo_grad)
