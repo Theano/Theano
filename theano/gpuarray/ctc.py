@@ -27,10 +27,6 @@ class GpuConnectionistTemporalClassification(gof.COp):
     ----------
     compute_grad
         If set to True, enables the computation of gradients of the CTC loss function.
-    Returns
-    -------
-    GPU Op
-        An instance of the GPU CTC loss computation Op
     """
     __props__ = ('compute_grad',)
 
@@ -170,9 +166,8 @@ def gpu_ctc(activations, labels, input_lengths):
 
     Returns
     -------
-    1-D tensor
-        Cost of each example in the minibatch. Tensor is of shape
-        (time index, minibatch index, probabilities).
+    1-D array
+        Cost of each example in the minibatch.
     """
     return GpuConnectionistTemporalClassification()(activations, labels,
                                                     input_lengths)

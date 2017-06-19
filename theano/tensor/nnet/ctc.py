@@ -27,10 +27,6 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
     ----------
     compute_grad
         If set to True, enables the computation of gradients of the CTC loss function.
-    Returns
-    -------
-    Op
-        An instance of the CTC loss computation Op
     """
     __props__ = ('compute_grad',)
 
@@ -158,9 +154,8 @@ def ctc(activations, labels, input_lengths):
 
     Returns
     -------
-    1-D tensor
-        Cost of each example in the minibatch. Tensor is of shape
-        (time index, minibatch index, probabilities).
+    1-D array
+        Cost of each example in the minibatch.
     """
     return ConnectionistTemporalClassification()(activations, labels, input_lengths)
 
