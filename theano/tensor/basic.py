@@ -2321,8 +2321,8 @@ def complex_from_polar(abs, angle):
 
 
 @_scal_elemwise
-def trigamma(x):
-    """Return 2d derivative of gamma function"""
+def polygamma(m, x):
+    """polygamma function"""
 
 
 ##########################
@@ -6758,10 +6758,3 @@ class AllocEmpty(gof.Op):
 
     def R_op(self, inputs, eval_points):
         return [zeros(inputs, self.dtype)]
-
-
-def polygamma(m, x):
-    """
-    (m-1)'th derivative of gammaln
-    """
-    return Elemwise(scal.Polygamma(m, scal.upgrade_to_float))(x)

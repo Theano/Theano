@@ -369,8 +369,8 @@ def conj_inplace(a):
 
 
 @_scal_inplace
-def trigamma_inplace(a):
-    """elementwise trigamma"""
+def polygamma_inplace(m, x):
+    """elementwise polygamma"""
 
 pprint.assign(add_inplace, printing.OperatorPrinter('+=', -2, 'either'))
 pprint.assign(mul_inplace, printing.OperatorPrinter('*=', -1, 'either'))

@@ -9,7 +9,7 @@ from theano.gradient import grad_not_implemented
 from theano.scalar.basic import (UnaryScalarOp, BinaryScalarOp,
                                  exp, upgrade_to_float,
                                  upgrade_to_float64,
-                                 float_types)
+                                 float_types, ScalarOp)
 from theano.scalar.basic import (upgrade_to_float_no_complex,
                                  complex_types, discrete_types,
                                  upcast)
@@ -301,7 +301,7 @@ class Psi(UnaryScalarOp):
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
-        return [gz * trigamma(x)]
+        return [gz * polygamma(3, x)]
 
     def c_support_code(self):
         return (
@@ -546,28 +546,23 @@ class I0(UnaryScalarOp):
 i0 = I0(upgrade_to_float, name='i0')
 
 
-class Polygamma(UnaryScalarOp):
+class Polygamma(ScalarOp):
     """
     (m-1)'th derivative of gammaln
     """
-    __props__ = ('m', )
+    nin = 2
 
-    def __init__(self, m, *args, **kwargs):
-        super(Polygamma, self).__init__(*args, **kwargs)
-        self.m = m
-
-    def impl(self, x):
+    def impl(self, m, x):
         if imported_scipy_special:
-            return scipy.special.polygamma(self.m, x)
+            return scipy.special.polygamma(m, x)
         else:
             # raises an error
             super(Polygamma, self).impl(x)
 
     def grad(self, inp, grads):
-        x, = inp
+        m, x = inp
         gz, = grads
         # derivative is again polygamma
-        poly = Polygamma(self.m+1, upgrade_to_float)
-        return [gz * poly(x)]
+        return [grad_not_implemented(self, 0, m), gz * polygamma(m+1, x)]
 
-trigamma = Polygamma(3, upgrade_to_float, name='trigamma')
+polygamma = Polygamma(upgrade_to_float, name='trigamma')

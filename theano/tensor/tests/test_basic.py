@@ -1714,7 +1714,7 @@ if imported_scipy_special:
     expected_i1 = scipy.special.i1
     expected_iv = scipy.special.iv
     expected_erfcx = scipy.special.erfcx
-    expected_trigamma = partial(scipy.special.polygamma, 3)
+    expected_polygamma = scipy.special.polygamma
     skip_scipy = False
 else:
     expected_erf = []
@@ -1732,7 +1732,7 @@ else:
     expected_i0 = []
     expected_i1 = []
     expected_iv = []
-    expected_trigamma = []
+    expected_polygamma = []
     skip_scipy = "scipy is not present"
 
 ErfTester = makeBroadcastTester(
@@ -1849,31 +1849,31 @@ GammalnInplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy)
 
-_good_broadcast_unary_normal_no_complex_trigamma = dict(
-    normal=[np.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
-    integers=[randint_ranged(-5, 5, (2, 3))],
-    int8=[np.arange(-127, 128, dtype='int8')],
-    uint8=[np.arange(0, 89, dtype='uint8')],
-    uint16=[np.arange(0, 89, dtype='uint16')],
-    empty=[np.asarray([], dtype=config.floatX)],
+_good_broadcast_binary_normal_no_complex_polygamma = dict(
+    normal=[np.arange(0, 5), np.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
+    integers=[np.arange(0, 5), randint_ranged(-5, 5, (2, 3))],
+    int8=[np.arange(0, 5), np.arange(-127, 128, dtype='int8')],
+    uint8=[np.arange(0, 5), np.arange(0, 89, dtype='uint8')],
+    uint16=[np.arange(0, 5), np.arange(0, 89, dtype='uint16')],
+    empty=[np.arange(0, 5), np.asarray([], dtype=config.floatX)],
 )
 
-_grad_broadcast_unary_normal_no_complex_trigamma = dict(
-    normal=[np.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
+_grad_broadcast_binary_normal_no_complex_polygamma = dict(
+    normal=[np.asarray(5, dtype=floatX), np.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)]
 )
 
-TrigammaTester = makeBroadcastTester(
-    op=tensor.trigamma,
-    expected=expected_trigamma,
-    good=_good_broadcast_unary_normal_no_complex_trigamma,
-    grad=_grad_broadcast_unary_normal_no_complex_trigamma,
+PolygammaTester = makeBroadcastTester(
+    op=tensor.polygamma,
+    expected=expected_polygamma,
+    good=_good_broadcast_binary_normal_no_complex_polygamma,
+    grad=_grad_broadcast_binary_normal_no_complex_polygamma,
     eps=1e-6,
     mode=mode_no_scipy,
     skip=skip_scipy)
-TrigammaInplaceTester = makeBroadcastTester(
-    op=inplace.trigamma_inplace,
-    expected=expected_trigamma,
-    good=_good_broadcast_unary_normal_no_complex_trigamma,
+PolygammaInplaceTester = makeBroadcastTester(
+    op=inplace.polygamma_inplace,
+    expected=expected_polygamma,
+    good=_good_broadcast_binary_normal_no_complex_polygamma,
     mode=mode_no_scipy,
     eps=1e-6,
     inplace=True,
