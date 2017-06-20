@@ -100,7 +100,7 @@ def make_checks(loop_orders, dtypes, sub):
             check += """
             if (%%(lv%(j0)s)s_n%(x0)s != %%(lv%(j)s)s_n%(x)s)
             {
-                PyErr_Format(PyExc_ValueError, "Input dimension mis-match. (input[%%%%i].shape[%%%%i] = %%%%lli, input[%%%%i].shape[%%%%i] = %%%%lli)",
+                PyErr_Format(PyExc_ValueError, "Input dimension mis-match. (input[%%%%i].shape[%%%%i] = %%%%lld, input[%%%%i].shape[%%%%i] = %%%%lld)",
                    %(j0)s,
                    %(x0)s,
                    (long long int) %%(lv%(j0)s)s_n%(x0)s,
