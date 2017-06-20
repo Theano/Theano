@@ -2149,7 +2149,12 @@ def local_inplace_gpu_cholesky(node):
 def local_gpu_magma_cholesky(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
-    return GpuMagmaCholesky(lower=op.lower, inplace=op.destructive)
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaCholesky(lower=op.lower, inplace=op.destructive)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
 lifter = op_lifter([slinalg.Cholesky])(local_gpu_magma_cholesky)
 matrix_ops_db.register("local_gpu_magma_cholesky", lifter,
                        'gpuarray', 'fast_compile', 'fast_run', 'magma',
@@ -2174,7 +2179,12 @@ def local_inplace_gpu_magma_cholesky(node):
 def local_gpu_magma_qr(op, context_name, inputs, outputs):
     if not config.magma.enabled or op.mode != 'reduced':
         return
-    return GpuMagmaQR()
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaQR(complete=True)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
 
 
 @register_opt('magma', 'fast_compile')
@@ -2183,7 +2193,12 @@ def local_gpu_magma_qr(op, context_name, inputs, outputs):
 def local_gpu_magma_qr_incomplete(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
-    return GpuMagmaQR(complete=False)
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaQR(complete=False)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
 
 
 # Matrix inverse
@@ -2215,7 +2230,12 @@ def local_inplace_gpu_magma_matrix_inverse(node):
 def local_gpu_magma_eigh(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
-    return GpuMagmaEigh(UPLO=op.UPLO, compute_v=True)
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaEigh(UPLO=op.UPLO, compute_v=True)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
 
 
 # Singular Value Decomposition
