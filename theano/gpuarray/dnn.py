@@ -508,9 +508,10 @@ class GpuDnnConv(DnnBase):
     params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionFwdAlgo_t,
                              choose_algo=bool_t, choose_once=bool_t, choose_time=bool_t,
                              inplace=bool_t,
-                             handle=handle_type)
+                             handle=handle_type,
+                             num_groups=int_t)
 
-    def __init__(self, algo=None, inplace=False):
+    def __init__(self, algo=None, inplace=False, num_groups=1):
         DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_fwd.c"],
                          "APPLY_SPECIFIC(conv_fwd)")
 
@@ -530,6 +531,7 @@ class GpuDnnConv(DnnBase):
         self.choose_algo = self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
         self.choose_once = self.algo in DNN_CONV_ALGO_CHOOSE_ONCE
         self.choose_time = self.algo in DNN_CONV_ALGO_CHOOSE_TIME
+        self.num_groups = num_groups
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -642,9 +644,10 @@ class GpuDnnConvGradW(DnnBase):
     params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionBwdFilterAlgo_t,
                              choose_algo=bool_t, choose_once=bool_t, choose_time=bool_t,
                              inplace=bool_t,
-                             handle=handle_type)
+                             handle=handle_type,
+                             num_groups=int_t)
 
-    def __init__(self, inplace=False, algo=None):
+    def __init__(self, inplace=False, algo=None, num_groups=1):
         DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_gw.c"],
                          "APPLY_SPECIFIC(conv_gw)")
         self.inplace = bool(inplace)
@@ -662,6 +665,7 @@ class GpuDnnConvGradW(DnnBase):
         self.choose_algo = self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
         self.choose_once = self.algo in DNN_CONV_ALGO_CHOOSE_ONCE
         self.choose_time = self.algo in DNN_CONV_ALGO_CHOOSE_TIME
+        self.num_groups = num_groups
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -771,9 +775,10 @@ class GpuDnnConvGradI(DnnBase):
     params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionBwdDataAlgo_t,
                              choose_algo=bool_t, choose_once=bool_t, choose_time=bool_t,
                              inplace=bool_t,
-                             handle=handle_type)
+                             handle=handle_type,
+                             num_groups=int_t)
 
-    def __init__(self, inplace=False, algo=None):
+    def __init__(self, inplace=False, algo=None, num_groups=1):
         DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_gi.c"],
                          "APPLY_SPECIFIC(conv_gi)")
         self.inplace = bool(inplace)
@@ -791,6 +796,7 @@ class GpuDnnConvGradI(DnnBase):
         self.choose_algo = self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
         self.choose_once = self.algo in DNN_CONV_ALGO_CHOOSE_ONCE
         self.choose_time = self.algo in DNN_CONV_ALGO_CHOOSE_TIME
+        self.num_groups = num_groups
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -854,7 +860,7 @@ class GpuDnnConvGradI(DnnBase):
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
-             conv_mode='conv', direction_hint=None, workmem=None,
+             num_groups=1, conv_mode='conv', direction_hint=None, workmem=None,
              algo=None, precision=None):
     """
     GPU convolution using cuDNN from NVIDIA.
@@ -973,7 +979,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                                     filter_dilation=dilation)
     out_shp = assert_conv_shape(out_shp)
     out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
-    return GpuDnnConv(algo=algo)(img, kerns, out, desc)
+    return GpuDnnConv(algo=algo, num_groups=num_groups)(img, kerns, out, desc)
 
 
 def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1, 1, 1),
@@ -1097,7 +1103,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
 
 
 def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
-                   subsample=(1, 1), dilation=(1, 1), conv_mode='conv', precision=None):
+                   subsample=(1, 1), dilation=(1, 1), num_groups=1, conv_mode='conv', precision=None):
     """
     TODO: document this
     """
@@ -1112,7 +1118,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision)(kerns_shp)
     out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*kerns_shp)
-    return GpuDnnConvGradW()(img, topgrad, out, desc)
+    return GpuDnnConvGradW(num_groups=num_groups)(img, topgrad, out, desc)
 
 
 def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
@@ -1125,7 +1131,7 @@ def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
 
 
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
-                  subsample=(1, 1), dilation=(1, 1), conv_mode='conv', precision=None):
+                  subsample=(1, 1), dilation=(1, 1), num_groups=1, conv_mode='conv', precision=None):
     """
     TODO: document this
     """
@@ -1140,7 +1146,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision)(kerns.shape)
     out = GpuAllocEmpty(dtype=kerns.dtype, context_name=ctx_name)(*img_shp)
-    return GpuDnnConvGradI()(kerns, topgrad, out, desc)
+    return GpuDnnConvGradI(num_groups=num_groups)(kerns, topgrad, out, desc)
 
 
 def dnn_gradinput3d(kerns, topgrad, img_shp, border_mode='valid',
@@ -2665,6 +2671,7 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
                         border_mode=op.border_mode,
                         subsample=op.subsample,
                         dilation=op.filter_dilation,
+                        num_groups=op.num_groups,
                         direction_hint='forward!',
                         conv_mode=conv_mode)
     elif isinstance(op, AbstractConv2d_gradWeights):
@@ -2674,6 +2681,7 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
                               border_mode=op.border_mode,
                               subsample=op.subsample,
                               dilation=op.filter_dilation,
+                              num_groups=op.num_groups,
                               conv_mode=conv_mode)
     elif isinstance(op, AbstractConv2d_gradInputs):
         shape = (inp2.shape[0], inp1.shape[1],
@@ -2682,6 +2690,7 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
                              border_mode=op.border_mode,
                              subsample=op.subsample,
                              dilation=op.filter_dilation,
+                             num_groups=op.num_groups,
                              conv_mode=conv_mode)
     return [rval]
 
@@ -2767,17 +2776,17 @@ def local_abstractconv_gi_cudnn(node):
 
 @inplace_allocempty(GpuDnnConv, 2)
 def local_dnn_conv_inplace(node, inputs):
-    return [GpuDnnConv(algo=node.op.algo, inplace=True)(*inputs)]
+    return [GpuDnnConv(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
 
 
 @inplace_allocempty(GpuDnnConvGradW, 2)
 def local_dnn_convgw_inplace(node, inputs):
-    return [GpuDnnConvGradW(algo=node.op.algo, inplace=True)(*inputs)]
+    return [GpuDnnConvGradW(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
 
 
 @inplace_allocempty(GpuDnnConvGradI, 2)
 def local_dnn_convgi_inplace(node, inputs):
-    return [GpuDnnConvGradI(algo=node.op.algo, inplace=True)(*inputs)]
+    return [GpuDnnConvGradI(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
 
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
