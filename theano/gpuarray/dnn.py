@@ -2833,6 +2833,147 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
+class GpuDnnSpatialTfDesc(COp):
+
+    """
+    This Op builds a spatial transformer descriptor for use in spatial transformer network
+    operations.
+    """
+
+    __props__ = ('dimensions', 'precision')
+    params_type = ParamsType(dim0=int_t, dim1=int_t, dim2=int_t, dim3=int_t,
+                             precision=cudnn.cudnnDataType_t)
+
+    def c_headers(self):
+        return ['cudnn.h', 'cudnn_helper.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), config.dnn.include_path]
+
+    def c_libraries(self):
+        return ['cudnn']
+
+    def c_lib_dirs(self):
+        return [config.dnn.library_path]
+
+    def do_constant_folding(self, node):
+        return False
+
+    def __init__(self, dimensions, precision="float32"):
+        COp.__init__(self, ["c_code/spatialtf_desc.c"], "APPLY_SPECIFIC(spatialtf_desc)")
+
+        self.dimensions = dimensions if isinstance(dimensions, tuple) else tuple(dimensions)
+
+        # cuDNN supports only 2D transformations, therefore output tensor must
+        # not exceed 4 dimensions (num_images, num_feature_maps, height, width)
+        assert len(self.dimensions) <= 4
+
+        assert cudnn.cudnnDataType_t.has_alias(precision)
+        self.precision = precision
+
+    def make_node(self):
+        node = Apply(self, [],
+                     [CDataType("cudnnSpatialTransformerDescriptor_t",
+                                freefunc="cudnnDestroySpatialTransformerDescriptor")()])
+        # DebugMode cannot compare the values of CDataType variables, so by
+        # default it returns False all the time. To prevent DebugMode from
+        # complaining because of the MergeOptimizer, we make this variable
+        # always compare to True.
+        out = node.outputs[0]
+        out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
+        return node
+
+    # Grid width
+    dim0 = property(lambda self: self.dimensions[0])
+    # Grid height
+    dim1 = property(lambda self: self.dimensions[1])
+    # Number of feature maps
+    dim2 = property(lambda self: self.dimensions[2] if len(self.subsample) > 2 else 1)
+    # Number of images
+    dim3 = property(lambda self: self.dimensions[3] if len(self.dimensions) > 3 else 1)
+    # Number of dimensions in the output tensor
+    nb_dims = property(lambda self: len(self.dimensions))
+
+    def c_code_cache_version(self):
+        return (super(GpuDnnSpatialTfDesc, self).c_code_cache_version(), version())
+
+
+class GpuDnnGridGeneratorOp(DnnBase):
+
+    """
+    This Op builds a spatial transformer grid generator for use in spatial transformer network
+    operations.
+    """
+
+    __props__ = ()
+    _cop_num_inputs = 3
+    _cop_num_outputs = 1
+
+    def __init__(self):
+        DnnBase.__init__(self, ["c_code/spatialtf_grid.c"], "spatialtf_grid")
+
+    def dnn_context(self, node):
+        return node.outputs[1].type.context_name
+
+    def make_node(self, desc, theta, cx=None):
+        if cx is None:
+            context_name = infer_context_name(theta)
+        else:
+            context_name = infer_context_name(theta, cx)
+
+        # TODO: create output grid
+        grid = GpuArrayType()
+
+        inputs = [desc, theta]
+        outputs = []
+
+        return Apply(self, inputs, outputs)
+
+    def L_op(self, inputs, outputs, output_grads):
+        pass
+
+
+class GpuDnnGridSamplerOp(DnnBase):
+
+    """
+    This Op builds a spatial transformer grid sampler for use in spatial transformer network
+    operations.
+    """
+
+    __props__ = ()
+    _cop_num_inputs = 3
+    _cop_num_outputs = 1
+
+    def __init__(self):
+        DnnBase.__init__(self, ["c_code/spatialtf_sampler.c"], "spatialtf_sampler")
+
+    def dnn_context(self, node):
+        return node.outputs[1].type.context_name
+
+    def make_node(self, desc, grid, inputs):
+        # desc: transformer net descriptor
+        # grid: grid generator created by GpuDnnGridGeneratorOp
+        # inputs: input tensor
+        # TODO:
+        # - create output tensor (y in the cuDNN documentations)
+        pass
+
+    def L_op(self, inputs, outputs, output_grads):
+        pass
+
+
+def dnn_spatialtf_context(dimensions, precision="float32"):
+    return GpuDnnSpatialTfDesc(dimensions, precision)()
+
+
+def dnn_spatialtf_grid():
+    pass
+
+
+def dnn_spatialtf_sampler():
+    pass
+
+
 @local_optimizer([AbstractConv2d, AbstractConv3d])
 def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
@@ -2879,6 +3020,7 @@ def local_dnn_convgw_inplace(node, inputs):
 @inplace_allocempty(GpuDnnConvGradI, 2)
 def local_dnn_convgi_inplace(node, inputs):
     return [GpuDnnConvGradI(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
+
 
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
