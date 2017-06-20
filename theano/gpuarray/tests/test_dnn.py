@@ -1067,7 +1067,7 @@ def get_conv3d_test_cases():
     return itt
 
 
-def run_conv_batched_vs_multicall(inputs_shape, filters_shape, batch_sub, subsample):
+def run_conv_small_batched_vs_multicall(inputs_shape, filters_shape, batch_sub, subsample):
     # Run function for issue $5985 (see tests below): https://github.com/Theano/Theano/issues/5985
 
     # We use GPU RNG to help create big arrays on GPU directly and then avoid transfer.
@@ -1087,7 +1087,7 @@ def run_conv_batched_vs_multicall(inputs_shape, filters_shape, batch_sub, subsam
     inputs_size = 4.0  # sizeof(float32)
     for i in inputs_shape:
         inputs_size *= i
-    print('Input size:', (inputs_size / 1024 / 1024 / 1024), 'Gb')
+    print('(input size', (inputs_size / 1024 / 1024 / 1024), 'Gb)', end=' ')
 
     conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, subsample=subsample)
     # Just compute last inputs to reduce execution time.
@@ -1095,25 +1095,24 @@ def run_conv_batched_vs_multicall(inputs_shape, filters_shape, batch_sub, subsam
     batched_outputs = [dnn.dnn_conv(img=inputs[i:(i + 1)], kerns=filters, algo=algo, subsample=subsample)
                        for i in range(size - batch_sub, size)]
     f = theano.function([], [conv] + batched_outputs, mode=mode_with_gpu)
-    print('Computing')
     outputs = f()
     res_all = outputs[0]
     res_batch = outputs[1:]
-    print("Output shapes:", res_all.shape, res_batch[0].shape)
     for i in range(batch_sub):
-        utt.assert_allclose(res_batch[i], res_all[size - batch_sub + i], atol=1e-6, rtol=1e-6)
+        utt.assert_allclose(res_batch[i], res_all[size - batch_sub + i])
 
 
-def test_batched_conv_success():
-    # With 10 000 inputs. Should pass (tested on GeForce GTX TITAN X, cuDNN 6020).
-    # Subsample is set to (3, 3) to reduce output size.
-    yield (run_conv_batched_vs_multicall, (10000, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))
-
-
-def test_batched_conv_fail():
-    # With 70 000 inputs (vs 10 000 above). Should fail (tested on GeForce GTX TITAN X, cuDNN 6020).
-    # Subsample is set to (3, 3) to reduce output size (useful when error is printed).
-    yield (run_conv_batched_vs_multicall, (70000, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))
+def test_batched_conv_small():
+    # Tested on TITAN X:
+    # pass up to 65536 inputs (inputs size exactly 1Gb), fail with 65536 + 1 inputs and upper.
+    # Is there any limitation around number of elements, or input size ?
+    # But all dimensions and strides for following tensors are under int32 limits.
+    # Maybe the problem is with the internal pointer used by cuDNN to iterate over input
+    # (could this pointer not be able to manage more than 1 Gb?).
+    # NB: Subsample is set to (3, 3) to reduce output size.
+    yield (run_conv_small_batched_vs_multicall, (65535, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))  # OK
+    yield (run_conv_small_batched_vs_multicall, (65536, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))  # OK
+    yield (run_conv_small_batched_vs_multicall, (65537, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))  # ERROR
 
 
 def test_conv3d_fwd():
