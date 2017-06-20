@@ -23,6 +23,7 @@ from ..type import gpuarray_shared_constructor
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, ref_cast
 from . import test_nnet
 from .rnn_support import Model, GRU, LSTM, WrapperLayer
+import unittest
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
 
@@ -2131,3 +2132,136 @@ def test_dnn_rnn_lstm_grad_c():
                                            (i + 1) * len(cudnn_grads_layer)]
         for j, g in enumerate(cudnn_grads_layer):
             utt.assert_allclose(ref_grads_layer[j], g)
+
+
+class Cudnn_grouped_conv(unittest.TestCase):
+    def setUp(self):
+        self.num_groups = [3, 2, 4, 4]
+        self.border_mode = 'valid'
+        self.subsample = (1, 1)
+        self.img_shape = [(5, 6, 5, 5), (4, 4, 7, 5), (3, 8, 5, 3), (2, 4, 7, 7)]
+        self.kern_shape = [(6, 2, 3, 3), (6, 2, 5, 3), (4, 2, 3, 3), (4, 1, 3, 5)]
+        self.top_shape = [(5, 6, 3, 3), (4, 6, 3, 3), (3, 4, 3, 1), (2, 4, 5, 3)]
+        self.filter_dilation = (1, 1)
+        self.mode = mode_with_gpu
+        self.ref_mode = 'FAST_RUN'
+
+    def test_fwd(self):
+        img_sym = theano.tensor.tensor4('img')
+        kern_sym = theano.tensor.tensor4('kern')
+        for imshp, kshp, tshp, groups in zip(self.img_shape, self.kern_shape, self.top_shape, self.num_groups):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+            top = np.random.random(tshp).astype(theano.config.floatX)
+
+            split_imgs = np.split(img, groups, axis=1)
+            split_kern = np.split(kern, groups, axis=0)
+
+            grouped_conv_op = dnn.dnn_conv(img_sym,
+                                           kern_sym,
+                                           border_mode=self.border_mode,
+                                           subsample=self.subsample,
+                                           dilation=self.filter_dilation,
+                                           num_groups=groups)
+
+            grouped_func = theano.function([img_sym, kern_sym], grouped_conv_op, mode=self.mode)
+            grouped_output = grouped_func(img, kern)
+
+            ref_conv_op = theano.tensor.nnet.corr.CorrMM(border_mode=self.border_mode,
+                                                         subsample=self.subsample,
+                                                         filter_dilation=self.filter_dilation)(img_sym, kern_sym[:, :, ::-1, ::-1])
+            ref_func = theano.function([img_sym, kern_sym], ref_conv_op,
+                                       mode=self.ref_mode)
+            ref_concat_output = [ref_func(img_arr, kern_arr)
+                                 for img_arr, kern_arr in zip(split_imgs, split_kern)]
+            ref_concat_output = np.concatenate(ref_concat_output, axis=1)
+
+            utt.assert_allclose(grouped_output, ref_concat_output)
+
+            def dconv(img, kern, out):
+                desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
+                                          conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
+                return dnn.GpuDnnConv(num_groups=groups)(img, kern, out, desc, alpha=0.5, beta=0.75)
+
+            utt.verify_grad(dconv, [img, kern, top], eps=1e-3, mode=mode_with_gpu)
+
+    def test_gradweights(self):
+        img_sym = theano.tensor.tensor4('img')
+        top_sym = theano.tensor.tensor4('top')
+        for imshp, kshp, tshp, groups in zip(self.img_shape, self.kern_shape, self.top_shape, self.num_groups):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+            top = np.random.random(tshp).astype(theano.config.floatX)
+            split_imgs = np.split(img, groups, axis=1)
+            split_top = np.split(top, groups, axis=1)
+
+            grouped_convgrad_op = dnn.dnn_gradweight(img_sym,
+                                                     top_sym,
+                                                     kshp,
+                                                     border_mode=self.border_mode,
+                                                     subsample=self.subsample,
+                                                     dilation=self.filter_dilation,
+                                                     num_groups=groups)
+
+            grouped_func = theano.function([img_sym, top_sym], grouped_convgrad_op, mode=self.mode)
+            grouped_output = grouped_func(img, top)
+
+            ref_conv_op = theano.tensor.nnet.corr.CorrMM_gradWeights(border_mode=self.border_mode,
+                                                                     subsample=self.subsample,
+                                                                     filter_dilation=self.filter_dilation)(img_sym, top_sym, kshp[2:])
+            ref_conv_op = ref_conv_op[:, :, ::-1, ::-1]
+
+            ref_func = theano.function([img_sym, top_sym], ref_conv_op,
+                                       mode=self.ref_mode)
+            ref_concat_output = [ref_func(img_arr, top_arr)
+                                 for img_arr, top_arr in zip(split_imgs, split_top)]
+            ref_concat_output = np.concatenate(ref_concat_output, axis=0)
+
+            utt.assert_allclose(grouped_output, ref_concat_output)
+
+            def dconvw(img, kern, out):
+                desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
+                                          conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
+                return dnn.GpuDnnConvGradW(num_groups=groups)(img, out, kern, desc, alpha=0.75,
+                                           beta=-1.0)
+
+            utt.verify_grad(dconvw, [img, kern, top], eps=1e-3, mode=mode_with_gpu)
+
+    def test_gradinputs(self):
+        kern_sym = theano.tensor.tensor4('kern')
+        top_sym = theano.tensor.tensor4('top')
+        for imshp, kshp, tshp, groups in zip(self.img_shape, self.kern_shape, self.top_shape, self.num_groups):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+            top = np.random.random(tshp).astype(theano.config.floatX)
+            split_kerns = np.split(kern, groups, axis=0)
+            split_top = np.split(top, groups, axis=1)
+
+            grouped_convgrad_op = dnn.dnn_gradinput(kern_sym,
+                                                    top_sym,
+                                                    imshp,
+                                                    border_mode=self.border_mode,
+                                                    subsample=self.subsample,
+                                                    dilation=self.filter_dilation,
+                                                    num_groups=groups)
+            grouped_func = theano.function([kern_sym, top_sym], grouped_convgrad_op, mode=self.mode)
+            grouped_output = grouped_func(kern, top)
+
+            ref_conv_op = theano.tensor.nnet.corr.CorrMM_gradInputs(border_mode=self.border_mode,
+                                                                    subsample=self.subsample,
+                                                                    filter_dilation=self.filter_dilation)(kern_sym[:, :, ::-1, ::-1], top_sym, imshp[2:])
+            ref_func = theano.function([kern_sym, top_sym], ref_conv_op,
+                                       mode=self.ref_mode)
+            ref_concat_output = [ref_func(kern_arr, top_arr)
+                                 for kern_arr, top_arr in zip(split_kerns, split_top)]
+            ref_concat_output = np.concatenate(ref_concat_output, axis=1)
+
+            utt.assert_allclose(grouped_output, ref_concat_output)
+
+            def dconvi(img, kern, out):
+                desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
+                                          conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
+                return dnn.GpuDnnConvGradI(num_groups=groups)(kern, out, img, desc, alpha=-1.0,
+                                           beta=0.0)
+
+            utt.verify_grad(dconvi, [img, kern, top], eps=1e-3, mode=mode_with_gpu)
