@@ -1,17 +1,20 @@
 #section kernels
 
-#kernel max_pool2d_rop_kernel : size, size, size, size, size, size, size, *, *, size, size, size, size, size, size, * :
+#kernel max_pool2d_rop_kernel : size, size, size, size, size, size, size, *, size, *, size, size, size, size, size, size, size, *, size :
 
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void max_pool2d_rop_kernel(const ga_size nthreads,
    const ga_size num, const ga_size channels, const ga_size pooled_height,
    const ga_size pooled_width, const ga_size height, const ga_size width,
-   GLOBAL_MEM const DTYPE_INPUT_0 *x, GLOBAL_MEM const DTYPE_INPUT_1 *ex,
+   GLOBAL_MEM const DTYPE_INPUT_0 *x, const ga_size x_off, GLOBAL_MEM const DTYPE_INPUT_1 *ex, const ga_size ex_off,
    const ga_size kernel_h, const ga_size kernel_w,
    const ga_size stride_h, const ga_size stride_w,
    const ga_size pad_h, const ga_size pad_w,
-   GLOBAL_MEM DTYPE_OUTPUT_0 *z)
+   GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((char *)x) + x_off);
+  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((char *)ex) + ex_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -46,19 +49,22 @@ KERNEL void max_pool2d_rop_kernel(const ga_size nthreads,
   }
 }
 
-#kernel max_pool3d_rop_kernel : size, size, size, size, size, size, size, size, size, *, *, size, size, size, size, size, size, size, size, size, * :
+#kernel max_pool3d_rop_kernel : size, size, size, size, size, size, size, size, size, *, size, *, size, size, size, size, size, size, size, size, size, size, *, size :
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void max_pool3d_rop_kernel(const ga_size nthreads,
    const ga_size num, const ga_size channels, const ga_size pooled_depth,
    const ga_size pooled_height, const ga_size pooled_width,
    const ga_size depth, const ga_size height, const ga_size width,
-   GLOBAL_MEM const DTYPE_INPUT_0 *x, GLOBAL_MEM const DTYPE_INPUT_1 *ex,
+   GLOBAL_MEM const DTYPE_INPUT_0 *x, const ga_size x_off, GLOBAL_MEM const DTYPE_INPUT_1 *ex, const ga_size ex_off,
    const ga_size kernel_d, const ga_size kernel_h, const ga_size kernel_w,
    const ga_size stride_d, const ga_size stride_h, const ga_size stride_w,
    const ga_size pad_d, const ga_size pad_h, const ga_size pad_w,
-   GLOBAL_MEM DTYPE_OUTPUT_0 *z)
+   GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size x_off)
 {
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((char *)x) + x_off);
+  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((char *)ex) + ex_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -167,9 +173,10 @@ int APPLY_SPECIFIC(max_pool_rop)(PyGpuArrayObject *x,
       err = max_pool2d_rop_kernel_scall(1, &num_kernels, 0, num_kernels,
                                         z_dims[0], z_dims[1], z_dims[2], z_dims[3],
                                         x_dims[2], x_dims[3],
-                                        x->ga.data, ex->ga.data,
+                                        x->ga.data, x->ga.offset,
+                                        ex->ga.data, ex->ga.offset,
                                         w[0], w[1], s[0], s[1], p[0], p[1],
-                                        (*z)->ga.data);
+                                        (*z)->ga.data, (*z)->ga.offset);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "GpuMaxPoolRop: max_pool2d_rop_kernel %s.",
@@ -182,9 +189,11 @@ int APPLY_SPECIFIC(max_pool_rop)(PyGpuArrayObject *x,
       err = max_pool3d_rop_kernel_scall(1, &num_kernels, 0, num_kernels,
                                         z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
                                         x_dims[2], x_dims[3], x_dims[4],
-                                        x->ga.data, ex->ga.data,
+                                        x->ga.data, x->ga.offset,
+                                        ex->ga.data, ex->ga.offset,
                                         w[0], w[1], w[2], s[0], s[1], s[2],
-                                        p[0], p[1], p[2], (*z)->ga.data);
+                                        p[0], p[1], p[2],
+                                        (*z)->ga.data, (*z)->ga.offset);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "GpuMaxPoolRop: max_pool3d_rop_kernel %s.",

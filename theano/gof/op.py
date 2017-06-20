@@ -830,6 +830,12 @@ class Op(utils.object2, PureOp, CLinkerOp):
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
 
+        e = FunctionGraph(node.inputs, node.outputs)
+        e_no_recycling = [new_o
+                          for (new_o, old_o) in zip(e.outputs, node.outputs)
+                          if old_o in no_recycling]
+        cl = theano.gof.cc.CLinker().accept(e,
+                                            no_recycling=e_no_recycling)
         # float16 gets special treatment since running
         # unprepared C code will get bad results.
         if not getattr(self, '_f16_ok', False):
@@ -838,16 +844,15 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
             if (any(is_f16(i.type) for i in node.inputs) or
                     any(is_f16(o.type) for o in node.outputs)):
+                # get_dynamic_module is a subset of make_thunk that is reused.
+                # This just try to build the c code
+                # It will raise an error for ops
+                # that don't implement c code. In those cases, we
+                # don't want to print a warning.
+                cl.get_dynamic_module()
                 print("Disabling C code for %s due to unsupported "
                       "float16" % (self,))
                 raise NotImplementedError("float16")
-        e = FunctionGraph(node.inputs, node.outputs)
-        e_no_recycling = [new_o
-                          for (new_o, old_o) in zip(e.outputs, node.outputs)
-                          if old_o in no_recycling]
-        cl = theano.gof.cc.CLinker().accept(e,
-                                            no_recycling=e_no_recycling)
-
         _logger.debug('Trying CLinker.make_thunk')
         outputs = cl.make_thunk(input_storage=node_input_storage,
                                 output_storage=node_output_storage)

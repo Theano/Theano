@@ -12,7 +12,7 @@ encapsulate a Theano graph in an op.
 
 This can be used to encapsulate some functionality in one block. It is
 useful to scale Theano compilation for regular bigger graphs when we
-reuse that encapsulated fonctionality with different inputs many
+reuse that encapsulated functionality with different inputs many
 times. Due to this encapsulation, it can make Theano compilation phase
 faster for graphs with many nodes.
 

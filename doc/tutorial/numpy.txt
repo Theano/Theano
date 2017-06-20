@@ -57,7 +57,7 @@ Numpy does *broadcasting* of arrays of different shapes during
 arithmetic operations. What this means in general is that the smaller 
 array (or scalar) is *broadcasted* across the larger array so that they have
 compatible shapes. The example below shows an instance of
-*broadcastaing*:
+*broadcasting*:
 
 >>> a = numpy.asarray([1.0, 2.0, 3.0])
 >>> b = 2.0

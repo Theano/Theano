@@ -335,7 +335,7 @@ function, then ``a.value`` will always remain 1, ``b`` will always be 2 and
 ``c`` will always be ``12``.
 
 The second observation is that if we use shared variables ( ``W``, ``bvis``,
-``bhid``) but we do not iterate over them (ie scan doesn't really need to know
+``bhid``) but we do not iterate over them (i.e. scan doesn't really need to know
 anything in particular about them, just that they are used inside the
 function applied at each step) you do not need to pass them as arguments.
 Scan will find them on its own and add them to the graph.
@@ -430,7 +430,7 @@ variables passed explicitly to ``OneStep`` and to scan:
                              dtype=theano.config.floatX)
 
     # The new scan, adding strict=True to the original call, and passing
-    # expicitly W, bvis and bhid.
+    # explicitly W, bvis and bhid.
     values, updates = theano.scan(OneStep,
                                   outputs_info=sample,
                                   non_sequences=[W, bvis, bhid],
@@ -523,7 +523,7 @@ the compiled function, the numpy array given to represent this sequence
 should be large enough to cover this values. Assume that we compile the
 above function, and we give as ``u`` the array ``uvals = [0,1,2,3,4,5,6,7,8]``.
 By abusing notations, scan will consider ``uvals[0]`` as ``u[-4]``, and
-will start scaning from ``uvals[4]`` towards the end.
+will start scanning from ``uvals[4]`` towards the end.
 
 
 Conditional ending of Scan
@@ -572,7 +572,7 @@ This section presents the ``scan_checkpoints`` function. In short, this
 function reduces the memory usage of scan (at the cost of more computation
 time) by not keeping in memory all the intermediate time steps of the loop,
 and recomputing them when computing the gradients. This function is therefore
-only useful if you need to compute the gradient of the ouptut of scan with
+only useful if you need to compute the gradient of the output of scan with
 respect to its inputs, and shouldn't be used otherwise.
 
 Before going more into the details, here are its current limitations:
@@ -582,8 +582,8 @@ Before going more into the details, here are its current limitations:
 * It only accepts sequences of the same length.
 * If ``n_steps`` is specified, it has the same value as the length of any
   sequences.
-* It is signly-recurrent, meaning that only the previous time step can be used
-  to compute the current one (ie ``h[t]`` can only depend on ``h[t-1]``). In
+* It is singly-recurrent, meaning that only the previous time step can be used
+  to compute the current one (i.e. ``h[t]`` can only depend on ``h[t-1]``). In
   other words, ``taps`` can not be used in ``sequences`` and ``outputs_info``.
 
 Often, in order to be able to compute the gradients through scan operations,
@@ -652,7 +652,7 @@ This one is simple but still worth pointing out. Theano is able to
 automatically recognize and optimize many computation patterns. However, there
 are patterns that Theano doesn't optimize because doing so would change the
 user interface (such as merging shared variables together into a single one,
-for instance). Additionaly, Theano doesn't catch every case that it could
+for instance). Additionally, Theano doesn't catch every case that it could
 optimize and so it remains useful for performance that the user defines an
 efficient graph in the first place. This is also the case, and sometimes even
 more so, for the graph inside of Scan. This is because it will be executed

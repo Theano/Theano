@@ -14,4 +14,7 @@
 	url = https://github.com/inducer/pycuda
 [submodule "third_party/Lasagne"]
 	path = third_party/Lasagne
-	url = ../../bfomitchev/lasagne.git
+	url = https://github.com/lasagne/Lasagne.git
+[submodule "third_party/platoon"]
+	path = third_party/platoon
+	url = https://github.com/mila-udem/platoon
