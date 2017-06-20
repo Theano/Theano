@@ -1850,23 +1850,22 @@ GammalnInplaceTester = makeBroadcastTester(
     skip=skip_scipy)
 
 _good_broadcast_binary_normal_no_complex_polygamma = dict(
-    normal=[np.arange(0, 5), np.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
-    integers=[np.arange(0, 5), randint_ranged(-5, 5, (2, 3))],
-    int8=[np.arange(0, 5), np.arange(-127, 128, dtype='int8')],
-    uint8=[np.arange(0, 5), np.arange(0, 89, dtype='uint8')],
-    uint16=[np.arange(0, 5), np.arange(0, 89, dtype='uint16')],
-    empty=[np.arange(0, 5), np.asarray([], dtype=config.floatX)],
+    normal=[randint_ranged(0, 5, (5, 3)), np.asarray(rand_ranged(-5, 5, (5, 3)), dtype=floatX)],
+    integers=[randint_ranged(0, 5, (5, 3)), randint_ranged(-5, 5, (5, 3))],
+    int8=[randint_ranged(0, 5, (255, )), np.arange(-127, 128, dtype='int8')],
+    uint8=[randint_ranged(0, 5, (89, )), np.arange(0, 89, dtype='uint8')],
+    uint16=[randint_ranged(0, 5, (89, )), np.arange(0, 89, dtype='uint16')],
+    empty=[np.asarray([], dtype=floatX), np.asarray([], dtype=floatX)],
 )
 
 _grad_broadcast_binary_normal_no_complex_polygamma = dict(
-    normal=[np.asarray(5, dtype=floatX), np.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)]
+    normal=[np.asarray(3), np.asarray(rand_ranged(0, 5, (2, 3)), dtype=floatX)]
 )
 
 PolygammaTester = makeBroadcastTester(
     op=tensor.polygamma,
     expected=expected_polygamma,
     good=_good_broadcast_binary_normal_no_complex_polygamma,
-    grad=_grad_broadcast_binary_normal_no_complex_polygamma,
     eps=1e-6,
     mode=mode_no_scipy,
     skip=skip_scipy)
@@ -1880,6 +1879,19 @@ PolygammaInplaceTester = makeBroadcastTester(
     skip=skip_scipy)
 
 
+def test_verify_polygamma_grad():
+    """Verify Jv gradient.
+
+    Implemented separately due to need to fix first input for which grad is
+    not defined.
+    """
+    v_val, x_val = _grad_broadcast_binary_normal_no_complex_polygamma['normal']
+
+    def fixed_first_input_jv(x):
+        return tensor.polygamma(v_val, x)
+
+    utt.verify_grad(fixed_first_input_jv, [x_val])
+
 _good_broadcast_unary_psi = dict(
     normal=(rand_ranged(1, 10, (2, 3)),),
     empty=(np.asarray([], dtype=config.floatX),),
@@ -1887,10 +1899,15 @@ _good_broadcast_unary_psi = dict(
     uint8=(randint_ranged(1, 10, (2, 3)).astype('uint8'),),
     uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),))
 
+_grad_broadcast_unary_normal_no_complex_psi = dict(
+    normal=[np.asarray(rand_ranged(0, 5, (2, 3)), dtype=floatX)]
+)
+
 PsiTester = makeBroadcastTester(
     op=tensor.psi,
     expected=expected_psi,
     good=_good_broadcast_unary_psi,
+    grad=_grad_broadcast_unary_normal_no_complex_psi,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)

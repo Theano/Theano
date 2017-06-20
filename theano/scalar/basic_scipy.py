@@ -301,7 +301,7 @@ class Psi(UnaryScalarOp):
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
-        return [gz * polygamma(3, x)]
+        return [gz * polygamma(1, x)]
 
     def c_support_code(self):
         return (
@@ -552,11 +552,14 @@ class Polygamma(ScalarOp):
     """
     nin = 2
 
+    @staticmethod
+    def st_impl(m, x):
+        scipy.special.polygamma(m, x)
+
     def impl(self, m, x):
         if imported_scipy_special:
-            return scipy.special.polygamma(m, x)
+            return self.st_impl(m, x)
         else:
-            # raises an error
             super(Polygamma, self).impl(x)
 
     def grad(self, inp, grads):
@@ -565,4 +568,4 @@ class Polygamma(ScalarOp):
         # derivative is again polygamma
         return [grad_not_implemented(self, 0, m), gz * polygamma(m+1, x)]
 
-polygamma = Polygamma(upgrade_to_float, name='trigamma')
+polygamma = Polygamma(upgrade_to_float, name='polygamma')
