@@ -844,7 +844,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         return super(GpuAdvancedIncSubtensor1_dev20, self).perform(node, inp, out)
 
     def c_code_cache_version(self):
-        return (11,)
+        return (12,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>',
@@ -906,8 +906,9 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(set_instead_of_inc)s)) {
         code = """
 /*
  * This is an atomicAdd that works for doubles since that is not provided
- * natively by cuda.
+ * natively by cuda before arch 6.0.
  */
+#if __CUDA_ARCH__ < 600
 __device__ ga_double atomicAdd(ga_double* address, ga_double val) {
     unsigned long long int* address_as_ull =
                                           (unsigned long long int*)address;
@@ -920,6 +921,7 @@ __device__ ga_double atomicAdd(ga_double* address, ga_double val) {
     } while (assumed != old);
     return __longlong_as_double(old);
 }
+#endif
 
 __device__ ga_double atomicExch(ga_double *address, ga_double val) {
     return atomicExch((unsigned long long int *)address,
