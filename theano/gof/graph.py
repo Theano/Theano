@@ -822,7 +822,7 @@ def clone(i, o, copy_inputs=True):
     return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
-def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
+def clone_get_equiv(inputs, outputs, copy_inputs=True, copy_orphans=True, memo=None):
     """
     Return a dictionary that maps from Variable and Apply nodes in the
     original graph to a new node (a clone) in a new graph.
@@ -850,7 +850,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
 
     # clone the inputs if necessary
     for input in inputs:
-        if copy_inputs_and_orphans:
+        if copy_inputs:
             cpy = input.clone()
             cpy.owner = None
             cpy.index = None
@@ -862,7 +862,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     for apply in io_toposort(inputs, outputs):
         for input in apply.inputs:
             if input not in memo:
-                if copy_inputs_and_orphans:
+                if copy_orphans:
                     cpy = input.clone()
                     memo[input] = cpy
                 else:
