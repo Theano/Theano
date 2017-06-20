@@ -34,26 +34,5 @@ int spatialtf_grid(cudnnSpatialTransformerDescriptor_t desc,
         PyErr_SetString( PyExc_TypeError, "Unsupported data type for the number of dimensions" );
     }
 
-    if ( NULL == desc )
-    {
-        err = cudnnCreateSpatialTransformerDescriptor( &desc );
-        if ( CUDNN_STATUS_SUCCESS != err )
-        {
-            PyErr_SetString( PyExc_MemoryError,
-                "Could not allocate spatial transformer descriptor" );
-            return -1;
-        }
-
-        err = cudnnSetSpatialTransformerNdDescriptor( desc, CUDNN_SAMPLER_BILINEAR, dt, , );
-
-        if ( CUDNN_STATUS_SUCCESS != err )
-        {
-            PyErr_Format( PyExc_RuntimeError,
-                "Could not set spatial transformer descriptor: %s",
-                cudnnGetErrorString(err)) ;
-            return -1;
-        }
-    }
-
     return 0;
 }
