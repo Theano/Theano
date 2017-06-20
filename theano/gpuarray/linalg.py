@@ -415,7 +415,8 @@ class GpuMagmaSVD(GpuMagmaBase):
         A = gpu_contiguous(A)
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
-        assert A.dtype == 'float32'
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
         if self.compute_uv:
             return theano.Apply(self, [A],
                                 # return S, U, VT
@@ -504,6 +505,8 @@ class GpuMagmaMatrixInverse(GpuMagmaBase):
         A = gpu_contiguous(A)
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
         return theano.Apply(self, [A], [A.type()])
 
     def get_params(self, node):
@@ -548,6 +551,8 @@ class GpuMagmaCholesky(GpuMagmaBase, CGpuKernelBase):
         A = gpu_contiguous(A)
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
         return theano.Apply(self, [A], [A.type()])
 
     def get_op_params(self):
@@ -583,6 +588,8 @@ class GpuMagmaQR(GpuMagmaBase, CGpuKernelBase):
         A = gpu_contiguous(A)
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
         if self.complete:
             return theano.Apply(self, [A], [A.type(), A.type()])
         else:
@@ -620,6 +627,8 @@ class GpuMagmaEigh(GpuMagmaBase):
         A = gpu_contiguous(A)
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
         if self.compute_v:
             return theano.Apply(self, [A],
                                 [GpuArrayType(A.dtype, broadcastable=[False],
