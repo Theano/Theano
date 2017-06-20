@@ -353,6 +353,7 @@ def gpu_cholesky(A, lower=True):
     return GpuCholesky(lower)(A)
 
 
+# TODO: add support for float64
 class GpuMagmaBase(COp):
     """Base class for magma related operations. Add the necessary headers,
     libraries and optionally the location of headers and library.
