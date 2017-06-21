@@ -12,7 +12,7 @@ from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaCholesky,
                                     GpuMagmaQR, GpuMagmaSVD,
                                     cusolver_available, gpu_matrix_inverse,
                                     gpu_solve, gpu_svd)
-from theano.tensor.nlinalg import (SVD, Eigh, MatrixInverse, QRFull,
+from theano.tensor.nlinalg import (SVD, MatrixInverse, QRFull,
                                    QRIncomplete, eigh, matrix_inverse, qr)
 from theano.tensor.slinalg import Cholesky, cholesky
 from theano.tests import unittest_tools as utt
