@@ -301,13 +301,16 @@ class BaseCorrMM(gof.OpenMPOp):
             break;
     }
 
+    int wdim = unshared ? 4 : 6;
+    int odim = 4; //Can be set to 6 later if required
+
     // Obtain or infer kernel width and height
     // (we need to know it early to be able to handle auto-padding)
     int kH, kW, dil_kH, dil_kW;
     if (direction != 1) {
         // weight is an input variable, we can just read its shape
-        kH = PyArray_DIMS(weights)[2];
-        kW = PyArray_DIMS(weights)[3];
+        kH = PyArray_DIMS(weights)[wdim-2];
+        kW = PyArray_DIMS(weights)[wdim-1];
     }
     else {
         if (%(height)s != -1) {
@@ -361,15 +364,16 @@ class BaseCorrMM(gof.OpenMPOp):
     }
 
     // Infer output shape
-    npy_intp out_dim[4];
+    npy_intp out_dim[6];
+    out_dim[4] = out_dim[5] = 0; //Will be changed if required
     switch(direction) {
     case 0:  // forward pass
         // output is top: (batchsize, num_filters, height, width)
         // height and width: top = (bottom + 2*pad - ((weight-1)*dil + 1)) / sample + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(bottom)[0];
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[0];
-        out_dim[2] = (npy_intp)((PyArray_DIMS(bottom)[2] + 2*padH - ((PyArray_DIMS(weights)[2]-1)*dilH + 1)) / dH + 1);
-        out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - ((PyArray_DIMS(weights)[3]-1)*dilW + 1)) / dW + 1);
+        out_dim[2] = (npy_intp)((PyArray_DIMS(bottom)[2] + 2*padH - ((PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1)) / dH + 1);
+        out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - ((PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1)) / dW + 1);
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
         {
             PyErr_Format(PyExc_ValueError,
@@ -380,7 +384,7 @@ class BaseCorrMM(gof.OpenMPOp):
                          (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
                          (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
                          (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
-                         (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                         (long int)PyArray_DIMS(weights)[wdim-2], (long int)PyArray_DIMS(weights)[wdim-1],
                          (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
                          (long int)out_dim[3]);
             %(fail)s
@@ -391,8 +395,13 @@ class BaseCorrMM(gof.OpenMPOp):
         // height and width: weights = (bottom + 2*pad - (top - 1) * sample - 1) / dil + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[1];
         out_dim[1] = (npy_intp)PyArray_DIMS(bottom)[1];
-        out_dim[2] = (npy_intp)kH;  // already inferred further above
-        out_dim[3] = (npy_intp)kW;  // how convenient
+        if(unshared){
+            odim = 6;
+            out_dim[2] = (npy_intp)PyArray_DIMS(top)[2];
+            out_dim[3] = (npy_intp)PyArray_DIMS(top)[3];
+        }
+        out_dim[wdim-2] = (npy_intp)kH;  // already inferred further above
+        out_dim[wdim-1] = (npy_intp)kW;  // how convenient
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
         {
             PyErr_Format(PyExc_ValueError,
@@ -414,8 +423,8 @@ class BaseCorrMM(gof.OpenMPOp):
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[1];
-        out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH);
-        out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW);
+        out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1 - 2*padH);
+        out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1 - 2*padW);
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
         {
             PyErr_Format(PyExc_ValueError,
@@ -426,7 +435,7 @@ class BaseCorrMM(gof.OpenMPOp):
                          (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
                          (long int)out_dim[3],
                          (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
-                         (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                         (long int)PyArray_DIMS(weights)[wdim-2], (long int)PyArray_DIMS(weights)[wdim-1],
                          (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
                          (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
             %(fail)s
@@ -440,7 +449,7 @@ class BaseCorrMM(gof.OpenMPOp):
     // Prepare output array
     int typenum;
     if ( !(*out
-           && PyArray_NDIM(*out)==4
+           && PyArray_NDIM(*out)==odim
            && PyArray_IS_C_CONTIGUOUS(*out)
            && PyArray_DIMS(*out)[0]==out_dim[0]
            && PyArray_DIMS(*out)[1]==out_dim[1]
@@ -455,7 +464,7 @@ class BaseCorrMM(gof.OpenMPOp):
           typenum = PyArray_TYPE(bottom);
         }
         //Change to PyArray_ZEROS which is faster than PyArray_EMPTY.
-        *out = (PyArrayObject*)PyArray_ZEROS(4,
+        *out = (PyArrayObject*)PyArray_ZEROS(odim,
                                           out_dim,
                                           typenum,
                                           0);
