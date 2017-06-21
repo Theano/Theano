@@ -1,6 +1,6 @@
 #section support_code_apply
 
-int APPLY_SPECIFIC(spatialtf_desc)(cudnnConvolutionDescriptor_t * desc,
+int APPLY_SPECIFIC(spatialtf_desc)(cudnnSpatialTransformerDescriptor_t * desc,
                                    PARAMS_TYPE * params)
 {
     cudnnStatus_t err;
