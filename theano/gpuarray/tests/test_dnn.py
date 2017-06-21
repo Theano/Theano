@@ -2298,3 +2298,28 @@ class Cudnn_grouped_conv(Grouped_conv_noOptim):
     conv2d_gradi_op = dnn.GpuDnnConvGradI
     flip_filter = False
     is_dnn = True
+
+
+def test_dnn_spatialtf_grid_generator():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
+    # shape: (width, height, num_feature_maps, num_images)
+    dims = (256, 256, 3, 2)
+
+    theta = np.asarray([[[1, 0, 0], [0, 1, 0]],
+                        [[1, 0, 0], [0, 1, 0]]], dtype=np.float32)
+
+    # Create Spatial Transformer descriptor
+    desc = dnn.dnn_spatialtf_context(dims)
+
+    context_name = infer_context_name(desc)
+    theta_gpu = as_gpuarray_variable(theta, context_name=context_name)
+
+    grid_generator = dnn.dnn_spatialtf_grid(desc, dims, theta_gpu)
+
+    grid_fn = theano.function([], [grid_generator], mode=mode_with_gpu)
+
+    topo = grid_fn.maker.fgraph.toposort()
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridGeneratorOp)]) == 1
