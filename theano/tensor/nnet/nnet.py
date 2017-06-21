@@ -93,8 +93,8 @@ class SoftmaxWithBias(gof.Op):
             b = np.expand_dims(b, dim)
         # We add the bias to x
         x_plus_b = x + b
-        e_x = np.exp(x_plus_b - x_plus_b.max(axis=ax, keepdims=True))
-        e_x *= 1.0 / e_x.sum(axis=ax, keepdims=True)
+        e_x = np.exp(x_plus_b - x_plus_b.max(axis=tuple(ax), keepdims=True))
+        e_x *= 1.0 / e_x.sum(axis=tuple(ax), keepdims=True)
         # default for copy is True and we don't need a copy if the
         # data type matches.
         output_storage[0][0] = e_x.astype(x_dtype, copy=False)
@@ -564,8 +564,8 @@ class Abstract_softmax(gof.Op):
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
         # Apply softmax on the specified dimension
-        e_x = np.exp(x - x.max(axis=axes, keepdims=True))
-        sm = e_x / e_x.sum(axis=axes, keepdims=True)
+        e_x = np.exp(x - x.max(axis=tuple(axes), keepdims=True))
+        sm = e_x / e_x.sum(axis=tuple(axes), keepdims=True)
         output_storage[0][0] = sm
 
     def L_op(self, inp, outputs, grads):
@@ -823,15 +823,15 @@ class Abstract_logsoftmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         x, axes = input_storage
-        xdev = x - x.max(axis=axes, keepdims=True)
-        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
+        xdev = x - x.max(axis=tuple(axes), keepdims=True)
+        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=tuple(axes), keepdims=True))
         output_storage[0][0] = lsm
 
     def grad(self, inp, grads):
         x, axes = inp
         sm = abstract_softmax_op(x, axes)
         axes_grad = theano.gradient.grad_undefined(self, 1, axes)
-        return [grads[0] - tensor.sum(grads[0], axis=axes.eval(), keepdims=True) * sm, axes_grad]
+        return [grads[0] - tensor.sum(grads[0], axis=tuple(axes.eval()), keepdims=True) * sm, axes_grad]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
@@ -1155,18 +1155,20 @@ def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
 
-def softmax(c, axis=(-1)):
+def softmax(c, axis=(-1,)):
     c = tensor.as_tensor_variable(c)
-    if c.broadcastable[-1]:
-        warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
+    for ax in tuple(axis):
+        if c.broadcastable[ax]:
+            warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
     axis = tensor.check_and_normalize_axes(c, axis)
     return softmax_op(c, axis)
 
 
 def logsoftmax(c, axis=(-1,)):
     c = tensor.as_tensor_variable(c)
-    if c.broadcastable[-1]:
-        warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
+    for ax in tuple(axis):
+        if c.broadcastable[ax]:
+            warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
     axis = tensor.check_and_normalize_axes(c, axis)
     return logsoftmax_op(c, axis)
 
@@ -1807,7 +1809,7 @@ class CrossentropyCategorical1Hot(gof.Op):
         if _coding_dist.type.ndim == 1:
             _coding_dist = tensor.shape_padleft(_coding_dist, n_ones=1)
         if _coding_dist.type.ndim != 2:
-            raise TypeError('iatrix required for argument: coding_dist')
+            raise TypeError('matrix required for argument: coding_dist')
         if _true_one_of_n.type not in (tensor.lvector, tensor.ivector):
             raise TypeError(
                 'integer vector required for argument: true_one_of_n'
@@ -2815,7 +2817,7 @@ def elu(x, alpha=1):
         "Fast and Accurate Deep Network Learning by
         Exponential Linear Units (ELUs)" <http://arxiv.org/abs/1511.07289>`.
     """
-    return tensor.switch(x > 0, x, alpha * (tensor.exp(x) - 1))
+    return tensor.switch(x > 0, x, alpha * tensor.expm1(x))
 
 
 class ScalarSoftsign(theano.scalar.UnaryScalarOp):
