@@ -2223,7 +2223,7 @@ class Cudnn_grouped_conv(unittest.TestCase):
                 desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                                           conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
                 return dnn.GpuDnnConvGradW(num_groups=groups)(img, out, kern, desc, alpha=0.75,
-                                           beta=-1.0)
+                                                              beta=-1.0)
 
             utt.verify_grad(dconvw, [img, kern, top], eps=1e-3, mode=mode_with_gpu)
 
@@ -2262,6 +2262,6 @@ class Cudnn_grouped_conv(unittest.TestCase):
                 desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                                           conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
                 return dnn.GpuDnnConvGradI(num_groups=groups)(kern, out, img, desc, alpha=-1.0,
-                                           beta=0.0)
+                                                              beta=0.0)
 
             utt.verify_grad(dconvi, [img, kern, top], eps=1e-3, mode=mode_with_gpu)
