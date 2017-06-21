@@ -803,7 +803,8 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
             self.header_dirs = ()
             self.libraries = ()
             self.lib_dirs = ()
-            self.extra_support_code = ""
+        if not hasattr(self, 'version'):
+            self.version = None
 
 
 class CDataTypeConstant(graph.Constant):
