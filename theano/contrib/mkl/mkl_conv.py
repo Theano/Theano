@@ -1018,6 +1018,116 @@ class ConvGradWeights(MKLConvBase):
         self.filter_flip = filter_flip
         self.filter_dilation = filter_dilation
 
+    def c_cleanup_code_struct(self, node, name):
+        if node.inputs[0].type.dtype == "float32":
+            precision = "F32"
+        elif node.inputs[0].type.dtype == "float64":
+            precision = "F64"
+        ccode = """
+            // release layout
+            if (weight_usr_layout) {
+                dnnLayoutDelete_%(precision)s(weight_usr_layout);
+                weight_usr_layout = NULL;
+            }
+
+            if (weight_internal_layout) {
+                dnnLayoutDelete_%(precision)s(weight_internal_layout);
+                weight_internal_layout = NULL;
+            }
+
+            if (image_internal_layout) {
+                dnnLayoutDelete_%(precision)s(image_internal_layout);
+                image_internal_layout = NULL;
+            }
+
+            if (gradz_internal_layout_for_weight) {
+                dnnLayoutDelete_%(precision)s(gradz_internal_layout_for_weight);
+                gradz_internal_layout_for_weight = NULL;
+            }
+
+            if (gradz_internal_layout_for_bias) {
+                dnnLayoutDelete_%(precision)s(gradz_internal_layout_for_bias);
+                gradz_internal_layout_for_bias = NULL;
+            }
+            if (image_internal_layout) {
+                dnnLayoutDelete_%(precision)s(image_internal_layout);
+                image_internal_layout = NULL;
+            }
+
+            if (bias_usr_layout) {
+                dnnLayoutDelete_%(precision)s(bias_usr_layout);
+                bias_usr_layout = NULL;
+            }
+
+            if (bias_internal_layout) {
+                dnnLayoutDelete_%(precision)s(bias_internal_layout);
+                bias_internal_layout = NULL;
+            }
+
+            // release primitive
+            if (pConvolutionBwdFilter) {
+                dnnDelete_%(precision)s(pConvolutionBwdFilter);
+                pConvolutionBwdFilter = NULL;
+            }
+
+            if (pConvolutionBwdBias) {
+                dnnDelete_%(precision)s(pConvolutionBwdBias);
+                pConvolutionBwdBias = NULL;
+            }
+
+            if (weight_from_internal) {
+                dnnDelete_%(precision)s(weight_from_internal);
+                weight_from_internal = NULL;
+            }
+
+            if (bias_from_internal) {
+                dnnDelete_%(precision)s(bias_from_internal);
+                bias_from_internal = NULL;
+            }
+
+            if (internal_to_internal_image) {
+                dnnDelete_%(precision)s(internal_to_internal_image);
+                internal_to_internal_image = NULL;
+            }
+
+            if (gradz_to_internal_for_weight) {
+                dnnDelete_%(precision)s(gradz_to_internal_for_weight);
+                gradz_to_internal_for_weight = NULL;
+            }
+
+            if (gradz_to_internal_for_bias) {
+                dnnDelete_%(precision)s(gradz_to_internal_for_bias);
+                gradz_to_internal_for_bias = NULL;
+            }
+
+            // release buffer
+            if (weight_buf) {
+                dnnReleaseBuffer_%(precision)s(weight_buf);
+                weight_buf = NULL;
+            }
+
+            if (image_buf) {
+                dnnReleaseBuffer_%(precision)s(image_buf);
+                image_buf = NULL;
+            }
+
+            if (gradz_buf_for_weight) {
+                dnnReleaseBuffer_%(precision)s(gradz_buf_for_weight);
+                gradz_buf_for_weight = NULL;
+            }
+
+            if (gradz_buf_for_bias) {
+                dnnReleaseBuffer_%(precision)s(gradz_buf_for_bias);
+                gradz_buf_for_bias = NULL;
+            }
+
+            if (bias_buf) {
+                dnnReleaseBuffer_%(precision)s(bias_buf);
+                bias_buf = NULL;
+            }
+        """ % locals()
+        return ccode
+
     def make_node(self, image, weight, gradz, bias=None):
         if not isinstance(image.type, mkl_type.MKLNdarrayType) or image.type.ndim is not 4:
             raise TypeError('ConvGradWeights: input image should be 4-dim MKLNdarray')
@@ -1178,7 +1288,7 @@ class ConvGradWeights(MKLConvBase):
                            zSize, weightSize, convStride, convPadding, dnnBorderZeros), err );
 
                 // For internal weight
-                CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&bwdf_weight_internal_layout,
+                CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&weight_internal_layout,
                            pConvolutionBwdFilter, dnnResourceDiffFilter), err );
 
                 CHECK_ERR( dnnLayoutCreate_%(precision)s(&weight_usr_layout,
