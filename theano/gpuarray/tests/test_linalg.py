@@ -7,12 +7,14 @@ from numpy.linalg.linalg import LinAlgError
 
 import theano
 from theano import config
-from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaMatrixInverse,
+from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaCholesky,
+                                    GpuMagmaEigh, GpuMagmaMatrixInverse,
+                                    GpuMagmaQR, GpuMagmaSVD,
                                     cusolver_available, gpu_matrix_inverse,
-                                    gpu_solve, gpu_svd, GpuMagmaCholesky,
-                                    GpuMagmaQR, GpuMagmaEigh)
-from theano.tensor.nlinalg import matrix_inverse, qr, eigh
-from theano.tensor.slinalg import cholesky
+                                    gpu_solve, gpu_svd)
+from theano.tensor.nlinalg import (SVD, Eigh, MatrixInverse, QRFull,
+                                   QRIncomplete, eigh, matrix_inverse, qr)
+from theano.tensor.slinalg import Cholesky, cholesky
 from theano.tests import unittest_tools as utt
 
 from .. import gpuarray_shared_constructor
@@ -215,6 +217,20 @@ class TestMagma(unittest.TestCase):
     def setUp(self):
         if not config.magma.enabled:
             self.skipTest('Magma is not enabled, skipping test')
+
+    def test_magma_opt_float16(self):
+        ops_to_gpu = [(MatrixInverse(), GpuMagmaMatrixInverse),
+                      (SVD(), GpuMagmaSVD),
+                      (QRFull(mode='reduced'), GpuMagmaQR),
+                      (QRIncomplete(mode='r'), GpuMagmaQR),
+                      # TODO: add support for float16 to Eigh numpy
+                      # (Eigh(), GpuMagmaEigh),
+                      (Cholesky(), GpuMagmaCholesky)]
+        for op, gpu_op in ops_to_gpu:
+            A = theano.tensor.matrix("A", dtype="float16")
+            fn = theano.function([A], op(A), mode=mode_with_gpu.excluding('cusolver'))
+            assert any([isinstance(node.op, gpu_op)
+                        for node in fn.maker.fgraph.toposort()])
 
     def test_gpu_matrix_inverse(self):
         A = theano.tensor.fmatrix("A")

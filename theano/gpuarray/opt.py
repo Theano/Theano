@@ -2183,7 +2183,8 @@ def local_gpu_magma_qr(op, context_name, inputs, outputs):
         return
     op = GpuMagmaQR(complete=True)
     if inputs[0].dtype == 'float16':
-        return op(inputs[0].astype('float32')).astype('float16')
+        outputs = op(inputs[0].astype('float32'))
+        return [o.astype('float16') for o in outputs]
     return op
 
 
