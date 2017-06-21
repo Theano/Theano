@@ -16,7 +16,9 @@ from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 from .test_basic_ops import rand_gpuarray
 from ..elemwise import (GpuElemwise, GpuDimShuffle,
                         GpuCAReduceCuda, GpuCAReduceCPY, GpuErfinv, GpuErfcinv)
+from ..dnn import GpuDnnReduction
 from ..type import GpuArrayType, get_context, gpuarray_shared_constructor
+
 
 from pygpu import ndgpuarray as gpuarray
 
@@ -346,7 +348,9 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
 
 class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
-    op = GpuCAReduceCuda
+
+    # GpuDnnReduction doesn't cover all cases, but should cover some
+    op = (GpuCAReduceCuda, GpuDnnReduction)
     # Currently we don't support reduction on 0 axis
     axes = [None, 0, 1, 1, [0], [1], [0, 1]]
     # We don't support complex dtype

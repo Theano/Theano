@@ -16,9 +16,11 @@ from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape, get_conv_gradinputs_shape
 from theano.tensor.nnet import bn
 
+from theano.tensor.tests import test_elemwise
+
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
-from ..type import gpuarray_shared_constructor
+from ..type import gpuarray_shared_constructor, get_context
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, ref_cast
 from . import test_nnet
@@ -1426,6 +1428,27 @@ class test_SoftMax(test_nnet.test_SoftMax):
         # Compare the output of the function with the reference function
         inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
         utt.assert_allclose(f(inp), f_ref(inp))
+
+
+def dnn_reduction(nd, idtype, acc_dtype, odtype):
+    inp = T.TensorType(idtype, (False,) * nd)()
+    res = inp.sum(acc_dtype=acc_dtype, dtype=odtype)
+    f = theano.function([inp], res, mode=mode_with_gpu)
+    assert any(isinstance(n.op, dnn.GpuDnnReduction)
+               for n in f.maker.fgraph.apply_nodes)
+
+
+def test_dnn_reduction_opt():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    for nd in range(1, 9):
+        yield dnn_reduction, nd, 'float32', 'float32', 'float32'
+
+    for idtype, adtype, odtype in (('float64', 'float64', 'float64'),
+                                   ('float16', 'float32', 'float16'),
+                                   ('float16', 'float32', 'float32')):
+        yield dnn_reduction, 2, idtype, adtype, odtype
 
 
 def test_dnn_batchnorm_train():
