@@ -214,7 +214,7 @@ class TestMagma(unittest.TestCase):
         N = 1000
         A_val = rand(N, N).astype('float32')
         A_val_inv = fn(A_val)
-        utt.assert_allclose(np.dot(A_val_inv, A_val), np.eye(N), atol=1e-3, rtol=1e-3)
+        utt.assert_allclose(value=np.dot(A_val_inv, A_val), expected=np.eye(N), atol=1e-2)
 
     def test_gpu_matrix_inverse_inplace(self):
         N = 1000
@@ -223,7 +223,7 @@ class TestMagma(unittest.TestCase):
         fn = theano.function([], GpuMagmaMatrixInverse(inplace=True)(A_val_gpu),
                              mode=mode_with_gpu, accept_inplace=True)
         fn()
-        utt.assert_allclose(np.dot(A_val_gpu.get_value(), A_val_copy), np.eye(N), atol=1e-3, rtol=1e-3)
+        utt.assert_allclose(value=np.dot(A_val_gpu.get_value(), A_val_copy), expected=np.eye(N), atol=1e-2)
 
     def test_gpu_matrix_inverse_inplace_opt(self):
         A = theano.tensor.fmatrix("A")
