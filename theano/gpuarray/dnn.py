@@ -502,7 +502,7 @@ class GpuDnnConv(DnnBase):
 
     """
     _f16_ok = True
-    __props__ = ('algo', 'inplace')
+    __props__ = ('algo', 'inplace', 'num_groups')
 
     check_input = False
     params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionFwdAlgo_t,
@@ -638,7 +638,7 @@ class GpuDnnConvGradW(DnnBase):
 
     """
     _f16_ok = True
-    __props__ = ('algo', 'inplace')
+    __props__ = ('algo', 'inplace', 'num_groups')
 
     check_input = False
     params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionBwdFilterAlgo_t,
@@ -769,7 +769,7 @@ class GpuDnnConvGradI(DnnBase):
 
     """
     _f16_ok = True
-    __props__ = ('algo', 'inplace',)
+    __props__ = ('algo', 'inplace', 'num_groups')
 
     check_input = False
     params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionBwdDataAlgo_t,
