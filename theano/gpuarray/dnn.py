@@ -542,6 +542,8 @@ class GpuDnnConv(DnnBase):
                 self.algo = config.dnn.conv.algo_fwd
         if not hasattr(self, 'inplace'):
             self.inplace = False
+        if not hasattr(self, 'num_groups'):
+            self.num_groups = 1
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None):
         ctx_name = infer_context_name(img, kern, output)
@@ -675,6 +677,8 @@ class GpuDnnConvGradW(DnnBase):
             self.inplace = False
         if not hasattr(self, 'algo'):
             self.algo = config.dnn.conv.algo_bwd_filter
+        if not hasattr(self, 'num_groups'):
+            self.num_groups = 1
 
     def grad(self, inp, grads):
         img, top, output, desc, alpha, beta = inp
@@ -806,6 +810,8 @@ class GpuDnnConvGradI(DnnBase):
             self.algo = config.dnn.conv.algo_bwd_data
         if not hasattr(self, 'inplace'):
             self.inplace = False
+        if not hasattr(self, 'num_groups'):
+            self.num_groups = 1
 
     def grad(self, inp, grads):
         kerns, top, output, desc, alpha, beta = inp
