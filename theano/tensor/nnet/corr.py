@@ -535,8 +535,7 @@ class CorrMM(BaseCorrMM):
             kshp,
             self.border_mode,
             self.subsample,
-            self.filter_dilation,
-            self.unshared)
+            self.filter_dilation)
         return [res]
 
     def c_code(self, node, nodename, inp, out_, sub):
