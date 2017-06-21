@@ -287,11 +287,11 @@ SUPPORTED_DNN_CONV_ALGO_RUNTIME = ('guess_once', 'guess_on_shape_change', 'time_
 
 # Those are the supported algorithm by Theano,
 # The tests will reference those lists.
-SUPPORTED_DNN_CONV_ALGO_FWD = ('small', 'none', 'large', 'fft', 'fft_tiling', 'winograd') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
+SUPPORTED_DNN_CONV_ALGO_FWD = ('small', 'none', 'large', 'fft', 'fft_tiling', 'winograd', 'winograd_non_fused') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
 
-SUPPORTED_DNN_CONV_ALGO_BWD_DATA = ('none', 'deterministic', 'fft', 'fft_tiling', 'winograd') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
+SUPPORTED_DNN_CONV_ALGO_BWD_DATA = ('none', 'deterministic', 'fft', 'fft_tiling', 'winograd', 'winograd_non_fused') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
 
-SUPPORTED_DNN_CONV_ALGO_BWD_FILTER = ('none', 'deterministic', 'fft', 'small') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
+SUPPORTED_DNN_CONV_ALGO_BWD_FILTER = ('none', 'deterministic', 'fft', 'small', 'winograd_non_fused', 'fft_tiling') + SUPPORTED_DNN_CONV_ALGO_RUNTIME
 
 SUPPORTED_DNN_CONV_PRECISION = ('as_input_f32', 'as_input', 'float16', 'float32', 'float64')
 

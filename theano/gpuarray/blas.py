@@ -552,8 +552,8 @@ class BaseGpuCorrMM(CGpuKernelBase):
         return [os.path.dirname(__file__)]
 
     def c_code_cache_version(self):
-        # Raise this whenever modifying the code below.
-        return (7,)
+        # Raise this whenever modifying the C code (including the file).
+        return (8,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """

@@ -1,13 +1,14 @@
 #section kernels
 
-#kernel eye : *, size, size :
+#kernel eye : *, size, size, size :
 /* The eye name will be used to generate supporting objects.  The only
    you probably need to care about is the kernel object which will be
    named 'k_' + <the name above> (k_eye in this case).  This name also
    has to match the kernel function name below.
  */
 
-KERNEL void eye(GLOBAL_MEM DTYPE_OUTPUT_0 *a, ga_size n, ga_size m) {
+KERNEL void eye(GLOBAL_MEM DTYPE_OUTPUT_0 *a, ga_size a_off, ga_size n, ga_size m) {
+  a = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)a) + a_off);
   ga_size nb = n < m ? n : m;
   for (ga_size i = LID_0; i < nb; i += LDIM_0) {
     a[i*m + i] = 1;
@@ -37,7 +38,7 @@ int APPLY_SPECIFIC(tstgpueye)(PyArrayObject *n, PyArrayObject *m,
   ls = 1;
   gs = 256;
   /* The eye_call name comes from the kernel declaration above. */
-  err = eye_call(1, &gs, &ls, 0, (*z)->ga.data, dims[0], dims[1]);
+  err = eye_call(1, &gs, &ls, 0, (*z)->ga.data, (*z)->ga.offset, dims[0], dims[1]);
   if (err != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError,
                  "gpuarray error: kEye: %s. n%lu, m=%lu.",
