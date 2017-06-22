@@ -25,7 +25,7 @@ from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
-    SymbolicOutput, std_fgraph)
+    std_fgraph)
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
 
