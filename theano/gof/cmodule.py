@@ -447,6 +447,10 @@ def get_safe_part(key):
 
     # Find the md5 hash part.
     c_link_key = key[1]
+    # In case in the future, we don't have an md5 part and we have
+    # such stuff in the cache.  In that case, we can set None, and the
+    # rest of the cache mechanism will just skip that key.
+    md5 = None
     for key_element in c_link_key[1:]:
         if (isinstance(key_element, string_types) and
                 key_element.startswith('md5:')):
