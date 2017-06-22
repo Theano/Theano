@@ -1437,6 +1437,8 @@ class CLinker(link.Linker):
         for node_pos, node in enumerate(order):
             if hasattr(node.op, 'c_code_cache_version_apply'):
                 version.append(node.op.c_code_cache_version_apply(node))
+            if hasattr(node.op, '__props__'):
+                version.append(node.op.__props__)
             for i in node.inputs:
                 version.append(i.type.c_code_cache_version())
             for o in node.outputs:
