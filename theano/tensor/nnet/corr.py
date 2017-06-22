@@ -301,8 +301,9 @@ class BaseCorrMM(gof.OpenMPOp):
             break;
     }
 
-    int wdim = unshared ? 4 : 6;
-    int odim = 4; //Can be set to 6 later if required
+    int wdim, odim;
+    wdim = unshared ? 6 : 4;
+    odim = 4; //Can be set to 6 later if required
 
     // Obtain or infer kernel width and height
     // (we need to know it early to be able to handle auto-padding)
@@ -471,7 +472,7 @@ class BaseCorrMM(gof.OpenMPOp):
         if (NULL == *out)
         {
             PyErr_Format(PyExc_RuntimeError,
-                    "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
+                    "BaseCorrMM: Failed to allcate output of %%lld x %%lld x %%lld x %%lld",
                     (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3]);
             %(fail)s
         }
