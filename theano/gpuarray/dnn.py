@@ -435,7 +435,8 @@ class GpuDnnConvDesc(COp):
 
         node = Apply(self, [kern_shape],
                      [CDataType("cudnnConvolutionDescriptor_t",
-                                freefunc="cudnnDestroyConvolutionDescriptor")()])
+                                freefunc="cudnnDestroyConvolutionDescriptor",
+                                version=version(raises=False))()])
         # DebugMode cannot compare the values of CDataType variables, so by
         # default it returns False all the time. To prevent DebugMode from
         # complaining because of the MergeOptimizer, we make this variable
@@ -1218,7 +1219,8 @@ class GpuDnnPoolDesc(Op):
     def make_node(self):
         node = Apply(self, [],
                      [CDataType("cudnnPoolingDescriptor_t",
-                                freefunc="cudnnDestroyPoolingDescriptor")()])
+                                freefunc="cudnnDestroyPoolingDescriptor",
+                                version=version(raises=False))()])
         # DebugMode cannot compare the values of CDataType variables, so by
         # default it returns False all the time. To prevent DebugMode from
         # complaining because of the MergeOptimizer, we make this variable
@@ -1879,7 +1881,8 @@ class GpuDnnBatchNormGrad(DnnBase):
 
 gpudata_type = CDataType('gpudata *', 'gpudata_release')
 dropoutdesc_type = CDataType('cudnnDropoutDescriptor_t',
-                             'cudnnDestroyDropoutDescriptor')
+                             'cudnnDestroyDropoutDescriptor',
+                             version=version(raises=False))
 
 
 class GpuDnnDropoutOp(DnnBase):
@@ -1948,7 +1951,8 @@ def dropout(x, dropout=0.0, seed=4242):
     return y, desc, odesc, states
 
 rnndesc_type = CDataType('cudnnRNNDescriptor_t',
-                         'cudnnDestroyRNNDescriptor')
+                         'cudnnDestroyRNNDescriptor',
+                         version=version(raises=False))
 
 
 def as_i32(v):
