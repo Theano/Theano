@@ -613,11 +613,10 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
         instances already installed.
 
     """
-    updates = [spec.update for spec in input_specs if spec.update]
     equivalence_tracker = _VariableEquivalenceTracker()
     fgraph, updates = std_fgraph(input_specs, output_specs, accept_inplace)
     fgraph.attach_feature(equivalence_tracker)
-    return fgraph, list(map(SymbolicOutput, updates)), equivalence_tracker
+    return fgraph, updates, equivalence_tracker
 
 
 class DataDestroyed():
