@@ -88,7 +88,8 @@ def local_abstractconv_gemm(node):
         kern = kern[:, :, ::-1, ::-1]
     rval = CorrMM(border_mode=node.op.border_mode,
                   subsample=node.op.subsample,
-                  filter_dilation=node.op.filter_dilation)(img, kern)
+                  filter_dilation=node.op.filter_dilation,
+                  unshared=node.op.unshared)(img, kern)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -133,7 +134,8 @@ def local_abstractconv_gradweight_gemm(node):
 
     rval = CorrMM_gradWeights(border_mode=node.op.border_mode,
                               subsample=node.op.subsample,
-                              filter_dilation=node.op.filter_dilation)(img, topgrad, shape)
+                              filter_dilation=node.op.filter_dilation,
+                              unshared=node.op.unshared)(img, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     # need to flip the kernel if necessary
@@ -190,8 +192,8 @@ def local_abstractconv_gradinputs_gemm(node):
         kern = kern[:, :, ::-1, ::-1]
     rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
-                             filter_dilation=node.op.filter_dilation)(kern, topgrad,
-                                                                      shape)
+                             filter_dilation=node.op.filter_dilation,
+                             unshared=node.op.unshared)(kern, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -237,6 +239,8 @@ def local_conv2d_cpu(node):
         return None
     if not node.op.filter_flip:
         # Not tested yet
+        return None
+    if node.op.unshared:
         return None
 
     rval = conv2d(img, kern,
@@ -295,6 +299,8 @@ def local_conv2d_gradweight_cpu(node):
     if not node.op.filter_flip:
         # Not tested yet
         return
+    if node.op.unshared:
+        return None
 
     if node.op.border_mode == 'valid' and \
             (node.op.subsample != (1, 1)):
@@ -446,6 +452,8 @@ def local_conv2d_gradinputs_cpu(node):
         return None
     if not node.op.filter_flip:
         # Not tested yet
+        return None
+    if node.op.unshared:
         return None
 
     # Conv 3d implementation, needed when subsample > 2

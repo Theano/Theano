@@ -472,7 +472,7 @@ class BaseCorrMM(gof.OpenMPOp):
         if (NULL == *out)
         {
             PyErr_Format(PyExc_RuntimeError,
-                    "BaseCorrMM: Failed to allcate output of %%lld x %%lld x %%lld x %%lld",
+                    "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
                     (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3]);
             %(fail)s
         }

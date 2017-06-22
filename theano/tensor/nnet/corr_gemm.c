@@ -258,13 +258,17 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                    bottomWidth, kH, kW, dilH, dilW, padH, padW, dH, dW,
                    (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
             // Second, gemm
-            %(gemm)s(&NTrans, &NTrans,
-                   &N_, &M_, &K_,
-                   &one,
-                   (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride, &N_,
-                   (%(float_type)s*)PyArray_DATA(weight), &K_,
-                   &zero,
-                   (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_);
+            if(unshared){;
+            }
+            else{
+                %(gemm)s(&NTrans, &NTrans,
+                       &N_, &M_, &K_,
+                       &one,
+                       (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride, &N_,
+                       (%(float_type)s*)PyArray_DATA(weight), &K_,
+                       &zero,
+                       (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_);
+            }
         }
         // Restore to previous blas threads
         %(blas_set_num_threads)s(blas_threads_saved);

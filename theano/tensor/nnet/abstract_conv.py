@@ -1601,23 +1601,27 @@ class BaseAbstractConv(Op):
                                                               out_shape[0], out_shape[1]))
         out = np.zeros(out_shape, dtype=inp.dtype)
 
-        for row in xrange(out_shape[0]):
-            for col in xrange(out_shape[1]):
-                if direction == "forward":
+        if direction == "forward":
+            for row in xrange(out_shape[0]):
+                for col in xrange(out_shape[1]):
                     out[row, col] += np.sum(np.multiply(inp[row:row + kern.shape[2],
                                                         col:col + kern.shape[3]],
                                             kern[row, col, ::-1, ::-1]))
-                elif direction == "backprop weights":
+        elif direction == "backprop weights":
+            for row in xrange(out_shape[0]):
+                for col in xrange(out_shape[1]):
                     out[row, col, ...] += kern[row, col] * \
                         inp[row:row + out_shape[2], col:col + out_shape[3]]
-                elif direction == "backprop inputs":
-                    if row < kern.shape[0] and col < kern.shape[1]:
-                        for k_row in xrange(kern.shape[2]):
-                            for k_col in xrange(kern.shape[3]):
-                                out[row + k_row, col + k_col] += inp[row, col] * \
-                                    kern[row, col, -(k_row + 1), -(k_col + 1)]
-                else:
-                    raise ValueError("unshared2d: invalid value for 'direction'")
+
+        elif direction == "backprop inputs":
+            for row in xrange(kern.shape[0]):
+                for col in xrange(kern.shape[1]):
+                    for k_row in xrange(kern.shape[2]):
+                        for k_col in xrange(kern.shape[3]):
+                            out[row + k_row, col + k_col] += inp[row, col] * \
+                                kern[row, col, -(k_row + 1), -(k_col + 1)]
+        else:
+            raise ValueError("unshared2d: invalid value '{}' for 'direction'".format(direction))
         return out
 
 
