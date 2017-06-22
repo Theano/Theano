@@ -2915,29 +2915,20 @@ class GpuDnnGridGeneratorOp(DnnBase):
     def dnn_context(self, node):
         return node.outputs[0].type.context_name
 
-    def make_node(self, desc, dimensions, theta, cx=None):
+    def make_node(self, desc, grid_dimensions, theta, precision=None, cx=None):
         if cx is None:
             context_name = infer_context_name(desc, theta)
         else:
             context_name = infer_context_name(desc, theta, cx)
 
-        precision = get_precision(None, [theta])
-
-        width, height = dimensions[:2]
-        num_feature_maps = dimensions[2] if len(dimensions) > 2 else 1
-        num_images = dimensions[3] if len(dimensions) > 3 else 1
-
-        dimensions_var = as_tensor_variable(dimensions)
+        dimensions_var = as_tensor_variable(grid_dimensions)
 
         # Allocate GPU memory for grid of coordinates
         grid = GpuArrayType(dtype=precision,
                             broadcastable=(False, False, False, False,),
                             context_name=context_name)()
 
-        inputs = [desc, theta, dimensions_var]
-        outputs = [grid]
-
-        return Apply(self, inputs, outputs)
+        return Apply(self, [desc, theta, dimensions_var], [grid])
 
     def L_op(self, inputs, outputs, output_grads):
         pass
@@ -2951,37 +2942,73 @@ class GpuDnnGridSamplerOp(DnnBase):
     """
 
     __props__ = ()
-    _cop_num_inputs = 3
+    _cop_num_inputs = 6
     _cop_num_outputs = 1
 
     def __init__(self):
         DnnBase.__init__(self, ["c_code/spatialtf_sampler.c"], "spatialtf_sampler")
 
     def dnn_context(self, node):
-        return node.outputs[1].type.context_name
+        return node.outputs[0].type.context_name
 
-    def make_node(self, desc, grid, inputs):
-        # desc: transformer net descriptor
-        # grid: grid generator created by GpuDnnGridGeneratorOp
-        # inputs: input tensor
-        # TODO:
-        # - create output tensor (y in the cuDNN documentations)
-        pass
+    def make_node(self, img, output, grid, desc, alpha=None, beta=None, cx=None):
+        if cx is None:
+            context_name = infer_context_name(img, grid)
+        else:
+            context_name = infer_context_name(img, grid, cx)
+
+        img = as_gpuarray_variable(img, context_name)
+        output = as_gpuarray_variable(output, context_name)
+        grid = as_gpuarray_variable(grid, context_name)
+
+        if img.type.ndim != 4:
+            raise TypeError('img must be a 4D tensor')
+        if output.type.ndim != 4:
+            raise TypeError('output must be a 4D tensor')
+
+        if img.type.ndim != output.type.ndim:
+            raise TypeError('The number of dimensions of img and output must match')
+
+        if (not isinstance(desc.type, CDataType) or
+                desc.type.ctype != 'cudnnSpatialTransformerDescriptor_t'):
+            raise ValueError('desc must be cudnnSpatialTransformerDescriptor_t')
+
+        alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
+        beta = ensure_dt(beta, _zero, 'beta', img.dtype)
+
+        return Apply(self, [img, output, grid, desc, alpha, beta],
+                     [output.type()])
 
     def L_op(self, inputs, outputs, output_grads):
         pass
 
 
-def dnn_spatialtf_context(dimensions, precision="float32"):
-    return GpuDnnSpatialTfDesc(dimensions, precision)()
+def dnn_spatialtf(img, theta, grid_dims, alpha=None, beta=None, precision=None):
+    """
+        GPU spatial transformer using cuDNN from NVIDIA.
+    """
+    precision = get_precision(precision, [img, theta])
+    ctx_name = infer_context_name(img, theta)
 
+    img = gpu_contiguous(img)
+    theta = gpu_contiguous(theta)
 
-def dnn_spatialtf_grid(desc, dimensions, theta):
-    return GpuDnnGridGeneratorOp()(desc, dimensions, theta)
+    desc = GpuDnnSpatialTfDesc(grid_dims, precision)()
 
+    width, height = grid_dims[:2]
+    num_feature_maps = grid_dims[2] if len(grid_dims) > 2 else 1
+    num_images = grid_dims[3] if len(grid_dims) > 3 else 1
 
-def dnn_spatialtf_sampler():
-    pass
+    grid_shp = (width, height, num_feature_maps, num_images)
+
+    # Setup grid of coordinates
+    grid_coord = GpuDnnGridGeneratorOp()(desc, grid_shp, theta, precision, ctx_name)
+
+    out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*grid_shp)
+
+    grid_sampler = GpuDnnGridSamplerOp()(img, out, grid_coord, desc, alpha, beta, ctx_name)
+
+    return grid_sampler
 
 
 @local_optimizer([AbstractConv2d, AbstractConv3d])
