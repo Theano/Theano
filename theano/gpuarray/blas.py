@@ -557,7 +557,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
 
     def c_code_cache_version(self):
         # Raise this whenever modifying the C code (including the file).
-        return (8,)
+        return (9,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
