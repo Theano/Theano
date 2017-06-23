@@ -612,7 +612,7 @@ class AbstractBatchNormTrainGrad(Op):
         g_wrt_x_invstd = 0
 
         if not isinstance(ddinputs.type, theano.gradient.DisconnectedType):
-            ccc = (ddinputs * scale) - T.mean(ddinputs * scale, axis=self.axes, keepdims=True)
+            ccc = scale * (ddinputs - T.mean(ddinputs, axis=self.axes, keepdims=True))
             ddd = (x_invstd ** 3) * (ccc * T.mean(dy * x_diff, axis=self.axes, keepdims=True) +
                                      dy * T.mean(ccc * x_diff, axis=self.axes, keepdims=True))
 
