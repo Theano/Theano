@@ -487,6 +487,9 @@ class BaseGpuCorrMM(CGpuKernelBase):
         Perform subsampling of the output (default: (1, 1)).
     filter_dilation
         Perform subsampling of the input, also known as dilation (default: (1, 1)).
+    num_groups :
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately (default : 1).
     """
     check_broadcast = False
     __props__ = ('border_mode', 'subsample', 'filter_dilation', 'num_groups')
