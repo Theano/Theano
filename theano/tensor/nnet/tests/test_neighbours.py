@@ -258,9 +258,9 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                     padded_x = T.set_subtensor(padded_x[:, :, extra[0]:-extra[0], extra[1]:-extra[1]], x)
                     x_using_valid = images2neibs(padded_x, neib_shape, neib_step, mode="valid")
                     x_using_half = images2neibs(x, neib_shape, neib_step, mode="half")
-                    close = T.allclose(x_using_valid, x_using_half)
-                    f = theano.function([], close, mode=self.mode)
-                    assert f()
+                    f_valid = theano.function([], x_using_valid, mode='FAST_RUN')
+                    f_half = theano.function([], x_using_half, mode=self.mode)
+                    unittest_tools.assert_allclose(f_valid(), f_half())
 
     def test_neibs_full_step_by_valid(self):
         for shp_idx, (shape, neib_step, neib_shapes) in enumerate([
@@ -283,9 +283,9 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                     padded_x = T.set_subtensor(padded_x[:, :, extra[0]:-extra[0], extra[1]:-extra[1]], x)
                     x_using_valid = images2neibs(padded_x, neib_shape, neib_step, mode="valid")
                     x_using_full = images2neibs(x, neib_shape, neib_step, mode="full")
-                    close = T.allclose(x_using_valid, x_using_full)
-                    f = theano.function([], close, mode=self.mode)
-                    assert f()
+                    f_valid = theano.function([], x_using_valid, mode='FAST_RUN')
+                    f_full = theano.function([], x_using_full, mode=self.mode)
+                    unittest_tools.assert_allclose(f_valid(), f_full())
 
     def test_neibs_bad_shape_wrap_centered(self):
         shape = (2, 3, 10, 10)

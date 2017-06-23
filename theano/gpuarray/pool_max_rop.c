@@ -12,9 +12,9 @@ KERNEL void max_pool2d_rop_kernel(const ga_size nthreads,
    const ga_size pad_h, const ga_size pad_w,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((char *)x) + x_off);
-  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((char *)ex) + ex_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((GLOBAL_MEM char *)x) + x_off);
+  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((GLOBAL_MEM char *)ex) + ex_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -62,9 +62,9 @@ KERNEL void max_pool3d_rop_kernel(const ga_size nthreads,
    const ga_size pad_d, const ga_size pad_h, const ga_size pad_w,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size x_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((char *)x) + x_off);
-  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((char *)ex) + ex_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((GLOBAL_MEM char *)x) + x_off);
+  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((GLOBAL_MEM char *)ex) + ex_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
