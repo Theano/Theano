@@ -19,6 +19,7 @@ from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
 from theano.scalar.basic import Scalar, Pow, Cast
+from theano.scalar.basic import log, neg, true_div
 from theano.scalar.basic_scipy import Erfinv, Erfcinv
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
@@ -163,6 +164,8 @@ gpu_optimizer.register('local_remove_all_assert',
                        'unsafe')
 
 
+# Define a few operations to use in optimizations,
+# in order to avoid introducin new CPU Ops, or useless ones.
 def safe_to_gpu(x, ctx_name):
     if isinstance(x.type, tensor.TensorType):
         return GpuFromHost(ctx_name)(x)
@@ -175,6 +178,10 @@ def safe_to_cpu(x):
         return x.transfer('cpu')
     else:
         return x
+
+gpu_log = GpuElemwise(log)
+gpu_neg = GpuElemwise(neg)
+gpu_true_div = GpuElemwise(true_div)
 
 
 def op_lifter(OP, cuda_only=False):
@@ -1181,6 +1188,14 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.Gemv, tensor.blas_c.CGemv])
 @register_opt2([tensor.blas.Gemv], 'fast_compile')
 def local_gpua_gemv(op, context_name, inputs, outputs):
+    if inputs[0].dtype == 'float16':
+        # Use gemm implementation as cublas gemv don't support float16
+        return gpugemm_no_inplace(inputs[0][:, None],
+                                  inputs[1],
+                                  inputs[2],
+                                  inputs[3][:, None],
+                                  inputs[4]).dimshuffle(0)
+
     if inputs[0].dtype not in ['float32', 'float64']:
         return
     if op.inplace:
@@ -1294,31 +1309,63 @@ def local_gpua_eye(op, context_name, inputs, outputs):
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias], cuda_only=True)
+@op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias])
 @register_opt2([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias], 'fast_compile')
 def local_gpua_crossentropysoftmaxargmax1hotwithbias(op, context_name, inputs, outputs):
     return gpu_crossentropy_softmax_argmax_1hot_with_bias
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx], cuda_only=True)
+@op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
 @register_opt2([tensor.nnet.CrossentropySoftmax1HotWithBiasDx], 'fast_compile')
 def local_gpua_crossentropysoftmax1hotwithbiasdx(op, context_name, inputs, outputs):
     return gpu_crossentropy_softmax_1hot_with_bias_dx
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.Softmax], cuda_only=True)
+@op_lifter([tensor.nnet.Softmax])
 @register_opt2([tensor.nnet.Softmax], 'fast_compile')
 def local_gpua_softmax(op, context_name, inputs, outputs):
     return gpu_softmax
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.SoftmaxWithBias], cuda_only=True)
+@op_lifter([tensor.nnet.SoftmaxWithBias])
 @register_opt2([tensor.nnet.SoftmaxWithBias], 'fast_compile')
 def local_gpua_softmaxwithbias(op, context_name, inputs, outputs):
     return gpu_softmax_with_bias
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.nnet.CrossentropyCategorical1Hot])
+@register_opt2([tensor.nnet.CrossentropyCategorical1Hot], 'fast_compile')
+def local_gpu_crossentropycategorical1hot(op, context_name, inputs, outputs):
+    # There is no corresponding GPU Op, but we can express it as:
+    #   coding, one_of_n = inputs
+    #   -log(coding[arange(coding.shape[0]), one_of_n])
+    coding, one_of_n = inputs
+    idx0 = theano.tensor.arange(shape_i(coding, 0))
+    return [gpu_neg(gpu_log(coding[idx0, one_of_n]))]
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.nnet.CrossentropyCategorical1HotGrad])
+@register_opt2([tensor.nnet.CrossentropyCategorical1HotGrad], 'fast_compile')
+def local_gpu_crossentropycategorical1hotgrad(op, context_name, inputs, outputs):
+    # There is no corresponding GPU Op, but we can express it as:
+    #   gy, coding, one_of_n = inputs
+    #   gcoding = zeros_like(coding)
+    #   gcoding[arange(coding.shape[0]), one_of_n] = -g / (
+    #       coding[arange(coding.shape[0]), one_of_n])
+    gy, coding, one_of_n = inputs
+    idx0 = theano.tensor.arange(shape_i(coding, 0))
+    z = GpuAlloc(context_name, memset_0=True)(
+        as_gpuarray_variable(np.zeros((), dtype=coding.dtype), context_name),
+        *[shape_i(coding, i) for i in xrange(coding.ndim)])
+    gcoding = tensor.set_subtensor(
+        z[idx0, one_of_n],
+        gpu_neg(gpu_true_div(gy, coding[idx0, one_of_n])))
+    return [gcoding.transfer(context_name)]
 
 
 @register_opt('fast_compile')
@@ -1351,6 +1398,8 @@ theano.tensor.nnet.conv2d()
 @op_lifter([SparseBlockGemv])
 @register_opt2([SparseBlockGemv], 'fast_compile')
 def local_gpua_sparseblockgemv(op, context_name, inputs, outputs):
+    if inputs[0].dtype == 'float16':
+        return
     if op.inplace:
         return gpu_sparse_block_gemv_inplace
     else:
@@ -1361,6 +1410,8 @@ def local_gpua_sparseblockgemv(op, context_name, inputs, outputs):
 @op_lifter([SparseBlockOuter])
 @register_opt2([SparseBlockOuter], 'fast_compile')
 def local_gpua_sparseblockouter(op, context_name, inputs, outputs):
+    if inputs[0].dtype == 'float16':
+        return
     if op.inplace:
         return gpu_sparse_block_outer_inplace
     else:
@@ -1998,7 +2049,13 @@ def _scan_type_infer(node):
 @op_lifter([tensor.MaxAndArgmax])
 @register_opt2([tensor.MaxAndArgmax], 'fast_compile')
 def local_gpu_maxandargmax(op, context_name, inputs, outputs):
-    return GpuMaxAndArgmax(op.get_params(None))
+    op = GpuMaxAndArgmax(op.get_params(None))
+    if inputs[0].dtype == "float16":
+        # For now it is better to copy/cast on the GPU then transfer to the CPU
+        casted_inputs = inputs[0].astype('float32')
+        ret = op(casted_inputs)
+        return [ret[0].astype('float16'), ret[1]]
+    return op
 
 
 # solve
@@ -2008,9 +2065,15 @@ def local_gpu_maxandargmax(op, context_name, inputs, outputs):
 def local_gpu_solve(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
     if op.A_structure not in MATRIX_STRUCTURES_SOLVE:
         return
-    return GpuCusolverSolve(A_structure=op.A_structure)
+    op = GpuCusolverSolve(A_structure=op.A_structure)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32'),
+                  inputs[1].astype('float32')).astype('float16')
+    return op
 
 
 @register_inplace()
@@ -2028,7 +2091,13 @@ def local_inplace_gpu_solve(node):
 def local_gpu_cholesky(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
-    return GpuCholesky(lower=op.lower, inplace=op.destructive)
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuCholesky(lower=op.lower, inplace=op.destructive)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+
+    return op
 
 
 @register_inplace()
@@ -2044,7 +2113,12 @@ def local_inplace_cholesky(node):
 def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
-    return GpuMagmaMatrixInverse()
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaMatrixInverse()
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
 
 
 @register_inplace()
@@ -2061,9 +2135,13 @@ def local_inplace_matrix_inverse_inplace(node):
 def local_gpu_svd(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
-    return GpuMagmaSVD(full_matrices=op.full_matrices,
-                       compute_uv=op.compute_uv)
-
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaSVD(full_matrices=op.full_matrices,
+                     compute_uv=op.compute_uv)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.

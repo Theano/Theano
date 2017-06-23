@@ -21,7 +21,8 @@ from theano.tensor import (TensorType, as_tensor_variable, get_vector_length,
                            cast, opt, scal)
 from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
-from theano.gof import local_optimizer
+from theano.gof import local_optimizer, ParamsType
+from theano.scalar import bool as bool_t, int32 as int_t
 from . import multinomial
 
 
@@ -286,6 +287,14 @@ def mrg_next_value(rstate, new_rstate):
 class mrg_uniform_base(Op):
     # TODO : need description for class, parameter
     __props__ = ("output_type", "inplace")
+    params_type = ParamsType(inplace=bool_t,
+                             # following params will come from self.output_type.
+                             # NB: As output object may not be allocated in C code,
+                             # we can not be sure to get these properties from output.
+                             # So, we should better get them as params from self.output_type.
+                             ndim=int_t,
+                             otypenum=int_t,
+                             otype_is_float32=bool_t)
 
     def __init__(self, output_type, inplace=False):
         Op.__init__(self)
@@ -294,6 +303,13 @@ class mrg_uniform_base(Op):
         if inplace:
             self.destroy_map = {0: [0]}
         self.warned_numpy_version = False
+
+    # These attributes (used as params) are created as properties
+    # to make them available even for old pickled objects, e.g.
+    # when testing old interface or when using FAST_COMPILE mode.
+    ndim = property(lambda self: self.output_type.ndim)
+    otypenum = property(lambda self: np.dtype(self.output_type.dtype).num)
+    otype_is_float32 = property(lambda self: self.output_type.dtype == 'float32')
 
     def __str__(self):
         if self.inplace:
@@ -325,6 +341,7 @@ class mrg_uniform(mrg_uniform_base):
                 broad.append(tensor.extract_constant(size[i]) == 1)
         output_type = self.output_type.clone(broadcastable=broad)()
         rstate = as_tensor_variable(rstate)
+        size = as_tensor_variable(size)
         return Apply(self,
                      [rstate, size],
                      [rstate.type(), output_type])
@@ -337,7 +354,7 @@ class mrg_uniform(mrg_uniform_base):
         op = cls(TensorType(dtype, (False,) * ndim))
         return op(rstate, v_size)
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, params):
         rstate, size = inp
         o_rstate, o_sample = out
         n_elements = 1
@@ -371,45 +388,105 @@ class mrg_uniform(mrg_uniform_base):
         o_rstate[0] = node.outputs[0].type.filter(rstate)
         o_sample[0] = node.outputs[1].type.filter(rval.reshape(size))
 
+    def c_support_code(self):
+        return "\n".join("""
+        void cpu_rng_mrg_uniform_%(dtype)s(PyArrayObject* o_sample, PyArrayObject* o_rstate,
+                                           npy_int64 n_elements, int n_streams) {
+            const npy_int32 i0 = 0;
+            const npy_int32 i7 = 7;
+            const npy_int32 i9 = 9;
+            const npy_int32 i15 = 15;
+            const npy_int32 i16 = 16;
+            const npy_int32 i22 = 22;
+            const npy_int32 i24 = 24;
+
+            const npy_int32 M1 = 2147483647;      //2^31 - 1
+            const npy_int32 M2 = 2147462579;      //2^31 - 21069
+            const npy_int32 MASK12 = 511;       //2^9 - 1
+            const npy_int32 MASK13 = 16777215;  //2^24 - 1
+            const npy_int32 MASK2 = 65535;      //2^16 - 1
+            const npy_int32 MULT2 = 21069;
+
+            %(dtype)s* sample_data = (%(dtype)s *) PyArray_DATA(o_sample);
+            npy_int32* state_data = (npy_int32 *) PyArray_DATA(o_rstate);
+            for (int i = 0; i < n_elements; ++i)
+            {
+                npy_int32 * state_data_i = state_data + (i%%n_streams)*6;
+                npy_int32 y1, y2, x11, x12, x13, x21, x22, x23;
+
+                x11 = state_data_i[0];
+                x12 = state_data_i[1];
+                x13 = state_data_i[2];
+                x21 = state_data_i[3];
+                x22 = state_data_i[4];
+                x23 = state_data_i[5];
+
+                y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
+                if ((y1 < 0 || y1 >= M1))     //must also check overflow
+                    y1 -= M1;
+                y1 += x13;
+                if ((y1 < 0 or y1 >= M1))
+                    y1 -= M1;
+                x13 = x12;
+                x12 = x11;
+                x11 = y1;
+
+                y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16));
+                if (y1 < 0 || y1 >= M2)
+                    y1 -= M2;
+                y2 = ((x23 & MASK2) << i15) + (MULT2 * (x23 >> i16));
+                if (y2 < 0 || y2 >= M2)
+                    y2 -= M2;
+                y2 += x23;
+                if (y2 < 0 || y2 >= M2)
+                    y2 -= M2;
+                y2 += y1;
+                if (y2 < 0 or y2 >= M2)
+                    y2 -= M2;
+
+                x23 = x22;
+                x22 = x21;
+                x21 = y2;
+
+                if (x11 <= x21) {
+                    assert((x11 - x21 + M1) <= M1);
+                    sample_data[i] = (x11 - x21 + M1) * %(NORM)s;
+                }
+                else
+                {
+                    assert(x11 - x21 <= M1);
+                    sample_data[i] = (x11 - x21) * %(NORM)s;
+                }
+
+                state_data_i[0]= x11;
+                state_data_i[1]= x12;
+                state_data_i[2]= x13;
+                state_data_i[3]= x21;
+                state_data_i[4]= x22;
+                state_data_i[5]= x23;
+            }
+        }
+        """ % dict(dtype=dtype, NORM=NORM) for dtype, NORM in (
+            ('npy_float32', '4.6566126e-10f'),
+            ('npy_float64', '4.656612873077392578125e-10')
+        ))
+
     def c_code(self, node, name, inp, out, sub):
-        rstate, size = inp
         # If we try to use the C code here with something else than a
         # TensorType, something is wrong (likely one of the GPU ops
         # not defining C code correctly).
         assert isinstance(node.inputs[0].type, TensorType)
-        o_rstate, o_sample = out
-        if self.inplace:
-            o_rstate_requirement = (
-                'NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED')
-        else:
-            o_rstate_requirement = (
-                'NPY_ARRAY_ENSURECOPY|NPY_ARRAY_C_CONTIGUOUS|'
-                'NPY_ARRAY_ALIGNED')
-        ndim = self.output_type.ndim
-        o_type_num = np.asarray(0, dtype=self.output_type.dtype).dtype.num
-        fail = sub['fail']
-        if self.output_type.dtype == 'float32':
-            otype = 'float'
-            NORM = '4.6566126e-10f'  # np.float32(1.0/(2**31+65))
-            # this was determined by finding the biggest number such that
-            # np.float32(number * M1) < 1.0
-        else:
-            otype = 'double'
-            NORM = '4.656612873077392578125e-10'
         return """
         //////// <code generated by mrg_uniform>
-        // The +1 is to avoid odims[0] which fails on windows
-        // We have to read size[i] as an int64, but odims has to be intp*
-        // for NumPy on 32-bit platforms.
-        npy_intp odims[%(ndim)s+1];
         npy_int64 odims_i;
         npy_int64 n_elements = 1;
         int n_streams = 0;
         int must_alloc_sample = ((NULL == %(o_sample)s)
-                                 || (PyArray_NDIM(%(o_sample)s) != %(ndim)s)
+                                 || (PyArray_NDIM(%(o_sample)s) != %(params)s->ndim)
                                  || !(PyArray_ISCONTIGUOUS(%(o_sample)s)));
-        %(otype)s * sample_data;
-        npy_int32 * state_data;
+        int o_rstate_requirement = %(params)s->inplace ?
+                                    (NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED) :
+                                    (NPY_ARRAY_ENSURECOPY|NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED);
 
         const npy_int32 i0 = 0;
         const npy_int32 i7 = 7;
@@ -426,19 +503,27 @@ class mrg_uniform(mrg_uniform_base):
         const npy_int32 MASK2 = 65535;      //2^16 - 1
         const npy_int32 MULT2 = 21069;
 
+        // We have to read size[i] as an int64, but odims has to be intp*
+        // for NumPy on 32-bit platforms.
+        npy_intp* odims = (npy_intp*)malloc(%(params)s->ndim * sizeof(npy_intp));
+        if (odims == NULL) {
+            PyErr_NoMemory();
+            %(just_fail)s
+        }
+
         if (PyArray_NDIM(%(size)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "size must be vector");
             %(fail)s
         }
-        if (PyArray_DIMS(%(size)s)[0] != %(ndim)s)
+        if (PyArray_DIMS(%(size)s)[0] != %(params)s->ndim)
         {
             PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
-                %(ndim)s, int(PyArray_DIMS(%(size)s)[0]));
+                %(params)s->ndim, int(PyArray_DIMS(%(size)s)[0]));
             %(fail)s
         }
 
-        for (int i = 0; i < %(ndim)s; ++i)
+        for (int i = 0; i < %(params)s->ndim; ++i)
         {
             odims_i = *(dtype_%(size)s *)PyArray_GETPTR1(%(size)s, i);
             odims[i] = odims_i;
@@ -459,7 +544,7 @@ class mrg_uniform(mrg_uniform_base):
         if (must_alloc_sample)
         {
             Py_XDECREF(%(o_sample)s);
-            %(o_sample)s = (PyArrayObject*)PyArray_SimpleNew(%(ndim)s, odims, %(o_type_num)s);
+            %(o_sample)s = (PyArrayObject*)PyArray_SimpleNew(%(params)s->ndim, odims, %(params)s->otypenum);
             if(!%(o_sample)s) {
                 PyErr_SetString(PyExc_MemoryError, "failed to alloc mrg_uniform output");
                 %(fail)s
@@ -468,7 +553,7 @@ class mrg_uniform(mrg_uniform_base):
         Py_XDECREF(%(o_rstate)s);
         %(o_rstate)s = (PyArrayObject*)PyArray_FromAny(
             (PyObject*)%(rstate)s,
-            NULL, 0, 0, %(o_rstate_requirement)s,NULL);
+            NULL, 0, 0, o_rstate_requirement,NULL);
 
         if (PyArray_NDIM(%(o_rstate)s) != 2)
         {
@@ -487,69 +572,27 @@ class mrg_uniform(mrg_uniform_base):
         }
         n_streams = PyArray_DIMS(%(o_rstate)s)[0];
 
-        sample_data = (%(otype)s *) PyArray_DATA(%(o_sample)s);
-        state_data = (npy_int32 *) PyArray_DATA(%(o_rstate)s);
-        for (int i = 0; i < n_elements; ++i)
-        {
-            npy_int32 * state_data_i = state_data + (i%%n_streams)*6;
-            npy_int32 y1, y2, x11, x12, x13, x21, x22, x23;
-
-            x11 = state_data_i[0];
-            x12 = state_data_i[1];
-            x13 = state_data_i[2];
-            x21 = state_data_i[3];
-            x22 = state_data_i[4];
-            x23 = state_data_i[5];
-
-            y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
-            if ((y1 < 0 || y1 >= M1))     //must also check overflow
-                y1 -= M1;
-            y1 += x13;
-            if ((y1 < 0 or y1 >= M1))
-                y1 -= M1;
-            x13 = x12;
-            x12 = x11;
-            x11 = y1;
-
-            y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16));
-            if (y1 < 0 || y1 >= M2)
-                y1 -= M2;
-            y2 = ((x23 & MASK2) << i15) + (MULT2 * (x23 >> i16));
-            if (y2 < 0 || y2 >= M2)
-                y2 -= M2;
-            y2 += x23;
-            if (y2 < 0 || y2 >= M2)
-                y2 -= M2;
-            y2 += y1;
-            if (y2 < 0 or y2 >= M2)
-                y2 -= M2;
-
-            x23 = x22;
-            x22 = x21;
-            x21 = y2;
-
-            if (x11 <= x21) {
-                assert((x11 - x21 + M1) <= M1);
-                sample_data[i] = (x11 - x21 + M1) * %(NORM)s;
-            }
-            else
-            {
-                assert(x11 - x21 <= M1);
-                sample_data[i] = (x11 - x21) * %(NORM)s;
-            }
-
-            state_data_i[0]= x11;
-            state_data_i[1]= x12;
-            state_data_i[2]= x13;
-            state_data_i[3]= x21;
-            state_data_i[4]= x22;
-            state_data_i[5]= x23;
+        if (%(params)s->otype_is_float32) {
+            cpu_rng_mrg_uniform_npy_float32(%(o_sample)s, %(o_rstate)s, n_elements, n_streams);
+        } else {
+            cpu_rng_mrg_uniform_npy_float64(%(o_sample)s, %(o_rstate)s, n_elements, n_streams);
         }
+
+        free(odims);
         //////// </ code generated by mrg_uniform>
-        """ % locals()
+        """ % dict(rstate=inp[0], size=inp[1],
+                   o_rstate=out[0], o_sample=out[1],
+                   params=sub['params'],
+                   just_fail=sub['fail'],
+                   fail="""
+                   {
+                       free(odims);
+                       %(fail)s
+                   }
+                   """ % dict(fail=sub['fail']))
 
     def c_code_cache_version(self):
-        return (8, )
+        return (9,)
 
 
 def guess_n_streams(size, warn=False):

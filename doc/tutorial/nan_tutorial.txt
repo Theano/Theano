@@ -21,7 +21,7 @@ Most frequently, the cause would be that some of the hyperparameters, especially
 learning rates, are set incorrectly. A high learning rate can blow up your whole
 model into NaN outputs even within one epoch of training. So the first and
 easiest solution is try to lower it. Keep halving your learning rate until you
-start to get resonable output values.
+start to get reasonable output values.
 
 Other hyperparameters may also play a role. For example, are your training
 algorithms involve regularization terms? If so, are their corresponding
@@ -73,7 +73,7 @@ chance that something is wrong with your algorithm. Go back to the mathematics
 and find out if everything is derived correctly.
 
 
-Cuda Specific Option
+CUDA Specific Option
 --------------------
 
 The Theano flag ``nvcc.fastmath=True`` can genarate NaN. Don't set
@@ -85,6 +85,6 @@ this flag while debugging NaN.
 NaN Introduced by AllocEmpty
 -----------------------------------------------
 
-AllocEmpty is used by many operation such as scan to allocate some memory without properly clearing it. The reason for that is that the allocated memory will subsequently be overwritten. However, this can sometimes introduce NaN depending on the operation and what was previously stored in the memory it is working on. For instance, trying to zero out memory  using a multipication before applying an operation could cause NaN if NaN is already present in the memory, since `0 * NaN => NaN`.
+AllocEmpty is used by many operation such as scan to allocate some memory without properly clearing it. The reason for that is that the allocated memory will subsequently be overwritten. However, this can sometimes introduce NaN depending on the operation and what was previously stored in the memory it is working on. For instance, trying to zero out memory  using a multiplication before applying an operation could cause NaN if NaN is already present in the memory, since `0 * NaN => NaN`.
 
 Using ``optimizer_including=alloc_empty_to_zeros`` replaces `AllocEmpty` by `Alloc{0}`, which is helpful to diagnose where NaNs come from. Please note that when running in `NanGuardMode`, this optimizer is not included by default. Therefore, it might be helpful to use them both together. 

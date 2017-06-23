@@ -1,31 +1,31 @@
 #section init_code_struct
 
-#ifdef CHOOSE_ALGO
-reuse_algo = 0;
-prev_algo = CONV_ALGO;
-#ifndef CHOOSE_ONCE
-memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
-memset(prev_top_dims, 0, sizeof(prev_top_dims));
-#endif
-#endif
+// #ifdef CHOOSE_ALGO
+if (PARAMS->choose_algo) {
+  reuse_algo = 0;
+  prev_algo = PARAMS->conv_algo;
+  // #ifndef CHOOSE_ONCE
+  if (!PARAMS->choose_once) {
+      memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
+      memset(prev_top_dims, 0, sizeof(prev_top_dims));
+  }
+  // #endif
+}
+// #endif
 
 #section support_code_struct
 
-#ifdef CHOOSE_ALGO
-int reuse_algo = 0;
-cudnnConvolutionBwdDataAlgo_t prev_algo = CONV_ALGO;
-#ifndef CHOOSE_ONCE
+int reuse_algo;
+cudnnConvolutionBwdDataAlgo_t prev_algo;
 size_t prev_kern_dims[5] = {0};
 size_t prev_top_dims[5] = {0};
-#endif
-#endif
 
 int
 APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
                         PyGpuArrayObject *im,
                         cudnnConvolutionDescriptor_t desc,
                         double alpha, double beta, PyGpuArrayObject **input,
-                        cudnnHandle_t _handle) {
+                        PARAMS_TYPE* params) {
   PyGpuContextObject *c = kerns->context;
   void *alpha_p;
   void *beta_p;
@@ -53,17 +53,20 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     return 1;
   }
 
-#ifdef CONV_INPLACE
-  Py_XDECREF(*input);
-  *input = im;
-  Py_INCREF(*input);
-#else
-  if (theano_prep_output(input, PyGpuArray_NDIM(im), PyGpuArray_DIMS(im),
-                         im->ga.typecode, GA_C_ORDER, c) != 0)
-    return 1;
-  if (beta != 0.0 && pygpu_move(*input, im))
-    return 1;
-#endif
+  // #ifdef CONV_INPLACE
+  if (params->inplace) {
+    Py_XDECREF(*input);
+    *input = im;
+    Py_INCREF(*input);
+  // #else
+  } else {
+    if (theano_prep_output(input, PyGpuArray_NDIM(im), PyGpuArray_DIMS(im),
+                           im->ga.typecode, GA_C_ORDER, c) != 0)
+      return 1;
+    if (beta != 0.0 && pygpu_move(*input, im))
+      return 1;
+  }
+  // #endif
 
   if (PyGpuArray_DIMS(im)[0] == 0 || PyGpuArray_DIMS(kerns)[0] == 0 || PyGpuArray_DIMS(kerns)[1] == 0) {
     int err2 = GpuArray_memset(&(*input)->ga, 0);
@@ -82,7 +85,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   if (c_set_tensorNd(*input, APPLY_SPECIFIC(input)) == -1)
     return 1;
 
-  cudnnConvolutionBwdDataAlgo_t algo = CONV_ALGO;
+  cudnnConvolutionBwdDataAlgo_t algo = params->conv_algo;
 
   cuda_enter(c->ctx);
 
@@ -128,84 +131,93 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     }
   }
 
-#ifdef CHOOSE_ALGO
-#ifndef CHOOSE_ONCE
-  reuse_algo = 1;
-  for (unsigned int i = 0; i < PyGpuArray_NDIM(kerns); i++) {
-    reuse_algo = (reuse_algo &&
-                  PyGpuArray_DIM(kerns, i) == prev_kern_dims[i]);
-    reuse_algo = (reuse_algo &&
-                  PyGpuArray_DIM(output, i) == prev_top_dims[i]);
+  // #ifdef CHOOSE_ALGO
+  if (params->choose_algo) {
+    // #ifndef CHOOSE_ONCE
+    if (!params->choose_once) {
+      reuse_algo = 1;
+      for (unsigned int i = 0; i < PyGpuArray_NDIM(kerns); i++) {
+        reuse_algo = (reuse_algo &&
+                      PyGpuArray_DIM(kerns, i) == prev_kern_dims[i]);
+        reuse_algo = (reuse_algo &&
+                      PyGpuArray_DIM(output, i) == prev_top_dims[i]);
+      }
+    }
+    // #endif
+
+    if (!reuse_algo) {
+      size_t free;
+      int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_LARGEST_MEMBLOCK, &free);
+
+      if (err2 != GA_NO_ERROR) {
+        PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
+                     "memory information on the GPU");
+        cuda_exit(c->ctx);
+        return 1;
+      }
+
+      // Guess 4Mb if the info is not available
+      if (free == 0) free = 4 * 1024 * 1024;
+
+    // #ifdef CHOOSE_TIME
+    if (params->choose_time) {
+      int count;
+      cudnnConvolutionBwdDataAlgoPerf_t choice;
+      gpudata *tmpmem;
+
+      tmpmem = gpudata_alloc(c->ctx, free, NULL, 0, NULL);
+      if (tmpmem == NULL) {
+        PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
+        return -1;
+      }
+
+      err = cudnnFindConvolutionBackwardDataAlgorithmEx(
+        params->handle, APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
+        APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output), desc,
+        APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(*input),
+        1, &count, &choice, *(void **)tmpmem, free);
+      gpudata_release(tmpmem);
+
+      if (err != CUDNN_STATUS_SUCCESS) {
+        PyErr_Format(PyExc_RuntimeError, "error selecting convolution algo: %s",
+                     cudnnGetErrorString(err));
+        cuda_exit(c->ctx);
+        return 1;
+      }
+
+      algo = choice.algo;
+    // #else
+    } else {
+      err = cudnnGetConvolutionBackwardDataAlgorithm(
+        params->handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output),
+        desc, APPLY_SPECIFIC(input),
+        CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, free, &algo);
+      if (err != CUDNN_STATUS_SUCCESS) {
+        PyErr_Format(PyExc_RuntimeError, "error selecting convolution algo: %s",
+                     cudnnGetErrorString(err));
+        cuda_exit(c->ctx);
+        return 1;
+      }
+    }
+    // #endif
+      prev_algo = algo;
+    } else {
+      algo = prev_algo;
+    }
+
+    // #ifdef CHOOSE_ONCE
+    if (params->choose_once) {
+      reuse_algo = 1;
+    // #else
+    } else {
+      for (unsigned int i = 0; i < PyGpuArray_NDIM(kerns); i++) {
+        prev_kern_dims[i] = PyGpuArray_DIM(kerns, i);
+        prev_top_dims[i] = PyGpuArray_DIM(output, i);
+      }
+    }
+    // #endif
   }
-#endif
-
-  if (!reuse_algo) {
-    size_t free;
-    int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_LARGEST_MEMBLOCK, &free);
-
-    if (err2 != GA_NO_ERROR) {
-      PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
-                   "memory information on the GPU");
-      cuda_exit(c->ctx);
-      return 1;
-    }
-
-    // Guess 4Mb if the info is not available
-    if (free == 0) free = 4 * 1024 * 1024;
-
-#ifdef CHOOSE_TIME
-    int count;
-    cudnnConvolutionBwdDataAlgoPerf_t choice;
-    gpudata *tmpmem;
-
-    tmpmem = gpudata_alloc(c->ctx, free, NULL, 0, NULL);
-    if (tmpmem == NULL) {
-      PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
-      return -1;
-    }
-
-    err = cudnnFindConvolutionBackwardDataAlgorithmEx(
-      _handle, APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
-      APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output), desc,
-      APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(*input),
-      1, &count, &choice, *(void **)tmpmem, free);
-    gpudata_release(tmpmem);
-
-    if (err != CUDNN_STATUS_SUCCESS) {
-      PyErr_Format(PyExc_RuntimeError, "error selecting convolution algo: %s",
-                   cudnnGetErrorString(err));
-      cuda_exit(c->ctx);
-      return 1;
-    }
-
-    algo = choice.algo;
-#else
-    err = cudnnGetConvolutionBackwardDataAlgorithm(
-      _handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output),
-      desc, APPLY_SPECIFIC(input),
-      CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, free, &algo);
-    if (err != CUDNN_STATUS_SUCCESS) {
-      PyErr_Format(PyExc_RuntimeError, "error selecting convolution algo: %s",
-                   cudnnGetErrorString(err));
-      cuda_exit(c->ctx);
-      return 1;
-    }
-#endif
-    prev_algo = algo;
-  } else {
-    algo = prev_algo;
-  }
-
-#ifdef CHOOSE_ONCE
-  reuse_algo = 1;
-#else
-  for (unsigned int i = 0; i < PyGpuArray_NDIM(kerns); i++) {
-    prev_kern_dims[i] = PyGpuArray_DIM(kerns, i);
-    prev_top_dims[i] = PyGpuArray_DIM(output, i);
-  }
-#endif
-
-#endif
+  // #endif
 
   // The FFT implementation does not support strides, 1x1 filters or inputs
   // with a spatial dimension larger than 1024. The tiled-FFT implementation
@@ -258,7 +270,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   gpudata *workspace;
 
   err = cudnnGetConvolutionBackwardDataWorkspaceSize(
-    _handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output), desc,
+    params->handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output), desc,
     APPLY_SPECIFIC(input), algo, &worksize);
 
   if (err != CUDNN_STATUS_SUCCESS) {
@@ -283,7 +295,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   cuda_wait((*input)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
   err = cudnnConvolutionBackwardData(
-    _handle,
+    params->handle,
     alpha_p,
     APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
     APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output),

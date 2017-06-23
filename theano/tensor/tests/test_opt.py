@@ -2936,10 +2936,7 @@ def test_local_IncSubtensor_serialize():
     i = T.vector('i', dtype='int64')
     j = T.vector('j', dtype='int64')
     t = T.scalar('t')
-    if theano.tensor.subtensor.inplace_increment:
-        y = (W[i] + W[j] + W[1] + W[i, j]).sum()
-    else:
-        y = (W[i] + W[j] + W[1]).sum()
+    y = (W[i] + W[j] + W[1] + W[i, j]).sum()
     cost = T.sqr(t - y)
     dW = theano.grad(cost, W)
     mode = theano.compile.mode.get_default_mode().excluding('fusion')
@@ -3496,8 +3493,12 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert topo[0].op == deep_copy_op
-        x_val = 10
-        assert f(x_val) == x_val
+        if f.outputs[0].variable.dtype == 'bool':
+            x_vals = [0, 1]
+        else:
+            x_vals = [0, 1, 10]
+        for x_val in x_vals:
+            assert f(x_val) == x_val
 
     def test_inequality_with_self(self):
         x = T.scalar('x', dtype=config.floatX)
@@ -3604,11 +3605,14 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         assert (f([3, 3]) == 0).all()
 
     def test_and(self):
+        # bitwise "and" with 0 should give 0 for both bool and int
+        # bitwise "and" with 1 should only simplify for bool
         mode = theano.compile.get_default_mode().including('canonicalize')
+        for dtype, zero, one in [('bool', np.array(False), np.array(True)),
+                                 ('int8', np.int8(0), np.int8(1)),
+                                 ('int8', 0, 1)]:
+            x = T.scalar('x', dtype=dtype)
 
-        x = T.scalar('x', dtype='int8')
-
-        for zero, one in [(np.int8(0), np.int8(1)), (0, 1)]:
             f = theano.function([x], T.and_(x, zero), mode=mode)
             self.assert_eqs_const(f, 0)
 
@@ -3616,38 +3620,54 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
             self.assert_eqs_const(f, 0)
 
             f = theano.function([x], T.and_(x, one), mode=mode)
-            if f.outputs[0].variable.dtype == x.dtype:
+            if dtype == 'bool':
                 self.assert_identity(f)
 
             f = theano.function([x], T.and_(one, x), mode=mode)
-            if f.outputs[0].variable.dtype == x.dtype:
+            if dtype == 'bool':
                 self.assert_identity(f)
+
+    def test_and_int(self):
+        # Test that bitwise "and" is correctly computed on int constants.
+        f = theano.function([], T.and_(5, 6))
+        assert f() == 4
 
     def test_or(self):
+        # bitwise "or" with 0 should simplify for both bool and int
+        # bitwise "or" with 1 should only give 1 for bool
         mode = theano.compile.get_default_mode().including('canonicalize')
-        x = T.scalar('x', dtype='int8')
+        for dtype, zero, one in [('bool', np.array(False), np.array(True)),
+                                 ('int8', np.int8(0), np.int8(1)),
+                                 ('int8', 0, 1)]:
+            x = T.scalar('x', dtype=dtype)
 
-        for zero, one in [(np.int8(0), np.int8(1)), (0, 1)]:
             f = theano.function([x], T.or_(x, one), mode=mode)
-            self.assert_eqs_const(f, 1)
+            if dtype == 'bool':
+                self.assert_eqs_const(f, 1)
 
             f = theano.function([x], T.or_(one, x), mode=mode)
-            self.assert_eqs_const(f, 1)
+            if dtype == 'bool':
+                self.assert_eqs_const(f, 1)
 
             f = theano.function([x], T.or_(x, zero), mode=mode)
-            if f.outputs[0].variable.dtype == x.dtype:
-                self.assert_identity(f)
+            self.assert_identity(f)
 
             f = theano.function([x], T.or_(zero, x), mode=mode)
-            if f.outputs[0].variable.dtype == x.dtype:
-                self.assert_identity(f)
+            self.assert_identity(f)
+
+    def test_or_int(self):
+        # Test that bitwise "or" is correctly computed on int constants.
+        f = theano.function([], T.or_(5, 6))
+        assert f() == 7
 
     def test_xor(self):
+        # bitwise "xor" with itself should always give 0 for both bool and int.
         mode = theano.compile.get_default_mode().including('canonicalize')
-        x = T.scalar('x', dtype='int8')
+        for dtype in ('bool', 'int8'):
+            x = T.scalar('x', dtype=dtype)
 
-        f = theano.function([x], T.xor(x, x), mode=mode)
-        self.assert_eqs_const(f, 0)
+            f = theano.function([x], T.xor(x, x), mode=mode)
+            self.assert_eqs_const(f, 0)
 
     def test_stacktrace(self):
         mode = theano.compile.get_default_mode().including(

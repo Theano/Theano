@@ -106,6 +106,8 @@ def contains_nan(arr, node=None, var=None):
     """
     if not _is_numeric_value(arr, var):
         return False
+    elif getattr(arr, 'dtype', '') in T.discrete_dtypes:
+        return False
     elif pygpu_available and isinstance(arr, GpuArray):
         return np.isnan(f_gpua_min(arr.reshape(arr.size)))
 
@@ -138,6 +140,8 @@ def contains_inf(arr, node=None, var=None):
 
     """
     if not _is_numeric_value(arr, var):
+        return False
+    elif getattr(arr, 'dtype', '') in T.discrete_dtypes:
         return False
     elif pygpu_available and isinstance(arr, GpuArray):
         return (np.isinf(f_gpua_min(arr.reshape(arr.size))) or

@@ -2766,6 +2766,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
 
         if (%(cast_out)d) {
             err = GpuArray_move(&%(output)s->ga, &tmp->ga);
+            Py_XDECREF(tmp);
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
                              "gpuarray error: GpuCAReduceCPY [cast]: %%s.",

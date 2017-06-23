@@ -5,9 +5,6 @@
 # Print commands as they are executed
 set -x
 
-# Anaconda python
-export PATH=/usr/local/miniconda2/bin:$PATH
-
 echo "===== Testing theano core"
 
 # Test theano core

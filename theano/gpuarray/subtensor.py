@@ -107,7 +107,10 @@ class GpuSubtensor(HideC, Subtensor):
             return """
         Py_XDECREF(%(out)s);
         %(out)s = pygpu_copy(%(inp)s, GA_ANY_ORDER);
-        if (!%(out)s) { %(fail)s }
+        if (!%(out)s) {
+            // Exception already set
+            %(fail)s
+        }
 """ % dict(out=outputs[0], inp=inp, fail=sub['fail'])
 
         sio = StringIO()
@@ -175,7 +178,7 @@ class GpuSubtensor(HideC, Subtensor):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (6,)
+        return (8,)
 
 
 class GpuIncSubtensor(IncSubtensor):
@@ -232,7 +235,7 @@ class GpuIncSubtensor(IncSubtensor):
             if not self.set_instead_of_inc:
                 # sub_x += y
                 iadd = get_iadd(node.inputs[0], node.inputs[1])
-                iadd(sub_x, y, broadcast=False)
+                iadd(sub_x, y)
             else:
                 # sub_x[...] = y
                 x.__setitem__(cdata, y)
@@ -403,6 +406,8 @@ class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
     """
     AdvancedSubrensor1 on the GPU.
     """
+    _f16_ok = True
+
     def make_node(self, x, ilist):
         ctx_name = infer_context_name(x, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)
@@ -730,8 +735,10 @@ class GpuAdvancedIncSubtensor1(Op):
         num_indices = PyArray_SIZE(%(ind)s);
         if (!%(inplace)s) {
           %(out)s = theano_try_copy(%(out)s, %(x)s);
-          if (%(out)s == NULL)
+          if (%(out)s == NULL) {
+            // Exception already set
             %(fail)s
+            }
         } else {
           Py_XDECREF(%(out)s);
           %(out)s = %(x)s;
@@ -787,7 +794,7 @@ class GpuAdvancedIncSubtensor1(Op):
                    set_instead_of_inc=int(self.set_instead_of_inc))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (3,)
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
@@ -807,7 +814,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         """
         ctx_name = infer_context_name(x, y, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)
-        y_ = as_gpuarray_variable(y, ctx_name)
+        y_ = as_gpuarray_variable(y.astype(x.dtype), ctx_name)
         ilist_ = as_gpuarray_variable(ilist, ctx_name)
 
         assert x_.type.ndim >= y_.type.ndim
@@ -837,7 +844,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         return super(GpuAdvancedIncSubtensor1_dev20, self).perform(node, inp, out)
 
     def c_code_cache_version(self):
-        return (9,)
+        return (12,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>',
@@ -872,6 +879,7 @@ if (%(inplace)s) {
   %(out)s = theano_try_copy(%(out)s, %(x)s);
 }
 if (!%(out)s) {
+  // Exception already set
   %(fail)s
 }
 if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(set_instead_of_inc)s)) {
@@ -898,8 +906,9 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(set_instead_of_inc)s)) {
         code = """
 /*
  * This is an atomicAdd that works for doubles since that is not provided
- * natively by cuda.
+ * natively by cuda before arch 6.0.
  */
+#if __CUDA_ARCH__ < 600
 __device__ ga_double atomicAdd(ga_double* address, ga_double val) {
     unsigned long long int* address_as_ull =
                                           (unsigned long long int*)address;
@@ -912,6 +921,7 @@ __device__ ga_double atomicAdd(ga_double* address, ga_double val) {
     } while (assumed != old);
     return __longlong_as_double(old);
 }
+#endif
 
 __device__ ga_double atomicExch(ga_double *address, ga_double val) {
     return atomicExch((unsigned long long int *)address,
@@ -1088,6 +1098,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
 
 class GpuExtractDiag(Op):
     __props__ = ("offset", "axis1", "axis2", "view")
+    _f16_ok = True
 
     def __init__(self, offset=0, axis1=0, axis2=1, view=False):
         self.view = view
