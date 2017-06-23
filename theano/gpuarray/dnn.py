@@ -499,6 +499,9 @@ class GpuDnnConv(DnnBase):
     algo : {'small', 'none', 'large', 'fft', 'fft_tiling', 'winograd', 'guess_once',
             'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
+    num_groups :
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
 
     """
     _f16_ok = True
@@ -639,6 +642,9 @@ class GpuDnnConvGradW(DnnBase):
     algo : {'none', 'deterministic', 'fft', 'small', 'guess_once',
             'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
+    num_groups :
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
 
     """
     _f16_ok = True
@@ -772,6 +778,9 @@ class GpuDnnConvGradI(DnnBase):
     algo : {'none', 'deterministic', 'fft', 'fft_tiling', 'winograd', 'guess_once',
             'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
+    num_groups :
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
 
     """
     _f16_ok = True
@@ -912,6 +921,9 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
         should be done. Possible values are 'as_input', 'float16', 'float32'
         and 'float64'. Default is the value of
         :attr:`config.dnn.conv.precision`.
+    num_groups :
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
 
 
     .. warning:: The cuDNN library only works with GPUs that have a compute
