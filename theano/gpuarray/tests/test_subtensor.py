@@ -77,48 +77,6 @@ class G_subtensorF16(test_subtensor.T_subtensor):
         assert self.sub == GpuSubtensor
 
 
-def test_advinc_subtensor():
-    x_shp = (20, 15, 10, 5)
-    shared = gpuarray_shared_constructor
-
-    def check(idx, y_val, x_val, true):
-        x = shared(x_val, name='x')
-        y = tensor.tensor(dtype='float32',
-                          broadcastable=(False,) * len(y_val.shape),
-                          name='y')
-        sym_idx = [tensor.as_tensor_variable(ix) for ix in idx]
-        expr = tensor.advanced_inc_subtensor(x, y, *sym_idx)
-        f = theano.function([y], expr, mode=mode_with_gpu)
-        assert sum([isinstance(node.op, GpuAdvancedIncSubtensor)
-                    for node in f.maker.fgraph.toposort()]) == 1
-        rval = f(y_val)
-        assert np.allclose(rval, true)
-
-    idxs_y_shp_pairs = [
-        ((0, [1, 3, 5], 1), (3, 5)),
-        (([1, 2, 4, 8],), (4, 15, 10, 5)),
-        (([0, 1, 2], 0, [0, 1, 2]), (3, 3, 5)),
-        (([[0, 1], [2, 3]], [[0, 1], [2, 3]]), (2, 2, 10, 5)),
-    ]
-
-    for idx, y_shps in idxs_y_shp_pairs:
-        for i in range(len(y_shps) - 1):
-            y_shp = y_shps[i:]
-            x_val = np.arange(np.prod(x_shp), dtype='float32').reshape(x_shp) + 1
-            y_val = np.arange(np.prod(y_shp), dtype='float32').reshape(y_shp) + 1
-            rep = x_val.copy()
-            try:
-                rep[idx] += y_val
-            except ValueError:
-                continue
-            yield check, idx, y_val, x_val, rep
-        x_val = np.arange(np.prod(x_shp), dtype='float32').reshape(x_shp) + 1
-        y_val = np.array(1).astype(np.float32)
-        rep = x_val.copy()
-        rep[idx] += y_val
-        yield check, idx, y_val, x_val, rep
-
-
 def test_advinc_subtensor1():
     # Test the second case in the opt local_gpu_advanced_incsubtensor1
     for shp in [(3, 3), (3, 3, 3)]:
