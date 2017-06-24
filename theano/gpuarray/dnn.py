@@ -2865,7 +2865,7 @@ class GpuDnnSpatialTfDesc(COp):
         self.dimensions = dimensions if isinstance(dimensions, tuple) else tuple(dimensions)
 
         # cuDNN supports only 2D transformations, therefore output tensor must
-        # not exceed 4 dimensions (num_images, num_feature_maps, height, width)
+        # not exceed 4 dimensions (width, height, num_feature_maps, num_images)
         assert len(self.dimensions) <= 4
 
         assert cudnn.cudnnDataType_t.has_alias(precision)
@@ -2915,20 +2915,18 @@ class GpuDnnGridGeneratorOp(DnnBase):
     def dnn_context(self, node):
         return node.outputs[0].type.context_name
 
-    def make_node(self, desc, grid_dimensions, theta, precision=None, cx=None):
+    def make_node(self, grid_dimensions, theta, desc, precision, cx=None):
         if cx is None:
             context_name = infer_context_name(desc, theta)
         else:
             context_name = infer_context_name(desc, theta, cx)
-
-        dimensions_var = as_tensor_variable(grid_dimensions)
 
         # Allocate GPU memory for grid of coordinates
         grid = GpuArrayType(dtype=precision,
                             broadcastable=(False, False, False, False,),
                             context_name=context_name)()
 
-        return Apply(self, [desc, theta, dimensions_var], [grid])
+        return Apply(self, [theta, grid_dimensions, desc], [grid])
 
     def L_op(self, inputs, outputs, output_grads):
         pass
@@ -2951,7 +2949,8 @@ class GpuDnnGridSamplerOp(DnnBase):
     def dnn_context(self, node):
         return node.outputs[0].type.context_name
 
-    def make_node(self, img, output, grid, desc, alpha=None, beta=None, cx=None):
+    def make_node(self, img, output, grid, grid_dimensions, desc,
+                  alpha=None, beta=None, cx=None):
         if cx is None:
             context_name = infer_context_name(img, grid)
         else:
@@ -2976,7 +2975,7 @@ class GpuDnnGridSamplerOp(DnnBase):
         alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
         beta = ensure_dt(beta, _zero, 'beta', img.dtype)
 
-        return Apply(self, [img, output, grid, desc, alpha, beta],
+        return Apply(self, [img, output, grid, grid_dimensions, desc, alpha, beta],
                      [output.type()])
 
     def L_op(self, inputs, outputs, output_grads):
@@ -2987,7 +2986,7 @@ def dnn_spatialtf(img, theta, grid_dims, alpha=None, beta=None, precision=None):
     """
         GPU spatial transformer using cuDNN from NVIDIA.
     """
-    precision = get_precision(precision, [img, theta])
+    precision = theano.config.floatX
     ctx_name = infer_context_name(img, theta)
 
     img = gpu_contiguous(img)
@@ -3000,13 +2999,16 @@ def dnn_spatialtf(img, theta, grid_dims, alpha=None, beta=None, precision=None):
     num_images = grid_dims[3] if len(grid_dims) > 3 else 1
 
     grid_shp = (width, height, num_feature_maps, num_images)
+    # Create grid dimensions variable
+    grid_dims = np.asarray(list(grid_shp), dtype=np.int32)
+    grid_dims_var = as_tensor_variable(grid_dims)
 
     # Setup grid of coordinates
-    grid_coord = GpuDnnGridGeneratorOp()(desc, grid_shp, theta, precision, ctx_name)
+    grid_coord = GpuDnnGridGeneratorOp()(grid_dims_var, theta, desc, precision, ctx_name)
 
     out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*grid_shp)
 
-    grid_sampler = GpuDnnGridSamplerOp()(img, out, grid_coord, desc, alpha, beta, ctx_name)
+    grid_sampler = GpuDnnGridSamplerOp()(img, out, grid_coord, grid_dims_var, desc, alpha, beta, ctx_name)
 
     return grid_sampler
 
