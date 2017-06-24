@@ -1,9 +1,9 @@
 #section support_code
 
 int
-spatialtf_grid(cudnnSpatialTransformerDescriptor_t desc,
-               PyGpuArrayObject * theta,
+spatialtf_grid(PyGpuArrayObject * theta,
                PyArrayObject * grid_dimensions,
+               cudnnSpatialTransformerDescriptor_t desc,
                PyGpuArrayObject ** grid,
                cudnnHandle_t _handle)
 {
@@ -18,7 +18,7 @@ spatialtf_grid(cudnnSpatialTransformerDescriptor_t desc,
         return -1;
     }
 
-    if ( PyArray_NDIM( grid_dimensions ) < 4 )
+    if ( PyArray_DIM( grid_dimensions, 0 ) < 4 )
     {
         PyErr_Format( PyExc_RuntimeError,
                       "Grid dimensions array must have at least 4 dimensions!" );
@@ -34,12 +34,23 @@ spatialtf_grid(cudnnSpatialTransformerDescriptor_t desc,
     // Grid of coordinates is of size num_images * height * width * 2 for a 2D transformation
     const size_t grid_dims[4] = { width, height, 2, num_images };
 
-    if ( theano_prep_output( grid, 4, &(grid_dims[0]), theta->ga.typecode,
-                             GA_C_ORDER, gpu_ctx ) != 0 )
+    if ( width == 0 || height == 0 || num_images == 0 )
     {
-        PyErr_SetString( PyExc_MemoryError,
-                         "Could not allocate memory for the grid of coordinates" );
+        PyErr_Format( PyExc_RuntimeError,
+                      "Invalid grid dimensions!" );
         return -1;
+    }
+
+    if ( NULL == *grid )
+    {
+        *grid = pygpu_zeros( 4, &(grid_dims[0]), theta->ga.typecode, GA_C_ORDER, gpu_ctx, Py_None );
+
+        if ( NULL == *grid )
+        {
+            PyErr_SetString( PyExc_MemoryError,
+                             "Could not allocate memory for grid of coordinates" );
+            return -1;
+        }
     }
 
     const void * theta_data = PyGpuArray_DEV_DATA( theta );
