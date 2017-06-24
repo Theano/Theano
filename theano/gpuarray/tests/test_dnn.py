@@ -2306,22 +2306,26 @@ def test_dnn_spatialtf_grid_generator():
     utt.seed_rng()
 
     # shape: (width, height, num_feature_maps, num_images)
-    grid_dims = (2, 2, 1, 2)
+    grid_dims = (2, 4, 1, 2)
 
     theta = np.asarray([[[1, 0, 0], [0, 1, 0]],
                         [[1, 0, 0], [0, 1, 0]]], dtype=theano.config.floatX)
 
     theta_gpu = gpuarray_shared_constructor(theta)
 
-    img = np.asarray([[[[1, 2],
-                        [3, 4]]],
-                      [[[5, 6],
-                        [7, 8]]]], dtype=np.int32)
+    img = np.asarray([[[[1, 2], [3, 4],
+                        [5, 6], [7, 8]]],
+                      [[[9, 10], [11, 12],
+                        [13, 14], [15, 16]]]], dtype=np.int32)
     img_gpu = gpuarray_shared_constructor(img)
 
     spatialtf = dnn.dnn_spatialtf(img_gpu, theta_gpu, grid_dims)
 
     spatialtf_fn = theano.function([], [spatialtf], mode=mode_with_gpu)
+
+    result, = spatialtf_fn()
+
+    img_out = np.asarray(result)
 
     topo = spatialtf_fn.maker.fgraph.toposort()
     assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridGeneratorOp)]) == 1
