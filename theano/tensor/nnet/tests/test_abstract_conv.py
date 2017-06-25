@@ -1707,6 +1707,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
     conv2d_gradi = staticmethod(theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs)
     mode = theano.Mode(optimizer=None)
     flip_filter = False
+    is_dnn = False
 
     def setUp(self):
         self.num_groups = [3, 2, 4, 4]
@@ -1738,8 +1739,9 @@ class Grouped_conv_noOptim(unittest.TestCase):
             else:
                 grouped_conv_output = grouped_conv_op(img_sym, kern_sym)
             grouped_func = theano.function([img_sym, kern_sym], grouped_conv_output, mode=self.mode)
-            assert any([isinstance(node.op, self.conv2d)
-                       for node in grouped_func.maker.fgraph.toposort()])
+            if not self.is_dnn:
+                assert any([isinstance(node.op, self.conv2d)
+                           for node in grouped_func.maker.fgraph.toposort()])
             grouped_output = grouped_func(img, kern)
 
             ref_conv_op = conv2d_corr(img_sym,
@@ -1772,12 +1774,15 @@ class Grouped_conv_noOptim(unittest.TestCase):
                                                     subsample=self.subsample,
                                                     filter_dilation=self.filter_dilation,
                                                     num_groups=groups)
-            grouped_conv_output = grouped_convgrad_op(img_sym, top_sym, tensor.as_tensor_variable(kshp[-2:]))
+            grouped_conv_output = grouped_convgrad_op(img_sym,
+                                                      top_sym,
+                                                      tensor.as_tensor_variable(kshp if self.is_dnn else kshp[-2:]))
             if self.flip_filter:
                 grouped_conv_output = grouped_conv_output[:, :, ::-1, ::-1]
             grouped_func = theano.function([img_sym, top_sym], grouped_conv_output, mode=self.mode)
-            assert any([isinstance(node.op, self.conv2d_gradw)
-                       for node in grouped_func.maker.fgraph.toposort()])
+            if not self.is_dnn:
+                assert any([isinstance(node.op, self.conv2d_gradw)
+                           for node in grouped_func.maker.fgraph.toposort()])
             grouped_output = grouped_func(img, top)
 
             ref_conv_op = conv2d_corr_gw(img_sym,
@@ -1795,7 +1800,8 @@ class Grouped_conv_noOptim(unittest.TestCase):
             utt.assert_allclose(grouped_output, ref_concat_output)
 
             def conv_gradweight(inputs_val, output_val):
-                return grouped_convgrad_op(inputs_val, output_val, tensor.as_tensor_variable(kshp[-2:]))
+                return grouped_convgrad_op(inputs_val, output_val,
+                                           tensor.as_tensor_variable(kshp if self.is_dnn else kshp[-2:]))
 
             utt.verify_grad(conv_gradweight,
                             [img, top],
@@ -1817,10 +1823,13 @@ class Grouped_conv_noOptim(unittest.TestCase):
             if self.flip_filter:
                 grouped_conv_output = grouped_convgrad_op(kern_sym[:, :, ::-1, ::-1], top_sym, tensor.as_tensor_variable(imshp[-2:]))
             else:
-                grouped_conv_output = grouped_convgrad_op(kern_sym, top_sym, tensor.as_tensor_variable(imshp[-2:]))
+                grouped_conv_output = grouped_convgrad_op(kern_sym,
+                                                          top_sym,
+                                                          tensor.as_tensor_variable(imshp if self.is_dnn else imshp[-2:]))
             grouped_func = theano.function([kern_sym, top_sym], grouped_conv_output, mode=self.mode)
-            assert any([isinstance(node.op, self.conv2d_gradi)
-                       for node in grouped_func.maker.fgraph.toposort()])
+            if not self.is_dnn:
+                assert any([isinstance(node.op, self.conv2d_gradi)
+                           for node in grouped_func.maker.fgraph.toposort()])
             grouped_output = grouped_func(kern, top)
 
             ref_conv_op = conv2d_corr_gi(kern_sym,
@@ -1838,7 +1847,8 @@ class Grouped_conv_noOptim(unittest.TestCase):
             utt.assert_allclose(grouped_output, ref_concat_output)
 
             def conv_gradinputs(filters_val, output_val):
-                return grouped_convgrad_op(filters_val, output_val, tensor.as_tensor_variable(imshp[-2:]))
+                return grouped_convgrad_op(filters_val, output_val,
+                                           tensor.as_tensor_variable(imshp if self.is_dnn else imshp[-2:]))
 
             utt.verify_grad(conv_gradinputs,
                             [kern, top],
