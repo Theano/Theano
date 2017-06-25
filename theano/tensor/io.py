@@ -95,6 +95,7 @@ def load(path, dtype, broadcastable, mmap_mode=None):
 # MPI
 ##########################
 
+
 try:
     from mpi4py import MPI
 except ImportError:
@@ -304,8 +305,90 @@ def mpi_tag_key(a):
     else:
         return 0
 
+
 mpi_send_wait_cmp = key_to_cmp(mpi_send_wait_key)
 mpi_tag_cmp = key_to_cmp(mpi_tag_key)
 
 mpi_keys = (mpi_send_wait_key, mpi_tag_key)
 mpi_cmps = (mpi_send_wait_cmp, mpi_tag_cmp)
+
+##########################
+# Getting data from a callable
+##########################
+
+
+class DataSource(Op):
+    """
+    An operation to get data from non-simbolic function.
+
+    Notes
+    -----
+    Non-differentiable.
+
+    """
+
+    __props__ = ("dtype", "broadcastable", "shape")
+
+    def __init__(self, dtype, broadcastable, shape):
+        self.dtype = np.dtype(dtype)  # turn "float64" into numpy.float64
+        self.broadcastable = broadcastable
+        self.shape = shape
+
+    def make_node(self, function, *inputs):
+        var = Constant(Generic(), function)
+        out_tensor = tensor(self.dtype, broadcastable=self.broadcastable)
+        return gof.Apply(self, [var] + list(inputs), [out_tensor])
+
+    def perform(self, node, inp, out):
+        func = inp[0]
+        result = func(*inp[1:])
+        if result.dtype != self.dtype:
+            raise TypeError("Expected an array of type %s, got %s instead" %
+                            (self.dtype, result.dtype))
+        if result.shape != self.shape:
+            raise TypeError("Expected shape %s, got %s instead" %
+                            (self.shape, result.shape))
+        out[0][0] = result
+
+    def __str__(self):
+        return ("DataSource{dtype: %s, broadcastable: %s, shape: %s}" %
+                (self.dtype, self.broadcastable, self.shape))
+
+
+def data_source(func, dtype, broadcastable, shape, *inputs):
+    """
+    Receive data from a callable object.
+
+    Parameters
+    ----------
+    func
+        A callable object, that accepts data defined by simbolic variables in inputs
+    dtype : data-type
+        The data type of returned value.
+    broadcastable
+        The broadcastable pattern of the returned array, for instance,
+        (False,) for a vector, (False, True) for a column,
+        (False, False) for a matrix.
+    shape
+        Expected shape of returned data
+    inputs
+        Optional simbolic variables, if provided its values will be passed to func
+    Examples
+    --------
+    >>> from theano import *
+    >>> import numpy
+    >>> def f(): return numpy.asarray([[1,2,3]]).astype('int64')
+    >>> x = tensor.data_source(f, 'int64', (False, False), (1,3))
+    >>> y = x*2
+    >>> fn = function([], y)
+    >>> fn()   # doctest: +SKIP
+    array([2, 4, 6], dtype=int64)
+    >>> def g(ar): return ar ** 2
+    >>> z = tensor.matrix('z', dtype=config.floatX)
+    >>> y = tensor.data_source(g, config.floatX, (False, False), (1,3), z)
+    >>> fn = function([z], y)
+    >>> fn([[1, 2, 3]])  # doctest: +SKIP
+    array([1., 4., 9.])
+
+    """
+    return DataSource(dtype, broadcastable, shape)(func, *inputs)
