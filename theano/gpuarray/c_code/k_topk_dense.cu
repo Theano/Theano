@@ -29,9 +29,8 @@ KERNEL void k_topk_dense(
 
     const ga_ubyte warp_id = idx / GA_WARP_SIZE;
 
-
     // 0. get the slice for thread block to work on
-    // TODO if ndim <= 3, use native indexing ? (blockIdx.[xyz])
+
     ga_size gid = GID_0, gidx;
     $set_slice
     //for(int i=1; i<NDIM; i++) {
@@ -76,6 +75,7 @@ KERNEL void k_topk_dense(
         }
         local_barrier();
 
+        // find the bucket and update k2
         // smem[:RADIX_SIZE:-1] = k2 - cumsum(smem[:RADIX_SIZE-1:-1])
         if (idx == 0) {
             ga_int sum = k2;
@@ -130,4 +130,3 @@ KERNEL void k_topk_dense(
 #endif
     }
 }
-

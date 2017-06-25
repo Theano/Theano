@@ -227,7 +227,10 @@ def _topk_py_impl(op, x, k, axis, idx_dtype):
     assert -ndim <= axis < ndim
     axis %= ndim
     if k == 0:
-        raise ValueError('topk: k cannot be zero')
+        raise ValueError('topk: kth cannot be zero')
+    elif k > x.shape[axis]:
+        raise ValueError(
+            'topk: kth cannot be larger than the size of specified axis %d' % axis)
     if abs(k) == 1:
         # negative k means min instead of max
         fn_max = [None, np.max, np.min][k]

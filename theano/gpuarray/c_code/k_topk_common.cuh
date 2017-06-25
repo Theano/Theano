@@ -260,6 +260,12 @@ struct RadixConfig<ga_half> {
 #error "RADIX_SIZE must be smaller than warp size (32)"
 #endif
 
+void __device__ atomicAdd(long long *dst, long long &src) {
+    atomicAdd(
+        reinterpret_cast<unsigned long long*>(dst),
+        reinterpret_cast<unsigned long long&>(src));
+}
+
 template <typename T>
 static inline __device__ T binary_cumsum(
     int idx, int warp_id, T* smem, bool value) {
@@ -343,7 +349,7 @@ static __device__ inline T& ptr_at(T *ptr, ga_ssize offset) {
 
 // read array element using raw(byte) offset
 template <typename T>
-static __device__ inline T ptr_read(T *ptr, ga_ssize offset) {
+static __device__ inline T ptr_read_cached(T *ptr, ga_ssize offset) {
     return __ldg(((T*)((char*)ptr + offset)));
 }
 
