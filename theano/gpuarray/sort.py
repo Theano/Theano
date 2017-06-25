@@ -2,7 +2,6 @@ from __future__ import absolute_import, print_function, division
 import os
 from string import Template
 
-import numpy as np
 from theano import Apply
 from theano.tensor import as_tensor_variable
 from theano.tensor.sort import TopKOp
@@ -116,7 +115,8 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
         def build_kernel(fname, kname, subs):
             with open(os.path.join(
-                os.path.dirname(__file__), 'c_code', fname)) as f:
+                os.path.dirname(__file__), 'c_code', fname)
+            ) as f:
                 kernel_src = f.read()
             ker = Kernel(
                 code=Template(common_src + kernel_src).substitute(**subs),

@@ -359,10 +359,11 @@ class TopKOp(theano.Op):
                 '"idx_dtype" parameter must be an integer dtype, got "%s"' % idx_dtype)
 
         if not (return_indices or return_values):
-            raise ValueError("Neither return_values nor return_indices is True, this isn't allowed")
+            raise ValueError(
+                "Neither return_values nor return_indices is True, this isn't allowed")
 
         self.axis = axis
-        self.sorted=sorted
+        self.sorted = sorted
         self.return_values = return_values
         self.return_indices = return_indices
         self.idx_dtype = idx_dtype
@@ -454,7 +455,7 @@ def topk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
         If ``None``, works on flattened array.
 
     sorted: bool
-        NOTE: NOT IMPLEMENTED YET
+        NOTE: NOT IMPLEMENTED YET, USE ``False`` FOR NOW.
         Defaults to ``True``
 
         If True, the result array would be sorted in descending order.
@@ -497,6 +498,7 @@ def argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
         Must not be 0. If negative, gives k-smallest elements instead.
 
     sorted: bool
+        NOTE: NOT IMPLEMENTED YET, USE ``False`` FOR NOW.
         Defaults to ``True``
 
         If True, the result array of corresponding indices would be sorted in descending order.

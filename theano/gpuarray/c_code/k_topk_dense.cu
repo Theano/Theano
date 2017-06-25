@@ -33,6 +33,7 @@ KERNEL void k_topk_dense(
 
     ga_size gid = GID_0, gidx;
     $set_slice
+    // $$set_slice expands into:
     //for(int i=1; i<NDIM; i++) {
         // gidx = gid % dims_$${i};
         // gid /= dims_$${i};
