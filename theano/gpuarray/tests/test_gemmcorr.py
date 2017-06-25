@@ -228,3 +228,4 @@ class TestGroupGpuCorr2d(Grouped_conv_noOptim):
     conv2d_gradw = staticmethod(GpuCorrMM_gradWeights)
     conv2d_gradi = staticmethod(GpuCorrMM_gradInputs)
     flip_filter = True
+    is_dnn = False
