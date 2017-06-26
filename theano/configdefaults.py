@@ -1139,6 +1139,11 @@ AddConfigVar('cmodule.age_thresh_use',
              IntParam(60 * 60 * 24 * 24, allow_override=False),
              in_c_key=False)
 
+AddConfigVar('cmodule.debug',
+             "If True, define a DEBUG macro (if not exists) for any compiled C code.",
+             BoolParam(False),
+             in_c_key=True)
+
 
 def default_blas_ldflags():
     global numpy
