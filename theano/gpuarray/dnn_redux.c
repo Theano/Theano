@@ -69,22 +69,41 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
     return 1;
 
   p = 0;
+  rsz = 1;
   for (unsigned int i = 0; i < PyGpuArray_NDIM(input); i++) {
     if (!(params->axis & (1U << i))) {
       dims[p] = PyGpuArray_DIM(input, i);
       p++;
+    } else {
+      rsz *= PyGpuArray_DIM(input, i);
     }
   }
-
-  if (theano_prep_output(output, p, dims, input->ga.typecode,
-                         GA_C_ORDER, c) != 0)
-    return 1;
 
   if (indices != NULL) {
     if (theano_prep_output(indices, p, dims, GA_UINT, GA_C_ORDER, c) != 0)
       return 1;
     indsize = PyGpuArray_SIZE(*indices);
   }
+
+  if (p == input->ga.nd || rsz == 1) {
+    *output = pygpu_reshape(input, p, dims, GA_C_ORDER, 0, -1);
+    if (*output == NULL)
+      return 1;
+    if (indices != NULL) {
+      // All indices will be 0 since the size of the reduced area is 1.
+      int err = GpuArray_memset(&(*indices)->ga, 0);
+      if (err != GA_NO_ERROR) {
+        PyErr_Format(PyExc_RuntimeError, "GpuArray_memset: %s", GpuArray_error(&(*indices)->ga, err));
+        return 1;
+      }
+    }
+    // This is a shortcut path.
+    return 0;
+  }
+
+  if (theano_prep_output(output, p, dims, input->ga.typecode,
+                         GA_C_ORDER, c) != 0)
+    return 1;
 
   // cuDNN expect that the output has the same number of dimension as
   // the input, but the dimensions to reduce are of size 1 in the output.
