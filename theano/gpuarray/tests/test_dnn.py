@@ -1070,49 +1070,44 @@ def get_conv3d_test_cases():
 def run_conv_small_batched_vs_multicall(inputs_shape, filters_shape, batch_sub, subsample):
     # Run function for issue $5985 (see tests below): https://github.com/Theano/Theano/issues/5985
 
-    # We use GPU RNG to help create big arrays on GPU directly and then avoid transfer.
-    from ..rng_mrg import GPUA_mrg_uniform
-    # Inspired from gpuarray/tests/tesr_rng_mrg.py
-    seed = 12345
-    curr_rstate = np.array([[seed] * 6], dtype='int32')
-    rstate = gpuarray_shared_constructor(curr_rstate)
-
     algo = 'small'
+    batch_size = inputs_shape[0]
 
-    rstate_inputs, inputs = GPUA_mrg_uniform.new(rstate, dtype='float32',
-                                                 size=inputs_shape, ndim=len(inputs_shape))
-    rstate_filters, filters = GPUA_mrg_uniform.new(rstate_inputs, dtype='float32',
-                                                   size=filters_shape, ndim=len(filters_shape))
-
-    inputs_size = 4.0  # sizeof(float32)
-    for i in inputs_shape:
-        inputs_size *= i
-    print('(input size', (inputs_size / 1024 / 1024 / 1024), 'Gb)', end=' ')
+    utt.seed_rng()
+    inputs_val = np.random.random(inputs_shape).astype('float32')
+    filters_val = np.random.random(filters_shape).astype('float32')
+    inputs_val /= 10
+    filters_val /= 10
+    inputs = theano.shared(inputs_val)
+    filters = theano.shared(filters_val)
 
     conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, subsample=subsample)
-    # Just compute last inputs to reduce execution time.
-    size = inputs_shape[0]
-    batched_outputs = [dnn.dnn_conv(img=inputs[i:(i + 1)], kerns=filters, algo=algo, subsample=subsample)
-                       for i in range(size - batch_sub, size)]
-    f = theano.function([], [conv] + batched_outputs, mode=mode_with_gpu)
-    outputs = f()
-    res_all = outputs[0]
-    res_batch = outputs[1:]
-    for i in range(batch_sub):
-        utt.assert_allclose(res_batch[i], res_all[size - batch_sub + i])
+    # Just compute firt and last outputs to reduce execution time.
+    sub_conv_top = dnn.dnn_conv(img=inputs[:batch_sub],
+                                kerns=filters, algo=algo, subsample=subsample)
+    sub_conv_bottom = dnn.dnn_conv(img=inputs[(batch_size - batch_sub):],
+                                   kerns=filters, algo=algo, subsample=subsample)
+    f = theano.function([], [conv, sub_conv_top, sub_conv_bottom], mode=mode_with_gpu)
+    res_all, res_batch_top, res_batch_bottom = f()
+    for i in range(0, batch_sub):
+        utt.assert_allclose(res_all[i], res_batch_top[i])
+        p = batch_size - batch_sub + i
+        # It seems there is a liimit batch size of 65536 for a good computation
+        # with algorithm `small`.
+        checked_limit = 2**16
+        if p >= checked_limit:
+            # It seems results are repeated in the entire conv.
+            # It should not happen.
+            if np.allclose(res_all[p % checked_limit], res_all[p]):
+                print('\nconv[%d] == conv[%d] == %s' % (p % checked_limit, p, res_all[p]))
+        utt.assert_allclose(res_all[p], res_batch_bottom[i])
 
 
 def test_batched_conv_small():
-    # Tested on TITAN X:
-    # pass up to 65536 inputs (inputs size exactly 1Gb), fail with 65536 + 1 inputs and upper.
-    # Is there any limitation around number of elements, or input size ?
-    # But all dimensions and strides for following tensors are under int32 limits.
-    # Maybe the problem is with the internal pointer used by cuDNN to iterate over input
-    # (could this pointer not be able to manage more than 1 Gb?).
-    # NB: Subsample is set to (3, 3) to reduce output size.
-    yield (run_conv_small_batched_vs_multicall, (65535, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))  # OK
-    yield (run_conv_small_batched_vs_multicall, (65536, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))  # OK
-    yield (run_conv_small_batched_vs_multicall, (65537, 4, 32, 32), (1, 4, 16, 16), 25, (3, 3))  # ERROR
+    yield (run_conv_small_batched_vs_multicall, (65534, 2, 2, 2), (1, 2, 2, 2), 5, (1, 1))  # OK
+    yield (run_conv_small_batched_vs_multicall, (65535, 2, 2, 2), (1, 2, 2, 2), 5, (1, 1))  # OK
+    yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2), (1, 2, 2, 2), 5, (1, 1))  # OK
+    yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2), (1, 2, 2, 2), 5, (1, 1))  # ERROR
 
 
 def test_conv3d_fwd():
