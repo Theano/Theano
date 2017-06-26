@@ -1165,7 +1165,7 @@ class EnumList(EnumType):
         assert len(kwargs) in (0, 1, 2), (type(self).__name__ +
                                           ': expected 0 to 2 extra parameters ("ctype", "cname").')
         ctype = kwargs.pop('ctype', 'int')
-        cname = kwargs.pop('cname', ctype)
+        cname = kwargs.pop('cname', None)
 
         for arg_rank, arg in enumerate(args):
             if isinstance(arg, (list, tuple)):
@@ -1187,7 +1187,9 @@ class EnumList(EnumType):
                 raise TypeError('%s: constant name already used ("%s").' % (type(self).__name__, constant_name))
             kwargs[constant_name] = constant_value
 
-        kwargs.update(ctype=ctype, cname=cname)
+        kwargs.update(ctype=ctype)
+        if cname is not None:
+            kwargs.update(cname=cname)
         super(EnumList, self).__init__(**kwargs)
 
 
