@@ -145,6 +145,17 @@ class BaseCorrMM(gof.OpenMPOp):
         dtype = theano.scalar.upcast(in1.dtype, in2.dtype)
         return in1.astype(dtype), in2.astype(dtype)
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'border_mode'):
+            self.border_mode = "valid"
+        if not hasattr(self, 'subsample'):
+            self.subsample = (1, 1)
+        if not hasattr(self, 'filter_dilation'):
+            self.filter_dilation = (1, 1)
+        if not hasattr(self, 'num_groups'):
+            self.num_groups = 1
+
     def c_support_code(self):
         ccodes = blas_headers.blas_header_text()
         if self.blas_type == 'openblas':
