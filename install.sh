@@ -36,9 +36,15 @@ cd ${THIS_DIR} \
 
 echo "=== Finished installing Theano."
 
-echo "=== Installing Lasagne..."
+echo "=== Installing Lasagne ..."
 
 cd ${THIS_DIR}/third_party/Lasagne && ${SUDO} pip install --no-deps -e . || exit 1
 
 echo "=== Finished installing Lasagne."
+
+echo "=== Installing Platoon ..."
+
+cd ${THIS_DIR}/third_party/platoon && ${SUDO} pip install --no-deps -e . || exit 1
+
+echo "=== Finished installing Platoon."
 
