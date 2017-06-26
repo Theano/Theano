@@ -10,10 +10,10 @@ KERNEL void max_pool2d_grad_kernel(const ga_size nthreads,
    const ga_size kernel_h, const ga_size kernel_w, const ga_size stride_h, const ga_size stride_w,
    const ga_size pad_h, const ga_size pad_w, GLOBAL_MEM DTYPE_OUTPUT_0 *gx, const ga_size gx_off)
 {
-  x = (GLOBAL_MEM const DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM const DTYPE_INPUT_1 *)(((char *)z) + z_off);
-  gz = (GLOBAL_MEM const DTYPE_INPUT_2 *)(((char *)gz) + gz_off);
-  gx = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)gx) + gx_off);
+  x = (GLOBAL_MEM const DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM const DTYPE_INPUT_1 *)(((GLOBAL_MEM char *)z) + z_off);
+  gz = (GLOBAL_MEM const DTYPE_INPUT_2 *)(((GLOBAL_MEM char *)gz) + gz_off);
+  gx = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)gx) + gx_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads; index += LDIM_0 * GDIM_0) {
@@ -55,10 +55,10 @@ KERNEL void max_pool3d_grad_kernel(const ga_size nthreads,
    const ga_size pad_d, const ga_size pad_h, const ga_size pad_w,
    GLOBAL_MEM DTYPE_OUTPUT_0 *gx, const ga_size gx_off)
 {
-  x = (GLOBAL_MEM const DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM const DTYPE_INPUT_1 *)(((char *)z) + z_off);
-  gz = (GLOBAL_MEM const DTYPE_INPUT_2 *)(((char *)gz) + gz_off);
-  gx = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)gx) + gx_off);
+  x = (GLOBAL_MEM const DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM const DTYPE_INPUT_1 *)(((GLOBAL_MEM char *)z) + z_off);
+  gz = (GLOBAL_MEM const DTYPE_INPUT_2 *)(((GLOBAL_MEM char *)gz) + gz_off);
+  gx = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)gx) + gx_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads; index += LDIM_0 * GDIM_0) {

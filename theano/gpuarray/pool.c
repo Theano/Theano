@@ -10,8 +10,8 @@ KERNEL void max_pool2d_kernel(const ga_size nthreads,
    const ga_size stride_h, const ga_size stride_w, const ga_size pad_h, const ga_size pad_w,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -55,8 +55,8 @@ KERNEL void max_pool3d_kernel(const ga_size nthreads,
    const ga_size stride_w, const ga_size pad_d, const ga_size pad_h, const ga_size pad_w,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -94,7 +94,7 @@ KERNEL void max_pool3d_kernel(const ga_size nthreads,
   }
 }
 
-#kernel ave_pool2d_kernel : size, size, size, size, size, size, size, *, size, size, size, size, size, size, size, size, size, *, size:
+#kernel ave_pool2d_kernel : size, size, size, size, size, size, size, *, size, size, size, size, size, size, size, bool, bool, *, size:
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void ave_pool2d_kernel(const ga_size nthreads,
@@ -105,8 +105,8 @@ KERNEL void ave_pool2d_kernel(const ga_size nthreads,
    const ga_bool inc_pad, const ga_bool sum_mode,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -149,7 +149,7 @@ KERNEL void ave_pool2d_kernel(const ga_size nthreads,
   }
 }
 
-#kernel ave_pool3d_kernel : size, size, size, size, size, size, size, size, size, *, size, size, size, size, size, size, size, size, size, size, size, size, *, size :
+#kernel ave_pool3d_kernel : size, size, size, size, size, size, size, size, size, *, size, size, size, size, size, size, size, size, size, size, bool, bool, *, size :
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void ave_pool3d_kernel(const ga_size nthreads,
@@ -163,8 +163,8 @@ KERNEL void ave_pool3d_kernel(const ga_size nthreads,
                               GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
   // grid stride looping
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)z) + z_off);
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
        index += LDIM_0 * GDIM_0) {

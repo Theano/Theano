@@ -84,9 +84,9 @@ KERNEL void k_multi_warp_multinomial(
     const ga_ssize outs_col_stride
 )
 {
-    global_pvals = (GLOBAL_MEM %(in_ctype)s *)(((char *)global_pvals) + global_pvals_offset);
-    global_unis = (GLOBAL_MEM %(in_ctype)s *)(((char *)global_unis) + global_unis_offset);
-    global_outs = (GLOBAL_MEM %(out_ctype)s *)(((char *)global_outs) + global_outs_offset);
+    global_pvals = (GLOBAL_MEM %(in_ctype)s *)(((GLOBAL_MEM char *)global_pvals) + global_pvals_offset);
+    global_unis = (GLOBAL_MEM %(in_ctype)s *)(((GLOBAL_MEM char *)global_unis) + global_unis_offset);
+    global_outs = (GLOBAL_MEM %(out_ctype)s *)(((GLOBAL_MEM char *)global_outs) + global_outs_offset);
     // each thread takes care of one multinomial draw
     int n = LDIM_0*GID_0 + LID_0;
     if (n < nb_multi)
@@ -220,7 +220,7 @@ KERNEL void k_multi_warp_multinomial(
         return s
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 
 class GPUAChoiceFromUniform(GpuKernelBase, Op):
@@ -297,9 +297,9 @@ KERNEL void k_multi_warp_multinomial_wor(
     const ga_ssize outs_col_stride
 )
 {
-    global_pvals_copy = (GLOBAL_MEM float *)(((char *)global_pvals_copy) + global_pvals_offset);
-    global_unis = (GLOBAL_MEM float *)(((char *)global_unis) + global_unis_offset);
-    global_outs = (GLOBAL_MEM ga_long *)(((char *)global_outs) + global_outs_offset);
+    global_pvals_copy = (GLOBAL_MEM float *)(((GLOBAL_MEM char *)global_pvals_copy) + global_pvals_offset);
+    global_unis = (GLOBAL_MEM float *)(((GLOBAL_MEM char *)global_unis) + global_unis_offset);
+    global_outs = (GLOBAL_MEM ga_long *)(((GLOBAL_MEM char *)global_outs) + global_outs_offset);
     // each thread takes care of one multinomial-wor n_samples-draw
     int n = LDIM_0*GID_0 + LID_0;
 
@@ -455,7 +455,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         return s
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 
 @register_opt('fast_compile')

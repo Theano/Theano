@@ -1408,6 +1408,10 @@ class IncSubtensor(Op):
         {
             Py_XDECREF(%(z)s);
             %(z)s = %(copy_of_x)s;
+            if (!%(z)s) {
+                // Exception already set
+                %(fail)s
+            }
         }
         """ % locals()
 
@@ -1458,10 +1462,12 @@ class IncSubtensor(Op):
         """ % locals()
         return (self.decl_view() +
                 copy_input_if_necessary +
+                "{" +
                 get_zview +
                 build_view +
                 make_modification +
-                "Py_DECREF(zview);"
+                "Py_DECREF(zview);" +
+                "}"
                 )
 
     def do_type_checking(self, node):
@@ -1477,7 +1483,7 @@ class IncSubtensor(Op):
     def c_code_cache_version(self):
         hv = Subtensor.helper_c_code_cache_version()
         if hv:
-            return (1, hv)
+            return (3, hv)
         else:
             return ()
 
@@ -1972,6 +1978,10 @@ class AdvancedIncSubtensor1(Op):
         {
             Py_XDECREF(%(out)s);
             %(out)s = %(copy_of_x)s;
+            if (!%(out)s) {
+                // Exception already set
+                %(fail)s
+            }
         }
         if (inplace_increment(%(out)s, (PyObject *)%(idx)s, %(y)s, %(inc_or_set)d)) {
             %(fail)s;
@@ -1980,7 +1990,7 @@ class AdvancedIncSubtensor1(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (4,)
+        return (6,)
 
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace

@@ -8,7 +8,7 @@
  */
 
 KERNEL void eye(GLOBAL_MEM DTYPE_OUTPUT_0 *a, ga_size a_off, ga_size n, ga_size m) {
-  a = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)a) + a_off);
+  a = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)a) + a_off);
   ga_size nb = n < m ? n : m;
   for (ga_size i = LID_0; i < nb; i += LDIM_0) {
     a[i*m + i] = 1;
