@@ -534,6 +534,17 @@ class BaseGpuCorrMM(CGpuKernelBase):
             str(self.filter_dilation),
             str(self.num_groups))
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'border_mode'):
+            self.border_mode = "valid"
+        if not hasattr(self, 'subsample'):
+            self.subsample = (1, 1)
+        if not hasattr(self, 'filter_dilation'):
+            self.filter_dilation = (1, 1)
+        if not hasattr(self, 'num_groups'):
+            self.num_groups = 1
+
     def flops(self, inp, outp):
         """
         Useful with the hack in profilemode to print the MFlops.
