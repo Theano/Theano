@@ -850,19 +850,27 @@ class EnumType(Type, dict):
         int constant_3 = CONSTANT_3; // constant_3 == 0
         int constant_4 = CONSTANT_4; // constant_4 == 1
 
-    You can also specify a C type for the op param if you want to pass one of these constant values at runtime.
-    Default C type is ``double``.
+    You can also specify a C type for the op param. Default C type is ``double``.
 
     .. code-block:: python
 
         enum = EnumType(CONSTANT_1=0, CONSTANT_2=1, CONSTANT_3=2, ctype='size_t')
-        op_param_value = enum.CONSTANT_1
+        # In C code, the Op param will then be a ``size_t``.
 
-    In C code:
+    .. note::
 
-    .. code-block:: c
+        You can also specify a C name (``cname``) or the current enumeration. This C name may be
+        used to name functions related to that specific enumeration, e.g. for debugging
+        purposes. Default C name is the C type (with any sequence of spaces replaced with
+        an underscore). If you want to debug and your C type is quite generic (e.g.
+        ``int`` or ``double``), we recommend you specify a C name.
 
-        size_t value = op_param_value; // contains enum.CONSTANT_1, i.e 0
+        C name must be a valid C identifier.
+
+        .. code-block:: python
+
+            enum = EnumType(CONSTANT_1=0, CONSTANT_2=1, CONSTANT_3=2,
+                            ctype='size_t', cname='MyEnumName')
 
     **Example with aliases**
 
@@ -917,8 +925,14 @@ class EnumType(Type, dict):
             raise TypeError('%s: invalid C type.' % type(self).__name__)
         self.ctype = ' '.join(ctype_parts)
 
+    def __init_cname(self, cname):
+        if not re.match('^[A-Za-z_][A-Za-z0-9_]*$', cname):
+            raise TypeError("%s: invalid C name." % type(self).__name__)
+        self.cname = cname
+
     def __init__(self, **kwargs):
         self.__init_ctype(kwargs.pop('ctype', 'double'))
+        self.__init_cname(kwargs.pop('cname', self.ctype.replace(' ', '_')))
         self.aliases = dict()
         for k in kwargs:
             if re.match('^[A-Z][A-Z0-9_]*$', k) is None:
@@ -1042,12 +1056,51 @@ class EnumType(Type, dict):
     #endif
     """
 
+    def c_to_string(self):
+        """
+        Return code for a C function that will convert an enumeration value
+        to a string representation. The function prototype is:
+
+        .. code-block:: c
+
+            int theano_enum_to_string_<cname>(<ctype> value, char* output_string);
+
+        Where ``ctype`` and ``cname`` are the C type and the C name of current Theano enumeration.
+
+        ``output_string`` should be large enough to contain the longest name in this enumeration.
+
+        If given value is unknown, the C function sets a Python ValueError exception and returns a non-zero.
+
+        This C function may be useful to retrieve some runtime informations.
+        It is available in C code when theano flag ``config.cmodule.debug`` is set to ``True``.
+        """
+        return """
+        #ifdef DEBUG
+        int theano_enum_to_string_%(cname)s(%(ctype)s in, char* out) {
+            int ret = 0;
+            switch(in) {
+                %(cases)s
+                default:
+                    PyErr_SetString(PyExc_ValueError, "%(classname)s:  unknown enum value.");
+                    ret = -1;
+                    break;
+            }
+            return ret;
+        }
+        #endif
+        """ % dict(cname=self.cname, ctype=self.ctype,
+                   classname=type(self).__name__,
+                   cases=''.join("""
+                   case %(name)s: sprintf(out, "%(name)s"); break;
+                   """ % dict(name=name) for name in self))
+
     def c_support_code(self):
         return (
             self.pyint_compat_code +
             ''.join("""
             #define %s %s
-            """ % (k, str(self[k])) for k in sorted(self.keys()))
+            """ % (k, str(self[k])) for k in sorted(self.keys())) +
+            self.c_to_string()
         )
 
     def c_declare(self, name, sub, check_input=True):
@@ -1072,7 +1125,7 @@ class EnumType(Type, dict):
         """ % dict(ctype=self.ctype, name=name, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (1, 1)
+        return (2, self.ctype, self.cname, tuple(self.items()))
 
 
 class EnumList(EnumType):
@@ -1091,7 +1144,7 @@ class EnumList(EnumType):
         print (enum.CONSTANT_1, enum.CONSTANT_2, enum.CONSTANT_3, enum.CONSTANT_4, enum.CONSTANT_5)
         # will print: 0 1 2 3 4
 
-    Like :class:`EnumType`, you can also define the C type for the op param.
+    Like :class:`EnumType`, you can also define the C type and a C name for the op param.
     Default C type is ``int``::
 
         enum = EnumList('CONSTANT_1', 'CONSTANT_2', 'CONSTANT_3', 'CONSTANT_4', ctype='unsigned int')
@@ -1109,9 +1162,10 @@ class EnumList(EnumType):
     """
 
     def __init__(self, *args, **kwargs):
-        assert len(kwargs) == 0 or (len(kwargs) == 1 and 'ctype' in kwargs), \
-            type(self).__name__ + ': expected 0 or only 1 extra parameter "ctype".'
+        assert len(kwargs) in (0, 1, 2), (type(self).__name__ +
+                                          ': expected 0 to 2 extra parameters ("ctype", "cname").')
         ctype = kwargs.pop('ctype', 'int')
+        cname = kwargs.pop('cname', ctype)
 
         for arg_rank, arg in enumerate(args):
             if isinstance(arg, (list, tuple)):
@@ -1133,7 +1187,7 @@ class EnumList(EnumType):
                 raise TypeError('%s: constant name already used ("%s").' % (type(self).__name__, constant_name))
             kwargs[constant_name] = constant_value
 
-        kwargs.update(ctype=ctype)
+        kwargs.update(ctype=ctype, cname=cname)
         super(EnumList, self).__init__(**kwargs)
 
 
@@ -1150,7 +1204,7 @@ class CEnumType(EnumList):
      - In C code, the real values defined in C will be used.
        They could be used either for choices or for its real values.
 
-    Like :class:`EnumList`, you can also define the C type for the op param.
+    Like :class:`EnumList`, you can also define the C type and a C name for the op param.
     Default C type is ``int``.
 
     .. code-block:: python
@@ -1169,7 +1223,7 @@ class CEnumType(EnumList):
     """
 
     def c_support_code(self):
-        return self.pyint_compat_code
+        return self.pyint_compat_code + self.c_to_string()
 
     def c_extract(self, name, sub, check_input=True):
         swapped_dict = dict((v, k) for (k, v) in self.items())
@@ -1190,6 +1244,4 @@ class CEnumType(EnumList):
                    fail=sub['fail'])
 
     def c_code_cache_version(self):
-        # C code depends on (C constant name, Python value) associations (given by `self.items()`),
-        # so we should better take them into account in C code version.
-        return (1, tuple(self.items()), super(CEnumType, self).c_code_cache_version())
+        return (1, super(CEnumType, self).c_code_cache_version())
