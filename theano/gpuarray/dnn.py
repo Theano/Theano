@@ -2646,7 +2646,7 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
                             AbstractConv2d_gradInputs))):
         return
 
-    if version() < 6000 and op.filter_dilation != (1, 1):
+    if version(raises=False) < 6000 and op.filter_dilation != (1, 1):
         return None
 
     inp1 = inputs[0]
@@ -2692,7 +2692,7 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
                             AbstractConv3d_gradInputs))):
         return
 
-    if version() < 6000 and op.filter_dilation != (1, 1, 1):
+    if version(raises=False) < 6000 and op.filter_dilation != (1, 1, 1):
         return None
 
     inp1 = inputs[0]
