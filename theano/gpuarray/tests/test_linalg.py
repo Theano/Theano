@@ -212,9 +212,13 @@ class TestMagma(unittest.TestCase):
 
         fn = theano.function([A], gpu_matrix_inverse(A), mode=mode_with_gpu)
         N = 1000
-        A_val = rand(N, N).astype('float32')
+        # We reload RNG here to get a specific failing case with seed = 17.
+        # NB: It seems we don't even need unittests.rseed nor utt.seed_rng().
+        test_rng = np.random.RandomState(seed=17)
+        # Copied from theano.tensor.tests.test_basic.rand.
+        A_val = test_rng.rand(N, N).astype('float32') * 2 - 1
         A_val_inv = fn(A_val)
-        utt.assert_allclose(value=np.dot(A_val_inv, A_val), expected=np.eye(N), atol=1e-2)
+        utt.assert_allclose(np.eye(N), np.dot(A_val_inv, A_val))
 
     def test_gpu_matrix_inverse_inplace(self):
         N = 1000
@@ -223,7 +227,7 @@ class TestMagma(unittest.TestCase):
         fn = theano.function([], GpuMagmaMatrixInverse(inplace=True)(A_val_gpu),
                              mode=mode_with_gpu, accept_inplace=True)
         fn()
-        utt.assert_allclose(value=np.dot(A_val_gpu.get_value(), A_val_copy), expected=np.eye(N), atol=1e-2)
+        utt.assert_allclose(np.eye(N), np.dot(A_val_gpu.get_value(), A_val_copy), atol=1e-2)
 
     def test_gpu_matrix_inverse_inplace_opt(self):
         A = theano.tensor.fmatrix("A")
