@@ -3109,7 +3109,7 @@ def local_dnn_reduction(node):
             node.op.acc_dtype == 'float64'):
         return
 
-    if node.op.pre_scalar_op != None:
+    if node.op.pre_scalar_op is not None:
         # Might want to handle absmax, avg, norm1, norm2 here
         return
 

@@ -16,11 +16,9 @@ from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape, get_conv_gradinputs_shape
 from theano.tensor.nnet import bn
 
-from theano.tensor.tests import test_elemwise
-
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
-from ..type import gpuarray_shared_constructor, get_context
+from ..type import gpuarray_shared_constructor
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, ref_cast
 from . import test_nnet
