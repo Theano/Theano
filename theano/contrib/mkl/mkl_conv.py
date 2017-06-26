@@ -1,7 +1,3 @@
-"""
-contains an op for convolving input images with a set of weights by using MKL
-library, which is a free dnn library provided by Intel.
-"""
 from __future__ import absolute_import, print_function, division
 import theano
 from six import integer_types
@@ -74,7 +70,7 @@ class MKLConvBase(gof.Op):
         ccode = mkl_helper.header_text()
         ccode += """
             #define _MKL_DEBUG_ 0
-            #define dimension 4
+            #define DIMENSION 4
             #define CHECK_ERR(f, err) \\
                 do { \\
                     (err) = (f); \\
@@ -101,12 +97,12 @@ class MKLConvBase(gof.Op):
 
         ccode = """
             int first_run;
-            size_t imageSize[dimension]; //w, h, c, n
-            size_t imageStride[dimension];
-            size_t weightSize[dimension+1]; //w, h, c, n, group
-            size_t weightStride[dimension+1];
-            size_t zSize[dimension]; //w, h, c, n
-            size_t zStride[dimension];
+            size_t imageSize[DIMENSION]; //w, h, c, n
+            size_t imageStride[DIMENSION];
+            size_t weightSize[DIMENSION+1]; //w, h, c, n, group
+            size_t weightStride[DIMENSION+1];
+            size_t zSize[DIMENSION]; //w, h, c, n
+            size_t zStride[DIMENSION];
             size_t biasSize[1]; //w, h, c, n
             size_t biasStride[1];
             size_t groups;
@@ -531,12 +527,12 @@ class Conv2D(MKLConvBase):
                 }
 
                 groups = %(grp)s;
-                fdimension = dimension + (groups != 1);
+                fdimension = DIMENSION + (groups != 1);
 
                 // Create conv forward primitive
                 if (%(withBias)s) {
                     CHECK_ERR( dnnGroupsConvolutionCreateForwardBias_%(precision)s(&pConvolutionFwd, NULL,
-                               dnnAlgorithmConvolutionDirect, groups, dimension, imageSize,
+                               dnnAlgorithmConvolutionDirect, groups, DIMENSION, imageSize,
                                zSize, weightSize, convStride, convPadding, dnnBorderZeros), err );
                     CHECK_ERR( dnnLayoutCreate_%(precision)s(&bias_usr_layout, 1, biasSize, biasStride), err );
                     CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&bias_internal_layout,
@@ -555,7 +551,7 @@ class Conv2D(MKLConvBase):
                     }
                 } else {
                     CHECK_ERR( dnnGroupsConvolutionCreateForward_%(precision)s(&pConvolutionFwd, NULL,
-                               dnnAlgorithmConvolutionDirect, groups, dimension, imageSize,
+                               dnnAlgorithmConvolutionDirect, groups, DIMENSION, imageSize,
                                zSize, weightSize, convStride, convPadding, dnnBorderZeros), err );
                 }
 
@@ -889,11 +885,11 @@ class ConvGradInputs(MKLConvBase):
                 zStride[3] = zSize[0] * zSize[1] * zSize[2];
 
                 groups = %(grp)s;
-                fdimension = dimension + (groups != 1);
+                fdimension = DIMENSION + (groups != 1);
 
                 // Create conv gradInput primitive
                 CHECK_ERR( dnnGroupsConvolutionCreateBackwardData_%(precision)s(&pConvolutionBwdData, NULL,
-                           dnnAlgorithmConvolutionDirect, groups, dimension, imageSize,
+                           dnnAlgorithmConvolutionDirect, groups, DIMENSION, imageSize,
                            zSize, weightSize, convStride, convPadding, dnnBorderZeros), err );
 
                 // For internal weight
@@ -1280,11 +1276,11 @@ class ConvGradWeights(MKLConvBase):
                 }
 
                 groups = %(grp)s;
-                fdimension = dimension + (groups != 1);
+                fdimension = DIMENSION + (groups != 1);
 
                 // Create conv backward primitive
                 CHECK_ERR( dnnGroupsConvolutionCreateBackwardFilter_%(precision)s(&pConvolutionBwdFilter, NULL,
-                           dnnAlgorithmConvolutionDirect, groups, dimension, imageSize,
+                           dnnAlgorithmConvolutionDirect, groups, DIMENSION, imageSize,
                            zSize, weightSize, convStride, convPadding, dnnBorderZeros), err );
 
                 // For internal weight
@@ -1340,7 +1336,7 @@ class ConvGradWeights(MKLConvBase):
 
                 if( %(withBias)s ) {
                     CHECK_ERR( dnnGroupsConvolutionCreateBackwardBias_%(precision)s(&pConvolutionBwdBias, NULL,
-                                dnnAlgorithmConvolutionDirect, groups, dimension, zSize), err );
+                                dnnAlgorithmConvolutionDirect, groups, DIMENSION, zSize), err );
 
                     CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&bias_internal_layout,
                                pConvolutionBwdBias, dnnResourceDiffBias), err );
@@ -1374,7 +1370,7 @@ class ConvGradWeights(MKLConvBase):
                 }
             }
 
-            //// Prepare weightgrad array
+            // Prepare weightgrad array
             if ( !(%(weightgrad)s) ) {
                 %(weightgrad)s = (PyArrayObject*)PyArray_ZEROS(PyArray_NDIM(%(weight)s),
                                                                PyArray_DIMS(%(weight)s),
