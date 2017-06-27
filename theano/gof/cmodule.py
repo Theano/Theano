@@ -747,7 +747,11 @@ class ModuleCache(object):
         time_now = time.time()
         # Go through directories in alphabetical order to ensure consistent
         # behavior.
-        subdirs = sorted(os.listdir(self.dirname))
+        try:
+            subdirs = sorted(os.listdir(self.dirname))
+        except OSError:
+            # This can happen if the dir don't exist.
+            subdirs = []
         files, root = None, None  # To make sure the "del" below works
         for subdirs_elem in subdirs:
             # Never clean/remove lock_dir
