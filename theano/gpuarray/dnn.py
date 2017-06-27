@@ -1570,7 +1570,7 @@ class GpuDnnReduction(DnnBase):
 
     params_type = ParamsType(red_op=cudnn.cudnnReduceTensorOp_t,
                              acc_dtype=cudnn.cudnnDataType_t,
-                             axis=uint32_t,
+                             c_axis=uint32_t,
                              handle=handle_type)
 
     def __init__(self, red_op, axis, acc_dtype, dtype, arg):
@@ -1587,7 +1587,11 @@ class GpuDnnReduction(DnnBase):
                 raise ValueError('Too many axes to reduce on')
             if any(a >= 8 for a in axis):
                 raise ValueError('Axes larger than 8 not supported')
-        self.axis = self._convert_axis(axis)
+            axis = tuple(axis)
+        # c_axis is a bitfield (1 to reduce)
+        self.c_axis = self._convert_axis(axis)
+        # axis is a list of axes to reduce on
+        self.axis = axis
         if arg and (red_op != 'max' and red_op != 'min'):
             raise ValueError("Can't request indices for something other than min or max")
         self.arg = arg

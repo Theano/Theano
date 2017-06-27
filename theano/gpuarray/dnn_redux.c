@@ -72,7 +72,7 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
   p = 0;
   rsz = 1;
   for (unsigned int i = 0; i < PyGpuArray_NDIM(input); i++) {
-    if (!(params->axis & (1U << i))) {
+    if (!(params->c_axis & (1U << i))) {
       dims[p] = PyGpuArray_DIM(input, i);
       p++;
     } else {
@@ -111,7 +111,7 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
   // We have to do some trickery to be able to pass it what it need.
   p = 0;
   for (unsigned int i = 0; i < PyGpuArray_NDIM(input); i++) {
-    if (params->axis & (1U << i)) {
+    if (params->c_axis & (1U << i)) {
       dims[i] = 1;
       strs[i] = 0;
     } else {
