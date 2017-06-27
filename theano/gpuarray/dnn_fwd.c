@@ -163,10 +163,15 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
   }
 
-  /* These two algos are not supported for 3d conv */
+  /* Only these algos are supported for 3d conv with cuDNN >= V5.1. */
   if (PyGpuArray_NDIM(input) == 5 &&
-      (algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM ||
-       algo == CUDNN_CONVOLUTION_FWD_ALGO_GEMM))
+      !(algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM ||
+        algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM ||
+        algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING))
+    algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+
+  /* Algo `small` seems to not work for a batch size > 2^16, with cuDNN >= V5.1. */
+  if (algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM && PyGpuArray_DIM(input, 0) > 65536)
     algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
 
   // The FFT implementation does not support strides, 1x1 filters or inputs

@@ -1068,7 +1068,7 @@ def get_conv3d_test_cases():
 
 
 def run_conv_small_batched_vs_multicall(inputs_shape, filters_shape, batch_sub, subsample):
-    # Run function for issue $5985 (see tests below): https://github.com/Theano/Theano/issues/5985
+    # Function to check issue #5985 (see tests below): https://github.com/Theano/Theano/issues/5985
 
     algo = 'small'
     batch_size = inputs_shape[0]
@@ -1081,16 +1081,20 @@ def run_conv_small_batched_vs_multicall(inputs_shape, filters_shape, batch_sub, 
     inputs = theano.shared(inputs_val)
     filters = theano.shared(filters_val)
 
-    conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, subsample=subsample)
+    if len(inputs_shape) == 5:
+        dnn_func = dnn.dnn_conv3d
+    else:
+        dnn_func = dnn.dnn_conv
+    conv = dnn_func(img=inputs, kerns=filters, algo=algo, subsample=subsample)
     # Just compute firt and last outputs to reduce execution time.
-    sub_conv_top = dnn.dnn_conv(img=inputs[:batch_sub],
-                                kerns=filters, algo=algo, subsample=subsample)
-    sub_conv_bottom = dnn.dnn_conv(img=inputs[(batch_size - batch_sub):],
-                                   kerns=filters, algo=algo, subsample=subsample)
+    sub_conv_top = dnn_func(img=inputs[:batch_sub],
+                            kerns=filters, algo=algo, subsample=subsample)
+    sub_conv_bottom = dnn_func(img=inputs[(batch_size - batch_sub):],
+                               kerns=filters, algo=algo, subsample=subsample)
     f = theano.function([], [conv, sub_conv_top, sub_conv_bottom], mode=mode_with_gpu)
     res_all, res_batch_top, res_batch_bottom = f()
     for i in range(0, batch_sub):
-        utt.assert_allclose(res_all[i], res_batch_top[i])
+        utt.assert_allclose(res_batch_top[i], res_all[i])
         p = batch_size - batch_sub + i
         # It seems there is a liimit batch size of 65536 for a good computation
         # with algorithm `small`.
@@ -1100,7 +1104,7 @@ def run_conv_small_batched_vs_multicall(inputs_shape, filters_shape, batch_sub, 
             # It should not happen.
             if np.allclose(res_all[p % checked_limit], res_all[p]):
                 print('\nconv[%d] == conv[%d] == %s' % (p % checked_limit, p, res_all[p]))
-        utt.assert_allclose(res_all[p], res_batch_bottom[i])
+        utt.assert_allclose(res_batch_bottom[i], res_all[p])
 
 
 def test_batched_conv_small():
@@ -1108,6 +1112,13 @@ def test_batched_conv_small():
     yield (run_conv_small_batched_vs_multicall, (65535, 2, 2, 2), (1, 2, 2, 2), 5, (1, 1))  # OK
     yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2), (1, 2, 2, 2), 5, (1, 1))  # OK
     yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2), (1, 2, 2, 2), 5, (1, 1))  # ERROR
+
+
+def test_batched_conv3d_small():
+    yield (run_conv_small_batched_vs_multicall, (65534, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5, (1, 1, 1))  # OK
+    yield (run_conv_small_batched_vs_multicall, (65535, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5, (1, 1, 1))  # OK
+    yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5, (1, 1, 1))  # OK
+    yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5, (1, 1, 1))  # ERROR ALSO.
 
 
 def test_conv3d_fwd():
