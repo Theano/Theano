@@ -161,7 +161,7 @@ class U2IGrad(BaseConvertOp):
                                                      z_size,
                                                      z_stride), err);
 
-            if (!dnnLayoutCompare_%(precision)s(MKLNdarray_LAYOUT(%(gz)s),layout_user) {
+            if (!dnnLayoutCompare_%(precision)s(MKLNdarray_LAYOUT(%(gz)s), layout_user) {
                 CHECK_ERR( dnnConversionCreate_%(precision)s(&from_internal,
                                                              MKLNdarray_LAYOUT(%(gz)s),
                                                              layout_user), err);
@@ -256,10 +256,11 @@ class I2UGrad(BaseConvertOp):
             gz_stride[3] = gz_size[0] * gz_size[1] * gz_size[2];
 
             CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user,
-                                                     DIMENSION, gz_size,
+                                                     DIMENSION,
+                                                     gz_size,
                                                      gz_stride), err);
 
-            if (!dnnLayoutCompare_%(precision)s(MKLNdarray_LAYOUT(%(z)s),layout_user)) {
+            if (!dnnLayoutCompare_%(precision)s(MKLNdarray_LAYOUT(%(z)s), layout_user)) {
                 CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal,
                                                              layout_user,
                                                              MKLNdarray_LAYOUT(%(z)s)), err);
@@ -273,7 +274,7 @@ class I2UGrad(BaseConvertOp):
                                                           PyArray_DATA(%(gz)s),
                                                           MKLNdarray_DATA(%(z)s)), err);
         } else {
-            memcpy((void*)MKLNdarray_DATA(%(z)s),(void*)PyArray_DATA(%(gz)s),%(z)s->data_size);
+            memcpy((void*)MKLNdarray_DATA(%(z)s),(void*)PyArray_DATA(%(gz)s), %(z)s->data_size);
         }
         first_run = 0;
         """ % sub
