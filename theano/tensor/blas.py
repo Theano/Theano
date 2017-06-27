@@ -1044,7 +1044,7 @@ class Gemm(GemmRelated):
     def c_code_cache_version(self):
         gv = self.build_gemm_version()
         if gv:
-            return (5,) + gv
+            return (6,) + gv
         else:
             return gv
 
