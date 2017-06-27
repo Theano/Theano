@@ -130,9 +130,13 @@ def test_reduce():
         ops = [type(node.op) for node in topo]
 
         if kind == b'opencl' and method in ["max", "min"]:
-            assert not(GpuCAReduceCuda in ops or GpuCAReduceCPY in ops)
+            assert not(GpuCAReduceCuda in ops or
+                       GpuCAReduceCPY in ops or
+                       GpuDnnReduction in ops)
         else:
-            assert GpuCAReduceCuda in ops or GpuCAReduceCPY in ops
+            assert (GpuCAReduceCuda in ops or
+                    GpuCAReduceCPY in ops or
+                    GpuDnnReduction in ops)
 
 
 def test_local_gpualloc_memset_0():
