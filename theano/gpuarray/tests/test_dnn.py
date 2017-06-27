@@ -2161,5 +2161,8 @@ class Cudnn_grouped_conv(Grouped_conv_noOptim):
     conv2d = staticmethod(dconv2d)
     conv2d_gradw = staticmethod(dconv2dw)
     conv2d_gradi = staticmethod(dconv2di)
+    conv2d_op = staticmethod(dnn.GpuDnnConv)
+    conv2d_gradw_op = staticmethod(dnn.GpuDnnConvGradW)
+    conv2d_gradi_op = staticmethod(dnn.GpuDnnConvGradI)
     flip_filter = False
     is_dnn = True
