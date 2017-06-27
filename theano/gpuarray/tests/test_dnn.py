@@ -2305,18 +2305,26 @@ def test_dnn_spatialtf_grid_generator():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    # shape: (width, height, num_feature_maps, num_images)
-    grid_dims = (2, 4, 1, 2)
+    # shape: (num_images, height, width, num_channels)
+    grid_dims = (2, 64, 64, 3)
 
-    theta = np.asarray([[[1, 0, 0], [0, 1, 0]],
-                        [[1, 0, 0], [0, 1, 0]]], dtype=theano.config.floatX)
+    identity = [[1,  0, 0],
+                [0,  1, 0]]
 
+    theta = np.asarray([identity, identity], dtype=theano.config.floatX)
     theta_gpu = gpuarray_shared_constructor(theta)
 
-    img = np.asarray([[[[1, 2], [3, 4],
-                        [5, 6], [7, 8]]],
-                      [[[9, 10], [11, 12],
-                        [13, 14], [15, 16]]]], dtype=np.int32)
+    from scipy import misc
+    f = misc.face().astype(np.float32)
+    # Scale input from [0, 255] to [0, 2]
+    sc = 1. / 128.
+    f *= sc
+    # Re-scale input from [0, 2] to [-1, 1] (normalized)
+    f -= 1
+
+    # Create array of images
+    img = np.asarray([f, f], dtype=theano.config.floatX)
+    # Create GPU variable for the images
     img_gpu = gpuarray_shared_constructor(img)
 
     spatialtf = dnn.dnn_spatialtf(img_gpu, theta_gpu, grid_dims)
@@ -2325,7 +2333,24 @@ def test_dnn_spatialtf_grid_generator():
 
     result, = spatialtf_fn()
 
-    img_out = np.asarray(result)
+    img_out = np.asarray(result, dtype=np.float32)
+
+    for i in range(len(img_out)):
+        # Re-scale output to range [0, 2]
+        img_out[i] += 1
+        # Re-scale output to range [0, 255]
+        img_out[i] *= 128
+    img_out = img_out.astype(dtype=np.uint8)
+
+    for i in range(len(img_out)):
+        print("[sampled image #{0}]".format(i))
+        print("Min/Max: {0}/{1}".format(img_out[i].min(), img_out[i].max()))
+        print(img_out[i])
+
+    import matplotlib.pyplot as plt
+    for img_idx in range(len(img_out)):
+        plt.imshow(img_out[img_idx])
+        plt.show()
 
     topo = spatialtf_fn.maker.fgraph.toposort()
     assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridGeneratorOp)]) == 1
