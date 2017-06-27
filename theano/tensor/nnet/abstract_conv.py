@@ -1604,15 +1604,14 @@ class BaseAbstractConv(Op):
         if direction == "forward":
             for row in xrange(out_shape[0]):
                 for col in xrange(out_shape[1]):
-                    out[row, col] += np.sum(np.multiply(inp[row:row + kern.shape[2],
-                                                        col:col + kern.shape[3]],
-                                            kern[row, col, ::-1, ::-1]))
+                    out[row, col] = np.sum(np.multiply(inp[row:row + kern.shape[2],
+                                                       col:col + kern.shape[3]],
+                                           kern[row, col, ::-1, ::-1]))
         elif direction == "backprop weights":
             for row in xrange(out_shape[0]):
                 for col in xrange(out_shape[1]):
-                    out[row, col, ...] += kern[row, col] * \
+                    out[row, col, ...] = kern[row, col] * \
                         inp[row:row + out_shape[2], col:col + out_shape[3]]
-
         elif direction == "backprop inputs":
             for row in xrange(kern.shape[0]):
                 for col in xrange(kern.shape[1]):

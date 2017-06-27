@@ -120,7 +120,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         return NULL;
     }
 
-    if (PyArray_NDIM(weight) != 4)
+    if (PyArray_NDIM(weight) != (unshared ? 6 : 4))
     {
         PyErr_SetString(PyExc_ValueError, "CorrMM requires weight of 4D");
         return NULL;
@@ -152,11 +152,12 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int nChannels = PyArray_DIMS(bottom)[1];
     const int bottomHeight = PyArray_DIMS(bottom)[2];
     const int bottomWidth = PyArray_DIMS(bottom)[3];
-    // weights: (nFilters, nChannels, rows, columns)
+    // normal weights: (nFilters, nChannels, rows, columns)
+    // unshared weights: (nFilters, topHeight, topWidth, nChannels, rows, columns)
     const int nFilters = PyArray_DIMS(weight)[0];
-    const int kH = PyArray_DIMS(weight)[2];
-    const int kW = PyArray_DIMS(weight)[3];
-    if (nChannels != PyArray_DIMS(weight)[1]) {
+    const int kH = PyArray_DIMS(weight)[unshared ? 4 : 2];
+    const int kW = PyArray_DIMS(weight)[unshared ? 5 : 3];
+    if (nChannels != PyArray_DIMS(weight)[unshared ? 3 : 1]) {
         PyErr_SetString(PyExc_ValueError,
                 "CorrMM images and kernel must have the same stack size\n");
         return NULL;
@@ -174,6 +175,23 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int topHeight = _CONV_FLOORDIV_X(topHeightNoDH, dH) + 1;
     const int topWidth  = _CONV_FLOORDIV_X(topWidthNoDW, dW) + 1;
 #undef _CONV_FLOORDIV
+    if(unshared){
+        if(topHeight != PyArray_DIMS(weight)[1] ||
+                topWidth != PyArray_DIMS(weight)[2]) {
+            PyErr_Format(PyExc_ValueError,
+                "CorrMM shape inconsistency:\n"
+                "  bottom shape: %%d %%d %%d %%d\n"
+                "  weight shape: %%d %%d %%d %%d %%d %%d"
+                " (expected %%d %%d %%d %%d %%d %%d)\n"
+                "  top shape(calculated): %%ld %%ld %%ld %%ld\n",
+                batchSize, nChannels, bottomHeight, bottomWidth,
+                nFilters, nChannels, PyArray_DIMS(weight)[2],
+                PyArray_DIMS(weight)[3], kH, kW,
+                nFilters, nChannels, topHeight, topWidth, kH, kW,
+                batchSize, nFilters, topHeight, topWidth);
+        return NULL;
+        }
+    }
     if (batchSize != PyArray_DIMS(top)[0] ||
             nFilters != PyArray_DIMS(top)[1] ||
             topHeight != PyArray_DIMS(top)[2] ||
@@ -221,8 +239,10 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int N_ = col_dim[2];
     const int col_stride = (K_ * N_);
     const int M_ = nFilters;
+    const int one_int = 1;
     const %(c_float_type)s one = 1.0;
     const %(c_float_type)s zero = 0.0;
+    const int weight_stride = (M_ * K_);
     char NTrans = 'N';
     char Trans = 'T';
     PyArrayObject *output;
@@ -258,9 +278,17 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                    bottomWidth, kH, kW, dilH, dilW, padH, padW, dH, dW,
                    (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
             // Second, gemm
-            if(unshared){;
+            if(unshared) {;
+                for(int reg = 0; reg < N_; ++reg) {
+                    %(gemv)s(&Trans, &K_, &M_,
+                            &one,
+                            (%(float_type)s*)PyArray_DATA(weight)+ reg * weight_stride, &K_,
+                            (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride + reg, &one_int,
+                            &zero,
+                            (%(float_type)s*)PyArray_DATA(top) + n * top_stride + reg, &one_int);
+                }
             }
-            else{
+            else {
                 %(gemm)s(&NTrans, &NTrans,
                        &N_, &M_, &K_,
                        &one,
@@ -309,7 +337,10 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         output = weight;
         npy_intp weight_dim[2];
         weight_dim[0] = (npy_intp)max_threads;
-        weight_dim[1] = (npy_intp)(M_ * K_);
+        if(unshared)
+            weight_dim[1] = (npy_intp)(N_ * M_ * K_);            
+        else
+            weight_dim[1] = (npy_intp)(M_ * K_);
         PyArrayObject* local_weight = (PyArrayObject*)PyArray_ZEROS(2,
                                    weight_dim, PyArray_TYPE(weight), 0);
 
@@ -338,14 +369,28 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
-            %(gemm)s(&Trans, &NTrans,
-                   &K_, &M_, &N_,
-                   &one,
-                   (%(float_type)s*)PyArray_DATA(col) + tid * col_stride, &N_,
-                   (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
-                   (n == 0) ? &zero : &one,
-                   (%(float_type)s*)PyArray_DATA(local_weight) + 
-                   tid * weight_dim[1], &K_);
+            if(unshared) {
+                for(int reg = 0; reg < N_; ++reg) {
+                    %(gemm)s(&Trans, &NTrans,
+                           &K_, &M_, &one_int,
+                           &one,
+                           (%(float_type)s*)PyArray_DATA(col) + tid * col_stride + reg, &N_,
+                           (%(float_type)s*)PyArray_DATA(top) + n * top_stride + reg, &N_,
+                           (n == 0) ? &zero : &one,
+                           (%(float_type)s*)PyArray_DATA(local_weight) + reg * weight_stride +
+                           tid * weight_dim[1], &K_);
+                }
+            }
+            else {
+                %(gemm)s(&Trans, &NTrans,
+                       &K_, &M_, &N_,
+                       &one,
+                       (%(float_type)s*)PyArray_DATA(col) + tid * col_stride, &N_,
+                       (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
+                       (n == 0) ? &zero : &one,
+                       (%(float_type)s*)PyArray_DATA(local_weight) + 
+                       tid * weight_dim[1], &K_);
+            }
         }
         // Restore to previous blas threads
         %(blas_set_num_threads)s(blas_threads_saved);
@@ -408,13 +453,18 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         for (int n = 0; n < batchSize; ++n) {
             // gemm into columns
             int tid = %(omp_get_thread_num)s;
-            %(gemm)s(&NTrans, &Trans,
-                   &N_, &K_, &M_,
-                   &one,
-                   (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
-                   (%(float_type)s*)PyArray_DATA(weight), &K_,
-                   &zero,
-                   (%(float_type)s*)PyArray_DATA(col) + tid * col_stride, &N_);
+            if(unshared) {
+                ;
+            }
+            else {
+                %(gemm)s(&NTrans, &Trans,
+                       &N_, &K_, &M_,
+                       &one,
+                       (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
+                       (%(float_type)s*)PyArray_DATA(weight), &K_,
+                       &zero,
+                       (%(float_type)s*)PyArray_DATA(col) + tid * col_stride, &N_);
+            }
             // col2im back to the data
             col2im((%(float_type)s*)PyArray_DATA(col) + tid * col_stride, nChannels, bottomHeight, bottomWidth,
                    kH, kW, dilH, dilW, padH, padW,

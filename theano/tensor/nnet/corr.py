@@ -180,12 +180,14 @@ class BaseCorrMM(gof.OpenMPOp):
         assert dtype in ('float32', 'float64')
         if dtype == 'float32':
             sub['gemm'] = 'sgemm_'
+            sub['gemv'] = 'sgemv_'
             sub['float_type'] = 'npy_float'
             sub['float_typenum'] = 'NPY_FLOAT'
             sub['n_bytes'] = 4
             sub['c_float_type'] = 'float'
         else:
             sub['gemm'] = 'dgemm_'
+            sub['gemv'] = 'dgemv_'
             sub['float_type'] = 'npy_double'
             sub['float_typenum'] = 'NPY_DOUBLE'
             sub['n_bytes'] = 8
@@ -529,8 +531,13 @@ class CorrMM(BaseCorrMM):
         img, kern = self.as_common_dtype(img, kern)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
-        if kern.type.ndim != 4:
-            raise TypeError('kern must be 4D tensor')
+        if self.unshared is True:
+            if kern.type.ndim != 6:
+                raise TypeError('kern must be 6D tensor')
+            kern = kern.dimshuffle(0, 2, 3, 1, 4, 5)
+        else:
+            if kern.type.ndim != 4:
+                raise TypeError('kern must be 4D tensor')
 
         broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
                          False, False]
@@ -599,8 +606,12 @@ class CorrMM_gradWeights(BaseCorrMM):
         else:
             height_width = [as_tensor_variable(shape[0]).astype('int64'), as_tensor_variable(shape[1]).astype('int64')]
 
-        broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
-                         False, False]
+        if self.unshared is True:
+            broadcastable = [topgrad.type.broadcastable[0], img.type.broadcastable[1]] +\
+                ([False] * 4)
+        else:
+            broadcastable = [topgrad.type.broadcastable[0], img.type.broadcastable[1],
+                             False, False]
         dtype = img.type.dtype
         return Apply(self, [img, topgrad] + height_width,
                      [TensorType(dtype, broadcastable)()])
@@ -636,7 +647,10 @@ class CorrMM_gradWeights(BaseCorrMM):
             kW = 2 - imshp[1] + (topshp[1] - 1) * dW
         else:
             kW = imshp[1] + 2 * padW - (topshp[1] - 1) * dW
-        return [(nkern, ssize, kH, kW)]
+        if self.unshared is True:
+            return [(nkern, topshp[0], topshp[1], ssize, kH, kW)]
+        else:
+            return [(nkern, ssize, kH, kW)]
 
     def c_code(self, node, nodename, inp, out_, sub):
         bottom, top = inp[:2]
@@ -687,8 +701,13 @@ class CorrMM_gradInputs(BaseCorrMM):
         kern = as_tensor_variable(kern)
         topgrad = as_tensor_variable(topgrad)
         kern, topgrad = self.as_common_dtype(kern, topgrad)
-        if kern.type.ndim != 4:
-            raise TypeError('kern must be 4D tensor')
+        if self.unshared is True:
+            if kern.type.ndim != 6:
+                raise TypeError('kern must be 6D tensor')
+        else:
+            if kern.type.ndim != 4:
+                raise TypeError('kern must be 4D tensor')
+        kern = kern.dimshuffle(0, 2, 3, 1, 4, 5)
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
         if shape is None:
