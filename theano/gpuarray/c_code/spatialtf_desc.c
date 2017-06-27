@@ -4,9 +4,9 @@ int APPLY_SPECIFIC(spatialtf_desc)(cudnnSpatialTransformerDescriptor_t * desc,
                                    PARAMS_TYPE * params)
 {
     cudnnStatus_t err;
-    
-    // width, height, num_feature_maps, num_images
-    const int out_tensor_dims[4] = { params->dim0, params->dim1, params->dim2, params->dim3 };
+
+    // num_channels, width, height, num_images
+    const int out_tensor_dims[4] = { params->nimages, params->height, params->width, params->nchannels };
 
     err = cudnnCreateSpatialTransformerDescriptor( desc );
     if ( CUDNN_STATUS_SUCCESS != err )
