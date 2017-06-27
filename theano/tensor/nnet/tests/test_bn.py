@@ -147,7 +147,7 @@ def test_batch_normalization_train():
     utt.seed_rng()
 
     for axes in ('per-activation', 'spatial', (1, 2, 3, 4)):
-        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.tensor5, T.tensor3, T.vector):
             x, scale, bias, running_mean, running_var = (vartype(n)
                                                          for n in ('x', 'scale', 'bias',
                                                                    'running_mean',
@@ -338,7 +338,7 @@ def test_batch_normalization_train_broadcast():
 
 def test_batch_normalization_test():
     for axes in ('per-activation', 'spatial', (1, 2, 3, 4)):
-        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.tensor5, T.tensor3, T.vector):
             x, scale, bias, mean, var = (vartype(n)
                                          for n in ('x', 'scale', 'bias', 'mean', 'var'))
             ndim = x.ndim
