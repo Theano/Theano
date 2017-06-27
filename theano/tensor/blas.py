@@ -821,6 +821,7 @@ class Gemm(GemmRelated):
 
     __props__ = ('inplace',)
     params_type = ParamsType(inplace=bool_t,)
+    check_input = False
 
     def __init__(self, inplace):
         self.inplace = inplace
@@ -1527,6 +1528,7 @@ class Dot22(GemmRelated):
     This is a specialization of the more general Dot().
 
     """
+    check_input = False
 
     def make_node(self, x, y):
         dtypes = ('float16', 'float32', 'float64', 'complex64', 'complex128')
@@ -1789,6 +1791,7 @@ class Dot22Scalar(GemmRelated):
     compute scalar*dot(x,y).
 
     """
+    check_input = False
 
     def make_node(self, x, y, a):
         if a.ndim != 0:
