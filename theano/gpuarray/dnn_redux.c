@@ -49,6 +49,7 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
   ssize_t *tstrs;
   size_t dims[8];
   ssize_t strs[8];
+  size_t rsz;
   void *alpha;
   void *beta;
   cudnnStatus_t err;
