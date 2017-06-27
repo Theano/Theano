@@ -1092,6 +1092,8 @@ class PoolGrad(OpenMPOp):
 
 
 class MaxPoolGrad(PoolGrad):
+    # params_type ignore_border don't change c code
+
     def __init__(self, ignore_border, ndim=2, openmp=None):
         PoolGrad.__init__(self, ignore_border, mode='max', ndim=ndim, openmp=openmp)
 
@@ -1194,7 +1196,7 @@ class MaxPoolGrad(PoolGrad):
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']
-        ignore_border = int(self.ignore_border)
+
         if self.openmp:
             # run in parallel over each pooling block
             omp_parallel = '#pragma omp parallel for private(r_st, r_end, r_idx, i_idx, o_idx, maximum) schedule(static)'
@@ -1407,6 +1409,8 @@ class MaxPoolGrad(PoolGrad):
 
 
 class AveragePoolGrad(PoolGrad):
+    # ignore_border is used for perform, but not c code. No need in params_type
+
     def __init__(self, ignore_border, mode='average_inc_pad', ndim=2):
         assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
         PoolGrad.__init__(self, ignore_border, mode, ndim)
@@ -1862,7 +1866,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']
-        ignore_border = int(self.ignore_border)
+
         if self.openmp:
             # run in parallel over each pooling block
             omp_parallel = '#pragma omp parallel for private(r_st, r_end, r_idx, i_idx, o_idx, maximum) schedule(static)'
