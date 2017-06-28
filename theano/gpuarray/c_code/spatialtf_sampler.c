@@ -41,12 +41,18 @@ spatialtf_sampler(PyGpuArrayObject * input,
     cudnnTensorFormat_t tf = CUDNN_TENSOR_NHWC;
     cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
+    if ( PyArray_DIM( grid_dimensions, 0 ) != 4 )
+    {
+        PyErr_SetString( PyExc_RuntimeError,
+                         "grid_dimensions must have 4 dimensions" );
+        return -1;
+    }
+
     // Obtain grid dimensions
-    npy_int * dimensions_data = (npy_int *)PyArray_DATA( grid_dimensions );
-    const int num_images = dimensions_data[0];
-    const int height = dimensions_data[1];
-    const int width = dimensions_data[2];
-    const int num_channels = dimensions_data[3];
+    const int num_images = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 0 ) );
+    const int height = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 1 ) );
+    const int width = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 2 ) );
+    const int num_channels = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 3 ) );
 
     switch (grid->ga.typecode)
     {

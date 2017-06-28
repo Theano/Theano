@@ -34,19 +34,18 @@ spatialtf_grid(PyArrayObject * grid_dimensions,
         return -1;
     }
 
-    if ( PyArray_DIM( grid_dimensions, 0 ) < 3 )
+    if ( PyArray_DIM( grid_dimensions, 0 ) != 4 )
     {
         PyErr_Format( PyExc_RuntimeError,
-                      "Grid dimensions array must have at least 3 dimensions!" );
+                      "grid_dimensions must have 4 dimensions!" );
         return -1;
     }
 
     // Obtain grid dimensions
-    npy_int * dimensions_data = (npy_int *)PyArray_DATA( grid_dimensions );
+    const size_t num_images = (size_t) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 0 ) );
+    const size_t height = (size_t) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 1 ) );
+    const size_t width = (size_t) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 2 ) );
 
-    const size_t num_images = dimensions_data[0];
-    const size_t height = dimensions_data[1];
-    const size_t width = dimensions_data[2];
     // Grid of coordinates is of size num_images * height * width * 2 for a 2D transformation
     const size_t grid_dims[4] = { num_images, height, width, 2 };
 
