@@ -599,7 +599,12 @@ class TestDnnConv2D(BaseTestDnnConv):
 
     special_cases = [DnnCase.bwd_filter(algo='deterministic', dtype='float32', precision='float32',
                                         inputs_shape=(1, 1, 541211, 10), filters_shape=(50, 1, 3, 10),
-                                        border_mode=(1, 0), should_fail=True)]
+                                        border_mode=(1, 0), should_fail=True),
+                     DnnCase.fwd(algo='small', dtype='float32', precision='float32',
+                                 inputs_shape=(65536, 2, 2, 2), filters_shape=(1, 2, 2, 2)),
+                     DnnCase.fwd(algo='small', dtype='float32', precision='float32',
+                                 inputs_shape=(65537, 2, 2, 2), filters_shape=(1, 2, 2, 2),
+                                 should_fail=(version(raises=False) <= 6020))]
 
 
 class TestDnnConv3D(BaseTestDnnConv):
@@ -612,6 +617,12 @@ class TestDnnConv3D(BaseTestDnnConv):
     cpu_conv_class = theano.tensor.nnet.corr3d.Corr3dMM
     cpu_gradinput_class = theano.tensor.nnet.corr3d.Corr3dMM_gradInputs
     cpu_gradweight_class = theano.tensor.nnet.corr3d.Corr3dMM_gradWeights
+
+    special_cases = [DnnCase.fwd(algo='small', dtype='float32', precision='float32',
+                                 inputs_shape=(65536, 2, 2, 2, 2), filters_shape=(1, 2, 2, 2, 2)),
+                     DnnCase.fwd(algo='small', dtype='float32', precision='float32',
+                                 inputs_shape=(65537, 2, 2, 2, 2), filters_shape=(1, 2, 2, 2, 2),
+                                 should_fail=(version(raises=False) <= 6020))]
 
 
 class CheckDnn():
