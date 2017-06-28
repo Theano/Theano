@@ -1332,7 +1332,7 @@ def test_argmax_pushdown():
         # print 'AFTER'
         # for node in fgraph.toposort():
         # print node.op
-        assert len(fgraph.toposort()) == 1  # an output_guard is second
+        assert len(fgraph.toposort()) == 1
         assert fgraph.toposort()[0].op == tensor.basic._argmax
         assert check_stack_trace(
             fgraph, ops_to_check=tensor.basic._argmax)
@@ -1357,7 +1357,7 @@ def test_argmax_pushdown():
         # print 'AFTER'
         # for node in fgraph.toposort():
             # print node.op
-        assert len(fgraph.toposort()) == 3  # an output_guard is second
+        assert len(fgraph.toposort()) == 3
         assert isinstance(fgraph.toposort()[0].op, tensor.Elemwise)
         assert isinstance(fgraph.toposort()[1].op, Softmax)
         assert isinstance(fgraph.toposort()[2].op, tensor.CAReduce)
