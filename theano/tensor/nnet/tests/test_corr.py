@@ -467,8 +467,11 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         unshared_func = theano.function([self.input, self.topgrad], conv_unshared, mode=self.mode)
         unshared_val = unshared_func(inputs_val, topgrad_val)
 
-        conv_ref = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_weights(self.input,
-                                                                            self.filters, unshared=True)
+        unshared_val = unshared_val.transpose((0, 3, 1, 2, 4, 5))
+        unshared_val = unshared_val[:, :, ::-1, ::-1, ::-1, ::-1]  # Something wrong here
+
+        conv_ref = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_weights(self.input, self.topgrad,
+                                                                            self.kshp, unshared=True)
         ref_func = theano.function([self.input, self.topgrad], conv_ref,
                                    mode=theano.compile.mode.Mode(optimizer='None'))
         ref_val = ref_func(inputs_val, topgrad_val)

@@ -158,6 +158,12 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int kH = PyArray_DIMS(weight)[unshared ? 4 : 2];
     const int kW = PyArray_DIMS(weight)[unshared ? 5 : 3];
     if (nChannels != PyArray_DIMS(weight)[unshared ? 3 : 1]) {
+        // PyErr_Format(PyExc_ValueError,
+        //         "bottom shape : %%d %%d %%d %%d\n"
+        //         "weight shape : %%ld %%ld %%ld %%ld %%ld %%ld\n",
+        //         batchSize, nChannels, bottomHeight, bottomWidth,
+        //         PyArray_DIMS(weight)[0], PyArray_DIMS(weight)[1], PyArray_DIMS(weight)[2],
+        //         PyArray_DIMS(weight)[3], PyArray_DIMS(weight)[4], PyArray_DIMS(weight)[5]);
         PyErr_SetString(PyExc_ValueError,
                 "CorrMM images and kernel must have the same stack size\n");
         return NULL;
@@ -242,7 +248,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int one_int = 1;
     const %(c_float_type)s one = 1.0;
     const %(c_float_type)s zero = 0.0;
-    const int weight_stride = (M_ * K_);
+    const int ldw = (K_ * N_);
     char NTrans = 'N';
     char Trans = 'T';
     PyArrayObject *output;
@@ -282,7 +288,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                 for(int reg = 0; reg < N_; ++reg) {
                     %(gemv)s(&Trans, &K_, &M_,
                             &one,
-                            (%(float_type)s*)PyArray_DATA(weight)+ reg * weight_stride, &K_,
+                            (%(float_type)s*)PyArray_DATA(weight)+ reg * K_, &ldw,
                             (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride + reg, &N_,
                             &zero,
                             (%(float_type)s*)PyArray_DATA(top) + n * top_stride + reg, &N_);
@@ -377,8 +383,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                            (%(float_type)s*)PyArray_DATA(col) + tid * col_stride + reg, &N_,
                            (%(float_type)s*)PyArray_DATA(top) + n * top_stride + reg, &N_,
                            (n == 0) ? &zero : &one,
-                           (%(float_type)s*)PyArray_DATA(local_weight) + reg * weight_stride +
-                           tid * weight_dim[1], &K_);
+                           (%(float_type)s*)PyArray_DATA(local_weight) + reg * K_ +
+                           tid * weight_dim[1], &ldw);
                 }
             }
             else {

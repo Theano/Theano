@@ -397,12 +397,12 @@ class BaseCorrMM(gof.OpenMPOp):
         // output is weights: (num_filters, num_channels, height, width)
         // height and width: weights = (bottom + 2*pad - (top - 1) * sample - 1) / dil + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[1];
-        out_dim[1] = (npy_intp)PyArray_DIMS(bottom)[1];
         if(unshared){
             odim = 6;
-            out_dim[2] = (npy_intp)PyArray_DIMS(top)[2];
-            out_dim[3] = (npy_intp)PyArray_DIMS(top)[3];
+            out_dim[1] = (npy_intp)PyArray_DIMS(top)[2];
+            out_dim[2] = (npy_intp)PyArray_DIMS(top)[3];
         }
+        out_dim[wdim-3] = (npy_intp)PyArray_DIMS(bottom)[1];
         out_dim[wdim-2] = (npy_intp)kH;  // already inferred further above
         out_dim[wdim-1] = (npy_intp)kW;  // how convenient
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
@@ -451,13 +451,19 @@ class BaseCorrMM(gof.OpenMPOp):
 
     // Prepare output array
     int typenum;
-    if ( !(*out
+    int failure;
+    failure = !(*out
            && PyArray_NDIM(*out)==odim
            && PyArray_IS_C_CONTIGUOUS(*out)
            && PyArray_DIMS(*out)[0]==out_dim[0]
            && PyArray_DIMS(*out)[1]==out_dim[1]
            && PyArray_DIMS(*out)[2]==out_dim[2]
-           && PyArray_DIMS(*out)[3]==out_dim[3]))
+           && PyArray_DIMS(*out)[3]==out_dim[3]);
+    if(odim == 6){
+        failure = failure || !(PyArray_DIMS(*out)[4]==out_dim[4]
+                && PyArray_DIMS(*out)[5]==out_dim[5]);
+    }
+    if ( failure )
     {
         Py_XDECREF(*out);
         if (direction != 1) {
