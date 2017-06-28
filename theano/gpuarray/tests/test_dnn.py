@@ -1111,17 +1111,17 @@ def run_conv_small_batched_vs_multicall(inputs_shape, filters_shape, batch_sub):
 
 
 def test_batched_conv_small():
-    yield (run_conv_small_batched_vs_multicall, (65534, 2, 2, 2), (1, 2, 2, 2), 5)  # OK
-    yield (run_conv_small_batched_vs_multicall, (65535, 2, 2, 2), (1, 2, 2, 2), 5)  # OK
-    yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2), (1, 2, 2, 2), 5)  # OK
-    yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2), (1, 2, 2, 2), 5)  # ERROR
+    # OK
+    yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2), (1, 2, 2, 2), 5)
+    # Should fail with cuDNN < V6020, but there's currently a workaround in `dnn_fwd.c` for that case.
+    yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2), (1, 2, 2, 2), 5)
 
 
 def test_batched_conv3d_small():
-    yield (run_conv_small_batched_vs_multicall, (65534, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)  # OK
-    yield (run_conv_small_batched_vs_multicall, (65535, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)  # OK
-    yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)  # OK
-    yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)  # ERROR ALSO.
+    # OK
+    yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)
+    # Should fail with cuDNN < V6020, but there's currently a workaround in `dnn_fwd.c` for that case.
+    yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)
 
 
 def test_conv3d_fwd():
