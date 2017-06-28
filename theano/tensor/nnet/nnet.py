@@ -2448,7 +2448,7 @@ def elu(x, alpha=1):
     return tensor.switch(x > 0, x, alpha * tensor.expm1(x))
 
 
-def selu(x, alpha=1):
+def selu(x):
     """Compute the element-wise Scaled Exponential Linear unit.
 
     Parameters
