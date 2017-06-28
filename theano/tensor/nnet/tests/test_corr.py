@@ -455,7 +455,7 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         conv_ref = theano.tensor.nnet.abstract_conv.conv2d(self.input, self.filters, unshared=True)
         ref_func = theano.function([self.input, self.filters], conv_ref,
                                    mode=theano.compile.mode.Mode(optimizer='None'))
-        ref_val = ref_func(inputs_val, filters_val)
+        ref_val = ref_func(inputs_val, filters_val[:, :, :, :, ::-1, ::-1])
 
         utt.assert_allclose(ref_val, unshared_val)
 

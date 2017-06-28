@@ -179,15 +179,15 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         if(topHeight != PyArray_DIMS(weight)[1] ||
                 topWidth != PyArray_DIMS(weight)[2]) {
             PyErr_Format(PyExc_ValueError,
-                "CorrMM shape inconsistency:\n"
+                "CorrMM regions in kernel must match output regions:\n"
                 "  bottom shape: %%d %%d %%d %%d\n"
-                "  weight shape: %%d %%d %%d %%d %%d %%d"
+                "  weight shape: %%d %%ld %%ld %%d %%d %%d"
                 " (expected %%d %%d %%d %%d %%d %%d)\n"
-                "  top shape(calculated): %%ld %%ld %%ld %%ld\n",
+                "  top shape(calculated): %%d %%d %%d %%d\n",
                 batchSize, nChannels, bottomHeight, bottomWidth,
-                nFilters, nChannels, PyArray_DIMS(weight)[2],
-                PyArray_DIMS(weight)[3], kH, kW,
-                nFilters, nChannels, topHeight, topWidth, kH, kW,
+                nFilters, PyArray_DIMS(weight)[1],
+                PyArray_DIMS(weight)[2], nChannels, kH, kW,
+                nFilters, topHeight, topWidth, nChannels, kH, kW,
                 batchSize, nFilters, topHeight, topWidth);
         return NULL;
         }
@@ -278,14 +278,14 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                    bottomWidth, kH, kW, dilH, dilW, padH, padW, dH, dW,
                    (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
             // Second, gemm
-            if(unshared) {;
+            if(unshared) {
                 for(int reg = 0; reg < N_; ++reg) {
                     %(gemv)s(&Trans, &K_, &M_,
                             &one,
                             (%(float_type)s*)PyArray_DATA(weight)+ reg * weight_stride, &K_,
-                            (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride + reg, &one_int,
+                            (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride + reg, &N_,
                             &zero,
-                            (%(float_type)s*)PyArray_DATA(top) + n * top_stride + reg, &one_int);
+                            (%(float_type)s*)PyArray_DATA(top) + n * top_stride + reg, &N_);
                 }
             }
             else {
