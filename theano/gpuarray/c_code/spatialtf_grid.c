@@ -58,11 +58,7 @@ spatialtf_grid(PyGpuArrayObject * theta,
     }
 
     if ( NULL == *grid ||
-         PyGpuArray_NDIM( *grid ) != 4 ||
-         PyGpuArray_DIM( *grid, 0 ) != num_images ||
-         PyGpuArray_DIM( *grid, 1 ) != height ||
-         PyGpuArray_DIM( *grid, 2 ) != width  ||
-         PyGpuArray_DIM( *grid, 3) != 2 )
+         ! theano_size_check( *grid, 4, &(grid_dims[0]), (*grid)->ga.typecode ) )
     {
         Py_XDECREF( *grid );
 
@@ -78,6 +74,20 @@ spatialtf_grid(PyGpuArrayObject * theta,
     else
     {
         GpuArray_memset( &( (*grid)->ga ), 0 );
+    }
+
+    if ( ! GpuArray_IS_C_CONTIGUOUS( &(theta->ga) ) )
+    {
+        PyErr_SetString( PyExc_MemoryError,
+                         "theta data is not C-contiguous" );
+        return -1;
+    }
+
+    if ( ! GpuArray_IS_C_CONTIGUOUS( &((*grid)->ga) ) )
+    {
+        PyErr_SetString( PyExc_MemoryError,
+                         "grid data is not C-contiguous" );
+        return -1;
     }
 
     const void * theta_data = PyGpuArray_DEV_DATA( theta );
