@@ -2254,6 +2254,11 @@ def psi(a):
 
 
 @_scal_elemwise
+def tri_gamma(a):
+    """second derivative of the log gamma function"""
+
+
+@_scal_elemwise
 def chi2sf(x, k):
     """chi squared survival function"""
 
