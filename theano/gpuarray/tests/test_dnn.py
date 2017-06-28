@@ -2305,17 +2305,18 @@ def test_dnn_spatialtf_grid_generator():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    # shape: (num_images, height, width, num_channels)
-    grid_dims = (2, 64, 64, 3)
+    # shape: (num_images, channels, height, width), equivalent to NCHW
+    grid_dims = (10, 3, 64, 128)
 
-    identity = [[1,  0, 0],
-                [0,  1, 0]]
+    identity = [[1, 0, 0],
+                [0, 1, 0]]
 
-    theta = np.asarray([identity, identity], dtype=theano.config.floatX)
+    theta = np.asarray(grid_dims[0] * [identity], dtype=theano.config.floatX)
     theta_gpu = gpuarray_shared_constructor(theta)
 
     from scipy import misc
     f = misc.face().astype(np.float32)
+    f = np.transpose(f, axes=(2, 0, 1))
     # Scale input from [0, 255] to [0, 2]
     sc = 1. / 128.
     f *= sc
@@ -2323,7 +2324,7 @@ def test_dnn_spatialtf_grid_generator():
     f -= 1
 
     # Create array of images
-    img = np.asarray([f, f], dtype=theano.config.floatX)
+    img = np.asarray(grid_dims[0] * [f], dtype=theano.config.floatX)
     # Create GPU variable for the images
     img_gpu = gpuarray_shared_constructor(img)
 
@@ -2335,12 +2336,15 @@ def test_dnn_spatialtf_grid_generator():
 
     img_out = np.asarray(result, dtype=np.float32)
 
+    print(img_out.shape)
+
     for i in range(len(img_out)):
         # Re-scale output to range [0, 2]
         img_out[i] += 1
         # Re-scale output to range [0, 255]
         img_out[i] *= 128
     img_out = img_out.astype(dtype=np.uint8)
+    img_out = np.transpose(img_out, axes=(0, 2, 3, 1))
 
     for i in range(len(img_out)):
         print("[sampled image #{0}]".format(i))
@@ -2353,4 +2357,5 @@ def test_dnn_spatialtf_grid_generator():
         plt.show()
 
     topo = spatialtf_fn.maker.fgraph.toposort()
-    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridGeneratorOp)]) == 1
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridGenerator)]) == 1
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridSampler)]) == 1
