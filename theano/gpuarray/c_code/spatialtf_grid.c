@@ -43,8 +43,9 @@ spatialtf_grid(PyArrayObject * grid_dimensions,
 
     // Obtain grid dimensions
     const size_t num_images = (size_t) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 0 ) );
-    const size_t height = (size_t) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 1 ) );
-    const size_t width = (size_t) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 2 ) );
+    // Dimension 1 is the number of image channels
+    const size_t height = (size_t) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 2 ) );
+    const size_t width = (size_t) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 3 ) );
 
     // Grid of coordinates is of size num_images * height * width * 2 for a 2D transformation
     const size_t grid_dims[4] = { num_images, height, width, 2 };

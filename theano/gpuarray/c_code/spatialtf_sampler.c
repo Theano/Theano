@@ -38,7 +38,7 @@ spatialtf_sampler(PyGpuArrayObject * input,
     spatialtf_context_t spatialtf_ctx;
     cudnnDataType_t dt;
     // Number of color channels (feature maps) is the innermost dimension
-    cudnnTensorFormat_t tf = CUDNN_TENSOR_NHWC;
+    cudnnTensorFormat_t tf = CUDNN_TENSOR_NCHW;
     cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
     if ( PyArray_DIM( grid_dimensions, 0 ) != 4 )
@@ -50,11 +50,11 @@ spatialtf_sampler(PyGpuArrayObject * input,
 
     // Obtain grid dimensions
     const int num_images = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 0 ) );
-    const int height = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 1 ) );
-    const int width = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 2 ) );
-    const int num_channels = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 3 ) );
+    const int num_channels = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 1 ) );
+    const int height = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 2 ) );
+    const int width = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 3 ) );
 
-    switch (grid->ga.typecode)
+    switch (input->ga.typecode)
     {
     case GA_DOUBLE:
         alpha_p = (void *)&alpha;
@@ -98,9 +98,9 @@ spatialtf_sampler(PyGpuArrayObject * input,
     // of the grid's width and height. The number of images and channels
     // should be the same as the grid dimensions
     const int input_num_images = (int) PyGpuArray_DIM( input, 0 );
-    const int input_height = (int) PyGpuArray_DIM( input, 1 );
-    const int input_width = (int) PyGpuArray_DIM( input, 2 );
-    const int input_num_channels = (int) PyGpuArray_DIM( input, 3 );
+    const int input_num_channels = (int) PyGpuArray_DIM( input, 1 );
+    const int input_height = (int) PyGpuArray_DIM( input, 2 );
+    const int input_width = (int) PyGpuArray_DIM( input, 3 );
 
     if ( input_num_images != num_images ||
          input_num_channels != num_channels )
@@ -154,8 +154,7 @@ spatialtf_sampler(PyGpuArrayObject * input,
 
     if ( NULL == *output )
     {
-        // (num_images, height, width, num_channels )
-        const size_t out_dims[4] = { num_images, height, width, num_channels };
+        const size_t out_dims[4] = { num_images, num_channels, height, width };
 
         *output = pygpu_zeros( 4, &(out_dims[0]), input->ga.typecode, GA_C_ORDER,
             gpu_ctx, Py_None );

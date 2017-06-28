@@ -5,8 +5,15 @@ int APPLY_SPECIFIC(spatialtf_desc)(cudnnSpatialTransformerDescriptor_t * desc,
 {
     cudnnStatus_t err;
 
-    // num_channels, width, height, num_images
-    const int out_tensor_dims[4] = { params->nimages, params->height, params->width, params->nchannels };
+    if ( params->nimages == 0 || params->nchannels == 0 ||
+         params->height == 0 || params->width == 0 )
+    {
+        PyErr_SetString( PyExc_RuntimeError, "Invalid grid dimensions" );
+        return -1;
+    }
+
+    // num_images, num_channels, height, width
+    const int out_tensor_dims[4] = { params->nimages, params->nchannels, params->height, params->width };
 
     err = cudnnCreateSpatialTransformerDescriptor( desc );
     if ( CUDNN_STATUS_SUCCESS != err )

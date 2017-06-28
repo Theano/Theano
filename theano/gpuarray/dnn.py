@@ -2841,7 +2841,7 @@ class GpuDnnSpatialTfDesc(COp):
     """
 
     __props__ = ('dimensions', 'precision')
-    params_type = ParamsType(nimages=int_t, height=int_t, width=int_t, nchannels=int_t,
+    params_type = ParamsType(nimages=int_t, nchannels=int_t, height=int_t, width=int_t,
                              nb_dims=int_t, precision=cudnn.cudnnDataType_t)
 
     def c_headers(self):
@@ -2886,14 +2886,14 @@ class GpuDnnSpatialTfDesc(COp):
         out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         return node
 
-    # Grid width
-    nimages = property(lambda self: self.dimensions[0])
-    # Grid height
-    height = property(lambda self: self.dimensions[1])
-    # Number of feature maps
-    width = property(lambda self: self.dimensions[2])
     # Number of images
-    nchannels = property(lambda self: self.dimensions[3])
+    nimages = property(lambda self: self.dimensions[0])
+    # Number of channels
+    nchannels = property(lambda self: self.dimensions[1])
+    # Grid height
+    height = property(lambda self: self.dimensions[2])
+    # Grid width
+    width = property(lambda self: self.dimensions[3])
     # Number of dimensions in the output tensor
     nb_dims = property(lambda self: len(self.dimensions))
 
