@@ -1620,7 +1620,7 @@ class GpuDnnReduction(DnnBase):
 
         bcast = []
         for i in range(inp.ndim):
-            if not (self.axis & (1 << i)):
+            if not (self.c_axis & (1 << i)):
                 bcast.append(inp.broadcastable[i])
         outs = [inp.type.clone(dtype=self.dtype, broadcastable=bcast)()]
         if self.arg:

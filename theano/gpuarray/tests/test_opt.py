@@ -17,6 +17,7 @@ from ..basic_ops import (
 from ..blas import GpuGemm
 from ..elemwise import (
     GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise, Elemwise, max_inputs_to_GpuElemwise)
+from ..dnn import GpuDnnReduction
 from ..subtensor import GpuSubtensor
 from ..linalg import GpuCusolverSolve, cusolver_available, GpuCholesky
 
