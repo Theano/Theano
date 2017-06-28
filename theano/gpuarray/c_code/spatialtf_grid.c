@@ -57,8 +57,15 @@ spatialtf_grid(PyGpuArrayObject * theta,
         return -1;
     }
 
-    if ( NULL == *grid )
+    if ( NULL == *grid ||
+         PyGpuArray_NDIM( *grid ) != 4 ||
+         PyGpuArray_DIM( *grid, 0 ) != num_images ||
+         PyGpuArray_DIM( *grid, 1 ) != height ||
+         PyGpuArray_DIM( *grid, 2 ) != width  ||
+         PyGpuArray_DIM( *grid, 3) != 2 )
     {
+        Py_XDECREF( *grid );
+
         *grid = pygpu_zeros( 4, &(grid_dims[0]), theta->ga.typecode, GA_C_ORDER,
             gpu_ctx, Py_None );
         if ( NULL == *grid )
@@ -67,6 +74,10 @@ spatialtf_grid(PyGpuArrayObject * theta,
                              "Could not allocate memory for grid of coordinates" );
             return -1;
         }
+    }
+    else
+    {
+        GpuArray_memset( &( (*grid)->ga ), 0 );
     }
 
     const void * theta_data = PyGpuArray_DEV_DATA( theta );

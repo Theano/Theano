@@ -147,6 +147,10 @@ spatialtf_sampler(PyGpuArrayObject * input,
             return -1;
         }
     }
+    else
+    {
+        GpuArray_memset( &( (*output)->ga ), 0 );
+    }
 
     const void * input_data = PyGpuArray_DEV_DATA( input );
     const void * grid_data = PyGpuArray_DEV_DATA( grid );
