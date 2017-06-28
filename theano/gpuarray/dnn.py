@@ -2926,6 +2926,9 @@ class GpuDnnGridGenerator(DnnBase):
         grid_dimensions = as_tensor_variable(grid_dimensions)
         theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
 
+        assert cudnn.cudnnDataType_t.has_alias(theta.dtype)
+        assert theta.ndim == 3
+
         # Allocate GPU memory for grid of coordinates
         grid = GpuArrayType(dtype=self.precision,
                             broadcastable=(False, False, False, False,),
