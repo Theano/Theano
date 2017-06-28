@@ -152,6 +152,27 @@ spatialtf_sampler(PyGpuArrayObject * input,
         GpuArray_memset( &( (*output)->ga ), 0 );
     }
 
+    if ( ! GpuArray_IS_C_CONTIGUOUS( &(input->ga) ) )
+    {
+        PyErr_SetString( PyExc_MemoryError,
+                         "input data is not C-contiguous" );
+        return -1;
+    }
+
+    if ( ! GpuArray_IS_C_CONTIGUOUS( &(grid->ga) ) )
+    {
+        PyErr_SetString( PyExc_MemoryError,
+                         "grid data is not C-contiguous" );
+        return -1;
+    }
+
+    if ( ! GpuArray_IS_C_CONTIGUOUS( &((*output)->ga) ) )
+    {
+        PyErr_SetString( PyExc_MemoryError,
+                         "theta data is not C-contiguous" );
+        return -1;
+    }
+
     const void * input_data = PyGpuArray_DEV_DATA( input );
     const void * grid_data = PyGpuArray_DEV_DATA( grid );
     void * out_data = PyGpuArray_DEV_DATA( *output );
