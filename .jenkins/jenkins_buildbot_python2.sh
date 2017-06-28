@@ -87,7 +87,7 @@ FLAGS=${FLAGS},magma.enabled=true
 FLAGS=${FLAGS},cmodule.age_thresh_use=604800
 
 echo "Executing tests with mode=FAST_RUN"
-NAME=fastrun
+NAME=python2_fastrun
 FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
 echo "THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
@@ -97,7 +97,7 @@ ls ${COMPILEDIR}|wc -l
 echo
 
 echo "Executing tests with mode=FAST_RUN,floatX=float32"
-NAME=fastrun_float32
+NAME=python2_fastrun_float32
 FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
 echo "THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
@@ -107,7 +107,7 @@ ls ${COMPILEDIR}|wc -l
 echo
 
 echo "Executing tests with linker=vm,vm.lazy=True,floatX=float32"
-NAME=fastrun_float32_lazyvm
+NAME=python2_fastrun_float32_lazyvm
 FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
 echo "THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
@@ -121,7 +121,7 @@ echo
 # with --batch=1000" # The buildbot freeze sometimes when collecting the tests to run
 # force_device=True as it would be useless to test the gpuarray back-end.
 echo "Executing tests with mode=FAST_COMPILE"
-NAME=fastcompile
+NAME=python2_fastcompile
 FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
 echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE,force_device=True ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
