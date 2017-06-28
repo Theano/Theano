@@ -1,8 +1,8 @@
 #section support_code
 
 int
-spatialtf_grid(PyGpuArrayObject * theta,
-               PyArrayObject * grid_dimensions,
+spatialtf_grid(PyArrayObject * grid_dimensions,
+               PyGpuArrayObject * theta,
                cudnnSpatialTransformerDescriptor_t desc,
                PyGpuArrayObject ** grid,
                cudnnHandle_t _handle)
