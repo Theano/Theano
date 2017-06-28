@@ -243,10 +243,8 @@ def test_badoptimization():
 
 
 def test_badoptimization_opt_err():
-    """This variant of test_badoptimization() replace the working code
-    with a new apply node that will raise an error.
-
-    """
+    # This variant of test_badoptimization() replace the working code
+    # with a new apply node that will raise an error.
     @gof.local_optimizer([theano.tensor.add])
     def insert_bigger_b_add(node):
         if node.op == theano.tensor.add:
