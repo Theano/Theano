@@ -1566,14 +1566,14 @@ class GpuDnnReduction(DnnBase):
     _f16_ok = True
     _cop_num_outputs = 2
 
-    __props__ = ('red_op', 'axis', 'arg', 'acc_dtype', 'dtype')
+    __props__ = ('red_op', 'axis', 'acc_dtype', 'dtype', 'return_indices')
 
     params_type = ParamsType(red_op=cudnn.cudnnReduceTensorOp_t,
                              acc_dtype=cudnn.cudnnDataType_t,
                              c_axis=uint32_t,
                              handle=handle_type)
 
-    def __init__(self, red_op, axis, acc_dtype, dtype, arg):
+    def __init__(self, red_op, axis, acc_dtype, dtype, return_indices):
         DnnBase.__init__(self, ['dnn_redux.c'], 'APPLY_SPECIFIC(dnn_redux)')
         assert cudnn.cudnnReduceTensorOp_t.has_alias(red_op)
         self.red_op = red_op
@@ -3088,6 +3088,9 @@ def local_dnn_reduction(node):
         return
 
     if version(raises=False) < 6000:
+        return
+
+    if node.inputs[0].ndim > 8:
         return
 
     if node.inputs[0].dtype != node.outputs[0].dtype:
