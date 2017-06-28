@@ -2959,14 +2959,17 @@ class GpuDnnGridSampler(DnnBase):
     def dnn_context(self, node):
         return node.outputs[0].type.context_name
 
-    def make_node(self, img, output, grid, grid_dimensions, desc,
+    def make_node(self, img, grid, grid_dimensions, desc,
                   alpha=None, beta=None):
         context_name = infer_context_name(img, grid)
 
         img = as_gpuarray_variable(img, context_name)
-        output = as_gpuarray_variable(output, context_name)
         grid = as_gpuarray_variable(grid, context_name)
         grid_dimensions = as_tensor_variable(grid_dimensions)
+
+        output = GpuArrayType(dtype=self.precision,
+                              broadcastable=img.type.ndim * (False,),
+                              context_name=context_name)()
 
         if img.type.ndim != 4:
             raise TypeError('img must be a 4D tensor')
@@ -2984,7 +2987,7 @@ class GpuDnnGridSampler(DnnBase):
         beta = ensure_dt(beta, _zero, 'beta', img.dtype)
 
         return Apply(self, [img, grid, grid_dimensions, desc, alpha, beta],
-                     [output.type()])
+                     [output])
 
     def L_op(self, inputs, outputs, output_grads):
         pass
@@ -3004,16 +3007,12 @@ def dnn_spatialtf(img, theta, grid_dims, alpha=None, beta=None, precision=None):
     desc = GpuDnnSpatialTfDesc(grid_dims, precision)()
 
     # Create grid dimensions variable
-    grid_dims_arr = np.asarray(list(grid_dims), dtype=np.int32)
-    grid_dims_var = as_tensor_variable(grid_dims_arr)
+    grid_dims_var = as_tensor_variable(grid_dims)
 
     # Setup grid of coordinates
     grid_coord = GpuDnnGridGenerator(precision)(grid_dims_var, theta, desc)
 
-    ctx_name = infer_context_name(img, theta)
-    out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*grid_dims)
-
-    grid_sampler = GpuDnnGridSampler(precision)(img, out, grid_coord, grid_dims_var, desc,
+    grid_sampler = GpuDnnGridSampler(precision)(img, grid_coord, grid_dims_var, desc,
                                                 alpha, beta)
 
     return grid_sampler
