@@ -170,9 +170,12 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING))
     algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
 
-  /* Algo `small` seems to not work for a batch size > 2^16, with cuDNN >= V5.1. */
-  if (algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM && PyGpuArray_DIM(input, 0) > 65536)
-    algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+  // Algo `small` does not work for a batch size > 2^16, with cuDNN >= V5.1.
+  // Issue should have been resolved for cuDNN >= V6.0.20.
+  if (cudnnGetVersion() <= 6020 &&
+      algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM &&
+      PyGpuArray_DIM(input, 0) > 65536)
+      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
 
   // The FFT implementation does not support strides, 1x1 filters or inputs
   // with a spatial dimension larger than 1024. The tiled-FFT implementation
