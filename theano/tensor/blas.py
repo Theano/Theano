@@ -245,7 +245,7 @@ class Gemv(Op):
             raise TypeError('gemv requires vector for y', y.type)
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
-    def perform(self, node, inputs, out_storage):
+    def perform(self, node, inputs, out_storage, params=None):
         y, alpha, A, x, beta = inputs
         if (have_fblas and y.shape[0] != 0 and x.shape[0] != 0 and
                 y.dtype in _blas_gemv_fns):
@@ -335,7 +335,7 @@ class Ger(Op):
             raise TypeError('only float and complex types supported', x.dtype)
         return Apply(self, [A, alpha, x, y], [A.type()])
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, params=None):
         cA, calpha, cx, cy = inp
         cZ, = out
         if self.destructive:
