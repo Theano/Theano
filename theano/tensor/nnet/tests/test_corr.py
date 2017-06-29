@@ -490,6 +490,6 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
                                                                            self.imshp, unshared=True)
         ref_func = theano.function([self.topgrad, self.filters], conv_ref,
                                    mode=theano.compile.mode.Mode(optimizer='None'))
-        ref_val = ref_func(topgrad_val, filters_val)
+        ref_val = ref_func(topgrad_val, filters_val[:, :, :, :, ::-1, ::-1])
 
         utt.assert_allclose(ref_val, unshared_val)

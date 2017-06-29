@@ -1615,10 +1615,8 @@ class BaseAbstractConv(Op):
         elif direction == "backprop inputs":
             for row in xrange(kern.shape[0]):
                 for col in xrange(kern.shape[1]):
-                    for k_row in xrange(kern.shape[2]):
-                        for k_col in xrange(kern.shape[3]):
-                            out[row + k_row, col + k_col] += inp[row, col] * \
-                                kern[row, col, -(k_row + 1), -(k_col + 1)]
+                    out[row:row + kern.shape[2], col:col + kern.shape[3]] += inp[row, col] * \
+                        kern[row, col, ::-1, ::-1]
         else:
             raise ValueError("unshared2d: invalid value '{}' for 'direction'".format(direction))
         return out
