@@ -2465,7 +2465,7 @@ def selu(x):
 
     References
     ----------
-    .. [1] Klambauer G, Unterthiner T, Mayr A, Hochreiter S.
+    .. Klambauer G, Unterthiner T, Mayr A, Hochreiter S.
         "Self-Normalizing Neural Networks" <https://arxiv.org/abs/1706.02515>
     """
     alpha = 1.6732632423543772848170429916717
