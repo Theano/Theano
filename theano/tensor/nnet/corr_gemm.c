@@ -158,12 +158,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int kH = PyArray_DIMS(weight)[unshared ? 4 : 2];
     const int kW = PyArray_DIMS(weight)[unshared ? 5 : 3];
     if (nChannels != PyArray_DIMS(weight)[unshared ? 3 : 1]) {
-        // PyErr_Format(PyExc_ValueError,
-        //         "bottom shape : %%d %%d %%d %%d\n"
-        //         "weight shape : %%ld %%ld %%ld %%ld %%ld %%ld\n",
-        //         batchSize, nChannels, bottomHeight, bottomWidth,
-        //         PyArray_DIMS(weight)[0], PyArray_DIMS(weight)[1], PyArray_DIMS(weight)[2],
-        //         PyArray_DIMS(weight)[3], PyArray_DIMS(weight)[4], PyArray_DIMS(weight)[5]);
         PyErr_SetString(PyExc_ValueError,
                 "CorrMM images and kernel must have the same stack size\n");
         return NULL;
@@ -344,7 +338,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         npy_intp weight_dim[2];
         weight_dim[0] = (npy_intp)max_threads;
         if(unshared)
-            weight_dim[1] = (npy_intp)(N_ * M_ * K_);            
+            weight_dim[1] = (npy_intp)(M_ * N_ * K_);            
         else
             weight_dim[1] = (npy_intp)(M_ * K_);
         PyArrayObject* local_weight = (PyArrayObject*)PyArray_ZEROS(2,
@@ -460,7 +454,15 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             // gemm into columns
             int tid = %(omp_get_thread_num)s;
             if(unshared) {
-                ;
+                for(int reg = 0; reg < N_; ++reg){
+                    %(gemm)s(&NTrans, &Trans,
+                           &one_int, &K_, &M_,
+                           &one,
+                           (%(float_type)s*)PyArray_DATA(top) + n * top_stride + reg, &one_int,
+                           (%(float_type)s*)PyArray_DATA(weight) + reg * K_, &ldw,
+                           &zero,
+                           (%(float_type)s*)PyArray_DATA(col) + tid * col_stride + reg, &N_);
+                }
             }
             else {
                 %(gemm)s(&NTrans, &Trans,

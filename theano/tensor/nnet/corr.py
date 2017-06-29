@@ -425,7 +425,7 @@ class BaseCorrMM(gof.OpenMPOp):
         // output is bottom: (batchsize, num_channels, height, width)
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
-        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[1];
+        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[unshared ? 3 : 1];
         out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1 - 2*padH);
         out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1 - 2*padW);
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
@@ -710,10 +710,10 @@ class CorrMM_gradInputs(BaseCorrMM):
         if self.unshared is True:
             if kern.type.ndim != 6:
                 raise TypeError('kern must be 6D tensor')
+            kern = kern.dimshuffle(0, 2, 3, 1, 4, 5)
         else:
             if kern.type.ndim != 4:
                 raise TypeError('kern must be 4D tensor')
-        kern = kern.dimshuffle(0, 2, 3, 1, 4, 5)
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
         if shape is None:
@@ -743,7 +743,7 @@ class CorrMM_gradInputs(BaseCorrMM):
         dH, dW = self.subsample
         kshp = input_shape[0]
         topshp = input_shape[1]
-        ssize, kshp = kshp[1], list(kshp[2:])
+        ssize, kshp = kshp[-3], list(kshp[-2:])
         bsize, topshp = topshp[0], list(topshp[2:])
         height_width = node.inputs[-2:]
         if padH == -1:

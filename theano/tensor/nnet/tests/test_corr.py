@@ -477,3 +477,19 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         ref_val = ref_func(inputs_val, topgrad_val)
 
         utt.assert_allclose(ref_val, unshared_val)
+
+    def test_gradinput(self):
+        filters_val = np.random.random(self.kshp).astype(theano.config.floatX)
+        topgrad_val = np.random.random(self.topgrad_shape).astype(theano.config.floatX)
+
+        conv_unshared = corr.CorrMM_gradInputs(unshared=True)(self.filters, self.topgrad)
+        unshared_func = theano.function([self.filters, self.topgrad], conv_unshared, mode=self.mode)
+        unshared_val = unshared_func(filters_val, topgrad_val)
+
+        conv_ref = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_inputs(self.topgrad, self.filters,
+                                                                           self.imshp, unshared=True)
+        ref_func = theano.function([self.topgrad, self.filters], conv_ref,
+                                   mode=theano.compile.mode.Mode(optimizer='None'))
+        ref_val = ref_func(topgrad_val, filters_val)
+
+        utt.assert_allclose(ref_val, unshared_val)
