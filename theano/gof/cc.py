@@ -421,7 +421,7 @@ def get_c_extract_out(r, name, sub):
     # `c_extract_out` is used to extract an output variable from
     # the compute map, to be used as pre-allocated memory for `r`
     # before its value gets computed.
-    # If the node producing `r` has `check_inputs=True`, it may
+    # If the node producing `r` has `check_input=True`, it may
     # also perform type checks on the initial value of the output,
     # so we need to pass `check_input=True` to `c_extract_out`.
     # However, that code is not used by potential clients of `r`,
