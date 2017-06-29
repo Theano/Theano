@@ -87,13 +87,19 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
   }
 
   if (p == input->ga.nd || rsz == 1) {
+    int err;
     Py_XDECREF(*output);
-    *output = pygpu_reshape(input, p, dims, GA_C_ORDER, 0, -1);
+    *output = pygpu_copy(input, GA_C_ORDER);
     if (*output == NULL)
       return 1;
+    err = GpuArray_reshape_inplace(&(*output)->ga, p, dims, GA_C_ORDER);
+    if (err != GA_NO_ERROR) {
+      PyErr_Format(PyExc_RuntimeError, "GpuArray_reshape_inplace: %s", GpuArray_error(&(*output)->ga, err));
+      return 1;
+    }
     if (indices != NULL) {
       // All indices will be 0 since the size of the reduced area is 1.
-      int err = GpuArray_memset(&(*indices)->ga, 0);
+      err = GpuArray_memset(&(*indices)->ga, 0);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError, "GpuArray_memset: %s", GpuArray_error(&(*indices)->ga, err));
         return 1;
