@@ -3,6 +3,22 @@
 Installing Theano 
 =================
 
+.. note::
+
+    Theano development version is very stable. DO NOT HESITATE TO USE
+    IT. Also, most people use it.
+
+    For our own research, we frequently can't wait for a release of
+    Theano before using the updates of Theano. So we must keep it very
+    stable. One mount after a release, we recommend people to use the
+    development version. You can use the git hash version if you need
+    to keep using a specific version.
+
+    We keep Theano very stable by having our full tests suite run on
+    each PR before merging. This include GPU tests. Also, all codes
+    (without exception) get reviewed by someone else then the original
+    author before merging.
+
 Supported platforms:
 
 .. toctree::
