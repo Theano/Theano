@@ -458,7 +458,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                     %(gemm)s(&NTrans, &Trans,
                            &one_int, &K_, &M_,
                            &one,
-                           (%(float_type)s*)PyArray_DATA(top) + n * top_stride + reg, &one_int,
+                           (%(float_type)s*)PyArray_DATA(top) + n * top_stride + reg, &N_,
                            (%(float_type)s*)PyArray_DATA(weight) + reg * K_, &ldw,
                            &zero,
                            (%(float_type)s*)PyArray_DATA(col) + tid * col_stride + reg, &N_);
