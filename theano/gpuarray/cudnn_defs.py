@@ -88,6 +88,9 @@ class CuDNNV51(object):
     cudnnBatchNormMode_t = CEnumType(('CUDNN_BATCHNORM_PER_ACTIVATION', 'per-activation'),
                                      ('CUDNN_BATCHNORM_SPATIAL', 'spatial'),
                                      ctype='cudnnBatchNormMode_t')
+    # It was introduced in cudnnv6, but we need to define it with an
+    # empty list of enum to don't crash with cudnn 5
+    cudnnReduceTensorOp_t = CEnumType()
 
 
 class CuDNNV6(CuDNNV51):

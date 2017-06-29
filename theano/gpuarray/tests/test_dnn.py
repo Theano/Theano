@@ -1437,7 +1437,7 @@ def dnn_reduction(nd, idtype, acc_dtype, odtype):
 
 
 def test_dnn_reduction_opt():
-    if not dnn.dnn_available(test_ctx_name):
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
         raise SkipTest(dnn.dnn_available.msg)
 
     for nd in range(1, 9):
