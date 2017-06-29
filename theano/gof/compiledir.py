@@ -77,7 +77,7 @@ def cleanup():
                     if len(keydata.keys) == 0:
                         shutil.rmtree(os.path.join(compiledir, directory))
 
-                except EOFError:
+                except (EOFError, AttributeError):
                     _logger.error(
                         "Could not read key file '%s'. To complete "
                         "the clean-up, please remove manually "
@@ -159,6 +159,10 @@ def print_compiledir_content():
                 nb_keys[len(keydata.keys)] += 1
             except IOError:
                 pass
+            except AttributeError:
+                    _logger.error(
+                        "Could not read key file '%s'.",
+                        filename)
 
     print_title("Theano cache: %s" % compiledir, overline='=', underline='=')
     print()
