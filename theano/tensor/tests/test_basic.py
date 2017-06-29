@@ -3092,7 +3092,8 @@ class T_max_and_argmax(unittest.TestCase):
             assert tuple(v_shape) == np.max(data, np_axis).shape
 
     def test2_float16(self):
-        data = rand(2, 3).astype("float16")
+        # Test negative values and bigger range to make sure numpy don't do the argmax as on uint16
+        data = (rand(20, 30).astype("float16")-0.5)*20
         n = shared(data)
         for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
                                 ([0, 1], None), ([1, 0], None),
@@ -3321,7 +3322,8 @@ class T_argmin_argmax(unittest.TestCase):
                 assert tuple(v_shape) == nfct(data, np_axis).shape
 
     def test2_float16(self):
-        data = rand(2, 3).astype("float16")
+        # Test negative values and bigger range to make sure numpy don't do the argmax as on uint16
+        data = (rand(20, 30).astype("float16")-0.5)*20
         n = shared(data)
         mode = get_default_mode().including("local_max_and_argmax", "uncanonicalize")
         for fct, nfct in [(argmax, np.argmax), (argmin, np.argmin)]:
