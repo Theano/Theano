@@ -338,7 +338,6 @@ class Stack(VM):
 
         self.allow_gc = allow_gc
         self.message = ""
-        self.base_apply_stack = [o.owner for o in fgraph.outputs if o.owner]
         self.outputs = fgraph.outputs
         self.storage_map = storage_map
         self.variable_shape = {}  # Variable -> shape
@@ -349,6 +348,18 @@ class Stack(VM):
         self.callback = callback
         self.callback_input = callback_input
         self.n_updates = n_updates
+
+        # We want to compute first the output that are on CPU.  This
+        # will make the call return more frequently before the GPU
+        # computation is done. This allow more CPU/GPU overlap and
+        # could allow more GPU transfer/GPU computation with the
+        # Theano flag: gpuarray.single_stream=False.
+
+        # The output that are computed first are the last in this list.
+        # inplace node can still force a different execution order.
+        out_ordered = sorted(fgraph.outputs,
+                             key=lambda a: isinstance(a, theano.tensor.TensorVariable))
+        self.base_apply_stack = [(o.owner) for o in out_ordered if o.owner]
 
         ords = fgraph.orderings()
 
