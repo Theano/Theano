@@ -41,7 +41,7 @@ from theano.tensor import (
     inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
     Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
     tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
-    var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
+    var, Argmax, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
     get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
     iscalars, arange, dscalars, fvector, imatrix, numeric_grad,
     opt, lvector, true_div, max, min, Split, roll,
@@ -106,8 +106,11 @@ def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
                     name=name)
 
 
-def eval_outputs(outputs):
-    variables = inplace_func([], outputs)()
+def eval_outputs(outputs, ops=(), mode=None):
+    f = inplace_func([], outputs, mode=mode)
+    variables = f()
+    if ops:
+        assert any(isinstance(node.op, ops) for node in f.maker.fgraph.apply_nodes)
     if isinstance(variables, (tuple, list)) and len(variables) == 1:
         return variables[0]
     return variables
@@ -3299,6 +3302,18 @@ class T_argmin_argmax(unittest.TestCase):
             for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
                                     ([0, 1], None), ([1, 0], None)]:
                 v = eval_outputs(fct(n, axis))
+                self.assertTrue(np.all(v == nfct(data, np_axis)))
+                v_shape = eval_outputs(fct(n, axis).shape)
+                assert tuple(v_shape) == nfct(data, np_axis).shape
+
+    def test2_float16(self):
+        data = rand(2, 3).astype("float16")
+        n = shared(data)
+        mode = get_default_mode().including("local_max_and_argmax", "uncanonicalize")
+        for fct, nfct in [(argmax, np.argmax), (argmin, np.argmin)]:
+            for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
+                                    ([0, 1], None), ([1, 0], None)]:
+                v = eval_outputs(fct(n, axis), (Argmax,), mode=mode)
                 self.assertTrue(np.all(v == nfct(data, np_axis)))
                 v_shape = eval_outputs(fct(n, axis).shape)
                 assert tuple(v_shape) == nfct(data, np_axis).shape
