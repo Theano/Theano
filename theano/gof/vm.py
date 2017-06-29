@@ -938,7 +938,11 @@ class VM_Linker(link.LocalLinker):
                     var_owner[i] = nodes_idx[var.owner]
 
             is_lazy_list = [int(th.lazy) for th in thunks]
-            output_vars = [vars_idx[v] for v in self.fgraph.outputs]
+            # Prefer the CPU output to be computed first.
+            # The first in the list is the first executed.
+            out_ordered = sorted(self.fgraph.outputs,
+                                 key=lambda a: not isinstance(a, theano.tensor.TensorVariable))
+            output_vars = [vars_idx[v] for v in out_ordered]
 
             # builds the list of prereqs induced by e.g. destroy_handler
             ords = self.fgraph.orderings()
