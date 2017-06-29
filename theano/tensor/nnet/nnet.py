@@ -2451,6 +2451,8 @@ def elu(x, alpha=1):
 def selu(x):
     """Compute the element-wise Scaled Exponential Linear unit.
 
+    .. versionadded:: 0.9.0
+
     Parameters
     ----------
     x : symbolic tensor
