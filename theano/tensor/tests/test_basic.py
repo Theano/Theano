@@ -3094,7 +3094,6 @@ class T_max_and_argmax(unittest.TestCase):
     def test2_float16(self):
         data = rand(2, 3).astype("float16")
         n = shared(data)
-        mode = get_default_mode().including("local_max_and_argmax", "uncanonicalize")
         for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
                                 ([0, 1], None), ([1, 0], None),
                                 (NoneConst.clone(), None),

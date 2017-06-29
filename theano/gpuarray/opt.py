@@ -1901,7 +1901,6 @@ def local_gpu_elemwise_careduce(node):
             # operation with some reduction pattern will probably results
             # in slow down.
             isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)):
-        op = node.op
         inp = node.inputs[0].owner.inputs[0]
         props = node.op._props_dict()
         props["pre_scalar_op"] = scalar.basic.sqr
