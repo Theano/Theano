@@ -2384,7 +2384,7 @@ class MaxPoolRop(OpenMPOp):
                   }
                   // use the index to find the correct position in the output
                   o_idx[%(non_pool_ndim)s + %(i)s] = r_idx[%(i)s];
-            """ % dict(i=i, non_pool_ndim=non_pool_ndim)
+            """ % dict(i=i, params=sub['params'], non_pool_ndim=non_pool_ndim)
 
         ccode += """
                   // get a pointer to the correct position in the output
