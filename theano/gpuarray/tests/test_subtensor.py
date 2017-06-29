@@ -121,6 +121,28 @@ def test_advinc_subtensor1_dtype():
         assert np.allclose(rval, rep)
 
 
+@theano.configparser.change_flags(deterministic='more')
+def test_deterministic_flag():
+    shp = (3, 4)
+    for dtype1, dtype2 in [('float32', 'int8')]:
+        shared = gpuarray_shared_constructor
+        xval = np.arange(np.prod(shp), dtype=dtype1).reshape(shp) + 1
+        yval = np.empty((2,) + shp[1:], dtype=dtype2)
+        yval[:] = 10
+        x = shared(xval, name='x')
+        y = tensor.tensor(dtype=yval.dtype,
+                          broadcastable=(False,) * len(yval.shape),
+                          name='y')
+        expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
+        f = theano.function([y], expr, mode=mode_with_gpu)
+        assert sum([isinstance(node.op, GpuAdvancedIncSubtensor1)
+                    for node in f.maker.fgraph.toposort()]) == 1
+        rval = f(yval)
+        rep = xval.copy()
+        rep[[0, 2]] += yval
+        assert np.allclose(rval, rep)
+
+
 def test_advinc_subtensor1_vector_scalar():
     # Test the case where x is a vector and y a scalar
     shp = (3,)

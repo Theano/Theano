@@ -179,6 +179,19 @@ import theano and print the config variable, as in:
     When creating a TensorVariable with dtype float64, what should be done?
     This is useful to help find upcast to float64 in user code.
 
+.. attribute:: deterministic
+
+    String value: either ``'default'``, ``'more'``
+
+    Default: ``'default'``
+
+    If `more`, sometimes we will select some implementation that
+    are more deterministic, but slower. In particular, on the GPU,
+    we will avoid using AtomicAdd. Sometimes we will still use
+    non-deterministic implementaion, e.g. when we do not have a GPU
+    implementation that is deterministic. Also see the dnn.conv.algo*
+    flags to cover more cases.
+
 .. attribute:: allow_gc
 
     Bool value: either ``True`` or ``False``
