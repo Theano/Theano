@@ -87,6 +87,7 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
   }
 
   if (p == input->ga.nd || rsz == 1) {
+    Py_XDECREF(*output);
     *output = pygpu_reshape(input, p, dims, GA_C_ORDER, 0, -1);
     if (*output == NULL)
       return 1;
