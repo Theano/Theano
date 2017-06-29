@@ -1903,10 +1903,10 @@ def local_gpu_elemwise_careduce(node):
             isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)):
         op = node.op
         inp = node.inputs[0].owner.inputs[0]
-        return [GpuCAReduceCuda(scalar_op=op.scalar_op,
-                                axis=op.axis,
-                                reduce_mask=op.reduce_mask,
-                                pre_scalar_op=scalar.basic.sqr)(inp)]
+        props = node.op._props_dict()
+        props["pre_scalar_op"] = scalar.basic.sqr
+        out = GpuCAReduceCuda(**props)(inp)
+        return [out]
 
 
 @local_optimizer(None)
