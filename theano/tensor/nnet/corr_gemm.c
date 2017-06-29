@@ -396,7 +396,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         %(blas_set_num_threads)s(blas_threads_saved);
 
         //aggregate weights
-        memset((%(float_type)s*)PyArray_DATA(weight), 0, M_ * K_*sizeof(%(float_type)s));
+        memset((%(float_type)s*)PyArray_DATA(weight), 0, weight_dim[1]*sizeof(%(float_type)s));
         /*
          * Put index "j" into outer loop to get the
          * correct result when openmp is used.

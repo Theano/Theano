@@ -452,10 +452,11 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         unshared_func = theano.function([self.input, self.filters], conv_unshared, mode=self.mode)
         unshared_val = unshared_func(inputs_val, filters_val)
 
-        conv_ref = theano.tensor.nnet.abstract_conv.conv2d(self.input, self.filters, unshared=True)
+        conv_ref = theano.tensor.nnet.abstract_conv.conv2d(self.input, self.filters, filter_flip=False,
+                                                           unshared=True)
         ref_func = theano.function([self.input, self.filters], conv_ref,
                                    mode=theano.compile.mode.Mode(optimizer='None'))
-        ref_val = ref_func(inputs_val, filters_val[:, :, :, :, ::-1, ::-1])
+        ref_val = ref_func(inputs_val, filters_val)
 
         utt.assert_allclose(ref_val, unshared_val)
 
@@ -468,10 +469,10 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         unshared_val = unshared_func(inputs_val, topgrad_val)
 
         unshared_val = unshared_val.transpose((0, 3, 1, 2, 4, 5))
-        unshared_val = unshared_val[:, :, ::-1, ::-1, ::-1, ::-1]  # Something wrong here
 
         conv_ref = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_weights(self.input, self.topgrad,
-                                                                            self.kshp, unshared=True)
+                                                                            self.kshp, filter_flip=False,
+                                                                            unshared=True)
         ref_func = theano.function([self.input, self.topgrad], conv_ref,
                                    mode=theano.compile.mode.Mode(optimizer='None'))
         ref_val = ref_func(inputs_val, topgrad_val)
@@ -487,9 +488,10 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         unshared_val = unshared_func(filters_val, topgrad_val)
 
         conv_ref = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_inputs(self.topgrad, self.filters,
-                                                                           self.imshp, unshared=True)
+                                                                           self.imshp, filter_flip=False,
+                                                                           unshared=True)
         ref_func = theano.function([self.topgrad, self.filters], conv_ref,
                                    mode=theano.compile.mode.Mode(optimizer='None'))
-        ref_val = ref_func(topgrad_val, filters_val[:, :, :, :, ::-1, ::-1])
+        ref_val = ref_func(topgrad_val, filters_val)
 
         utt.assert_allclose(ref_val, unshared_val)

@@ -1971,8 +1971,8 @@ class AbstractConv_gradWeights(BaseAbstractConv):
         img = img.transpose(axes_order)
 
         if self.unshared is True:
-            flip_kern = ((slice(None), slice(None)) +
-                         (slice(None, None, -1),) * 2 * self.convdim)
+            flip_kern = ((slice(None),) * (2 + self.convdim) +
+                         (slice(None, None, -1),) * self.convdim)
             kern = self.conv(img, topgrad, mode="valid", unshared=True, direction="backprop weights")
             kern_axes = (1, 0) + tuple(range(2, 2 + 2 * self.convdim))
         else:
