@@ -207,6 +207,9 @@ import theano and print the config variable, as in:
     significant speed up on functions with many ops that are fast to
     execute, but this increases Theano's memory usage.
 
+.. note:: if :attr:`config.gpuarray.preallocate` is the default value
+    or not disabled (-1), this is not useful anymore on the GPU.
+
 .. attribute:: config.scan.allow_output_prealloc
 
     Bool value, either ``True`` or ``False``
