@@ -1706,6 +1706,7 @@ if imported_scipy_special:
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
+    expected_tri_gamma = partial(scipy.special.polygamma, 1)
     expected_chi2sf = scipy.stats.chi2.sf
     expected_j0 = scipy.special.j0
     expected_j1 = scipy.special.j1
@@ -1870,6 +1871,23 @@ PsiInplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy)
 
+_good_broadcast_unary_tri_gamma = _good_broadcast_unary_psi
+
+TriGammaTester = makeBroadcastTester(
+    op=tensor.tri_gamma,
+    expected=expected_tri_gamma,
+    good=_good_broadcast_unary_psi,
+    eps=2e-8,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+TriGammaInplaceTester = makeBroadcastTester(
+    op=inplace.tri_gamma_inplace,
+    expected=expected_tri_gamma,
+    good=_good_broadcast_unary_tri_gamma,
+    eps=2e-8,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
 
 # chi2sf takes two inputs, a value (x) and a degrees of freedom (k).
 # not sure how to deal with that here...
