@@ -56,8 +56,8 @@ class Test_profiling(unittest.TestCase):
             lines1 = [l for l in the_string.split("\n") if "Max if linker" in l]
             lines2 = [l for l in the_string.split("\n") if "Minimum peak" in l]
             if theano.config.device == 'cpu':
-                assert "CPU: 4112KB (4104KB)" in the_string, (lines1, lines2)
-                assert "CPU: 8204KB (8196KB)" in the_string, (lines1, lines2)
+                assert "CPU: 4104KB (4104KB)" in the_string, (lines1, lines2)
+                assert "CPU: 8196KB (8196KB)" in the_string, (lines1, lines2)
                 assert "CPU: 8208KB" in the_string, (lines1, lines2)
                 assert "Minimum peak from all valid apply node order is 4104KB" in the_string, (
                     lines1, lines2)
