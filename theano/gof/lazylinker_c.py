@@ -3,6 +3,7 @@ import errno
 import logging
 import os
 from six.moves import reload_module as reload
+import stat
 import sys
 import warnings
 
@@ -20,6 +21,17 @@ lazylinker_ext = None
 
 
 def try_import():
+    # If the date is too old, don't reload it.
+    cfiles = [os.path.join(theano.__path__[0], 'gof', 'lazylinker_c.c')]
+    dirname = 'lazylinker_ext'
+
+    dst = os.path.join(config.compiledir, dirname)
+    if os.path.exists(dst):
+        stat_times = [os.stat(fn)[stat.ST_MTIME] for fn in cfiles]
+        date = max(stat_times)
+        if date >= os.stat(dst)[stat.ST_MTIME]:
+            raise ImportError("Too old")
+
     global lazylinker_ext
     sys.path[0:0] = [config.compiledir]
     import lazylinker_ext  # noqa
