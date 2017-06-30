@@ -122,7 +122,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
 
     if (PyArray_NDIM(weight) != (unshared ? 6 : 4))
     {
-        PyErr_SetString(PyExc_ValueError, "CorrMM requires weight of 4D");
+        PyErr_Format(PyExc_ValueError, "CorrMM requires weight of %%dD", unshared ? 6 : 4);
         return NULL;
     }
     if (PyArray_TYPE(weight) != %(float_typenum)s)

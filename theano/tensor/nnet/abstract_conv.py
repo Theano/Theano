@@ -48,8 +48,8 @@ def get_conv_output_shape(image_shape, kernel_shape,
         must correspond respectively to : number of output channels, number of
         input channels, height and width (and possibly depth) of the kernel.
         For an unshared convolution, its six channels must correspond to :
-        number of output channels, number of input channels, height and width
-        of the output, height and width of the kernel.
+        number of output channels, height and width
+        of the output, number of input channels, height and width of the kernel.
         None where undefined.
     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
         or numeric). If it is a string, it must be 'valid', 'half' or 'full'.

@@ -57,7 +57,7 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         Set of filters used in CNN layer of shape
         (output channels, input channels, filter rows, filter columns)
         for normal convolution and
-        (output channels, input channels, output rows, output columns,
+        (output channels, output rows, output columns, input channels,
         filter rows, filter columns)
         for unshared convolution.
         See the optional parameter ``filter_shape``.
@@ -68,7 +68,7 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         You can give ``None`` for any element of the list to specify that this
         element is not known at compile time.
 
-    filter_shape: None, tuple/list of len 4 of int or Constant variable
+    filter_shape: None, tuple/list of len 4 or 6 of int or Constant variable
         The shape of the filters parameter.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that this
