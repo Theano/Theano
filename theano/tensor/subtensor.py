@@ -1875,11 +1875,11 @@ class AdvancedIncSubtensor1(Op):
     __props__ = ('inplace', 'set_instead_of_inc')
     check_input = False
     params_type = ParamsType(inplace=scal.bool,
-                             set_instead_of_inc=scal.int8)
+                             set_instead_of_inc=scal.bool)
 
     def __init__(self, inplace=False, set_instead_of_inc=False):
         self.inplace = bool(inplace)
-        self.set_instead_of_inc = int(bool(set_instead_of_inc))
+        self.set_instead_of_inc = bool(set_instead_of_inc)
         if inplace:
             self.destroy_map = {0: [0]}
 
