@@ -1219,6 +1219,7 @@ class MaxAndArgmax(Op):
     E_axis = 'invalid axis'
     params_type = Generic()
     __props__ = ('axis',)
+    _f16_ok = True
 
     def __init__(self, axis):
         assert isinstance(axis, list)
@@ -1427,6 +1428,7 @@ class Argmax(Op):
     nout = 1
     E_axis = 'invalid axis'
     __props__ = ()
+    _f16_ok = True
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
