@@ -6,10 +6,12 @@ import warnings
 
 import numpy as np
 from six import integer_types
+from six.moves import reduce
 
 import theano
 from theano import Op, Apply, tensor, config, Variable
-from theano.scalar import as_scalar, constant, Log, get_scalar_type, int32 as int_t, bool as bool_t
+from theano.scalar import (as_scalar, constant, Log, get_scalar_type,
+                           int32 as int_t, bool as bool_t, uint32 as uint32_t)
 from theano.tensor import as_tensor_variable
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp, ParamsType, EnumList
@@ -34,7 +36,7 @@ from .type import (get_context, gpu_context_type, list_contexts,
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, GpuAllocEmpty,
                         empty_like, GpuArrayType, HostFromGpu)
-from .elemwise import GpuElemwise
+from .elemwise import GpuElemwise, GpuCAReduceCuda
 
 # These don't exist in gpuarray
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
@@ -433,7 +435,8 @@ class GpuDnnConvDesc(COp):
 
         node = Apply(self, [kern_shape],
                      [CDataType("cudnnConvolutionDescriptor_t",
-                                freefunc="cudnnDestroyConvolutionDescriptor")()])
+                                freefunc="cudnnDestroyConvolutionDescriptor",
+                                version=version(raises=False))()])
         # DebugMode cannot compare the values of CDataType variables, so by
         # default it returns False all the time. To prevent DebugMode from
         # complaining because of the MergeOptimizer, we make this variable
@@ -1216,7 +1219,8 @@ class GpuDnnPoolDesc(Op):
     def make_node(self):
         node = Apply(self, [],
                      [CDataType("cudnnPoolingDescriptor_t",
-                                freefunc="cudnnDestroyPoolingDescriptor")()])
+                                freefunc="cudnnDestroyPoolingDescriptor",
+                                version=version(raises=False))()])
         # DebugMode cannot compare the values of CDataType variables, so by
         # default it returns False all the time. To prevent DebugMode from
         # complaining because of the MergeOptimizer, we make this variable
@@ -1557,6 +1561,75 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
         return Apply(self, [dy, sm], [sm.type()])
 
 
+class GpuDnnReduction(DnnBase):
+    check_input = False
+    _f16_ok = True
+    _cop_num_outputs = 2
+
+    __props__ = ('red_op', 'axis', 'acc_dtype', 'dtype', 'return_indices')
+
+    params_type = ParamsType(red_op=cudnn.cudnnReduceTensorOp_t,
+                             acc_dtype=cudnn.cudnnDataType_t,
+                             c_axis=uint32_t,
+                             handle=handle_type)
+
+    def __init__(self, red_op, axis, acc_dtype, dtype, return_indices):
+        DnnBase.__init__(self, ['dnn_redux.c'], 'APPLY_SPECIFIC(dnn_redux)')
+        assert cudnn.cudnnReduceTensorOp_t.has_alias(red_op)
+        self.red_op = red_op
+        assert acc_dtype in ['float16', 'float32', 'float64']
+        self.acc_dtype = acc_dtype
+        assert dtype in ['float16', 'float32', 'float64']
+        self.dtype = dtype
+        # 8 is the current limit for cudnn
+        if axis is not None:
+            if len(axis) > 8:
+                raise ValueError('Too many axes to reduce on')
+            if any(a >= 8 for a in axis):
+                raise ValueError('Axes larger than 8 not supported')
+            axis = tuple(axis)
+        # c_axis is a bitfield (1 to reduce)
+        self.c_axis = self._convert_axis(axis)
+        # axis is a list of axes to reduce on
+        self.axis = axis
+        if return_indices and (red_op != 'max' and red_op != 'min'):
+            raise ValueError("Can't request indices for something other than min or max")
+        self.return_indices = return_indices
+
+    def _convert_axis(self, axis):
+        if axis is None:
+            return np.uint32(-1)
+        else:
+            return reduce(lambda a, b: a | b, map(lambda a: 1 << a, axis), 0)
+
+    def make_node(self, inp):
+        ctx_name = infer_context_name(inp)
+        inp = as_gpuarray_variable(inp, ctx_name)
+        if inp.ndim > 8:
+            raise ValueError("cuDNN reduction doesn't support nd > 8")
+        assert inp.dtype in ['float16', 'float32', 'float64']
+
+        # These restrictions where guessed from vague clues since
+        # there is no actual documentation on this
+        if inp.dtype == 'float64':
+            assert self.acc_dtype == 'float64'
+        if inp.dtype == 'float32':
+            assert self.acc_dtype == 'float32'
+        if inp.dtype == 'float16':
+            assert self.acc_dtype != 'float64'
+
+        bcast = []
+        for i in range(inp.ndim):
+            if not (self.c_axis & (1 << i)):
+                bcast.append(inp.broadcastable[i])
+        outs = [inp.type.clone(dtype=self.dtype, broadcastable=bcast)()]
+        if self.return_indices:
+            outs.append(GpuArrayType(dtype='uint32', broadcastable=bcast,
+                                     context_name=ctx_name)())
+
+        return Apply(self, [inp], outs)
+
+
 class GpuDnnBatchNorm(DnnBase):
     """
     Base Op for cuDNN Batch Normalization.
@@ -1812,7 +1885,8 @@ class GpuDnnBatchNormGrad(DnnBase):
 
 gpudata_type = CDataType('gpudata *', 'gpudata_release')
 dropoutdesc_type = CDataType('cudnnDropoutDescriptor_t',
-                             'cudnnDestroyDropoutDescriptor')
+                             'cudnnDestroyDropoutDescriptor',
+                             version=version(raises=False))
 
 
 class GpuDnnDropoutOp(DnnBase):
@@ -1881,7 +1955,8 @@ def dropout(x, dropout=0.0, seed=4242):
     return y, desc, odesc, states
 
 rnndesc_type = CDataType('cudnnRNNDescriptor_t',
-                         'cudnnDestroyRNNDescriptor')
+                         'cudnnDestroyRNNDescriptor',
+                         version=version(raises=False))
 
 
 def as_i32(v):
@@ -2985,6 +3060,76 @@ def local_gpua_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
     return [out.dimshuffle(0, 1)]
 
 
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([SoftmaxGrad])
+@register_opt2([SoftmaxGrad], 'cudnn', 'fast_compile')
+def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
+    if not dnn_available(ctx_name):
+        return
+    ins = []
+    for n in inputs:
+        n = as_gpuarray_variable(n, ctx_name)
+        if n.ndim != 2:
+            return
+        ins.append(n.dimshuffle(0, 'x', 1, 'x'))
+
+    out = GpuDnnSoftmaxGrad('accurate', 'instance')(
+        gpu_contiguous(ins[0]), gpu_contiguous(ins[1]))
+    return [out.dimshuffle(0, 2)]
+
+
+@register_opt('cudnn')
+@local_optimizer([GpuCAReduceCuda])
+def local_dnn_reduction(node):
+    if not isinstance(node.op, GpuCAReduceCuda):
+        return
+
+    if not dnn_available(node.inputs[0].type.context_name):
+        return
+
+    if version(raises=False) < 6000:
+        return
+
+    if node.inputs[0].ndim > 8:
+        return
+
+    if node.inputs[0].dtype != node.outputs[0].dtype:
+        # We can mix float16 and float32, but not float64.
+        if (node.inputs[0].dtype == 'float64' or
+                node.outputs[0].dtype == 'float64'):
+            return
+        if node.op.acc_dtype != 'float32':
+            return
+
+    if node.inputs[0].dtype not in ['float16', 'float32', 'float64']:
+        return
+
+    if (node.inputs[0].dtype == 'float64' and
+            node.op.acc_dtype != 'float64'):
+        return
+
+    if (node.inputs[0].dtype == 'float32' and
+            node.op.acc_dtype != 'float32'):
+        return
+
+    if (node.inputs[0].dtype == 'float16' and
+            node.op.acc_dtype == 'float64'):
+        return
+
+    if node.op.pre_scalar_op is not None:
+        # Might want to handle absmax, avg, norm1, norm2 here
+        return
+
+    if not cudnn.cudnnReduceTensorOp_t.has_alias(node.op.scalar_op.name):
+        return
+
+    return (GpuDnnReduction(node.op.scalar_op.name,
+                            node.op.axis,
+                            node.op.acc_dtype,
+                            node.op.dtype,
+                            False)(node.inputs[0]),)
+
+
 class NoCuDNNRaise(Optimizer):
 
     def apply(self, fgraph):
@@ -3002,24 +3147,6 @@ class NoCuDNNRaise(Optimizer):
                     dnn_available.msg)
 
 gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
-
-
-@register_opt('cudnn', 'fast_compile')
-@op_lifter([SoftmaxGrad])
-@register_opt2([SoftmaxGrad], 'cudnn', 'fast_compile')
-def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
-    if not dnn_available(ctx_name):
-        return
-    ins = []
-    for n in inputs:
-        n = as_gpuarray_variable(n, ctx_name)
-        if n.ndim != 2:
-            return
-        ins.append(n.dimshuffle(0, 'x', 1, 'x'))
-
-    out = GpuDnnSoftmaxGrad('accurate', 'instance')(
-        gpu_contiguous(ins[0]), gpu_contiguous(ins[1]))
-    return [out.dimshuffle(0, 2)]
 
 
 def local_abstract_batch_norm_train_cudnn(op, ctx_name, inputs, outputs):

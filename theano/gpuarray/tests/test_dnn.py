@@ -1485,6 +1485,27 @@ class test_SoftMax(test_nnet.test_SoftMax):
         utt.assert_allclose(f(inp), f_ref(inp))
 
 
+def dnn_reduction(nd, idtype, acc_dtype, odtype):
+    inp = T.TensorType(idtype, (False,) * nd)()
+    res = inp.sum(acc_dtype=acc_dtype, dtype=odtype)
+    f = theano.function([inp], res, mode=mode_with_gpu)
+    assert any(isinstance(n.op, dnn.GpuDnnReduction)
+               for n in f.maker.fgraph.apply_nodes)
+
+
+def test_dnn_reduction_opt():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
+
+    for nd in range(1, 9):
+        yield dnn_reduction, nd, 'float32', 'float32', 'float32'
+
+    for idtype, adtype, odtype in (('float64', 'float64', 'float64'),
+                                   ('float16', 'float32', 'float16'),
+                                   ('float16', 'float32', 'float32')):
+        yield dnn_reduction, 2, idtype, adtype, odtype
+
+
 def test_dnn_batchnorm_train():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)

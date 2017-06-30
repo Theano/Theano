@@ -94,6 +94,7 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor %s", cudnnGetErrorString(err));
+    return 1;
   }
 
   {

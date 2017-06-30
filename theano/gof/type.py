@@ -634,7 +634,7 @@ class _make_cdata(Op):
         """ % dict(ctype=self.rtype.ctype, out=outputs[0], inp=inputs[0])
 
     def c_code_cache_version(self):
-        return (0,)
+        return (0, self.rtype.version)
 
 
 class CDataType(Type):
