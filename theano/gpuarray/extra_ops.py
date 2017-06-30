@@ -28,7 +28,8 @@ class GpuCumOp(GpuKernelBase, Op):
                              context=gpu_context_type)
 
     def __init__(self, axis, mode='add'):
-        self.axis = int(axis) if axis is not None else 0
+        assert axis is not None
+        self.axis = int(axis)
         self.mode = mode
 
     def __eq__(self, other):
