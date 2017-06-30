@@ -161,7 +161,7 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
 
 def conv2d_transpose(input, filters, output_shape, filter_shape=None,
                      border_mode='valid', input_dilation=(1, 1),
-                     filter_flip=True, filter_dilation=(1, 1)):
+                     filter_flip=True, filter_dilation=(1, 1), num_groups=1):
     """
     This function will build the symbolic graph for applying a transposed
     convolution over a mini-batch of a stack of 2D inputs with a set of 2D
@@ -213,6 +213,10 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
         Factor by which to subsample (stride) the input.
         Also called dilation elsewhere.
 
+    num_groups : int
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
+
     Returns
     -------
     Symbolic 4D tensor
@@ -239,4 +243,5 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
                                   border_mode=border_mode,
                                   subsample=input_dilation,
                                   filter_flip=filter_flip,
-                                  filter_dilation=filter_dilation)
+                                  filter_dilation=filter_dilation,
+                                  num_groups=num_groups)
