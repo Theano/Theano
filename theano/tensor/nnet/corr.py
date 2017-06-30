@@ -170,7 +170,7 @@ class BaseCorrMM(gof.OpenMPOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (6, self.openmp, blas_header_version())
+        return (7, self.openmp, blas_header_version())
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -540,7 +540,6 @@ class CorrMM(BaseCorrMM):
         if self.unshared is True:
             if kern.type.ndim != 6:
                 raise TypeError('kern must be 6D tensor')
-            kern = kern.dimshuffle(0, 2, 3, 1, 4, 5)
         else:
             if kern.type.ndim != 4:
                 raise TypeError('kern must be 4D tensor')
@@ -710,7 +709,6 @@ class CorrMM_gradInputs(BaseCorrMM):
         if self.unshared is True:
             if kern.type.ndim != 6:
                 raise TypeError('kern must be 6D tensor')
-            kern = kern.dimshuffle(0, 2, 3, 1, 4, 5)
         else:
             if kern.type.ndim != 4:
                 raise TypeError('kern must be 4D tensor')

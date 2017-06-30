@@ -761,6 +761,10 @@ def conv2d_grad_wrt_inputs(output_grad,
         for dim in [0, 1, 2, 3]:
             assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
                                                   integer_types, type(None)))
+        if unshared is True:
+            for dim in [4, 5]:
+                assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
+                                                      integer_types, type(None)))
 
     # setting the last two dimensions of input_shape to None, if
     # the type of these dimensions is TensorVariable.
@@ -1537,8 +1541,8 @@ class BaseAbstractConv(Op):
             raise ValueError(
                 'invalid dilation {}, expected {} values'.format(dilation,
                                                                  self.convdim))
-
         if direction == "backprop weights":
+            # Do a transpose later to bring it to required shape
             out_shape = (img.shape[0], kern.shape[0],
                          kern.shape[2], kern.shape[3],
                          img.shape[2] - kern.shape[2] + 1,
@@ -1717,6 +1721,12 @@ class AbstractConv(BaseAbstractConv):
         if not self.filter_flip:
             kern = kern[(slice(None),) * (kern.ndim - self.convdim) + (slice(None, None, -1),) * self.convdim]
 
+        # from (nFilters, out_rows, out_cols, nChannels, kH, kW)
+        # to (nFilters, nChannels, out_rows, out_cols, kH, kW)
+        if self.unshared is True:
+            axes_order = (0, 1 + self.convdim,) + tuple(range(1, 1 + self.convdim)) + \
+                tuple(range(2 + self.convdim, kern.ndim))
+            kern = kern.transpose(axes_order)
         conv_out = self.conv(img, kern, mode="valid", dilation=self.filter_dilation, unshared=self.unshared)
         conv_out = conv_out[(slice(None), slice(None)) +
                             tuple(slice(None, None, self.subsample[i])
@@ -1748,7 +1758,7 @@ class AbstractConv(BaseAbstractConv):
         if self.kshp is not None:
             if self.unshared is True:
                 kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
-                        for i in range(4 + self.convdim)]
+                        for i in range(2 + 2 * self.convdim)]
             else:
                 kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
                         for i in range(2 + self.convdim)]
@@ -1909,8 +1919,8 @@ class AbstractConv_gradWeights(BaseAbstractConv):
 
         shape = as_tensor_variable(shape)
         if self.unshared is True:
-            broadcastable = [topgrad.broadcastable[1],
-                             img.broadcastable[1]] + ([False] * 2 * self.convdim)
+            broadcastable = [topgrad.broadcastable[1]] + ([False] * self.convdim) + \
+                            [img.broadcastable[1]] + ([False] * self.convdim)
         else:
             broadcastable = [topgrad.broadcastable[1],
                              img.broadcastable[1]] + ([False] * self.convdim)
@@ -1974,7 +1984,10 @@ class AbstractConv_gradWeights(BaseAbstractConv):
             flip_kern = ((slice(None),) * (2 + self.convdim) +
                          (slice(None, None, -1),) * self.convdim)
             kern = self.conv(img, topgrad, mode="valid", unshared=True, direction="backprop weights")
-            kern_axes = (1, 0) + tuple(range(2, 2 + 2 * self.convdim))
+            # from (nChannels, nFilters, out_rows, out_cols, kH, kW)
+            # to (nFilters, out_rows, out_cols, nChannels, kH, kW)
+            kern_axes = (1,) + tuple(range(2, self.convdim + 2)) + (0,) + \
+                tuple(range(self.convdim + 2, kern.ndim))
         else:
             flip_topgrad = flip_kern = ((slice(None), slice(None)) +
                                         (slice(None, None, -1),) * self.convdim)
@@ -2183,7 +2196,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
 
         shape = as_tensor_variable(shape)
         broadcastable = [topgrad.type.broadcastable[0],
-                         kern.type.broadcastable[1]] + ([False] * self.convdim)
+                         kern.type.broadcastable[-self.convdim - 1]] + ([False] * self.convdim)
         output = kern.type.clone(broadcastable=broadcastable)()
         return Apply(self, [kern, topgrad, shape], [output])
 
@@ -2240,17 +2253,20 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                               for i in range(self.convdim))] = topgrad
             topgrad = new_topgrad
 
-        axes_order = (1, 0) + tuple(range(2, kern.ndim))
-        kern = kern.transpose(axes_order)
-
         if self.unshared is True:
+            # from (nFilters, out_rows, out_cols, nChannels, kH, kW)
+            # to (nChannels, nFilters, out_rows, out_cols, kH, kW)
+            axes_order = (1 + self.convdim, 0,) + tuple(range(1, 1 + self.convdim)) + \
+                tuple(range(2 + self.convdim, kern.ndim))
+            kern = kern.transpose(axes_order)
             if not self.filter_flip:
                 kern = kern[(slice(None),) * (kern.ndim - self.convdim) +
                             (slice(None, None, -1),) * self.convdim]
-
             img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation,
                             unshared=True, direction="backprop inputs")
         else:
+            axes_order = (1, 0) + tuple(range(2, 2 + self.convdim))
+            kern = kern.transpose(axes_order)
             flip_filters = ((slice(None), slice(None)) +
                             (slice(None, None, -1),) * self.convdim)
             if self.filter_flip:

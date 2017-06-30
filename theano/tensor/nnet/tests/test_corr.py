@@ -441,7 +441,7 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         # This tests can run even when theano.config.blas.ldflags is empty.
 
         self.imshp = (2, 6, 4, 4)
-        self.kshp = (5, 6, 3, 3, 2, 2)
+        self.kshp = (5, 3, 3, 6, 2, 2)
         self.topgrad_shape = (2, 5, 3, 3)
 
     def test_fwd(self):
@@ -467,8 +467,6 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         conv_unshared = corr.CorrMM_gradWeights(unshared=True)(self.input, self.topgrad)
         unshared_func = theano.function([self.input, self.topgrad], conv_unshared, mode=self.mode)
         unshared_val = unshared_func(inputs_val, topgrad_val)
-
-        unshared_val = unshared_val.transpose((0, 3, 1, 2, 4, 5))
 
         conv_ref = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_weights(self.input, self.topgrad,
                                                                             self.kshp, filter_flip=False,

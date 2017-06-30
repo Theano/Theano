@@ -1706,7 +1706,7 @@ class TestUnsharedConv(unittest.TestCase):
         self.mode = theano.compile.mode.Mode(optimizer='None')
 
         self.imshp = (2, 6, 4, 4)
-        self.kshp = (5, 6, 3, 3, 2, 2)
+        self.kshp = (5, 3, 3, 6, 2, 2)
         self.topgrad_shape = (2, 5, 3, 3)
 
     def test_fwd(self):
@@ -1716,7 +1716,7 @@ class TestUnsharedConv(unittest.TestCase):
         filters = tensor6()
         filters_ref = theano.tensor.tensor4()
 
-        single_kshp = self.kshp[:2] + self.kshp[4:]
+        single_kshp = self.kshp[:1] + self.kshp[3:]
 
         inputs_val = np.random.random(self.imshp).astype(theano.config.floatX)
         filters_val = np.random.random(self.kshp).astype(theano.config.floatX)
@@ -1728,9 +1728,9 @@ class TestUnsharedConv(unittest.TestCase):
         conv_ref = conv.conv2d(inputs, filters_ref, unshared=False)
         ref_func = theano.function([inputs, filters_ref], conv_ref, mode=self.mode)
 
-        for i in range(0, self.kshp[2]):
-            for j in range(0, self.kshp[3]):
-                single_filter = filters_val[:, :, i, j, ...].reshape(single_kshp)
+        for i in range(0, self.kshp[1]):
+            for j in range(0, self.kshp[2]):
+                single_filter = filters_val[:, i, j, ...].reshape(single_kshp)
                 ref_val = ref_func(inputs_val, single_filter)
                 utt.assert_allclose(ref_val[:, :, i, j], unshared_val[:, :, i, j])
 
@@ -1746,13 +1746,13 @@ class TestUnsharedConv(unittest.TestCase):
         grad_func = theano.function([inputs, topgrad], grad_weights, mode=self.mode)
         grad_val = grad_func(inputs_val, topgrad_val)
 
-        single_kshp = self.kshp[:2] + self.kshp[4:]
+        single_kshp = self.kshp[:1] + self.kshp[3:]
 
         conv_ref = conv.conv2d_grad_wrt_weights(inputs, topgrad, single_kshp, unshared=False)
         ref_func = theano.function([inputs, topgrad], conv_ref, mode=self.mode)
         ref_val = ref_func(inputs_val, topgrad_val)
 
-        utt.assert_allclose(grad_val.sum(axis=(2, 3)), ref_val)
+        utt.assert_allclose(grad_val.sum(axis=(1, 2)), ref_val)
 
     def test_gradinput(self):
         tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
@@ -1761,12 +1761,12 @@ class TestUnsharedConv(unittest.TestCase):
         topgrad = theano.tensor.tensor4()
         filters_ref = theano.tensor.tensor4()
 
-        single_kshp = self.kshp[:2] + self.kshp[4:]
+        single_kshp = self.kshp[:1] + self.kshp[3:]
 
         # Applying the same filter to all regions
         single_filter = np.random.random(single_kshp).astype(theano.config.floatX)
-        filters_val = single_filter.reshape((self.kshp[:2] + (1, 1) + self.kshp[4:]))
-        filters_val = np.tile(filters_val, (1, 1, self.kshp[2], self.kshp[3], 1, 1))
+        filters_val = single_filter.reshape((self.kshp[:1] + (1, 1) + self.kshp[3:]))
+        filters_val = np.tile(filters_val, (1, self.kshp[1], self.kshp[2], 1, 1, 1))
 
         topgrad_val = np.random.random(self.topgrad_shape).astype(theano.config.floatX)
 
