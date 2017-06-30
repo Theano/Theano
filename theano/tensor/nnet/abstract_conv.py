@@ -544,6 +544,41 @@ def conv2d(input,
     return conv_op(input, filters)
 
 
+def separable_conv2d(input,
+                     depthwise_filter,
+                     pointwise_filter,
+                     num_channels,
+                     input_shape=None,
+                     depthwise_filter_shape=None,
+                     pointwise_filter_shape=None,
+                     border_mode='valid',
+                     subsample=(1, 1),
+                     filter_flip=True,
+                     filter_dilation=(1, 1)):
+
+    depthwise_op = conv2d(input=input,
+                          filters=depthwise_filter,
+                          input_shape=input_shape,
+                          filter_shape=depthwise_filter_shape,
+                          border_mode=border_mode,
+                          subsample=subsample,
+                          filter_flip=filter_flip,
+                          filter_dilation=filter_dilation,
+                          num_groups=num_channels)
+
+    #TODO: infer shape of output pf depthwise_op
+    pointwise_op = conv2d(input=depthwise_op,
+                          filters=pointwise_filter,
+                          input_shape=None,
+                          filter_shape=pointwise_filter_shape,
+                          border_mode='valid',
+                          subsample=(1, 1),
+                          filter_flip=filter_flip,
+                          filter_dilation=(1, 1),
+                          num_groups=1)
+    return pointwise_op
+
+
 def conv3d(input,
            filters,
            input_shape=None,
