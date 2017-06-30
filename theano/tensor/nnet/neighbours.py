@@ -167,7 +167,7 @@ class Images2Neibs(Op):
                 grad_undefined(self, 2, neib_step)]
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
     def perform(self, node, inp, out_, params):
         ten4, neib_shape, neib_step = inp
@@ -579,9 +579,9 @@ class Images2Neibs(Op):
                                 ten4_2 -= wrap_centered_half_idx_shift_x;
                                 if ( ten4_2 < 0 ) ten4_2 += height;
                                 else if (ten4_2 >= height) ten4_2 -= height;
-                            } else if ( "%(mode)s" == "half" ){
+                            } else if (%(mode)s == MODE_HALF) {
                                 ten4_2 -= wrap_centered_half_idx_shift_x;
-                            } else if ( "%(mode)s" == "full" ){
+                            } else if (%(mode)s == MODE_FULL) {
                                 ten4_2 -= c - 1;
                             }
                             if (ten4_2 < 0 | ten4_2 >= height) {
