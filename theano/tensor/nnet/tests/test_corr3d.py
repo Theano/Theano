@@ -200,6 +200,9 @@ class TestCorr3D(utt.InferShapeTester):
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3))
 
     def test_filter_dilation(self):
+        import cProfile, pstats, StringIO, sys
+        pr = cProfile.Profile()
+        pr.enable()
         # Tests correlation where filter dilation != (1,1,1)
         self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'valid', filter_dilation=(2, 2, 2))
         self.validate((3, 2, 14, 10, 10), (2, 2, 2, 3, 3), 'valid', filter_dilation=(3, 1, 1))
@@ -219,6 +222,19 @@ class TestCorr3D(utt.InferShapeTester):
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), (1, 1, 2), filter_dilation=(1, 1, 2))
 
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3), filter_dilation=(2, 2, 2))
+        pr.disable()
+        s = StringIO.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        s = s.getvalue()
+        print("cumulative\n", s, file=sys.stderr)
+        s = StringIO.StringIO()
+        sortby = 'time'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        s = s.getvalue()
+        print("time\n", s, file=sys.stderr)
 
     @parameterized.expand([('valid',), ('full',), ('half',), ((1, 1, 1),),
                            ((2, 1, 1),), ((1, 2, 1),), ((1, 1, 2),),
