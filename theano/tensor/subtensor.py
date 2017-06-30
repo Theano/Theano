@@ -1989,7 +1989,7 @@ class AdvancedIncSubtensor1(Op):
                    params=sub['params'], fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def perform(self, node, inp, out_, params):
         # TODO opt to make this inplace

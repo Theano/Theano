@@ -21,7 +21,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
     Images2Neibs for the GPU.
 
     """
-    params_type = ParamsType(mode=Images2Neibs.params_type, context=gpu_context_type)
+    params_type = ParamsType(mode=Images2Neibs.BORDER_MODE, context=gpu_context_type)
 
     def get_params(self, node):
         return self.params_type.get_params(self, context=node.inputs[0].type.context)
@@ -57,9 +57,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         flags = Kernel.get_flags(dtype_ten4, dtype_z)
         type_ten4 = gpuarray.dtype_to_ctype(dtype_ten4)
         type_z = gpuarray.dtype_to_ctype(dtype_z)
-        # Params type 'mode' is an enum list which c_support_code()
-        # contains C constants definitions that are useful here.
-        mode_constants = self.params_type.get_type('mode').c_support_code()
+        # `BORDER_MODE`'s c_support_code() contains C constants definitions that are useful here.
+        mode_constants = self.BORDER_MODE.c_support_code()
         kernels = []
         kname = "k_multi_warp_less"
         k_var = "k_multi_warp_less_" + nodename
@@ -110,29 +109,29 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                             ga_int i = LID_1;     // loop over c
                             {
                                 ga_int ten4_2 = i + a * step_x;
-                                if(%(mode)s == MODE_WRAP_CENTERED) {
+                                if(mode == MODE_WRAP_CENTERED) {
                                     ten4_2 -= wrap_centered_half_idx_shift_x;
                                     if ( ten4_2 < 0 )
                                         ten4_2 += height;
                                     else if (ten4_2 >= height)
                                         ten4_2 -= height;
-                                } else if (%(mode)s == MODE_HALF) {
+                                } else if (mode == MODE_HALF) {
                                     ten4_2 -= wrap_centered_half_idx_shift_x;
-                                } else if (%(mode)s == MODE_FULL) {
+                                } else if (mode == MODE_FULL) {
                                     ten4_2 -= c - 1;
                                 }
                                 ga_int j = LID_0;  // loop over d
                                 {
                                     ga_int ten4_3 = j + b * step_y;
-                                    if(%(mode)s == MODE_WRAP_CENTERED){
+                                    if(mode == MODE_WRAP_CENTERED){
                                         ten4_3 -= wrap_centered_half_idx_shift_y;
                                         if ( ten4_3 < 0 )
                                             ten4_3 += width;
                                         else if (ten4_3 >= width)
                                             ten4_3 -= width;
-                                    } else if (%(mode)s == MODE_HALF) {
+                                    } else if (mode == MODE_HALF) {
                                         ten4_3 -= wrap_centered_half_idx_shift_y;
-                                    } else if (%(mode)s == MODE_FULL) {
+                                    } else if (mode == MODE_FULL) {
                                         ten4_3 -= d - 1;
                                     }
 
@@ -212,30 +211,30 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                             for (ga_int i = LID_1; i < c; i+=LDIM_1)
                             {
                                 ga_int ten4_2 = i + a * step_x;
-                                if(%(mode)s == MODE_WRAP_CENTERED) {
+                                if(mode == MODE_WRAP_CENTERED) {
                                     ten4_2 -= wrap_centered_half_idx_shift_x;
                                     if ( ten4_2 < 0 )
                                         ten4_2 += height;
                                     else if (ten4_2 >= height)
                                         ten4_2 -= height;
-                                } else if (%(mode)s == MODE_HALF) {
+                                } else if (mode == MODE_HALF) {
                                     ten4_2 -= wrap_centered_half_idx_shift_x;
-                                } else if (%(mode)s == MODE_FULL) {
+                                } else if (mode == MODE_FULL) {
                                     ten4_2 -= c - 1;
                                 }
                                 // loop over d
                                 for (ga_int j = LID_0; j < d; j+=LDIM_0)
                                 {
                                     ga_int ten4_3 = j + b * step_y;
-                                    if(%(mode)s == MODE_WRAP_CENTERED) {
+                                    if(mode == MODE_WRAP_CENTERED) {
                                         ten4_3 -= wrap_centered_half_idx_shift_y;
                                         if ( ten4_3 < 0 )
                                             ten4_3 += width;
                                         else if (ten4_3 >= width)
                                             ten4_3 -= width;
-                                    } else if (%(mode)s == MODE_HALF) {
+                                    } else if (mode == MODE_HALF) {
                                         ten4_3 -= wrap_centered_half_idx_shift_y;
-                                    } else if (%(mode)s == MODE_FULL) {
+                                    } else if (mode == MODE_FULL) {
                                         ten4_3 -= d - 1;
                                     }
 

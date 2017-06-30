@@ -40,17 +40,18 @@ class Images2Neibs(Op):
     """
 
     __props__ = ("mode",)
-    params_type = EnumList(('MODE_VALID', 'valid'),
+    BORDER_MODE = EnumList(('MODE_VALID', 'valid'),
                            ('MODE_HALF', 'half'),
                            ('MODE_FULL', 'full'),
                            ('MODE_WRAP_CENTERED', 'wrap_centered'),
                            ('MODE_IGNORE_BORDERS', 'ignore_borders'))
+    params_type = BORDER_MODE
 
     def get_params(self, node):
         return self.mode
 
     def __init__(self, mode='valid'):
-        implemented_modes = self.params_type.get_aliases()
+        implemented_modes = self.BORDER_MODE.get_aliases()
         if mode not in implemented_modes:
             raise NotImplementedError("Only modes %s have been implemented for %s"
                                       % (', '.join(implemented_modes), type(self).__name__))
