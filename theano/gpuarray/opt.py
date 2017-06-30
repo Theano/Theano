@@ -1097,7 +1097,10 @@ def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
 @op_lifter([tensor.AdvancedIncSubtensor])
 @register_opt2([tensor.AdvancedIncSubtensor], 'fast_compile')
 def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
-    return GpuAdvancedIncSubtensor()
+    if not op.set_instead_of_inc:
+        return GpuAdvancedIncSubtensor()
+    else:
+        return False
 
 
 @register_inplace()
