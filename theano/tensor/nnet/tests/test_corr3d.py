@@ -224,13 +224,13 @@ class TestCorr3D(utt.InferShapeTester):
 
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3), filter_dilation=(2, 2, 2))
         pr.disable()
-        s = StringIO.StringIO()
+        s = StringIO()
         sortby = 'cumulative'
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
         s = s.getvalue()
         print("cumulative\n", s, file=sys.stderr)
-        s = StringIO.StringIO()
+        s = StringIO()
         sortby = 'time'
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
