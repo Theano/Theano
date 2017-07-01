@@ -151,7 +151,8 @@ class TestCorr3D(utt.InferShapeTester):
             utt.verify_grad(sym_Corr3dMM, [orig_image_data, filter_data],
                             mode=self.mode)
 
-    @attr('slow')
+    #@attr('slow')
+    @theano.configparser.change_flags([("profile", True), ("profiling.destination", 'stderr')])
     def test_basic(self):
         # Tests that basic correlations work for odd and even
         # dimensions of image and filter shapes, as well as rectangular
@@ -170,6 +171,7 @@ class TestCorr3D(utt.InferShapeTester):
 
         # Very slow on with 'full' or 'half'
         self.validate((1, 2, 53, 29, 11), (13, 2, 12, 1, 1), 'valid', verify_grad=False)
+        theano.compile.profiling._atexit_print_fn()
 
     def test_img_kernel_same_shape(self):
         self.validate((3, 2, 3, 3, 3), (1, 2, 3, 3, 3), 'full')
