@@ -200,7 +200,8 @@ class TestCorr3D(utt.InferShapeTester):
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3))
 
     def test_filter_dilation(self):
-        import cProfile, pstats, StringIO, sys
+        from six import StringIO
+        import cProfile, pstats, sys
         pr = cProfile.Profile()
         pr.enable()
         # Tests correlation where filter dilation != (1,1,1)
