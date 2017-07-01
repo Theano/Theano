@@ -305,7 +305,7 @@ class BaseCorrMM(gof.OpenMPOp):
 
     int wdim, odim;
     wdim = unshared ? 6 : 4;
-    odim = 4; //Can be set to 6 later if required
+    odim = 4; //Can be set to 6 later for unshared backprop wrt weights
 
     // Obtain or infer kernel width and height
     // (we need to know it early to be able to handle auto-padding)
@@ -368,7 +368,7 @@ class BaseCorrMM(gof.OpenMPOp):
 
     // Infer output shape
     npy_intp out_dim[6];
-    out_dim[4] = out_dim[5] = 0; //Will be changed if required
+    out_dim[4] = out_dim[5] = 0; //Only used for unshared backprop wrt weights
     switch(direction) {
     case 0:  // forward pass
         // output is top: (batchsize, num_filters, height, width)
@@ -379,17 +379,33 @@ class BaseCorrMM(gof.OpenMPOp):
         out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - ((PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1)) / dW + 1);
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
         {
-            PyErr_Format(PyExc_ValueError,
-                         "CorrMM: impossible output shape\\n"
-                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
-                         (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
-                         (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
-                         (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
-                         (long int)PyArray_DIMS(weights)[wdim-2], (long int)PyArray_DIMS(weights)[wdim-1],
-                         (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
-                         (long int)out_dim[3]);
+            if(unshared) {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld %%ld %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
+                             (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
+                             (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
+                             (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                             (long int)PyArray_DIMS(weights)[4], (long int)PyArray_DIMS(weights)[5],
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3]);
+            }
+            else {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
+                             (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
+                             (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
+                             (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3]);
+            }
             %(fail)s
         }
         break;
@@ -405,43 +421,81 @@ class BaseCorrMM(gof.OpenMPOp):
         out_dim[wdim-3] = (npy_intp)PyArray_DIMS(bottom)[1];
         out_dim[wdim-2] = (npy_intp)kH;  // already inferred further above
         out_dim[wdim-1] = (npy_intp)kW;  // how convenient
-        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "CorrMM backprop wrt. weights: impossible output shape\\n"
-                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
-                         (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
-                         (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
-                         (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
-                         (long int)out_dim[3],
-                         (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
-                         (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
-            %(fail)s
+        if(unshared) {
+            if(out_dim[0] < 0 || out_dim[1] <= 0 || out_dim[2] <= 0 || out_dim[3] < 0
+                    || out_dim[4] <= 0 || out_dim[5] <= 0){
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM backprop wrt. weights: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld %%ld %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
+                             (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3], (long int)out_dim[4], (long int)out_dim[5],
+                             (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
+                             (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
+            }
+        }
+        else {
+            if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM backprop wrt. weights: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
+                             (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3],
+                             (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
+                             (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
+                %(fail)s
+            }
         }
         break;
     case 2:  // backprop wrt. inputs
         // output is bottom: (batchsize, num_channels, height, width)
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
-        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[unshared ? 3 : 1];
+        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[wdim-3];
         out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1 - 2*padH);
         out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1 - 2*padW);
-        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "CorrMM backprop wrt. inputs: impossible output shape\\n"
-                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
-                         (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
-                         (long int)out_dim[3],
-                         (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
-                         (long int)PyArray_DIMS(weights)[wdim-2], (long int)PyArray_DIMS(weights)[wdim-1],
-                         (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
-                         (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
-            %(fail)s
+        if(unshared) {
+            if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM backprop wrt. inputs: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3],
+                             (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
+                             (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                             (long int)PyArray_DIMS(weights)[4], (long int)PyArray_DIMS(weights)[5],
+                             (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
+                             (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
+                %(fail)s
+            }
+        }
+        else {
+            if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM backprop wrt. inputs: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3],
+                             (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
+                             (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                             (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
+                             (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
+                %(fail)s
+            }
         }
         break;
     default:
@@ -479,9 +533,17 @@ class BaseCorrMM(gof.OpenMPOp):
                                           0);
         if (NULL == *out)
         {
-            PyErr_Format(PyExc_RuntimeError,
-                    "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
-                    (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3]);
+            if(odim == 4){
+                PyErr_Format(PyExc_RuntimeError,
+                        "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
+                        (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3]);
+            }
+            if(odim == 6){
+                PyErr_Format(PyExc_RuntimeError,
+                        "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
+                        (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3],
+                        (long long)out_dim[4], (long long)out_dim[5]);
+            }
             %(fail)s
         }
     }
@@ -612,7 +674,7 @@ class CorrMM_gradWeights(BaseCorrMM):
             height_width = [as_tensor_variable(shape[0]).astype('int64'), as_tensor_variable(shape[1]).astype('int64')]
 
         if self.unshared is True:
-            broadcastable = [topgrad.type.broadcastable[0], img.type.broadcastable[1]] +\
+            broadcastable = [topgrad.type.broadcastable[0], img.type.broadcastable[1]] + \
                 ([False] * 4)
         else:
             broadcastable = [topgrad.type.broadcastable[0], img.type.broadcastable[1],

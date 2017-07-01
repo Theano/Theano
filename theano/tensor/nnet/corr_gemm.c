@@ -175,39 +175,57 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int topHeight = _CONV_FLOORDIV_X(topHeightNoDH, dH) + 1;
     const int topWidth  = _CONV_FLOORDIV_X(topWidthNoDW, dW) + 1;
 #undef _CONV_FLOORDIV
-    if(unshared){
+    if(unshared) {
         if(topHeight != PyArray_DIMS(weight)[1] ||
                 topWidth != PyArray_DIMS(weight)[2]) {
             PyErr_Format(PyExc_ValueError,
-                "CorrMM regions in kernel must match output regions:\n"
-                "  bottom shape: %%d %%d %%d %%d\n"
-                "  weight shape: %%d %%ld %%ld %%d %%d %%d"
-                " (expected %%d %%d %%d %%d %%d %%d)\n"
-                "  top shape(calculated): %%d %%d %%d %%d\n",
-                batchSize, nChannels, bottomHeight, bottomWidth,
-                nFilters, PyArray_DIMS(weight)[1],
-                PyArray_DIMS(weight)[2], nChannels, kH, kW,
-                nFilters, topHeight, topWidth, nChannels, kH, kW,
-                batchSize, nFilters, topHeight, topWidth);
-        return NULL;
+                    "CorrMM regions in kernel must match output regions:\n"
+                    "  bottom shape: %%d %%d %%d %%d\n"
+                    "  weight shape: %%d %%ld %%ld %%d %%d %%d"
+                    " (expected %%d %%d %%d %%d %%d %%d)\n"
+                    "  top shape(calculated): %%d %%d %%d %%d\n",
+                    batchSize, nChannels, bottomHeight, bottomWidth,
+                    nFilters, PyArray_DIMS(weight)[1],
+                    PyArray_DIMS(weight)[2], nChannels, kH, kW,
+                    nFilters, topHeight, topWidth, nChannels, kH, kW,
+                    batchSize, nFilters, topHeight, topWidth);
+            return NULL;
+        }
+        if (batchSize != PyArray_DIMS(top)[0] ||
+                nFilters != PyArray_DIMS(top)[1] ||
+                topHeight != PyArray_DIMS(top)[2] ||
+                topWidth != PyArray_DIMS(top)[3]) {
+            PyErr_Format(PyExc_ValueError,
+                    "CorrMM shape inconsistency:\n"
+                    "  bottom shape: %%d %%d %%d %%d\n"
+                    "  weight shape: %%d %%d %%d %%d %%d %%d\n"
+                    "  top shape: %%ld %%ld %%ld %%ld (expected %%d %%d %%d %%d)\n",
+                    batchSize, nChannels, bottomHeight, bottomWidth,
+                    nFilters, nChannels, topHeight, topWidth, kH, kW,
+                    PyArray_DIMS(top)[0], PyArray_DIMS(top)[1],
+                    PyArray_DIMS(top)[2], PyArray_DIMS(top)[3],
+                    batchSize, nFilters, topHeight, topWidth);
+            return NULL;
         }
     }
-    if (batchSize != PyArray_DIMS(top)[0] ||
-            nFilters != PyArray_DIMS(top)[1] ||
-            topHeight != PyArray_DIMS(top)[2] ||
-            topWidth != PyArray_DIMS(top)[3]) {
-        PyErr_Format(PyExc_ValueError,
-                "CorrMM shape inconsistency:\n"
-                "  bottom shape: %%d %%d %%d %%d\n"
-                "  weight shape: %%d %%d %%d %%d\n"
-                "  top shape: %%ld %%ld %%ld %%ld (expected %%d %%d %%d %%d)\n",
-                batchSize, nChannels, bottomHeight, bottomWidth,
-                nFilters, nChannels, kH, kW,
-                PyArray_DIMS(top)[0], PyArray_DIMS(top)[1],
-                PyArray_DIMS(top)[2], PyArray_DIMS(top)[3],
-                batchSize, nFilters, topHeight, topWidth);
-        return NULL;
-    }
+    else {
+        if (batchSize != PyArray_DIMS(top)[0] ||
+                nFilters != PyArray_DIMS(top)[1] ||
+                topHeight != PyArray_DIMS(top)[2] ||
+                topWidth != PyArray_DIMS(top)[3]) {
+            PyErr_Format(PyExc_ValueError,
+                    "CorrMM shape inconsistency:\n"
+                    "  bottom shape: %%d %%d %%d %%d\n"
+                    "  weight shape: %%d %%d %%d %%d\n"
+                    "  top shape: %%ld %%ld %%ld %%ld (expected %%d %%d %%d %%d)\n",
+                    batchSize, nChannels, bottomHeight, bottomWidth,
+                    nFilters, nChannels, kH, kW,
+                    PyArray_DIMS(top)[0], PyArray_DIMS(top)[1],
+                    PyArray_DIMS(top)[2], PyArray_DIMS(top)[3],
+                    batchSize, nFilters, topHeight, topWidth);
+            return NULL;
+        }
+    }        
 
     // Create temporary columns
     int max_threads = %(omp_get_max_threads)s;

@@ -761,7 +761,7 @@ def conv2d_grad_wrt_inputs(output_grad,
         for dim in [0, 1, 2, 3]:
             assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
                                                   integer_types, type(None)))
-        if unshared is True:
+        if unshared:
             for dim in [4, 5]:
                 assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
                                                       integer_types, type(None)))
@@ -1489,10 +1489,9 @@ class BaseAbstractConv(Op):
         if len(filter_dilation) != convdim:
             raise ValueError("filter_dilation must have {} elements".format(convdim))
         self.filter_dilation = tuple(filter_dilation)
-        if unshared is True:
-            if self.convdim != 2:
-                raise NotImplementedError('Unshared convolution not implemented for %dD'
-                                          % self.convdim)
+        if unshared and self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
         self.unshared = unshared
 
     def do_constant_folding(self, node):
@@ -1502,7 +1501,7 @@ class BaseAbstractConv(Op):
 
     def flops(self, inp, outp):
         """ Useful with the hack in profiling to print the MFlops"""
-        if self.unshared is True:
+        if self.unshared:
             raise NotImplementedError('flops not implemented for unshared convolution')
         if self.convdim == 2:
             # if the output shape is correct, then this gives the correct
@@ -1541,7 +1540,9 @@ class BaseAbstractConv(Op):
             raise ValueError(
                 'invalid dilation {}, expected {} values'.format(dilation,
                                                                  self.convdim))
-        if direction == "backprop weights":
+        if unshared and direction == "backprop weights":
+            if mode != "valid":
+                raise ValueError('conv mode for unshared backprop wrt weights must be "valid"')
             # Do a transpose later to bring it to required shape
             out_shape = (img.shape[0], kern.shape[0],
                          kern.shape[2], kern.shape[3],
@@ -1570,7 +1571,7 @@ class BaseAbstractConv(Op):
                 for b in xrange(img.shape[0]):
                     for n in xrange(kern.shape[0]):
                         for im0 in xrange(img.shape[1]):
-                            if unshared is True:
+                            if unshared:
                                 out[b, n, ...] += self.unshared2d(img[b, im0, ...],
                                                                   dilated_kern[n, im0, ...],
                                                                   out_shape[2:], direction)
@@ -1581,6 +1582,8 @@ class BaseAbstractConv(Op):
                                                               1, val, bval, 0)
 
         elif self.convdim == 3:
+            if unshared:
+                raise NotImplementedError('Unshared 3D convolution is not implemented')
             for b in xrange(img.shape[0]):
                 for n in xrange(kern.shape[0]):
                     for im0 in xrange(img.shape[1]):
@@ -1662,7 +1665,7 @@ class AbstractConv(BaseAbstractConv):
         if img.type.ndim != 2 + self.convdim:
             raise TypeError('img must be %dD tensor' % (2 + self.convdim))
 
-        if self.unshared is True:
+        if self.unshared:
             if kern.type.ndim != 2 + 2 * self.convdim:
                 raise TypeError('kern must be %dD tensor for unshared convolution'
                                 % (2 + 2 * self.convdim))
@@ -1689,10 +1692,9 @@ class AbstractConv(BaseAbstractConv):
 
         dil_kernshp = tuple((kern.shape[-self.convdim + i] - 1) * self.filter_dilation[i] + 1
                             for i in range(self.convdim))
-        if self.unshared is True:
-            if self.convdim != 2:
-                raise NotImplementedError('Unshared convolution not implemented for %dD'
-                                          % self.convdim)
+        if self.unshared and self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
         o, = out_
         mode = self.border_mode
 
@@ -1723,7 +1725,7 @@ class AbstractConv(BaseAbstractConv):
 
         # from (nFilters, out_rows, out_cols, nChannels, kH, kW)
         # to (nFilters, nChannels, out_rows, out_cols, kH, kW)
-        if self.unshared is True:
+        if self.unshared:
             axes_order = (0, 1 + self.convdim,) + tuple(range(1, 1 + self.convdim)) + \
                 tuple(range(2 + self.convdim, kern.ndim))
             kern = kern.transpose(axes_order)
@@ -1735,7 +1737,7 @@ class AbstractConv(BaseAbstractConv):
         o[0] = node.outputs[0].type.filter(conv_out)
 
     def R_op(self, inputs, eval_points):
-        if self.unshared is True:
+        if self.unshared:
             raise NotImplementedError('Rop not implemented for unshared convolution')
         rval = None
         if eval_points[0] is not None:
@@ -1756,7 +1758,7 @@ class AbstractConv(BaseAbstractConv):
             imshp = [imshp[i] if self.imshp[i] is None else self.imshp[i]
                      for i in range(2 + self.convdim)]
         if self.kshp is not None:
-            if self.unshared is True:
+            if self.unshared:
                 kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
                         for i in range(2 + 2 * self.convdim)]
             else:
@@ -1918,7 +1920,7 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                                'image does not match given imshp.')
 
         shape = as_tensor_variable(shape)
-        if self.unshared is True:
+        if self.unshared:
             broadcastable = [topgrad.broadcastable[1]] + ([False] * self.convdim) + \
                             [img.broadcastable[1]] + ([False] * self.convdim)
         else:
@@ -1941,10 +1943,9 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a tuple of'
                 ' integers'.format(mode))
-        if self.unshared is True:
-            if self.convdim != 2:
-                raise NotImplementedError('Unshared convolution not implemented for %dD'
-                                          % self.convdim)
+        if self.unshared and self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
 
         dil_shape = tuple((shape[i] - 1) * self.filter_dilation[i] + 1
                           for i in range(self.convdim))
@@ -1980,7 +1981,7 @@ class AbstractConv_gradWeights(BaseAbstractConv):
         topgrad = topgrad.transpose(axes_order)
         img = img.transpose(axes_order)
 
-        if self.unshared is True:
+        if self.unshared:
             flip_kern = ((slice(None),) * (2 + self.convdim) +
                          (slice(None, None, -1),) * self.convdim)
             kern = self.conv(img, topgrad, mode="valid", unshared=True, direction="backprop weights")
@@ -2175,7 +2176,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                                 broadcastable=topgrad.broadcastable)
         topgrad = gtype.filter_variable(topgrad)
 
-        if self.unshared is True:
+        if self.unshared:
             if self.convdim != 2:
                 raise NotImplementedError('Unshared convolution not implemented for %dD'
                                           % self.convdim)
@@ -2213,10 +2214,9 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a tuple of'
                 ' integers'.format(mode))
-        if self.unshared is True:
-            if self.convdim != 2:
-                raise NotImplementedError('Unshared convolution not implemented for %dD'
-                                          % self.convdim)
+        if self.unshared and self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
 
         imshp = self.imshp[:] if self.imshp is not None else [None] * (2 + self.convdim)
         fallback_imshp = ([topgrad.shape[0], kern.shape[1]] +
@@ -2253,7 +2253,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                               for i in range(self.convdim))] = topgrad
             topgrad = new_topgrad
 
-        if self.unshared is True:
+        if self.unshared:
             # from (nFilters, out_rows, out_cols, nChannels, kH, kW)
             # to (nChannels, nFilters, out_rows, out_cols, kH, kW)
             axes_order = (1 + self.convdim, 0,) + tuple(range(1, 1 + self.convdim)) + \
