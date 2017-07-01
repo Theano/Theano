@@ -199,6 +199,7 @@ class TestCorr3D(utt.InferShapeTester):
 
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3))
 
+    @theano.configparser.change_flags([("profile", True), ("profiling.destination", 'stderr')])
     def test_filter_dilation(self):
         from six import StringIO
         import cProfile, pstats, sys
@@ -236,6 +237,7 @@ class TestCorr3D(utt.InferShapeTester):
         ps.print_stats()
         s = s.getvalue()
         print("time\n", s, file=sys.stderr)
+        theano.compile.profiling._atexit_print_fn()
 
     @parameterized.expand([('valid',), ('full',), ('half',), ((1, 1, 1),),
                            ((2, 1, 1),), ((1, 2, 1),), ((1, 1, 2),),
