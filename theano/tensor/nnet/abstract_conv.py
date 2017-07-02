@@ -646,12 +646,15 @@ def separable_conv2d(input,
                              filter_dilation=filter_dilation,
                              num_groups=num_channels)
 
-    depthwise_op_shape = conv_op.infer_shape(None, [input_shape, depthwise_filter_shape])
+    if input_shape is None or depthwise_filter_shape is None:
+        depthwise_op_shape = None
+    else:
+        depthwise_op_shape = conv_op.infer_shape(None, [input_shape, depthwise_filter_shape])[0]
     depthwise_op = conv_op(input, depthwise_filters)
 
     pointwise_op = conv2d(input=depthwise_op,
                           filters=pointwise_filters,
-                          input_shape=depthwise_op_shape[0],
+                          input_shape=depthwise_op_shape,
                           filter_shape=pointwise_filter_shape,
                           border_mode='valid',
                           subsample=(1, 1),
