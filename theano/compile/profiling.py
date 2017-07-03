@@ -93,7 +93,7 @@ def _atexit_print_fn():
                              "linker_make_thunk_time"]:
                     cum_attr = getattr(cum, attr)
                     for key, val in iteritems(getattr(ps, attr)):
-                        assert key not in cum_attr
+                        assert key not in cum_attr, (key, cum_attr)
                         cum_attr[key] = val
 
                 if cum.optimizer_profile and ps.optimizer_profile:
