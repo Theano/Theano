@@ -2443,23 +2443,23 @@ class RNNBlock(object):
     ----------
     dtype : data type of computation
     hidden_size : int
-    	hidden layer dimension.
+        hidden layer dimension.
     num_layers : int
-    	number of the recurrent layer you want to set.
+        number of the recurrent layer you want to set.
     rnn_mode : {'rnn_relu', 'rnn_tanh', 'lstm', 'gru'}
-    	rnn_relu: A single-gate recurrent neural network with a ReLU activation function.
+        rnn_relu: A single-gate recurrent neural network with a ReLU activation function.
 
-    	.. math::
+        .. math::
 
         h_t=ReLU(W_ix_t+U_ih_{t-1}+b_{wi}+b_{Ri})
-    	rnn_tanh: A single-gate recurrent neural network with a tanh activation function.
-    	
-    	.. math::
+        rnn_tanh: A single-gate recurrent neural network with a tanh activation function.
+        
+        .. math::
 
         h_t=tanh(W_ix_t+U_ih_{t-1}+b_{wi}+b_{Ri})
-    	
-    	lstm: A four-gate Long Short-Term Memory network with no peephole connections.
-    	gru: A three-gate network consisting of Gated Recurrent Units.
+        
+        lstm: A four-gate Long Short-Term Memory network with no peephole connections.
+        gru: A three-gate network consisting of Gated Recurrent Units.
     input_mode : {'linear', 'skip'}
         linear: input will be multiplied by a biased matrix
         skip: No operation is performed on the input.  The size must match the hidden size.
