@@ -2305,20 +2305,25 @@ def test_dnn_spatialtf_grid_generator():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    # shape: (num_images, channels, height, width), equivalent to NCHW
-    grid_dims = (3, 3, 128, 128)
-
-    identity = [[-1, 0, 0],
-                [0, -1, 0]]
-
     float_type = theano.config.floatX
 
-    theta = np.asarray(grid_dims[0] * [identity], dtype=float_type)
+    from scipy import misc
+    f = misc.face(gray=True).astype(float_type)
+
+    # shape: (num_images, channels, height, width), equivalent to NCHW
+    nchannels = f.shape[2] if len(f.shape) == 3 else 1
+    assert (nchannels is not None)
+    grid_dims = (3, 3, 128, 128)
+
+    rotation = [[-1, 0, 0],
+                [0, -1, 0]]
+
+    theta = np.asarray(grid_dims[0] * [rotation], dtype=float_type)
     theta_gpu = gpuarray_shared_constructor(theta)
 
     def normalize_input(input):
         # Scale input from [0, 255] to [0, 2]
-        scale_factor = 1. / 128.
+        scale_factor = 2 ** -7  # 1/128
         input *= scale_factor
         # Re-scale input from [0, 2] to [-1, 1] (normalized)
         input -= 1
@@ -2331,12 +2336,18 @@ def test_dnn_spatialtf_grid_generator():
         input *= 128
         return input
 
-    from scipy import misc
-    f = misc.face().astype(float_type)
-    # Convert from HWC to CHW
-    f = np.transpose(f, axes=(2, 0, 1))
+    # Gray-scale images don't have the channels dimension, only
+    # images with color channels have to converted from HWC to CHW
+    if len(f.shape) == 3:
+        # Convert from HWC to CHW
+        f = np.transpose(f, axes=(2, 0, 1))
+    else:
+        # f.shape = (width, height)
+        shp = f.shape
+        # Add channel dimension
+        f = f.reshape((1, shp[0], shp[1]))
+    # Normalize pixel values of the image in range [-1, 1]
     f = normalize_input(f)
-
     # Create array of images
     img = np.asarray(grid_dims[0] * [f], dtype=float_type)
     # Create GPU variable for the images
@@ -2356,9 +2367,18 @@ def test_dnn_spatialtf_grid_generator():
     # Transpose back to NHWC
     img_out = np.transpose(img_out, axes=(0, 2, 3, 1))
 
+    grayscale = False
+    if img_out.shape[3] == 1:  # Gray-scale image
+        grayscale = True
+        shp = img_out.shape
+        img_out = img_out.reshape(shp[0], shp[1], shp[2])
+
     import matplotlib.pyplot as plt
     for img_idx in range(len(img_out)):
-        plt.imshow(img_out[img_idx])
+        if grayscale:
+            plt.imshow(img_out[img_idx], cmap='gray')
+        else:
+            plt.imshow(img_out[img_idx])
         plt.show()
 
     topo = spatialtf_fn.maker.fgraph.toposort()
