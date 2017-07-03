@@ -42,7 +42,7 @@ int ctc_check_result(ctcStatus_t retcode, const char * msg)
         const char * ctc_msg = ctcGetStatusString( retcode );
 
         PyErr_Format( PyExc_RuntimeError,
-                      "%s | CTC library error message: %s",
+                      "%s CTC error: %s",
                       msg,
                       ctc_msg );
         return 1;
@@ -237,7 +237,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     ctc_error = ctc_check_result( get_workspace_size( context->label_lengths,
         context->input_lengths, alphabet_size, minibatch_size, context->options,
         &gpu_workspace_size ),
-        "Failed to obtain CTC workspace size!" );
+        "Failed to obtain CTC workspace size." );
 
     if ( ctc_error )  // Exception is set by ctc_check_result, return error here
     {
@@ -261,7 +261,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     ctc_error = ctc_check_result( compute_ctc_loss( activations, gradients,
         context->flat_labels, context->label_lengths, context->input_lengths,
         alphabet_size, minibatch_size, costs, *(void **)context->workspace,
-        context->options ), "Failed to compute CTC loss function!" );
+        context->options ), "Failed to compute CTC loss function." );
 
     if ( ctc_error )  // Exception is set by ctc_check_result, return error here
     {
