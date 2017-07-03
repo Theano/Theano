@@ -16,7 +16,7 @@
     Unfortunately, Windows platforms are not yet supported by the underlying
     library.
 
-.. module:: ctc
+.. module:: theano.gpuarray.ctc
    :platform: Unix
    :synopsis: Connectionist temporal classification (CTC) loss Op, using the warp-ctc library
 .. moduleauthor:: `João Victor Risso <https://github.com/joaovictortr>`_
