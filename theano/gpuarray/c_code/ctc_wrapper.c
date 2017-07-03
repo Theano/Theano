@@ -27,14 +27,11 @@ void ctc_context_destroy(ctc_context_t * context)
 {
     gpudata_release( context->workspace );
 
-    if ( NULL != context->input_lengths )
-        free( context->input_lengths );
+    free( context->input_lengths );
 
-    if ( NULL != context->flat_labels )
-        free( context->flat_labels );
+    free( context->flat_labels );
 
-    if ( NULL != context->label_lengths )
-        free( context->label_lengths );
+    free( context->label_lengths );
 }
 
 int ctc_check_result(ctcStatus_t retcode, const char * msg)
