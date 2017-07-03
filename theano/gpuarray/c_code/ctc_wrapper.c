@@ -130,6 +130,9 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
 
     if ( NULL == context->input_lengths )
     {
+        // Destroy previous CTC context before returning exception
+        ctc_context_destroy( context );
+
         PyErr_Format( PyExc_MemoryError,
             "Could not allocate storage for input lengths" );
         return 1;
