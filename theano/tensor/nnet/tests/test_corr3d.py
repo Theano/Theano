@@ -151,7 +151,7 @@ class TestCorr3D(utt.InferShapeTester):
             utt.verify_grad(sym_Corr3dMM, [orig_image_data, filter_data],
                             mode=self.mode)
 
-    #@attr('slow')
+    @attr('slow')
     @theano.configparser.change_flags([("profile", True), ("profiling.destination", 'stderr')])
     def test_basic(self):
         # Tests that basic correlations work for odd and even
@@ -204,7 +204,9 @@ class TestCorr3D(utt.InferShapeTester):
     @theano.configparser.change_flags([("profile", True), ("profiling.destination", 'stderr')])
     def test_filter_dilation(self):
         from six import StringIO
-        import cProfile, pstats, sys
+        import cProfile
+        import pstats
+        import sys
         pr = cProfile.Profile()
         pr.enable()
         # Tests correlation where filter dilation != (1,1,1)
