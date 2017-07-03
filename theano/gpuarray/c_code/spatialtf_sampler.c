@@ -152,9 +152,12 @@ spatialtf_sampler(PyGpuArrayObject * input,
         return -1;
     }
 
-    if ( NULL == *output )
+    const size_t out_dims[4] = { num_images, num_channels, height, width };
+
+    if ( NULL == *output ||
+         ! theano_size_check( *output, 4, &(out_dims[0]), (*output)->ga.typecode ) )
     {
-        const size_t out_dims[4] = { num_images, num_channels, height, width };
+        Py_XDECREF( *output );
 
         *output = pygpu_zeros( 4, &(out_dims[0]), input->ga.typecode, GA_C_ORDER,
             gpu_ctx, Py_None );
