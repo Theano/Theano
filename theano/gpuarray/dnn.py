@@ -2842,7 +2842,7 @@ class GpuDnnSpatialTfDesc(COp):
 
     __props__ = ('dimensions', 'dtype')
     params_type = ParamsType(nimages=int_t, nchannels=int_t, height=int_t, width=int_t,
-                             nb_dims=int_t, dtype=cudnn.cudnnDataType_t)
+                             dtype=cudnn.cudnnDataType_t)
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -2862,14 +2862,10 @@ class GpuDnnSpatialTfDesc(COp):
     def __init__(self, dimensions, dtype="float32"):
         COp.__init__(self, ["c_code/spatialtf_desc.c"], "APPLY_SPECIFIC(spatialtf_desc)")
 
-        # dimensions must have at least width and height
-        assert len(dimensions) >= 2
-
-        self.dimensions = tuple(dimensions)
-
         # cuDNN supports only 2D transformations, therefore output tensor must
-        # not exceed 4 dimensions (width, height, num_feature_maps, num_images)
-        assert len(self.dimensions) <= 4
+        # have exactly 4 dimensions: (width, height, num_channels, num_images)
+        assert len(dimensions) == 4
+        self.dimensions = tuple(dimensions)
 
         assert cudnn.cudnnDataType_t.has_alias(dtype)
         self.dtype = dtype
@@ -2894,8 +2890,6 @@ class GpuDnnSpatialTfDesc(COp):
     height = property(lambda self: self.dimensions[2])
     # Grid width
     width = property(lambda self: self.dimensions[3])
-    # Number of dimensions in the output tensor
-    nb_dims = property(lambda self: len(self.dimensions))
 
     def c_code_cache_version(self):
         return (super(GpuDnnSpatialTfDesc, self).c_code_cache_version(), version())
@@ -2914,11 +2908,7 @@ class GpuDnnGridGenerator(DnnBase):
 
     def __init__(self, dtype):
         DnnBase.__init__(self, ["c_code/spatialtf_grid.c"], "spatialtf_grid")
-
         self.dtype = dtype
-
-    def dnn_context(self, node):
-        return node.outputs[0].type.context_name
 
     def make_node(self, grid_dimensions, theta, desc):
         context_name = infer_context_name(desc, theta)
@@ -2926,8 +2916,8 @@ class GpuDnnGridGenerator(DnnBase):
         grid_dimensions = as_tensor_variable(grid_dimensions)
         theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
 
+        assert theta.dtype in ('float16', 'float32', 'float64')
         assert cudnn.cudnnDataType_t.has_alias(theta.dtype)
-        assert theta.ndim == 3
 
         # Allocate GPU memory for grid of coordinates
         grid = GpuArrayType(dtype=self.dtype,
@@ -2948,24 +2938,18 @@ class GpuDnnGridSampler(DnnBase):
     """
 
     __props__ = ('dtype',)
-    _cop_num_inputs = 6
+    _cop_num_inputs = 5
     _cop_num_outputs = 1
 
     def __init__(self, dtype):
         DnnBase.__init__(self, ["c_code/spatialtf_sampler.c"], "spatialtf_sampler")
-
         self.dtype = dtype
 
-    def dnn_context(self, node):
-        return node.outputs[0].type.context_name
-
-    def make_node(self, img, grid, grid_dimensions, desc,
-                  alpha=None, beta=None):
+    def make_node(self, img, grid, desc, alpha=None, beta=None):
         context_name = infer_context_name(img, grid)
 
         img = as_gpuarray_variable(img, context_name)
         grid = as_gpuarray_variable(grid, context_name)
-        grid_dimensions = as_tensor_variable(grid_dimensions)
 
         output = GpuArrayType(dtype=self.dtype,
                               broadcastable=img.type.ndim * (False,),
@@ -2973,11 +2957,6 @@ class GpuDnnGridSampler(DnnBase):
 
         if img.type.ndim != 4:
             raise TypeError('img must be a 4D tensor')
-        if output.type.ndim != 4:
-            raise TypeError('output must be a 4D tensor')
-
-        if img.type.ndim != output.type.ndim:
-            raise TypeError('The number of dimensions of img and output must match')
 
         if (not isinstance(desc.type, CDataType) or
                 desc.type.ctype != 'cudnnSpatialTransformerDescriptor_t'):
@@ -2986,8 +2965,7 @@ class GpuDnnGridSampler(DnnBase):
         alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
         beta = ensure_dt(beta, _zero, 'beta', img.dtype)
 
-        return Apply(self, [img, grid, grid_dimensions, desc, alpha, beta],
-                     [output])
+        return Apply(self, [img, grid, desc, alpha, beta], [output])
 
     def L_op(self, inputs, outputs, output_grads):
         pass
@@ -2998,10 +2976,18 @@ def dnn_spatialtf(img, theta, grid_dims, alpha=None, beta=None, dtype=None):
         GPU spatial transformer using cuDNN from NVIDIA.
     """
 
+    # img is a 4D tensor with shape: (num_images, num_channels, width, height)
+    assert img.ndim == 4
+    # Grid dimensions must be a 4-dimensional tuple
+    assert isinstance(grid_dims, tuple)
+    assert len(grid_dims) == 4
+    # Theta is an array of transformation matrices and must have shape: (num_images, 2, 3)
+    assert theta.ndim == 3
+
     img = gpu_contiguous(img)
     theta = gpu_contiguous(theta)
 
-    dtype = get_precision(dtype, [img, theta])
+    dtype = img.dtype if dtype is None else dtype
 
     # Create spatial transformer descriptor
     desc = GpuDnnSpatialTfDesc(grid_dims, dtype)()
@@ -3012,8 +2998,7 @@ def dnn_spatialtf(img, theta, grid_dims, alpha=None, beta=None, dtype=None):
     # Setup grid of coordinates
     grid_coord = GpuDnnGridGenerator(dtype)(grid_dims_var, theta, desc)
 
-    grid_sampler = GpuDnnGridSampler(dtype)(img, grid_coord, grid_dims_var, desc,
-                                                alpha, beta)
+    grid_sampler = GpuDnnGridSampler(dtype)(img, grid_coord, desc, alpha, beta)
 
     return grid_sampler
 

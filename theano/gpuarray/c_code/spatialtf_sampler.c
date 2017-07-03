@@ -25,7 +25,6 @@ void spatialtf_context_destroy( spatialtf_context_t * ctx )
 int
 spatialtf_sampler(PyGpuArrayObject * input,
                   PyGpuArrayObject * grid,
-                  PyArrayObject * grid_dimensions,
                   cudnnSpatialTransformerDescriptor_t desc,
                   double alpha, double beta,
                   PyGpuArrayObject ** output,
@@ -37,11 +36,10 @@ spatialtf_sampler(PyGpuArrayObject * input,
     float af = alpha, bf = beta;
     spatialtf_context_t spatialtf_ctx;
     cudnnDataType_t dt;
-    // Number of color channels (feature maps) is the innermost dimension
     cudnnTensorFormat_t tf = CUDNN_TENSOR_NCHW;
     cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
-    if ( PyArray_DIM( grid_dimensions, 0 ) != 4 )
+    if ( PyGpuArray_NDIM( grid ) != 4 )
     {
         PyErr_SetString( PyExc_RuntimeError,
                          "grid_dimensions must have 4 dimensions" );
@@ -49,10 +47,9 @@ spatialtf_sampler(PyGpuArrayObject * input,
     }
 
     // Obtain grid dimensions
-    const int num_images = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 0 ) );
-    const int num_channels = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 1 ) );
-    const int height = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 2 ) );
-    const int width = (int) *( (npy_int *) PyArray_GETPTR1( grid_dimensions, 3 ) );
+    const int num_images = (int) PyGpuArray_DIM( grid, 0 );
+    const int height = (int) PyGpuArray_DIM( grid, 1 );
+    const int width = (int) PyGpuArray_DIM( grid, 2 );
 
     switch (input->ga.typecode)
     {
@@ -102,17 +99,16 @@ spatialtf_sampler(PyGpuArrayObject * input,
     const int input_height = (int) PyGpuArray_DIM( input, 2 );
     const int input_width = (int) PyGpuArray_DIM( input, 3 );
 
-    if ( input_num_images != num_images ||
-         input_num_channels != num_channels )
+    if ( input_num_images != num_images )
     {
         PyErr_Format( PyExc_RuntimeError,
-                      "Input should have %d images and %d channels, got %d images and %d channels.",
-                       num_images, num_channels, input_num_images, input_num_channels );
+                      "Input should have %d images, got %d images.",
+                      num_images, input_num_images );
         return -1;
     }
 
     err = cudnnSetTensor4dDescriptor( spatialtf_ctx.xdesc, tf, dt, num_images,
-        num_channels, input_height, input_width );
+        input_num_channels, input_height, input_width );
 
     if ( err != CUDNN_STATUS_SUCCESS )
     {
@@ -139,7 +135,7 @@ spatialtf_sampler(PyGpuArrayObject * input,
     }
 
     err = cudnnSetTensor4dDescriptor( spatialtf_ctx.ydesc, tf, dt, num_images,
-        num_channels, height, width );
+        input_num_channels, height, width );
 
     if ( err != CUDNN_STATUS_SUCCESS )
     {
@@ -152,14 +148,14 @@ spatialtf_sampler(PyGpuArrayObject * input,
         return -1;
     }
 
-    const size_t out_dims[4] = { num_images, num_channels, height, width };
+    const size_t out_dims[4] = { num_images, input_num_channels, height, width };
 
     if ( NULL == *output ||
-         ! theano_size_check( *output, 4, &(out_dims[0]), (*output)->ga.typecode ) )
+         ! theano_size_check( *output, 4, out_dims, (*output)->ga.typecode ) )
     {
         Py_XDECREF( *output );
 
-        *output = pygpu_zeros( 4, &(out_dims[0]), input->ga.typecode, GA_C_ORDER,
+        *output = pygpu_empty( 4, out_dims, input->ga.typecode, GA_C_ORDER,
             gpu_ctx, Py_None );
 
         if ( NULL == *output )
@@ -171,10 +167,6 @@ spatialtf_sampler(PyGpuArrayObject * input,
                              "Could allocate memory for spatial transformer's grid sampler" );
             return -1;
         }
-    }
-    else
-    {
-        GpuArray_memset( &( (*output)->ga ), 0 );
     }
 
     if ( ! GpuArray_IS_C_CONTIGUOUS( &(input->ga) ) )
