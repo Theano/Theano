@@ -72,11 +72,11 @@ void create_flat_labels( PyArrayObject * label_matrix, int ** flat_labels,
     npy_int rows = PyArray_DIMS( label_matrix )[0];
     npy_int cols = PyArray_DIMS( label_matrix )[1];
 
-    *flat_labels = (int *) malloc( rows * cols * sizeof(int) );
+    *flat_labels = (int *) calloc( rows * cols, sizeof(int) );
     if ( NULL == (*flat_labels) )
         return;
 
-    *label_lengths = (int *) malloc( rows * sizeof(int) );
+    *label_lengths = (int *) calloc( rows, sizeof(int) );
     if ( NULL == (*label_lengths) )
     {
         free( *flat_labels );
