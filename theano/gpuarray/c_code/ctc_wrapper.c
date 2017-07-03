@@ -1,3 +1,7 @@
+#section init_code
+
+setup_ext_cuda();
+
 #section support_code
 
 typedef struct ctc_context {
@@ -42,7 +46,7 @@ int ctc_check_result(ctcStatus_t retcode, const char * msg)
         const char * ctc_msg = ctcGetStatusString( retcode );
 
         PyErr_Format( PyExc_RuntimeError,
-                      "%s CTC error: %s",
+                      "GpuConnectionistTemporalClassification: %s CTC error: %s",
                       msg,
                       ctc_msg );
         return 1;
@@ -112,9 +116,25 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
 {
     ctc_context_t ctc_object;
     ctc_context_t * context = &ctc_object;
+
+    size_t gpu_workspace_size;
+    int ctc_error = 0;
+
+    const size_t num_activations = PyGpuArray_DIMS( in_activations )[0];
+    const size_t minibatch_size = PyGpuArray_DIMS( in_activations )[1];
+    const size_t alphabet_size = PyGpuArray_DIMS( in_activations )[2];
+    const size_t cost_size = minibatch_size;
+
+    const size_t grad_dims[3] = { num_activations, minibatch_size, alphabet_size };
+
+    float * costs = NULL,
+          * activations = NULL,
+          * gradients = NULL;
+
+    cuda_enter( gpu_context->ctx );
+
     ctc_context_init( context, gpu_context );
 
-    float * activations = NULL;
     switch (in_activations->ga.typecode)
     {
     case GA_FLOAT:
@@ -122,7 +142,8 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         break;
     default:
         ctc_context_destroy( context );
-        PyErr_SetString(PyExc_TypeError, "Unsupported type for activations!");
+        PyErr_SetString( PyExc_TypeError,
+            "GpuConnectionistTemporalClassification: Unsupported type for activations." );
         return 1;
     }
 
@@ -134,7 +155,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         ctc_context_destroy( context );
 
         PyErr_Format( PyExc_MemoryError,
-            "Could not allocate storage for input lengths" );
+            "GpuConnectionistTemporalClassification: Could not allocate memory for input lengths." );
         return 1;
     }
 
@@ -147,19 +168,12 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         ctc_context_destroy( context );
 
         PyErr_Format( PyExc_MemoryError,
-            "Could not allocate storage for labels and their lengths" );
+            "GpuConnectionistTemporalClassification: Could not allocate memory for labels and their lengths." );
         return 1;
     }
 
-    const size_t minibatch_size = PyGpuArray_DIMS( in_activations )[1];
-    const size_t alphabet_size  = PyGpuArray_DIMS( in_activations )[2];
-
-    float * costs = NULL;
-    const size_t cost_size = minibatch_size;
-
-    if (NULL == *out_costs ||  // symbolic variable has no real backing
-        PyGpuArray_NDIM( *out_costs ) != 1 ||
-        PyGpuArray_DIMS( *out_costs )[0] != cost_size)
+    if ( theano_prep_output( out_costs, 1, &cost_size, in_activations->ga.typecode,
+                             GA_C_ORDER, gpu_context ) != 0 )
     {
         Py_XDECREF( *out_costs );
 
@@ -171,8 +185,10 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
             // Destroy previous CTC context before returning exception
             ctc_context_destroy( context );
 
+            cuda_exit( gpu_context->ctx );
+
             PyErr_Format( PyExc_MemoryError,
-                "Could not allocate storage for CTC costs");
+                "GpuConnectionistTemporalClassification: Could not allocate memory for CTC costs." );
             return 1;
         }
     }
@@ -181,26 +197,12 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         GpuArray_memset( &((*out_costs)->ga), 0 ); 
     }
 
-    switch ( (*out_costs)->ga.typecode )
-    {
-    case GA_FLOAT:
-        costs = (float *) PyGpuArray_DEV_DATA( *out_costs );
-        break;
-    default:
-        ctc_context_destroy( context );
-        PyErr_SetString(PyExc_TypeError, "Unsupported type for costs!");
-        return 1;
-    }
-
-    float * gradients = NULL;
+    costs = (float *) PyGpuArray_DEV_DATA( *out_costs );
 
     if ( NULL != out_gradients )  // if gradient computation is not disabled
     {
-        if ( NULL == *out_gradients ||
-             PyGpuArray_NDIM( *out_gradients ) != 3 ||
-             PyGpuArray_DIMS( *out_gradients )[0] != PyGpuArray_DIMS( in_activations )[0] ||
-             PyGpuArray_DIMS( *out_gradients )[1] != PyGpuArray_DIMS( in_activations )[1] ||
-             PyGpuArray_DIMS( *out_gradients )[2] != PyGpuArray_DIMS( in_activations )[2] )
+        if ( theano_prep_output( out_gradients, 3, grad_dims, in_activations->ga.typecode,
+                                 GA_C_ORDER, gpu_context ) != 0 )
         {
             Py_XDECREF( *out_gradients );
 
@@ -212,8 +214,10 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
             {
                 ctc_context_destroy( context );
 
+                cuda_exit( gpu_context->ctx );
+
                 PyErr_Format( PyExc_MemoryError,
-                    "Could not allocate storage for CTC gradients!" );
+                    "GpuConnectionistTemporalClassification: Could not allocate memory for CTC gradients." );
                 return 1;
             }
         }
@@ -222,20 +226,8 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
             GpuArray_memset( &((*out_gradients)->ga), 0 );
         }
 
-        switch ( (*out_gradients)->ga.typecode )
-        {
-        case GA_FLOAT:
-            gradients = (float *) PyGpuArray_DEV_DATA( *out_gradients );
-            break;
-        default:
-            ctc_context_destroy( context );
-            PyErr_SetString(PyExc_TypeError, "Unsupported type for gradients!");
-            return 1;
-        }
+        gradients = (float *) PyGpuArray_DEV_DATA( *out_gradients );
     }
-
-    size_t gpu_workspace_size;
-    int ctc_error = 0;
 
     ctc_error = ctc_check_result( get_workspace_size( context->label_lengths,
         context->input_lengths, alphabet_size, minibatch_size, context->options,
@@ -247,6 +239,8 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         // Destroy previous CTC context before returning exception
         ctc_context_destroy( context );
 
+        cuda_exit( gpu_context->ctx );
+
         return 1;
     }
 
@@ -256,10 +250,14 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     {
         ctc_context_destroy( context );
 
+        cuda_exit( gpu_context->ctx );
+
         PyErr_Format( PyExc_MemoryError,
-            "Failed to allocate memory for CTC workspace!" );
+            "GpuConnectionistTemporalClassification: Failed to allocate memory for CTC workspace." );
         return 1;
     }
+
+    cuda_wait( in_activations->ga.data, GPUARRAY_CUDA_WAIT_READ );
 
     ctc_error = ctc_check_result( compute_ctc_loss( activations, gradients,
         context->flat_labels, context->label_lengths, context->input_lengths,
@@ -269,10 +267,18 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     if ( ctc_error )  // Exception is set by ctc_check_result, return error here
     {
         ctc_context_destroy( context );
+
+        cuda_exit( gpu_context->ctx );
+
         return 1;
     }
 
+    cuda_wait( (*out_costs)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
+    if ( out_gradients != NULL )
+        cuda_wait( (*out_gradients)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
+
     ctc_context_destroy( context );
+    cuda_exit( gpu_context->ctx );
 
     return 0;
 }

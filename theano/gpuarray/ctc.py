@@ -77,8 +77,9 @@ class GpuConnectionistTemporalClassification(gof.COp):
         return dirs
 
     def c_headers(self):
-        return ['ctc.h', 'numpy_compat.h', 'gpuarray_helper.h', 'gpuarray/types.h',
-                'gpuarray_api.h', 'gpuarray/array.h', 'gpuarray/util.h', 'gpuarray/extension.h']
+        return ['ctc.h', 'numpy_compat.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'gpuarray/types.h', 'gpuarray_api.h',
+                'gpuarray/array.h', 'gpuarray/util.h', 'gpuarray/extension.h']
 
     def get_params(self, node):
         return node.inputs[0].type.context
