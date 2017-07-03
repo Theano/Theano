@@ -2443,17 +2443,28 @@ class RNNBlock(object):
     ----------
     dtype : data type of computation
     hidden_size : int
+    	hidden layer dimension.
     num_layers : int
+    	number of the recurrent layer you want to set.
     rnn_mode : {'rnn_relu', 'rnn_tanh', 'lstm', 'gru'}
-        See cudnn documentation for ``cudnnRNNMode_t``.
+    	rnn_relu: A single-gate recurrent neural network with a ReLU activation function.
 
+    	.. math::
+
+        h_t=ReLU(W_ix_t+U_ih_{t-1}+b_{wi}+b_{Ri})
+    	rnn_tanh: A single-gate recurrent neural network with a tanh activation function.
+    	
+    	.. math::
+
+        h_t=tanh(W_ix_t+U_ih_{t-1}+b_{wi}+b_{Ri})
+    	
+    	lstm: A four-gate Long Short-Term Memory network with no peephole connections.
+    	gru: A three-gate network consisting of Gated Recurrent Units.
     input_mode : {'linear', 'skip'}
         linear: input will be multiplied by a biased matrix
         skip: No operation is performed on the input.  The size must match the hidden size.
     direction_mode : {'unidirectional', 'bidirectional'}
-        unidirectional: The network operates recurrently from the
-                        first input to the last.
-
+        unidirectional: The network operates recurrently from thefirst input to the last.
         bidirectional: The network operates from first to last then from last to first and concatenates the results at each layer.
 
     """
