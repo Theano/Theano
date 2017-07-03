@@ -27,7 +27,7 @@ int APPLY_SPECIFIC(spatialtf_desc)(cudnnSpatialTransformerDescriptor_t * desc,
     // Currently, only the bilinear sampler is supported by cuDNN,
     // so it is not available as a parameter
     err = cudnnSetSpatialTransformerNdDescriptor( *desc, CUDNN_SAMPLER_BILINEAR,
-        params->precision, params->nb_dims, out_tensor_dims );
+        params->dtype, params->nb_dims, out_tensor_dims );
     if ( CUDNN_STATUS_SUCCESS != err )
     {
         PyErr_Format( PyExc_MemoryError, 
