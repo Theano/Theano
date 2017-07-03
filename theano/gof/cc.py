@@ -910,6 +910,12 @@ class CLinker(link.Linker):
         The support code from Variables is added before the support code from Ops.This might contain duplicates.
         """
         ret = []
+        if config.cmodule.debug:
+            ret.append("""
+            #ifndef DEBUG
+            #define DEBUG
+            #endif
+            """)
         # generic support code
         for x in [y.type for y in self.variables] + [
                 y.op for y in self.node_order]:

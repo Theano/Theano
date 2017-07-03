@@ -1074,6 +1074,12 @@ import theano and print the config variable, as in:
     reused by Theano. Automatic deletion of those c module 7 days
     after that time.
 
+.. attribute:: config.cmodule.debug
+
+    Bool value, default: ``False``
+
+    If True, define a DEBUG macro (if not exists) for any compiled C code.
+
 .. attribute:: config.traceback.limit
 
     Int value, default: 8
