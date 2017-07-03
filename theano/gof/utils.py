@@ -546,23 +546,23 @@ if PY3:
     import hashlib
 
     def hash_from_code(msg):
-        # hashlib.md5() requires an object that supports buffer interface,
+        # hashlib.sha256() requires an object that supports buffer interface,
         # but Python 3 (unicode) strings don't.
         if isinstance(msg, str):
             msg = msg.encode()
         # Python 3 does not like module names that start with
         # a digit.
-        return 'm' + hashlib.md5(msg).hexdigest()
+        return 'm' + hashlib.sha256(msg).hexdigest()
 
 else:
     import hashlib
 
     def hash_from_code(msg):
         try:
-            return hashlib.md5(msg).hexdigest()
+            return hashlib.sha256(msg).hexdigest()
         except TypeError:
             assert isinstance(msg, np.ndarray)
-            return hashlib.md5(np.getbuffer(msg)).hexdigest()
+            return hashlib.sha256(np.getbuffer(msg)).hexdigest()
 
 
 def hash_from_file(file_path):
