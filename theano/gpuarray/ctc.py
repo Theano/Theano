@@ -30,14 +30,15 @@ class GpuConnectionistTemporalClassification(gof.COp):
     """
     __props__ = ('compute_grad',)
 
+    _cop_num_inputs = 3
+    _cop_num_outputs = 2
+
     func_file = "./c_code/ctc_wrapper.c"
     func_name = "APPLY_SPECIFIC(ctc_cost_gpu)"
 
     params_type = gpu_context_type
 
     def __init__(self, compute_grad=True):
-        if not compute_grad:
-            self.func_name = "APPLY_SPECIFIC(ctc_cost_gpu_no_grad)"
         self.compute_grad = compute_grad
 
         gof.COp.__init__(self, self.func_file, self.func_name)
@@ -90,10 +91,10 @@ class GpuConnectionistTemporalClassification(gof.COp):
                                'GpuConnectionistTemporalClassification Op '
                                'can not be constructed.')
 
-        context = infer_context_name(activations, labels, input_lengths)
+        context_name = infer_context_name(activations)
 
         t_activations = as_gpuarray_variable(activations,
-                                             context_name=context)
+                                             context_name=context_name)
         # Ensure activations array is C-contiguous
         t_activations = gpu_contiguous(t_activations)
 
@@ -115,13 +116,13 @@ class GpuConnectionistTemporalClassification(gof.COp):
 
         costs = GpuArrayType(dtype='float32',
                              broadcastable=(False,),
-                             context_name=context)()
+                             context_name=context_name)()
         outputs = [costs]
 
         if self.compute_grad:
             gradients = GpuArrayType(dtype='float32',
                                      broadcastable=(False, False, False,),
-                                     context_name=context)()
+                                     context_name=context_name)()
             outputs += [gradients]
 
         return theano.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],

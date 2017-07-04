@@ -282,17 +282,3 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
 
     return 0;
 }
-
-int APPLY_SPECIFIC(ctc_cost_gpu_no_grad)(PyGpuArrayObject   *  in_activations,
-                                         PyArrayObject      *  in_labels,
-                                         PyArrayObject      *  in_input_lengths,
-                                         PyGpuArrayObject   ** out_costs,
-                                         PyGpuContextObject *  gpu_context)
-{
-    return APPLY_SPECIFIC(ctc_cost_gpu)(in_activations,
-                                        in_labels,
-                                        in_input_lengths,
-                                        out_costs,
-                                        NULL,
-                                        gpu_context);
-}
