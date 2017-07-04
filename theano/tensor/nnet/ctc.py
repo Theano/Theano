@@ -28,7 +28,7 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
     compute_grad
         If set to True, enables the computation of gradients of the CTC loss function.
     """
-    __props__ = ('compute_grad',)
+    __props__ = ('compute_grad', 'default_output',)
 
     _cop_num_inputs = 3
     _cop_num_outputs = 2
@@ -50,6 +50,8 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         gof.OpenMPOp.__init__(self)
 
         self.compute_grad = compute_grad
+        # Return only the cost. Gradient will be returned by grad()
+        self.default_output = 0
 
     def c_lib_dirs(self):
         dirs = []
@@ -108,9 +110,6 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         if self.compute_grad:
             gradients = T.ftensor3(name="ctc_grad")
             outputs += [gradients]
-
-        # Return only the cost. Gradient will be returned by grad()
-        self.default_output = 0
 
         return gof.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
                          outputs=outputs)
