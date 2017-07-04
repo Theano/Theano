@@ -115,10 +115,6 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
                          outputs=outputs)
 
     def L_op(self, inputs, outputs, output_grads):
-        if not ctc_enabled:
-            raise RuntimeError('Baidu CTC is not enabled and '
-                               'ConnectionistTemporalClassification Op '
-                               'can not be constructed.')
         gradients = outputs[1]
         grad_op = output_grads[0]
         total_grad = T.basic.batched_dot(grad_op, gradients.dimshuffle(1, 0, 2)).dimshuffle(1, 0, 2)

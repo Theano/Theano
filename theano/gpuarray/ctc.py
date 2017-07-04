@@ -126,11 +126,6 @@ class GpuConnectionistTemporalClassification(gof.COp):
                             outputs=outputs)
 
     def L_op(self, inputs, outputs, output_grads):
-        if not ctc_enabled:
-            raise RuntimeError('Baidu CTC is not enabled and '
-                               'GpuConnectionistTemporalClassification Op '
-                               'can not be constructed.')
-        assert len(outputs) == 2
         # Gradients computed by Op
         gradients = outputs[1]
         # Gradients of original function, to compose chain rule
