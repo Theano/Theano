@@ -413,6 +413,9 @@ class Stack(VM):
         self.node_executed_order = []
         self.node_cleared_order = []
 
+        for cont in self.pre_call_clear:
+            cont[0] = None
+
         for k in self.storage_map:
             compute_map[k][0] = (k.owner is None)
             if self.callback_input and compute_map[k][0]:
@@ -1051,7 +1054,11 @@ class VM_Linker(link.LocalLinker):
                 thunks.append(node.op.make_thunk(node,
                                                  storage_map,
                                                  compute_map,
-                                                 no_recycling,
+                # The no recycling is done at the VM.__call__
+                # implementation at the next call with the
+                # pre_call_clear. So there is no need to cause
+                # duplicate c code by passing no_recycling here.
+                                                 no_recycling=[],
                                                  impl=impl))
                 linker_make_thunk_time[node] = time.time() - thunk_start
                 if not hasattr(thunks[-1], 'lazy'):

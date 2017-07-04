@@ -438,3 +438,11 @@ def test_reallocation():
         assert check_storage(storage_map)[0]
         assert len(set(id(v) for v in
                        itervalues(storage_map))) < len(storage_map)
+
+
+def test_no_recycling():
+    x = theano.tensor.vector()
+    mode = theano.Mode(optimizer='fast_compile')
+    f=theano.function([x], x+1, mode=mode)
+    f2=theano.function([x], (x+1)*2, mode=mode)
+    theano.printing.debugprint([f, f2])
