@@ -1153,7 +1153,9 @@ AddConfigVar('cmodule.age_thresh_use',
 AddConfigVar('cmodule.debug',
              "If True, define a DEBUG macro (if not exists) for any compiled C code.",
              BoolParam(False),
-             in_c_key=True)
+             # Do not add it in the c key when we keep use the old default.
+             # To do not recompile for no good reason.
+             in_c_key=lambda: theano.config.cmodule.debug)
 
 
 def default_blas_ldflags():
