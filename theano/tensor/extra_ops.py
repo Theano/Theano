@@ -347,11 +347,11 @@ class CumOp(theano.Op):
                     if(%(params)s->mode == MODE_ADD)
                         t = PyArray_CumSum(
                             %(x)s, axis,
-                            PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                            PyArray_TYPE(%(x)s), %(z)s);
                     else if(%(params)s->mode == MODE_MUL)
                         t = PyArray_CumProd(
                             %(x)s, axis,
-                            PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                            PyArray_TYPE(%(x)s), %(z)s);
 
                     if (!t){
                        %(fail)s;
