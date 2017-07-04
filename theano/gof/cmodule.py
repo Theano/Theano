@@ -1051,7 +1051,7 @@ class ModuleCache(object):
             assert key in all_keys
         for k in all_keys:
             if k in self.entry_from_key:
-                assert self.entry_from_key[k] == name
+                assert self.entry_from_key[k] == name, (self.entry_from_key[k], name)
             else:
                 self.entry_from_key[k] = name
                 if key[0]:
