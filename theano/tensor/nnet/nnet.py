@@ -33,6 +33,7 @@ from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
+from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 ############
 #
@@ -2535,17 +2536,14 @@ def confusion_matrix(actual, pred):
     conf_mat = tensor.dot(oneHotA.T, oneHotP)
     return [conf_mat, order]
 
-def get_one_hot(inp, nb_samples, nb_class):
-    m = tensor.zeros((nb_samples, nb_class))
-    m = tensor.set_subtensor(m[tensor.arange(nb_samples), tensor.argmax(inp, -1)], 1)
-    return m
 
-def gumbel_softmax(inp, temperature, epsilon, nb_classes, hard=False):
-    uniform_sample = srng.uniform(inp.shape, low=0, high=1).astype('float32')
-    gumbel_dist = -tensor.log(-tensor.log(uniform_sample + epsilon) + epsilon)
+def gumbel_softmax(inp, temperature, epsilon=np.float32(1e-20), hard=False):
+    srng = RandomStreams(rng.randint(1234))
+    uniform_samples = srng.uniform(inp.shape, low=0, high=1).astype('float32')
+    gumbel_dist = -tensor.log(-tensor.log(uniform_samples + epsilon) + epsilon)
     soft = tensor.nnet.softmax((inp + gumbel_dist) / temperature)
     if hard:
-        gumbel_trick = get_one_hot(softm, softm.shape[0], nb_classes)
+        gumbel_trick = tensor.extra_ops.to_one_hot(tensor.argmax(inp, -1), inp.shape[-1])
         return gumbel_trick
     return soft
 

@@ -34,7 +34,8 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 elu,
                                 binary_crossentropy,
                                 sigmoid_binary_crossentropy,
-                                confusion_matrix)
+                                confusion_matrix,
+                                gumbel_softmax)
 from theano.tensor import matrix, vector, lvector, scalar
 from theano.tensor.nnet.nnet import softsign
 from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
@@ -1824,3 +1825,47 @@ def test_confusion_matrix():
         outs = f(case[0], case[1])
         for exp, out in zip(out_exp, outs):
             utt.assert_allclose(exp, out)
+
+
+def np_onehot(arr, nb_class=None):
+    if nb_class is None:
+        nb_class = np.max(arr) + 1
+    else:
+        assert nb_class > 0
+        assert nb_class >= np.max(arr)
+    result = np.zeros(shape=(len(arr), nb_class))
+    result[np.arange(len(arr)), arr] = 1
+    return result.astype(int)
+
+
+def test_gumbel_softmax():
+
+    test_matrix = tensor.fmatrix('test_matrix')
+    epsilon, temp = tensor.fscalars('epsilon', 'temp')
+
+    # Basic test
+    seed = theano.tests.unittest_tools.fetch_seed()
+    rng = np.random.RandomState(seed)
+
+    # Constants
+    test_vec = rng.random_integers(low=0, high=255, size=256).reshape(1, 256).astype('float32')
+    test_mat = rng.random_integers(low=0, high=255, size=256).reshape(10, 256).astype('float32')
+    low_temp = np.float32(0.01)
+    high_temp = np.float32(10)
+
+    gs_soft = gumbel_softmax(test_matrix, temp, epsilon, hard=False)
+    gs_hard = gumbel_softmax(test_matrix, temp, epsilon, hard=True)
+
+    f = theano.function([test_matrix, temp, epsilon], [gs_hard, gs_soft])
+    low_hard_vec = f(test_vec, low_temp, hard=True)
+    low_hard_mat = f(test_mat, low_temp, hard=True)
+    low_soft_vec = f(test_vec, low_temp)
+    low_soft_mat = f(test_mat, low_temp)
+
+    high_hard_vec = f(test_vec, high_temp, hard=True)
+    high_hard_mat = f(test_mat, high_temp, hard=True)
+    high_soft_vec = f(test_vec, high_temp)
+    high_soft_mat = f(test_mat, high_temp)
+
+    utt.assert_allclose(low_hard_vec, low_soft_vec)
+    utt.assert_allclose(low_hard_mat, low_soft_mat)
