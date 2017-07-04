@@ -655,7 +655,7 @@ class ParamsType(Type):
         return list(sorted(list(c_support_code_set))) + [final_struct_code]
 
     def c_code_cache_version(self):
-        return ((2,), tuple(t.c_code_cache_version() for t in self.types))
+        return ((3,), tuple(t.c_code_cache_version() for t in self.types))
 
     # As this struct has constructor and destructor, it could be instanciated on stack,
     # but current implementations of C ops will then pass the instance by value at functions,
@@ -684,6 +684,7 @@ class ParamsType(Type):
         /* Seems c_init() is not called for a op param. So I call `new` here. */
         %(name)s = new %(struct_name)s;
 
+        { // This need a separate namespace for Clinker
         const char* fields[] = {%(fields_list)s};
         if (py_%(name)s == Py_None) {
             PyErr_SetString(PyExc_ValueError, "ParamsType: expected an object, not None.");
@@ -702,6 +703,7 @@ class ParamsType(Type):
                 fprintf(stderr, "\\nParamsType: error when extracting value for attribute \\"%%s\\".\\n", fields[i]);
                 %(fail)s
             }
+        }
         }
         """ % dict(name=name, struct_name=self.name, length=self.length, fail=sub['fail'],
                    fields_list='"%s"' % '", "'.join(self.fields))
