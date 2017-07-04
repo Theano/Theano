@@ -30,22 +30,26 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
     """
     __props__ = ('compute_grad',)
 
+    _cop_num_inputs = 3
+    _cop_num_outputs = 2
+
     func_file = "./ctc_wrapper.c"
     func_name = "APPLY_SPECIFIC(ctc_cost_cpu)"
 
     def __init__(self, compute_grad=True):
-        if not compute_grad:
-            self.func_name = "APPLY_SPECIFIC(ctc_cost_cpu_no_grad)"
+        if not ctc_enabled:
+            raise RuntimeError('Baidu CTC is not enabled and '
+                               'ConnectionistTemporalClassification Op '
+                               'can not be constructed.')
+        elif config.ctc.root == "":
+            raise ValueError('ctc.root variable is not set, please set it '
+                             'to the root directory of the CTC library in '
+                             'your system.')
 
         gof.COp.__init__(self, self.func_file, self.func_name)
         gof.OpenMPOp.__init__(self)
 
         self.compute_grad = compute_grad
-
-        if config.ctc.root == "":
-            raise ValueError('ctc.root variable is not set, please set it '
-                             'to the root directory of the CTC library in '
-                             'your system.')
 
     def c_lib_dirs(self):
         dirs = []
@@ -83,10 +87,6 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         return ["ctc.h"] + gof.OpenMPOp.c_headers(self)
 
     def make_node(self, activations, labels, input_lengths):
-        if not ctc_enabled:
-            raise RuntimeError('Baidu CTC is not enabled and '
-                               'ConnectionistTemporalClassification Op '
-                               'can not be constructed.')
         t_activations = T.as_tensor_variable(activations)
         # Ensure activations array is C-contiguous
         t_activations = cpu_contiguous(t_activations)

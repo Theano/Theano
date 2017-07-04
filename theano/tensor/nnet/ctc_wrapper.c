@@ -250,18 +250,3 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
 
     return 0;
 }
-
-/**
- * Wrapper version with gradient computation disabled.
- */
-int APPLY_SPECIFIC(ctc_cost_cpu_no_grad)(PyArrayObject *  in_activations,
-                                         PyArrayObject *  in_labels,
-                                         PyArrayObject *  in_input_lengths,
-                                         PyArrayObject ** out_costs)
-{
-    return APPLY_SPECIFIC(ctc_cost_cpu)(in_activations,
-                                        in_labels,
-                                        in_input_lengths,
-                                        out_costs,
-                                        NULL);
-}
