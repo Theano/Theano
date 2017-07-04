@@ -349,8 +349,6 @@ def test_binomial():
                 (sample_size, sample_size, [], []),
                 (x.shape, sample_size, [x],
                  [np.zeros(sample_size, dtype=config.floatX)]),
-                ((x.shape[0], sample_size[1]), sample_size, [x],
-                 [np.zeros(sample_size, dtype=config.floatX)]),
                 # test empty size (scalar)
                 ((), (), [], []),
                 ]:
@@ -402,12 +400,6 @@ def test_normal0():
         (x.shape, sample_size, [x],
          [np.zeros(sample_size, dtype=config.floatX)],
          -5., default_rtol, default_rtol),
-        ((x.shape[0], sample_size[1]), sample_size, [x],
-         [np.zeros(sample_size, dtype=config.floatX)],
-         -5., default_rtol, default_rtol),
-        # test odd value
-        (sample_size_odd, sample_size_odd, [], [], -5.,
-         default_rtol, default_rtol),
         # test odd value
         (x.shape, sample_size_odd, [x],
          [np.zeros(sample_size_odd, dtype=config.floatX)],
@@ -420,7 +412,6 @@ def test_normal0():
         ((), (), [], [], -5., default_rtol, 0.02),
         # test with few samples at the same time
         ((1,), (1,), [], [], -5., default_rtol, 0.02),
-        ((2,), (2,), [], [], -5., default_rtol, 0.02),
         ((3,), (3,), [], [], -5., default_rtol, 0.02),
             ]:
 
