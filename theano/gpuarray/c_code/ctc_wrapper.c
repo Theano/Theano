@@ -142,8 +142,12 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         break;
     default:
         ctc_context_destroy( context );
+
+        cuda_exit( gpu_context->ctx );
+
         PyErr_SetString( PyExc_TypeError,
             "GpuConnectionistTemporalClassification: Unsupported type for activations." );
+
         return 1;
     }
 
@@ -153,6 +157,8 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     {
         // Destroy previous CTC context before returning exception
         ctc_context_destroy( context );
+
+        cuda_exit( gpu_context->ctx );
 
         PyErr_Format( PyExc_MemoryError,
             "GpuConnectionistTemporalClassification: Could not allocate memory for input lengths." );
@@ -166,6 +172,8 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     {
         // Destroy previous CTC context before returning exception
         ctc_context_destroy( context );
+
+        cuda_exit( gpu_context->ctx );
 
         PyErr_Format( PyExc_MemoryError,
             "GpuConnectionistTemporalClassification: Could not allocate memory for labels and their lengths." );
@@ -194,7 +202,7 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     }
     else
     {
-        GpuArray_memset( &((*out_costs)->ga), 0 ); 
+        GpuArray_memset( &((*out_costs)->ga), 0 );
     }
 
     costs = (float *) PyGpuArray_DEV_DATA( *out_costs );
