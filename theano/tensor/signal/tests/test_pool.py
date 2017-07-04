@@ -428,7 +428,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                    (8, 5), (8, 5), (8, 5))
         outputshps = ((4, 10, 4, 7), (4, 10, 5, 8), (4, 10, 2, 3),
                       (4, 10, 3, 4), (4, 10, 2, 3), (4, 10, 2, 3),
-                      (4, 10, 4, 1), )
+                      (4, 10, 4, 1), (4, 10, 4, 1), (4, 10, 3, 2),
+                      (4, 10, 4, 2), (4, 10, 1, 0), (4, 10, 1, 1),
+                      (4, 10, 0, 0), (4, 10, 1, 1))
         images = tensor.dtensor4()
         for indx in np.arange(len(maxpoolshps)):
             imvsize = imvsizs[indx]
