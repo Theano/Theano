@@ -443,6 +443,6 @@ def test_reallocation():
 def test_no_recycling():
     x = theano.tensor.vector()
     mode = theano.Mode(optimizer='fast_compile')
-    f=theano.function([x], x+1, mode=mode)
-    f2=theano.function([x], (x+1)*2, mode=mode)
+    f = theano.function([x], x + 1, mode=mode)
+    f2 = theano.function([x], (x + 1) * 2, mode=mode)
     theano.printing.debugprint([f, f2])
