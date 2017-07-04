@@ -21,6 +21,7 @@ class CpuContiguous(theano.Op):
 
     __props__ = ()
     view_map = {0: [0]}
+    check_input = False
 
     def make_node(self, x):
         x_ = theano.tensor.as_tensor_variable(x)
@@ -82,6 +83,7 @@ class SearchsortedOp(theano.Op):
 
     params_type = Generic()
     __props__ = ("side", )
+    check_input = False
 
     def __init__(self, side='left'):
         if side == 'left' or side == 'right':
