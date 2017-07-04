@@ -43,7 +43,7 @@ int ctc_check_result(ctcStatus_t retcode, const char * msg)
         const char * ctc_msg = ctcGetStatusString( retcode );
 
         PyErr_Format( PyExc_RuntimeError,
-                      "%s | CTC library error message: %s",
+                      "ConnectionistTemporalClassification: %s CTC error: %s",
                       msg,
                       ctc_msg );
         return 1;
@@ -117,7 +117,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
     if ( !PyArray_IS_C_CONTIGUOUS( in_activations ) )
     {
         PyErr_SetString( PyExc_RuntimeError,
-            "activations array must be C-contiguous." );
+            "ConnectionistTemporalClassification: activations array must be C-contiguous." );
         return 1;
     }
 
@@ -128,7 +128,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
     if ( NULL == context->input_lengths )
     {
         PyErr_Format( PyExc_MemoryError,
-            "Could not allocate storage for input lengths" );
+            "ConnectionistTemporalClassification: Could not allocate memory for input lengths" );
         return 1;
     }
 
@@ -141,7 +141,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
         ctc_context_destroy( context );
 
         PyErr_Format( PyExc_MemoryError,
-            "Could not allocate storage for labels and their lengths" );
+            "ConnectionistTemporalClassification: Could not allocate memory for labels and their lengths" );
         return 1;
     }
 
@@ -165,7 +165,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
             ctc_context_destroy( context );
 
             PyErr_Format( PyExc_MemoryError,
-                "Could not allocate storage for CTC costs" );
+                "ConnectionistTemporalClassification: Could not allocate memory for CTC costs" );
             return 1;
         }
     }
@@ -195,7 +195,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
                 ctc_context_destroy( context );
 
                 PyErr_Format( PyExc_MemoryError,
-                    "Could not allocate storage for CTC gradients!" );
+                    "ConnectionistTemporalClassification: Could not allocate memory for CTC gradients!" );
                 return 1;
             }
         }
@@ -208,7 +208,7 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
     ctc_error = ctc_check_result( get_workspace_size( context->label_lengths,
         context->input_lengths, alphabet_size, minibatch_size, context->options,
         &cpu_workspace_size ),
-        "Failed to obtain CTC workspace size!" );
+        "Failed to obtain CTC workspace size." );
 
     if ( ctc_error )  // Exception is set by ctc_check_result, return error here
     {
@@ -226,14 +226,14 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
         ctc_context_destroy( context );
 
         PyErr_Format( PyExc_MemoryError,
-            "Failed to allocate memory for CTC workspace!" );
+            "ConnectionistTemporalClassification: Failed to allocate memory for CTC workspace." );
         return 1;
     }
 
     ctc_error = ctc_check_result( compute_ctc_loss( activations, gradients,
         context->flat_labels, context->label_lengths, context->input_lengths,
         alphabet_size, minibatch_size, costs, context->workspace,
-        context->options ), "Failed to compute CTC loss function!" );
+        context->options ), "Failed to compute CTC loss function." );
 
     if ( ctc_error )  // Exception is set by ctc_check_result, return error here
     {
