@@ -72,16 +72,12 @@ def make_checks(loop_orders, dtypes, sub):
                 %(var)s_n%(index)s = PyArray_DIMS(%(var)s)[%(index)s];
                 %(var)s_stride%(index)s = PyArray_STRIDES(%(var)s)[%(index)s] / sizeof(%(dtype)s);
                 %(var)s_jump%(index)s_%(j)s = %(jump)s;
-                //printf("%(var)s_jump%(index)s_%(j)s is:");
-                //std::cout << %(var)s_jump%(index)s_%(j)s << std::endl;
                 """ % locals()
                 adjust = "%(var)s_n%(index)s*%(var)s_stride%(index)s" % locals()
             else:
                 jump = "-(%s)" % adjust
                 init += """
                 %(var)s_jump%(index)s_%(j)s = %(jump)s;
-                //printf("%(var)s_jump%(index)s_%(j)s is:");
-                //std::cout << %(var)s_jump%(index)s_%(j)s << std::endl;
                 """ % locals()
                 adjust = "0"
     check = ""

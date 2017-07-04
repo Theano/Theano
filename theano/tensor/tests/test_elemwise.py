@@ -15,7 +15,7 @@ from theano import gof, scalar, config
 
 from theano import tensor
 from theano.tensor import TensorType, as_tensor_variable
-from theano.compile.mode import get_default_mode
+from theano.compile.mode import get_default_mode, Mode
 from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
                                     Prod, ProdWithoutZeros)
 from theano.tests import unittest_tools
@@ -365,9 +365,9 @@ class test_CAReduce(unittest_tools.InferShapeTester):
              ((), ())]
     type = TensorType
 
-    def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
-                    pre_scalar_op=None,
-                    test_nan=False, tensor_op=None):
+    def with_mode(self, mode, scalar_op=scalar.add, dtype="floatX",
+                  pre_scalar_op=None,
+                  test_nan=False, tensor_op=None):
         for xsh, tosum in self.cases:
             if dtype == "floatX":
                 dtype = theano.config.floatX
@@ -383,7 +383,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             if tosum is None:
                 tosum = list(range(len(xsh)))
 
-            f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
+            f = theano.function([x], e, mode=mode)
             xv = np.asarray(np.random.rand(*xsh))
 
             if dtype not in tensor.discrete_dtypes:
@@ -495,8 +495,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 e = tensor_op(x, axis=tosum)
             if tosum is None:
                 tosum = list(range(len(xsh)))
-            f = copy(linker).accept(FunctionGraph([x],
-                                                  [e.shape])).make_function()
+            f = theano.function([x], e.shape, mode=mode)
             if not(scalar_op in [scalar.maximum, scalar.minimum] and
                    ((xsh == () or np.prod(xsh) == 0))):
                 try:
@@ -505,70 +504,78 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                     # GpuCAReduce don't implement all cases when size is 0
                     assert xv.size == 0
 
+    def test_perform_noopt(self):
+        self.with_mode(Mode(linker='py', optimizer=None), scalar.add, dtype='floatX')
+
     def test_perform(self):
         for dtype in ["bool", "floatX", "complex64", "complex128", "int8", "uint8"]:
-            self.with_linker(gof.PerformLinker(), scalar.add, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), scalar.mul, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), scalar.maximum, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), scalar.minimum, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype,
-                             tensor_op=tensor.all)
-            self.with_linker(gof.PerformLinker(), scalar.or_, dtype=dtype,
-                             tensor_op=tensor.any)
+            self.with_mode(Mode(linker='py'), scalar.add, dtype=dtype)
+            self.with_mode(Mode(linker='py'), scalar.mul, dtype=dtype)
+            self.with_mode(Mode(linker='py'), scalar.maximum, dtype=dtype)
+            self.with_mode(Mode(linker='py'), scalar.minimum, dtype=dtype)
+            self.with_mode(Mode(linker='py'), scalar.and_, dtype=dtype,
+                           tensor_op=tensor.all)
+            self.with_mode(Mode(linker='py'), scalar.or_, dtype=dtype,
+                           tensor_op=tensor.any)
         for dtype in ["int8", "uint8"]:
-            self.with_linker(gof.PerformLinker(), scalar.or_, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype)
-            self.with_linker(gof.PerformLinker(), scalar.xor, dtype=dtype)
+            self.with_mode(Mode(linker='py'), scalar.or_, dtype=dtype)
+            self.with_mode(Mode(linker='py'), scalar.and_, dtype=dtype)
+            self.with_mode(Mode(linker='py'), scalar.xor, dtype=dtype)
 
     def test_perform_nan(self):
         for dtype in ["floatX", "complex64", "complex128"]:
-            self.with_linker(gof.PerformLinker(), scalar.add, dtype=dtype,
-                             test_nan=True)
-            self.with_linker(gof.PerformLinker(), scalar.mul, dtype=dtype,
-                             test_nan=True)
-            self.with_linker(gof.PerformLinker(), scalar.maximum, dtype=dtype,
-                             test_nan=True)
-            self.with_linker(gof.PerformLinker(), scalar.minimum, dtype=dtype,
-                             test_nan=True)
-            self.with_linker(gof.PerformLinker(), scalar.or_, dtype=dtype,
-                             test_nan=True, tensor_op=tensor.any)
-            self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype,
-                             test_nan=True, tensor_op=tensor.all)
+            self.with_mode(Mode(linker='py'), scalar.add, dtype=dtype,
+                           test_nan=True)
+            self.with_mode(Mode(linker='py'), scalar.mul, dtype=dtype,
+                           test_nan=True)
+            self.with_mode(Mode(linker='py'), scalar.maximum, dtype=dtype,
+                           test_nan=True)
+            self.with_mode(Mode(linker='py'), scalar.minimum, dtype=dtype,
+                           test_nan=True)
+            self.with_mode(Mode(linker='py'), scalar.or_, dtype=dtype,
+                           test_nan=True, tensor_op=tensor.any)
+            self.with_mode(Mode(linker='py'), scalar.and_, dtype=dtype,
+                           test_nan=True, tensor_op=tensor.all)
+
+    def test_c_noopt(self):
+        # We need to make sure that we cover the corner cases that
+        # optimizations normally cover
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
+        self.with_mode(Mode(linker='c', optimizer=None), scalar.add, dtype='floatX')
 
     @attr('slow')
     def test_c(self):
-        if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
 
         for dtype in ["bool", "floatX", "complex64", "complex128", "int8", "uint8"]:
-            self.with_linker(gof.CLinker(), scalar.add, dtype=dtype)
-            self.with_linker(gof.CLinker(), scalar.mul, dtype=dtype)
+            self.with_mode(Mode(linker='c'), scalar.add, dtype=dtype)
+            self.with_mode(Mode(linker='c'), scalar.mul, dtype=dtype)
         for dtype in ["bool", "floatX", "int8", "uint8"]:
-            self.with_linker(gof.CLinker(), scalar.minimum, dtype=dtype)
-            self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype)
-            self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype,
-                             tensor_op=tensor.all)
-            self.with_linker(gof.CLinker(), scalar.or_, dtype=dtype,
-                             tensor_op=tensor.any)
+            self.with_mode(Mode(linker='c'), scalar.minimum, dtype=dtype)
+            self.with_mode(Mode(linker='c'), scalar.maximum, dtype=dtype)
+            self.with_mode(Mode(linker='c'), scalar.and_, dtype=dtype,
+                           tensor_op=tensor.all)
+            self.with_mode(Mode(linker='c'), scalar.or_, dtype=dtype,
+                           tensor_op=tensor.any)
         for dtype in ["bool", "int8", "uint8"]:
-            self.with_linker(gof.CLinker(), scalar.or_, dtype=dtype)
-            self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype)
-            self.with_linker(gof.CLinker(), scalar.xor, dtype=dtype)
+            self.with_mode(Mode(linker='c'), scalar.or_, dtype=dtype)
+            self.with_mode(Mode(linker='c'), scalar.and_, dtype=dtype)
+            self.with_mode(Mode(linker='c'), scalar.xor, dtype=dtype)
 
     @attr('slow')
     def test_c_nan(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
         for dtype in ["floatX", "complex64", "complex128"]:
-            self.with_linker(gof.CLinker(), scalar.add, dtype=dtype,
-                             test_nan=True)
-            self.with_linker(gof.CLinker(), scalar.mul, dtype=dtype,
-                             test_nan=True)
+            self.with_mode(Mode(linker='c'), scalar.add, dtype=dtype,
+                           test_nan=True)
+            self.with_mode(Mode(linker='c'), scalar.mul, dtype=dtype,
+                           test_nan=True)
         for dtype in ["floatX"]:
-            self.with_linker(gof.CLinker(), scalar.minimum, dtype=dtype,
-                             test_nan=True)
-            self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype,
-                             test_nan=True)
+            self.with_mode(Mode(linker='c'), scalar.minimum, dtype=dtype,
+                           test_nan=True)
+            self.with_mode(Mode(linker='c'), scalar.maximum, dtype=dtype,
+                           test_nan=True)
 
     def test_infer_shape(self, dtype=None, pre_scalar_op=None):
         if dtype is None:
@@ -1240,16 +1247,6 @@ def test_gt_grad():
     scores = T.ones_like(correct_score) - correct_score + wrong_score
     cost = (scores * (scores > 0)).sum()
     T.grad(cost, input_)
-
-"""
-if __name__ == '__main__':
-    #unittest.main()
-    suite = unittest.TestSuite([test_Prod('test_mul_without_zeros_zeros')])
-    #suite.addTest(test_Prod('test_verify_grad_with_zeros'))
-    #suite.addTest(test_Prod('test_prod_without_zeros'))
-    #suite.addTest(test_Prod('test_other_grad_tests'))
-    unittest.TextTestRunner().run(suite)
-"""
 
 
 def test_clip_grad():
