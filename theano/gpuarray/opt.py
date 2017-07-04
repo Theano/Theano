@@ -2298,8 +2298,6 @@ def local_gpu_magma_svd(op, context_name, inputs, outputs):
 @op_lifter([theano.tensor.nnet.ctc.ConnectionistTemporalClassification])
 @register_opt2([ConnectionistTemporalClassification], 'ctc', 'fast_compile')
 def local_gpu_ctc(op, context_name, inputs, outputs):
-    if not config.ctc.enabled:
-        return
     op = GpuConnectionistTemporalClassification(compute_grad=op.compute_grad)
     apply_node = op.make_node(*inputs)
     return apply_node.outputs
