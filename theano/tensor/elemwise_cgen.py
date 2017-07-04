@@ -165,6 +165,8 @@ def make_alloc(loop_orders, dtype, sub, fortran='0'):
                 PyErr_Clear();
                 Py_XDECREF(%(olv)s);
                 %(olv)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s, dims, %(type)s, 0);
+            } else {
+                Py_DECREF(success);
             }
         }
         if (!%(olv)s) {
