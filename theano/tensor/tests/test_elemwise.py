@@ -546,7 +546,8 @@ class test_CAReduce(unittest_tools.InferShapeTester):
 
     @attr('slow')
     def test_c(self):
-
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         for dtype in ["bool", "floatX", "complex64", "complex128", "int8", "uint8"]:
             self.with_mode(Mode(linker='c'), scalar.add, dtype=dtype)
             self.with_mode(Mode(linker='c'), scalar.mul, dtype=dtype)
