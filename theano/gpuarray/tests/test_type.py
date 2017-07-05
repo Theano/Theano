@@ -110,7 +110,7 @@ def test_unpickle_gpuarray_as_numpy_ndarray_flag0():
         testfile_dir = os.path.dirname(os.path.realpath(__file__))
         fname = 'GpuArray.pkl'
 
-        with open(os.path.join(testfile_dir, fname), 'rb') as fp:
+        with open(os.path.join(testfile_dir, fname), 'r') as fp:
             if PY3:
                 u = CompatUnpickler(fp, encoding="latin1")
             else:
