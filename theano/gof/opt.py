@@ -492,8 +492,7 @@ class _metadict:
                 except Exception:
                     if item is item2:
                         return value
-            else:
-                return default
+            return default
 
     def clear(self):
         self.d = {}
