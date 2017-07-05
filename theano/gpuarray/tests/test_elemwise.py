@@ -7,7 +7,7 @@ import scipy.special
 
 import theano
 from theano import scalar, gof, tensor
-from theano.compile import DebugMode
+from theano.compile import DebugMode, Mode
 from theano.tests.unittest_tools import SkipTest, assert_allclose
 
 from theano.tensor.tests import test_elemwise
@@ -223,7 +223,7 @@ class test_GpuCAReduceCPY(test_elemwise.test_CAReduce):
                 continue
             for op in self.reds:
                 self.with_mode(Mode(linker='py',
-                                    optimizer=mode_with_gpu.optimizer)
+                                    optimizer=mode_with_gpu.optimizer),
                                op, dtype=dtype,
                                test_nan=True,
                                pre_scalar_op=self.pre_scalar_op)
@@ -232,7 +232,7 @@ class test_GpuCAReduceCPY(test_elemwise.test_CAReduce):
         for dtype in self.dtypes + self.bin_dtypes:
             for op in self.reds:
                 self.with_mode(Mode(linker='c',
-                                    optimizer=mode_with_gpu.optimizer)
+                                    optimizer=mode_with_gpu.optimizer),
                                op, dtype=dtype,
                                pre_scalar_op=self.pre_scalar_op)
 
@@ -242,7 +242,7 @@ class test_GpuCAReduceCPY(test_elemwise.test_CAReduce):
                 continue
             for op in self.reds:
                 self.with_mode(Mode(linker='c',
-                                    optimizer=mode_with_gpu.optimizer)
+                                    optimizer=mode_with_gpu.optimizer),
                                op, dtype=dtype,
                                test_nan=True,
                                pre_scalar_op=self.pre_scalar_op)
