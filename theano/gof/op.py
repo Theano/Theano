@@ -856,14 +856,15 @@ class Op(utils.object2, PureOp, CLinkerOp):
         _logger.debug('Trying CLinker.make_thunk')
         outputs = cl.make_thunk(input_storage=node_input_storage,
                                 output_storage=node_output_storage)
-        fill_storage, node_input_filters, node_output_filters = outputs
+        thunk, node_input_filters, node_output_filters = outputs
 
         def rval():
-            fill_storage()
+            thunk()
             for o in node.outputs:
                 compute_map[o][0] = True
 
-        rval.cthunk = fill_storage.cthunk
+        rval.thunk = thunk
+        rval.cthunk = thunk.cthunk
         rval.inputs = node_input_storage
         rval.outputs = node_output_storage
         rval.lazy = False
