@@ -22,9 +22,6 @@ Blas Op
 .. automodule:: theano.gpuarray.blas
     :members:
 
-.. automodule:: theano.gpuarray.nerv
-    :members:
-
 Elemwise Op
 ===========
 
