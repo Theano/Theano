@@ -366,6 +366,7 @@ class GpuMaxPoolRop(CGpuKernelBase):
 
     """
     __props__ = ('ignore_border', 'mode', 'ndim')
+    params_type = ParamsType(ignore_border=bool_t, context=gpu_context_type)
 
     def __init__(self, ignore_border, mode='max', ndim=2):
         self.ndim = ndim
@@ -375,6 +376,9 @@ class GpuMaxPoolRop(CGpuKernelBase):
                                 'APPLY_SPECIFIC(max_pool_rop)')
         assert mode == 'max'
         assert ndim in [2, 3]
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def c_headers(self):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
@@ -418,10 +422,6 @@ class GpuMaxPoolRop(CGpuKernelBase):
         pad = theano.tensor.cast(pad, 'int64')
 
         return Apply(self, [inp, eval_point, ws, stride, pad], [eval_point.type()])
-
-    def get_op_params(self):
-        ignore_border = int(self.ignore_border)
-        return [('IGNORE_BORDER', ignore_border)]
 
     def infer_shape(self, node, in_shapes):
         ws, stride, pad = [node.inputs[2], node.inputs[3], node.inputs[4]]
