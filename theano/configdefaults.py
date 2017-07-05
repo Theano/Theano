@@ -1764,13 +1764,6 @@ AddConfigVar(
     in_c_key=False)
 
 AddConfigVar(
-    'ctc.enabled',
-    " If True, use Baidu library for CTC computations."
-    " If False, disable Baidu CTC",
-    BoolParam(False),
-    in_c_key=False)
-
-AddConfigVar(
     'ctc.root',
     'Directory which contains the root of Baidu CTC library. It is assumed \
     that the compiled library is either inside the build, lib or lib64 \
