@@ -1665,7 +1665,8 @@ class GpuDnnBatchNorm(DnnBase):
 
     __props__ = ('mode', 'running_averages', 'inplace_running_mean',
                  'inplace_running_var', 'inplace_output')
-
+    _cop_num_inputs = 7
+    _cop_num_outputs = 5
     check_input = False
     params_type = ParamsType(mode=cudnn.cudnnBatchNormMode_t,
                              inplace_output=bool_t,
@@ -1709,9 +1710,6 @@ class GpuDnnBatchNorm(DnnBase):
 
     def infer_shape(self, node, shape):
         return [shape[0]] + [shape[1]] * (len(node.outputs) - 1)
-
-    _cop_num_inputs = 7
-    _cop_num_outputs = 5
 
     def make_node(self, x, scale, bias, epsilon=1e-4,
                   running_average_factor=0.1,
