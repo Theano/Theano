@@ -1666,13 +1666,20 @@ class GpuDnnBatchNorm(DnnBase):
     __props__ = ('mode', 'running_averages', 'inplace_running_mean',
                  'inplace_running_var', 'inplace_output')
 
+    check_input = False
+    params_type = ParamsType(mode=cudnn.cudnnBatchNormMode_t,
+                             inplace_output=bool_t,
+                             inplace_running_mean=bool_t,
+                             inplace_running_var=bool_t,
+                             handle=handle_type)
+
     def __init__(self, mode='per-activation', running_averages=False,
                  inplace_running_mean=False, inplace_running_var=False,
                  inplace_output=False):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm.c'],
                          'dnn_batchnorm_op')
 
-        assert (mode in ('per-activation', 'spatial'))
+        assert cudnn.cudnnBatchNormMode_t.has_alias(mode)
         self.mode = mode
         self.running_averages = running_averages
         self.inplace_output = inplace_output
@@ -1700,23 +1707,11 @@ class GpuDnnBatchNorm(DnnBase):
             self.inplace_output = False
             self.destroy_map = {}
 
-    def get_op_params(self):
-        params = []
-        if self.inplace_output:
-            params.append(('INPLACE_OUTPUT', '1'))
-        if self.running_averages:
-            params.append(('RUNNING_AVERAGES', '1'))
-            if self.inplace_running_mean:
-                params.append(('INPLACE_RUNNING_MEAN', '1'))
-            if self.inplace_running_var:
-                params.append(('INPLACE_RUNNING_VAR', '1'))
-        params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
-                                if self.mode == "spatial"
-                                else "CUDNN_BATCHNORM_PER_ACTIVATION")))
-        return params
-
     def infer_shape(self, node, shape):
         return [shape[0]] + [shape[1]] * (len(node.outputs) - 1)
+
+    _cop_num_inputs = 7
+    _cop_num_outputs = 5
 
     def make_node(self, x, scale, bias, epsilon=1e-4,
                   running_average_factor=0.1,
