@@ -1333,7 +1333,7 @@ class GetItemScalar(gof.op.Op):
             elif ind.ndim == 0:
                 input_op += [ind]
             else:
-                raise NotImplemented()
+                raise NotImplementedError
 
         return gof.Apply(self, input_op, [tensor.scalar(dtype=x.dtype)])
 
