@@ -375,6 +375,7 @@ class OpFromGraph(gof.Op):
         self._grad_op_stypes_l = all_grads_ov_l
         self._grad_op_is_cached = True
 
+    @theano.configparser.change_flags(compute_test_value='off')
     def _recompute_rop_op(self):
         '''
         converts self._rop_op from user supplied form to type(self) instance
