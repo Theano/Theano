@@ -176,6 +176,5 @@ def local_gpu_ctc_no_grad(node):
     if isinstance(node.op, GpuConnectionistTemporalClassification):
         if len(node.outputs) > 1:
             if len(node.outputs[1].clients) == 0:   # gradient is not used
-                node.op.compute_grad = False
                 return [GpuConnectionistTemporalClassification(compute_grad=False)(*node.inputs), None]
     return False

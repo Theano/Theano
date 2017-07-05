@@ -163,6 +163,5 @@ def local_ctc_no_grad(node):
     if isinstance(node.op, ConnectionistTemporalClassification):
         if len(node.outputs) > 1:
             if len(node.outputs[1].clients) == 0:   # gradient is not used
-                node.op.compute_grad = False
                 return [ConnectionistTemporalClassification(compute_grad=False)(*node.inputs), None]
     return False
