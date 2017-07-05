@@ -10,6 +10,8 @@ from theano.tests.unittest_tools import SkipTest
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand_gpuarray
 from .. import GpuArrayType
+from ..reduction import GpuMaxAndArgmax
+from ..dnn import GpuDnnReduction
 
 import math
 
@@ -54,13 +56,13 @@ def numpy_maxandargmax(X, axis=None):
 
 
 def check_if_gpu_maxandargmax_in_graph(theano_function):
-    assert len([node for node in theano_function.maker.fgraph.apply_nodes
-                if isinstance(node.op, theano.gpuarray.reduction.GpuMaxAndArgmax)]) > 0
+    assert any(isinstance(node.op, (GpuMaxAndArgmax, GpuDnnReduction))
+               for node in theano_function.maker.fgraph.apply_nodes)
 
 
 def check_if_gpu_maxandargmax_not_in_graph(theano_function):
-    assert len([node for node in theano_function.maker.fgraph.apply_nodes
-                if isinstance(node.op, theano.gpuarray.reduction.GpuMaxAndArgmax)]) == 0
+    assert all(not isinstance(node.op, (GpuMaxAndArgmax, GpuDnnReduction))
+               for node in theano_function.maker.fgraph.apply_nodes)
 
 
 class BaseTest:

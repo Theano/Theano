@@ -83,7 +83,7 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
   if (indices != NULL) {
     if (theano_prep_output(indices, p, dims, GA_UINT, GA_C_ORDER, c) != 0)
       return 1;
-    indsize = PyGpuArray_SIZE(*indices);
+    indsize = PyGpuArray_SIZE(*indices) * 4;
   }
 
   if (p == input->ga.nd || rsz == 1) {
