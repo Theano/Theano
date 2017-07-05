@@ -56,7 +56,7 @@ def safe_new(x, tag='', dtype=None):
         if dtype and x.dtype != dtype:
             casted_x = x.astype(dtype)
             nwx = x.__class__(casted_x.type, x.data, x.name)
-            nwx.tag = copy(x.tag)
+            nwx.tag = copy.copy(x.tag)
             return nwx
         else:
             return x.clone()
