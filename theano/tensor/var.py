@@ -768,8 +768,7 @@ class _tensor_py_operators(object):
         from.
 
         """
-        return theano.tensor.basic.choose(self, a, choices, out=None,
-                                          mode='raise')
+        return theano.tensor.basic.choose(a, choices, out=None, mode='raise')
 
     def squeeze(self):
         """
