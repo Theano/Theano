@@ -442,7 +442,14 @@ def test_reallocation():
 
 def test_no_recycling():
     x = theano.tensor.vector()
-    mode = theano.Mode(optimizer='fast_compile')
-    f = theano.function([x], x + 1, mode=mode)
-    f2 = theano.function([x], (x + 1) * 2, mode=mode)
-    theano.printing.debugprint([f, f2])
+    for lnk in [vm.VM_Linker(use_cloop=True),
+                vm.VM_Linker(use_cloop=False, lazy=True),
+                vm.VM_Linker(use_cloop=False, lazy=False, allow_gc=True),
+                vm.VM_Linker(use_cloop=False, lazy=False, allow_gc=False)]:
+
+        mode = theano.Mode(optimizer='fast_compile', linker=lnk)
+        f = theano.function([x], x + 1, mode=mode)
+        f2 = theano.function([x], (x + 1) * 2, mode=mode)
+        m1 = f.fn.thunks[0].thunk.module
+        m2 = f2.fn.thunks[0].thunk.module
+        assert m1 is m2

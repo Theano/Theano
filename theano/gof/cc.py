@@ -1146,12 +1146,13 @@ class CLinker(link.Linker):
                 output_storage.append(map[variable])
         input_storage = tuple(input_storage)
         output_storage = tuple(output_storage)
-        thunk = self.cthunk_factory(error_storage,
-                                    input_storage,
-                                    output_storage,
-                                    storage_map,
-                                    keep_lock=keep_lock)
+        thunk, module = self.cthunk_factory(error_storage,
+                                            input_storage,
+                                            output_storage,
+                                            storage_map,
+                                            keep_lock=keep_lock)
         return (thunk,
+                module,
                 [link.Container(input, storage) for input, storage in
                  izip(self.fgraph.inputs, input_storage)],
                 [link.Container(output, storage, True) for output, storage in
@@ -1207,11 +1208,11 @@ class CLinker(link.Linker):
           first_output = ostor[0].data
         """
         init_tasks, tasks = self.get_init_tasks()
-        cthunk, in_storage, out_storage, error_storage = self.__compile__(
+        cthunk, module, in_storage, out_storage, error_storage = self.__compile__(
             input_storage, output_storage, storage_map,
             keep_lock=keep_lock)
 
-        res = _CThunk(cthunk, init_tasks, tasks, error_storage)
+        res = _CThunk(cthunk, init_tasks, tasks, error_storage, module)
         res.nodes = self.node_order
         return res, in_storage, out_storage
 
@@ -1623,8 +1624,7 @@ class CLinker(link.Linker):
 
         ret = module.instantiate(error_storage,
                                  *(in_storage + out_storage + orphd))
-
-        return ret
+        return ret, module
 
     def instantiate_code(self, n_args):
         code = StringIO()
@@ -1669,10 +1669,13 @@ class _CThunk(object):
         WRITEME
     error_storage
         WRITEME
+    module
+        The module that was used to compile this cthunk.
+        Mostly only useful for tests.
 
     """
 
-    def __init__(self, cthunk, init_tasks, tasks, error_storage):
+    def __init__(self, cthunk, init_tasks, tasks, error_storage, module):
         global run_cthunk
         if run_cthunk is None:
             # Lazy import to avoid compilation when importing theano.
@@ -1681,6 +1684,7 @@ class _CThunk(object):
         self.init_tasks = init_tasks
         self.tasks = tasks
         self.error_storage = error_storage
+        self.module = module
 
     def find_task(self, failure_code):
         """
