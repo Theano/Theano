@@ -14,7 +14,7 @@ from six.moves import xrange
 import six.moves.builtins as builtins
 import theano
 from theano import gof, OpenMPOp, tensor, Variable, Apply
-from theano.gof.params_type import ParamsType
+from theano.gof import ParamsType, EnumList
 from theano.gradient import DisconnectedType
 from theano.scalar import bool as bool_t
 
@@ -256,6 +256,16 @@ def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
     op = Pool(ignore_border, ndim=3, mode=mode)
     output = op(input, ws, stride, pad)
     return output
+
+
+# NB: This enum type is currently used in gpuarray/pool.py.
+# It may be used later as op param in this current file.
+# Enum name and constants names are inspired from cuDNN type `cudnnPoolingMode_t`
+# (cf. `theano/gpuarray/cudnn_defs.py`).
+PoolingMode_t = EnumList(('POOLING_MAX', 'max'),
+                         ('POOLING_SUM', 'sum'),
+                         ('POOLING_AVERAGE_COUNT_INCLUDE_PADDING', 'average_inc_pad'),
+                         ('POOLING_AVERAGE_COUNT_EXCLUDE_PADDING', 'average_exc_pad'))
 
 
 class Pool(OpenMPOp):
