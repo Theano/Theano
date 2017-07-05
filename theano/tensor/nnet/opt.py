@@ -85,7 +85,9 @@ def local_abstractconv_gemm(node):
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (kern.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        kern = kern[flip]
     rval = CorrMM(border_mode=node.op.border_mode,
                   subsample=node.op.subsample,
                   filter_dilation=node.op.filter_dilation,
@@ -140,7 +142,9 @@ def local_abstractconv_gradweight_gemm(node):
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
-        rval = rval[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (rval.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        rval = rval[flip]
     rval = theano.tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
     copy_stack_trace(node.outputs[0], rval)
 
@@ -189,7 +193,9 @@ def local_abstractconv_gradinputs_gemm(node):
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (kern.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        kern = kern[flip]
     rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
                              filter_dilation=node.op.filter_dilation,
