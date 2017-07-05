@@ -65,7 +65,7 @@ class BoundVariable(Variable):
     """
 
     def __init__(self, name, value):
-        self.name = name
+        super(BoundVariable, self).__init__(name=name)
         self.value = value
 
 
@@ -77,7 +77,7 @@ class OrVariable(Variable):
     """
 
     def __init__(self, name, options):
-        self.name = name
+        super(OrVariable, self).__init__(name=name)
         self.options = options
 
 
@@ -89,7 +89,7 @@ class NotVariable(Variable):
     """
 
     def __init__(self, name, not_options):
-        self.name = name
+        super(NotVariable, self).__init__(name=name)
         self.not_options = not_options
 
 
