@@ -25,6 +25,7 @@ def _ctc_find_lib():
                 return True, lib_path
     return False, None
 
+
 def _ctc_check_compile(ctc_lib_path):
     preambule = """
 #include <string.h>
@@ -52,6 +53,7 @@ options.num_threads = 1;
                        "We got this error:\n" + str(err))
     return True, None
 
+
 def ctc_present():
     if ctc_present.avail is not None:
         return ctc_present.avail
@@ -64,9 +66,11 @@ def ctc_present():
         ctc_present.avail, ctc_present.msg = _ctc_check_compile(ctc_present.path)
     return ctc_present.avail
 
+
 ctc_present.avail = None
 ctc_present.msg = None
 ctc_present.path = None
+
 
 def ctc_available():
     if config.ctc.root == '':
@@ -84,6 +88,7 @@ def ctc_available():
 
     ctc_available.path = ctc_present.path
     return True
+
 
 ctc_available.msg = None
 ctc_available.path = None
