@@ -3147,7 +3147,8 @@ def local_cudnn_maxandargmax(node):
         return
 
     # order of the axes influences the output indices
-    if tuple(sorted(node.op.axis)) != node.op.axis:
+    if (node.op.axis is not None and
+            tuple(sorted(node.op.axis)) != node.op.axis):
         return
 
     max, arg = GpuDnnReduction('maximum', node.op.axis, node.outputs[0].dtype,
@@ -3156,6 +3157,32 @@ def local_cudnn_maxandargmax(node):
     # cudnn can only return int32 indices
     return (max, as_gpuarray_variable(arg.astype('int64'),
                                       node.outputs[1].type.context_name))
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([Argmax])
+@register_opt2([Argmax], 'fast_compile', 'cudnn')
+def local_dnn_argmax(op, ctx_name, inputs, outputs):
+    if not dnn_available(ctx_name):
+        return
+
+    if version(raises=False) < 6000:
+        return
+
+    if inputs[0].ndim > 8:
+        return
+
+    if inputs[0].dtype not in ['float16', 'float32', 'float64']:
+        return
+
+    # order of the axes influences the output indices
+    if op.axis is not None and tuple(sorted(op.axis)) != op.axis:
+        return
+
+    max, arg = GpuDnnReduction('maximum', op.axis, inputs[0].dtype,
+                               inputs[0].dtype, True)
+
+    return [as_gpuarray_variable(arg.astype('int64'), ctx_name)]
 
 
 class NoCuDNNRaise(Optimizer):
