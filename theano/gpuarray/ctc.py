@@ -11,12 +11,11 @@ from theano.gradient import grad_undefined
 from theano.gof import local_optimizer
 from theano.tensor.opt import register_canonicalize
 from theano.tensor.opt import register_stabilize
+from theano.tensor.nnet.ctc import ctc_available
 
 import os
 import os.path
 from . import pygpu
-
-ctc_enabled = config.ctc.enabled
 
 
 class GpuConnectionistTemporalClassification(gof.COp):
@@ -39,14 +38,10 @@ class GpuConnectionistTemporalClassification(gof.COp):
     params_type = gpu_context_type
 
     def __init__(self, compute_grad=True):
-        if not ctc_enabled:
-            raise RuntimeError('Baidu CTC is not enabled and '
+        if not ctc_available():
+            raise RuntimeError('Baidu CTC is not available and '
                                'GpuConnectionistTemporalClassification Op '
                                'can not be constructed.')
-        elif config.ctc.root == "":
-            raise ValueError('ctc.root variable is not set, please set it '
-                             'to the root directory of the CTC library in '
-                             'your system.')
 
         self.compute_grad = compute_grad
         # Return only the cost. Gradient will be returned by grad()
@@ -55,32 +50,15 @@ class GpuConnectionistTemporalClassification(gof.COp):
         gof.COp.__init__(self, self.func_file, self.func_name)
 
     def c_lib_dirs(self):
-        dirs = []
-        if ctc_enabled:
-            # Find the directory that contains libwarpctc.so
-            lib_found = False
-            for lib_dir in ["build", "lib", "lib64"]:
-                lib_path = os.path.join(config.ctc.root, lib_dir)
-                if os.path.isdir(lib_path) and os.path.exists(lib_path):
-                    lib_found = os.path.exists(os.path.join(lib_path, "libwarpctc.so"))
-                    if lib_found:
-                        dirs.append(lib_path)
-                        break
-
-            if not lib_found:
-                raise RuntimeError('libwarpctc.so could not be found. ',
-                                   'Please check the config.ctc.root variable.')
-        return dirs
+        assert ctc_available.path is not None
+        return [ctc_available.path]
 
     def c_libraries(self):
         return ["warpctc", "gpuarray"]
 
     def c_header_dirs(self):
         dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if ctc_enabled:
-            # We assume here that the header is available at the include directory
-            # of the CTC root directory.
-            dirs.append(os.path.join(config.ctc.root, "include"))
+        dirs.append(os.path.join(config.ctc.root, "include"))
         return dirs
 
     def c_headers(self):

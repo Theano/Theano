@@ -7,14 +7,14 @@ import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 import theano.gpuarray
-from theano.gpuarray.ctc import (ctc_enabled, gpu_ctc, GpuConnectionistTemporalClassification)
-from theano.tensor.nnet.ctc import (ctc, ConnectionistTemporalClassification)
+from theano.gpuarray.ctc import (gpu_ctc, GpuConnectionistTemporalClassification)
+from theano.tensor.nnet.ctc import (ctc, ctc_available, ConnectionistTemporalClassification)
 from .config import (mode_with_gpu, mode_without_gpu)
 
 
 class TestCTC(unittest.TestCase):
     def setUp(self):
-        if not ctc_enabled:
+        if not ctc_available():
             self.skipTest('Optional library warp-ctc not available')
 
     def check_ctc(self, activations, labels, input_length, expected_costs, expected_grads):

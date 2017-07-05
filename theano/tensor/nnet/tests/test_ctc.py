@@ -6,7 +6,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
-from theano.tensor.nnet.ctc import (ctc_enabled, ctc, ConnectionistTemporalClassification)
+from theano.tensor.nnet.ctc import (ctc_available, ctc, ConnectionistTemporalClassification)
 
 
 class TestCTC(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestCTC(unittest.TestCase):
     """
 
     def setUp(self):
-        if not ctc_enabled:
+        if not ctc_available():
             self.skipTest('Optional library warp-ctc not available')
 
     def run_ctc(self, activations, labels, input_length, expected_costs, expected_grads):
