@@ -26,11 +26,11 @@ class TestCTC(unittest.TestCase):
         inputs = [t_activations, t_labels, t_activation_times]
 
         # Execute several tests for each test case
-        #self.check_expected_values(t_activations, t_labels, t_activation_times, expected_costs, expected_grads)
-        #self.compare_gpu_and_cpu_values(*inputs)
-        #self.check_grads_disabled(*inputs)
+        self.check_expected_values(t_activations, t_labels, t_activation_times, expected_costs, expected_grads)
+        self.compare_gpu_and_cpu_values(*inputs)
+        self.check_grads_disabled(*inputs)
         self.run_gpu_optimization_with_grad(*inputs)
-        #self.run_gpu_optimization_no_grad(*inputs)
+        self.run_gpu_optimization_no_grad(*inputs)
 
     def setup_cpu_op(self, activations, labels, input_length, compute_grad=True, mode=mode_without_gpu):
         cpu_ctc_cost = ctc(activations, labels, input_length)
