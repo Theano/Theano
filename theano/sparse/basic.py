@@ -333,6 +333,9 @@ class SparseConstantSignature(tuple):
                 (b.shape == y.shape) and
                 (abs(b - y).sum() < 1e-6 * b.nnz))
 
+    def __ne__(self, other):
+        return not self == other
+
     def __hash__(self):
         (a, b) = self
         return hash(type(self)) ^ hash(a) ^ hash(type(b))

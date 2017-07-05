@@ -864,6 +864,9 @@ class TensorConstantSignature(tuple):
             # here).
             return (self.sum == other.sum) and np.all(d0 == d1)
 
+    def __ne__(self, other):
+        return not self == other
+
     def __hash__(self):
         t, d = self
         return hashtype(self) ^ hash(t) ^ hash(d.shape) ^ hash(self.sum)
