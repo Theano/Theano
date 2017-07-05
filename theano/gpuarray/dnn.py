@@ -3124,6 +3124,7 @@ def local_dnn_reduction(node):
                             node.op.dtype,
                             False)(node.inputs[0]),)
 
+
 @register_opt('cudnn')
 @local_optimizer([GpuMaxAndArgmax])
 def local_cudnn_maxandargmax(node):
