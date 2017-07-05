@@ -5,7 +5,7 @@ setup_ext_cuda();
 #section support_code_struct
 
 int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **A_inv,
-                              PyGpuContextObject *c) {
+                              PARAMS_TYPE* params) {
   const size_t *dims;
   magma_int_t N, ldwork, info;
   magma_int_t *piv = NULL;
@@ -19,7 +19,7 @@ int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **A_inv,
   }
 
   // This is early to match the exit() in the fail label.
-  cuda_enter(c->ctx);
+  cuda_enter(params->context->ctx);
   magma_init();
 
   if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
@@ -38,25 +38,25 @@ int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **A_inv,
                     "GpuMagmaMatrixInverse: matrix is not square");
     goto fail;
   }
-#ifdef INPLACE
-  Py_XDECREF(*A_inv);
-  *A_inv = A;
-  Py_INCREF(*A_inv);
-#else
-  *A_inv = theano_try_copy(*A_inv, A);
-  if (*A_inv == NULL) {
-    PyErr_SetString(
-        PyExc_RuntimeError,
-        "GpuMagmaMatrixInverse: failed to allocate memory for the output");
-    goto fail;
+  if (params->inplace) {
+    Py_XDECREF(*A_inv);
+    *A_inv = A;
+    Py_INCREF(*A_inv);
+  } else {
+    *A_inv = theano_try_copy(*A_inv, A);
+    if (*A_inv == NULL) {
+      PyErr_SetString(
+          PyExc_RuntimeError,
+          "GpuMagmaMatrixInverse: failed to allocate memory for the output");
+      goto fail;
+    }
   }
-#endif
   // magma matrix inverse
 
   N = dims[0];
 
   ldwork = N * magma_get_sgetri_nb(N);
-  dwork = gpudata_alloc(c->ctx, ldwork * sizeof(float), NULL, 0, NULL);
+  dwork = gpudata_alloc(params->context->ctx, ldwork * sizeof(float), NULL, 0, NULL);
   if (dwork == NULL) {
     PyErr_SetString(PyExc_RuntimeError,
                     "GpuMagmaMatrixInverse: failed to allocate working memory");
@@ -94,6 +94,6 @@ fail:
   if (dwork != NULL)
     gpudata_release(dwork);
   magma_finalize();
-  cuda_exit(c->ctx);
+  cuda_exit(params->context->ctx);
   return res;
 }

@@ -454,7 +454,8 @@ class GpuMagmaMatrixInverse(COp):
     """Computes the inverse of a matrix :math:`A` using magma library.
     """
     __props__ = ('inplace', )
-    params_type = gpu_context_type
+    check_input = False
+    params_type = ParamsType(inplace=bool_t, context=gpu_context_type)
 
     def __init__(self, inplace=False):
         COp.__init__(self, ['magma_inv.c'], 'APPLY_SPECIFIC(magma_inv)')
@@ -492,13 +493,7 @@ class GpuMagmaMatrixInverse(COp):
         return theano.Apply(self, [x], [x.type()])
 
     def get_params(self, node):
-        return node.inputs[0].type.context
-
-    def get_op_params(self):
-        if self.inplace:
-            return [('INPLACE', '1')]
-        else:
-            return []
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def infer_shape(self, node, shapes):
         return shapes
