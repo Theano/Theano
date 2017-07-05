@@ -4,8 +4,9 @@ import os
 
 import numpy as np
 from theano import Apply, tensor
-from theano.gof import COp
+from theano.gof import COp, ParamsType
 from theano.tensor import discrete_dtypes, as_tensor_variable
+from theano.scalar import bool as bool_t
 
 from theano.gradient import grad_undefined
 
@@ -25,7 +26,8 @@ class GpuSparseBlockGemv(COp):
     function for a stable interface.
     """
     __props__ = ('inplace',)
-    params_type = gpu_context_type
+    params_type = ParamsType(inplace=bool_t, context=gpu_context_type)
+    # NB: DTYPE_INPUT_* is used in C code, so I think we should not set check_input to False.
 
     def __init__(self, inplace=False):
         COp.__init__(self, "blockgemv.c", "APPLY_SPECIFIC(blockgemv)")
@@ -34,13 +36,7 @@ class GpuSparseBlockGemv(COp):
             self.destroy_map = {0: [0]}
 
     def get_params(self, node):
-        return node.inputs[0].type.context
-
-    def get_op_params(self):
-        if self.inplace:
-            return [('INPLACE', '1')]
-        else:
-            return []
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def c_header_dirs(self):
         return [os.path.dirname(__file__)]
