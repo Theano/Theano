@@ -98,7 +98,7 @@ class GpuSparseBlockOuter(COp):
     of GpuSparseBlockGemv. The gradient is not implemented.
     """
     __props__ = ('inplace',)
-    params_type = gpu_context_type
+    params_type = ParamsType(inplace=bool_t, context=gpu_context_type)
 
     def __init__(self, inplace=False):
         COp.__init__(self, ["blockger.c"], "APPLY_SPECIFIC(blockger)")
@@ -107,13 +107,7 @@ class GpuSparseBlockOuter(COp):
             self.destroy_map = {0: [0]}
 
     def get_params(self, node):
-        return node.inputs[0].type.context
-
-    def get_op_params(self):
-        if self.inplace:
-            return [('INPLACE', '1')]
-        else:
-            return []
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
         ctx = infer_context_name(o, x, y)
