@@ -115,7 +115,9 @@ int APPLY_SPECIFIC(ave_pool_grad)(PyGpuArrayObject *x,
                                   PyArrayObject *stride,
                                   PyArrayObject *pad,
                                   PyGpuArrayObject **gx,
-                                  PyGpuContextObject *ctx) {
+                                  PARAMS_TYPE* params) {
+  bool inc_pad = (params->mode == POOLING_AVERAGE_COUNT_INCLUDE_PADDING);
+  bool sum_mode = (params->mode == POOLING_SUM);
   if (!GpuArray_IS_C_CONTIGUOUS(&x->ga)
       || !GpuArray_IS_C_CONTIGUOUS(&gz->ga))
     {
@@ -131,7 +133,7 @@ int APPLY_SPECIFIC(ave_pool_grad)(PyGpuArrayObject *x,
       return 1;
     }
   if (theano_prep_output(gx, PyGpuArray_NDIM(x), PyGpuArray_DIMS(x),
-                         x->ga.typecode, GA_C_ORDER, ctx) != 0)
+                         x->ga.typecode, GA_C_ORDER, params->context) != 0)
     {
       PyErr_SetString(PyExc_RuntimeError,
                       "GpuMaxPoolGrad: failed to allocate memory");
@@ -161,7 +163,7 @@ int APPLY_SPECIFIC(ave_pool_grad)(PyGpuArrayObject *x,
                                          x->ga.data, x->ga.offset,
                                          gz->ga.data, gz->ga.offset,
                                          w[0], w[1], s[0], s[1], p[0], p[1],
-                                         INC_PAD, SUM_MODE,
+                                         inc_pad, sum_mode,
                                          (*gx)->ga.data, (*gx)->ga.offset);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
@@ -177,7 +179,7 @@ int APPLY_SPECIFIC(ave_pool_grad)(PyGpuArrayObject *x,
                                          x->ga.data, x->ga.offset,
                                          gz->ga.data, gz->ga.offset,
                                          w[0], w[1], w[2], s[0], s[1], s[2],
-                                         p[0], p[1], p[2], INC_PAD, SUM_MODE,
+                                         p[0], p[1], p[2], inc_pad, sum_mode,
                                          (*gx)->ga.data, (*gx)->ga.offset);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
