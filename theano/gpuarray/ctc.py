@@ -49,7 +49,6 @@ class GpuConnectionistTemporalClassification(gof.COp):
                              'your system.')
 
         self.compute_grad = compute_grad
-        self.gradients = None
         # Return only the cost. Gradient will be returned by grad()
         self.default_output = 0
 
@@ -129,6 +128,8 @@ class GpuConnectionistTemporalClassification(gof.COp):
     def L_op(self, inputs, outputs, output_grads):
         # Gradients computed by Op
         gradients = self.gradients
+        assert gradients is not None
+
         # Gradients of original function, to compose chain rule
         grad_op = output_grads[0]
         grad_shuffle = GpuDimShuffle(input_broadcastable=(False, False, False,),

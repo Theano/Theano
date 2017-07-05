@@ -116,6 +116,8 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
 
     def L_op(self, inputs, outputs, output_grads):
         gradients = self.gradients
+        assert gradients is not None
+
         grad_op = output_grads[0]
         total_grad = T.basic.batched_dot(grad_op, gradients.dimshuffle(1, 0, 2)).dimshuffle(1, 0, 2)
         return [total_grad,
