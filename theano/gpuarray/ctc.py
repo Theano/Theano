@@ -49,6 +49,7 @@ class GpuConnectionistTemporalClassification(gof.COp):
                              'your system.')
 
         self.compute_grad = compute_grad
+        self.gradients = None
         # Return only the cost. Gradient will be returned by grad()
         self.default_output = 0
 
@@ -117,17 +118,17 @@ class GpuConnectionistTemporalClassification(gof.COp):
         outputs = [costs]
 
         if self.compute_grad:
-            gradients = GpuArrayType(dtype='float32',
-                                     broadcastable=(False, False, False,),
-                                     context_name=context_name)()
-            outputs += [gradients]
+            self.gradients = GpuArrayType(dtype='float32',
+                                          broadcastable=(False, False, False,),
+                                          context_name=context_name)()
+            outputs += [self.gradients]
 
         return theano.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
                             outputs=outputs)
 
     def L_op(self, inputs, outputs, output_grads):
         # Gradients computed by Op
-        gradients = outputs[1]
+        gradients = self.gradients
         # Gradients of original function, to compose chain rule
         grad_op = output_grads[0]
         grad_shuffle = GpuDimShuffle(input_broadcastable=(False, False, False,),
@@ -176,4 +177,5 @@ def local_gpu_ctc_no_grad(node):
         if len(node.outputs) > 1:
             if len(node.outputs[1].clients) == 0:   # gradient is not used
                 node.op.compute_grad = False
-                return [GpuConnectionistTemporalClassification(compute_grad=False)(*node.inputs)]
+                return [GpuConnectionistTemporalClassification(compute_grad=False)(*node.inputs), None]
+    return False

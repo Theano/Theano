@@ -108,14 +108,14 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         costs = T.fvector(name="ctc_cost")
         outputs = [costs]
         if self.compute_grad:
-            gradients = T.ftensor3(name="ctc_grad")
-            outputs += [gradients]
+            self.gradients = T.ftensor3(name="ctc_grad")
+            outputs += [self.gradients]
 
         return gof.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
                          outputs=outputs)
 
     def L_op(self, inputs, outputs, output_grads):
-        gradients = outputs[1]
+        gradients = self.gradients
         grad_op = output_grads[0]
         total_grad = T.basic.batched_dot(grad_op, gradients.dimshuffle(1, 0, 2)).dimshuffle(1, 0, 2)
         return [total_grad,
@@ -164,4 +164,5 @@ def local_ctc_no_grad(node):
         if len(node.outputs) > 1:
             if len(node.outputs[1].clients) == 0:   # gradient is not used
                 node.op.compute_grad = False
-                return [ConnectionistTemporalClassification(compute_grad=False)(*node.inputs)]
+                return [ConnectionistTemporalClassification(compute_grad=False)(*node.inputs), None]
+    return False
