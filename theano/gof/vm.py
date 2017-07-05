@@ -1080,7 +1080,7 @@ class VM_Linker(link.LocalLinker):
                 thunks.append(node.op.make_thunk(node,
                                                  storage_map,
                                                  compute_map,
-                                                 no_recycling=[],
+                                                 [],
                                                  impl=impl))
                 linker_make_thunk_time[node] = time.time() - thunk_start
                 if not hasattr(thunks[-1], 'lazy'):
