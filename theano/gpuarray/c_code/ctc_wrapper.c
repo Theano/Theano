@@ -183,27 +183,14 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     if ( theano_prep_output( out_costs, 1, &cost_size, in_activations->ga.typecode,
                              GA_C_ORDER, gpu_context ) != 0 )
     {
-        Py_XDECREF( *out_costs );
+        ctc_context_destroy( context );
 
-        *out_costs = pygpu_zeros( 1, &cost_size, GA_FLOAT, GA_C_ORDER,
-            gpu_context, Py_None );
+        cuda_exit( gpu_context->ctx );
 
-        if ( NULL == *out_costs )
-        {
-            // Destroy previous CTC context before returning exception
-            ctc_context_destroy( context );
-
-            cuda_exit( gpu_context->ctx );
-
-            PyErr_Format( PyExc_MemoryError,
-                "GpuConnectionistTemporalClassification: Could not allocate memory for CTC costs." );
-            return 1;
-        }
+        return 1;
     }
-    else
-    {
-        GpuArray_memset( &((*out_costs)->ga), 0 );
-    }
+
+    GpuArray_memset( &((*out_costs)->ga), 0 );
 
     costs = (float *) PyGpuArray_DEV_DATA( *out_costs );
 
@@ -212,27 +199,14 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
         if ( theano_prep_output( out_gradients, 3, grad_dims, in_activations->ga.typecode,
                                  GA_C_ORDER, gpu_context ) != 0 )
         {
-            Py_XDECREF( *out_gradients );
+            ctc_context_destroy( context );
 
-            const size_t * activation_dims = PyGpuArray_DIMS( in_activations );
-            *out_gradients = pygpu_zeros( 3, activation_dims, GA_FLOAT, GA_C_ORDER,
-                gpu_context, Py_None );
+            cuda_exit( gpu_context->ctx );
 
-            if ( NULL == *out_gradients )
-            {
-                ctc_context_destroy( context );
-
-                cuda_exit( gpu_context->ctx );
-
-                PyErr_Format( PyExc_MemoryError,
-                    "GpuConnectionistTemporalClassification: Could not allocate memory for CTC gradients." );
-                return 1;
-            }
+            return 1;
         }
-        else
-        {
-            GpuArray_memset( &((*out_gradients)->ga), 0 );
-        }
+
+        GpuArray_memset( &((*out_gradients)->ga), 0 );
 
         gradients = (float *) PyGpuArray_DEV_DATA( *out_gradients );
     }
