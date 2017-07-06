@@ -7,7 +7,7 @@ import scipy.special
 
 import theano
 from theano import scalar, gof, tensor
-from theano.compile import DebugMode
+from theano.compile import DebugMode, Mode
 from theano.tests.unittest_tools import SkipTest, assert_allclose
 
 from theano.tensor.tests import test_elemwise
@@ -212,32 +212,40 @@ class test_GpuCAReduceCPY(test_elemwise.test_CAReduce):
     def test_perform(self):
         for dtype in self.dtypes + self.bin_dtypes:
             for op in self.reds:
-                self.with_linker(gof.PerformLinker(), op, dtype=dtype,
-                                 pre_scalar_op=self.pre_scalar_op)
+                self.with_mode(Mode(linker='py',
+                                    optimizer=mode_with_gpu.optimizer),
+                               op, dtype=dtype,
+                               pre_scalar_op=self.pre_scalar_op)
 
     def test_perform_nan(self):
         for dtype in self.dtypes:
             if not dtype.startswith('float'):
                 continue
             for op in self.reds:
-                self.with_linker(gof.PerformLinker(), op, dtype=dtype,
-                                 test_nan=True,
-                                 pre_scalar_op=self.pre_scalar_op)
+                self.with_mode(Mode(linker='py',
+                                    optimizer=mode_with_gpu.optimizer),
+                               op, dtype=dtype,
+                               test_nan=True,
+                               pre_scalar_op=self.pre_scalar_op)
 
     def test_c(self):
         for dtype in self.dtypes + self.bin_dtypes:
             for op in self.reds:
-                self.with_linker(gof.CLinker(), op, dtype=dtype,
-                                 pre_scalar_op=self.pre_scalar_op)
+                self.with_mode(Mode(linker='c',
+                                    optimizer=mode_with_gpu.optimizer),
+                               op, dtype=dtype,
+                               pre_scalar_op=self.pre_scalar_op)
 
     def test_c_nan(self):
         for dtype in self.dtypes:
             if not dtype.startswith('float'):
                 continue
             for op in self.reds:
-                self.with_linker(gof.CLinker(), op, dtype=dtype,
-                                 test_nan=True,
-                                 pre_scalar_op=self.pre_scalar_op)
+                self.with_mode(Mode(linker='c',
+                                    optimizer=mode_with_gpu.optimizer),
+                               op, dtype=dtype,
+                               test_nan=True,
+                               pre_scalar_op=self.pre_scalar_op)
 
     def test_infer_shape(self):
         for dtype in self.dtypes:
@@ -333,6 +341,9 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     reds = [scalar.add, scalar.mul,
             scalar.maximum, scalar.minimum]
     pre_scalar_op = None
+
+    def test_perform_noopt(self):
+        return
 
     def test_perform(self):
         return

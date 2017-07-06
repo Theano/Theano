@@ -1202,7 +1202,7 @@ second dimension
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [12]  # the version corresponding to the c code in this Op
+        version = [13]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
@@ -1622,7 +1622,7 @@ class CAReduce(Op):
 
     def c_code_cache_version_apply(self, node):
         # the version corresponding to the c code in this Op
-        version = [7]
+        version = [8]
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
