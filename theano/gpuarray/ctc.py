@@ -95,17 +95,17 @@ class GpuConnectionistTemporalClassification(gof.COp):
         outputs = [costs]
 
         if self.compute_grad:
-            self.gradients = GpuArrayType(dtype='float32',
-                                          broadcastable=(False, False, False,),
-                                          context_name=context_name)()
-            outputs += [self.gradients]
+            gradients = GpuArrayType(dtype='float32',
+                                     broadcastable=(False, False, False,),
+                                     context_name=context_name)()
+            outputs += [gradients]
 
         return theano.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
                             outputs=outputs)
 
     def L_op(self, inputs, outputs, output_grads):
         # Gradients computed by Op
-        gradients = self.gradients
+        gradients = outputs[1]
         assert gradients is not None
 
         # Gradients of original function, to compose chain rule
@@ -134,7 +134,8 @@ def gpu_ctc(activations, labels, input_lengths):
         to the fastest changing dimension, from left to right. In this case,
         p is the fastest changing dimension.
     labels
-        A 1-D tensor of all the labels for the minibatch.
+        A 2-D tensor of all the labels for the minibatch. Each row contains
+        a sequence of target labels.
     input_lengths
         A 1-D tensor with the number of time steps for each sequence in
         the minibatch.
