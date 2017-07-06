@@ -204,7 +204,9 @@ def ctc(activations, labels, input_lengths):
         p is the fastest changing dimension.
     labels
         A 2-D tensor of all the labels for the minibatch. In each row, there
-        is a sequence of target labels.
+        is a sequence of target labels. Negative values are assumed to be padding,
+        and thus are ignored. Blank symbol is assumed to have index 0 in the
+        alphabet.
     input_lengths
         A 1-D tensor with the number of time steps for each sequence in
         the minibatch.
