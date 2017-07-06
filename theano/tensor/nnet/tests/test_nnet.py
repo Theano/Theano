@@ -1864,8 +1864,11 @@ def test_gumbel_softmax():
 
     high_hard_vec = f(test_vec, high_temp, hard=True)
     high_hard_mat = f(test_mat, high_temp, hard=True)
-    high_soft_vec = f(test_vec, high_temp)
-    high_soft_mat = f(test_mat, high_temp)
 
+    # At low temperature, the approximation must hold good
     utt.assert_allclose(low_hard_vec, low_soft_vec)
     utt.assert_allclose(low_hard_mat, low_soft_mat)
+    # Basic Check
+    utt.assert_allclose(high_hard_mat, np.argmax(np_onehot(test_mat, test_mat.shape[-1]), -1))
+    utt.assert_allclose(high_hard_vec, np.argmax(np_onehot(test_vec, test_vec.shape[-1]), -1))
+

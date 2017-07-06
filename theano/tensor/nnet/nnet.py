@@ -2538,6 +2538,40 @@ def confusion_matrix(actual, pred):
 
 
 def gumbel_softmax(inp, temperature, epsilon=np.float32(1e-20), hard=False):
+
+    '''
+    Computes the Gumbel Softmax of the input variable at the given temperature.
+    Gumbel softmax can be used to sample from a discrete distribution in a
+    differentiable manner. At low temperatures, the softmax approximation
+    is same as the one-hot encoding of the input's argmax
+
+    Parameters
+    ----------
+    inp : Theano Matrix.
+        The input to which Gumbel Softmax is to be applied. This is expected to
+        be from Categorical distribution
+
+    temperature : Scalar Variable
+        Usually a float32 scalar representing the temperature parameter.
+        Closer the temperature is to zero, more effective the approximation
+        would be.
+
+    hard : Boolean
+        If set to False, returns the softmax approximation. Else, returns the
+        one-hot encoding of input's argmax. 
+
+    Note :
+        When the parameter hard is set to True, this returns a
+        non-differentiable expression. 
+
+    References
+    ----------
+    .. [1] Eric Jang et al (2016):
+           Categorical Reparameterization with Gumbel-Softmax
+           for Visual Recognition.
+           https://arxiv.org/abs/1611.01144.
+    '''
+
     srng = RandomStreams(rng.randint(1234))
     uniform_samples = srng.uniform(inp.shape, low=0, high=1).astype('float32')
     gumbel_dist = -tensor.log(-tensor.log(uniform_samples + epsilon) + epsilon)
@@ -2546,4 +2580,3 @@ def gumbel_softmax(inp, temperature, epsilon=np.float32(1e-20), hard=False):
         gumbel_trick = tensor.extra_ops.to_one_hot(tensor.argmax(inp, -1), inp.shape[-1])
         return gumbel_trick
     return soft
-
