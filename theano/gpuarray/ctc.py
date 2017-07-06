@@ -134,8 +134,8 @@ def gpu_ctc(activations, labels, input_lengths):
         to the fastest changing dimension, from left to right. In this case,
         p is the fastest changing dimension.
     labels
-        A 2-D tensor of all the labels for the minibatch. Each row contains
-        a sequence of target labels.
+        A 2-D tensor of all the labels for the minibatch. In each row, there
+        is a sequence of target labels.
     input_lengths
         A 1-D tensor with the number of time steps for each sequence in
         the minibatch.
