@@ -25,13 +25,13 @@ def make_declare(loop_orders, dtypes, sub):
                 decl += """
                 npy_intp %(var)s_n%(value)i;
                 ssize_t %(var)s_stride%(value)i;
-                int %(var)s_jump%(value)i_%(j)i;
+                npy_intp %(var)s_jump%(value)i_%(j)i;
                 """ % locals()
             else:
                 # if the dimension is broadcasted, we only need
                 # the jump (arbitrary length and stride = 0)
                 decl += """
-                int %(var)s_jump%(value)s_%(j)i;
+                npy_intp %(var)s_jump%(value)s_%(j)i;
                 """ % locals()
 
     return decl
@@ -218,7 +218,7 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
             forloop = """#pragma omp parallel for if( %(suitable_n)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
         else:
             forloop = ""
-        forloop += """for (int %(iterv)s = 0; %(iterv)s<%(suitable_n)s; %(iterv)s++)""" % locals()
+        forloop += """for (npy_intp %(iterv)s = 0; %(iterv)s<%(suitable_n)s; %(iterv)s++)""" % locals()
         return"""
         %(preloop)s
         %(forloop)s {
@@ -272,15 +272,15 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
     # The first element of each pair is the absolute value of the stride
     # The second element correspond to the index in the initial loop order
     order_loops = """
-    std::vector< std::pair<int, int> > %(ovar)s_loops(%(nnested)i);
-    std::vector< std::pair<int, int> >::iterator %(ovar)s_loops_it = %(ovar)s_loops.begin();
+    std::vector< std::pair<npy_intp, int> > %(ovar)s_loops(%(nnested)i);
+    std::vector< std::pair<npy_intp, int> >::iterator %(ovar)s_loops_it = %(ovar)s_loops.begin();
     """ % locals()
 
     # Fill the loop vector with the appropriate <stride, index> pairs
     for i, index in enumerate(init_loop_orders[olv_index]):
         if index != 'x':
             order_loops += """
-            %(ovar)s_loops_it->first = abs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
+            %(ovar)s_loops_it->first = llabs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
             """ % locals()
         else:
             # Stride is 0 when dimension is broadcastable
@@ -320,7 +320,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
         totals.append(total)
 
     declare_totals = """
-    int init_totals[%(nnested)s] = {%(totals)s};
+    npy_intp init_totals[%(nnested)s] = {%(totals)s};
     """ % dict(nnested=nnested,
                totals=', '.join(totals))
 
@@ -332,7 +332,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
 
     for i in xrange(nnested):
         declare_totals += """
-        int TOTAL_%(i)i = init_totals[%(ovar)s_loops_it->second];
+        npy_intp TOTAL_%(i)i = init_totals[%(ovar)s_loops_it->second];
         ++%(ovar)s_loops_it;
         """ % locals()
 
@@ -357,7 +357,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
 
     # We declare the initial strides as a 2D array, nvars x nnested
     declare_strides = """
-    int init_strides[%(nvars)i][%(nnested)i] = {
+    npy_intp init_strides[%(nvars)i][%(nnested)i] = {
         %(strides)s
     };""" % dict(nvars=nvars,
                  nnested=nnested,
@@ -368,7 +368,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
     # Declare (sorted) stride and for each variable
     # we iterate from innermost loop to outermost loop
     declare_strides += """
-    std::vector< std::pair<int, int> >::reverse_iterator %(ovar)s_loops_rit;
+    std::vector< std::pair<npy_intp, int> >::reverse_iterator %(ovar)s_loops_rit;
     """ % locals()
 
     for i in xrange(nvars):
@@ -377,7 +377,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
         %(ovar)s_loops_rit = %(ovar)s_loops.rbegin();""" % locals()
         for j in reversed(xrange(nnested)):
             declare_strides += """
-            int %(var)s_stride_l%(j)i = init_strides[%(i)i][%(ovar)s_loops_rit->second];
+            npy_intp %(var)s_stride_l%(j)i = init_strides[%(i)i][%(ovar)s_loops_rit->second];
             ++%(ovar)s_loops_rit;
             """ % locals()
 
@@ -409,7 +409,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
             if openmp:
                 openmp_elemwise_minsize = theano.config.openmp_elemwise_minsize
                 forloop += """#pragma omp parallel for if( %(total)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
-        forloop += "for(int %(iterv)s = 0; %(iterv)s<%(total)s; %(iterv)s++)" % locals()
+        forloop += "for(npy_intp %(iterv)s = 0; %(iterv)s<%(total)s; %(iterv)s++)" % locals()
 
         loop = """
         %(forloop)s
@@ -501,7 +501,7 @@ def make_loop_careduce(loop_orders, dtypes, loop_tasks, sub):
                 suitable_n = "%(var)s_n%(index)s" % locals()
         return """
         %(preloop)s
-        for (int %(iterv)s = %(suitable_n)s; %(iterv)s; %(iterv)s--) {
+        for (npy_intp %(iterv)s = %(suitable_n)s; %(iterv)s; %(iterv)s--) {
             %(code)s
             %(update)s
         }
