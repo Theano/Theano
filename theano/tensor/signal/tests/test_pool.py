@@ -18,7 +18,7 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.signal.pool import (Pool, pool_2d, pool_3d,
                                        MaxPoolGrad, AveragePoolGrad,
                                        max_pool_2d_same_size,
-                                       DownsampleFactorMaxGradGrad)
+                                       DownsampleFactorMaxGradGrad, spp_pooling)
 
 from theano import function
 
@@ -1159,6 +1159,46 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
 
+    def test_spp_pooling_outputs(self):
+        # Values that has been tested on the Lasagne's Numpy implementation is used for comparison with the implementation in theano's repo
+        # https://github.com/Lasagne/Lasagne/blob/master/lasagne/tests/layers/test_pool.py#L154
+        def spatial_pool(data, pool_dims):
+            def ceildiv(a, b):
+                return (a + b - 1) // b
+
+            def floordiv(a, b):
+                return a // b
+
+            input_size = data.shape[2:]
+            pooled_data_list = []
+            for pool_dim in pool_dims:
+                pool_size = tuple(ceildiv(i, pool_dim) for i in input_size)
+                stride_size = tuple(floordiv(i, pool_dim) for i in input_size)
+
+                pooled_part = self.numpy_max_pool_2d_stride(data, pool_size, True, stride_size)
+                pooled_part = pooled_part.reshape(data.shape[0], data.shape[1], pool_dim ** 2)
+                pooled_data_list.append(pooled_part)
+            return numpy.concatenate(pooled_data_list, axis=2)
+
+        random_image = numpy.random.random((3, 2, 10, 10))
+        pooling_dimensions = [1, 2, 3]
+        tested_pool_values = spatial_pool(random_image, pooling_dimensions)
+        random_image_var = theano.shared(random_image)
+        image_shape = random_image.shape
+        pool_values = spp_pooling(random_image_var, pooling_dimensions, image_shape)
+        utt.assert_allclose(tested_pool_values, pool_values.eval())
+        # Testing shape
+        desired_out_shape = numpy.sum(numpy.asarray(pooling_dimensions) ** 2, axis=0)
+        assert len(pool_values.eval().shape) == 3
+        assert pool_values.eval().shape[-1] == desired_out_shape
+        assert pool_values.eval().shape[:2] == random_image.shape[:2]
+
+        # Testing with symbolic Variable
+        y = tensor.tensor4()
+        symbolic_spp = spp_pooling(y, pooling_dimensions)
+        func = theano.function([y], symbolic_spp, allow_input_downcast=True)
+        spp_values = func(random_image)
+        utt.assert_allclose(tested_pool_values, spp_values)
 
 if __name__ == '__main__':
     unittest.main()
