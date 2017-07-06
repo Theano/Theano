@@ -12,7 +12,7 @@ import theano
 from theano import Op, Apply, tensor, config, Variable
 from theano.scalar import (as_scalar, constant, Log, get_scalar_type,
                            int32 as int_t, bool as bool_t, uint32 as uint32_t)
-from theano.tensor import as_tensor_variable
+from theano.tensor import as_tensor_variable, Argmax
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp, ParamsType, EnumList
 from theano.gof.cmodule import GCC_compiler
