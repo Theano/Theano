@@ -167,14 +167,14 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         costs = T.fvector(name="ctc_cost")
         outputs = [costs]
         if self.compute_grad:
-            self.gradients = T.ftensor3(name="ctc_grad")
-            outputs += [self.gradients]
+            gradients = T.ftensor3(name="ctc_grad")
+            outputs += [gradients]
 
         return gof.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
                          outputs=outputs)
 
     def L_op(self, inputs, outputs, output_grads):
-        gradients = self.gradients
+        gradients = outputs[1]
         assert gradients is not None
 
         grad_op = output_grads[0]
@@ -203,7 +203,8 @@ def ctc(activations, labels, input_lengths):
         to the fastest changing dimension, from left to right. In this case,
         p is the fastest changing dimension.
     labels
-        A 1-D tensor of all the labels for the minibatch.
+        A 2-D tensor of all the labels for the minibatch. In each row, there
+        is a sequence of target labels.
     input_lengths
         A 1-D tensor with the number of time steps for each sequence in
         the minibatch.
