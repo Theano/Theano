@@ -2312,6 +2312,13 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                               "of", len(li), "events was stable.",
                               file=sys.stderr)
         self.fgraph = fgraph
+        destroy_handler_added = False
+        for feature in fgraph._features:
+            if isinstance(feature, gof.DestroyHandler):
+                destroy_handler_added = True
+                break
+        if not destroy_handler_added:
+            fgraph.attach_feature(gof.DestroyHandler())
         for o in fgraph.outputs:
             try:
                 fgraph.replace_validate(o, _output_guard(o), reason='output_guard')
