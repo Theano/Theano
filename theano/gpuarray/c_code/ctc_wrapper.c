@@ -266,11 +266,19 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
     }
 
     cuda_wait( in_activations->ga.data, GPUARRAY_CUDA_WAIT_READ );
+    cuda_wait( (*out_costs)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
+    if ( out_gradients != NULL )
+        cuda_wait( (*out_gradients)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
 
     ctc_error = ctc_check_result( compute_ctc_loss( activations, gradients,
         context->flat_labels, context->label_lengths, context->input_lengths,
         alphabet_size, minibatch_size, costs, *(void **)context->workspace,
         context->options ), "Failed to compute CTC loss function." );
+
+    cuda_record( in_activations->ga.data, GPUARRAY_CUDA_WAIT_READ );
+    cuda_record( (*out_costs)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
+    if ( out_gradients != NULL )
+        cuda_record( (*out_gradients)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
 
     if ( ctc_error )  // Exception is set by ctc_check_result, return error here
     {
@@ -280,10 +288,6 @@ int APPLY_SPECIFIC(ctc_cost_gpu)(PyGpuArrayObject   *  in_activations,
 
         return 1;
     }
-
-    cuda_wait( (*out_costs)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
-    if ( out_gradients != NULL )
-        cuda_wait( (*out_gradients)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
 
     ctc_context_destroy( context );
     cuda_exit( gpu_context->ctx );
