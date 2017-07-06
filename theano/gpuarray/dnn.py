@@ -3180,7 +3180,7 @@ def local_dnn_argmax(op, ctx_name, inputs, outputs):
         return
 
     max, arg = GpuDnnReduction('maximum', op.axis, inputs[0].dtype,
-                               inputs[0].dtype, True)
+                               inputs[0].dtype, True)(*inputs)
 
     return [as_gpuarray_variable(arg.astype('int64'), ctx_name)]
 
