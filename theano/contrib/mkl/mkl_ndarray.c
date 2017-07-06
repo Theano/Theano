@@ -587,17 +587,17 @@ int MKLNdarray_create_buffer_from_layout(MKLNdarray *self, int type) {
     }
 
     dnnLayout_t* layout = NULL;
-    void* buffer = NULL;
+    void** buffer = NULL;
     size_t* data_size = NULL;
 
     if (MNDA_DATA == type) {
         layout = &(self->private_layout);
-        buffer = self->private_data;
+        buffer = &(self->private_data);
         data_size = &(self->data_size);
 
     } else if (MNDA_WORKSPACE == type) {
         layout = &(self->private_layout_ws);
-        buffer = self->private_workspace;
+        buffer = &(self->private_workspace);
         data_size = &(self->workspace_size);
 
     } else {
@@ -613,7 +613,7 @@ int MKLNdarray_create_buffer_from_layout(MKLNdarray *self, int type) {
         return -1;
     }
 
-    if (NULL != buffer) {
+    if (NULL != (*buffer)) {
         PyErr_SetString(PyExc_RuntimeError,
                         "MKLNdarray_create_buffer_from_layout: buffer is already allocated");
         return -1;
@@ -621,8 +621,8 @@ int MKLNdarray_create_buffer_from_layout(MKLNdarray *self, int type) {
 
     int status = 0;
     if (MNDA_FLOAT64 == self->dtype) {
-        status = dnnAllocateBuffer_F64(&buffer, *layout);
-        if (E_SUCCESS != status || NULL == buffer) {
+        status = dnnAllocateBuffer_F64(buffer, *layout);
+        if (E_SUCCESS != status || NULL == (*buffer)) {
             PyErr_Format(PyExc_RuntimeError,
                          "MKLNdarray_create_buffer_from_layout: Call dnnAllocateBuffer_F64 failed: %d",
                          status);
@@ -630,8 +630,8 @@ int MKLNdarray_create_buffer_from_layout(MKLNdarray *self, int type) {
         }
         (*data_size) = dnnLayoutGetMemorySize_F64(*layout);
     } else {  // float32
-        status = dnnAllocateBuffer_F32(&buffer, *layout);
-        if (E_SUCCESS != status || NULL == buffer) {
+        status = dnnAllocateBuffer_F32(buffer, *layout);
+        if (E_SUCCESS != status || NULL == (*buffer)) {
             PyErr_Format(PyExc_RuntimeError,
                          "MKLNdarray_create_buffer_from_layout: Call dnnAllocateBuffer_F32 failed: %d",
                          status);
@@ -1453,7 +1453,6 @@ MKLNdarray * MKLNdarray_Copy(MKLNdarray *self) {
     }
 
     assert (self->nd == rval->nd);
-
     if (self->private_layout) {
         ret = MKLNdarray_copy_layout(rval, self, MNDA_DATA);
         if (ret) {
@@ -1470,7 +1469,14 @@ MKLNdarray * MKLNdarray_Copy(MKLNdarray *self) {
             return NULL;
         }
         data_size = MKLNdarray_get_memory_size(rval, MNDA_DATA);
-        memcpy(rval->private_data, self->private_data, data_size);
+        if (data_size > 0 && NULL != rval->private_data) {
+            memcpy(rval->private_data, self->private_data, data_size);
+        } else {
+            PyErr_SetString(PyExc_MemoryError,
+                            "MKLNdarray_Copy: fail to get memory pointer or size for data in new object");
+            Py_DECREF(rval);
+            return NULL;
+        }
     }
 
     if (self->private_layout_ws) {
@@ -1488,9 +1494,15 @@ MKLNdarray * MKLNdarray_Copy(MKLNdarray *self) {
             return NULL;
         }
         data_size = MKLNdarray_get_memory_size(rval, MNDA_WORKSPACE);
-        memcpy (rval->private_workspace, self->private_workspace, data_size);
+        if (data_size > 0 && NULL != rval->private_workspace) {
+            memcpy (rval->private_workspace, self->private_workspace, data_size);
+        } else {
+            PyErr_SetString(PyExc_MemoryError,
+                            "MKLNdarray_Copy: fail to get memory pointer or size for workspace in new object");
+            Py_DECREF(rval);
+            return NULL;
+        }
     }
-
     return rval;
 }
 
@@ -1543,8 +1555,8 @@ static PyMethodDef MKLNdarray_methods[] = {
         "Create a new MklNdarray with specified shape, filled ith zeros."},
 
     {"__copy__",
-        (PyCFunction)MKLNdarray_View, METH_NOARGS,
-        "Create a shallow copy of this object. used by module copy"},
+        (PyCFunction)MKLNdarray_Copy, METH_NOARGS,
+        "Create a copy of this object. used by module copy"},
 
     {"__deepcopy__",
         (PyCFunction)MKLNdarray_DeepCopy, METH_O,
