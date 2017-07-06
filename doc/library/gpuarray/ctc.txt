@@ -8,7 +8,7 @@
 
     Usage of connectionist temporal classification (CTC) loss Op, requires that
     the `warp-ctc <https://github.com/baidu-research/warp-ctc>`_ library is
-    available. Also, the `config.ctc.root` configuration option must be appropriately
+    available. Also, the ``config.ctc.root`` configuration option must be appropriately
     set to the directory containing the warp-ctc library files.
 
 .. note::
