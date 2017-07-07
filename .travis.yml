@@ -4,6 +4,7 @@ sudo: false
 cache:
   directories:
     - $HOME/.cache/pip
+    - $HOME/.theano
     - $HOME/download # Sufficient to add miniconda.sh to TRAVIS cache.
     - $HOME/miniconda2 # Add the installation to TRAVIS cache.
 
