@@ -129,7 +129,7 @@ spatialtf_sampler(PyGpuArrayObject * input,
         cuda_exit( gpu_ctx->ctx );
 
         PyErr_Format( PyExc_RuntimeError,
-                      "Could not create xdesc: %s",
+                      "Could not create ydesc: %s",
                       cudnnGetErrorString(err) );
         return -1;
     }
