@@ -2446,10 +2446,10 @@ def test_dnn_spatialtf():
     downsample_factor = 2
 
     # Transformation matrix
-    rotation = [[1, 0, 0],
-                [0, 1, 0]]
+    theta = [[-1, 0, 0],
+             [0, -1, 0]]
 
-    transform = np.asarray(img_dims[0] * [rotation], dtype=theano.config.floatX)
+    transform = np.asarray(img_dims[0] * [theta], dtype=theano.config.floatX)
     gpu_transform = gpuarray_shared_constructor(transform)
 
     st_dnn = dnn.dnn_spatialtf(gpu_img, gpu_transform, downsample_factor)
