@@ -86,10 +86,16 @@ spatialtf_grid(PyArrayObject * grid_dimensions,
         return -1;
     }
 
+    cuda_wait( theta->ga.data, GPUARRAY_CUDA_WAIT_READ );
+    cuda_wait( (*grid)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
+
     const void * theta_data = PyGpuArray_DEV_DATA( theta );
     void * grid_data = PyGpuArray_DEV_DATA( *grid );
 
     err = cudnnSpatialTfGridGeneratorForward( _handle, desc, theta_data, grid_data );
+
+    cuda_record( theta->ga.data, GPUARRAY_CUDA_WAIT_READ );
+    cuda_record( (*grid)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
 
     if ( CUDNN_STATUS_SUCCESS != err )
     {
