@@ -93,7 +93,7 @@ def test_advinc_subtensor1():
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
-        rep[[0, 2]] += yval
+        np.add.at(rep, [0, 2], yval)
         assert np.allclose(rval, rep)
 
 
@@ -101,6 +101,7 @@ def test_advinc_subtensor1_dtype():
     # Test the mixed dtype case
     shp = (3, 4)
     for dtype1, dtype2 in [('float32', 'int8'), ('float32', 'float64'),
+                           ('uint64', 'int8'), ('int64', 'uint8'),
                            ('float16', 'int8'), ('float16', 'float64'),
                            ('float16', 'float16')]:
         shared = gpuarray_shared_constructor
@@ -117,7 +118,7 @@ def test_advinc_subtensor1_dtype():
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
-        rep[[0, 2]] += yval
+        np.add.at(rep, [[0, 2]], yval)
         assert np.allclose(rval, rep)
 
 
@@ -139,7 +140,7 @@ def test_deterministic_flag():
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
-        rep[[0, 2]] += yval
+        np.add.at(rep, [[0, 2]], yval)
         assert np.allclose(rval, rep)
 
 
@@ -183,7 +184,7 @@ def test_incsub_f16():
                 for node in f.maker.fgraph.toposort()]) == 1
     rval = f(yval)
     rep = xval.copy()
-    rep[[0, 2]] += yval
+    np.add.at(rep, [[0, 2]], yval)
     assert np.allclose(rval, rep)
 
     expr = tensor.inc_subtensor(x[1:], y)
