@@ -292,7 +292,8 @@ class test_RopLop(RopLop_checker):
             sy, _ = theano.scan(lambda i, y, x, v:
                                 (tensor.grad(y[i], x) * v).sum(),
                                 sequences=tensor.arange(a_pooled.shape[0]),
-                                non_sequences=[a_pooled, x, ex])
+                                non_sequences=[a_pooled, x, ex],
+                                mode=mode)
             scan_f = function([], sy, on_unused_input='ignore', mode=mode)
             v1 = rop_f()
             v2 = scan_f()
