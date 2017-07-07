@@ -33,7 +33,6 @@ from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
-from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 ############
 #
@@ -2537,7 +2536,7 @@ def confusion_matrix(actual, pred):
     return [conf_mat, order]
 
 
-def gumbel_softmax(inp, temperature, epsilon=np.float32(1e-20), hard=False):
+def gumbel_softmax(inp, temperature, srng, epsilon=np.float32(1e-20), hard=False, nb_class=None):
 
     '''
     Computes the Gumbel Softmax of the input variable at the given temperature.
@@ -2549,7 +2548,11 @@ def gumbel_softmax(inp, temperature, epsilon=np.float32(1e-20), hard=False):
     ----------
     inp : Theano Matrix.
         The input to which Gumbel Softmax is to be applied. This is expected to
-        be from Categorical distribution
+        be from Categorical distribution.
+
+    srng : MRG_RandomStreams object.
+        Theano's RandomStream object using which random samples are to be drawn
+        from an uniform distribution.
 
     temperature : Scalar Variable
         Usually a float32 scalar representing the temperature parameter.
@@ -2558,11 +2561,11 @@ def gumbel_softmax(inp, temperature, epsilon=np.float32(1e-20), hard=False):
 
     hard : Boolean
         If set to False, returns the softmax approximation. Else, returns the
-        one-hot encoding of input's argmax. 
+        one-hot encoding of input's argmax.
 
     Note :
         When the parameter hard is set to True, this returns a
-        non-differentiable expression. 
+        non-differentiable expression.
 
     References
     ----------
@@ -2572,11 +2575,10 @@ def gumbel_softmax(inp, temperature, epsilon=np.float32(1e-20), hard=False):
            https://arxiv.org/abs/1611.01144.
     '''
 
-    srng = RandomStreams(rng.randint(1234))
     uniform_samples = srng.uniform(inp.shape, low=0, high=1).astype('float32')
     gumbel_dist = -tensor.log(-tensor.log(uniform_samples + epsilon) + epsilon)
-    soft = tensor.nnet.softmax((inp + gumbel_dist) / temperature)
+    soft = softmax((inp + gumbel_dist) / temperature)
     if hard:
-        gumbel_trick = tensor.extra_ops.to_one_hot(tensor.argmax(inp, -1), inp.shape[-1])
+        gumbel_trick = extra_ops.to_one_hot(tensor.argmax(inp, -1), inp.shape[-1])
         return gumbel_trick
     return soft
