@@ -214,7 +214,8 @@ class TestMagma(unittest.TestCase):
         N = 1000
         # We reload RNG here to get a specific failing case with seed = 17.
         # NB: It seems we don't even need unittests.rseed nor utt.seed_rng().
-        test_rng = np.random.RandomState(seed=17)
+        seed = int(theano.config.unittests.rseed)
+        test_rng = np.random.RandomState(seed=seed)
         # Copied from theano.tensor.tests.test_basic.rand.
         A_val = test_rng.rand(N, N).astype('float32') * 2 - 1
         A_val_inv = fn(A_val)
