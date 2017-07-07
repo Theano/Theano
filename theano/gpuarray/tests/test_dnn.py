@@ -2441,11 +2441,9 @@ def test_dnn_spatialtf():
     # Convert from NHWC to NCHW
     img = np.transpose(img, axes=(0, 3, 1, 2)).astype(theano.config.floatX)
     gpu_img = gpuarray_shared_constructor(img)
-
+    # Downsample image dimensions by a factor of 2, i.e. our output tensor will
+    # have shape (n, c, h / 2, w / 2)
     downsample_factor = 2
-    grid_h = img_dims[1] // downsample_factor
-    grid_w = img_dims[2] // downsample_factor
-    grid_dims = (img_dims[0], img_dims[3], grid_h, grid_w)
 
     # Transformation matrix
     rotation = [[1, 0, 0],
@@ -2454,7 +2452,7 @@ def test_dnn_spatialtf():
     transform = np.asarray(img_dims[0] * [rotation], dtype=theano.config.floatX)
     gpu_transform = gpuarray_shared_constructor(transform)
 
-    st_dnn = dnn.dnn_spatialtf(gpu_img, gpu_transform, grid_dims)
+    st_dnn = dnn.dnn_spatialtf(gpu_img, gpu_transform, downsample_factor)
     st_dnn_func = theano.function([], [st_dnn])
 
     # Check if function graph contains the spatial transformer Ops
