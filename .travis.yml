@@ -77,24 +77,24 @@ jobs:
       python: "3.4"
       env: PART="theano/tensor/nnet/tests/test_abstract_conv.py"
     - <<: *normaltest
-      env: FAST_COMPILE=1 PART="--exclude-dir=theano/tensor -e test_flake8.py ."
+      env: FAST_COMPILE=1 FLOAT32=1 PART="--exclude-dir=theano/tensor -e test_flake8.py ."
     - <<: *normaltest
       python: "3.4"
       env: FAST_COMPILE=1 PART="--exclude-dir=theano/tensor -e test_flake8.py ."
     - <<: *normaltest
-      env: FAST_COMPILE=1 PART="theano/tensor --exclude-dir=theano/tensor/nnet"
+      env: FAST_COMPILE=1 FLOAT32=1 PART="theano/tensor --exclude-dir=theano/tensor/nnet"
     - <<: *normaltest
       python: "3.4"
       env: FAST_COMPILE=1 PART="theano/tensor --exclude-dir=theano/tensor/nnet"
     - <<: *normaltest
-      env: FAST_COMPILE=1 PART="theano/tensor/nnet"
+      env: FAST_COMPILE=1 FLOAT32=1 PART="theano/tensor/nnet"
     - <<: *normaltest
       python: "3.4"
       env: FAST_COMPILE=1 PART="theano/tensor/nnet"
 
 script:
   - if [[ $FAST_COMPILE == "1" ]]; then export THEANO_FLAGS=$THEANO_FLAGS,mode=FAST_COMPILE; fi
-  - if [[ $FAST_COMPILE == "1" && $TRAVIS_PYTHON_VERSION == '2.7' ]]; then export THEANO_FLAGS=$THEANO_FLAGS,floatX=float32; fi
+  - if [[ $FLOAT32 == "1" ]]; then export THEANO_FLAGS=$THEANO_FLAGS,floatX=float32; fi
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
   - export MKL_NUM_THREADS=1
   - export OMP_NUM_THREADS=1
