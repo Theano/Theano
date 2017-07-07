@@ -483,6 +483,7 @@ second dimension
         self.scalar_op = scalar_op
 
         self.inplace_pattern = frozendict(inplace_pattern)
+        self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
         
         self.ufunc = None
         self.nfunc = None
