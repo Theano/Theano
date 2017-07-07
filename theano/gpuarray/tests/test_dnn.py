@@ -2300,87 +2300,176 @@ class Cudnn_grouped_conv(Grouped_conv_noOptim):
     is_dnn = True
 
 
-def test_dnn_spatialtf_grid_generator():
+def test_dnn_spatialtf():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+
     utt.seed_rng()
 
-    float_type = theano.config.floatX
+    """
+    Spatial Transformer implementation using Theano from Lasagne
+    Original author: skaae (https://github.com/skaae)
+    """
+    def spatialtf_cpu(theta, inp, downsample_factor, border_mode='nearest'):
+        num_batch, num_channels, height, width = inp.shape
+        theta = T.reshape(theta, (-1, 2, 3))
 
-    from scipy import misc
-    f = misc.face(gray=True).astype(float_type)
+        # grid of (x_t, y_t, 1), eq (1) in ref [1]
+        out_height = T.cast(height // downsample_factor, 'int64')
+        out_width = T.cast(width // downsample_factor, 'int64')
+        grid = _meshgrid(out_height, out_width)
+        # transform a x (x_t, y_t, 1)^t -> (x_s, y_s)
+        t_g = T.dot(theta, grid)
+        x_s = t_g[:, 0]
+        y_s = t_g[:, 1]
+        x_s_flat = x_s.flatten()
+        y_s_flat = y_s.flatten()
 
-    # shape: (num_images, channels, height, width), equivalent to NCHW
-    nchannels = f.shape[2] if len(f.shape) == 3 else 1
-    assert (nchannels is not None)
-    grid_dims = (3, 3, 128, 128)
+        # dimshuffle input to  (bs, height, width, channels)
+        input_dim = inp.dimshuffle(0, 2, 3, 1)
+        input_transformed = _interpolate(
+            input_dim, x_s_flat, y_s_flat,
+            out_height, out_width, border_mode)
 
-    rotation = [[-1, 0, 0],
-                [0, -1, 0]]
+        output = T.reshape(
+            input_transformed, (num_batch, out_height, out_width, num_channels))
+        output = output.dimshuffle(0, 3, 1, 2)  # dimshuffle to conv format
+        return output
 
-    theta = np.asarray(grid_dims[0] * [rotation], dtype=float_type)
-    theta_gpu = gpuarray_shared_constructor(theta)
+    def _interpolate(im, x, y, out_height, out_width, border_mode):
+        # *_f are floats
+        num_batch, height, width, channels = im.shape
+        height_f = T.cast(height, theano.config.floatX)
+        width_f = T.cast(width, theano.config.floatX)
 
-    def normalize_input(input):
-        # Scale input from [0, 255] to [0, 2]
-        scale_factor = 2 ** -7  # 1/128
-        input *= scale_factor
-        # Re-scale input from [0, 2] to [-1, 1] (normalized)
-        input -= 1
-        return input
+        # scale coordinates from [-1, 1] to [0, width/height - 1]
+        x = (x + 1) / 2 * (width_f - 1)
+        y = (y + 1) / 2 * (height_f - 1)
 
-    def rescale_input(input):
-        # Re-scale output to range [0, 2]
-        input += 1
-        # Re-scale output to range [0, 255]
-        input *= 128
-        return input
+        # obtain indices of the 2x2 pixel neighborhood surrounding the coordinates;
+        # we need those in floatX for interpolation and in int64 for indexing.
+        x0_f = T.floor(x)
+        y0_f = T.floor(y)
+        x1_f = x0_f + 1
+        y1_f = y0_f + 1
 
-    # Gray-scale images don't have the channels dimension, only
-    # images with color channels have to converted from HWC to CHW
-    if len(f.shape) == 3:
-        # Convert from HWC to CHW
-        f = np.transpose(f, axes=(2, 0, 1))
-    else:
-        # f.shape = (width, height)
-        shp = f.shape
-        # Add channel dimension
-        f = f.reshape((1, shp[0], shp[1]))
-    # Normalize pixel values of the image in range [-1, 1]
-    f = normalize_input(f)
-    # Create array of images
-    img = np.asarray(grid_dims[0] * [f], dtype=float_type)
-    # Create GPU variable for the images
-    img_gpu = gpuarray_shared_constructor(img)
-
-    spatialtf = dnn.dnn_spatialtf(img_gpu, theta_gpu, grid_dims)
-
-    spatialtf_fn = theano.function([], [spatialtf], mode=mode_with_gpu)
-
-    result, = spatialtf_fn()
-
-    img_out = np.asarray(result, dtype=float_type)
-    # Re-scale image to range [0, 255]
-    img_out = rescale_input(img_out)
-    # Convert to uint8 (byte)
-    img_out = img_out.astype(dtype=np.uint8)
-    # Transpose back to NHWC
-    img_out = np.transpose(img_out, axes=(0, 2, 3, 1))
-
-    grayscale = False
-    if img_out.shape[3] == 1:  # Gray-scale image
-        grayscale = True
-        shp = img_out.shape
-        img_out = img_out.reshape(shp[0], shp[1], shp[2])
-
-    import matplotlib.pyplot as plt
-    for img_idx in range(len(img_out)):
-        if grayscale:
-            plt.imshow(img_out[img_idx], cmap='gray')
+        # for indexing, we need to take care of the border mode for outside pixels.
+        if border_mode == 'nearest':
+            x0 = T.clip(x0_f, 0, width_f - 1)
+            x1 = T.clip(x1_f, 0, width_f - 1)
+            y0 = T.clip(y0_f, 0, height_f - 1)
+            y1 = T.clip(y1_f, 0, height_f - 1)
+        elif border_mode == 'mirror':
+            w = 2 * (width_f - 1)
+            x0 = T.minimum(x0_f % w, -x0_f % w)
+            x1 = T.minimum(x1_f % w, -x1_f % w)
+            h = 2 * (height_f - 1)
+            y0 = T.minimum(y0_f % h, -y0_f % h)
+            y1 = T.minimum(y1_f % h, -y1_f % h)
+        elif border_mode == 'wrap':
+            x0 = T.mod(x0_f, width_f)
+            x1 = T.mod(x1_f, width_f)
+            y0 = T.mod(y0_f, height_f)
+            y1 = T.mod(y1_f, height_f)
         else:
-            plt.imshow(img_out[img_idx])
-        plt.show()
+            raise ValueError("border_mode must be one of "
+                             "'nearest', 'mirror', 'wrap'")
+        x0, x1, y0, y1 = (T.cast(v, 'int64') for v in (x0, x1, y0, y1))
 
-    topo = spatialtf_fn.maker.fgraph.toposort()
+        # The input is [num_batch, height, width, channels]. We do the lookup in
+        # the flattened input, i.e [num_batch*height*width, channels]. We need
+        # to offset all indices to match the flat version
+        dim2 = width
+        dim1 = width * height
+        base = T.repeat(
+            T.arange(num_batch, dtype='int64') * dim1, out_height * out_width)
+        base_y0 = base + y0 * dim2
+        base_y1 = base + y1 * dim2
+        idx_a = base_y0 + x0
+        idx_b = base_y1 + x0
+        idx_c = base_y0 + x1
+        idx_d = base_y1 + x1
+
+        # use indices to lookup pixels for all samples
+        im_flat = im.reshape((-1, channels))
+        Ia = im_flat[idx_a]
+        Ib = im_flat[idx_b]
+        Ic = im_flat[idx_c]
+        Id = im_flat[idx_d]
+
+        # calculate interpolated values
+        wa = ((x1_f - x) * (y1_f - y)).dimshuffle(0, 'x')
+        wb = ((x1_f - x) * (y - y0_f)).dimshuffle(0, 'x')
+        wc = ((x - x0_f) * (y1_f - y)).dimshuffle(0, 'x')
+        wd = ((x - x0_f) * (y - y0_f)).dimshuffle(0, 'x')
+        output = T.sum([wa * Ia, wb * Ib, wc * Ic, wd * Id], axis=0)
+        return output
+
+    def _linspace(start, stop, num):
+        # Theano linspace. Behaves similar to np.linspace
+        start = T.cast(start, theano.config.floatX)
+        stop = T.cast(stop, theano.config.floatX)
+        num = T.cast(num, theano.config.floatX)
+        step = (stop - start) / (num - 1)
+        return T.arange(num, dtype=theano.config.floatX) * step + start
+
+    def _meshgrid(height, width):
+        # This function is the grid generator from eq. (1) in reference [1].
+        # It is equivalent to the following numpy code:
+        #  x_t, y_t = np.meshgrid(np.linspace(-1, 1, width),
+        #                         np.linspace(-1, 1, height))
+        #  ones = np.ones(np.prod(x_t.shape))
+        #  grid = np.vstack([x_t.flatten(), y_t.flatten(), ones])
+        # It is implemented in Theano instead to support symbolic grid sizes.
+        # Note: If the image size is known at layer construction time, we could
+        # compute the meshgrid offline in numpy instead of doing it dynamically
+        # in Theano. However, it hardly affected performance when we tried.
+        x_t = T.dot(T.ones((height, 1)),
+                    _linspace(-1.0, 1.0, width).dimshuffle('x', 0))
+        y_t = T.dot(_linspace(-1.0, 1.0, height).dimshuffle(0, 'x'),
+                    T.ones((1, width)))
+
+        x_t_flat = x_t.reshape((1, -1))
+        y_t_flat = y_t.reshape((1, -1))
+        ones = T.ones_like(x_t_flat)
+        grid = T.concatenate([x_t_flat, y_t_flat, ones], axis=0)
+        return grid
+
+    # Generate random set of RGB images with 256x256 resolution (pixel values in [0, 255])
+    img_dims = (10, 256, 256, 3)  # images are usually NHWC
+    img = np.random.randint(low=0, high=256, size=img_dims)
+    # Convert from NHWC to NCHW
+    img = np.transpose(img, axes=(0, 3, 1, 2)).astype(theano.config.floatX)
+    gpu_img = gpuarray_shared_constructor(img)
+
+    downsample_factor = 2
+    grid_h = img_dims[1] // downsample_factor
+    grid_w = img_dims[2] // downsample_factor
+    grid_dims = (img_dims[0], img_dims[3], grid_h, grid_w)
+
+    # Transformation matrix
+    rotation = [[1, 0, 0],
+                [0, 1, 0]]
+
+    transform = np.asarray(img_dims[0] * [rotation], dtype=theano.config.floatX)
+    gpu_transform = gpuarray_shared_constructor(transform)
+
+    st_dnn = dnn.dnn_spatialtf(gpu_img, gpu_transform, grid_dims)
+    st_dnn_func = theano.function([], [st_dnn])
+
+    # Check if function graph contains the spatial transformer Ops
+    topo = st_dnn_func.maker.fgraph.toposort()
     assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridGenerator)]) == 1
     assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridSampler)]) == 1
+
+    # Setup CPU Op
+    t_img = T.tensor4('img')
+    t_theta = T.tensor3('theta')
+    st_cpu = spatialtf_cpu(t_theta, t_img, downsample_factor, 'nearest')
+    st_cpu_func = theano.function([t_theta, t_img], [st_cpu], mode=mode_without_gpu)
+    res, = st_cpu_func(transform, img)
+
+    img_out_gpu = st_dnn_func()
+    img_out = np.asarray(img_out_gpu[0])
+
+    utt.assert_allclose(img_out, res, rtol=1e-2, atol=1e-2)
