@@ -1735,8 +1735,8 @@ class AbstractConv(BaseAbstractConv):
                                               mode, self.subsample, self.filter_dilation)
             if kern.shape[1:1 + self.convdim] != out_shape[2:2 + self.convdim]:
                 raise ValueError('Kernel shape {} does not match '
-                                 'output size {}'.format(kern.shape[1:1 + self.convdim],
-                                                         out_shape[2:2 + self.convdim]))
+                                 'computed output size {}'.format(kern.shape[1:1 + self.convdim],
+                                                                  out_shape[2:2 + self.convdim]))
             if any(self.subsample[i] > 1 for i in range(self.convdim)):
                 # Expand regions in kernel to correct for subsampling
                 out_shape = get_conv_output_shape(img.shape, kern.shape,

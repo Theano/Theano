@@ -599,11 +599,14 @@ class BaseTestConv(object):
             if min(i) > 0 and min(f) > 0:
                 for u in self.unshared:
                     if u and len(i) != 4:
+                        # Unshared conv implemented only for 2D so far
                         continue
                     for fd in self.filters_dilations:
                         for s in self.subsamples:
                             for b in self.border_modes:
                                 if u:
+                                    # Expand filter shape from 4D to 6D for unshared
+                                    # Calculate number of output regions
                                     out_shp = get_conv_output_shape(i, f, b, s, fd)
                                     fmod = f[:1] + out_shp[2:] + f[1:]
                                 else:

@@ -175,8 +175,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int topHeight = _CONV_FLOORDIV_X(topHeightNoDH, dH) + 1;
     const int topWidth  = _CONV_FLOORDIV_X(topWidthNoDW, dW) + 1;
 #undef _CONV_FLOORDIV
-    if(unshared) {
-        if(topHeight != PyArray_DIMS(weight)[1] ||
+    if (unshared) {
+        if (topHeight != PyArray_DIMS(weight)[1] ||
                 topWidth != PyArray_DIMS(weight)[2]) {
             PyErr_Format(PyExc_ValueError,
                     "CorrMM regions in kernel must match output regions:\n"
@@ -296,7 +296,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                    bottomWidth, kH, kW, dilH, dilW, padH, padW, dH, dW,
                    (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
             // Second, gemm
-            if(unshared) {
+            if (unshared) {
                 for(int reg = 0; reg < N_; ++reg) {
                     %(gemv)s(&Trans, &K_, &M_,
                             &one,
@@ -355,7 +355,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         output = weight;
         npy_intp weight_dim[2];
         weight_dim[0] = (npy_intp)max_threads;
-        if(unshared)
+        if (unshared)
             weight_dim[1] = (npy_intp)(M_ * N_ * K_);            
         else
             weight_dim[1] = (npy_intp)(M_ * K_);
@@ -387,7 +387,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
-            if(unshared) {
+            if (unshared) {
                 for(int reg = 0; reg < N_; ++reg) {
                     %(gemm)s(&Trans, &NTrans,
                            &K_, &M_, &one_int,
@@ -471,7 +471,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         for (int n = 0; n < batchSize; ++n) {
             // gemm into columns
             int tid = %(omp_get_thread_num)s;
-            if(unshared) {
+            if (unshared) {
                 for(int reg = 0; reg < N_; ++reg){
                     %(gemm)s(&NTrans, &Trans,
                            &one_int, &K_, &M_,
