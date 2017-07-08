@@ -2833,7 +2833,7 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
-class GpuDnnSpatialTfDesc(COp):
+class _GpuDnnTransformerDescriptor(COp):
 
     """
     This Op builds a spatial transformer descriptor for use in spatial transformer network
@@ -2859,13 +2859,13 @@ class GpuDnnSpatialTfDesc(COp):
         return False
 
     def __init__(self, dtype=theano.config.floatX):
-        COp.__init__(self, ["c_code/spatialtf_desc.c"], "APPLY_SPECIFIC(spatialtf_desc)")
+        COp.__init__(self, ["c_code/dnn_sptf_desc.c"], "APPLY_SPECIFIC(dnn_sptf_desc)")
 
         assert cudnn.cudnnDataType_t.has_alias(dtype)
         self.dtype = dtype
 
     def make_node(self, dimensions):
-        # cuDNN supports only 2D transformations, therefore output tensor must
+        # cuDNN supports only 2D transformations, and the output tensor must
         # have exactly 4 dimensions: (num_images, num_channels, height, width)
         assert len(dimensions) == 4
         dimensions = tuple(dimensions)
@@ -2883,63 +2883,31 @@ class GpuDnnSpatialTfDesc(COp):
         return node
 
     def c_code_cache_version(self):
-        return (super(GpuDnnSpatialTfDesc, self).c_code_cache_version(), version())
+        return (super(_GpuDnnTransformerDescriptor, self).c_code_cache_version(), version())
 
 
-class GpuDnnGridGenerator(DnnBase):
-
+class GpuDnnTransformer(DnnBase):
     """
-    This Op builds a spatial transformer grid generator for use in spatial transformer network
-    operations.
+    This Op builds a spatial transformer that can be used in spatial transformer networks.
     """
 
     __props__ = ('dtype',)
-    _cop_num_inputs = 3
+    _cop_num_inputs = 6
     _cop_num_outputs = 1
+    _f16_ok = True
 
     def __init__(self, dtype):
-        DnnBase.__init__(self, ["c_code/spatialtf_grid.c"], "spatialtf_grid")
+        DnnBase.__init__(self, ["c_code/dnn_sptf.c"], "dnn_sptf")
         self.dtype = dtype
 
-    def make_node(self, grid_dimensions, theta, desc):
-        context_name = infer_context_name(desc, theta)
-
-        grid_dimensions = as_tensor_variable(grid_dimensions)
-        theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
-
+    def make_node(self, img, theta, grid_dims, desc, alpha=None, beta=None):
         assert theta.dtype in ('float16', 'float32', 'float64')
 
-        # Allocate GPU memory for grid of coordinates
-        grid = GpuArrayType(dtype=self.dtype,
-                            broadcastable=(False, False, False, False,),
-                            context_name=context_name)()
+        context_name = infer_context_name(img)
 
-        return Apply(self, [grid_dimensions, theta, desc], [grid])
-
-    def L_op(self, inputs, outputs, output_grads):
-        pass
-
-
-class GpuDnnGridSampler(DnnBase):
-
-    """
-    This Op builds a spatial transformer grid sampler for use in spatial transformer network
-    operations.
-    """
-
-    __props__ = ('dtype',)
-    _cop_num_inputs = 5
-    _cop_num_outputs = 1
-
-    def __init__(self, dtype):
-        DnnBase.__init__(self, ["c_code/spatialtf_sampler.c"], "spatialtf_sampler")
-        self.dtype = dtype
-
-    def make_node(self, img, grid, desc, alpha=None, beta=None):
-        context_name = infer_context_name(img, grid)
-
+        theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
         img = as_gpuarray_variable(img, context_name)
-        grid = as_gpuarray_variable(grid, context_name)
+        grid_dims = as_tensor_variable(grid_dims)
 
         output = GpuArrayType(dtype=self.dtype,
                               broadcastable=img.type.ndim * (False,),
@@ -2955,9 +2923,9 @@ class GpuDnnGridSampler(DnnBase):
         alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
         beta = ensure_dt(beta, _zero, 'beta', img.dtype)
 
-        return Apply(self, [img, grid, desc, alpha, beta], [output])
+        return Apply(self, [img, theta, grid_dims, desc, alpha, beta], [output])
 
-    def L_op(self, inputs, outputs, output_grads):
+    def L_op(self, inputs, outputs, grads):
         pass
 
 
@@ -3011,13 +2979,12 @@ def dnn_spatialtf(inp, theta, scale_width=1, scale_height=1, alpha=None, beta=No
     theta = gpu_contiguous(theta)
 
     # Create spatial transformer descriptor
-    desc = GpuDnnSpatialTfDesc(dtype)(grid_dims)
+    desc = _GpuDnnTransformerDescriptor(dtype)(grid_dims)
     # Create grid dimensions variable
     grid_dims_var = as_tensor_variable(grid_dims)
-    # Setup and return sampling grid
-    grid_coord = GpuDnnGridGenerator(dtype)(grid_dims_var, theta, desc)
-    grid_sampler = GpuDnnGridSampler(dtype)(inp, grid_coord, desc, alpha, beta)
-    return grid_sampler
+    # Setup spatial transformer
+    transformer = GpuDnnTransformer(dtype)(inp, theta, grid_dims_var, desc, alpha, beta)
+    return transformer
 
 
 @local_optimizer([AbstractConv2d, AbstractConv3d])

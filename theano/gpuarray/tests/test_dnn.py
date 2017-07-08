@@ -2440,7 +2440,6 @@ def test_dnn_spatialtf():
     img = np.random.randint(low=0, high=256, size=img_dims)
     # Convert from NHWC to NCHW
     img = np.transpose(img, axes=(0, 3, 1, 2)).astype(theano.config.floatX)
-    gpu_img = gpuarray_shared_constructor(img)
     # Downsample image dimensions by a factor of 2, i.e. our output tensor will
     # have shape (n, c, h / 2, w / 2)
     scale_height = 0.25
@@ -2451,25 +2450,25 @@ def test_dnn_spatialtf():
              [0, -1, 0]]
 
     transform = np.asarray(img_dims[0] * [theta], dtype=theano.config.floatX)
-    gpu_transform = gpuarray_shared_constructor(transform)
 
-    st_dnn = dnn.dnn_spatialtf(gpu_img, gpu_transform, scale_height=scale_height,
+    # Create symbolic variables for inputs and transformations
+    t_img = T.tensor4('img')
+    t_theta = T.tensor3('theta')
+
+    st_dnn = dnn.dnn_spatialtf(t_img, t_theta, scale_height=scale_height,
                                scale_width=scale_width)
-    st_dnn_func = theano.function([], [st_dnn])
+    st_dnn_func = theano.function([t_img, t_theta], [st_dnn])
+
+    img_out_gpu, = st_dnn_func(img, transform)
+    img_out = np.asarray(img_out_gpu)
 
     # Check if function graph contains the spatial transformer Ops
     topo = st_dnn_func.maker.fgraph.toposort()
-    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridGenerator)]) == 1
-    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnGridSampler)]) == 1
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnTransformer)]) == 1
 
     # Setup CPU Op
-    t_img = T.tensor4('img')
-    t_theta = T.tensor3('theta')
     st_cpu = spatialtf_cpu(t_theta, t_img, scale_height, scale_width, 'nearest')
     st_cpu_func = theano.function([t_theta, t_img], [st_cpu], mode=mode_without_gpu)
     res, = st_cpu_func(transform, img)
-
-    img_out_gpu = st_dnn_func()
-    img_out = np.asarray(img_out_gpu[0])
 
     utt.assert_allclose(img_out, res, rtol=1e-2, atol=1e-2)
