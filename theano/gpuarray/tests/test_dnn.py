@@ -2462,6 +2462,14 @@ def test_dnn_spatialtf():
     img_out_gpu, = st_dnn_func(img, transform)
     img_out = np.asarray(img_out_gpu)
 
+    t_dy = T.tensor4('dy')
+    img_grad = T.grad(None, wrt=[t_img, t_theta], known_grads={st_dnn: t_dy})
+
+    grad_fn = theano.function([t_img, t_theta, t_dy], img_grad)
+
+    dy = -1 + 2 * np.random.randn(*img.shape).astype(theano.config.floatX)
+    spatialtf_grad = grad_fn(img, transform, dy)
+
     # Check if function graph contains the spatial transformer Ops
     topo = st_dnn_func.maker.fgraph.toposort()
     assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnTransformer)]) == 1

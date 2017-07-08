@@ -2932,7 +2932,45 @@ class GpuDnnTransformer(DnnBase):
         return Apply(self, inputs, outputs)
 
     def L_op(self, inputs, outputs, grads):
-        pass
+        img, theta, grid_dims, desc, alpha, beta = inputs
+
+        _, grid = outputs
+        dy = grads[0]
+
+        gop = GpuDnnTransformerGrad(self.dtype)(img, theta, grid, grid_dims, dy,
+                                                desc, alpha, beta)
+
+        return gop
+
+
+class GpuDnnTransformerGrad(DnnBase):
+    __props__ = ('dtype',)
+    _cop_num_inputs = 8
+    _cop_num_outputs = 2
+    _f16_ok = True
+
+    def __init__(self, dtype=theano.config.floatX):
+        DnnBase.__init__(self, ["c_code/dnn_sptf_grad.c"], "dnn_sptf_grad")
+        self.dtype = dtype
+
+    def make_node(self, img, theta, grid, grid_dims, dy, desc, alpha, beta):
+        context_name = infer_context_name(img)
+
+        dimg = GpuArrayType(dtype=self.dtype,
+                            broadcastable=img.type.ndim * (False,),
+                            context_name=context_name)()
+        dtheta = GpuArrayType(dtype=self.dtype,
+                              broadcastable=theta.type.ndim * (False,),
+                              context_name=context_name)()
+
+        inputs = [img, theta, grid, grid_dims, dy, desc, alpha, beta]
+        outputs = [dimg, dtheta,
+                   theano.gradient.grad_undefined(self, 2, grid_dims),
+                   theano.gradient.grad_undefined(self, 3, desc),
+                   theano.gradient.grad_undefined(self, 4, alpha),
+                   theano.gradient.grad_undefined(self, 5, beta)]
+
+        return Apply(self, inputs, outputs)
 
 
 def dnn_spatialtf(inp, theta, scale_width=1, scale_height=1, alpha=None, beta=None,
