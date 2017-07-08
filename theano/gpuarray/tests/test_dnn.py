@@ -2310,13 +2310,13 @@ def test_dnn_spatialtf():
     Spatial Transformer implementation using Theano from Lasagne
     Original author: skaae (https://github.com/skaae)
     """
-    def spatialtf_cpu(theta, inp, downsample_factor, border_mode='nearest'):
+    def spatialtf_cpu(theta, inp, scale_height, scale_width, border_mode='nearest'):
         num_batch, num_channels, height, width = inp.shape
         theta = T.reshape(theta, (-1, 2, 3))
 
         # grid of (x_t, y_t, 1), eq (1) in ref [1]
-        out_height = T.cast(height // downsample_factor, 'int64')
-        out_width = T.cast(width // downsample_factor, 'int64')
+        out_height = T.cast(T.ceil(height * scale_height), 'int64')
+        out_width = T.cast(T.ceil(width * scale_width), 'int64')
         grid = _meshgrid(out_height, out_width)
         # transform a x (x_t, y_t, 1)^t -> (x_s, y_s)
         t_g = T.dot(theta, grid)
@@ -2443,7 +2443,8 @@ def test_dnn_spatialtf():
     gpu_img = gpuarray_shared_constructor(img)
     # Downsample image dimensions by a factor of 2, i.e. our output tensor will
     # have shape (n, c, h / 2, w / 2)
-    downsample_factor = 2
+    scale_height = 0.25
+    scale_width = 0.75
 
     # Transformation matrix
     theta = [[-1, 0, 0],
@@ -2452,7 +2453,8 @@ def test_dnn_spatialtf():
     transform = np.asarray(img_dims[0] * [theta], dtype=theano.config.floatX)
     gpu_transform = gpuarray_shared_constructor(transform)
 
-    st_dnn = dnn.dnn_spatialtf(gpu_img, gpu_transform, downsample_factor)
+    st_dnn = dnn.dnn_spatialtf(gpu_img, gpu_transform, scale_height=scale_height,
+                               scale_width=scale_width)
     st_dnn_func = theano.function([], [st_dnn])
 
     # Check if function graph contains the spatial transformer Ops
@@ -2463,7 +2465,7 @@ def test_dnn_spatialtf():
     # Setup CPU Op
     t_img = T.tensor4('img')
     t_theta = T.tensor3('theta')
-    st_cpu = spatialtf_cpu(t_theta, t_img, downsample_factor, 'nearest')
+    st_cpu = spatialtf_cpu(t_theta, t_img, scale_height, scale_width, 'nearest')
     st_cpu_func = theano.function([t_theta, t_img], [st_cpu], mode=mode_without_gpu)
     res, = st_cpu_func(transform, img)
 
