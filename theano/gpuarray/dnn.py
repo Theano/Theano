@@ -2893,8 +2893,9 @@ class GpuDnnTransformer(DnnBase):
 
     __props__ = ('dtype',)
     _cop_num_inputs = 6
-    _cop_num_outputs = 1
+    _cop_num_outputs = 2
     _f16_ok = True
+    default_output = 0
 
     def __init__(self, dtype):
         DnnBase.__init__(self, ["c_code/dnn_sptf.c"], "dnn_sptf")
@@ -2912,6 +2913,9 @@ class GpuDnnTransformer(DnnBase):
         output = GpuArrayType(dtype=self.dtype,
                               broadcastable=img.type.ndim * (False,),
                               context_name=context_name)()
+        grid = GpuArrayType(dtype=self.dtype,
+                            broadcastable=img.type.ndim * (False,),
+                            context_name=context_name)()
 
         if img.type.ndim != 4:
             raise TypeError('img must be a 4D tensor')
@@ -2923,7 +2927,9 @@ class GpuDnnTransformer(DnnBase):
         alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
         beta = ensure_dt(beta, _zero, 'beta', img.dtype)
 
-        return Apply(self, [img, theta, grid_dims, desc, alpha, beta], [output])
+        inputs = [img, theta, grid_dims, desc, alpha, beta]
+        outputs = [output, grid]
+        return Apply(self, inputs, outputs)
 
     def L_op(self, inputs, outputs, grads):
         pass

@@ -1,7 +1,6 @@
 #section support_code
 
 typedef struct __spatialtf_context {
-    PyGpuArrayObject * grid;
     cudnnTensorDescriptor_t xdesc;
     cudnnTensorDescriptor_t ydesc;
 } spatialtf_context_t;
@@ -11,15 +10,12 @@ void spatialtf_context_init( spatialtf_context_t * ctx )
     if ( ctx == NULL )
         return;
 
-    ctx->grid = NULL;
     ctx->xdesc = NULL;
     ctx->ydesc = NULL;
 }
 
 void spatialtf_context_destroy( spatialtf_context_t * ctx )
 {
-    Py_XDECREF( ctx->grid );
-
     if ( NULL != ctx->xdesc )
         cudnnDestroyTensorDescriptor( ctx->xdesc );
 
@@ -36,6 +32,7 @@ dnn_sptf(PyGpuArrayObject * input,
          cudnnSpatialTransformerDescriptor_t desc,
          double alpha, double beta,
          PyGpuArrayObject ** output,
+         PyGpuArrayObject ** grid,
          cudnnHandle_t _handle)
 {
     PyGpuContextObject * gpu_ctx = input->context;
@@ -130,10 +127,8 @@ dnn_sptf(PyGpuArrayObject * input,
 
     cuda_enter( gpu_ctx->ctx );
 
-    spatialtf_ctx.grid = pygpu_empty(4, &(gpu_grid_dims[0]), input->ga.typecode, GA_C_ORDER,
-        gpu_ctx, Py_None);
-
-    if ( spatialtf_ctx.grid == NULL )
+    if ( theano_prep_output( grid, 4, gpu_grid_dims, input->ga.typecode,
+                             GA_C_ORDER, gpu_ctx ) != 0 )
     {
         PyErr_SetString( PyExc_RuntimeError,
                          "GpuDnnTransformer: could not allocate memory for grid of coordinates" );
@@ -225,10 +220,11 @@ dnn_sptf(PyGpuArrayObject * input,
 
     cuda_wait( input->ga.data, GPUARRAY_CUDA_WAIT_READ );
     cuda_wait( theta->ga.data, GPUARRAY_CUDA_WAIT_READ );
+    cuda_wait( (*grid)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
     cuda_wait( (*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
 
     err = cudnnSpatialTfGridGeneratorForward( _handle, desc, PyGpuArray_DEV_DATA( theta ),
-        PyGpuArray_DEV_DATA( spatialtf_ctx.grid ) );
+        PyGpuArray_DEV_DATA( *grid ) );
 
     if ( CUDNN_STATUS_SUCCESS != err )
     {
@@ -239,11 +235,12 @@ dnn_sptf(PyGpuArrayObject * input,
     }
 
     err = cudnnSpatialTfSamplerForward( _handle, desc, alpha_p, spatialtf_ctx.xdesc,
-        PyGpuArray_DEV_DATA( input ), PyGpuArray_DEV_DATA( spatialtf_ctx.grid ),
-        beta_p, spatialtf_ctx.ydesc, PyGpuArray_DEV_DATA( *output ) );
+        PyGpuArray_DEV_DATA( input ), PyGpuArray_DEV_DATA( *grid ), beta_p,
+        spatialtf_ctx.ydesc, PyGpuArray_DEV_DATA( *output ) );
 
     cuda_record( input->ga.data, GPUARRAY_CUDA_WAIT_READ );
     cuda_record( theta->ga.data, GPUARRAY_CUDA_WAIT_READ );
+    cuda_record( (*grid)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
     cuda_record( (*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
 
     if ( CUDNN_STATUS_SUCCESS != err )
