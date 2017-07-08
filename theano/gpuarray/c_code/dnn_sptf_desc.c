@@ -1,11 +1,11 @@
 #section support_code_apply
 
-int APPLY_SPECIFIC(spatialtf_desc)(npy_int32 dim_nimages,
-                                   npy_int32 dim_nchannels,
-                                   npy_int32 dim_height,
-                                   npy_int32 dim_width,
-                                   cudnnSpatialTransformerDescriptor_t * desc,
-                                   PARAMS_TYPE * params)
+int APPLY_SPECIFIC(dnn_sptf_desc)(npy_int32 dim_nimages,
+                                  npy_int32 dim_nchannels,
+                                  npy_int32 dim_height,
+                                  npy_int32 dim_width,
+                                  cudnnSpatialTransformerDescriptor_t * desc,
+                                  PARAMS_TYPE * params)
 {
     cudnnStatus_t err;
 
