@@ -455,7 +455,7 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         unshared_func = theano.function([self.input, self.filters], conv_unshared)
         unshared_val = unshared_func(inputs_val, filters_val)
 
-        conv_ref = theano.tensor.nnet.abstract_conv.conv2d(self.input, self.filters, filter_flip=False,
+        conv_ref = theano.tensor.nnet.abstract_conv.conv2d(self.input, self.filters, filter_flip=True,
                                                            unshared=True, subsample=self.sub, filter_dilation=self.dil)
         ref_func = theano.function([self.input, self.filters], conv_ref)
         ref_val = ref_func(inputs_val, filters_val)
@@ -468,33 +468,32 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
 
         conv_unshared = corr.CorrMM_gradWeights(unshared=True, subsample=self.sub,
                                                 filter_dilation=self.dil)(self.input, self.topgrad, self.kshp[-2:])
-        unshared_func = theano.function([self.input, self.topgrad], conv_unshared)
+        unshared_func = theano.function([self.input, self.topgrad], conv_unshared, mode=self.mode)
         unshared_val = unshared_func(inputs_val, topgrad_val)
 
         conv_ref = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_weights(self.input, self.topgrad, self.kshp,
                                                                             filter_flip=False, unshared=True,
                                                                             subsample=self.sub, filter_dilation=self.dil)
-        ref_func = theano.function([self.input, self.topgrad], conv_ref)
+        ref_func = theano.function([self.input, self.topgrad], conv_ref,
+                                   mode=theano.compile.mode.Mode(optimizer='None'))
         ref_val = ref_func(inputs_val, topgrad_val)
 
         utt.assert_allclose(ref_val, unshared_val)
 
     def test_gradinput(self):
-        filters_val = np.random.random(self.kshp).astype('float32')
-        topgrad_val = np.random.random(self.topgrad_shape).astype('float32')
+        filters_val = np.random.random(self.kshp).astype(theano.config.floatX)
+        topgrad_val = np.random.random(self.topgrad_shape).astype(theano.config.floatX)
 
         conv_unshared = corr.CorrMM_gradInputs(unshared=True, subsample=self.sub,
                                                filter_dilation=self.dil)(self.filters, self.topgrad, self.imshp[-2:])
-        unshared_func = theano.function([self.filters, self.topgrad], conv_unshared, mode="FAST_RUN")
+        unshared_func = theano.function([self.filters, self.topgrad], conv_unshared, mode=self.mode)
         unshared_val = unshared_func(filters_val, topgrad_val)
 
-        conv_ref = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs(self.imshp, self.kshp, border_mode="valid",
-                                                                              filter_flip=False, unshared=True,
-                                                                              subsample=self.sub,
-                                                                              filter_dilation=self.dil)(self.filters,
-                                                                                                        self.topgrad,
-                                                                                                        self.imshp[-2:])
-        ref_func = theano.function([self.topgrad, self.filters], conv_ref, mode=None)
+        conv_ref = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_inputs(self.topgrad, self.filters, self.imshp,
+                                                                           filter_flip=False, unshared=True,
+                                                                           subsample=self.sub, filter_dilation=self.dil)
+        ref_func = theano.function([self.topgrad, self.filters], conv_ref,
+                                   mode=theano.compile.mode.Mode(optimizer='None'))
         ref_val = ref_func(topgrad_val, filters_val)
 
         utt.assert_allclose(ref_val, unshared_val)

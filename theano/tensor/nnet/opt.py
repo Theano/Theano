@@ -200,7 +200,6 @@ def local_abstractconv_gradinputs_gemm(node):
                              subsample=node.op.subsample,
                              filter_dilation=node.op.filter_dilation,
                              unshared=node.op.unshared)(kern, topgrad, shape)
-
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -449,6 +448,7 @@ def local_conv2d_gradinputs_cpu(node):
     if (not isinstance(node.op, AbstractConv2d_gradInputs) or
             node.inputs[0].dtype == 'float16'):
         return None
+
     kern, topgrad, shape = node.inputs
 
     if ((not isinstance(kern.type, TensorType) or
