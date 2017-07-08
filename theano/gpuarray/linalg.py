@@ -9,7 +9,8 @@ from numpy.linalg.linalg import LinAlgError
 
 import theano
 from theano import Op, config, tensor
-from theano.gof import COp
+from theano.scalar import bool as bool_t
+from theano.gof import COp, ParamsType
 from theano.gpuarray import GpuArrayType
 
 from .basic_ops import as_gpuarray_variable, gpu_contiguous, infer_context_name
@@ -350,9 +351,19 @@ def gpu_cholesky(A, lower=True):
 
 class GpuMagmaSVD(COp):
     """Computes the svd of a matrix :math:`A` using magma library.
+
+    .. warning::
+
+        Because of implementation constraints, this Op returns outputs
+        in order ``S, U, VT``. Use :func:`theano.gpuarray.linalg.gpu_svd`
+        to get them in expected order ``U, S, VT``.
+
     """
     __props__ = ('full_matrices', 'compute_uv')
-    params_type = gpu_context_type
+    _cop_num_inputs = 1
+    _cop_num_outputs = 3
+    check_input = False
+    params_type = ParamsType(full_matrices=bool_t, context=gpu_context_type)
 
     def __init__(self, full_matrices=True, compute_uv=True):
         self.full_matrices = full_matrices
@@ -385,25 +396,28 @@ class GpuMagmaSVD(COp):
         assert A.dtype == 'float32'
         if self.compute_uv:
             return theano.Apply(self, [A],
-                                [A.type(),
-                                GpuArrayType(A.dtype, broadcastable=[False],
-                                             context_name=ctx_name)(),
-                                A.type()])
+                                # return S, U, VT
+                                [GpuArrayType(A.dtype, broadcastable=[False],
+                                              context_name=ctx_name)(),
+                                 A.type(),
+                                 A.type()])
         else:
             return theano.Apply(self, [A],
+                                # return only S
                                 [GpuArrayType(A.dtype, broadcastable=[False],
                                               context_name=ctx_name)()])
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
-    def get_op_params(self):
-        params = []
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        # Check node to prevent eventual errors with old pickled nodes.
         if self.compute_uv:
-            params.append(('COMPUTE_UV', '1'))
-        if self.full_matrices:
-            params.append(('FULL_MATRICES', '1'))
-        return params
+            A, B, C = node.outputs
+            # We expect order: S (vector), U (matrix), VT (matrix)
+            assert A.type.ndim == 1 and B.type.ndim == C.type.ndim == 2, \
+                "Due to implementation constraints, GpuMagmaSVD interface has changed and now returns (S, U, VT) " \
+                "instead of (U, S, VT). Either update your code, or use gpu_svd() to get the expected (U, S, VT) order."
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def infer_shape(self, node, shapes):
         x_shape, = shapes
@@ -413,7 +427,7 @@ class GpuMagmaSVD(COp):
         if self.compute_uv:
             u_shape = (M, M) if self.full_matrices else (M, K)
             vt_shape = (N, N) if self.full_matrices else (K, N)
-            return [u_shape, s_shape, vt_shape]
+            return [s_shape, u_shape, vt_shape]
         else:
             return [s_shape]
 
@@ -438,14 +452,19 @@ def gpu_svd(a, full_matrices=1, compute_uv=1):
     U, V,  D : matrices
 
     """
-    return GpuMagmaSVD(full_matrices, compute_uv)(a)
+    out = GpuMagmaSVD(full_matrices, compute_uv)(a)
+    if compute_uv:
+        S, U, VT = out
+        out = [U, S, VT]
+    return out
 
 
 class GpuMagmaMatrixInverse(COp):
     """Computes the inverse of a matrix :math:`A` using magma library.
     """
     __props__ = ('inplace', )
-    params_type = gpu_context_type
+    check_input = False
+    params_type = ParamsType(inplace=bool_t, context=gpu_context_type)
 
     def __init__(self, inplace=False):
         COp.__init__(self, ['magma_inv.c'], 'APPLY_SPECIFIC(magma_inv)')
@@ -483,13 +502,7 @@ class GpuMagmaMatrixInverse(COp):
         return theano.Apply(self, [x], [x.type()])
 
     def get_params(self, node):
-        return node.inputs[0].type.context
-
-    def get_op_params(self):
-        if self.inplace:
-            return [('INPLACE', '1')]
-        else:
-            return []
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def infer_shape(self, node, shapes):
         return shapes

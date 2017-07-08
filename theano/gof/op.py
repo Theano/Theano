@@ -1388,11 +1388,10 @@ class COp(Op):
                 raise ValueError("No valid section marker was found in file "
                                  "%s" % func_files[i])
 
-    def get_op_params(self):
+    def __get_op_params(self):
         """
         Returns a list of (name, value) pairs that will be turned into
-        macros for use within the op code. This is intended to allow
-        an op's properties to influence the generated C code.
+        macros for use within the op code.
 
         The names must be strings that are not a C keyword and the
         values must be strings of literal C representations.
@@ -1412,6 +1411,10 @@ class COp(Op):
             params = [('PARAMS_TYPE', wrapper.name)]
             for i in range(wrapper.length):
                 try:
+                    # NB (reminder): These macros are currently used only in ParamsType example test
+                    # (`theano/gof/tests/test_quadratic_function.c`), to demonstrate how we can
+                    # access params dtypes when dtypes may change (e.g. if based on theano.config.floatX).
+                    # But in practice, params types generally have fixed types per op.
                     params.append(('DTYPE_PARAM_' + wrapper.fields[i], wrapper.types[i].c_element_type()))
                 except utils.MethodNotDefined:
                     pass
@@ -1506,7 +1509,7 @@ class COp(Op):
                                                 "str##_%s" % name))
         undef_macros.append(undef_template % "APPLY_SPECIFIC")
 
-        for n, v in self.get_op_params():
+        for n, v in self.__get_op_params():
             define_macros.append(define_template % (n, v))
             undef_macros.append(undef_template % (n,))
 

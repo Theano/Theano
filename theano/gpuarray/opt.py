@@ -73,7 +73,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
-                     cusolver_available, GpuMagmaMatrixInverse, GpuMagmaSVD)
+                     cusolver_available, GpuMagmaMatrixInverse, gpu_svd)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -2149,11 +2149,16 @@ def local_gpu_svd(op, context_name, inputs, outputs):
         return
     if inputs[0].dtype not in ['float16', 'float32']:
         return
-    op = GpuMagmaSVD(full_matrices=op.full_matrices,
-                     compute_uv=op.compute_uv)
+    x = inputs[0]
     if inputs[0].dtype == 'float16':
-        return op(inputs[0].astype('float32')).astype('float16')
-    return op
+        x = inputs[0].astype('float32')
+    out = gpu_svd(x, compute_uv=op.compute_uv, full_matrices=op.full_matrices)
+    if inputs[0].dtype == 'float16':
+        if op.compute_uv:
+            out = [o.astype('float16') for o in out]
+        else:
+            out = [out.astype('float16')]
+    return out
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.
