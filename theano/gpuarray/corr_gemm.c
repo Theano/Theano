@@ -348,7 +348,8 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                          const size_t dilH = 1,
                          const size_t dilW = 1,
                          const size_t padH = 0,
-                         const size_t padW = 0)
+                         const size_t padW = 0,
+                         const size_t unshared = 0)
 {
     if (PyGpuArray_NDIM(bottom) != 4)
     {
@@ -374,7 +375,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     }
     if (!GpuArray_IS_C_CONTIGUOUS(&weight->ga))
     {
-        if(unshared){
+        if (unshared) {
             PyErr_Format(PyExc_ValueError,
                     "GpuCorrMM requires weight to be C-contiguous, "
                     "but strides are: %ld %ld %ld %ld\n",
@@ -386,7 +387,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                     PyGpuArray_STRIDES(weight)[5]);
             return NULL;
         }
-        else{  
+        else {  
             PyErr_Format(PyExc_ValueError,
                     "GpuCorrMM requires weight to be C-contiguous, "
                     "but strides are: %ld %ld %ld %ld\n",
@@ -423,9 +424,9 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     const size_t bottomWidth = PyGpuArray_DIMS(bottom)[3];
     // weights: (nFilters, nChannels, rows, columns)
     const size_t nFilters = PyGpuArray_DIMS(weight)[0];
-    const size_t kH = PyGpuArray_DIMS(weight)[2];
-    const size_t kW = PyGpuArray_DIMS(weight)[3];
-    if (nChannels != PyGpuArray_DIMS(weight)[1]) {
+    const size_t kH = PyGpuArray_DIMS(weight)[unshared ? 4 : 2];
+    const size_t kW = PyGpuArray_DIMS(weight)[unshared ? 5 : 3];
+    if (nChannels != PyGpuArray_DIMS(weight)[unshared ? 3 : 1]) {
         PyErr_SetString(PyExc_ValueError,
                 "GpuCorrMM images and kernel must have the same stack size\n");
         return NULL;
@@ -443,7 +444,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     const size_t topHeight = _CONV_FLOORDIV_X(topHeightNoDH, dH) + 1;
     const size_t topWidth  = _CONV_FLOORDIV_X(topWidthNoDW, dW) + 1;
 #undef _CONV_FLOORDIV
-    if(unshared){
+    if (unshared) {
         if (topHeight != PyGpuArray_DIMS(weight)[1] ||
                 topWidth != PyGpuArray_DIMS(weight)[2]) {
             PyErr_Format(PyExc_ValueError,
@@ -459,10 +460,10 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                     batchSize, nFilters, topHeight, topWidth);
             return NULL;
         }
-        if (batchSize != PyArray_DIMS(top)[0] ||
-                nFilters != PyArray_DIMS(top)[1] ||
-                topHeight != PyArray_DIMS(top)[2] ||
-                topWidth != PyArray_DIMS(top)[3]) {
+        if (batchSize != PyGpuArray_DIMS(top)[0] ||
+                nFilters != PyGpuArray_DIMS(top)[1] ||
+                topHeight != PyGpuArray_DIMS(top)[2] ||
+                topWidth != PyGpuArray_DIMS(top)[3]) {
             PyErr_Format(PyExc_ValueError,
                     "CorrMM shape inconsistency:\n"
                     "  bottom shape: %%d %%d %%d %%d\n"
@@ -559,11 +560,11 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             if (unshared) {
               for (size_t reg = 0; reg < N_; ++reg){
                 err = rgemm(cb_fortran, cb_trans,
-                            M_, K_, 1,
-                            weight->ga.data, reg * K_, K_ * N_,
-                            col->ga.data, reg, N_,
+                            K_, M_, 1,
+                            &weight->ga, reg * K_, K_ * N_,
+                            &col->ga, reg, N_,
                             0,
-                            top->ga.data, n * top_stride + reg, N_);
+                            &top->ga, n * top_stride + reg, N_);
                 ERR_CHECK(err)
               }
             }
@@ -608,13 +609,13 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
             if (unshared) {
-              for (size_t r = 0; r < N_; ++r){
+              for (size_t reg = 0; reg < N_; ++reg){
                 err = rgemm(cb_fortran, cb_trans, cb_no_trans,
                             K_, M_, 1, 1,
-                            col->ga.data, reg, N_,
-                            top->ga.data, n * top_stride + reg, N_,
+                            &col->ga, reg, N_,
+                            &top->ga, n * top_stride + reg, N_,
                             (n == 0) ? 0 : 1,
-                            weight->ga.data, reg * K_, K_ * N_);
+                            &weight->ga, reg * K_, K_ * N_);
                 ERR_CHECK(err)
               }
             }

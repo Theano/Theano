@@ -425,7 +425,8 @@ if __name__ == '__main__':
 
 class TestUnsharedCorr2D(utt.InferShapeTester):
     if theano.config.mode == "FAST_COMPILE":
-        mode = theano.compile.get_mode("FAST_RUN")
+        # mode = theano.compile.get_mode("FAST_RUN").excluding("conv_dnn")
+        mode = theano.compile.get_default_mode().including('gpuarray').excluding('gpu').excluding('cudnn')
     else:
         mode = None
     dtype = theano.config.floatX
@@ -455,9 +456,10 @@ class TestUnsharedCorr2D(utt.InferShapeTester):
         unshared_func = theano.function([self.input, self.filters], conv_unshared)
         unshared_val = unshared_func(inputs_val, filters_val)
 
-        conv_ref = theano.tensor.nnet.abstract_conv.conv2d(self.input, self.filters, filter_flip=True,
+        conv_ref = theano.tensor.nnet.abstract_conv.conv2d(self.input, self.filters, filter_flip=False,
                                                            unshared=True, subsample=self.sub, filter_dilation=self.dil)
-        ref_func = theano.function([self.input, self.filters], conv_ref)
+        ref_func = theano.function([self.input, self.filters], conv_ref,
+                                   mode=self.mode)
         ref_val = ref_func(inputs_val, filters_val)
 
         utt.assert_allclose(ref_val, unshared_val)

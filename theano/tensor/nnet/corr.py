@@ -40,6 +40,8 @@ class BaseCorrMM(gof.OpenMPOp):
         Perform subsampling of the output (default: (1, 1)).
     filter_dilation
         Perform dilated correlation (default: (1,1))
+    unshared
+        Perform unshared correlation (default: False)
     """
     check_broadcast = False
     __props__ = ('border_mode', 'subsample', 'filter_dilation', 'unshared')
@@ -379,7 +381,7 @@ class BaseCorrMM(gof.OpenMPOp):
         out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - ((PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1)) / dW + 1);
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
         {
-            if(unshared) {
+            if (unshared) {
                 PyErr_Format(PyExc_ValueError,
                              "CorrMM: impossible output shape\\n"
                              "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
@@ -413,7 +415,7 @@ class BaseCorrMM(gof.OpenMPOp):
         // output is weights: (num_filters, num_channels, height, width)
         // height and width: weights = (bottom + 2*pad - (top - 1) * sample - 1) / dil + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[1];
-        if(unshared){
+        if (unshared){
             odim = 6;
             out_dim[1] = (npy_intp)PyArray_DIMS(top)[2];
             out_dim[2] = (npy_intp)PyArray_DIMS(top)[3];
@@ -421,8 +423,8 @@ class BaseCorrMM(gof.OpenMPOp):
         out_dim[wdim-3] = (npy_intp)PyArray_DIMS(bottom)[1];
         out_dim[wdim-2] = (npy_intp)kH;  // already inferred further above
         out_dim[wdim-1] = (npy_intp)kW;  // how convenient
-        if(unshared) {
-            if(out_dim[0] < 0 || out_dim[1] <= 0 || out_dim[2] <= 0 || out_dim[3] < 0
+        if (unshared) {
+            if (out_dim[0] < 0 || out_dim[1] <= 0 || out_dim[2] <= 0 || out_dim[3] < 0
                     || out_dim[4] <= 0 || out_dim[5] <= 0){
                 PyErr_Format(PyExc_ValueError,
                              "CorrMM backprop wrt. weights: impossible output shape\\n"
@@ -462,7 +464,7 @@ class BaseCorrMM(gof.OpenMPOp):
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[wdim-3];
         out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1 - 2*padH);
         out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1 - 2*padW);
-        if(unshared) {
+        if (unshared) {
             if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
             {
                 PyErr_Format(PyExc_ValueError,
@@ -513,7 +515,7 @@ class BaseCorrMM(gof.OpenMPOp):
            && PyArray_DIMS(*out)[1]==out_dim[1]
            && PyArray_DIMS(*out)[2]==out_dim[2]
            && PyArray_DIMS(*out)[3]==out_dim[3]);
-    if(odim == 6){
+    if (odim == 6){
         failure = failure || !(PyArray_DIMS(*out)[4]==out_dim[4]
                 && PyArray_DIMS(*out)[5]==out_dim[5]);
     }
@@ -533,12 +535,12 @@ class BaseCorrMM(gof.OpenMPOp):
                                           0);
         if (NULL == *out)
         {
-            if(odim == 4){
+            if (odim == 4) {
                 PyErr_Format(PyExc_RuntimeError,
                         "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
                         (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3]);
             }
-            if(odim == 6){
+            if (odim == 6) {
                 PyErr_Format(PyExc_RuntimeError,
                         "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
                         (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3],
