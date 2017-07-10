@@ -447,6 +447,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 max_recur > 0):
             max_recur -= 1
             if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
+                                       # outputguard is only used in debugmode but we
+                                       # keep it here to avoid problems with old pickels.
                                        compile.ops.OutputGuard,
                                        compile.DeepCopyOp)):
                 v = v.owner.inputs[0]

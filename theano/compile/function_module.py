@@ -18,7 +18,6 @@ import theano
 from theano import config, gof
 from theano.compat import izip
 from theano.gof import graph
-import theano.compile.mode
 import theano.compile.profiling
 from theano.compile.io import (
     In, SymbolicInput, SymbolicOutput)

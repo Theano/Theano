@@ -27,7 +27,8 @@ from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
     std_fgraph)
 from theano.compile.mode import Mode, register_mode
-from theano.compile.ops import OutputGuard
+from theano.compile.ops import OutputGuard, _output_guard
+
 
 __docformat__ = "restructuredtext en"
 _logger = logging.getLogger("theano.compile.debugmode")
@@ -2276,6 +2277,24 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                               "of", len(li), "events was stable.",
                               file=sys.stderr)
         self.fgraph = fgraph
+        destroy_handler_added = False
+        for feature in fgraph._features:
+            if isinstance(feature, gof.DestroyHandler):
+                destroy_handler_added = True
+                break
+        if not destroy_handler_added:
+            fgraph.attach_feature(gof.DestroyHandler())
+        for o in fgraph.outputs:
+            try:
+                fgraph.replace_validate(o, _output_guard(o), reason='output_guard')
+                raise Exception("Output variable %s required output_guard, "
+                                "how was this output left unprotected against "
+                                "destructive operations?" % o)
+
+            except gof.InconsistencyError:
+                # This output is already impossible to destroy.
+                # No guard necessary
+                pass
 
         linker = _Linker(self)
 
