@@ -834,11 +834,14 @@ def clone_get_equiv(inputs, outputs, copy_inputs=True, copy_orphans=True, memo=N
     ----------
     inputs : a list of Variables
     outputs : a list of Variables
-    copy_inputs_and_orphans : bool
-        True means to create the cloned graph from new input and constant
+    copy_inputs : bool
+        True means to create the cloned graph from new input
         nodes (the bottom of a feed-upward graph).
         False means to clone a graph that is rooted at the original input
         nodes.
+    copy_orphans:
+        When True, new constant nodes are created. When False, original
+        constant nodes are reused in the new graph.
     memo : None or dict
         Optionally start with a partly-filled dictionary for the return value.
         If a dictionary is passed, this function will work in-place on that
