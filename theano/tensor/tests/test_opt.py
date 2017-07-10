@@ -1367,6 +1367,7 @@ class TestCompositeCodegen(unittest.TestCase):
         utt.assert_allclose(f([[1.]]), [[0.]])
 
 
+@utt.expectedFailure_fast
 def test_log1p():
     m = theano.config.mode
     if m == 'FAST_COMPILE':
