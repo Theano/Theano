@@ -2833,7 +2833,7 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
-class _GpuDnnTransformerDescriptor(COp):
+class GpuDnnTransformerDescriptor(COp):
 
     """
     This Op builds a spatial transformer descriptor for use in spatial transformer network
@@ -2883,7 +2883,7 @@ class _GpuDnnTransformerDescriptor(COp):
         return node
 
     def c_code_cache_version(self):
-        return (super(_GpuDnnTransformerDescriptor, self).c_code_cache_version(), version())
+        return (super(GpuDnnTransformerDescriptor, self).c_code_cache_version(), version())
 
 
 class GpuDnnTransformer(DnnBase):
@@ -3052,7 +3052,7 @@ def dnn_spatialtf(inp, theta, scale_width=1, scale_height=1, alpha=None, beta=No
     theta = gpu_contiguous(theta)
 
     # Create spatial transformer descriptor
-    desc = _GpuDnnTransformerDescriptor(dtype)(grid_dims)
+    desc = GpuDnnTransformerDescriptor(dtype)(grid_dims)
     # Create grid dimensions variable
     grid_dims_var = as_tensor_variable(grid_dims)
     # Setup spatial transformer
