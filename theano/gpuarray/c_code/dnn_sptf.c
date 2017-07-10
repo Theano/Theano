@@ -63,14 +63,14 @@ dnn_sptf(PyGpuArrayObject * input,
         break;
     default:
         PyErr_SetString( PyExc_TypeError,
-                         "GpuDnnTransformer: unsupported type in spatial transformer sampler" );
+            "GpuDnnTransformer: unsupported type for input in spatial transformer." );
         return -1;
     }
 
     if ( ! GpuArray_IS_C_CONTIGUOUS( &(input->ga) ) )
     {
         PyErr_SetString( PyExc_MemoryError,
-                         "GpuDnnTransformer: input data is not C-contiguous" );
+            "GpuDnnTransformer: input data is not C-contiguous." );
         return -1;
     }
 
@@ -78,34 +78,35 @@ dnn_sptf(PyGpuArrayObject * input,
          theta->ga.typecode != GA_DOUBLE &&
          theta->ga.typecode != GA_HALF )
     {
-        PyErr_SetString( PyExc_TypeError, "GpuDnnTransformer: unsupported data type for theta" );
+        PyErr_SetString( PyExc_TypeError,
+            "GpuDnnTransformer: unsupported data type for theta in spatial transformer." );
         return -1;
     }
     else if ( PyGpuArray_NDIM( theta ) != 3 )
     {
         PyErr_Format( PyExc_RuntimeError,
-                      "GpuDnnTransformer: theta must have three dimensions!" );
+            "GpuDnnTransformer: theta must have three dimensions!" );
         return -1;
     }
     else if ( PyGpuArray_DIM( theta, 1 ) != 2 && PyGpuArray_DIM( theta, 2 ) != 3 )
     {
         PyErr_Format( PyExc_RuntimeError,
-                      "GpuDnnTransformer: incorrect dimensions for theta, expected (%d, %d, %d), got (%d, %d, %d)",
-                      PyGpuArray_DIMS( theta )[0], 2, 3, PyGpuArray_DIMS( theta )[0],
-                      PyGpuArray_DIMS( theta )[1], PyGpuArray_DIMS( theta )[2] );
+            "GpuDnnTransformer: incorrect dimensions for theta, expected (%d, %d, %d), got (%d, %d, %d)",
+            PyGpuArray_DIMS( theta )[0], 2, 3, PyGpuArray_DIMS( theta )[0],
+            PyGpuArray_DIMS( theta )[1], PyGpuArray_DIMS( theta )[2] );
         return -1;
     }
     else if ( ! GpuArray_IS_C_CONTIGUOUS( &(theta->ga) ) )
     {
         PyErr_SetString( PyExc_MemoryError,
-                         "GpuDnnTransformer: theta is not C-contiguous" );
+            "GpuDnnTransformer: theta is not C-contiguous" );
         return -1;
     }
 
     if ( PyArray_NDIM( grid_dims ) != 1 || PyArray_SIZE( grid_dims ) != 4 )
     {
         PyErr_SetString( PyExc_RuntimeError,
-                         "GpuDnnTransformer: grid_dims must have 4 elements." );
+            "GpuDnnTransformer: grid_dims must have 4 elements." );
         return -1;
     }
 
@@ -119,7 +120,7 @@ dnn_sptf(PyGpuArrayObject * input,
     if ( width == 0 || height == 0 || num_images == 0 )
     {
         PyErr_SetString( PyExc_RuntimeError,
-                         "GpuDnnTransformer: grid_dims has a dimension with value zero" );
+            "GpuDnnTransformer: grid_dims has a dimension with value zero" );
         return -1;
     }
 
@@ -131,7 +132,7 @@ dnn_sptf(PyGpuArrayObject * input,
                              GA_C_ORDER, gpu_ctx ) != 0 )
     {
         PyErr_SetString( PyExc_RuntimeError,
-                         "GpuDnnTransformer: could not allocate memory for grid of coordinates" );
+            "GpuDnnTransformer: could not allocate memory for grid of coordinates" );
         return -1;
     }
 
@@ -143,8 +144,8 @@ dnn_sptf(PyGpuArrayObject * input,
         cuda_exit( gpu_ctx->ctx );
 
         PyErr_Format( PyExc_RuntimeError,
-                      "GpuDnnTransformer: could not create xdesc: %s",
-                      cudnnGetErrorString(err) );
+            "GpuDnnTransformer: could not create xdesc: %s",
+            cudnnGetErrorString(err) );
         return -1;
     }
 
@@ -159,8 +160,8 @@ dnn_sptf(PyGpuArrayObject * input,
     if ( input_num_images != num_images || input_num_channels != num_channels )
     {
         PyErr_Format( PyExc_RuntimeError,
-                      "GpuDnnTransformer: expected input to have %d inputs, got %d inputs.",
-                      num_images, input_num_images );
+            "GpuDnnTransformer: expected input to have %d inputs, got %d inputs.",
+            num_images, input_num_images );
         return -1;
     }
 
@@ -173,8 +174,8 @@ dnn_sptf(PyGpuArrayObject * input,
         cuda_exit( gpu_ctx->ctx );
 
         PyErr_Format( PyExc_RuntimeError,
-                      "GpuDnnTransformer: failed to initialize xdesc: %s",
-                      cudnnGetErrorString(err) );
+            "GpuDnnTransformer: failed to initialize xdesc: %s",
+            cudnnGetErrorString(err) );
         return -1;
     }
 
@@ -186,8 +187,8 @@ dnn_sptf(PyGpuArrayObject * input,
         cuda_exit( gpu_ctx->ctx );
 
         PyErr_Format( PyExc_RuntimeError,
-                      "GpuDnnTransformer: failed to create ydesc: %s",
-                      cudnnGetErrorString(err) );
+            "GpuDnnTransformer: failed to create ydesc: %s",
+            cudnnGetErrorString(err) );
         return -1;
     }
 
@@ -200,8 +201,8 @@ dnn_sptf(PyGpuArrayObject * input,
         cuda_exit( gpu_ctx->ctx );
 
         PyErr_Format( PyExc_RuntimeError,
-                      "GpuDnnTransformer: failed to initialize ydesc: %s",
-                      cudnnGetErrorString(err) );
+            "GpuDnnTransformer: failed to initialize ydesc: %s",
+            cudnnGetErrorString(err) );
         return -1;
     }
 
@@ -214,7 +215,7 @@ dnn_sptf(PyGpuArrayObject * input,
         cuda_exit( gpu_ctx->ctx );
 
         PyErr_SetString( PyExc_MemoryError,
-                         "GpuDnnTransformer: could not allocate memory for grid sampler" );
+            "GpuDnnTransformer: could not allocate memory for grid sampler" );
         return -1;
     }
 
@@ -229,8 +230,8 @@ dnn_sptf(PyGpuArrayObject * input,
     if ( CUDNN_STATUS_SUCCESS != err )
     {
         PyErr_Format( PyExc_RuntimeError,
-                      "GpuDnnTransformer: failed to create grid of coordinates: %s",
-                      cudnnGetErrorString( err ) );
+            "GpuDnnTransformer: failed to create grid of coordinates: %s",
+            cudnnGetErrorString( err ) );
         return -1;
     }
 
@@ -245,8 +246,9 @@ dnn_sptf(PyGpuArrayObject * input,
 
     if ( CUDNN_STATUS_SUCCESS != err )
     {
-        PyErr_SetString( PyExc_RuntimeError,
-                         "GpuDnnTransformer: failed to create grid sampler" );
+        PyErr_Format( PyExc_RuntimeError,
+            "GpuDnnTransformer: failed to create grid sampler: %s",
+            cudnnGetErrorString( err ) );
         spatialtf_context_destroy( &spatialtf_ctx );
         cuda_exit( gpu_ctx->ctx );
         return -1;
