@@ -108,7 +108,7 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
     compute_grad
         If set to True, enables the computation of gradients of the CTC loss function.
     """
-    __props__ = ('compute_grad', 'default_output',)
+    __props__ = ('compute_grad',)
 
     _cop_num_inputs = 3
     _cop_num_outputs = 2
