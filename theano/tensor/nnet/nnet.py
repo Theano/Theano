@@ -27,12 +27,12 @@ from theano.tensor import basic as tensor, subtensor, opt, elemwise
 from theano.tensor.type import (values_eq_approx_remove_inf,
                                 values_eq_approx_remove_nan)
 from theano.compile import optdb
-from theano.gof import Apply
-
+from theano.gof import Apply, ParamsType
 from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
+from theano.scalar import Scalar
 
 ############
 #
@@ -292,119 +292,182 @@ softmax_with_bias = SoftmaxWithBias()
 class SoftmaxGrad(gof.Op):
     """
     Gradient wrt x of the Softmax Op.
-
     """
 
     nin = 2
     nout = 1
     __props__ = ()
+    params_type = ParamsType(axis=Scalar('int8'))
+
+    def __init__(self, axis=-1):
+        self.axis = axis
 
     def make_node(self, dy, sm):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
-        if dy.type.ndim not in (1, 2) \
-                or dy.type.dtype not in tensor.float_dtypes:
-            raise ValueError('dy must be 1-d or 2-d tensor of floats. Got ',
-                             dy.type)
+        if dy.type.dtype not in tensor.float_dtypes:
+            raise ValueError('dy must be tensor of floats. Got ', dy.type)
         if dy.ndim == 1:
             dy = tensor.shape_padleft(dy, n_ones=1)
         if sm.ndim == 1:
             sm = tensor.shape_padleft(sm, n_ones=1)
         return Apply(self, [dy, sm], [sm.type()])
 
-    def perform(self, node, input_storage, output_storage):
+    def perform(self, node, input_storage, output_storage, param):
         dy, sm = input_storage
+        axes = param.axis
+        if (dy.shape != sm.shape):
+            raise ValueError('dy and the softmax output should have the same shape.')
         dx = np.zeros_like(sm)
         # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
-        for i in xrange(sm.shape[0]):
-            dy_times_sm_i = dy[i] * sm[i]
-            dx[i] = dy_times_sm_i - sum(dy_times_sm_i) * sm[i]
+        dy_times_sm = dy * sm
+        dx = dy_times_sm - (np.sum(dy_times_sm, axis=axes, keepdims=True) * sm)
         output_storage[0][0] = dx
 
     def grad(self, inp, grads):
         dy, sm = inp
         g, = grads
-
-        tmp = g + tensor.neg(tensor.sum(g * sm, axis=1).dimshuffle((0, 'x')))
+        axes = self.axis
+        tmp = g + tensor.neg(tensor.sum(g * sm, axis=axes, keepdims=True))
         g_dy = tmp * sm
-
-        tmp2 = tensor.sum(dy * sm, axis=1).dimshuffle((0, 'x'))
+        tmp2 = tensor.sum(dy * sm, axis=axes, keepdims=True)
         g_sm = tmp * dy - g * tmp2
-
         return g_dy, g_sm
 
     def infer_shape(self, node, shape):
         return [shape[1]]
 
-    def c_code_cache_version(self):
-        return (3,)
-
     def c_code(self, node, name, inp, out, sub):
         dy, sm = inp
+        param = sub['params']
         dx, = out
         return '''
-        if ((PyArray_TYPE(%(dy)s) != NPY_DOUBLE) &&
-            (PyArray_TYPE(%(dy)s) != NPY_FLOAT))
-        {
-            PyErr_SetString(PyExc_TypeError,
-                 "types should be float or float64");
-            %(fail)s;
-        }
-        if ((PyArray_TYPE(%(sm)s) != NPY_DOUBLE) &&
-            (PyArray_TYPE(%(sm)s) != NPY_FLOAT))
-        {
-            PyErr_SetString(PyExc_TypeError,
-                 "types should be float or float64");
-            %(fail)s;
-        }
-        if ((PyArray_NDIM(%(dy)s) != 2)
-            || (PyArray_NDIM(%(sm)s) != 2))
-        {
-            PyErr_SetString(PyExc_ValueError, "rank error");
-            %(fail)s;
-        }
-        if (PyArray_DIMS(%(dy)s)[0] != PyArray_DIMS(%(sm)s)[0])
-        {
-            PyErr_SetString(PyExc_ValueError, "dy.shape[0] != sm.shape[0]");
-            %(fail)s;
-        }
-        if ((NULL == %(dx)s)
-            || (PyArray_DIMS(%(dx)s)[0] != PyArray_DIMS(%(sm)s)[0])
-            || (PyArray_DIMS(%(dx)s)[1] != PyArray_DIMS(%(sm)s)[1]))
-        {
-            Py_XDECREF(%(dx)s);
-            %(dx)s = (PyArrayObject*) PyArray_SimpleNew(2,
-                                                        PyArray_DIMS(%(sm)s),
-                                                        PyArray_TYPE(%(sm)s));
-            if (!%(dx)s)
+            npy_int ndim_sm = PyArray_NDIM(%(sm)s);
+            npy_int ndim_dy = PyArray_NDIM(%(dy)s);
+            npy_intp* shape_sm = PyArray_DIMS(%(sm)s);
+            npy_intp* shape_dy = PyArray_DIMS(%(dy)s);
+            npy_int axis = %(param)s->axis;
+
+            // Check input type
+            if ((PyArray_TYPE(%(dy)s) != NPY_DOUBLE) &&
+                    (PyArray_TYPE(%(dy)s) != NPY_FLOAT))
+                {
+                    PyErr_SetString(PyExc_TypeError,
+                        "types should be float or float64");
+                    %(fail)s;
+                }
+
+            if ((PyArray_TYPE(%(sm)s) != NPY_DOUBLE) &&
+                (PyArray_TYPE(%(sm)s) != NPY_FLOAT))
+                {
+                    PyErr_SetString(PyExc_TypeError,
+                        "Types should be float or float64");
+                    %(fail)s;
+                }
+
+            // Check the number of dimension
+            if (ndim_dy != ndim_sm)
+                {
+                    PyErr_SetString(PyExc_ValueError, "Sm and dy should have the same number of dimension.");
+                    %(fail)s;
+                }
+
+            // Check if the axis is valid
+            if (axis < 0)
             {
-                PyErr_SetString(PyExc_MemoryError,
-                     "failed to alloc dx output");
+                axis += ndim_sm;
+            }
+            if(axis > ndim_sm - 1 || axis < 0){
+                PyErr_SetString(PyExc_ValueError,
+                "GradSoftmax, bad axis argument");
+                %(fail)s
+            }
+
+            // Check the shapes of sm and dy
+            npy_int shape_not_equal;
+            shape_not_equal = 0;
+            for (size_t i = 0; i < ndim_dy && !shape_not_equal; i++)
+            {
+                shape_not_equal = (shape_sm[i] != shape_dy[i]);
+            }
+
+            if (shape_not_equal)
+            {
+                PyErr_SetString(PyExc_ValueError, "Sm and dy should have the same shape.");
                 %(fail)s;
             }
-        }
 
-        for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
-        {
-            const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (PyArray_BYTES(%(dy)s) + PyArray_STRIDES(%(dy)s)[0] * i);
-            npy_intp Sdy = PyArray_STRIDES(%(dy)s)[1]/sizeof(dtype_%(dy)s);
-            const dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*) (PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
-            npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
-            dtype_%(dx) s* __restrict__ dx_i = (dtype_%(dx)s*) (PyArray_BYTES(%(dx)s) + PyArray_STRIDES(%(dx)s)[0] * i);
-            npy_intp Sdx = PyArray_STRIDES(%(dx)s)[1]/sizeof(dtype_%(dx)s);
+            //If the memory is already allowed
+            if(NULL != %(dx)s)
+            {
+                npy_int ndim_dx = PyArray_NDIM(%(dx)s);
+                npy_intp* shape_dx = PyArray_DIMS(%(dx)s);
+                //Check if dims are equal
+                shape_not_equal = (NULL == shape_dx || ndim_sm != ndim_dx);
+                // Check if the shape are identical
+                for (size_t i = 0; i < ndim_sm && !shape_not_equal; i++)
+                {
+                    shape_not_equal = (shape_sm[i] != shape_dx[i]);
+                }
+            }
+            // Alloc memory for the output
+            if ((NULL == %(dx)s) || shape_not_equal)
+                {
+                    Py_XDECREF(%(dx)s);
+                    %(dx)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(sm)s),
+                                                                PyArray_DIMS(%(sm)s),
+                                                                PyArray_TYPE(%(sm)s));
+                    if (!%(dx)s)
+                    {
+                        PyErr_SetString(PyExc_MemoryError,
+                            "failed to alloc dx output");
+                        %(fail)s;
+                    }
+                }
 
-            double sum_dy_times_sm = 0.;
-            for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
+            // Use numpy iterator
+            npy_int num_sm_classes, stride_dx, stride_sm, stride_dy;
+            // Get numpy iterator
+            PyArrayIterObject *it_dx, *it_sm, *it_dy;
+            it_dx = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(dx)s, &axis);
+            it_sm = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(sm)s, &axis);
+            it_dy = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(dy)s, &axis);
+            // Compute the stride on the selected dimension
+            stride_dx = PyArray_STRIDE(%(dx)s, axis)/sizeof(dtype_%(dx)s);;
+            stride_sm = PyArray_STRIDE(%(sm)s, axis)/sizeof(dtype_%(sm)s);
+            stride_dy = PyArray_STRIDE(%(dy)s, axis)/sizeof(dtype_%(dy)s);
+            // Get the shape on the specified dimension
+            num_sm_classes = shape_sm[axis];
+            // Go through the array
+            dtype_%(dx)s *dx_i;
+            dtype_%(sm)s *sm_i;
+            dtype_%(dy)s *dy_i;
+            while(PyArray_ITER_NOTDONE(it_dx))
             {
-                dx_i[j * Sdx] = dy_i[j * Sdy] * sm_i[j * Ssm];
-                sum_dy_times_sm += dx_i[j * Sdx];
+                dx_i = (dtype_%(dx)s *) PyArray_ITER_DATA(it_dx);
+                sm_i = (dtype_%(sm)s *) PyArray_ITER_DATA(it_sm);
+                dy_i = (dtype_%(dy)s *) PyArray_ITER_DATA(it_dy);
+
+                double sum_dy_times_sm = 0.;
+                for (size_t j = 0; j < num_sm_classes; ++j)
+                {
+                    dx_i[j] = dy_i[j] * sm_i[j];
+                    sum_dy_times_sm += dx_i[j];
+                }
+                for (size_t j = 0; j < num_sm_classes; ++j)
+                {
+                    dx_i[j] -= sum_dy_times_sm * sm_i[j];
+                }
+                PyArray_ITER_NEXT(it_dx);
+                PyArray_ITER_NEXT(it_sm);
+                PyArray_ITER_NEXT(it_dy);
             }
-            for (size_t j = 0; j < PyArray_DIMS(%(dx)s)[1]; ++j)
-            {
-                dx_i[j * Sdx] -= sum_dy_times_sm * sm_i[j * Ssm];
-            }
-        }
-        ''' % dict(locals(), **sub)
+            ''' % dict(locals(), **sub)
+
+    # @staticmethod
+    #def c_code_cache_version(self):
+    #    return (4,)
+
 softmax_grad = SoftmaxGrad()
 
 
@@ -414,40 +477,40 @@ class Softmax(gof.Op):
     :math:`\\varphi(\\mathbf{x})_j =
     \\frac{e^{\mathbf{x}_j}}{\sum_{k=1}^K e^{\mathbf{x}_k}}`
     where :math:`K` is the total number of neurons in the layer. This
-    activation function gets applied row-wise.
-
+    activation function gets applied on the selected axis (Default axis is the last).
+    This function get applied when axis is a scalar and uses a fast C optimization.
     """
 
-    nin = 1
+    nin = 2  # tensor, axis
     nout = 1
     __props__ = ()
+    params_type = ParamsType(axis=Scalar('int8'))
+
+    def __init__(self, axis=-1):
+        self.axis = axis
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
-        if x.type.ndim not in (1, 2) \
-                or x.type.dtype not in tensor.float_dtypes:
-            raise ValueError('x must be 1-d or 2-d tensor of floats. Got %s' %
-                             x.type)
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
-
         return Apply(self, [x], [x.type()])
 
-    def perform(self, node, input_storage, output_storage):
+    def perform(self, node, input_storage, output_storage, param):
         x, = input_storage
-        e_x = np.exp(x - x.max(axis=1)[:, None])
-        sm = e_x / e_x.sum(axis=1)[:, None]
+        axes = param.axis
+        # Apply softmax on the specified dimension
+        e_x = np.exp(x - x.max(axis=axes, keepdims=True))
+        sm = e_x / e_x.sum(axis=axes, keepdims=True)
         output_storage[0][0] = sm
 
     def L_op(self, inp, outputs, grads):
         x, = inp
         g_sm, = grads
-        return [softmax_grad(g_sm, outputs[0])]
+        return [SoftmaxGrad(self.axis)(g_sm, outputs[0])]
 
     def R_op(self, inputs, eval_points):
-        # I think the Jacobian is symmetric so the R_op
-        # is the same as the grad
-        if None in eval_points:
+        # The Jacobian is symmetric so the R_op is the same as the grad
+        if eval_points is None:
             return [None]
         return self.L_op(inputs, [self(*inputs)], eval_points)
 
@@ -465,109 +528,142 @@ class Softmax(gof.Op):
         # TODO: put this into a templated function, in the support code
         # TODO: declare the max of each row as an Op output
 
-        # TODO: set error messages for failures in this code
-
         # TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
         init_decl = """
-        npy_intp* Nx = PyArray_DIMS(%(x)s);
-        npy_intp Sx1 = 0;
-        npy_intp Ssm1 = 0;
+            npy_intp* shape_x = PyArray_DIMS(%(x)s);
+            npy_int ndim_x = PyArray_NDIM(%(x)s);
+            npy_int axis = %(param)s->axis;
 
-        if (PyArray_NDIM(%(x)s) != 2)
-        {
-            PyErr_SetString(PyExc_ValueError, "not a 2d tensor");
-            %(fail)s;
-        }
-        if ((PyArray_TYPE(%(x)s) != NPY_DOUBLE) &&
-            (PyArray_TYPE(%(x)s) != NPY_FLOAT))
-        {
-            PyErr_SetString(PyExc_TypeError, "not a float");
-            %(fail)s;
-        }
+            // Check input types
+            if ((PyArray_TYPE(%(x)s) != NPY_DOUBLE) &&
+                    (PyArray_TYPE(%(x)s) != NPY_FLOAT))
+            {
+                    PyErr_SetString(PyExc_TypeError, "Not a float");
+                    %(fail)s;
+                    }
 
-        if ((NULL == %(sm)s)
-            || (PyArray_DIMS(%(sm)s)[0] != PyArray_DIMS(%(x)s)[0])
-            || (PyArray_DIMS(%(sm)s)[1] != PyArray_DIMS(%(x)s)[1]))
-        {
-            Py_XDECREF(%(sm)s);
-            %(sm)s = (PyArrayObject*)PyArray_SimpleNew(2, PyArray_DIMS(%(x)s),
-                                                       PyArray_TYPE(%(x)s));
-            if(!%(sm)s) {
-                PyErr_SetString(PyExc_MemoryError,
-                     "failed to alloc sm output");
+            // Normalize the axis
+            if (axis < 0)
+            {
+                axis += ndim_x;
+            }
+            // Check if the axis is valid
+            if(axis > ndim_x - 1 || axis < 0){
+                PyErr_SetString(PyExc_ValueError,
+                "Softmax, bad axis argument");
                 %(fail)s
             }
-        }
-        Sx1 = PyArray_STRIDES(%(x)s)[1]/sizeof(dtype_%(x)s);
-        Ssm1 = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
+
+            npy_int shape_not_equal;
+            shape_not_equal = 0;
+            //If the memory is already allowed
+            if(NULL != %(sm)s)
+            {
+                npy_int ndim_sm = PyArray_NDIM(%(sm)s);
+                npy_intp* shape_sm = PyArray_DIMS(%(sm)s);
+                //Check if dims are equal
+                shape_not_equal = (NULL == shape_sm || ndim_x != ndim_sm);
+                // Check if the shape are identical
+                for (size_t i = 0; i < ndim_x && !shape_not_equal; i++)
+                {
+                    shape_not_equal = (shape_sm[i] != shape_x[i]);
+                }
+            }
+            // Allocate memory for the softmax output
+            if (NULL == %(sm)s || shape_not_equal)
+            {
+                    Py_XDECREF(%(sm)s);
+                    %(sm)s = (PyArrayObject*)PyArray_SimpleNew(ndim_x, PyArray_DIMS(%(x)s),
+                        PyArray_TYPE(%(x)s));
+                    if(!%(sm)s) {
+                        PyErr_SetString(PyExc_MemoryError,
+                            "Failed to allocate memory for sm output");
+                        %(fail)s
+                        }
+                    }
         """
 
         begin_row_loop = """
-        for (size_t i = 0; i < Nx[0]; ++i)
-        {
-            size_t j;
-            double sum = 0.0;
-
-            const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
-            dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
-
-            dtype_%(sm)s row_max = x_i[0];
-            //std::cout << "0 " << row_max << "\\n";
-            // Get the maximum value of the row
-            for (j = 1; j < Nx[1]; ++j)
+            // Use numpy iterator
+            npy_int num_sm_classes, stride_x, stride_sm;
+            // Get numpy iterator
+            PyArrayIterObject *it_x, *it_sm;
+            it_x = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(x)s, &axis);
+            it_sm = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(sm)s, &axis);
+            // Compute the stride on the selected dimension
+            stride_x = PyArray_STRIDE(%(x)s, axis)/sizeof(dtype_%(x)s);;
+            stride_sm = PyArray_STRIDE(%(sm)s, axis)/sizeof(dtype_%(sm)s);
+            // Get the shape on the specified dimension
+            num_sm_classes = shape_x[axis];
+            // Go through the array
+            dtype_%(sm)s *sm_i;
+            dtype_%(x)s *x_i;
+            while(PyArray_ITER_NOTDONE(it_x))
             {
-                dtype_%(sm)s row_ij = x_i[j * Sx1] ;
-                //std::cout << "1 " << row_ij << "\\n";
-                row_max   = (row_ij > row_max) ? row_ij : row_max;
-            }
+                    size_t j;
+                    double sum = 0.0;
+                    // Get the array on the specified axis
+                    x_i = (dtype_%(x)s *) PyArray_ITER_DATA(it_x);
+                    sm_i = (dtype_%(sm)s *) PyArray_ITER_DATA(it_sm);
+                    dtype_%(sm)s row_max = x_i[0];
+                    // Get the maximum value on this dimenson
+                    for (j = 1; j < num_sm_classes; ++j)
+                    {
+                        dtype_%(sm)s row_ij = x_i[j * stride_x];
+                        row_max = (row_ij > row_max) ? row_ij : row_max;
+                        }
 
-        """
+                    """
 
         inside_row_loop = """
-            for (j = 0; j < Nx[1]; ++j)
-            {
-                dtype_%(sm)s row_ij = x_i[j * Sx1] ;
-                //std::cout << "2 " << j << " " << row_ij << " " << row_max << "\\n";
-                dtype_%(sm)s sm_ij = exp(row_ij - row_max);
-                //std::cout << "3 " << j << " " << sm_ij << "\\n";
-                sum += sm_ij;
-                sm_i[j * Ssm1] = sm_ij;
+        // Substract the max and take the exponential
+        for (j = 0; j < num_sm_classes; ++j)
+        {
+            dtype_%(sm)s row_ij = x_i[j * stride_x];
+            dtype_%(sm)s sm_ij = exp(row_ij - row_max);
+            sum += sm_ij;
+            sm_i[j * stride_sm] = sm_ij;
             }
 
-            //cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
-            double sum_inv = 1.0 / sum;
-            for (j = 0; j < Nx[1]; ++j)
-            {
-                sm_i[j * Ssm1] *= sum_inv;
+        // cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
+        // Then divide by the sum of the elements
+        double sum_inv = 1.0 / sum;
+        for (j = 0; j < num_sm_classes; ++j)
+        {
+            sm_i[j * stride_sm] *= sum_inv;
+            // std::cout << "Col: " << sm_i[j];
             }
-
         """
         # Get the vectorized version of exp if it exist
         try:
-            vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype,
-                                                              "Nx[1]", "sm_i", "sm_i")
+            vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype, "num_sm_classes", "sm_i", "sm_i")
             inside_row_loop_contig = """
-            for (j = 0; j < Nx[1]; ++j)
+            // Substract the max
+            for (j = 0; j < num_sm_classes; ++j)
             {
-                sm_i[j * Ssm1] = x_i[j * Sx1] - row_max;
-            }
-            %(vec_exp)s;
-            for (j = 0; j < Nx[1]; ++j)
-            {
-                sum += sm_i[j * Ssm1];
-            }
+                sm_i[j * stride_sm] = x_i[j * stride_x] - row_max;
+                }
 
+            // Take the exponential
+            %(vec_exp)s;
+
+            // Compute the sum of exponentials
+            for (j = 0; j < num_sm_classes; ++j)
+            {
+                sum += sm_i[j * stride_sm];
+                }
+
+            // Then normalize each element
             //cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
             double sum_inv = 1.0 / sum;
-            for (j = 0; j < Nx[1]; ++j)
+            for (j = 0; j < num_sm_classes; ++j)
             {
-                sm_i[j * Ssm1] *= sum_inv;
-            }
-
+                sm_i[j * stride_sm] *= sum_inv;
+                }
             """ % locals()
 
             inside_row_loop = """
-            if(Ssm1 == 1){
+            if(stride_sm == 1){
                 %(inside_row_loop_contig)s
             }else{
                 %(inside_row_loop)s
@@ -577,20 +673,23 @@ class Softmax(gof.Op):
             pass
 
         end_row_loop = """
-        }
+            PyArray_ITER_NEXT(it_x);
+            PyArray_ITER_NEXT(it_sm);
+            }
         """
         return (init_decl, begin_row_loop, inside_row_loop, end_row_loop)
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         sm, = out
+        param = sub['params']
         code_template = ''.join(self.c_code_template(
             node.inputs[0].type.dtype_specs()[1]))
         return code_template % dict(locals(), **sub)
 
-    @staticmethod
-    def c_code_cache_version():
-        return (3,)
+    # @staticmethod
+    #def c_code_cache_version():
+    #    return (4,)
 
 softmax_op = Softmax()
 
@@ -600,34 +699,37 @@ class LogSoftmax(gof.Op):
     LogSoftmax activation function
     :math:`\\varphi(\\mathbf{x})_j =
     \\e^{(\mathbf{x}_j - log{\sum_{k=1}^K e^{\mathbf{x}_k})}}
-    where :math:`K` is the total number of neurons in the layer. This
-    activation function gets applied row-wise.
-
+    where :math:`K` is the total number of neurons in the layer.  This
+    activation function gets applied on the selected axis (Default axis is the last).
+    This function get applied when axis is a scalar and uses a fast C optimization.
     """
     __props__ = ()
+    params_type = ParamsType(axis=Scalar('int8'))
+
+    def __init__(self, axis=-1):
+        self.axis = axis
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
-        if x.type.ndim not in (1, 2) \
-                or x.type.dtype not in tensor.float_dtypes:
-            raise ValueError('x must be 1-d or 2-d tensor of floats. Got %s' %
-                             x.type)
+        if x.type.dtype not in tensor.float_dtypes:
+            raise ValueError('x must be tensor of floats. Got %s' % x.type)
+        # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
-
         return Apply(self, [x], [x.type()])
 
-    def perform(self, node, input_storage, output_storage):
+    def perform(self, node, input_storage, output_storage, param):
         x, = input_storage
-        xdev = x - x.max(axis=1)[:, None]
-        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=1,
-                            keepdims=True))
+        # Make axis tuple or scalar
+        axes = param.axis
+        xdev = x - x.max(axis=axes, keepdims=True)
+        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axes, keepdims=True))
         output_storage[0][0] = lsm
 
     def grad(self, inp, grads):
         x, = inp
-        sm = softmax_op(x)
-        return [grads[0] - tensor.sum(grads[0], axis=1, keepdims=True) * sm]
+        sm = Softmax(self.axis)(x)
+        return [grads[0] - tensor.sum(grads[0], axis=self.axis, keepdims=True) * sm]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
@@ -645,96 +747,128 @@ class LogSoftmax(gof.Op):
     @staticmethod
     def c_code_template(dtype):
         init_decl = """
-          npy_intp* Nx = PyArray_DIMS(%(x)s);
-          npy_intp Sx1 = 0;
-          npy_intp Ssm1 = 0;
+            npy_intp* shape_x = PyArray_DIMS(%(x)s);
+            npy_int ndim_x = PyArray_NDIM(%(x)s);
+            npy_int axis = %(param)s->axis;
 
-          if (PyArray_NDIM(%(x)s) != 2)
-          {
-              PyErr_SetString(PyExc_ValueError, "not a 2d tensor");
-              %(fail)s;
-          }
-          if ((PyArray_TYPE(%(x)s) != NPY_DOUBLE) &&
-              (PyArray_TYPE(%(x)s) != NPY_FLOAT))
-          {
-              PyErr_SetString(PyExc_TypeError, "not a float");
-              %(fail)s;
-          }
+            // Check input types
+            if ((PyArray_TYPE(%(x)s) != NPY_DOUBLE) &&
+                    (PyArray_TYPE(%(x)s) != NPY_FLOAT))
+            {
+                    PyErr_SetString(PyExc_TypeError, "Not a float");
+                    %(fail)s;
+                    }
 
-          if ((NULL == %(sm)s)
-              || (PyArray_DIMS(%(sm)s)[0] != PyArray_DIMS(%(x)s)[0])
-              || (PyArray_DIMS(%(sm)s)[1] != PyArray_DIMS(%(x)s)[1]))
-          {
-              Py_XDECREF(%(sm)s);
-              %(sm)s = (PyArrayObject*)PyArray_SimpleNew(
-                  2, PyArray_DIMS(%(x)s),
-                  PyArray_TYPE(%(x)s));
-              if(!%(sm)s) {
-                  PyErr_SetString(PyExc_MemoryError,
-                       "failed to alloc sm output");
-                  %(fail)s
-              }
-          }
-          Sx1 = PyArray_STRIDES(%(x)s)[1]/sizeof(dtype_%(x)s);
-          Ssm1 = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
+            // Normalize the axis
+            if (axis < 0)
+            {
+                axis += ndim_x;
+            }
+            // Check if the axis is valid
+            if(axis > ndim_x - 1 || axis < 0){
+                    PyErr_SetString(PyExc_ValueError,
+                        "LogSoftmax, bad axis argument");
+                    %(fail)s
+                    }
+
+            npy_int shape_not_equal, i;
+            shape_not_equal = 0;
+            //If the memory is already allowed
+            if(NULL != %(sm)s)
+            {
+                    npy_int ndim_sm = PyArray_NDIM(%(sm)s);
+                    npy_intp* shape_sm = PyArray_DIMS(%(sm)s);
+                    //Check if dims are equal
+                    shape_not_equal = (NULL == shape_sm || ndim_x != ndim_sm);
+                    // Check if the shape are identical
+                    for (size_t i = 0; i < ndim_x && !shape_not_equal; i++)
+                    {
+                        shape_not_equal = (shape_sm[i] != shape_x[i]);
+                        }
+                    }
+            // Allocate memory for the softmax output
+            if (NULL == %(sm)s || shape_not_equal)
+            {
+                    Py_XDECREF(%(sm)s);
+                    %(sm)s = (PyArrayObject*)PyArray_SimpleNew(ndim_x, PyArray_DIMS(%(x)s),
+                        PyArray_TYPE(%(x)s));
+                    if(!%(sm)s) {
+                        PyErr_SetString(PyExc_MemoryError,
+                            "Failed to allocate memory for sm output");
+                        %(fail)s
+                        }
+                    }
           """
 
         begin_row_loop = """
-          // minibatch loop
-          for (size_t i = 0; i < Nx[0]; ++i)
+          // Use numpy iterator
+          npy_int num_sm_classes, stride_x, stride_sm;
+          // Get numpy iterator
+          PyArrayIterObject *it_x, *it_sm;
+          it_x = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(x)s, &axis);
+          it_sm = (PyArrayIterObject *) PyArray_IterAllButAxis((PyObject *) %(sm)s, &axis);
+          // Compute the stride on the selected dimension
+          stride_x = PyArray_STRIDE(%(x)s, axis)/sizeof(dtype_%(x)s);;
+          stride_sm = PyArray_STRIDE(%(sm)s, axis)/sizeof(dtype_%(sm)s);
+          // Get the shape on the specified dimension
+          num_sm_classes = shape_x[axis];
+          // Go through the array
+          dtype_%(sm)s *sm_i;
+          dtype_%(x)s *x_i;
+          while(PyArray_ITER_NOTDONE(it_x))
           {
               size_t j;
               double sum = 0.0;
-
-              const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(
-                  PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
-              dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(
-                  PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
-
+              // Get the array on the specified axis
+              x_i = (dtype_%(x)s *) PyArray_ITER_DATA(it_x);
+              sm_i = (dtype_%(sm)s *) PyArray_ITER_DATA(it_sm);
               dtype_%(sm)s row_max = x_i[0];
-              // Get the maximum value of the row
-              for (j = 1; j < Nx[1]; ++j)
+              // Get the maximum value on this dimenson
+              for (j = 1; j < num_sm_classes; ++j)
               {
-                  dtype_%(sm)s x_ij = x_i[j * Sx1] ;
-                  row_max = (x_ij > row_max) ? x_ij : row_max;
-              }
+                  dtype_%(sm)s row_ij = x_i[j * stride_x];
+                  row_max = (row_ij > row_max) ? row_ij : row_max;
+                  }
               """
 
         inside_row_loop = """
-              // Compute xdev and sum(exp(xdev), axis=1)
-              double xdev_exp_row_sum = 0.0;
-              for (j = 0; j < Nx[1]; j++)
-              {
-                  // use sm_i to temporary store xdev
-                  sm_i[j * Ssm1] = (dtype_%(sm)s) (x_i[j * Sx1] - row_max);
-                  xdev_exp_row_sum += exp(sm_i[j * Ssm1]);
-              }
+        // Compute xdev and sum(exp(xdev), axis=-1)
+        double xdev_exp_row_sum = 0.0;
+        for (j = 0; j < num_sm_classes; j++)
+        {
+            // use sm_i to temporary store xdev
+            sm_i[j * stride_sm] = (dtype_%(sm)s) (x_i[j * stride_x] - row_max);
+            xdev_exp_row_sum += exp(sm_i[j * stride_sm]);
+            }
 
-              // Write sm = xdev - log(sum(exp(xdev), axis=1))
-              xdev_exp_row_sum = log(xdev_exp_row_sum);
-              for (j = 0; j < Nx[1]; ++j)
-              {
-                  sm_i[j * Ssm1] -= (dtype_%(sm)s) xdev_exp_row_sum;
-              }
-              """
+        // Write sm = xdev - log(sum(exp(xdev), axis=-1))
+        xdev_exp_row_sum = log(xdev_exp_row_sum);
+        for (j = 0; j < num_sm_classes; ++j)
+        {
+            sm_i[j * stride_sm] -= (dtype_%(sm)s) xdev_exp_row_sum;
+            }
+        """
+
         end_row_loop = """
-          }
+        PyArray_ITER_NEXT(it_x);
+        PyArray_ITER_NEXT(it_sm);
+        }
           """
         return (init_decl, begin_row_loop, inside_row_loop, end_row_loop)
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         sm, = out
+        param = sub['params']
         code_template = ''.join(self.c_code_template(
             node.inputs[0].type.dtype_specs()[1]))
         return code_template % dict(locals(), **sub)
 
-    @staticmethod
-    def c_code_cache_version():
-        return (0,)
+    # @staticmethod
+    # def c_code_cache_version():
+    #    return (1,)
 
 logsoftmax_op = LogSoftmax()
-
 
 # This is not registered in stabilize, as it cause some crossentropy
 # optimization to not be inserted.
