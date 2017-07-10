@@ -1152,12 +1152,7 @@ second dimension
                                          range(len(onames))):
                 idtype = output.type.dtype_specs()[1]
 
-                # Temporary hack waiting to find a better solution
-                # We would like the C code to execute something similar
-                if(i in self.inplace_pattern):
-                    name = _inames[self.inplace_pattern[i]]
-                else:
-                    name = _onames[i]
+                name = _onames[i]
                 defines += """
                     typedef typeof(%(name)s_i) t%(i)i;
                 """ % locals()
