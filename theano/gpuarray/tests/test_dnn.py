@@ -18,13 +18,18 @@ from theano.tensor.nnet import bn
 
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
-from ..type import gpuarray_shared_constructor
+from ..type import gpuarray_shared_constructor, GpuArrayType
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, ref_cast
 from . import test_nnet
 from .rnn_support import Model, GRU, LSTM, WrapperLayer
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
+
+try:
+    import pygpu
+except ImportError:
+    pass
 
 mode_with_gpu = mode_with_gpu.including()
 # Globally disabled for mode_without_gpu
@@ -1504,6 +1509,22 @@ def test_dnn_reduction_opt():
                                    ('float16', 'float32', 'float16'),
                                    ('float16', 'float32', 'float32')):
         yield dnn_reduction, 2, idtype, adtype, odtype
+
+
+def dnn_reduction_strides(shp, shuffle, slice):
+    inp = GpuArrayType('float32', (False,) * len(shp),
+                       context_name=test_ctx_name)()
+    tmp = inp.dimshuffle(shuffle)[slice]
+    res = tmp.sum(acc_dtype='float32', dtype='float32')
+    f = theano.function([inp], res, mode=mode_with_gpu)
+    assert any(isinstance(n.op, dnn.GpuDnnReduction)
+               for n in f.maker.fgraph.apply_nodes)
+    f(pygpu.zeros(shp, dtype='float32', context=inp.type.context))
+
+
+def test_dnn_reduction_strides():
+    yield dnn_reduction_strides, (2, 3, 2), (1, 0, 2), ...
+    yield dnn_reduction_strides, (2, 3, 2), (0, 1, 2), slice(None, None, -1)
 
 
 def dnn_maxargmax(nd, idtype, axis):
