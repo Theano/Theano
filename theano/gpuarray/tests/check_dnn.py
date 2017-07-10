@@ -731,9 +731,11 @@ if __name__ == '__main__':
         parser.add_argument('-p', '--precision', choices=types, default=theano.config.floatX,
                             help='Precision (default theano floatX).')
         parser.add_argument('-s', '--subsample', action=CheckDnn.TupleAction,
-                            help='Subsample. Comma-separated list of integers (no spaces).')
+                            help='Subsample. Comma-separated list of integers (no spaces). '
+                                 'Default: 1 per dimension.')
         parser.add_argument('-d', '--dilation', action=CheckDnn.TupleAction,
-                            help='Dilation. Comma-separated list of integers (no spaces).')
+                            help='Dilation. Comma-separated list of integers (no spaces). '
+                                 'Default: 1 per dimension.')
         parser.add_argument('-b', '--border-mode', default='valid', action=CheckDnn.BorderAction,
                             help='Border mode. "valid" (default), "full", "half" '
                                  'or a comma-separated list of integers (no spaces).')
