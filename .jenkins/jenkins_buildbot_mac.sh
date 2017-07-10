@@ -10,10 +10,9 @@ SUITE="--xunit-testsuite-name="
 export THEANO_FLAGS=init_gpu_device=cuda
 
 # CUDA
-export PATH=/usr/local/cuda/bin:$PATH
-export CPATH=/usr/local/cuda/include/:$CPATH
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
+export PATH=/Developer/NVIDIA/CUDA-8.0/bin${PATH:+:${PATH}}
+export DYLD_LIBRARY_PATH=/Developer/NVIDIA/CUDA-8.0/lib\
+                         ${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
 
 # Build libgpuarray
 GPUARRAY_CONFIG="Release"
@@ -34,11 +33,6 @@ mkdir libgpuarray/build
 
 # Finally install
 (cd libgpuarray/build && make install)
-
-# Export paths
-export CPATH=$CPATH:$LIBDIR/include
-export LIBRARY_PATH=$LIBRARY_PATH:$LIBDIR/lib
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBDIR/lib
 
 # Build the pygpu modules
 (cd libgpuarray && python setup.py build_ext --inplace -I$LIBDIR/include -L$LIBDIR/lib)
@@ -61,4 +55,4 @@ set -x
 # Fast run and float32
 FILE=${BUILDBOT_DIR}/theano_python_fastrun_f32_tests.xml
 NAME=python_fastrun_f32
-THEANO_FLAGS=$THEANO_FLAGS,compiledir=$COMPILEDIR,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32 python bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
+THEANO_FLAGS=$THEANO_FLAGS,compiledir=$COMPILEDIR,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32,dnn.library_path=$HOME/cuda/lib,dnn.include_path=$HOME/cuda/include,gcc.cxxflags="-I/usr/local/cuda/include -I$LIBDIR/include -rpath $HOME/cuda/lib -L$HOME/.local/lib" python bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
