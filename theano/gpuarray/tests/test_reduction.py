@@ -55,12 +55,12 @@ def numpy_maxandargmax(X, axis=None):
     return (ref_max, np.argmax(reshaped_x, axis=-1))
 
 
-def check_if_gpu_maxandargmax_in_graph(theano_function):
+def check_if_gpu_reduce_in_graph(theano_function):
     assert any(isinstance(node.op, (GpuMaxAndArgmax, GpuDnnReduction))
                for node in theano_function.maker.fgraph.apply_nodes)
 
 
-def check_if_gpu_maxandargmax_not_in_graph(theano_function):
+def check_if_gpu_reduce_not_in_graph(theano_function):
     assert all(not isinstance(node.op, (GpuMaxAndArgmax, GpuDnnReduction))
                for node in theano_function.maker.fgraph.apply_nodes)
 
