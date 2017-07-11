@@ -81,13 +81,22 @@ class GpuConnectionistTemporalClassification(gof.COp):
         t_input_lengths = T.as_tensor_variable(input_lengths)
 
         if t_activations.type.dtype != 'float32':
-            raise TypeError('Activations must use the float32 type!')
+            raise TypeError('activations must use the float32 type.')
+
+        if t_activations.ndim != 3:
+            raise ValueError('activations must have 3 dimensions.')
 
         if t_labels.type.dtype != 'int32':
-            raise TypeError('Labels must use the int32 type!')
+            raise TypeError('labels must use the int32 type.')
+
+        if t_labels.ndim != 2:
+            raise ValueError('labels must have 2 dimensions.')
 
         if t_input_lengths.type.dtype != 'int32':
-            raise TypeError('Label lengths must use the int32 type!')
+            raise TypeError('input_lengths must use the int32 type.')
+
+        if t_input_lengths.ndim != 1:
+            raise ValueError('input_lengths must have 1 dimension.')
 
         costs = GpuArrayType(dtype='float32',
                              broadcastable=(False,),
