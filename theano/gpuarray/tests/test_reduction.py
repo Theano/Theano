@@ -107,7 +107,7 @@ class BaseTest:
         M = self.get_host_tensor()
         f = theano.function([M], [T.max(M, axis=axis), T.argmax(M, axis=axis)],
                             name='shape:' + str(test_tensor.shape) + '/axis:' + str(axis) + '/HOST', mode=mode_without_gpu)
-        check_if_gpu_maxandargmax_not_in_graph(f)
+        check_if_gpu_reduce_not_in_graph(f)
         f(test_tensor)
         theano_max, theano_argmax = f(test_tensor)
         ref_max, ref_argmax = numpy_maxandargmax(test_tensor, axis=axis)
@@ -118,7 +118,7 @@ class BaseTest:
         M = self.get_gpu_tensor()
         f = theano.function([M], [T.max(M, axis=axis), T.argmax(M, axis=axis)],
                             name='shape:' + str(test_gpu_tensor.shape) + '/axis:' + str(axis) + '/GPU', mode=mode_with_gpu)
-        check_if_gpu_maxandargmax_in_graph(f)
+        check_if_gpu_reduce_in_graph(f)
         f(test_gpu_tensor)
         theano_max, theano_argmax = f(test_gpu_tensor)
         ref_max, ref_argmax = numpy_maxandargmax(test_host_tensor, axis=axis)

@@ -1523,7 +1523,7 @@ def dnn_reduction_strides(shp, shuffle, slice):
 
 
 def test_dnn_reduction_strides():
-    yield dnn_reduction_strides, (2, 3, 2), (1, 0, 2), ...
+    yield dnn_reduction_strides, (2, 3, 2), (1, 0, 2), slice(None, None, None)
     yield dnn_reduction_strides, (2, 3, 2), (0, 1, 2), slice(None, None, -1)
 
 
