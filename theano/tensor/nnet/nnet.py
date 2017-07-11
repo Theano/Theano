@@ -464,9 +464,9 @@ class SoftmaxGrad(gof.Op):
             }
             ''' % dict(locals(), **sub)
 
-    # @staticmethod
-    #def c_code_cache_version(self):
-    #    return (4,)
+    @staticmethod
+    def c_code_cache_version():
+        return (4,)
 
 softmax_grad = SoftmaxGrad()
 
@@ -687,9 +687,9 @@ class Softmax(gof.Op):
             node.inputs[0].type.dtype_specs()[1]))
         return code_template % dict(locals(), **sub)
 
-    # @staticmethod
-    #def c_code_cache_version():
-    #    return (4,)
+    @staticmethod
+    def c_code_cache_version():
+        return (4,)
 
 softmax_op = Softmax()
 
@@ -864,9 +864,9 @@ class LogSoftmax(gof.Op):
             node.inputs[0].type.dtype_specs()[1]))
         return code_template % dict(locals(), **sub)
 
-    # @staticmethod
-    # def c_code_cache_version():
-    #    return (1,)
+    @staticmethod
+    def c_code_cache_version():
+        return (1,)
 
 logsoftmax_op = LogSoftmax()
 
