@@ -54,5 +54,5 @@ set -x
 
 # Fast run and float32
 FILE=${BUILDBOT_DIR}/theano_python_fastrun_f32_tests.xml
-NAME=python_fastrun_f32
+NAME=mac_fastrun_f32
 THEANO_FLAGS=$THEANO_FLAGS,compiledir=$COMPILEDIR,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32,dnn.library_path=$HOME/cuda/lib,dnn.include_path=$HOME/cuda/include,gcc.cxxflags="-I/usr/local/cuda/include -I$LIBDIR/include -rpath $HOME/cuda/lib -L$HOME/.local/lib" python bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
