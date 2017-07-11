@@ -68,6 +68,7 @@ from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor,
                         GpuAdvancedSubtensor1,
+                        GpuAdvancedIncSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
@@ -1066,7 +1067,7 @@ def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.AdvancedIncSubtensor1])
 @register_opt2([tensor.AdvancedIncSubtensor1], 'fast_compile')
-def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
+def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
     context = get_context(context_name)
     # This is disabled on non-cuda contexts
     if context.kind != b'cuda':
@@ -1092,6 +1093,16 @@ def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
     else:
         return GpuAdvancedIncSubtensor1_dev20(
             set_instead_of_inc=set_instead_of_inc)
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.AdvancedIncSubtensor])
+@register_opt2([tensor.AdvancedIncSubtensor], 'fast_compile')
+def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
+    if not op.set_instead_of_inc:
+        return GpuAdvancedIncSubtensor()
+    else:
+        return False
 
 
 @register_inplace()

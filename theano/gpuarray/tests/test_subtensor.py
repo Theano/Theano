@@ -13,6 +13,7 @@ from ..elemwise import GpuDimShuffle
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor1,
                          GpuAdvancedSubtensor,
+                         GpuAdvancedIncSubtensor,
                          GpuAdvancedIncSubtensor1,
                          GpuAdvancedIncSubtensor1_dev20,
                          GpuExtractDiag,
@@ -159,6 +160,7 @@ def test_advinc_subtensor1_vector_scalar():
                           name='y')
         expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
         f = theano.function([y], expr, mode=mode_with_gpu)
+
         assert sum([isinstance(node.op, (GpuAdvancedIncSubtensor1_dev20,
                                          GpuAdvancedIncSubtensor1))
                     for node in f.maker.fgraph.toposort()]) == 1
@@ -222,6 +224,7 @@ class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
             self, name,
             shared=gpuarray_shared_constructor,
             sub=GpuAdvancedSubtensor,
+            inc_sub=GpuAdvancedIncSubtensor,
             mode=mode_with_gpu,
             # avoid errors with limited devices
             dtype='float32',  # floatX?
