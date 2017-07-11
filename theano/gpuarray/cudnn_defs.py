@@ -122,26 +122,33 @@ class CuDNNV51(object):
     # empty list of enum to don't crash with cudnn 5
     cudnnReduceTensorOp_t = CEnumType()
 
-    def get_supported_dtype_configs(self):
+    def get_supported_dtype_configs(self, check_runtime=None):
         """
         Return the tuple of data type configurations supported by this version of cuDNN.
         This is currently convenient for both cuDNN V5.1 and V6, as Theano does not
         yet support new data types (like INT8, INT8x4, etc.).
+
+        ``check_runtime`` may be a function that tests if a data type configuration is supported.::
+
+            is_supported = check_runtime(dtype, precision)
+
+        .. warning::
+
+            From documentation for cudnnConvolutionForward (for both v5.1 and v6):
+
+            .. code-block::
+
+                TRUE_HALF_CONFIG is only supported on architectures with true fp16 support
+                (compute capability 5.3 and 6.0)
+
+            This seems to be a general remark about f16 support (not only for FWD).
+            It can be checked at runtime only.
+
         """
-        return (TRUE_HALF_CONFIG, PSEUDO_HALF_CONFIG, FLOAT_CONFIG, DOUBLE_CONFIG)
 
-    def get_fwd_dtype_configs(self, check_runtime=None):
-        # NB: "TRUE_HALF_CONFIG is only supported on architectures with true fp16 support
-        # (compute capability 5.3 and 6.0)". Can be checked at runtime only.
         if check_runtime is None or check_runtime(*TRUE_HALF_CONFIG):
-            return self.get_supported_dtype_configs()
+            return (TRUE_HALF_CONFIG, PSEUDO_HALF_CONFIG, FLOAT_CONFIG, DOUBLE_CONFIG)
         return (PSEUDO_HALF_CONFIG, FLOAT_CONFIG, DOUBLE_CONFIG)
-
-    def get_bwd_filter_dtype_configs(self, check_runtime=None):
-        return self.get_supported_dtype_configs()
-
-    def get_bwd_data_dtype_configs(self, check_runtime=None):
-        return self.get_supported_dtype_configs()
 
     def fwd_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
         algorithms = self.cudnnConvolutionFwdAlgo_t
@@ -209,7 +216,7 @@ class CuDNNV51(object):
             if ndim == 3:
                 return not is_true_half_config(dtype, precision)
         if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD:
-            return ndim == 2 and is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision)
+            return ndim == 2 and (is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision))
         if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED:
             # NB: "If wDesc 's filter (height, width) is (5,5), data type config TRUE_HALF_CONFIG is not supported".
             # We could not check it before being in C code.
