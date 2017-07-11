@@ -135,7 +135,7 @@ class TestCTC(unittest.TestCase):
                 return gpu_ctc(acts, t_labels, t_activation_times)
             return wrapper
 
-        activations, activation_times, labels = setup_grad_case()
+        activations, labels, activation_times = setup_grad_case()
 
         ctc_op = ctc_op_functor(labels, activation_times)
 
