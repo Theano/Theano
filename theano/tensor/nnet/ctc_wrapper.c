@@ -56,7 +56,7 @@ void create_contiguous_input_lengths( PyArrayObject * input_lengths_arr,
 {
     npy_int num_elements = PyArray_DIMS( input_lengths_arr )[0];
 
-    *input_lengths = (int *) malloc( num_elements * sizeof(int) );
+    *input_lengths = (int *) calloc( num_elements, sizeof(int) );
 
     if ( NULL == (*input_lengths) )
         return;
@@ -73,11 +73,11 @@ void create_flat_labels( PyArrayObject * label_matrix, int ** flat_labels,
     npy_int rows = PyArray_DIMS( label_matrix )[0];
     npy_int cols = PyArray_DIMS( label_matrix )[1];
 
-    *flat_labels = (int *) malloc( rows * cols * sizeof(int) );
+    *flat_labels = (int *) calloc( rows * cols, sizeof(int) );
     if ( NULL == (*flat_labels) )
         return;
 
-    *label_lengths = (int *) malloc( rows * sizeof(int) );
+    *label_lengths = (int *) calloc( rows, sizeof(int) );
     if ( NULL == (*label_lengths) )
     {
         free( *flat_labels );
@@ -127,6 +127,9 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
 
     if ( NULL == context->input_lengths )
     {
+        // Destroy previous CTC context before returning exception
+        ctc_context_destroy( context );
+
         PyErr_Format( PyExc_MemoryError,
             "ConnectionistTemporalClassification: Could not allocate memory for input lengths" );
         return 1;
