@@ -481,7 +481,7 @@ class Softmax(gof.Op):
     This function get applied when axis is a scalar and uses a fast C optimization.
     """
 
-    nin = 2  # tensor, axis
+    nin = 1
     nout = 1
     __props__ = ()
     params_type = ParamsType(axis=Scalar('int8'))
@@ -510,7 +510,7 @@ class Softmax(gof.Op):
 
     def R_op(self, inputs, eval_points):
         # The Jacobian is symmetric so the R_op is the same as the grad
-        if eval_points is None:
+        if None in eval_points:
             return [None]
         return self.L_op(inputs, [self(*inputs)], eval_points)
 
@@ -703,6 +703,8 @@ class LogSoftmax(gof.Op):
     activation function gets applied on the selected axis (Default axis is the last).
     This function get applied when axis is a scalar and uses a fast C optimization.
     """
+    nin = 1
+    nout = 1
     __props__ = ()
     params_type = ParamsType(axis=Scalar('int8'))
 
