@@ -15,6 +15,7 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         LocalGroupDB,
                         SequenceDB, Optimizer, DB, toolbox, graph)
+from theano.gof.opt import LocalMetaOptimizer
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -1776,6 +1777,35 @@ def local_abstractconv3d_gradinputs_gemm(node):
     return [rval]
 
 
+class LocalCudaMetaOptimizer(LocalMetaOptimizer):
+
+    def time_call(self, fn):
+        start = time.time()
+        fn()[0].sync()
+        return time.time() - start
+
+
+class ConvMetaOptimizer(LocalCudaMetaOptimizer):
+
+    def __init__(self, optimizers):
+        super(ConvMetaOptimizer, self).__init__(optimizers)
+
+    def provide_inputs(self, node, inputs):
+        result = {}
+        img, kern = node.inputs
+        vars = (img, kern)
+
+        shapes = (node.op.imshp, node.op.kshp)
+        if(node.op.imshp is None or node.op.kshp is None or
+                any([s is None for shape in shapes for s in shape])):
+            return result
+
+        for(var, shape) in zip(vars, shapes):
+            result[var] = theano.shared(np.random.random(shape).astype(theano.config.floatX),
+                                        var.name, borrow=True)
+        return result
+
+
 # This deals with any abstract convs that have a transfer somewhere
 @register_opt('fast_compile', 'conv_dnn', 'cudnn')
 @op_lifter([AbstractConv2d,
@@ -2356,6 +2386,12 @@ register_opt('fast_compile')(abstractconv_groupopt)
 # to avoid a circular dependency problem with dnn
 from .dnn import (local_abstractconv_cudnn, local_abstractconv_gw_cudnn,
                   local_abstractconv_gi_cudnn)     # noqa: 402
+
+conv_metaopt = ConvMetaOptimizer((local_abstractconv_gemm,
+                                  local_abstractconv_cudnn))
+abstractconv_groupopt.register('conv_metaopt', conv_metaopt, 0, 'conv_meta')
+
+
 abstractconv_groupopt.register('local_abstractconv_dnn',
                                local_abstractconv_cudnn, 20,
                                'conv_dnn',

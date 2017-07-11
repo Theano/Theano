@@ -1131,13 +1131,20 @@ class LocalMetaOptimizer(LocalOptimizer):
 
     """
 
-    def __init__(self, tracks=None, optimizers=()):
-        self._tracks = tracks
+    def __init__(self, optimizers=()):
+        self._tracks = [x for o in optimizers for x in o.tracks()]
         self.optimizers = list(optimizers)
         self.verbose = config.metaopt.verbose
+        self.track_dict = defaultdict(lambda: [])
+
+        for o in optimizers:
+            for c in o.tracks():
+                self.track_dict[c].append(o)
 
     def register(self, optimizer):
         self.optimizers.append(optimizer)
+        for c in optimizer.tracks():
+            self.track_dict[c].append(optimizer)
 
     def tracks(self):
         return self._tracks
@@ -1178,7 +1185,7 @@ class LocalMetaOptimizer(LocalOptimizer):
             print(("%s meta-optimizing %s (%d choices):" %
                    (self.__class__.__name__, node, len(self.optimizers))))
         timings = []
-        for opt in self.optimizers:
+        for opt in (self.track_dict[type(node.op)] + self.track_dict[node.op]):
             outputs = opt.transform(node)
             if outputs:
                 try:
@@ -2313,7 +2320,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         self.final_optimizers = []
         self.cleanup_optimizers = []
         self.tracks_on_change_inputs = tracks_on_change_inputs
-
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
                 if opt.tracks() is None:
