@@ -2467,7 +2467,9 @@ def test_dnn_spatialtf():
 
     grad_fn = theano.function([t_img, t_theta, t_dy], img_grad)
 
-    dy = -1 + 2 * np.random.randn(*img.shape).astype(theano.config.floatX)
+    dy_shp = (img.shape[0], img.shape[1], int(img.shape[2] * scale_height),
+              int(img.shape[3] * scale_width))
+    dy = -1 + 2 * np.random.randn(*dy_shp).astype(theano.config.floatX)
     spatialtf_grad = grad_fn(img, transform, dy)
 
     # Check if function graph contains the spatial transformer Ops

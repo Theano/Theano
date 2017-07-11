@@ -2958,13 +2958,23 @@ class GpuDnnTransformerGradI(DnnBase):
     _f16_ok = True
 
     def __init__(self, dtype=theano.config.floatX):
-        DnnBase.__init__(self, ["c_code/dnn_sptf_gi.c"], "dnn_sptf_gi")
+        DnnBase.__init__(self, ["c_code/dnn_sptf_gi.c"], "APPLY_SPECIFIC(dnn_sptf_gi)")
         self.dtype = dtype
 
     def make_node(self, img, theta, grid, grid_dims, dy, desc, alpha, beta):
         context_name = infer_context_name(img)
 
+        if img.ndim != 4:
+            raise RuntimeError('img must have 4 dimensions.')
+        if theta.ndim != 3:
+            raise RuntimeError('theta must have 3 dimensions')
+
+        img = as_gpuarray_variable(gpu_contiguous(img), context_name)
+        theta = as_gpuarray_variable(gpu_contiguous(theta), context_name)
+        grid = as_gpuarray_variable(gpu_contiguous(grid), context_name)
+        grid_dims = as_tensor_variable(grid_dims)
         dy = as_gpuarray_variable(dy, context_name)
+
         dimg = GpuArrayType(dtype=self.dtype,
                             broadcastable=img.type.ndim * (False,),
                             context_name=context_name)()
@@ -2988,7 +2998,7 @@ class GpuDnnTransformerGradT(DnnBase):
     _f16_ok = True
 
     def __init__(self, dtype=theano.config.floatX):
-        DnnBase.__init__(self, ["c_code/dnn_sptf_gt.c"], "dnn_sptf_gt")
+        DnnBase.__init__(self, ["c_code/dnn_sptf_gt.c"], "APPLY_SPECIFIC(dnn_sptf_gt)")
         self.dtype = dtype
 
     def make_node(self, dgrid, desc):
