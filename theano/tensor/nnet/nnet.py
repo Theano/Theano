@@ -870,6 +870,7 @@ class LogSoftmax(gof.Op):
 
 logsoftmax_op = LogSoftmax()
 
+
 # This is not registered in stabilize, as it cause some crossentropy
 # optimization to not be inserted.
 @opt.register_specialize('stabilize', 'fast_compile')
