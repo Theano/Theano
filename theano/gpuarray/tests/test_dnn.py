@@ -2467,10 +2467,13 @@ def test_dnn_spatialtf():
 
     grad_fn = theano.function([t_img, t_theta, t_dy], img_grad)
 
+    # dy contains the gradients of the subsequent layer in a neural net,
+    # which receives the transformed inputs, so dy must have the same shape
+    # as the transformed inputs.
     dy_shp = (img.shape[0], img.shape[1], int(img.shape[2] * scale_height),
               int(img.shape[3] * scale_width))
     dy = -1 + 2 * np.random.randn(*dy_shp).astype(theano.config.floatX)
-    spatialtf_grad = grad_fn(img, transform, dy)
+    grad_fn(img, transform, dy)
 
     # Check if function graph contains the spatial transformer Ops
     topo = st_dnn_func.maker.fgraph.toposort()
