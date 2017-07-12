@@ -384,9 +384,6 @@ class GpuMagmaBase(COp):
                 magma_init()
                 ctx.is_magma_initialized = True
 
-    def get_params(self, node):
-        return node.inputs[0].type.context
-
 
 class GpuMagmaSVD(GpuMagmaBase):
     """Computes the svd of a matrix :math:`A` using magma library.
@@ -534,6 +531,8 @@ class GpuMagmaCholesky(GpuMagmaBase, CGpuKernelBase):
 
     """
     __props__ = ('lower', 'inplace')
+    check_input = False
+    params_type = ParamsType(lower=bool_t, inplace=bool_t, context=gpu_context_type)
 
     def __init__(self, lower=True, inplace=False):
         self.lower = lower
@@ -555,13 +554,8 @@ class GpuMagmaCholesky(GpuMagmaBase, CGpuKernelBase):
             raise TypeError("only `float32` is supported for now")
         return theano.Apply(self, [A], [A.type()])
 
-    def get_op_params(self):
-        params = []
-        if self.lower:
-            params.append(('LOWER', '1'))
-        if self.inplace:
-            params.append(('INPLACE', '1'))
-        return params
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]

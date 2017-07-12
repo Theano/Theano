@@ -27,7 +27,6 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
 
   // This is early to match the exit() in the fail label.
   cuda_enter(params->context->ctx);
-  magma_init();
 
   if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
     PyErr_SetString(PyExc_ValueError,

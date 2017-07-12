@@ -74,7 +74,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
-                     cusolver_available, GpuMagmaMatrixInverse, GpuMagmaSVD,
+                     cusolver_available, GpuMagmaMatrixInverse, gpu_svd,
                      GpuMagmaCholesky, GpuMagmaQR, GpuMagmaEigh)
 
 _logger = logging.getLogger("theano.gpuarray.opt")

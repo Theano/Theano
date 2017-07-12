@@ -39,7 +39,7 @@ setup_ext_cuda();
 #section support_code_struct
 
 int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
-                                   PyGpuContextObject *c) {
+                                   PARAMS_TYPE* params) {
   const size_t *dims;
   size_t N, n2;
   magma_uplo_t ul;
@@ -50,37 +50,38 @@ int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
                     "GpuMagmaCholesky: unsupported data type");
     return -1;
   }
+
+  // This is early to match the exit() in the fail label.
+  cuda_enter(params->context->ctx);
+
   if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuMagmaCholesky: requires data to be C-contiguous");
-    return -1;
+    goto fail;
   }
   if (PyGpuArray_NDIM(A) != 2) {
     PyErr_SetString(PyExc_ValueError, "GpuMagmaCholesky: matrix rank error");
-    return -1;
+    goto fail;
   }
   dims = PyGpuArray_DIMS(A);
   if (dims[0] != dims[1]) {
     PyErr_SetString(PyExc_ValueError, "GpuMagmaCholesky: matrix is not square");
-    return -1;
-  }
-
-  // This is early to match the exit() in the fail label.
-  cuda_enter(c->ctx);
-
-#ifdef INPLACE
-  Py_XDECREF(*L);
-  *L = A;
-  Py_INCREF(*L);
-#else
-  *L = theano_try_copy(*L, A);
-  if (*L == NULL) {
-    PyErr_SetString(
-        PyExc_RuntimeError,
-        "GpuMagmaCholesky: failed to allocate memory for the output");
     goto fail;
   }
-#endif
+
+  if (params->inplace) {
+    Py_XDECREF(*L);
+    *L = A;
+    Py_INCREF(*L);
+  } else {
+    *L = theano_try_copy(*L, A);
+    if (*L == NULL) {
+      PyErr_SetString(
+          PyExc_RuntimeError,
+          "GpuMagmaCholesky: failed to allocate memory for the output");
+      goto fail;
+    }
+  }
 
   // magma matrix cholesky
   N = dims[0];
@@ -90,11 +91,12 @@ int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
 // matrix order which requires copying data, we can compute cholesky
 // decomposition where we change parameters lower to upper and upper to
 // lower.
-#ifdef LOWER
-  ul = MagmaUpper;
-#else
-  ul = MagmaLower;
-#endif
+  if (params->lower) {
+    ul = MagmaUpper;
+  }
+  else {
+    ul = MagmaLower;
+  }
   magma_spotrf_gpu(ul, N, (float *)PyGpuArray_DEV_DATA(*L), N, &info);
   if (info > 0) {
     PyErr_Format(PyExc_RuntimeError, "GpuMagmaCholesky: the leading minor of "
@@ -109,23 +111,23 @@ int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
     goto fail;
   }
 
-#ifdef LOWER
-  res = tril_kernel_scall(1, &n2, 0, n2, N, (*L)->ga.offset, (*L)->ga.data);
-  if (res != GA_NO_ERROR) {
-    PyErr_Format(PyExc_RuntimeError, "GpuMagmaCholesky: tril_kernel %s.",
-                 GpuKernel_error(&k_tril_kernel, res));
-    goto fail;
+  if (params->lower) {
+    res = tril_kernel_scall(1, &n2, 0, n2, N, (*L)->ga.offset, (*L)->ga.data);
+    if (res != GA_NO_ERROR) {
+      PyErr_Format(PyExc_RuntimeError, "GpuMagmaCholesky: tril_kernel %s.",
+                   GpuKernel_error(&k_tril_kernel, res));
+      goto fail;
+    }
+  } else {
+    res = triu_kernel_scall(1, &n2, 0, n2, N, (*L)->ga.offset, (*L)->ga.data);
+    if (res != GA_NO_ERROR) {
+      PyErr_Format(PyExc_RuntimeError, "GpuMagmaCholesky: triu_kernel %s.",
+                   GpuKernel_error(&k_triu_kernel, res));
+      goto fail;
+    }
   }
-#else
-  res = triu_kernel_scall(1, &n2, 0, n2, N, (*L)->ga.offset, (*L)->ga.data);
-  if (res != GA_NO_ERROR) {
-    PyErr_Format(PyExc_RuntimeError, "GpuMagmaCholesky: triu_kernel %s.",
-                 GpuKernel_error(&k_triu_kernel, res));
-    goto fail;
-  }
-#endif
   res = 0;
 fail:
-  cuda_exit(c->ctx);
+  cuda_exit(params->context->ctx);
   return res;
 }
