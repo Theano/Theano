@@ -56,21 +56,46 @@ try:
 except ImportError:
     pass
 
+# Update these names when new versions of cudnn are supported.
+WIN32_CUDNN_NAMES = ['cudnn64_6.dll', 'cudnn64_5.dll']
+
+
+def _load_lib(name):
+    try:
+        return ctypes.cdll.LoadLibrary(name)
+    except OSError:
+        return None
+
 
 def _dnn_lib():
     if _dnn_lib.handle is None:
         import ctypes.util
 
-        lib_name = ctypes.util.find_library('cudnn')
-        if lib_name is None and sys.platform == 'win32':
-            # Update these names when new versions of cudnn are supported.
-            for name in ['cudnn64_6.dll', 'cudnn64_5.dll']:
-                lib_name = ctypes.util.find_library(name)
-                if lib_name:
-                    break
-        if lib_name is None:
-            raise RuntimeError('Could not find cudnn library (looked for v5* or v6*)')
-        _dnn_lib.handle = ctypes.cdll.LoadLibrary(lib_name)
+        if config.dnn.library_path != "":
+            if sys.platform == 'darwin':
+                dnn_handle = _load_lib(os.path.join(config.dnn.library_path, 'libcudnn.dylib'))
+            elif sys.platform == 'win32':
+                for name in WIN32_CUDNN_NAMES:
+                    dnn_handle = _load_lib(os.path.join(config.dnn.library_path, name))
+                    if dnn_handle is not None:
+                        break
+            else:
+                dnn_handle = _load_lib(os.path.join(config.dnn.library_path, 'libcudnn.so'))
+        else:
+            lib_name = ctypes.util.find_library('cudnn')
+            if lib_name is None and sys.platform == 'win32':
+                for name in WIN32_CUDNN_NAMES:
+                    lib_name = ctypes.util.find_library(name)
+                    if lib_name:
+                        break
+            if lib_name is None:
+                raise RuntimeError('Could not find cudnn library (looked for v5* or v6*)')
+            else:
+                dnn_handle = ctypes.cdll.LoadLibrary(lib_name)
+
+        if dnn_handle is None:
+            raise RuntimeError('Could not load cudnn library')
+        _dnn_lib.handle = dnn_handle
         cudnn = _dnn_lib.handle
         cudnn.cudnnCreate.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
         cudnn.cudnnCreate.restype = ctypes.c_int
