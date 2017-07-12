@@ -91,6 +91,22 @@ def test_filter_float():
         del theano.compile.sharedvalue.shared.constructors[-1]
 
 
+def test_filter_variable():
+    # Test that filter_variable accepts more restrictive broadcast
+    gpu_row = GpuArrayType(dtype=theano.config.floatX,
+                           broadcastable=(True, False))
+    gpu_matrix = GpuArrayType(dtype=theano.config.floatX,
+                              broadcastable=(False, False))
+    r = gpu_row()
+    m = gpu_matrix.filter_variable(r)
+    assert m.type == gpu_matrix
+
+    # On CPU as well
+    r = theano.tensor.row()
+    m = gpu_matrix.filter_variable(r)
+    assert m.type == gpu_matrix
+
+
 def test_gpuarray_shared_scalar():
     # By default, we don't put scalar as shared variable on the GPU
     nose.tools.assert_raises(
