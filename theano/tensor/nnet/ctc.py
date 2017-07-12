@@ -92,8 +92,9 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
 
     Notes
     -----
-    Using the wrapper requires that Baidu's warp-ctc library is installed and the
-    configuration variable `config.ctc.root` be properly set.
+    Using the wrapper requires that Baidu's warp-ctc library is installed.
+    If the warp-ctc library is not on your compiler's default library path,
+    you must set the configuration variable ``config.ctc.root`` appropriately.
 
     Parameters
     ----------
