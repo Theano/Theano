@@ -798,8 +798,8 @@ class BaseGpuCorrMM(CGpuKernelBase):
         out_dim[0] = PyGpuArray_DIMS(top)[1];
         if (unshared){
             odim = 6;
-            out_dim[1] = (npy_intp)PyGpuArray_DIMS(top)[2];
-            out_dim[2] = (npy_intp)PyGpuArray_DIMS(top)[3];
+            out_dim[1] = PyGpuArray_DIMS(top)[2];
+            out_dim[2] = PyGpuArray_DIMS(top)[3];
         }
         out_dim[wdim-3] = PyGpuArray_DIMS(bottom)[1];
         out_dim[wdim-2] = kH;  // already inferred further above

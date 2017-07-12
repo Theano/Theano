@@ -370,7 +370,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
 
     if (PyGpuArray_NDIM(weight) != (unshared ? 6 : 4))
     {
-        PyErr_Format(PyExc_ValueError, "CorrMM requires weight of %%dD", unshared ? 6 : 4);
+        PyErr_Format(PyExc_ValueError, "GpuCorrMM requires weight of %%dD", unshared ? 6 : 4);
         return NULL;
     }
     if (!GpuArray_IS_C_CONTIGUOUS(&weight->ga))
@@ -448,7 +448,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         if (topHeight != PyGpuArray_DIMS(weight)[1] ||
                 topWidth != PyGpuArray_DIMS(weight)[2]) {
             PyErr_Format(PyExc_ValueError,
-                    "CorrMM regions in kernel must match output regions:\n"
+                    "GpuCorrMM regions in kernel must match output regions:\n"
                     "  bottom shape: %%d %%d %%d %%d\n"
                     "  weight shape: %%d %%ld %%ld %%d %%d %%d"
                     " (expected %%d %%d %%d %%d %%d %%d)\n"
@@ -465,7 +465,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                 topHeight != PyGpuArray_DIMS(top)[2] ||
                 topWidth != PyGpuArray_DIMS(top)[3]) {
             PyErr_Format(PyExc_ValueError,
-                    "CorrMM shape inconsistency:\n"
+                    "GpuCorrMM shape inconsistency:\n"
                     "  bottom shape: %%d %%d %%d %%d\n"
                     "  weight shape: %%d %%d %%d %%d %%d %%d\n"
                     "  top shape: %%ld %%ld %%ld %%ld (expected %%d %%d %%d %%d)\n",
@@ -525,11 +525,6 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     const size_t N_ = col_dim[1];
     const size_t M_ = nFilters;
 
-    #define ERR_CHECK(err) \
-    if (err != GA_NO_ERROR) { \
-        PyErr_Format(PyExc_RuntimeError, "GpuCorrMM forward encountered an error running gemm: %d", err); \
-        Py_DECREF(col); return NULL;}
-
     PyGpuArrayObject *output;
     if (direction == 0) {  // forward pass
         output = top;
@@ -559,13 +554,17 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             // Second, gemm
             if (unshared) {
               for (size_t reg = 0; reg < N_; ++reg){
-                err = rgemm(cb_fortran, cb_trans,
+                err = rgemv(cb_fortran, cb_trans,
                             K_, M_, 1,
                             &weight->ga, reg * K_, K_ * N_,
                             &col->ga, reg, N_,
                             0,
                             &top->ga, n * top_stride + reg, N_);
-                ERR_CHECK(err)
+                if (err != GA_NO_ERROR) {
+                    PyErr_Format(PyExc_RuntimeError, "GpuCorrMM forward encountered an error running gemm: %d", err);
+                    Py_DECREF(col);
+                    return NULL;
+                }
               }
             }
             else {
@@ -575,7 +574,11 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                           &weight->ga, 0, K_,
                           0,
                           &top->ga, n * top_stride, N_);
-              ERR_CHECK(err)                
+              if (err != GA_NO_ERROR) {
+                  PyErr_Format(PyExc_RuntimeError, "GpuCorrMM forward encountered an error running gemm: %d", err);
+                  Py_DECREF(col);
+                  return NULL;
+              }           
             }
         }
     }
@@ -616,7 +619,11 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                             &top->ga, n * top_stride + reg, N_,
                             (n == 0) ? 0 : 1,
                             &weight->ga, reg * K_, K_ * N_);
-                ERR_CHECK(err)
+                if (err != GA_NO_ERROR) {
+                    PyErr_Format(PyExc_RuntimeError, "GpuCorrMM grad weights encountered an error running gemm: %d", err);
+                    Py_DECREF(col);
+                    return NULL;
+                }
               }
             }
             else{
@@ -626,7 +633,11 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                           &top->ga, n * top_stride, N_,
                           (n == 0) ? 0 : 1,
                           &weight->ga, 0, K_);
-              ERR_CHECK(err)
+              if (err != GA_NO_ERROR) {
+                  PyErr_Format(PyExc_RuntimeError, "GpuCorrMM grad weights encountered an error running gemm: %d", err);
+                  Py_DECREF(col);
+                  return NULL;
+              }
             }
         }
     }
@@ -654,7 +665,11 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                             weight->ga.data, reg * K_, K_ * N_,
                             0,
                             col->ga.data, reg, N_);
-                ERR_CHECK(err)
+                if (err != GA_NO_ERROR) {
+                    PyErr_Format(PyExc_RuntimeError, "GpuCorrMM grad inputs encountered an error running gemm: %d", err);
+                    Py_DECREF(col);
+                    return NULL;
+                }
               }
             }
             else {
@@ -664,7 +679,11 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                           &weight->ga, 0, K_,
                           0,
                           &col->ga, 0, N_);
-              ERR_CHECK(err)
+              if (err != GA_NO_ERROR) {
+                  PyErr_Format(PyExc_RuntimeError, "GpuCorrMM grad inputs encountered an error running gemm: %d", err);
+                  Py_DECREF(col);
+                  return NULL;
+              }
             }
             // col2im back to the data
             err = col2im(&col->ga, nChannels, bottomHeight, bottomWidth,
