@@ -77,7 +77,7 @@ static int c_make_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t *desc)
 }
 
 static int
-c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc, int groups) {
+c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc, size_t groups) {
   cudnnDataType_t dt;
   cudnnStatus_t err;
 
