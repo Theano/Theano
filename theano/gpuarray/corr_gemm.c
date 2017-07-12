@@ -556,10 +556,10 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
               for (size_t reg = 0; reg < N_; ++reg){
                 err = rgemm(cb_fortran, cb_no_trans, cb_no_trans,
                                     1, M_, K_, 1,
-                                    col->ga.data, reg, N_,
-                                    weight->ga.data, reg * K_, K_ * N_,
+                                    &col->ga, reg, N_,
+                                    &weight->ga, reg * K_, K_ * N_,
                                     0,
-                                    top->ga.data, n * top_stride + reg, N_);
+                                    &top->ga, n * top_stride + reg, N_);
                 if (err != GA_NO_ERROR) {
                     PyErr_Format(PyExc_RuntimeError, "GpuCorrMM forward encountered an error running gemm: %d", err);
                     Py_DECREF(col);
@@ -661,10 +661,10 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
               for (size_t reg = 0; reg < N_; ++reg) {
                 err = rgemm(cb_fortran, cb_no_trans, cb_trans,
                             1, K_, M_, 1,
-                            top->ga.data, n * top_stride + reg, N_,
-                            weight->ga.data, reg * K_, K_ * N_,
+                            &top->ga, n * top_stride + reg, N_,
+                            &weight->ga, reg * K_, K_ * N_,
                             0,
-                            col->ga.data, reg, N_);
+                            &col->ga, reg, N_);
                 if (err != GA_NO_ERROR) {
                     PyErr_Format(PyExc_RuntimeError, "GpuCorrMM grad inputs encountered an error running gemm: %d", err);
                     Py_DECREF(col);
