@@ -2901,24 +2901,25 @@ class GpuDnnTransformer(DnnBase):
         DnnBase.__init__(self, ["c_code/dnn_sptf.c"], "dnn_sptf")
         self.dtype = dtype
 
-    def make_node(self, img, theta, grid_dims, desc, alpha=None, beta=None):
+    def make_node(self, img, theta, output, grid_dims, desc, alpha=None, beta=None):
         assert theta.dtype in ('float16', 'float32', 'float64')
 
         context_name = infer_context_name(img)
 
-        theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
+        theta = as_gpuarray_variable(theta, context_name)
         img = as_gpuarray_variable(img, context_name)
         grid_dims = as_tensor_variable(grid_dims)
+        output = as_gpuarray_variable(output, context_name)
 
-        output = GpuArrayType(dtype=self.dtype,
-                              broadcastable=img.type.ndim * (False,),
-                              context_name=context_name)()
         grid = GpuArrayType(dtype=self.dtype,
                             broadcastable=img.type.ndim * (False,),
                             context_name=context_name)()
 
         if img.type.ndim != 4:
             raise TypeError('img must be a 4D tensor')
+
+        if output.type.ndim != 4:
+            raise TypeError('output must be a 4D tensor')
 
         if (not isinstance(desc.type, CDataType) or
                 desc.type.ctype != 'cudnnSpatialTransformerDescriptor_t'):
@@ -2928,7 +2929,7 @@ class GpuDnnTransformer(DnnBase):
         beta = ensure_dt(beta, _zero, 'beta', img.dtype)
 
         inputs = [img, theta, grid_dims, desc, alpha, beta]
-        outputs = [output, grid]
+        outputs = [output.type(), grid]
         return Apply(self, inputs, outputs)
 
     def L_op(self, inputs, outputs, grads):
@@ -2943,9 +2944,13 @@ class GpuDnnTransformer(DnnBase):
 
         return [dimg, dtheta,
                 theano.gradient.grad_undefined(self, 2, grid_dims),
-                theano.gradient.grad_undefined(self, 3, desc),
+                DisconnectedType()(),
                 theano.gradient.grad_undefined(self, 4, alpha),
                 theano.gradient.grad_undefined(self, 5, beta)]
+
+    def connection_pattern(self, node):
+        # not connected to desc
+        return [[1, 1], [1, 1], [1, 1], [0, 0], [1, 1], [1, 1]]
 
 
 class GpuDnnTransformerGradI(DnnBase):
@@ -2987,6 +2992,10 @@ class GpuDnnTransformerGradI(DnnBase):
 
         return Apply(self, inputs, outputs)
 
+    def connection_pattern(self, node):
+        # not connected to desc
+        return [[1], [1], [1], [1], [1], [0], [1], [1]]
+
 
 class GpuDnnTransformerGradT(DnnBase):
     """
@@ -3010,6 +3019,10 @@ class GpuDnnTransformerGradT(DnnBase):
         outputs = [dtheta]
 
         return Apply(self, inputs, outputs)
+
+    def connection_pattern(self, node):
+        # not connected to desc
+        return [[1], [0]]
 
 
 def dnn_spatialtf(inp, theta, scale_width=1, scale_height=1, alpha=None, beta=None,
@@ -3053,20 +3066,22 @@ def dnn_spatialtf(inp, theta, scale_width=1, scale_height=1, alpha=None, beta=No
     # Theta is an array of transformation matrices and must have shape: (num_images, 2, 3)
     assert theta.ndim == 3
 
-    grid_dims = (as_scalar(inp.shape[0]).astype('int32'),
-                 as_scalar(inp.shape[1]).astype('int32'),
-                 as_scalar(inp.shape[2] * scale_height).astype('int32'),
-                 as_scalar(inp.shape[3] * scale_width).astype('int32'))
+    grid_dims = (inp.shape[0], inp.shape[1],
+                 inp.shape[2] * scale_height,
+                 inp.shape[3] * scale_width)
+    grid_dims = tuple(map(lambda v: as_scalar(v).astype('int32'), list(grid_dims)))
 
     inp = gpu_contiguous(inp)
     theta = gpu_contiguous(theta)
+
+    output = GpuAllocEmpty(inp.dtype, infer_context_name(inp))(*grid_dims)
 
     # Create spatial transformer descriptor
     desc = GpuDnnTransformerDescriptor(dtype)(grid_dims)
     # Create grid dimensions variable
     grid_dims_var = as_tensor_variable(grid_dims)
     # Setup spatial transformer
-    transformer = GpuDnnTransformer(dtype)(inp, theta, grid_dims_var, desc, alpha, beta)
+    transformer = GpuDnnTransformer(dtype)(inp, theta, output, grid_dims_var, desc, alpha, beta)
     return transformer
 
 

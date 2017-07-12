@@ -2457,9 +2457,12 @@ def test_dnn_spatialtf():
 
     st_dnn = dnn.dnn_spatialtf(t_img, t_theta, scale_height=scale_height,
                                scale_width=scale_width)
-    st_dnn_func = theano.function([t_img, t_theta], [st_dnn])
+    st_dnn_func = theano.function([t_img, t_theta], st_dnn)
+    # Check if function graph contains the spatial transformer Op
+    topo = st_dnn_func.maker.fgraph.toposort()
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnTransformer)]) == 1
 
-    img_out_gpu, = st_dnn_func(img, transform)
+    img_out_gpu = st_dnn_func(img, transform)
     img_out = np.asarray(img_out_gpu)
 
     t_dy = T.tensor4('dy')
@@ -2467,17 +2470,10 @@ def test_dnn_spatialtf():
 
     grad_fn = theano.function([t_img, t_theta, t_dy], img_grad)
 
-    # dy contains the gradients of the subsequent layer in a neural net,
-    # which receives the transformed inputs, so dy must have the same shape
-    # as the transformed inputs.
     dy_shp = (img.shape[0], img.shape[1], int(img.shape[2] * scale_height),
               int(img.shape[3] * scale_width))
     dy = -1 + 2 * np.random.randn(*dy_shp).astype(theano.config.floatX)
     grad_fn(img, transform, dy)
-
-    # Check if function graph contains the spatial transformer Ops
-    topo = st_dnn_func.maker.fgraph.toposort()
-    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnTransformer)]) == 1
 
     # Setup CPU Op
     st_cpu = spatialtf_cpu(t_theta, t_img, scale_height, scale_width, 'nearest')
