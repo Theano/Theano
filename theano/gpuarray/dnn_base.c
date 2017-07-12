@@ -1,7 +1,7 @@
 #section support_code
 
 static int
-c_set_tensor_for_conv(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc, int groups) {
+c_set_tensor_for_conv(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc, size_t groups) {
   cudnnDataType_t dt;
   size_t ds;
   switch (var->ga.typecode) {
