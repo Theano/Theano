@@ -15,7 +15,3 @@
 [submodule "third_party/Lasagne"]
 	path = third_party/Lasagne
 	url = https://github.com/lasagne/Lasagne.git
-[submodule "third_party/platoon"]
-	path = third_party/platoon
-	url = https://github.com/olimastro/platoon
-
