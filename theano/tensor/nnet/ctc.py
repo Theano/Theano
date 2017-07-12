@@ -108,14 +108,14 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
     func_file = "./ctc_wrapper.c"
     func_name = "APPLY_SPECIFIC(ctc_cost_cpu)"
 
-    def __init__(self, compute_grad=True):
+    def __init__(self, compute_grad=True, openmp=None):
         if not ctc_available():
             raise RuntimeError('Baidu CTC is not available and '
                                'ConnectionistTemporalClassification Op '
                                'can not be constructed.')
 
         gof.COp.__init__(self, self.func_file, self.func_name)
-        gof.OpenMPOp.__init__(self)
+        gof.OpenMPOp.__init__(self, openmp=openmp)
 
         self.compute_grad = compute_grad
         # Return only the cost. Gradient will be returned by grad()
