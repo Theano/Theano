@@ -146,6 +146,8 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 - Softmax:
     - You can manually use the op :class:`GpuDnnSoftmax
       <theano.gpuarray.dnn.GpuDnnSoftmax>` to use its extra feature.
+- Spatial Transformer:
+    - :func:`theano.gpuarray.dnn.dnn_spatialtf`.
 
 List of Implemented Operations
 ==============================
