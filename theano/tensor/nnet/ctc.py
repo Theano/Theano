@@ -22,8 +22,8 @@ def _ctc_find_lib():
         if os.path.isdir(lib_path) and os.path.exists(lib_path):
             lib_found = os.path.exists(os.path.join(lib_path, "libwarpctc.so"))
             if lib_found:
-                return True, lib_path
-    return False, None
+                return lib_path
+    return None
 
 
 def _ctc_check_compile(ctc_lib_path):
@@ -41,7 +41,8 @@ options.num_threads = 1;
 
     params = ["-I%s" % (os.path.join(config.ctc.root, "include"))]
     params.extend(['-I%s' % (os.path.dirname(__file__))])
-    params.extend(["-L%s" % (ctc_lib_path)])
+    if ctc_lib_path is not None:
+        params.extend(["-L%s" % (ctc_lib_path)])
     params.extend(["-l", "warpctc"])
     compiler_res = GCC_compiler.try_flags(
         params, preambule=preambule, body=body,
@@ -57,13 +58,9 @@ options.num_threads = 1;
 def ctc_present():
     if ctc_present.avail is not None:
         return ctc_present.avail
-    ctc_present.avail, ctc_lib_path = _ctc_find_lib()
-    if ctc_lib_path is None:
-        ctc_present.msg = 'libwarpctc.so could not be found. ',
-        'Please check your config.ctc.root variable.'
-    else:
-        ctc_present.path = ctc_lib_path
-        ctc_present.avail, ctc_present.msg = _ctc_check_compile(ctc_present.path)
+    ctc_lib_path = _ctc_find_lib()
+    ctc_present.path = ctc_lib_path
+    ctc_present.avail, ctc_present.msg = _ctc_check_compile(ctc_present.path)
     return ctc_present.avail
 
 
