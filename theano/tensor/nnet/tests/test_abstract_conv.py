@@ -1722,7 +1722,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
         self.filter_dilation = (1, 1)
         self.ref_mode = 'FAST_RUN'
         if theano.config.cxx == "":
-            raise SkipTest("CorrMM needs cxx and blas")
+            raise SkipTest("CorrMM needs cxx")
 
     def test_fwd(self):
         img_sym = theano.tensor.tensor4('img')
