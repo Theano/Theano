@@ -2898,7 +2898,7 @@ class GpuDnnTransformer(DnnBase):
     default_output = 0
 
     def __init__(self, dtype):
-        DnnBase.__init__(self, ["c_code/dnn_sptf.c"], "dnn_sptf")
+        DnnBase.__init__(self, ["c_code/dnn_sptf.c"], "APPLY_SPECIFIC(dnn_sptf)")
         self.dtype = dtype
 
     def make_node(self, img, theta, output, grid_dims, desc, alpha=None, beta=None):
