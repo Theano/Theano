@@ -2457,21 +2457,11 @@ def test_dnn_spatialtf():
                                scale_width=scale_width)
     st_dnn_func = theano.function([t_img, t_theta], st_dnn)
     # Check if function graph contains the spatial transformer Op
-    topo = st_dnn_func.maker.fgraph.toposort()
-    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnTransformer)]) == 1
+    assert any([isinstance(node.op, dnn.GpuDnnTransformer)
+                for node in st_dnn_func.maker.fgraph.toposort()])
 
     img_out_gpu = st_dnn_func(img, transform)
     img_out = np.asarray(img_out_gpu)
-
-    t_dy = T.tensor4('dy')
-    img_grad = T.grad(None, wrt=[t_img, t_theta], known_grads={st_dnn: t_dy})
-
-    grad_fn = theano.function([t_img, t_theta, t_dy], img_grad)
-
-    dy_shp = (img.shape[0], img.shape[1], int(img.shape[2] * scale_height),
-              int(img.shape[3] * scale_width))
-    dy = -1 + 2 * np.random.randn(*dy_shp).astype(theano.config.floatX)
-    grad_fn(img, transform, dy)
 
     # Setup CPU Op
     st_cpu = spatialtf_cpu(t_theta, t_img, scale_height, scale_width, 'nearest')
@@ -2479,3 +2469,44 @@ def test_dnn_spatialtf():
     res, = st_cpu_func(transform, img)
 
     utt.assert_allclose(img_out, res, rtol=1e-2, atol=1e-2)
+
+
+def test_dnn_spatialtf_grad():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    utt.seed_rng()
+
+    # Generate random set of RGB images with 256x256 resolution (pixel values in [0, 255])
+    img_dims = (10, 256, 256, 3)  # images are usually NHWC
+    img = np.random.randint(low=0, high=256, size=img_dims)
+    # Convert from NHWC to NCHW
+    img = np.transpose(img, axes=(0, 3, 1, 2)).astype(theano.config.floatX)
+    scale_height = 0.25
+    scale_width = 0.75
+
+    # Transformation matrix
+    transform = [[-1, 0, 0],
+                 [0, -1, 0]]
+
+    theta = np.asarray(img_dims[0] * [transform], dtype=theano.config.floatX)
+
+    out_shp = (img.shape[0], img.shape[1], int(img.shape[2] * 0.25),
+               int(img.shape[3] * 0.75))
+    dy = -1 + 2 * np.random.randn(*out_shp).astype(theano.config.floatX)
+
+    t_img = T.tensor4('img')
+    t_theta = T.tensor3('theta')
+    t_dy = T.tensor4('dy')
+
+    op = dnn.dnn_spatialtf(t_img, t_theta, scale_height=0.25, scale_width=0.75)
+
+    grad = T.grad(None, wrt=[t_img, t_theta], known_grads={op: t_dy})
+    grad_fn = theano.function([t_img, t_theta, t_dy], grad)
+    dimg, dtheta = grad_fn(img, theta, dy)
+
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerGradI)
+                for node in grad_fn.maker.fgraph.toposort()])
+
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
+                for node in grad_fn.maker.fgraph.toposort()])
