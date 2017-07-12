@@ -50,15 +50,18 @@ class GpuConnectionistTemporalClassification(gof.COp):
         gof.COp.__init__(self, self.func_file, self.func_name)
 
     def c_lib_dirs(self):
-        assert ctc_available.path is not None
-        return [ctc_available.path]
+        lib_dirs = []
+        if ctc_available.path is not None:
+            lib_dirs += [ctc_available.path]
+        return lib_dirs
 
     def c_libraries(self):
         return ["warpctc", "gpuarray"]
 
     def c_header_dirs(self):
         dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        dirs.append(os.path.join(config.ctc.root, "include"))
+        if config.ctc.root != '':
+            dirs.append(os.path.join(config.ctc.root, "include"))
         return dirs
 
     def c_headers(self):
