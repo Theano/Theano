@@ -1,6 +1,6 @@
 FROM nvdl.githost.io:4678/dgx/cuda:9.0-cudnn7-devel-ubuntu16.04--17.08
 
-ENV THEANO_VERSION 0.9.0+
+ENV THEANO_VERSION 0.10.0dev1
 LABEL com.nvidia.theano.version="${THEANO_VERSION}"
 ENV NVIDIA_THEANO_VERSION 17.08
 
