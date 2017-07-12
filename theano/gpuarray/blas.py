@@ -1058,8 +1058,12 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
             assert shape[0].ndim == 0
             assert shape[1].ndim == 0
 
-        broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
-                         False, False]
+        if self.unshared:
+            broadcastable = [topgrad.type.broadcastable[0], False, False,
+                             img.type.broadcastable[1], False, False]
+        else:
+            broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
+                             False, False]
         return Apply(self, [img, topgrad] + height_width, [GpuArrayType(dtype=img.dtype,
                                                                         context_name=ctx_name,
                                                                         broadcastable=broadcastable)()])
