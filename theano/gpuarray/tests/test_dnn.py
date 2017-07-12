@@ -2440,8 +2440,6 @@ def test_dnn_spatialtf():
     img = np.random.randint(low=0, high=256, size=img_dims)
     # Convert from NHWC to NCHW
     img = np.transpose(img, axes=(0, 3, 1, 2)).astype(theano.config.floatX)
-    # Downsample image dimensions by a factor of 2, i.e. our output tensor will
-    # have shape (n, c, h / 2, w / 2)
     scale_height = 0.25
     scale_width = 0.75
 
