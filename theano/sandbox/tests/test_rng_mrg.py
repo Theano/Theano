@@ -751,6 +751,16 @@ def test_undefined_grad():
                   (avg, std))
 
 
+def test_f16_nonzero(mode=None, op_to_check=rng_mrg.mrg_uniform):
+    srng = MRG_RandomStreams(seed=utt.fetch_seed())
+    m = srng.uniform(size=(1000, 1000), dtype='float16')
+    assert m.dtype == 'float16', m.type
+    f = theano.function([], m, mode=mode)
+    assert any(isinstance(n.op, op_to_check) for n in f.maker.fgraph.apply_nodes)
+    m_val = f()
+    assert np.all((0 < m_val) & (m_val < 1))
+
+
 if __name__ == "__main__":
     rng = MRG_RandomStreams(np.random.randint(2147462579))
     print(theano.__file__)
