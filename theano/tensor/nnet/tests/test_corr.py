@@ -422,12 +422,12 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
         mode = theano.compile.get_mode("FAST_RUN")
     else:
         mode = None
-    conv2d = staticmethod(corr.CorrMM)
-    conv2d_gradw = staticmethod(corr.CorrMM_gradWeights)
-    conv2d_gradi = staticmethod(corr.CorrMM_gradInputs)
-    conv2d_op = staticmethod(corr.CorrMM)
-    conv2d_gradw_op = staticmethod(corr.CorrMM_gradWeights)
-    conv2d_gradi_op = staticmethod(corr.CorrMM_gradInputs)
+    conv2d = corr.CorrMM
+    conv2d_gradw = corr.CorrMM_gradWeights
+    conv2d_gradi = corr.CorrMM_gradInputs
+    conv2d_op = corr.CorrMM
+    conv2d_gradw_op = corr.CorrMM_gradWeights
+    conv2d_gradi_op = corr.CorrMM_gradInputs
     flip_filter = True
     is_dnn = False
 

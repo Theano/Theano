@@ -1702,12 +1702,12 @@ class TestConv2dGrads(unittest.TestCase):
 
 
 class Grouped_conv_noOptim(unittest.TestCase):
-    conv2d = staticmethod(theano.tensor.nnet.abstract_conv.AbstractConv2d)
-    conv2d_gradw = staticmethod(theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights)
-    conv2d_gradi = staticmethod(theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs)
-    conv2d_op = staticmethod(theano.tensor.nnet.abstract_conv.AbstractConv2d)
-    conv2d_gradw_op = staticmethod(theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights)
-    conv2d_gradi_op = staticmethod(theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs)
+    conv2d = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+    conv2d_op = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
     mode = theano.Mode(optimizer=None)
     flip_filter = False
     is_dnn = False
