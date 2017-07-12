@@ -117,7 +117,7 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc, size_t groups)
   /* Filters can't be less than 3d so we pad */
   for (unsigned int i = nd; i < 3; i++)
     dims[i] = 1;
-  dims[0]/=groups;
+  dims[0] = dims[0] / groups;
 
   if (nd < 3)
     nd = 3;
