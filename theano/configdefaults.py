@@ -1505,6 +1505,15 @@ AddConfigVar('cycle_detection',
              EnumStr('regular', 'fast'),
              in_c_key=False)
 
+AddConfigVar('check_stack_trace',
+             "A flag for checking the stack trace during the optimization"
+             " process. The default is not checking the stack trace of any"
+             " optimization. check_all checks if the stack trace is added"
+             " and check_and_skip checks all the stack trace of optimizations"
+             " but skips the ones that have a dummy value ",
+             EnumStr('not_checking', 'check_all', 'check_and_skip'),
+             in_c_key=False)
+
 
 def _timeout_default():
     return theano.config.compile.wait * 24
