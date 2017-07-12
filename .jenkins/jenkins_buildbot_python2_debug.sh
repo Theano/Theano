@@ -46,6 +46,7 @@ python -c 'import pygpu; print(pygpu.__file__)'
 
 # nosetests xunit for test profiling
 XUNIT="--with-xunit --xunit-file="
+SUITE="--xunit-testsuite-name="
 
 mkdir -p ${BUILDBOT_DIR}
 ls -l ${BUILDBOT_DIR}
@@ -89,7 +90,8 @@ echo "Executing tests with mode=DEBUG_MODE with seed of the day $seed"
 FILE=${ROOT_CWD}/theano_debug_tests.xml
 echo "THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE}"
 date
-THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE}
+NAME=python2_debug
+THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
 
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l

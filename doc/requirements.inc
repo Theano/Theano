@@ -14,10 +14,10 @@ Requirements
 .. _pycuda: https://mathema.tician.de/software/pycuda/
 .. _skcuda: http://scikit-cuda.readthedocs.io/en/latest/
 
-    Python_ == 2.7* or ( >= 3.3 and < 3.6 )
+    Python_ == 2.7* or ( >= 3.4 and < 3.6 )
         |PythonDistRecommended|. Python 2.4 was supported up to and including the
         release 0.6. Python 2.6 was supported up to and including the
-        release 0.8.2. Python 3 is supported past the 3.3 release.
+        release 0.8.2. Python 3.3 was supported up to and including release 0.9.
 
     `NumPy <http://numpy.scipy.org/>`_ >= 1.9.1 <= 1.12
         Earlier versions could work, but we don’t test it.

@@ -447,6 +447,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 max_recur > 0):
             max_recur -= 1
             if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
+                                       # outputguard is only used in debugmode but we
+                                       # keep it here to avoid problems with old pickels.
                                        compile.ops.OutputGuard,
                                        compile.DeepCopyOp)):
                 v = v.owner.inputs[0]
@@ -1219,6 +1221,7 @@ class MaxAndArgmax(Op):
     E_axis = 'invalid axis'
     params_type = Generic()
     __props__ = ('axis',)
+    _f16_ok = True
 
     def __init__(self, axis):
         assert isinstance(axis, list)
@@ -1427,6 +1430,7 @@ class Argmax(Op):
     nout = 1
     E_axis = 'invalid axis'
     __props__ = ()
+    _f16_ok = True
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
@@ -2251,6 +2255,11 @@ def gammaln(a):
 @_scal_elemwise
 def psi(a):
     """derivative of log gamma function"""
+
+
+@_scal_elemwise
+def tri_gamma(a):
+    """second derivative of the log gamma function"""
 
 
 @_scal_elemwise

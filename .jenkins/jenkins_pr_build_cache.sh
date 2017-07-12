@@ -1,9 +1,8 @@
 #!/bin/bash
 
-# Script for Jenkins continuous integration testing of gpu backends
+# Builds Theano master cache for Jenkins PR testing
 
-# Print commands as they are executed
-set -x
+BASECOMPILEDIR=$HOME/cache
 
 # CUDA
 export PATH=/usr/local/cuda/bin:$PATH
@@ -11,10 +10,8 @@ export CPATH=/usr/local/cuda/include/:$CPATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
 
-echo "===== Testing gpuarray backend"
-
 GPUARRAY_CONFIG="Release"
-DEVICE=cuda0
+DEVICE=cuda
 LIBDIR=${WORKSPACE}/local
 
 # Make fresh clones of libgpuarray (with no history since we don't need it)
@@ -45,12 +42,7 @@ export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
 # Then install
 (cd libgpuarray && python setup.py install --home=$LIBDIR)
 
-python -c 'import pygpu; print(pygpu.__file__)'
-
-# Testing theano (the gpuarray parts)
-THEANO_GPUARRAY_TESTS="theano/gpuarray/tests \
-                       theano/scan_module/tests/test_scan.py:T_Scan_Gpuarray \
-                       theano/scan_module/tests/test_scan_checkpoints.py:TestScanCheckpoint.test_memory"
-FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800"
+# Testing theano to build cache
+FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,base_compiledir=$BASECOMPILEDIR"
 FLAGS=${FLAGS},magma.enabled=true # Enable magma GPU library
-THEANO_FLAGS=${FLAGS} time nosetests --with-xunit --xunit-file=theanogpuarray_tests.xml ${THEANO_GPUARRAY_TESTS}
+THEANO_FLAGS=${FLAGS} bin/theano-nose theano

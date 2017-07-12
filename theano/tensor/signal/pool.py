@@ -14,7 +14,9 @@ from six.moves import xrange
 import six.moves.builtins as builtins
 import theano
 from theano import gof, OpenMPOp, tensor, Variable, Apply
+from theano.gof import ParamsType, EnumList
 from theano.gradient import DisconnectedType
+from theano.scalar import bool as bool_t
 
 
 def max_pool_2d_same_size(input, patch_size):
@@ -256,6 +258,16 @@ def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
     return output
 
 
+# NB: This enum type is currently used in gpuarray/pool.py.
+# It may be used later as op param in this current file.
+# Enum name and constants names are inspired from cuDNN type `cudnnPoolingMode_t`
+# (cf. `theano/gpuarray/cudnn_defs.py`).
+PoolingMode_t = EnumList(('POOLING_MAX', 'max'),
+                         ('POOLING_SUM', 'sum'),
+                         ('POOLING_AVERAGE_COUNT_INCLUDE_PADDING', 'average_inc_pad'),
+                         ('POOLING_AVERAGE_COUNT_EXCLUDE_PADDING', 'average_exc_pad'))
+
+
 class Pool(OpenMPOp):
     """
     sum or average over different patches.
@@ -294,6 +306,7 @@ class Pool(OpenMPOp):
     """
 
     __props__ = ('ignore_border', 'mode', 'ndim')
+    params_type = ParamsType(ignore_border=bool_t,)
 
     @staticmethod
     def out_shape(imgshape, ws=None, ignore_border=False, stride=None, pad=None,
@@ -508,7 +521,7 @@ class Pool(OpenMPOp):
         out = tensor.TensorType(x.dtype, broad)
         return gof.Apply(self, [x, ws, stride, pad], [out()])
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, params):
         x, ws, stride, pad = inp
         z, = out
         nd = self.ndim
@@ -516,8 +529,8 @@ class Pool(OpenMPOp):
         if len(x.shape) < nd:
             raise NotImplementedError(
                 'Pool requires input with {} or more dimensions'.format(nd))
-        z_shape = self.out_shape(x.shape, ws, self.ignore_border, stride, pad, nd)
-        if not self.ignore_border:
+        z_shape = self.out_shape(x.shape, ws, params.ignore_border, stride, pad, nd)
+        if not params.ignore_border:
             assert all(z > 0 for z in z_shape[-nd:])
         if (z[0] is None) or (z[0].shape != z_shape):
             z[0] = np.empty(z_shape, dtype=x.dtype)
@@ -617,7 +630,7 @@ class Pool(OpenMPOp):
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']
-        ignore_border = int(self.ignore_border)
+        params = sub['params']
         if self.openmp:
             # run in parallel over each pooling block
             omp_parallel = '#pragma omp parallel for private(r_st, r_end, r_idx, i_idx, o_idx, collector) schedule(static)'
@@ -661,13 +674,13 @@ class Pool(OpenMPOp):
             if (pd[i]>0)
                 nonzero_padding = 1;
         }
-        if (!%(ignore_border)s && nonzero_padding)
+        if (!%(params)s->ignore_border && nonzero_padding)
         {
             PyErr_SetString(PyExc_ValueError,
               "padding must be zero when ignore border is False");
             %(fail)s;
         }
-        if (%(ignore_border)s)
+        if (%(params)s->ignore_border)
         {
             for (int i=0; i<%(nd)s; i++)
             {
@@ -801,13 +814,13 @@ class Pool(OpenMPOp):
                   r_st[%(i)s] -= pd[%(i)s];
                   r_end[%(i)s] -= pd[%(i)s];
                   // handle the case where no padding, ignore border is True
-                  if (%(ignore_border)s)
+                  if (%(params)s->ignore_border)
                   {
                     r_end[%(i)s] = r_end[%(i)s] > r[%(i)s] ? r[%(i)s] : r_end[%(i)s];
                   }
                   // use the index to find the correct position in the output
                   o_idx[%(non_pool_ndim)s + %(i)s] = r_idx[%(i)s];
-            """ % dict(i=i, ignore_border=ignore_border, non_pool_ndim=non_pool_ndim)
+            """ % dict(i=i, non_pool_ndim=non_pool_ndim, params=sub['params'])
 
         ccode += """
                   // get a pointer to the correct position in the output
@@ -907,7 +920,7 @@ class Pool(OpenMPOp):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 6, 8, 7, self.openmp)
+        return (9, self.openmp)
 
 
 class PoolGrad(OpenMPOp):
@@ -1089,6 +1102,8 @@ class PoolGrad(OpenMPOp):
 
 
 class MaxPoolGrad(PoolGrad):
+    # params_type ignore_border don't change c code
+
     def __init__(self, ignore_border, ndim=2, openmp=None):
         PoolGrad.__init__(self, ignore_border, mode='max', ndim=ndim, openmp=openmp)
 
@@ -1191,7 +1206,7 @@ class MaxPoolGrad(PoolGrad):
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']
-        ignore_border = int(self.ignore_border)
+
         if self.openmp:
             # run in parallel over each pooling block
             omp_parallel = '#pragma omp parallel for private(r_st, r_end, r_idx, i_idx, o_idx, maximum) schedule(static)'
@@ -1404,6 +1419,8 @@ class MaxPoolGrad(PoolGrad):
 
 
 class AveragePoolGrad(PoolGrad):
+    # ignore_border is used for perform, but not c code. No need in params_type
+
     def __init__(self, ignore_border, mode='average_inc_pad', ndim=2):
         assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
         PoolGrad.__init__(self, ignore_border, mode, ndim)
@@ -1859,7 +1876,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']
-        ignore_border = int(self.ignore_border)
+
         if self.openmp:
             # run in parallel over each pooling block
             omp_parallel = '#pragma omp parallel for private(r_st, r_end, r_idx, i_idx, o_idx, maximum) schedule(static)'
@@ -2064,6 +2081,7 @@ class MaxPoolRop(OpenMPOp):
     """
 
     __props__ = ('ignore_border', 'mode', 'ndim')
+    params_type = ParamsType(ignore_border=bool_t,)
 
     def __init__(self, ignore_border=False, mode='max', ndim=2, openmp=None):
         super(MaxPoolRop, self).__init__(openmp=openmp)
@@ -2108,7 +2126,7 @@ class MaxPoolRop(OpenMPOp):
         out = tensor.TensorType(eval_point.dtype, broad)
         return gof.Apply(self, [x, eval_point, ws, stride, pad], [out()])
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, params):
         x, ex, ws, stride, pad = inp
         z, = out
         nd = self.ndim
@@ -2116,7 +2134,7 @@ class MaxPoolRop(OpenMPOp):
         if len(x.shape) < nd:
             raise NotImplementedError(
                 'Pool requires input with {} or more dimensions'.format(nd))
-        z_shape = Pool.out_shape(x.shape, ws, self.ignore_border, stride, pad, nd)
+        z_shape = Pool.out_shape(x.shape, ws, params.ignore_border, stride, pad, nd)
         if not self.ignore_border:
             assert all(z > 0 for z in z_shape[-nd:])
         if (z[0] is None) or (z[0].shape != z_shape):
@@ -2179,7 +2197,8 @@ class MaxPoolRop(OpenMPOp):
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']
-        ignore_border = int(self.ignore_border)
+        params = sub['params']
+
         if self.openmp:
             # run in parallel over each pooling block
             omp_parallel = '#pragma omp parallel for private(r_st, r_end, r_idx, i_idx, o_idx, collector, eval_collector) schedule(static)'
@@ -2228,13 +2247,13 @@ class MaxPoolRop(OpenMPOp):
             if (pd[i]>0)
                 nonzero_padding = 1;
         }
-        if (!%(ignore_border)s && nonzero_padding)
+        if (!%(params)s->ignore_border && nonzero_padding)
         {
             PyErr_SetString(PyExc_ValueError,
               "padding must be zero when ignore border is False");
             %(fail)s;
         }
-        if (%(ignore_border)s)
+        if (%(params)s->ignore_border)
         {
             for (int i=0; i<%(nd)s; i++)
             {
@@ -2369,13 +2388,13 @@ class MaxPoolRop(OpenMPOp):
                   r_st[%(i)s] -= pd[%(i)s];
                   r_end[%(i)s] -= pd[%(i)s];
                   // handle the case where no padding, ignore border is True
-                  if (%(ignore_border)s)
+                  if (%(params)s->ignore_border)
                   {
                     r_end[%(i)s] = r_end[%(i)s] > r[%(i)s] ? r[%(i)s] : r_end[%(i)s];
                   }
                   // use the index to find the correct position in the output
                   o_idx[%(non_pool_ndim)s + %(i)s] = r_idx[%(i)s];
-            """ % dict(i=i, ignore_border=ignore_border, non_pool_ndim=non_pool_ndim)
+            """ % dict(i=i, params=sub['params'], non_pool_ndim=non_pool_ndim)
 
         ccode += """
                   // get a pointer to the correct position in the output
@@ -2444,4 +2463,4 @@ class MaxPoolRop(OpenMPOp):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, self.openmp)
+        return (1, self.openmp)

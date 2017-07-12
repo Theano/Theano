@@ -421,7 +421,7 @@ def get_c_extract_out(r, name, sub):
     # `c_extract_out` is used to extract an output variable from
     # the compute map, to be used as pre-allocated memory for `r`
     # before its value gets computed.
-    # If the node producing `r` has `check_inputs=True`, it may
+    # If the node producing `r` has `check_input=True`, it may
     # also perform type checks on the initial value of the output,
     # so we need to pass `check_input=True` to `c_extract_out`.
     # However, that code is not used by potential clients of `r`,
@@ -910,6 +910,12 @@ class CLinker(link.Linker):
         The support code from Variables is added before the support code from Ops.This might contain duplicates.
         """
         ret = []
+        if config.cmodule.debug:
+            ret.append("""
+            #ifndef DEBUG
+            #define DEBUG
+            #endif
+            """)
         # generic support code
         for x in [y.type for y in self.variables] + [
                 y.op for y in self.node_order]:
@@ -1140,12 +1146,13 @@ class CLinker(link.Linker):
                 output_storage.append(map[variable])
         input_storage = tuple(input_storage)
         output_storage = tuple(output_storage)
-        thunk = self.cthunk_factory(error_storage,
-                                    input_storage,
-                                    output_storage,
-                                    storage_map,
-                                    keep_lock=keep_lock)
+        thunk, module = self.cthunk_factory(error_storage,
+                                            input_storage,
+                                            output_storage,
+                                            storage_map,
+                                            keep_lock=keep_lock)
         return (thunk,
+                module,
                 [link.Container(input, storage) for input, storage in
                  izip(self.fgraph.inputs, input_storage)],
                 [link.Container(output, storage, True) for output, storage in
@@ -1201,11 +1208,11 @@ class CLinker(link.Linker):
           first_output = ostor[0].data
         """
         init_tasks, tasks = self.get_init_tasks()
-        cthunk, in_storage, out_storage, error_storage = self.__compile__(
+        cthunk, module, in_storage, out_storage, error_storage = self.__compile__(
             input_storage, output_storage, storage_map,
             keep_lock=keep_lock)
 
-        res = _CThunk(cthunk, init_tasks, tasks, error_storage)
+        res = _CThunk(cthunk, init_tasks, tasks, error_storage, module)
         res.nodes = self.node_order
         return res, in_storage, out_storage
 
@@ -1617,8 +1624,7 @@ class CLinker(link.Linker):
 
         ret = module.instantiate(error_storage,
                                  *(in_storage + out_storage + orphd))
-
-        return ret
+        return ret, module
 
     def instantiate_code(self, n_args):
         code = StringIO()
@@ -1663,10 +1669,13 @@ class _CThunk(object):
         WRITEME
     error_storage
         WRITEME
+    module
+        The module that was used to compile this cthunk.
+        Mostly only useful for tests.
 
     """
 
-    def __init__(self, cthunk, init_tasks, tasks, error_storage):
+    def __init__(self, cthunk, init_tasks, tasks, error_storage, module):
         global run_cthunk
         if run_cthunk is None:
             # Lazy import to avoid compilation when importing theano.
@@ -1675,6 +1684,7 @@ class _CThunk(object):
         self.init_tasks = init_tasks
         self.tasks = tasks
         self.error_storage = error_storage
+        self.module = module
 
     def find_task(self, failure_code):
         """

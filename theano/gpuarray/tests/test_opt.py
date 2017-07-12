@@ -17,6 +17,7 @@ from ..basic_ops import (
 from ..blas import GpuGemm
 from ..elemwise import (
     GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise, Elemwise, max_inputs_to_GpuElemwise)
+from ..dnn import GpuDnnReduction
 from ..subtensor import GpuSubtensor
 from ..linalg import GpuCusolverSolve, cusolver_available, GpuCholesky
 
@@ -130,9 +131,13 @@ def test_reduce():
         ops = [type(node.op) for node in topo]
 
         if kind == b'opencl' and method in ["max", "min"]:
-            assert not(GpuCAReduceCuda in ops or GpuCAReduceCPY in ops)
+            assert not(GpuCAReduceCuda in ops or
+                       GpuCAReduceCPY in ops or
+                       GpuDnnReduction in ops)
         else:
-            assert GpuCAReduceCuda in ops or GpuCAReduceCPY in ops
+            assert (GpuCAReduceCuda in ops or
+                    GpuCAReduceCPY in ops or
+                    GpuDnnReduction in ops)
 
 
 def test_local_gpualloc_memset_0():

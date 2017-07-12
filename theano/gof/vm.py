@@ -413,6 +413,9 @@ class Stack(VM):
         self.node_executed_order = []
         self.node_cleared_order = []
 
+        for cont in self.pre_call_clear:
+            cont[0] = None
+
         for k in self.storage_map:
             compute_map[k][0] = (k.owner is None)
             if self.callback_input and compute_map[k][0]:
@@ -745,8 +748,7 @@ class VM_Linker(link.LocalLinker):
             self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None, profile=None):
-        """
-        Check if fgraph is the first FunctionGraph that has ever been
+        """Check if fgraph is the first FunctionGraph that has ever been
         associated to self, else, create a new VM_Linker
         associated to fgraph
 
@@ -755,8 +757,33 @@ class VM_Linker(link.LocalLinker):
         fgraph
             A PerformLinker can have accepted one FunctionGraph instance
             at a time.
+
         no_recycling
-            WRITEME
+
+            no_recycling is a list of storage (list of 1 element, the
+            value corresponding to one variable). Those variable
+            storage should not be reused after the call that created
+            them.
+
+            This happen for example for output of the graph that we
+            give to the user. We don't want to reuse those object in
+            case the user have kept it.
+
+            VM_Linker make sure this happen by setting the list
+            element to None at the start of each call.
+
+            Older Linker use not exactly the same mechanism. They will
+            also modify the c code to don't look up the value in the
+            storage. This cause duplicate c code compilation for the
+            same op if they are in the middle of the graph or in the
+            no_recycling. We don't want that, so compile all c code
+            the same (middle of the graph vs output).
+
+            TODO: change the logic to remove the reference at the end
+            of the call instead of the start. This will request all VM
+            implementation (Loop, LoopGC, Stack, CVM).__call__ to
+            return the user outputs as Function.__call__ won't be able
+            to find them anymore.
 
         Returns
         -------
@@ -1018,7 +1045,6 @@ class VM_Linker(link.LocalLinker):
                  ):
         fgraph = self.fgraph
         order = self.schedule(fgraph)
-        no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(
             fgraph, order, input_storage, output_storage, storage_map)
@@ -1048,10 +1074,13 @@ class VM_Linker(link.LocalLinker):
         for node in order:
             try:
                 thunk_start = time.time()
+                # no-recycling is done at each VM.__call__ So there is
+                # no need to cause duplicate c code by passing
+                # no_recycling here.
                 thunks.append(node.op.make_thunk(node,
                                                  storage_map,
                                                  compute_map,
-                                                 no_recycling,
+                                                 [],
                                                  impl=impl))
                 linker_make_thunk_time[node] = time.time() - thunk_start
                 if not hasattr(thunks[-1], 'lazy'):

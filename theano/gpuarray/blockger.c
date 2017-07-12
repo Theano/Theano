@@ -4,7 +4,7 @@ int APPLY_SPECIFIC(blockger)(PyGpuArrayObject *o, PyGpuArrayObject *x,
                              PyGpuArrayObject *y, PyArrayObject *xIdx,
                              PyArrayObject *yIdx, PyArrayObject *alpha,
                              PyGpuArrayObject **_out,
-                             PyGpuContextObject *ctx) {
+                             PARAMS_TYPE* params) {
   PyGpuArrayObject *out = *_out;
   gpudata **o_list = NULL;
   gpudata **x_list = NULL;
@@ -14,21 +14,21 @@ int APPLY_SPECIFIC(blockger)(PyGpuArrayObject *o, PyGpuArrayObject *x,
   size_t *offY = NULL;
   int err;
 
-  err = gpublas_setup(ctx->ctx);
+  err = gpublas_setup(params->context->ctx);
   if (err != GA_NO_ERROR) {
     PyErr_SetString(PyExc_RuntimeError, "Can't setup blas");
     return -1;
   }
 
-#ifdef INPLACE
-  Py_XDECREF(out);
-  out = o;
-  Py_INCREF(out);
-#else
-  out = theano_try_copy(out, o);
-  if (out == NULL)
-    return -1;
-#endif
+  if (params->inplace) {
+    Py_XDECREF(out);
+    out = o;
+    Py_INCREF(out);
+  } else {
+    out = theano_try_copy(out, o);
+    if (out == NULL)
+      return -1;
+  }
   size_t maxi = PyGpuArray_DIMS(x)[1];
   size_t maxj = PyGpuArray_DIMS(y)[1];
   size_t maxb = PyGpuArray_DIMS(x)[0];

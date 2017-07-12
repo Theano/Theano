@@ -34,9 +34,6 @@ class CuDNNV51(object):
     cudnnDataType_t = CEnumType(('CUDNN_DATA_FLOAT', 'float32'),
                                 ('CUDNN_DATA_DOUBLE', 'float64'),
                                 ('CUDNN_DATA_HALF', 'float16'),
-                                # CUDNN_DATA_INT8  # new in v6
-                                # CUDNN_DATA_INT32  # new in v6
-                                # CUDNN_DATA_INT8x4  # new in v6
                                 ctype='cudnnDataType_t')
 
     cudnnConvolutionFwdAlgo_t = CEnumType(('CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM', 'none'),
@@ -91,10 +88,23 @@ class CuDNNV51(object):
     cudnnBatchNormMode_t = CEnumType(('CUDNN_BATCHNORM_PER_ACTIVATION', 'per-activation'),
                                      ('CUDNN_BATCHNORM_SPATIAL', 'spatial'),
                                      ctype='cudnnBatchNormMode_t')
+    # It was introduced in cudnnv6, but we need to define it with an
+    # empty list of enum to don't crash with cudnn 5
+    cudnnReduceTensorOp_t = CEnumType()
 
 
 class CuDNNV6(CuDNNV51):
     version = 6
+
+    cudnnDataType_t = CEnumType(('CUDNN_DATA_FLOAT', 'float32'),
+                                ('CUDNN_DATA_DOUBLE', 'float64'),
+                                ('CUDNN_DATA_HALF', 'float16'),
+                                # new in v6
+                                ('CUDNN_DATA_INT8', 'int8'),
+                                ('CUDNN_DATA_INT32', 'int32'),
+                                # Also in v6, but restrictions make this fail
+                                # CUDNN_DATA_INT8x4
+                                ctype='cudnnDataType_t')
 
     cudnnPoolingMode_t = CEnumType(('CUDNN_POOLING_MAX', 'max'),
                                    ('CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING', 'average_inc_pad'),
@@ -114,6 +124,16 @@ class CuDNNV6(CuDNNV51):
                                                 # new in v6:
                                                 ('CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING', 'fft_tiling'),
                                                 ctype='cudnnConvolutionBwdFilterAlgo_t')
+
+    cudnnReduceTensorOp_t = CEnumType(('CUDNN_REDUCE_TENSOR_ADD', 'add'),
+                                      ('CUDNN_REDUCE_TENSOR_MUL', 'mul'),
+                                      ('CUDNN_REDUCE_TENSOR_MIN', 'minimum'),
+                                      ('CUDNN_REDUCE_TENSOR_MAX', 'maximum'),
+                                      ('CUDNN_REDUCE_TENSOR_AMAX', 'absmax'),
+                                      ('CUDNN_REDUCE_TENSOR_AVG', 'avg'),
+                                      ('CUDNN_REDUCE_TENSOR_NORM1', 'norm1'),
+                                      ('CUDNN_REDUCE_TENSOR_NORM2', 'norm2'),
+                                      ctype='cudnnReduceTensorOp_t')
 
 
 def get_definitions(cudnn_version=None):

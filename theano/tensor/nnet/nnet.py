@@ -65,7 +65,7 @@ class SoftmaxWithBias(gof.Op):
                 or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('x must be 2-d tensor of floats')
         if b.type.ndim != 1 \
-                or x.type.dtype not in tensor.float_dtypes:
+                or b.type.dtype not in tensor.float_dtypes:
             raise ValueError('b must be 1-d tensor of floats')
 
         sm = x.type()

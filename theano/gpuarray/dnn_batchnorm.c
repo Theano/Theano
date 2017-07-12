@@ -3,18 +3,17 @@
 int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
                      PyGpuArrayObject *bias, npy_float64 epsilon,
                      npy_float64 running_average_factor,
-#ifdef RUNNING_AVERAGES
-                     PyGpuArrayObject *in_running_mean,
-                     PyGpuArrayObject *in_running_var,
-#endif
+                     PyGpuArrayObject *in_running_mean, // may be NULL
+                     PyGpuArrayObject *in_running_var, // may be NULL
                      PyGpuArrayObject **outp,
                      PyGpuArrayObject **x_mean,
                      PyGpuArrayObject **x_invstd,
-#ifdef RUNNING_AVERAGES
-                     PyGpuArrayObject **out_running_mean,
-                     PyGpuArrayObject **out_running_var,
-#endif
-                     cudnnHandle_t _handle) {
+                     PyGpuArrayObject **out_running_mean, // may be NULL
+                     PyGpuArrayObject **out_running_var, // may be NULL
+                     PARAMS_TYPE* params) {
+  /* Note: based on Python code, in_running_mean, in_running_var, out_running_mean and out_running_var
+  are together NULL (or not NULL) at same time, so we just need to check only one of them. */
+  bool running_averages = (in_running_mean != NULL);
   PyGpuContextObject *c = inp->context;
 
   if (c_set_tensorNd(inp, bn_input) != 0)
@@ -27,14 +26,14 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
     return 1;
   }
 
-#ifdef INPLACE_OUTPUT
-  Py_XDECREF(*outp);
-  *outp = inp;
-  Py_INCREF(*outp);
-#else
-  if (theano_prep_output(outp, inp->ga.nd, inp->ga.dimensions, inp->ga.typecode, GA_C_ORDER, c) != 0)
+  if (params->inplace_output) {
+    Py_XDECREF(*outp);
+    *outp = inp;
+    Py_INCREF(*outp);
+  } else if (theano_prep_output(outp, inp->ga.nd, inp->ga.dimensions, inp->ga.typecode, GA_C_ORDER, c) != 0) {
     return 1;
-#endif
+  }
+
   if (theano_prep_output(x_mean, scale->ga.nd, scale->ga.dimensions, scale->ga.typecode, GA_C_ORDER, c) != 0)
     return 1;
   if (theano_prep_output(x_invstd, scale->ga.nd, scale->ga.dimensions, scale->ga.typecode, GA_C_ORDER, c) != 0)
@@ -43,30 +42,32 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
   if (c_set_tensorNd(*outp, bn_output) != 0)
     return 1;
 
-#ifdef RUNNING_AVERAGES
-#ifdef INPLACE_RUNNING_MEAN
-  Py_XDECREF(*out_running_mean);
-  PyGpuArrayObject *running_mean = in_running_mean;
-  Py_INCREF(running_mean);
-#else
-  PyGpuArrayObject *running_mean = *out_running_mean;
-  running_mean = theano_try_copy(running_mean, in_running_mean);
-  if (running_mean == NULL) {
-    return 1;
+  PyGpuArrayObject *running_mean = NULL;
+  PyGpuArrayObject *running_var = NULL;
+  if (running_averages) {
+    if (params->inplace_running_mean) {
+      Py_XDECREF(*out_running_mean);
+      running_mean = in_running_mean;
+      Py_INCREF(running_mean);
+    } else {
+      running_mean = *out_running_mean;
+      running_mean = theano_try_copy(running_mean, in_running_mean);
+      if (running_mean == NULL) {
+        return 1;
+      }
+    }
+    if (params->inplace_running_var) {
+      Py_XDECREF(*out_running_var);
+      running_var = in_running_var;
+      Py_INCREF(running_var);
+    } else {
+      running_var = *out_running_var;
+      running_var = theano_try_copy(running_var, in_running_var);
+      if (running_var == NULL) {
+        return 1;
+      }
+    }
   }
-#endif
-#ifdef INPLACE_RUNNING_VAR
-  Py_XDECREF(*out_running_var);
-  PyGpuArrayObject *running_var = in_running_var;
-  Py_INCREF(running_var);
-#else
-  PyGpuArrayObject *running_var = *out_running_var;
-  running_var = theano_try_copy(running_var, in_running_var);
-  if (running_var == NULL) {
-    return 1;
-  }
-#endif
-#endif
 
   {
     const float falpha = 1.;
@@ -83,8 +84,8 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
       beta = (void *)&fbeta;
     }
     cudnnStatus_t err = cudnnBatchNormalizationForwardTraining(
-      _handle,
-      MODE,
+      params->handle,
+      params->mode,
       alpha,
       beta,
       bn_input,
@@ -94,15 +95,9 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
       bn_params,
       PyGpuArray_DEV_DATA(scale),
       PyGpuArray_DEV_DATA(bias),
-#ifdef RUNNING_AVERAGES
-      running_average_factor,
-      PyGpuArray_DEV_DATA(running_mean),
-      PyGpuArray_DEV_DATA(running_var),
-#else
-      0,
-      NULL,  // running mean, deliberately unused
-      NULL,  // running var, deliberately unused
-#endif
+      running_averages ? running_average_factor : 0,
+      running_averages ? PyGpuArray_DEV_DATA(running_mean) : NULL,
+      running_averages ? PyGpuArray_DEV_DATA(running_var): NULL,
       epsilon,
       PyGpuArray_DEV_DATA(*x_mean),
       PyGpuArray_DEV_DATA(*x_invstd)
@@ -112,10 +107,10 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
                    cudnnGetErrorString(err));
       return 1;
     }
-#ifdef RUNNING_AVERAGES
-    *out_running_mean = running_mean;
-    *out_running_var = running_var;
-#endif
+    if (running_averages) {
+      *out_running_mean = running_mean;
+      *out_running_var = running_var;
+    }
   }
   return 0;
 }

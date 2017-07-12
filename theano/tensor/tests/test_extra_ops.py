@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-from functools import partial
 
 import numpy as np
 
@@ -380,7 +379,7 @@ class TestRepeatOp(utt.InferShapeTester):
             self.numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
 
     def test_repeatOp(self):
-        for ndim in range(3):
+        for ndim in [1, 3]:
             x = T.TensorType(config.floatX, [False] * ndim)()
             a = np.random.random((10, ) * ndim).astype(config.floatX)
 
@@ -438,13 +437,13 @@ class TestRepeatOp(utt.InferShapeTester):
 
     @attr('slow')
     def test_infer_shape(self):
-        for ndim in range(4):
+        for ndim in [1, 3]:
             x = T.TensorType(config.floatX, [False] * ndim)()
-            shp = (np.arange(ndim) + 1) * 5
+            shp = (np.arange(ndim) + 1) * 3
             a = np.random.random(shp).astype(config.floatX)
 
             for axis in self._possible_axis(ndim):
-                for dtype in tensor.integer_dtypes:
+                for dtype in ["int8", "uint8", "uint64"]:
                     r_var = T.scalar(dtype=dtype)
                     r = np.asarray(3, dtype=dtype)
                     if dtype in self.numpy_unsupported_dtypes:

@@ -41,7 +41,7 @@ from theano.tensor import (
     inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
     Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
     tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
-    var, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
+    var, Argmax, Join, shape, MaxAndArgmax, lscalar, zvector, exp,
     get_scalar_constant_value, ivector, reshape, scalar_from_tensor, scal,
     iscalars, arange, dscalars, fvector, imatrix, numeric_grad,
     opt, lvector, true_div, max, min, Split, roll,
@@ -106,8 +106,11 @@ def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
                     name=name)
 
 
-def eval_outputs(outputs):
-    variables = inplace_func([], outputs)()
+def eval_outputs(outputs, ops=(), mode=None):
+    f = inplace_func([], outputs, mode=mode)
+    variables = f()
+    if ops:
+        assert any(isinstance(node.op, ops) for node in f.maker.fgraph.apply_nodes)
     if isinstance(variables, (tuple, list)) and len(variables) == 1:
         return variables[0]
     return variables
@@ -1706,6 +1709,7 @@ if imported_scipy_special:
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
+    expected_tri_gamma = partial(scipy.special.polygamma, 1)
     expected_chi2sf = scipy.stats.chi2.sf
     expected_j0 = scipy.special.j0
     expected_j1 = scipy.special.j1
@@ -1870,6 +1874,23 @@ PsiInplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy)
 
+_good_broadcast_unary_tri_gamma = _good_broadcast_unary_psi
+
+TriGammaTester = makeBroadcastTester(
+    op=tensor.tri_gamma,
+    expected=expected_tri_gamma,
+    good=_good_broadcast_unary_psi,
+    eps=2e-8,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+TriGammaInplaceTester = makeBroadcastTester(
+    op=inplace.tri_gamma_inplace,
+    expected=expected_tri_gamma,
+    good=_good_broadcast_unary_tri_gamma,
+    eps=2e-8,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
 
 # chi2sf takes two inputs, a value (x) and a degrees of freedom (k).
 # not sure how to deal with that here...
@@ -2154,9 +2175,9 @@ BatchedDotTester = makeTester(
               correct7=(rand(3, 5), rand(3, 5)),
               correct8=(rand(3), rand(3)),
               correct9=(rand(3, 5, 7, 11), rand(3)),
-              correct10=(rand(3, 7, 11, 5), rand(3, 5)),
-              correct11=(rand(3, 7, 11, 5), rand(3, 5, 13)),
-              correct12=(rand(3, 7, 11, 5), rand(3, 13, 5, 17)),
+              correct10=(rand(3, 2, 6, 5), rand(3, 5)),
+              correct11=(rand(3, 2, 6, 5), rand(3, 5, 7)),
+              correct12=(rand(3, 2, 6, 5), rand(3, 7, 5, 8)),
               mixed1=(rand(3, 5).astype('float32'),
                       rand(3, 5, 7)),
               mixed2=(rand(3, 5).astype('float64'),
@@ -2461,16 +2482,12 @@ class TestAlloc(unittest.TestCase):
             grad_derp = theano.grad(derp, some_vector)
             fgrad = theano.function([some_vector], grad_derp,
                                     mode=self.mode)
-            topo_obj = fobj.maker.fgraph.toposort()
-            # <= is needed as the GPU currently don't implement
-            # AdvancedIncSubtensor. When this is the case it can be
-            # replaced with ==.
-            assert np.sum([isinstance(node.op, type(alloc_))
-                           for node in topo_obj]) <= 1
-            topo_grad = fgrad.maker.fgraph.toposort()
 
-            # print subtensor
-            # theano.printing.debugprint(fgrad)
+            topo_obj = fobj.maker.fgraph.toposort()
+            assert np.sum([isinstance(node.op, type(alloc_))
+                           for node in topo_obj]) == 0
+
+            topo_grad = fgrad.maker.fgraph.toposort()
             assert np.sum([isinstance(node.op, type(alloc_))
                            for node in topo_grad]) == n_alloc, (
                                alloc_, subtensor, n_alloc, topo_grad)
@@ -3088,6 +3105,21 @@ class T_max_and_argmax(unittest.TestCase):
             v_shape = eval_outputs(max_and_argmax(n, axis)[0].shape)
             assert tuple(v_shape) == np.max(data, np_axis).shape
 
+    def test2_float16(self):
+        # Test negative values and bigger range to make sure numpy don't do the argmax as on uint16
+        data = (rand(20, 30).astype("float16") - 0.5) * 20
+        n = shared(data)
+        for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
+                                ([0, 1], None), ([1, 0], None),
+                                (NoneConst.clone(), None),
+                                (constant(0), 0)]:
+            v, i = eval_outputs(max_and_argmax(n, axis), (MaxAndArgmax,))
+            assert i.dtype == 'int64'
+            self.assertTrue(np.all(v == np.max(data, np_axis)))
+            self.assertTrue(np.all(i == np.argmax(data, np_axis)))
+            v_shape = eval_outputs(max_and_argmax(n, axis)[0].shape)
+            assert tuple(v_shape) == np.max(data, np_axis).shape
+
     def test2_invalid(self):
         n = as_tensor_variable(rand(2, 3))
         # Silence expected error messages
@@ -3301,6 +3333,19 @@ class T_argmin_argmax(unittest.TestCase):
                 v = eval_outputs(fct(n, axis))
                 self.assertTrue(np.all(v == nfct(data, np_axis)))
                 v_shape = eval_outputs(fct(n, axis).shape)
+                assert tuple(v_shape) == nfct(data, np_axis).shape
+
+    def test2_float16(self):
+        # Test negative values and bigger range to make sure numpy don't do the argmax as on uint16
+        data = (rand(20, 30).astype("float16") - 0.5) * 20
+        n = shared(data)
+        mode = get_default_mode().including("local_max_and_argmax", "uncanonicalize")
+        for fct, nfct in [(argmax, np.argmax), (argmin, np.argmin)]:
+            for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
+                                    ([0, 1], None), ([1, 0], None)]:
+                v = eval_outputs(fct(n, axis), (Argmax,), mode=mode)
+                self.assertTrue(np.all(v == nfct(data, np_axis)))
+                v_shape = eval_outputs(fct(n, axis).shape, mode=mode)
                 assert tuple(v_shape) == nfct(data, np_axis).shape
 
     def test2_invalid(self):

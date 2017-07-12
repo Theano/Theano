@@ -352,9 +352,9 @@ class WrongValue(Exception):
         return s + str_diagnostic(self.val1, self.val2, self.rtol, self.atol)
 
 
-def assert_allclose(val1, val2, rtol=None, atol=None):
-    if not T.basic._allclose(val1, val2, rtol, atol):
-        raise WrongValue(val1, val2, rtol, atol)
+def assert_allclose(expected, value, rtol=None, atol=None):
+    if not T.basic._allclose(expected, value, rtol, atol):
+        raise WrongValue(expected, value, rtol, atol)
 
 
 class AttemptManyTimes:

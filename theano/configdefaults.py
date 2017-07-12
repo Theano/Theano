@@ -79,6 +79,17 @@ AddConfigVar('int_division',
              EnumStr('int', 'raise', 'floatX'),
              in_c_key=False)
 
+AddConfigVar('deterministic',
+             "If `more`, sometimes we will select some implementation that "
+             "are more deterministic, but slower. In particular, on the GPU, "
+             "we will avoid using AtomicAdd. Sometimes we will still use "
+             "non-deterministic implementaion, e.g. when we do not have a GPU "
+             "implementation that is deterministic. Also see "
+             "the dnn.conv.algo* flags to cover more cases.",
+             EnumStr('default', 'more'),
+             in_c_key=False,
+             )
+
 # gpu means let the driver select the gpu. Needed in case of gpu in
 # exclusive mode.
 # gpuX mean use the gpu number X.
@@ -1139,6 +1150,13 @@ AddConfigVar('cmodule.age_thresh_use',
              # 24 days
              IntParam(60 * 60 * 24 * 24, allow_override=False),
              in_c_key=False)
+
+AddConfigVar('cmodule.debug',
+             "If True, define a DEBUG macro (if not exists) for any compiled C code.",
+             BoolParam(False),
+             # Do not add it in the c key when we keep use the old default.
+             # To do not recompile for no good reason.
+             in_c_key=lambda: theano.config.cmodule.debug)
 
 
 def default_blas_ldflags():

@@ -401,6 +401,7 @@ gpu_dot22 = GpuDot22()
 
 class GpuGemmBatch(BlasOp):
     __props__ = ('inplace',)
+    _f16_ok = True
 
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -413,13 +414,21 @@ class GpuGemmBatch(BlasOp):
         B = as_gpuarray_variable(B, ctx_name)
         C = as_gpuarray_variable(C, ctx_name)
         alpha = as_tensor_variable(alpha)
+        if alpha.dtype == 'float16':
+            alpha = alpha.astype('float32')
         beta = as_tensor_variable(beta)
+        if beta.dtype == 'float16':
+            beta = beta.astype('float32')
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 3
         assert B.ndim == 3
         assert C.ndim == 3
-        assert A.dtype == B.dtype == C.dtype == alpha.dtype == beta.dtype
+        assert A.dtype == B.dtype == C.dtype
+        if A.dtype in ('float32', 'float64'):
+            assert A.dtype == alpha.dtype == beta.dtype
+        else:
+            assert 'float32' == alpha.dtype == beta.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
     def c_headers(self):
@@ -1726,9 +1735,15 @@ def local_inplace_gpuagemm(node, inputs):
 def local_inplace_gpuager(node, inputs):
     return [gpuger_inplace(*inputs)]
 
+
+@inplace_allocempty(GpuGemmBatch, 0)
+def local_inplace_gpuagemmbatch(node, inputs):
+    return [gpugemmbatch_inplace(*inputs)]
+
 gpuablas_opt_inplace = in2out(LocalOptGroup(local_inplace_gpuagemv,
                                             local_inplace_gpuagemm,
-                                            local_inplace_gpuager),
+                                            local_inplace_gpuager,
+                                            local_inplace_gpuagemmbatch),
                               name='gpuablas_opt_inplace')
 
 optdb.register('InplaceGpuaBlasOpt',

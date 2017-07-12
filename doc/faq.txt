@@ -8,7 +8,8 @@ Frequently Asked Questions
 
 Does Theano support Python 3?
 ------------------------------
-We support both Python 2 >= 2.7 and Python 3 >= 3.3.
+
+We support both Python 2 >= 2.7 and Python 3 >= 3.4.
 
 Output slight numerical difference
 ----------------------------------

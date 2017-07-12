@@ -4,19 +4,19 @@ int APPLY_SPECIFIC(blockgemv)(PyGpuArrayObject *o, PyGpuArrayObject *W,
                               PyGpuArrayObject *h, PyArrayObject *inputIdx,
                               PyArrayObject *outputIdx,
                               PyGpuArrayObject **_out,
-                              PyGpuContextObject *ctx) {
+                              PARAMS_TYPE* params) {
   PyGpuArrayObject *out = *_out;
-#ifdef INPLACE
-  Py_XDECREF(out);
-  out = o;
-  Py_INCREF(out);
-#else
-  out = theano_try_copy(out, o);
-  if (out == NULL) {
-    // Error already set
-    return -1;
+  if (params->inplace) {
+    Py_XDECREF(out);
+    out = o;
+    Py_INCREF(out);
+  } else {
+    out = theano_try_copy(out, o);
+    if (out == NULL) {
+      // Error already set
+      return -1;
+    }
   }
-#endif
 
   gpudata **W_list = NULL;
   gpudata **inp_list = NULL;
@@ -26,7 +26,7 @@ int APPLY_SPECIFIC(blockgemv)(PyGpuArrayObject *o, PyGpuArrayObject *W,
   size_t *offOut = NULL;
   int err;
 
-  err = gpublas_setup(ctx->ctx);
+  err = gpublas_setup(params->context->ctx);
   if (err != GA_NO_ERROR) {
     PyErr_SetString(PyExc_RuntimeError, "Can't setup blas");
     return -1;

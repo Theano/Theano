@@ -46,6 +46,15 @@ def test_pseudoinverse_correctness():
     assert _allclose(ri, np.linalg.pinv(r))
 
 
+def test_pseudoinverse_grad():
+    rng = np.random.RandomState(utt.fetch_seed())
+    d1 = rng.randint(4) + 2
+    d2 = rng.randint(4) + 2
+    r = rng.randn(d1, d2).astype(theano.config.floatX)
+
+    utt.verify_grad(pinv, [r])
+
+
 class test_MatrixInverse(utt.InferShapeTester):
     def setUp(self):
         super(test_MatrixInverse, self).setUp()

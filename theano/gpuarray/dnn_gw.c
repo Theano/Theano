@@ -202,6 +202,15 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         prev_top_dims[i] = PyGpuArray_DIM(output, i);
       }
     }
+
+    #ifdef DEBUG
+    char algorithm_name[128];
+    if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name)) {
+        return 1;
+    };
+    // NB: This is printed only when algorithm is chosen at runtime.
+    fprintf(stderr, "(using %s) ", algorithm_name);
+    #endif
   }
 
   // The FFT implementation does not support strides, 1x1 filters or inputs

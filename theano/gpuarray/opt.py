@@ -68,12 +68,13 @@ from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor,
                         GpuAdvancedSubtensor1,
+                        GpuAdvancedIncSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
-                     cusolver_available, GpuMagmaMatrixInverse, GpuMagmaSVD)
+                     cusolver_available, GpuMagmaMatrixInverse, gpu_svd)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -1066,7 +1067,7 @@ def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.AdvancedIncSubtensor1])
 @register_opt2([tensor.AdvancedIncSubtensor1], 'fast_compile')
-def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
+def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
     context = get_context(context_name)
     # This is disabled on non-cuda contexts
     if context.kind != b'cuda':
@@ -1077,19 +1078,31 @@ def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
     set_instead_of_inc = op.set_instead_of_inc
 
     compute_capability = int(context.bin_id[-2])
-    if compute_capability >= 2 and x.ndim == 1 and y.ndim == 0:
+    if (compute_capability >= 2 and x.ndim == 1 and y.ndim == 0 and
+            config.deterministic == 'default'):
         x = x.dimshuffle(0, 'x')
         y = y.dimshuffle('x', 'x')
         ret = GpuAdvancedIncSubtensor1_dev20(
             set_instead_of_inc=set_instead_of_inc)(x, y, ilist)
         ret = GpuDimShuffle(ret.type.broadcastable, [0])(ret)
         return ret
-    elif compute_capability < 2 or x.ndim != 2 or y.ndim != 2:
+    elif (compute_capability < 2 or x.ndim != 2 or y.ndim != 2 or
+            config.deterministic == 'more'):
         return GpuAdvancedIncSubtensor1(
             set_instead_of_inc=set_instead_of_inc)
     else:
         return GpuAdvancedIncSubtensor1_dev20(
             set_instead_of_inc=set_instead_of_inc)
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.AdvancedIncSubtensor])
+@register_opt2([tensor.AdvancedIncSubtensor], 'fast_compile')
+def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
+    if not op.set_instead_of_inc:
+        return GpuAdvancedIncSubtensor()
+    else:
+        return False
 
 
 @register_inplace()
@@ -1119,10 +1132,20 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
         else:
             return False
         x, = inputs
+        idtype = x.dtype
+        adtype = getattr(op, 'acc_dtype', None)
+        odtype = getattr(op, 'dtype', outputs[0].dtype)
+
+        # Force accumulator to float32 for float32 inputs since tree
+        # reduction will not loose as much precision as linear
+        # accumulation and float64 is much slower on GPU.
+        if idtype == 'float32' and odtype == 'float32':
+            adtype = 'float32'
+
         greduce = op2(
             op.scalar_op, axis=op.axis,
-            dtype=getattr(op, 'dtype', outputs[0].dtype),
-            acc_dtype=getattr(op, 'acc_dtype', None))
+            dtype=odtype,
+            acc_dtype=adtype)
         gvar = greduce(x)
         # We need to have the make node called, otherwise the mask can
         # be None
@@ -1220,7 +1243,7 @@ def local_gpua_gemm(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.BatchedDot])
 @register_opt2([tensor.blas.BatchedDot], 'fast_compile')
 def local_gpua_gemmbatch(op, context_name, inputs, outputs):
-    if inputs[0].dtype not in ['float32', 'float64']:
+    if inputs[0].dtype not in ['float16', 'float32', 'float64']:
         return
     a, b = inputs
     # Since GpuGemmBatch only supports 3D inputs and output,
@@ -1242,7 +1265,8 @@ def local_gpua_gemmbatch(op, context_name, inputs, outputs):
         if b.dtype != out_dtype:
             b = gpu_cast_op(b)
 
-    c = tensor.AllocEmpty(out_dtype)(a.shape[0], a.shape[1], b.shape[2])
+    c = GpuAllocEmpty(out_dtype, context_name)(
+        a.shape[0], a.shape[1], b.shape[2])
     out = gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=out_dtype),
                                   a, b, np.asarray(0.0, dtype=out_dtype))
     if len(output_dims) != 3:
@@ -1901,12 +1925,11 @@ def local_gpu_elemwise_careduce(node):
             # operation with some reduction pattern will probably results
             # in slow down.
             isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)):
-        op = node.op
         inp = node.inputs[0].owner.inputs[0]
-        return [GpuCAReduceCuda(scalar_op=op.scalar_op,
-                                axis=op.axis,
-                                reduce_mask=op.reduce_mask,
-                                pre_scalar_op=scalar.basic.sqr)(inp)]
+        props = node.op._props_dict()
+        props["pre_scalar_op"] = scalar.basic.sqr
+        out = GpuCAReduceCuda(**props)(inp)
+        return [out]
 
 
 @local_optimizer(None)
@@ -2137,11 +2160,16 @@ def local_gpu_svd(op, context_name, inputs, outputs):
         return
     if inputs[0].dtype not in ['float16', 'float32']:
         return
-    op = GpuMagmaSVD(full_matrices=op.full_matrices,
-                     compute_uv=op.compute_uv)
+    x = inputs[0]
     if inputs[0].dtype == 'float16':
-        return op(inputs[0].astype('float32')).astype('float16')
-    return op
+        x = inputs[0].astype('float32')
+    out = gpu_svd(x, compute_uv=op.compute_uv, full_matrices=op.full_matrices)
+    if inputs[0].dtype == 'float16':
+        if op.compute_uv:
+            out = [o.astype('float16') for o in out]
+        else:
+            out = [out.astype('float16')]
+    return out
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.

@@ -60,10 +60,10 @@ set -x
 
 # Fast compile and float64
 FILE=${BUILDBOT_DIR}/theano_python3_fastcompile_f64_tests.xml
-NAME=fastcompile_f64
+NAME=python3_fastcompile_f64
 THEANO_FLAGS=$THEANO_FLAGS,compiledir=$COMPILEDIR,mode=FAST_COMPILE,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,magma.enabled=true,floatX=float64 python3 bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
 
 # Fast run and float32
 FILE=${BUILDBOT_DIR}/theano_python3_fastrun_f32_tests.xml
-NAME=fastrun_f32
+NAME=python3_fastrun_f32
 THEANO_FLAGS=$THEANO_FLAGS,compiledir=$COMPILEDIR,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,magma.enabled=true,floatX=float32 python3 bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}

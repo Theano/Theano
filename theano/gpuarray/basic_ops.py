@@ -951,6 +951,7 @@ class GpuAlloc(HideC, Alloc):
                              (subtensor.GpuIncSubtensor,
                               subtensor.GpuAdvancedIncSubtensor1,
                               subtensor.GpuAdvancedIncSubtensor1_dev20,
+                              subtensor.GpuAdvancedIncSubtensor,
                               blas.GpuGemm, blas.GpuGemv,
                               blas.GpuGer)
                              )):
