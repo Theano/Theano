@@ -2482,8 +2482,6 @@ def test_dnn_spatialtf_grad():
     img = np.random.randint(low=0, high=256, size=img_dims)
     # Convert from NHWC to NCHW
     img = np.transpose(img, axes=(0, 3, 1, 2)).astype(theano.config.floatX)
-    scale_height = 0.25
-    scale_width = 0.75
 
     # Transformation matrix
     transform = [[-1, 0, 0],
@@ -2503,7 +2501,7 @@ def test_dnn_spatialtf_grad():
 
     grad = T.grad(None, wrt=[t_img, t_theta], known_grads={op: t_dy})
     grad_fn = theano.function([t_img, t_theta, t_dy], grad)
-    dimg, dtheta = grad_fn(img, theta, dy)
+    grad_fn(img, theta, dy)
 
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradI)
                 for node in grad_fn.maker.fgraph.toposort()])
