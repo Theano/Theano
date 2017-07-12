@@ -33,11 +33,9 @@ static PyGpuArrayObject *pygpu_narrow(PyGpuArrayObject *src, size_t dim,
 #section support_code_struct
 
 int APPLY_SPECIFIC(magma_qr)(PyGpuArrayObject *A_,
-#ifdef COMPLETE
-                             PyGpuArrayObject **Q,
-#endif
                              PyGpuArrayObject **R,
-                             PyGpuContextObject *c) {
+                             PyGpuArrayObject **Q, // may be NULL
+                             PARAMS_TYPE* params) {
   PyGpuArrayObject *A = NULL;
   magma_int_t M, N, K, nb, ldwork;
   size_t n2;
@@ -56,19 +54,26 @@ int APPLY_SPECIFIC(magma_qr)(PyGpuArrayObject *A_,
                     "GpuMagmaQR: requires data to be C-contiguous");
     return -1;
   }
+
+  // This is early to match the exit() in the fail label.
+  cuda_enter(params->context->ctx);
+
+  if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
+    PyErr_SetString(PyExc_ValueError,
+                    "GpuMagmaQR: requires data to be C-contiguous");
+    goto fail;
+  }
   if (PyGpuArray_NDIM(A) != 2) {
     PyErr_SetString(PyExc_ValueError, "GpuMagmaQR: matrix rank error");
-    return -1;
+    goto fail;
   }
+
   A = pygpu_copy(A_, GA_F_ORDER);
   if (A == NULL) {
     PyErr_SetString(PyExc_RuntimeError,
                     "GpuMagmaQR: failed to change to column-major order");
-    return -1;
+    goto fail;
   }
-
-  // This is early to match the exit() in the fail label.
-  cuda_enter(c->ctx);
 
   // magma matrix qr
   M = PyGpuArray_DIM(A, 0);
@@ -83,7 +88,7 @@ int APPLY_SPECIFIC(magma_qr)(PyGpuArrayObject *A_,
 
   nb = magma_get_sgeqrf_nb(M, N);
   ldwork = (2 * K + magma_roundup(N, 32)) * nb;
-  work_data = gpudata_alloc(c->ctx, ldwork * sizeof(float), NULL, 0, NULL);
+  work_data = gpudata_alloc(params->context->ctx, ldwork * sizeof(float), NULL, 0, NULL);
   if (work_data == NULL) {
     PyErr_SetString(PyExc_RuntimeError,
                     "GpuMagmaQR: failed to allocate working memory");
@@ -111,38 +116,38 @@ int APPLY_SPECIFIC(magma_qr)(PyGpuArrayObject *A_,
     goto fail;
   }
 
-#ifdef COMPLETE
-  // compute Q
-  Py_XDECREF(A);
-  A = pygpu_copy(A_, GA_F_ORDER);
-  if (A == NULL) {
-    PyErr_SetString(PyExc_RuntimeError,
-                    "GpuMagmaQR: failed to change to column-major order");
-    return -1;
-  }
-  magma_sgeqrf_gpu(M, N, (float *)PyGpuArray_DEV_DATA(A), M, tau_data,
-                   *(float **)work_data, &info);
-  if (info != 0) {
-    PyErr_Format(
-        PyExc_RuntimeError,
-        "GpuMagmaQR: magma_sgeqrf_gpu argument %d has an illegal value", -info);
-    goto fail;
-  }
+  if (params->complete) {
+    // compute Q
+    Py_XDECREF(A);
+    A = pygpu_copy(A_, GA_F_ORDER);
+    if (A == NULL) {
+      PyErr_SetString(PyExc_RuntimeError,
+                      "GpuMagmaQR: failed to change to column-major order");
+      return -1;
+    }
+    magma_sgeqrf_gpu(M, N, (float *)PyGpuArray_DEV_DATA(A), M, tau_data,
+                     *(float **)work_data, &info);
+    if (info != 0) {
+      PyErr_Format(
+                   PyExc_RuntimeError,
+                   "GpuMagmaQR: magma_sgeqrf_gpu argument %d has an illegal value", -info);
+      goto fail;
+    }
 
-  magma_sorgqr_gpu(M, K, K, (float *)PyGpuArray_DEV_DATA(A), M, tau_data,
-                   *(float **)work_data, nb, &info);
-  if (info != 0) {
-    PyErr_Format(
-        PyExc_RuntimeError,
-        "GpuMagmaQR: magma_sorgqr_gpu argument %d has an illegal value", -info);
-    goto fail;
+    magma_sorgqr_gpu(M, K, K, (float *)PyGpuArray_DEV_DATA(A), M, tau_data,
+                     *(float **)work_data, nb, &info);
+    if (info != 0) {
+      PyErr_Format(
+                   PyExc_RuntimeError,
+                   "GpuMagmaQR: magma_sorgqr_gpu argument %d has an illegal value", -info);
+      goto fail;
+    }
+    *Q = pygpu_narrow(A, 1, K);
+    if (*Q == NULL) {
+      PyErr_SetString(PyExc_RuntimeError, "GpuMagmaQR: failed to narrow array");
+      goto fail;
+    }
   }
-  *Q = pygpu_narrow(A, 1, K);
-  if (*Q == NULL) {
-    PyErr_SetString(PyExc_RuntimeError, "GpuMagmaQR: failed to narrow array");
-    goto fail;
-  }
-#endif
   res = 0;
 fail:
   if (tau_data != NULL)
@@ -150,6 +155,6 @@ fail:
   if (work_data != NULL)
     gpudata_release(work_data);
   Py_XDECREF(A);
-  cuda_exit(c->ctx);
+  cuda_exit(params->context->ctx);
   return res;
 }

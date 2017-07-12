@@ -11,7 +11,7 @@ from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaCholesky,
                                     GpuMagmaEigh, GpuMagmaMatrixInverse,
                                     GpuMagmaQR, GpuMagmaSVD,
                                     cusolver_available, gpu_matrix_inverse,
-                                    gpu_solve, gpu_svd)
+                                    gpu_solve, gpu_svd, gpu_qr)
 from theano.tensor.nlinalg import (SVD, MatrixInverse, QRFull,
                                    QRIncomplete, eigh, matrix_inverse, qr)
 from theano.tensor.slinalg import Cholesky, cholesky
@@ -376,7 +376,7 @@ class TestMagma(unittest.TestCase):
 
     def run_gpu_qr(self, A_val, complete=True):
         A = theano.tensor.fmatrix("A")
-        fn = theano.function([A], GpuMagmaQR(complete=complete)(A),
+        fn = theano.function([A], gpu_qr(A, complete=complete),
                              mode=mode_with_gpu)
         return fn(A_val)
 

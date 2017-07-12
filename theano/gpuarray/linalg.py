@@ -569,8 +569,17 @@ class GpuMagmaQR(GpuMagmaBase, CGpuKernelBase):
     ----------
     complete : If `False`, returns only r.
 
+    .. warning::
+
+        Because of implementation constraints, this Op returns outputs
+        in order ``R, Q``. Use :func:`theano.gpuarray.linalg.gpu_qr`
+        to get them in expected order ``Q, R``.
     """
     __props__ = ('complete', )
+    _cop_num_inputs = 1
+    _cop_num_outputs = 2
+    check_input = False
+    params_type = ParamsType(complete=bool_t, context=gpu_context_type)
 
     def __init__(self, complete=True):
         self.complete = complete
@@ -585,15 +594,37 @@ class GpuMagmaQR(GpuMagmaBase, CGpuKernelBase):
         if A.dtype != 'float32':
             raise TypeError("only `float32` is supported for now")
         if self.complete:
-            return theano.Apply(self, [A], [A.type(), A.type()])
+            return theano.Apply(self, [A],
+                                # return R, Q
+                                [A.type(), A.type()])
         else:
-            return theano.Apply(self, [A], [A.type()])
+            return theano.Apply(self, [A],
+                                # return R
+                                [A.type()])
 
-    def get_op_params(self):
-        params = []
-        if self.complete:
-            params.append(('COMPLETE', '1'))
-        return params
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
+
+
+def gpu_qr(a, complete=True):
+    """
+    This function performs the QR on GPU.
+
+    Parameters
+    ----------
+    complete : bool, optional
+        If `False`, returns only r.
+
+    Returns
+    -------
+    Q, R : matrices
+
+    """
+    out = GpuMagmaQR(complete)(a)
+    if complete:
+        R, Q = out
+        out = [Q, R]
+    return out
 
 
 class GpuMagmaEigh(GpuMagmaBase):

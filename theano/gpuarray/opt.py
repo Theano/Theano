@@ -75,7 +75,7 @@ from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
                      cusolver_available, GpuMagmaMatrixInverse, gpu_svd,
-                     GpuMagmaCholesky, GpuMagmaQR, GpuMagmaEigh)
+                     GpuMagmaCholesky, gpu_qr, GpuMagmaEigh)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -2181,11 +2181,13 @@ def local_gpu_magma_qr(op, context_name, inputs, outputs):
         return
     if inputs[0].dtype not in ['float16', 'float32']:
         return
-    op = GpuMagmaQR(complete=True)
+    x = inputs[0]
     if inputs[0].dtype == 'float16':
-        outputs = op(inputs[0].astype('float32'))
-        return [o.astype('float16') for o in outputs]
-    return op
+        x = inputs[0].astype('float32')
+    out = gpu_qr(x, complete=True)
+    if inputs[0].dtype == 'float16':
+        return [o.astype('float16') for o in out]
+    return out
 
 
 @register_opt('magma', 'fast_compile')
@@ -2196,10 +2198,13 @@ def local_gpu_magma_qr_incomplete(op, context_name, inputs, outputs):
         return
     if inputs[0].dtype not in ['float16', 'float32']:
         return
-    op = GpuMagmaQR(complete=False)
+    x = inputs[0]
     if inputs[0].dtype == 'float16':
-        return op(inputs[0].astype('float32')).astype('float16')
-    return op
+        x = inputs[0].astype('float32')
+    out = gpu_qr(x, complete=False)
+    if inputs[0].dtype == 'float16':
+        return [out.astype('float16')]
+    return out
 
 
 # Matrix inverse
