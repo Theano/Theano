@@ -664,7 +664,7 @@ class GpuMagmaEigh(GpuMagmaBase):
                                 # return D, V
                                 [GpuArrayType(A.dtype, broadcastable=[False],
                                               context_name=ctx_name)(),
-                                A.type()])
+                                 A.type()])
         else:
             return theano.Apply(self, [A],
                                 # return D
