@@ -241,7 +241,10 @@ class DnnVersion(Op):
 
     def c_compile_args(self):
         if config.dnn.library_path:
-            return ['-Wl,-rpath,' + config.dnn.library_path]
+            if sys.platform == 'darwin':
+                return ['-Wl,-rpath,' + config.dnn.library_path]
+            else:
+                return ['-Wl,-rpath,"' + config.dnn.library_path + '"']
         return []
 
     def c_support_code(self):
@@ -379,7 +382,10 @@ class DnnBase(COp):
 
     def c_compile_args(self):
         if config.dnn.library_path:
-            return ['-Wl,-rpath,' + config.dnn.library_path]
+            if sys.platform == 'darwin':
+                return ['-Wl,-rpath,' + config.dnn.library_path]
+            else:
+                return ['-Wl,-rpath,"' + config.dnn.library_path + '"']
         return []
 
     def c_code_cache_version(self):
