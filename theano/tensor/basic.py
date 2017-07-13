@@ -1462,7 +1462,7 @@ class Argmax(Op):
         outputs = [tensor('int64', broadcastable, name='argmax')]
         return Apply(self, inputs, outputs)
 
-    def prepare_node(self, node):
+    def prepare_node(self, node, storage_map, compute_map):
         if len(node.inputs) == 2:
             raise ValueError('You are trying to compile a graph with an old Argmax node.  Either reoptimize your graph or rebuild it to get the new node format.')
 
