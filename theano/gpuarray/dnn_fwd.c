@@ -161,6 +161,15 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         prev_kern_dims[i] = PyGpuArray_DIM(kerns, i);
       }
     }
+
+    #ifdef DEBUG
+    char algorithm_name[128];
+    if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name)) {
+        return 1;
+    };
+    // NB: This is printed only when algorithm is chosen at runtime.
+    fprintf(stderr, "(using %s) ", algorithm_name);
+    #endif
   }
 
   /* Only these algos are supported for 3d conv with cuDNN >= V5.1. */
