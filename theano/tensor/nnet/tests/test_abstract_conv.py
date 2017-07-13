@@ -1761,7 +1761,8 @@ class Grouped_conv_noOptim(unittest.TestCase):
 
             utt.verify_grad(grouped_conv_op,
                             [img, kern],
-                            mode=self.mode)
+                            mode=self.mode,
+                            eps=1)
 
     def test_gradweights(self):
         img_sym = theano.tensor.tensor4('img')
