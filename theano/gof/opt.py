@@ -3039,3 +3039,22 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
                 return False
 
     return True
+
+
+class CheckStrackTracehFeature(object):
+    def on_import(self, fgraph, node, reason):
+        if not check_stack_trace(fgraph, 'all'):
+            raise NotImplementedError(
+                "Empty stack trace! The optimization that whose"
+                " stacktrace is empty is %s", reason)
+
+
+class CheckStackTraceOptimization(Optimizer):
+    """Optimizer that serves to add ShapeFeature as an fgraph feature."""
+
+    def add_requirements(self, fgraph):
+        if not hasattr(fgraph, 'CheckStrackTracehFeature'):
+            fgraph.attach_feature(CheckStrackTracehFeature())
+
+    def apply(self, fgraph):
+        pass
