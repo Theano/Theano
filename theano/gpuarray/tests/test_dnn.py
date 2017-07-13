@@ -1512,6 +1512,7 @@ def test_dnn_reduction_opt():
 
 
 def dnn_reduction_strides(shp, shuffle, slice):
+    utt.fetch_seed()
     inp = GpuArrayType('float32', (False,) * len(shp),
                        context_name=test_ctx_name)()
     tmp = inp.dimshuffle(shuffle)[slice]
@@ -1519,7 +1520,11 @@ def dnn_reduction_strides(shp, shuffle, slice):
     f = theano.function([inp], res, mode=mode_with_gpu)
     assert any(isinstance(n.op, dnn.GpuDnnReduction)
                for n in f.maker.fgraph.apply_nodes)
-    f(pygpu.zeros(shp, dtype='float32', context=inp.type.context))
+    data = np.random.random(shp).astype('float32')
+    res = np.sum(data)
+    gdata = pygpu.array(data, context=inp.type.context)
+    gres = f(gdata)
+    utt.assert_allclose(res, np.array(gres))
 
 
 def test_dnn_reduction_strides():
