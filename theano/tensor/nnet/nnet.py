@@ -941,8 +941,15 @@ def softmax(c, axis=-1):
     return softmax_op(c) if axis == (c.ndim - 1) else Softmax(axis)(c)
 
 
-def logsoftmax(c):
-    return logsoftmax_op(c)
+def logsoftmax(c, axis=-1):
+    c = as_tensor_variable(c)
+    axis = tensor.check_and_normalize_axes(c, axis)
+    if len(axis) > 1:
+        raise ValueError("Softmax does not support multiple axis yet.")
+    axis, = axis
+    if c.broadcastable[axis]:
+        warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
+    return logsoftmax_op(c) if axis == (c.ndim - 1) else LogSoftmax(axis)(c)
 
 
 @opt.register_specialize('fast_compile_gpu')
