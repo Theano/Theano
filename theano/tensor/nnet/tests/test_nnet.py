@@ -88,12 +88,20 @@ class T_Softmax(utt.InferShapeTester):
         self._compile_and_check([admat], [Softmax()(admat)],
                                 [admat_val], Softmax)
 
-    def test_vector(self):
-        x = T.vector()
-        f = theano.function([x], softmax_op(x))
-
-        xv = np.random.randn(6).astype(config.floatX)
-        assert np.allclose(f(xv), np.exp(xv) / np.exp(xv).sum())
+    def test_multi_axis(self):
+        dims = 4
+        shape = (5,) * dims
+        xv = np.random.randn(*shape).astype(config.floatX)
+        for axes in xrange(1, dims + 1):
+            x = T.TensorType(dtype=config.floatX,
+                             broadcastable=(False,) * axes)()
+            outputs = softmax_op(x)
+            test_val = xv[((0,) * (dims - axes))]
+            f = theano.function([x], outputs)
+            gt_val = (np.exp(test_val) /
+                      np.exp(test_val).sum(axis=-1, keepdims=True))
+            t_val = f(test_val)
+            assert(np.allclose(gt_val, t_val))
 
     def test_vector_grad(self):
         def f(a):
