@@ -8,7 +8,7 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
                               PyGpuArrayObject **S,
                               PyGpuArrayObject **U, // may be NULL
                               PyGpuArrayObject **VT, // may be NULL
-                              PARAMS_TYPE* params) {
+                              PARAMS_TYPE *params) {
   bool compute_uv = (U != NULL);
   magma_int_t *iwork = NULL, iunused[1];
   magma_int_t M, N, K, ldu, ldv, M_U, N_VT, info;

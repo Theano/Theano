@@ -638,7 +638,12 @@ class GpuMagmaEigh(GpuMagmaBase):
     compute_v : If `True`, computes eigenvalues and eigenvectors (`True`,
                 default). If `False`, computes only eigenvalues of matrix.
     """
-    __props__ = ('lower', )
+    __props__ = ('lower', 'compute_v')
+    _cop_num_inputs = 1
+    _cop_num_outputs = 2
+    check_input = False
+    params_type = ParamsType(lower=bool_t, compute_v=bool_t,
+                             context=gpu_context_type)
 
     def __init__(self, UPLO='L', compute_v=True):
         assert UPLO in ['L', 'U']
@@ -656,18 +661,15 @@ class GpuMagmaEigh(GpuMagmaBase):
             raise TypeError("only `float32` is supported for now")
         if self.compute_v:
             return theano.Apply(self, [A],
+                                # return D, V
                                 [GpuArrayType(A.dtype, broadcastable=[False],
                                               context_name=ctx_name)(),
                                 A.type()])
         else:
             return theano.Apply(self, [A],
+                                # return D
                                 [GpuArrayType(A.dtype, broadcastable=[False],
                                               context_name=ctx_name)()])
 
-    def get_op_params(self):
-        params = []
-        if self.lower:
-            params.append(('LOWER', '1'))
-        if self.compute_v:
-            params.append(('COMPUTE_V', '1'))
-        return params
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)

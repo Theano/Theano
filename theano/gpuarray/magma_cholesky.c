@@ -39,7 +39,7 @@ setup_ext_cuda();
 #section support_code_struct
 
 int APPLY_SPECIFIC(magma_cholesky)(PyGpuArrayObject *A, PyGpuArrayObject **L,
-                                   PARAMS_TYPE* params) {
+                                   PARAMS_TYPE *params) {
   const size_t *dims;
   size_t N, n2;
   magma_uplo_t ul;

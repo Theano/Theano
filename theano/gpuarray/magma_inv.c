@@ -5,7 +5,7 @@ setup_ext_cuda();
 #section support_code_struct
 
 int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **A_inv,
-                              PARAMS_TYPE* params) {
+                              PARAMS_TYPE *params) {
   const size_t *dims;
   magma_int_t N, ldwork, info;
   magma_int_t *piv = NULL;

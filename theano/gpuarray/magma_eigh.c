@@ -6,10 +6,8 @@ setup_ext_cuda();
 
 int APPLY_SPECIFIC(magma_eigh)(PyGpuArrayObject *A_,
                                PyGpuArrayObject **D,
-#ifdef COMPUTE_V
-                               PyGpuArrayObject **V,
-#endif
-                               PyGpuContextObject *c) {
+                               PyGpuArrayObject **V, // may be NULL
+                               PARAMS_TYPE *params) {
   PyGpuArrayObject *A = NULL;
   magma_int_t N, liwork, *iwork_data = NULL;
   size_t d_dims[1], v_dims[2];
@@ -23,21 +21,26 @@ int APPLY_SPECIFIC(magma_eigh)(PyGpuArrayObject *A_,
                     "GpuMagmaEigh: Unsupported data type");
     return -1;
   }
+
+  // This is early to match the exit() in the fail label.
+  cuda_enter(params->context->ctx);
+
   if (!GpuArray_IS_C_CONTIGUOUS(&A_->ga)) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuMagmaEigh: requires data to be C-contiguous");
-    return -1;
+    goto fail;
   }
   if (PyGpuArray_NDIM(A_) != 2) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuMagmaEigh: matrix rank error");
-    return -1;
+    goto fail;
   }
   if (PyGpuArray_DIM(A_, 0) != PyGpuArray_DIM(A_, 1)) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuMagmaEigh: matrix is not square");
-    return -1;
+    goto fail;
   }
+
   A = pygpu_copy(A_, GA_F_ORDER);
   if (A == NULL) {
     PyErr_SetString(PyExc_RuntimeError,
@@ -45,22 +48,19 @@ int APPLY_SPECIFIC(magma_eigh)(PyGpuArrayObject *A_,
     return -1;
   }
 
-  // This is early to match the exit() in the fail label.
-  cuda_enter(c->ctx);
-
   // magma matrix eigen decomposition of a symmetric matrix
   N = PyGpuArray_DIM(A, 0);
 
-#ifdef LOWER
-  uplo = MagmaLower;
-#else
-  uplo = MagmaUpper;
-#endif
-#ifdef COMPUTE_V
-  jobz = MagmaVec;
-#else
-  jobz = MagmaNoVec;
-#endif
+  if (params->lower) {
+    uplo = MagmaLower;
+  } else {
+    uplo = MagmaUpper;
+  }
+  if (params->compute_v) {
+    jobz = MagmaVec;
+  } else {
+    jobz = MagmaNoVec;
+  }
 
   if (MAGMA_SUCCESS != magma_smalloc_pinned(&w_data, N)) {
     PyErr_SetString(PyExc_RuntimeError,
@@ -105,7 +105,7 @@ int APPLY_SPECIFIC(magma_eigh)(PyGpuArrayObject *A_,
   }
 
   d_dims[0] = N;
-  if (theano_prep_output(D, 1, d_dims, A->ga.typecode, GA_C_ORDER, c) != 0){
+  if (theano_prep_output(D, 1, d_dims, A->ga.typecode, GA_C_ORDER, params->context) != 0){
     PyErr_SetString(PyExc_RuntimeError,
                     "GpuMagmaEigh: failed to allocate memory for the output");
     goto fail;
@@ -113,15 +113,14 @@ int APPLY_SPECIFIC(magma_eigh)(PyGpuArrayObject *A_,
   cudaMemcpy(PyGpuArray_DEV_DATA(*D), w_data, N * sizeof(float),
              cudaMemcpyDeviceToDevice);
 
-#ifdef COMPUTE_V
-  *V = theano_try_copy(*V, A);
-  if (*V == NULL) {
-    PyErr_SetString(PyExc_RuntimeError,
-                    "GpuMagmaEigh: failed to allocate memory for the output");
-    goto fail;
+  if (params->compute_v) {
+    *V = theano_try_copy(*V, A);
+    if (*V == NULL) {
+      PyErr_SetString(PyExc_RuntimeError,
+                      "GpuMagmaEigh: failed to allocate memory for the output");
+      goto fail;
+    }
   }
-#endif
-
   res = 0;
 fail:
   if (w_data != NULL)
@@ -133,6 +132,6 @@ fail:
   if (iwork_data != NULL)
     magma_free_cpu(iwork_data);
   Py_XDECREF(A);
-  cuda_exit(c->ctx);
+  cuda_exit(params->context->ctx);
   return res;
 }
