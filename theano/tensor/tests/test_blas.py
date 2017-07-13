@@ -1322,8 +1322,9 @@ class BaseGemv(object):
     def test_simple(self):
         alpha, beta, a, x, y = [self.shared(value)
                                 for value in self.get_data()]
-        desired_oy = alpha.get_value() *
-        matrixmultiply(a.get_value(), x.get_value()) + beta.get_value() * y.get_value()
+        desired_oy = alpha.get_value() * \
+            matrixmultiply(a.get_value(), x.get_value()) + \
+            beta.get_value() * y.get_value()
 
         oy = alpha * T.dot(a, x) + beta * y
 
