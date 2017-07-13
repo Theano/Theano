@@ -241,7 +241,7 @@ class TestMagma(unittest.TestCase):
         # Copied from theano.tensor.tests.test_basic.rand.
         A_val = test_rng.rand(N, N).astype('float32') * 2 - 1
         A_val_inv = fn(A_val)
-        utt.assert_allclose(np.dot(A_val_inv, A_val), np.eye(N), atol=1e-2)
+        utt.assert_allclose(np.eye(N), np.dot(A_val_inv, A_val), atol=1e-2)
 
     def test_gpu_matrix_inverse_inplace(self):
         N = 1000
@@ -388,9 +388,9 @@ class TestMagma(unittest.TestCase):
             R_gpu = self.run_gpu_qr(A, complete=complete)
 
         Q_np, R_np = np.linalg.qr(A, mode='reduced')
-        utt.assert_allclose(R_gpu, R_np, rtol=rtol, atol=atol)
+        utt.assert_allclose(R_np, R_gpu, rtol=rtol, atol=atol)
         if complete:
-            utt.assert_allclose(Q_gpu, Q_np, rtol=rtol, atol=atol)
+            utt.assert_allclose(Q_np, Q_gpu, rtol=rtol, atol=atol)
 
     def test_gpu_qr(self):
         self.check_gpu_qr(1000, 500, atol=1e-3)
@@ -428,14 +428,14 @@ class TestMagma(unittest.TestCase):
             d_gpu, v_gpu = self.run_gpu_eigh(A, UPLO=UPLO, compute_v=compute_v)
         else:
             d_gpu = self.run_gpu_eigh(A, UPLO=UPLO, compute_v=False)
-        utt.assert_allclose(d_gpu, d_np, rtol=rtol, atol=atol)
+        utt.assert_allclose(d_np, d_gpu, rtol=rtol, atol=atol)
         if compute_v:
             utt.assert_allclose(
-                np.dot(v_gpu, v_gpu.T), np.eye(N), rtol=rtol, atol=atol)
+                np.eye(N), np.dot(v_gpu, v_gpu.T), rtol=rtol, atol=atol)
             D_m = np.zeros_like(A)
             np.fill_diagonal(D_m, d_gpu)
             utt.assert_allclose(
-                np.dot(np.dot(v_gpu, D_m), v_gpu.T), A, rtol=rtol, atol=atol)
+                A, np.dot(np.dot(v_gpu, D_m), v_gpu.T), rtol=rtol, atol=atol)
 
     def test_gpu_eigh(self):
         self.check_gpu_eigh(1000, UPLO='L', atol=1e-3)
