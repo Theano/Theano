@@ -30,12 +30,6 @@ RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
 
 RUN pip install --upgrade --no-cache-dir pip setuptools wheel
 
-ARG NVIDIA_BUILD_ID
-ENV NVIDIA_BUILD_ID ${NVIDIA_BUILD_ID:-<unknown>}
-LABEL com.nvidia.build.id="${NVIDIA_BUILD_ID}"
-ARG NVIDIA_BUILD_REF
-LABEL com.nvidia.build.ref="${NVIDIA_BUILD_REF}"
-
 WORKDIR /opt/theano
 COPY . .
 
@@ -54,3 +48,9 @@ RUN chmod -R a+w /workspace
 
 COPY nvidia_entrypoint.sh /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/nvidia_entrypoint.sh"]
+
+ARG NVIDIA_BUILD_ID
+ENV NVIDIA_BUILD_ID ${NVIDIA_BUILD_ID:-<unknown>}
+LABEL com.nvidia.build.id="${NVIDIA_BUILD_ID}"
+ARG NVIDIA_BUILD_REF
+LABEL com.nvidia.build.ref="${NVIDIA_BUILD_REF}"

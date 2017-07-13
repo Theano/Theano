@@ -6,6 +6,9 @@ variables:
     EXTRA_DOCKER_RUN_ARGS: "--shm-size=1G --ulimit memlock=-1 --ulimit stack=$$((1024*65536))"
     DATADIR: /raid/dldata
 
+    # the following will be overridden by jobs of the pipeline that actually need to check out the sources
+    GIT_STRATEGY: none
+    GIT_SUBMODULE_STRATEGY: none
 
 ######################################################
 ## Build steps.
@@ -15,55 +18,62 @@ variables:
 stages:
     - build base
     - build devel
-    - L0
-    - L1
-    - L2
-    - L3
+    - trigger
+    - test
     - staging
 
 before_script:
     - export NV_DOCKER_ARGS="curl -s http://localhost:3476/docker/cli?dev=${RUNNER_GPUS//,/+}"     && echo "${NV_DOCKER_ARGS}"
-    - export RELEASE_BRANCH_NAME=${CI_BUILD_REF_NAME%%-devel}                                      && echo "${RELEASE_BRANCH_NAME}"
-    - export BASE_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${RELEASE_BRANCH_NAME}.${CI_PIPELINE_ID}"       && echo "${BASE_IMAGE_NAME}"
-    - export DEVEL_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"                          && echo "${DEVEL_IMAGE_NAME}"
-    - export DEVEL_IMAGE_NAME_VERSIONED="${BASE_IMAGE_NAME}-devel"                                 && echo "${DEVEL_IMAGE_NAME_VERSIONED}"
-    - export ORIGIN1="${CI_BUILD_REPO##*@}"
+    - export RELEASE_BRANCH_NAME=${CI_COMMIT_REF_NAME%%-devel}                                     && echo "${RELEASE_BRANCH_NAME}"
+    - export BASE_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${RELEASE_BRANCH_NAME}-base"                    && echo "${BASE_IMAGE_NAME}"
+    - export BASE_IMAGE_NAME_VERSIONED="${BASE_IMAGE_NAME%%-base}.${CI_PIPELINE_ID}"               && echo "${BASE_IMAGE_NAME_VERSIONED}"
+    - export DEVEL_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}"                         && echo "${DEVEL_IMAGE_NAME}"
+    - export DEVEL_IMAGE_NAME_VERSIONED="${BASE_IMAGE_NAME_VERSIONED}-devel"                       && echo "${DEVEL_IMAGE_NAME_VERSIONED}"
+    - export ORIGIN1="${CI_REPOSITORY_URL##*@}"
     - export ORIGIN_SSH=git@${ORIGIN1/\//:}                                                        && echo "${ORIGIN_SSH}"
     - export ORIGIN_HTTPS=https://${ORIGIN1}                                                       && echo "${ORIGIN_HTTPS}"
-    - docker login -u gitlab-ci-token -p "${CI_BUILD_TOKEN}" "${CI_REGISTRY}"
+    - docker login -u gitlab-ci-token -p "${CI_JOB_TOKEN}" "${CI_REGISTRY}"
 
 theano-base:
     stage: build base
+    variables:
+      GIT_STRATEGY: fetch
+      GIT_SUBMODULE_STRATEGY: recursive
+      GET_SOURCES_ATTEMPTS: 3
     script:
-    - git submodule sync --recursive
-    - git submodule update --init --recursive
     - echo -e "Dockerfile*\n"
               ".git*\n"
               ".dockerignore\n"
               "qa" > .dockerignore
-    - docker build --pull -t "${BASE_IMAGE_NAME}"
-                   --build-arg "NVIDIA_BUILD_REF=${CI_BUILD_REF}"
-                   --build-arg "NVIDIA_BUILD_ID=${CI_BUILD_ID}" .
+    - docker pull "${BASE_IMAGE_NAME}" || true
+    - docker build --pull
+                   --cache-from "${BASE_IMAGE_NAME}"
+                   -t "${BASE_IMAGE_NAME}" -t "${BASE_IMAGE_NAME_VERSIONED}"
+                   --build-arg "NVIDIA_BUILD_REF=${CI_COMMIT_SHA}"
+                   --build-arg "NVIDIA_BUILD_ID=${CI_JOB_ID}" .
     - docker push "${BASE_IMAGE_NAME}"
+    - docker push "${BASE_IMAGE_NAME_VERSIONED}"
     except:
     - tags
 
 theano:
     stage: build devel
+    variables:
+      GIT_STRATEGY: fetch
+      GIT_SUBMODULE_STRATEGY: recursive
+      GET_SOURCES_ATTEMPTS: 3
     script:
-    - git submodule sync --recursive
-    - git submodule update --init --recursive
-    - echo -e "FROM ${BASE_IMAGE_NAME}\n"
+    - echo -e "FROM ${BASE_IMAGE_NAME_VERSIONED}\n"
               "COPY Dockerfile* /opt/${CI_PROJECT_NAME}/\n"
               "COPY .gitignore /opt/${CI_PROJECT_NAME}/\n"
               "COPY .gitmodules /opt/${CI_PROJECT_NAME}/\n"
               "COPY .gitlab-ci.yml /opt/${CI_PROJECT_NAME}/\n"
               "COPY .git/ /opt/${CI_PROJECT_NAME}/.git/\n"
               "COPY qa/   /opt/${CI_PROJECT_NAME}/qa/\n"
-        > Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME}
+        > Dockerfile.${CI_PROJECT_NAME}.${CI_COMMIT_REF_NAME}
     - git remote set-url origin ${ORIGIN_HTTPS}
     - docker build --pull -t "${DEVEL_IMAGE_NAME}" -t "${DEVEL_IMAGE_NAME_VERSIONED}"
-                   -f Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME} .
+                   -f Dockerfile.${CI_PROJECT_NAME}.${CI_COMMIT_REF_NAME} .
     - docker push "${DEVEL_IMAGE_NAME}"
     - docker push "${DEVEL_IMAGE_NAME_VERSIONED}"
     except:
@@ -72,24 +82,26 @@ theano:
 stage:
     stage: staging
     environment: staging
+    variables:
+      GIT_STRATEGY: fetch
+      GIT_SUBMODULE_STRATEGY: recursive
+      GET_SOURCES_ATTEMPTS: 3
     script:
-    - export STAGE_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME/%-devel/-stage}"           && echo "${STAGE_IMAGE_NAME}"
-    - export QA_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME/%-devel/-qa}"                 && echo "${QA_IMAGE_NAME}"
-    - git submodule sync --recursive
-    - git submodule update --init --recursive
+    - export STAGE_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME/%-devel/-stage}"          && echo "${STAGE_IMAGE_NAME}"
+    - export QA_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME/%-devel/-qa}"                && echo "${QA_IMAGE_NAME}"
     # push a xx.yy-stage tag that records the commit we staged from
     - git remote set-url origin ${ORIGIN_SSH}
-    - git push --delete origin refs/tags/${CI_BUILD_REF_NAME/%-devel/-stage}
-    - git push origin HEAD:refs/tags/${CI_BUILD_REF_NAME/%-devel/-stage}
+    - git push --delete origin refs/tags/${CI_COMMIT_REF_NAME/%-devel/-stage}
+    - git push origin HEAD:refs/tags/${CI_COMMIT_REF_NAME/%-devel/-stage}
     # create xx.yy-stage image
-    - docker pull "${BASE_IMAGE_NAME}"
-    - docker tag "${BASE_IMAGE_NAME}" "${STAGE_IMAGE_NAME}"
+    - docker pull "${BASE_IMAGE_NAME_VERSIONED}"
+    - docker tag "${BASE_IMAGE_NAME_VERSIONED}" "${STAGE_IMAGE_NAME}"
     - docker push "${STAGE_IMAGE_NAME}"
     # create xx.yy-qa image on top of -stage that adds the qa/* tests back in
     - echo -e "FROM ${STAGE_IMAGE_NAME}\n"
               "COPY qa/   /opt/${CI_PROJECT_NAME}/qa/\n"
-        > Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME/%-devel/-qa}
-    - docker build --pull -t "${QA_IMAGE_NAME}" -f Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME/%-devel/-qa} .
+        > Dockerfile.${CI_PROJECT_NAME}.${CI_COMMIT_REF_NAME/%-devel/-qa}
+    - docker build --pull -t "${QA_IMAGE_NAME}" -f Dockerfile.${CI_PROJECT_NAME}.${CI_COMMIT_REF_NAME/%-devel/-qa} .
     - docker push "${QA_IMAGE_NAME}"
     only:
     - /^.*-devel$/
@@ -98,97 +110,117 @@ stage:
     when: manual
 
 .test_template: &TEST_TEMPLATE
-    environment: "${CI_BUILD_NAME}"
+    environment: "${CI_JOB_NAME}"
     variables:
-      TEST_WORK_DIR: "/opt/${CI_PROJECT_NAME}/qa/${CI_BUILD_NAME}/"
+      TEST_WORK_DIR: "/opt/${CI_PROJECT_NAME}/qa/${CI_JOB_NAME}/"
       TEST_SCRIPT: "./test.sh"
     script:
     - export TEST_WORK_DIR="${TEST_WORK_DIR%%--*}"
     - cat /proc/driver/nvidia/version
-    - docker run --rm $(eval ${NV_DOCKER_ARGS})
+    - set -x && 
+      docker run --rm $(eval ${NV_DOCKER_ARGS})
              -v $DATADIR:/data
              $(eval echo ${EXTRA_DOCKER_RUN_ARGS})
              ${DEVEL_IMAGE_NAME_VERSIONED}
-             /bin/bash -c "/usr/local/nvidia/bin/nvidia-smi && cd ${TEST_WORK_DIR} && exec bash -ex ${TEST_SCRIPT}"
+             /bin/bash -c "nvidia-smi && cd ${TEST_WORK_DIR} && exec bash -ex ${TEST_SCRIPT}"
     tags:
     - must_specify_runner
     except:
     - tags
+    allow_failure: false
+
+.manual_test_trigger: &MANUAL_TEST_TRIGGER
+    stage: trigger
+    script:
+    - export SCOPE1=${CI_JOB_NAME%% tests}; export SCOPE=${SCOPE1##Run all }
+    - docker pull ${CI_REGISTRY}/devops/scripts:nvdl_nightly_test_scheduler
+    - docker run --rm ${CI_REGISTRY}/devops/scripts:nvdl_nightly_test_scheduler ${CI_PIPELINE_ID} ${CI_PROJECT_PATH} ${SCOPE}
+    when: manual
 
 .L0_test: &L0_TEST
-    stage: L0
+    stage: test
     <<: *TEST_TEMPLATE
 
 .L1_test: &L1_TEST
-    stage: L1
+    stage: test
     <<: *TEST_TEMPLATE
     when: manual
 
 .L2_test: &L2_TEST
-    stage: L2
+    stage: test
     <<: *TEST_TEMPLATE
     when: manual
 
 .L3_test: &L3_TEST
-    stage: L3
+    stage: test
     <<: *TEST_TEMPLATE
     when: manual
+
+"Run all L1 tests":
+    <<: *MANUAL_TEST_TRIGGER
+
+"Run all L2 tests":
+    <<: *MANUAL_TEST_TRIGGER
 
 .P100_R384_4GPU: &P100_R384_4GPU
     tags:
     - P100
     - R384
     - 4GPU
-    allow_failure: false
 
 .V100_R384_4GPU: &V100_R384_4GPU
     tags:
     - V100
     - R384
     - 4GPU
-    allow_failure: false
 
 .1080Ti_R384_1GPU: &1080Ti_R384_1GPU
     tags:
     - 1080Ti
     - R384
     - 1GPU
-    allow_failure: true
+    only:
+    - /^.*-devel$/
 
 .TitanXP_R384_2GPU: &TitanXP_R384_2GPU
     tags:
     - TitanXP
     - R384
     - 2GPU
-    allow_failure: true
+    only:
+    - /^.*-devel$/
 
 .M60_R384_2GPU: &M60_R384_2GPU
     tags:
     - M60
     - R384
     - 2GPU
-    allow_failure: true
+    only:
+    - /^.*-devel$/
 
 .K80_R384_2GPU: &K80_R384_2GPU
     tags:
     - K80
     - R384
     - 2GPU
-    allow_failure: true
+    only:
+    - /^.*-devel$/
 
 .P40_R384_1GPU: &P40_R384_1GPU
     tags:
     - P40
     - R384
     - 1GPU
-    allow_failure: true
+    only:
+    - /^.*-devel$/
 
 .M40_R384_1GPU: &M40_R384_1GPU
     tags:
     - M40
     - R384
     - 1GPU
-    allow_failure: true
+    only:
+    - /^.*-devel$/
 
 ######################################################
 ##
