@@ -930,11 +930,15 @@ def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
 
-def softmax(c):
+def softmax(c, axis=-1):
     c = as_tensor_variable(c)
-    if c.broadcastable[-1]:
+    axis = tensor.check_and_normalize_axes(c, axis)
+    if len(axis) > 1:
+        raise ValueError("Softmax does not support multiple axis yet.")
+    axis, = axis
+    if c.broadcastable[axis]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    return softmax_op(c)
+    return softmax_op(c) if axis == (c.ndim - 1) else Softmax(axis)(c)
 
 
 def logsoftmax(c):
