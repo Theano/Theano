@@ -1,6 +1,6 @@
 REM Set cache dir and copy from master
 set COMPILEDIR=C:\\Jenkins\\theano_cache\\pr_win
-C:\Windows\System32\robocopy /E C:\Jenkins\theano_cache\buildbot_windows C:\Jenkins\theano_cache\pr_win > nul
+C:\Windows\System32\robocopy /E/purge C:\Jenkins\theano_cache\buildbot_windows C:\Jenkins\theano_cache\pr_win > nul
 
 set THEANO_FLAGS=init_gpu_device=cuda
 
