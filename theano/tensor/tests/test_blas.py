@@ -529,7 +529,7 @@ def test_gemm_opt0():
     just_gemm([X, Y, Z, a, b], [Z - a * b * a * T.dot(X, Y)])
 
 
-@attr.expectedFailure_fast
+@unittest_tools.expectedFailure_fast
 def test_gemm_opt_double_gemm():
     # This is the pattern that shows up in the autoencoder
     X, Y, Z, a, b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
