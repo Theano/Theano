@@ -1178,7 +1178,7 @@ class test_fusion(unittest.TestCase):
         mode._optimizer = mode._optimizer.including(
             'local_elemwise_fusion', 'composite_elemwise_fusion',
             'canonicalize')
-        self.do(mode, self._shared, shp)
+        self.do(mode, self._shared, shp, slice=slice(0, 1))
 
     def test_fusion_35inputs(self):
         # Make sure a fused graph with more than 35 inputs does not segfault

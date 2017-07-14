@@ -161,13 +161,30 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         prev_kern_dims[i] = PyGpuArray_DIM(kerns, i);
       }
     }
+
+    #ifdef DEBUG
+    char algorithm_name[128];
+    if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name)) {
+        return 1;
+    };
+    // NB: This is printed only when algorithm is chosen at runtime.
+    fprintf(stderr, "(using %s) ", algorithm_name);
+    #endif
   }
 
-  /* These two algos are not supported for 3d conv */
+  /* Only these algos are supported for 3d conv with cuDNN >= V5.1. */
   if (PyGpuArray_NDIM(input) == 5 &&
-      (algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM ||
-       algo == CUDNN_CONVOLUTION_FWD_ALGO_GEMM))
+      !(algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM ||
+        algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM ||
+        algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING))
     algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+
+  // Algo `small` does not work for a batch size > 2^16, with cuDNN >= V5.1.
+  // Issue should be resolved for cuDNN > V6.0.
+  if (cudnnGetVersion() < 6100 &&
+      algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM &&
+      PyGpuArray_DIM(input, 0) > 65536)
+      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
 
   // The FFT implementation does not support strides, 1x1 filters or inputs
   // with a spatial dimension larger than 1024. The tiled-FFT implementation

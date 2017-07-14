@@ -17,6 +17,7 @@ from ..basic_ops import (
 from ..blas import GpuGemm
 from ..elemwise import (
     GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise, Elemwise, max_inputs_to_GpuElemwise)
+from ..dnn import GpuDnnReduction
 from ..subtensor import GpuSubtensor
 from ..linalg import GpuCusolverSolve, cusolver_available, GpuCholesky
 
@@ -130,9 +131,13 @@ def test_reduce():
         ops = [type(node.op) for node in topo]
 
         if kind == b'opencl' and method in ["max", "min"]:
-            assert not(GpuCAReduceCuda in ops or GpuCAReduceCPY in ops)
+            assert not(GpuCAReduceCuda in ops or
+                       GpuCAReduceCPY in ops or
+                       GpuDnnReduction in ops)
         else:
-            assert GpuCAReduceCuda in ops or GpuCAReduceCPY in ops
+            assert (GpuCAReduceCuda in ops or
+                    GpuCAReduceCPY in ops or
+                    GpuDnnReduction in ops)
 
 
 def test_local_gpualloc_memset_0():
@@ -680,3 +685,17 @@ def test_batched_dot_lifter():
         z = tensor.batched_dot(x, y)
         f = theano.function([x, y], z, mode=mode_with_gpu)
         f(x_val, y_val)
+
+
+def test_crossentropycategorical1hot_lifter():
+    rng = np.random.RandomState(utt.fetch_seed())
+    x = tensor.matrix()
+    y = tensor.lvector()
+    z = tensor.nnet.crossentropy_categorical_1hot(x, y)
+    gx = theano.grad(z.mean(), x)
+    f = theano.function([x, y], [z, gx], mode=mode_with_gpu)
+    assert not any(isinstance(n.op, (tensor.nnet.CrossentropyCategorical1Hot,
+                                     tensor.nnet.CrossentropyCategorical1HotGrad))
+                   for n in f.maker.fgraph.apply_nodes)
+    f(rng.uniform(0.1, 0.9, (13, 5)).astype(theano.config.floatX),
+      rng.randint(5, size=(13,)))

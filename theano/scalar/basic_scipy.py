@@ -298,8 +298,18 @@ class Psi(UnaryScalarOp):
         else:
             super(Psi, self).impl(x)
 
-    def grad(self, inputs, outputs_gradients):
-        raise NotImplementedError()
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
+        gz, = grads
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if outputs[0].type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return [gz * tri_gamma(x)]
 
     def c_support_code(self):
         return (
@@ -363,6 +373,94 @@ class Psi(UnaryScalarOp):
                 _psi(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
 psi = Psi(upgrade_to_float, name='psi')
+
+
+class TriGamma(UnaryScalarOp):
+    """
+    Second derivative of log gamma function.
+
+    """
+
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.polygamma(1, x)
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return TriGamma.st_impl(x)
+        else:
+            super(TriGamma, self).impl(x)
+
+    def grad(self, inputs, outputs_gradients):
+        raise NotImplementedError()
+
+    def c_support_code(self):
+        # The implementation has been copied from
+        # http://people.sc.fsu.edu/~jburkardt/cpp_src/asa121/asa121.html
+        return (
+            """
+            // For GPU support
+            #ifdef WITHIN_KERNEL
+            #define DEVICE WITHIN_KERNEL
+            #else
+            #define DEVICE
+            #endif
+
+            #ifndef ga_double
+            #define ga_double double
+            #endif
+
+            #ifndef _TRIGAMMAFUNCDEFINED
+            #define _TRIGAMMAFUNCDEFINED
+
+            DEVICE double _tri_gamma(ga_double x) {
+
+                double a = 0.0001;
+                double b = 5.0;
+                double b2 =  0.1666666667;
+                double b4 = -0.03333333333;
+                double b6 =  0.02380952381;
+                double b8 = -0.03333333333;
+                double value;
+                double y;
+                double z;
+
+                if (x <= 0) {
+                    return 0.0;
+                }
+
+                if ( x <= a ) {
+                    value = 1.0 / x / x;
+                    return value;
+                }
+
+                value = 0.0;
+                z = x;
+
+                while ( z < b ) {
+                    value += 1.0 / z / z;
+                    z += 1.0;
+                }
+
+                y = 1.0 / z / z;
+
+                value +=  0.5 * y + (1.0 + y * (b2 + y * (b4 + y * (b6 + y * b8 )))) / z;
+
+                return value;
+            }
+            #endif
+            """)
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in float_types:
+            return """%(z)s =
+                _tri_gamma(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+
+
+tri_gamma = TriGamma(upgrade_to_float, name='tri_gamma')
 
 
 class Chi2SF(BinaryScalarOp):

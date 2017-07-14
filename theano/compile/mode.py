@@ -4,13 +4,14 @@ WRITEME
 """
 from __future__ import absolute_import, print_function, division
 import logging
+import warnings
 
 import theano
 from theano import gof
 import theano.gof.vm
 from theano.configparser import config
-from theano.compile.ops import _output_guard
 from six import string_types
+from theano.compile.function_module import Supervisor
 
 
 _logger = logging.getLogger('theano.compile.mode')
@@ -111,18 +112,16 @@ class AddDestroyHandler(gof.Optimizer):
 
     """
     def apply(self, fgraph):
-        for o in fgraph.outputs:
-            try:
-                fgraph.replace_validate(o, _output_guard(o),
-                                        reason='output_guard')
-                _logger.info("Output variable %s required output_guard, "
-                             "how was this output left unprotected against "
-                             "destructive operations?"
-                             % o)
-            except gof.InconsistencyError:
-                # This output is already impossible to destroy.
-                # No guard necessary
-                pass
+        supervisor_added = False
+        for feature in fgraph._features:
+            if isinstance(feature, Supervisor):
+                supervisor_added = True
+                break
+        if not supervisor_added:
+            warnings.warn("WARNING: Supervisor is not added. Please build a FunctionGraph"
+                          "via theano.compile.function_module.std_graph()"
+                          "or add the Supervisor class manually.",
+                          stacklevel=3)
 
     def add_requirements(self, fgraph):
         super(AddDestroyHandler, self).add_requirements(fgraph)

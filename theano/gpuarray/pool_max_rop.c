@@ -12,9 +12,9 @@ KERNEL void max_pool2d_rop_kernel(const ga_size nthreads,
    const ga_size pad_h, const ga_size pad_w,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((char *)x) + x_off);
-  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((char *)ex) + ex_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((GLOBAL_MEM char *)x) + x_off);
+  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((GLOBAL_MEM char *)ex) + ex_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -62,9 +62,9 @@ KERNEL void max_pool3d_rop_kernel(const ga_size nthreads,
    const ga_size pad_d, const ga_size pad_h, const ga_size pad_w,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size x_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((char *)x) + x_off);
-  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((char *)ex) + ex_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *x)(((GLOBAL_MEM char *)x) + x_off);
+  ex = (GLOBAL_MEM DTYPE_INPUT_1 *x)(((GLOBAL_MEM char *)ex) + ex_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *x)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -109,8 +109,8 @@ KERNEL void max_pool3d_rop_kernel(const ga_size nthreads,
 #section support_code
 
 // output shape for a given input padded shape, window shape and stride
-#define OUTPUT_DIMS(in_dim, ws, st)                       \
-  (IGNORE_BORDER ? (in_dim - ws)/st + 1 :                 \
+#define OUTPUT_DIMS(in_dim, ws, st, ignore_border)        \
+  (ignore_border ? (in_dim - ws)/st + 1 :                 \
    (st > ws ? (in_dim - 1)/st + 1 :                       \
     std::max<ssize_t>(0, (in_dim - 1 - ws + st)/st) + 1))
 
@@ -122,7 +122,7 @@ int APPLY_SPECIFIC(max_pool_rop)(PyGpuArrayObject *x,
                                  PyArrayObject *stride,
                                  PyArrayObject *pad,
                                  PyGpuArrayObject **z,
-                                 PyGpuContextObject *ctx) {
+                                 PARAMS_TYPE* params) {
   if (!GpuArray_IS_C_CONTIGUOUS(&x->ga) || !GpuArray_IS_C_CONTIGUOUS(&ex->ga))
     {
       PyErr_Format(PyExc_ValueError,
@@ -146,19 +146,19 @@ int APPLY_SPECIFIC(max_pool_rop)(PyGpuArrayObject *x,
     w[i] = *((npy_int64*)PyArray_GETPTR1(ws, i));
     s[i] = *((npy_int64*)PyArray_GETPTR1(stride, i));
     p[i] = *((npy_int64*)PyArray_GETPTR1(pad, i));
-    z_dims[2 + i] = OUTPUT_DIMS(x_dims[2 + i] + 2*p[i], w[i], s[i]);
+    z_dims[2 + i] = OUTPUT_DIMS(x_dims[2 + i] + 2*p[i], w[i], s[i], params->ignore_border);
     if (p[i] > 0) {
       nonzero_padding = 1;
     }
   }
-  if (!IGNORE_BORDER && nonzero_padding) {
+  if (!params->ignore_border && nonzero_padding) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuMaxPoolRop: padding works only with ignore_border=True");
     return 1;
   }
 
   if (theano_prep_output(z, PyGpuArray_NDIM(ex), z_dims,
-                         ex->ga.typecode, GA_C_ORDER, ctx) != 0)
+                         ex->ga.typecode, GA_C_ORDER, params->context) != 0)
     {
       PyErr_SetString(PyExc_RuntimeError,
                       "GpuMaxPoolRop: failed to allocate memory");

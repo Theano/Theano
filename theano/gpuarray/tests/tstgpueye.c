@@ -8,7 +8,7 @@
  */
 
 KERNEL void eye(GLOBAL_MEM DTYPE_OUTPUT_0 *a, ga_size a_off, ga_size n, ga_size m) {
-  a = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)a) + a_off);
+  a = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)a) + a_off);
   ga_size nb = n < m ? n : m;
   for (ga_size i = LID_0; i < nb; i += LDIM_0) {
     a[i*m + i] = 1;
@@ -18,7 +18,7 @@ KERNEL void eye(GLOBAL_MEM DTYPE_OUTPUT_0 *a, ga_size a_off, ga_size n, ga_size 
 #section support_code_struct
 
 int APPLY_SPECIFIC(tstgpueye)(PyArrayObject *n, PyArrayObject *m,
-                              PyGpuArrayObject **z, PyGpuContextObject *ctx) {
+                              PyGpuArrayObject **z, PARAMS_TYPE* params) {
   size_t dims[2] = {0, 0};
   size_t ls, gs;
   void *args[3];
@@ -29,9 +29,9 @@ int APPLY_SPECIFIC(tstgpueye)(PyArrayObject *n, PyArrayObject *m,
 
   Py_XDECREF(*z);
   *z = pygpu_zeros(2, dims,
-                   TYPECODE,
+                   params->typecode,
                    GA_C_ORDER,
-                   ctx, Py_None);
+                   params->context, Py_None);
   if (*z == NULL)
     return -1;
 

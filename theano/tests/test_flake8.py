@@ -62,7 +62,6 @@ whitelist_flake8 = [
     "tensor/tests/test_sort.py",
     "tensor/tests/test_raw_random.py",
     "tensor/tests/test_xlogx.py",
-    "tensor/tests/test_extra_ops.py",
     "tensor/tests/test_slinalg.py",
     "tensor/tests/test_blas_c.py",
     "tensor/tests/test_blas_scipy.py",

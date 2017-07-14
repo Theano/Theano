@@ -10,8 +10,8 @@ KERNEL void max_pool2d_kernel(const ga_size nthreads,
    const ga_size stride_h, const ga_size stride_w, const ga_size pad_h, const ga_size pad_w,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -55,8 +55,8 @@ KERNEL void max_pool3d_kernel(const ga_size nthreads,
    const ga_size stride_w, const ga_size pad_d, const ga_size pad_h, const ga_size pad_w,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -94,7 +94,7 @@ KERNEL void max_pool3d_kernel(const ga_size nthreads,
   }
 }
 
-#kernel ave_pool2d_kernel : size, size, size, size, size, size, size, *, size, size, size, size, size, size, size, size, size, *, size:
+#kernel ave_pool2d_kernel : size, size, size, size, size, size, size, *, size, size, size, size, size, size, size, bool, bool, *, size:
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void ave_pool2d_kernel(const ga_size nthreads,
@@ -105,8 +105,8 @@ KERNEL void ave_pool2d_kernel(const ga_size nthreads,
    const ga_bool inc_pad, const ga_bool sum_mode,
    GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)z) + z_off);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
@@ -149,7 +149,7 @@ KERNEL void ave_pool2d_kernel(const ga_size nthreads,
   }
 }
 
-#kernel ave_pool3d_kernel : size, size, size, size, size, size, size, size, size, *, size, size, size, size, size, size, size, size, size, size, size, size, *, size :
+#kernel ave_pool3d_kernel : size, size, size, size, size, size, size, size, size, *, size, size, size, size, size, size, size, size, size, size, bool, bool, *, size :
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void ave_pool3d_kernel(const ga_size nthreads,
@@ -163,8 +163,8 @@ KERNEL void ave_pool3d_kernel(const ga_size nthreads,
                               GLOBAL_MEM DTYPE_OUTPUT_0 *z, const ga_size z_off)
 {
   // grid stride looping
-  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)x) + x_off);
-  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((char *)z) + z_off);
+  x = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)x) + x_off);
+  z = (GLOBAL_MEM DTYPE_OUTPUT_0 *)(((GLOBAL_MEM char *)z) + z_off);
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < nthreads;
        index += LDIM_0 * GDIM_0) {
@@ -217,8 +217,8 @@ KERNEL void ave_pool3d_kernel(const ga_size nthreads,
 
 // output shape for a given input padded shape, window shape and stride
 // We use ssize_t in the max since this is done to avoid negative results.
-#define OUTPUT_DIMS(in_dim, ws, st)                       \
-  (IGNORE_BORDER ? (in_dim - ws)/st + 1 :                 \
+#define OUTPUT_DIMS(in_dim, ws, st, ignore_border)        \
+  (ignore_border ? (in_dim - ws)/st + 1 :                 \
    (st > ws ? (in_dim - 1)/st + 1 :                       \
     std::max<ssize_t>(0, (in_dim - 1 - ws + st)/st) + 1))
 
@@ -229,7 +229,10 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
                          PyArrayObject *stride,
                          PyArrayObject *pad,
                          PyGpuArrayObject **z,
-                         PyGpuContextObject *ctx) {
+                         PARAMS_TYPE* params) {
+  bool max_pool = (params->mode == POOLING_MAX);
+  bool inc_pad = (params->mode != POOLING_AVERAGE_COUNT_EXCLUDE_PADDING);
+  bool sum_mode = (params->mode  == POOLING_SUM);
   if (!GpuArray_IS_C_CONTIGUOUS(&x->ga))
     {
       PyErr_Format(PyExc_ValueError,
@@ -253,19 +256,19 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
     w[i] = *((npy_int64*)PyArray_GETPTR1(ws, i));
     s[i] = *((npy_int64*)PyArray_GETPTR1(stride, i));
     p[i] = *((npy_int64*)PyArray_GETPTR1(pad, i));
-    z_dims[2 + i] = OUTPUT_DIMS(x_dims[2 + i] + 2*p[i], w[i], s[i]);
+    z_dims[2 + i] = OUTPUT_DIMS(x_dims[2 + i] + 2*p[i], w[i], s[i], params->ignore_border);
     if (p[i] > 0) {
       nonzero_padding = 1;
     }
   }
-  if (!IGNORE_BORDER && nonzero_padding) {
+  if (!params->ignore_border && nonzero_padding) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuPool: padding works only with ignore_border=True");
     return 1;
   }
 
   if (theano_prep_output(z, PyGpuArray_NDIM(x), z_dims,
-                         x->ga.typecode, GA_C_ORDER, ctx) != 0)
+                         x->ga.typecode, GA_C_ORDER, params->context) != 0)
     {
       PyErr_SetString(PyExc_RuntimeError,
                       "GpuPool: failed to allocate memory");
@@ -277,7 +280,7 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
 
     if (ndims == 2) {
       size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3];
-      if (MAX_POOL) {
+      if (max_pool) {
         err = max_pool2d_kernel_scall(1, &num_kernels, 0, num_kernels,
                                       z_dims[0], z_dims[1], z_dims[2], z_dims[3],
                                       x_dims[2], x_dims[3],
@@ -295,7 +298,7 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
                                       x_dims[2], x_dims[3],
                                       x->ga.data, x->ga.offset,
                                       w[0], w[1], s[0], s[1], p[0], p[1],
-                                      INC_PAD, SUM_MODE,
+                                      inc_pad, sum_mode,
                                       (*z)->ga.data, (*z)->ga.offset);
         if (err != GA_NO_ERROR) {
           PyErr_Format(PyExc_RuntimeError,
@@ -307,7 +310,7 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
     }
     else if (ndims == 3) {
       size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3] * z_dims[4];
-      if (MAX_POOL) {
+      if (max_pool) {
         err = max_pool3d_kernel_scall(1, &num_kernels, 0, num_kernels,
                                       z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
                                       x_dims[2], x_dims[3], x_dims[4],
@@ -326,7 +329,7 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
                                       x->ga.data, x->ga.offset,
                                       w[0], w[1], w[2], s[0], s[1], s[2],
                                       p[0], p[1], p[2],
-                                      INC_PAD, SUM_MODE,
+                                      inc_pad, sum_mode,
                                       (*z)->ga.data, (*z)->ga.offset);
         if (err != GA_NO_ERROR) {
           PyErr_Format(PyExc_RuntimeError,

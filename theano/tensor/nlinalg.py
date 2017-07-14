@@ -46,6 +46,30 @@ class MatrixPinv(Op):
         (z,) = outputs
         z[0] = np.linalg.pinv(x).astype(x.dtype)
 
+    def L_op(self, inputs, outputs, g_outputs):
+        r"""The gradient function should return
+
+            .. math:: V\frac{\partial X^+}{\partial X},
+
+        where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
+        ``inputs``. According to `Wikipedia
+        <https://en.wikipedia.org/wiki/Moore%E2%80%93Penrose_pseudoinverse#Derivative>`_,
+        this corresponds to
+
+            .. math:: (-X^+ V^T X^+ + X^+ X^{+T} V (I - X X^+) + (I - X^+ X) V X^{+T} X^+)^T.
+        """
+        x, = inputs
+        z, = outputs
+        gz, = g_outputs
+
+        x_dot_z = theano.tensor.dot(x, z)
+        z_dot_x = theano.tensor.dot(z, x)
+
+        grad = (-matrix_dot(z, gz.T, z) +
+                matrix_dot(z, z.T, gz, (theano.tensor.identity_like(x_dot_z) - x_dot_z)) +
+                matrix_dot((theano.tensor.identity_like(z_dot_x) - z_dot_x), gz, z.T, z)).T
+        return [grad]
+
 pinv = MatrixPinv()
 
 

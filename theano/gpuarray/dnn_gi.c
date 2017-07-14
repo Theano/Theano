@@ -1,17 +1,13 @@
 #section init_code_struct
 
-// #ifdef CHOOSE_ALGO
 if (PARAMS->choose_algo) {
   reuse_algo = 0;
   prev_algo = PARAMS->conv_algo;
-  // #ifndef CHOOSE_ONCE
   if (!PARAMS->choose_once) {
       memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
       memset(prev_top_dims, 0, sizeof(prev_top_dims));
   }
-  // #endif
 }
-// #endif
 
 #section support_code_struct
 
@@ -53,12 +49,10 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     return 1;
   }
 
-  // #ifdef CONV_INPLACE
   if (params->inplace) {
     Py_XDECREF(*input);
     *input = im;
     Py_INCREF(*input);
-  // #else
   } else {
     if (theano_prep_output(input, PyGpuArray_NDIM(im), PyGpuArray_DIMS(im),
                            im->ga.typecode, GA_C_ORDER, c) != 0)
@@ -66,7 +60,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     if (beta != 0.0 && pygpu_move(*input, im))
       return 1;
   }
-  // #endif
 
   if (PyGpuArray_DIMS(im)[0] == 0 || PyGpuArray_DIMS(kerns)[0] == 0 || PyGpuArray_DIMS(kerns)[1] == 0) {
     int err2 = GpuArray_memset(&(*input)->ga, 0);
@@ -131,9 +124,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     }
   }
 
-  // #ifdef CHOOSE_ALGO
   if (params->choose_algo) {
-    // #ifndef CHOOSE_ONCE
     if (!params->choose_once) {
       reuse_algo = 1;
       for (unsigned int i = 0; i < PyGpuArray_NDIM(kerns); i++) {
@@ -143,7 +134,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
                       PyGpuArray_DIM(output, i) == prev_top_dims[i]);
       }
     }
-    // #endif
 
     if (!reuse_algo) {
       size_t free;
@@ -159,7 +149,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       // Guess 4Mb if the info is not available
       if (free == 0) free = 4 * 1024 * 1024;
 
-    // #ifdef CHOOSE_TIME
     if (params->choose_time) {
       int count;
       cudnnConvolutionBwdDataAlgoPerf_t choice;
@@ -186,7 +175,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       }
 
       algo = choice.algo;
-    // #else
     } else {
       err = cudnnGetConvolutionBackwardDataAlgorithm(
         params->handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output),
@@ -199,25 +187,29 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
         return 1;
       }
     }
-    // #endif
       prev_algo = algo;
     } else {
       algo = prev_algo;
     }
 
-    // #ifdef CHOOSE_ONCE
     if (params->choose_once) {
       reuse_algo = 1;
-    // #else
     } else {
       for (unsigned int i = 0; i < PyGpuArray_NDIM(kerns); i++) {
         prev_kern_dims[i] = PyGpuArray_DIM(kerns, i);
         prev_top_dims[i] = PyGpuArray_DIM(output, i);
       }
     }
-    // #endif
+
+    #ifdef DEBUG
+    char algorithm_name[128];
+    if (0 != theano_enum_to_string_cudnnConvolutionBwdDataAlgo_t(algo, algorithm_name)) {
+        return 1;
+    };
+    // NB: This is printed only when algorithm is chosen at runtime.
+    fprintf(stderr, "(using %s) ", algorithm_name);
+    #endif
   }
-  // #endif
 
   // The FFT implementation does not support strides, 1x1 filters or inputs
   // with a spatial dimension larger than 1024. The tiled-FFT implementation

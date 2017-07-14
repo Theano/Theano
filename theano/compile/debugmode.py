@@ -25,9 +25,10 @@ from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
-    SymbolicOutput, Supervisor, std_fgraph)
+    std_fgraph)
 from theano.compile.mode import Mode, register_mode
-from theano.compile.ops import OutputGuard
+from theano.compile.ops import OutputGuard, _output_guard
+
 
 __docformat__ = "restructuredtext en"
 _logger = logging.getLogger("theano.compile.debugmode")
@@ -613,45 +614,10 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
         instances already installed.
 
     """
-    orig_inputs = [spec.variable for spec in input_specs]
-    updates = [spec.update for spec in input_specs if spec.update]
-    orig_outputs = [spec.variable for spec in output_specs] + updates
-
     equivalence_tracker = _VariableEquivalenceTracker()
-    fgraph = gof.fg.FunctionGraph(orig_inputs, orig_outputs,
-                                  features=[equivalence_tracker])
-    # DestroyHandler may not be needed yet, as there is usually no
-    # inplace operation in the graph at this stage. DestroyHandler
-    # will be installed by an optimization after canonicalization,
-    # before the inplace operations are applied. This results in a big
-    # speed gain.
-    #
-    # If inplace operations are accepted and present, however,
-    # DestroyHandler will be inserted in the loop below.
-
-    if not accept_inplace:
-        for node in fgraph.apply_nodes:
-            if getattr(node.op, 'destroy_map', None):
-                raise TypeError("Graph must not contain inplace operations",
-                                node)
-    else:
-        # However, if some inplace ops are already in the graph,
-        # DestroyHandler is needed for the Supervisor below to work correctly.
-        for node in fgraph.apply_nodes:
-            if getattr(node.op, 'destroy_map', None):
-                fgraph.attach_feature(gof.DestroyHandler())
-                break
-
-    # We need to protect all immutable inputs from inplace operations.
-    fgraph.attach_feature(Supervisor(
-        input for spec, input in zip(input_specs, fgraph.inputs)
-        if not (spec.mutable or (hasattr(fgraph, 'destroyers') and
-                                 fgraph.destroyers(input)))))
-
-    for feature in std_fgraph.features:
-        fgraph.attach_feature(feature())
-
-    return fgraph, list(map(SymbolicOutput, updates)), equivalence_tracker
+    fgraph, updates = std_fgraph(input_specs, output_specs, accept_inplace)
+    fgraph.attach_feature(equivalence_tracker)
+    return fgraph, updates, equivalence_tracker
 
 
 class DataDestroyed():
@@ -2311,6 +2277,24 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                               "of", len(li), "events was stable.",
                               file=sys.stderr)
         self.fgraph = fgraph
+        destroy_handler_added = False
+        for feature in fgraph._features:
+            if isinstance(feature, gof.DestroyHandler):
+                destroy_handler_added = True
+                break
+        if not destroy_handler_added:
+            fgraph.attach_feature(gof.DestroyHandler())
+        for o in fgraph.outputs:
+            try:
+                fgraph.replace_validate(o, _output_guard(o), reason='output_guard')
+                raise Exception("Output variable %s required output_guard, "
+                                "how was this output left unprotected against "
+                                "destructive operations?" % o)
+
+            except gof.InconsistencyError:
+                # This output is already impossible to destroy.
+                # No guard necessary
+                pass
 
         linker = _Linker(self)
 

@@ -2420,6 +2420,11 @@ class Abs(UnaryScalarOp):
             return "%(z)s = fabs(%(x)s);" % locals()
         if type in complex_types:
             return "%(z)s = sqrt(%(x)s.real*%(x)s.real + %(x)s.imag*%(x)s.imag);" % locals()
+        if node.outputs[0].type == bool:
+            return "%(z)s = (%(x)s) ? 1 : 0;" % locals()
+        if type in uint_types:
+            # uint are always already absolute value.
+            return "%(z)s = %(x)s;" % locals()
         raise NotImplementedError('type not supported', type)
 abs_ = Abs(same_out)
 

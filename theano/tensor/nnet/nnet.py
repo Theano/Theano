@@ -65,7 +65,7 @@ class SoftmaxWithBias(gof.Op):
                 or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('x must be 2-d tensor of floats')
         if b.type.ndim != 1 \
-                or x.type.dtype not in tensor.float_dtypes:
+                or b.type.dtype not in tensor.float_dtypes:
             raise ValueError('b must be 1-d tensor of floats')
 
         sm = x.type()
@@ -307,6 +307,13 @@ class SoftmaxGrad(gof.Op):
         sm = tensor.as_tensor_variable(sm)
         if dy.type.dtype not in tensor.float_dtypes:
             raise ValueError('dy must be tensor of floats. Got ', dy.type)
+<<<<<<< HEAD
+=======
+        if dy.ndim == 1:
+            dy = tensor.shape_padleft(dy, n_ones=1)
+        if sm.ndim == 1:
+            sm = tensor.shape_padleft(sm, n_ones=1)
+>>>>>>> bfb77195cdba2501ff69c15cf2bc7475459f1ad9
         return Apply(self, [dy, sm], [sm.type()])
 
     def perform(self, node, input_storage, output_storage, param):
@@ -487,6 +494,11 @@ class Softmax(gof.Op):
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
+<<<<<<< HEAD
+=======
+        if x.ndim == 1:
+            x = tensor.shape_padleft(x, n_ones=1)
+>>>>>>> bfb77195cdba2501ff69c15cf2bc7475459f1ad9
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, input_storage, output_storage, param):
@@ -709,6 +721,12 @@ class LogSoftmax(gof.Op):
         x = tensor.as_tensor_variable(x)
         if x.type.dtype not in tensor.float_dtypes:
             raise ValueError('x must be tensor of floats. Got %s' % x.type)
+<<<<<<< HEAD
+=======
+        # TODO : Delete this and modify the test accordly
+        if x.ndim == 1:
+            x = tensor.shape_padleft(x, n_ones=1)
+>>>>>>> bfb77195cdba2501ff69c15cf2bc7475459f1ad9
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, input_storage, output_storage, param):

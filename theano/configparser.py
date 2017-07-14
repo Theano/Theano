@@ -191,7 +191,16 @@ def get_config_md5():
 
     We only take into account config options for which `in_c_key` is True.
     """
-    all_opts = sorted([c for c in _config_var_list if c.in_c_key],
+    all_opts = []
+    for c in _config_var_list:
+        if callable(c.in_c_key):
+            i = c.in_c_key()
+        else:
+            i = c.in_c_key
+        if i:
+            all_opts.append(c)
+
+    all_opts = sorted(all_opts,
                       key=lambda cv: cv.fullname)
     return theano.gof.utils.hash_from_code('\n'.join(
         ['%s = %s' % (cv.fullname, cv.__get__(True, None)) for cv in all_opts]))

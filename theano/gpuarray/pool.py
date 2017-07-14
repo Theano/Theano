@@ -3,9 +3,12 @@ import os.path
 
 import theano
 from theano import Apply
+from theano.gof import ParamsType
+from theano.scalar import bool as bool_t
 from theano.tensor.basic import as_tensor_variable
-from theano.tensor.signal.pool import Pool
+from theano.tensor.signal.pool import Pool, PoolingMode_t
 
+from .type import gpu_context_type
 from .basic_ops import (CGpuKernelBase, infer_context_name,
                         as_gpuarray_variable, gpu_contiguous)
 
@@ -22,6 +25,9 @@ class GpuPool(CGpuKernelBase):
 
     """
     __props__ = ('ignore_border', 'mode', 'ndim')
+    params_type = ParamsType(ignore_border=bool_t,
+                             mode=PoolingMode_t,
+                             context=gpu_context_type)
 
     def __init__(self, ignore_border, mode='max', ndim=2):
         self.ndim = ndim
@@ -31,8 +37,11 @@ class GpuPool(CGpuKernelBase):
         self.mode = mode
         CGpuKernelBase.__init__(self, ['pool.c'],
                                 'APPLY_SPECIFIC(pool)')
-        assert mode in ('max', 'sum', 'average_inc_pad', 'average_exc_pad')
+        assert PoolingMode_t.has_alias(self.mode)
         assert self.ndim in [2, 3]
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def c_headers(self):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
@@ -73,16 +82,6 @@ class GpuPool(CGpuKernelBase):
         pad = theano.tensor.cast(pad, 'int64')
 
         return Apply(self, [inp, ws, stride, pad], [inp.type()])
-
-    def get_op_params(self):
-        ignore_border = int(self.ignore_border)
-        max_pool = int(self.mode == 'max')
-        inc_pad = int(self.mode != 'average_exc_pad')
-        sum_mode = int(self.mode == 'sum')
-        return [('IGNORE_BORDER', ignore_border),
-                ('INC_PAD', inc_pad),
-                ('MAX_POOL', max_pool),
-                ('SUM_MODE', sum_mode)]
 
     def infer_shape(self, node, in_shapes):
         ws, stride, pad = [node.inputs[1], node.inputs[2], node.inputs[3]]
@@ -214,6 +213,7 @@ class GpuAveragePoolGrad(CGpuKernelBase):
 
     """
     __props__ = ('ignore_border', 'mode', 'ndim')
+    params_type = ParamsType(mode=PoolingMode_t, context=gpu_context_type)
 
     def __init__(self, ignore_border, mode='max', ndim=2):
         self.ndim = ndim
@@ -225,6 +225,9 @@ class GpuAveragePoolGrad(CGpuKernelBase):
                                 'APPLY_SPECIFIC(ave_pool_grad)')
         assert mode in ('sum', 'average_inc_pad', 'average_exc_pad')
         assert ndim in [2, 3]
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def c_headers(self):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
@@ -266,12 +269,6 @@ class GpuAveragePoolGrad(CGpuKernelBase):
         pad = theano.tensor.cast(pad, 'int64')
 
         return Apply(self, [inp, out_grad, ws, stride, pad], [inp.type()])
-
-    def get_op_params(self):
-        inc_pad = int(self.mode == 'average_inc_pad')
-        sum_mode = int(self.mode == 'sum')
-        return [('INC_PAD', inc_pad),
-                ('SUM_MODE', sum_mode)]
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
@@ -369,6 +366,7 @@ class GpuMaxPoolRop(CGpuKernelBase):
 
     """
     __props__ = ('ignore_border', 'mode', 'ndim')
+    params_type = ParamsType(ignore_border=bool_t, context=gpu_context_type)
 
     def __init__(self, ignore_border, mode='max', ndim=2):
         self.ndim = ndim
@@ -378,6 +376,9 @@ class GpuMaxPoolRop(CGpuKernelBase):
                                 'APPLY_SPECIFIC(max_pool_rop)')
         assert mode == 'max'
         assert ndim in [2, 3]
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def c_headers(self):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
@@ -421,10 +422,6 @@ class GpuMaxPoolRop(CGpuKernelBase):
         pad = theano.tensor.cast(pad, 'int64')
 
         return Apply(self, [inp, eval_point, ws, stride, pad], [eval_point.type()])
-
-    def get_op_params(self):
-        ignore_border = int(self.ignore_border)
-        return [('IGNORE_BORDER', ignore_border)]
 
     def infer_shape(self, node, in_shapes):
         ws, stride, pad = [node.inputs[2], node.inputs[3], node.inputs[4]]

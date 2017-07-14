@@ -303,8 +303,6 @@ class GpuArrayType(Type):
         return data
 
     def filter_variable(self, other, allow_convert=True):
-        from theano.gpuarray.basic_ops import GpuFromHost
-
         if hasattr(other, '_as_GpuArrayVariable'):
             other = other._as_GpuArrayVariable(self.context_name)
 
@@ -314,7 +312,7 @@ class GpuArrayType(Type):
         if other.type == self:
             return other
 
-        if not isinstance(other.type, tensor.TensorType):
+        if not isinstance(other.type, (TensorType, GpuArrayType)):
             raise TypeError('Incompatible type', (self, other.type))
         if (other.type.dtype != self.dtype):
             raise TypeError('Incompatible dtype', (self.dtype,
@@ -335,7 +333,7 @@ class GpuArrayType(Type):
                                  str(self.broadcastable)))
             other = other2
 
-        return GpuFromHost(self.context_name)(other)
+        return other.transfer(self.context_name)
 
     @staticmethod
     def values_eq(a, b, force_same_dtype=True):

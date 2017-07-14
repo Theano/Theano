@@ -47,8 +47,8 @@ KERNEL void dilated_im3d2col_kernel(const ga_size n,
     const ga_size height_col, const ga_size width_col, const ga_size depth_col,
     GLOBAL_MEM DTYPE_INPUT_0 * data_col,
     const ga_size offset_col) {
-  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
-  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
+  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)data_im) + offset_im);
+  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)data_col) + offset_col);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
@@ -100,8 +100,8 @@ KERNEL void im3d2col_kernel(const ga_size n,
     const ga_size height_col, const ga_size width_col, const ga_size depth_col,
     GLOBAL_MEM DTYPE_INPUT_0 * data_col,
     const ga_size offset_col) {
-  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
-  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
+  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)data_im) + offset_im);
+  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)data_col) + offset_col);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
@@ -115,10 +115,10 @@ KERNEL void im3d2col_kernel(const ga_size n,
     const ga_size h_offset = h_col * stride_h - pad_h;
     const ga_size w_offset = w_col * stride_w - pad_w;
     const ga_size d_offset = d_col * stride_d - pad_d;
-    DTYPE_INPUT_0 * data_col_ptr = data_col;
+    GLOBAL_MEM DTYPE_INPUT_0 * data_col_ptr = data_col;
     data_col_ptr += c_col * (height_col * width_col * depth_col) +
       h_col * (width_col * depth_col) + w_col * depth_col + d_col;
-    const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
+    GLOBAL_MEM const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
     data_im_ptr += c_im * (height * width * depth) +
       h_offset * (width * depth) + w_offset * depth + d_offset;
     for (ga_size i = 0; i < kernel_h; ++i) {
@@ -154,8 +154,8 @@ KERNEL void dilated_col2im3d_kernel(const ga_size n,
     const ga_size data_im_offset) {
     // offset_im is the pointer offset for data_im.
     // data_im_offset is an offset of elements in the array
-  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
-  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
+  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)data_im) + offset_im);
+  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)data_col) + offset_col);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
@@ -222,8 +222,8 @@ KERNEL void col2im3d_kernel(const ga_size n,
     const ga_size data_im_offset) {
     // offset_im is the pointer offset for data_im.
     // data_im_offset is an offset of elements in the array
-  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_im) + offset_im);
-  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((char *)data_col) + offset_col);
+  data_im = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)data_im) + offset_im);
+  data_col = (GLOBAL_MEM DTYPE_INPUT_0 *)(((GLOBAL_MEM char *)data_col) + offset_col);
   // grid stride looping
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
