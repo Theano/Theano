@@ -1899,7 +1899,7 @@ class GpuDnnDropoutOp(DnnBase):
         return Apply(self, [inp, descriptor, state],
                      [inp.type(), state.type(), gpudata_type()])
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         assert self.inplace, "GpuDnnDropoutOp not inplace"
 
 
