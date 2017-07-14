@@ -905,7 +905,7 @@ def local_logsoftmax_grad(node):
         node.inputs[0].owner.op == tensor.true_div and
         len(node.inputs[0].owner.inputs) >= 2 and
         node.inputs[0].owner.inputs[1].owner is not None and
-        node.inputs[0].owner.inputs[1].owner.op == softmax_op and
+        isinstance(node.inputs[0].owner.inputs[1].owner.op, Softmax) and
         node.inputs[1] == node.inputs[0].owner.inputs[1] and
         not (
             # skip if it will be optimized by
@@ -938,7 +938,8 @@ def softmax(c, axis=-1):
     axis, = axis
     if c.broadcastable[axis]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    return softmax_op(c) if axis == (c.ndim - 1) else Softmax(axis)(c)
+    return Softmax(axis)(c)
+    # return softmax_op(c) if axis == (c.ndim - 1) else Softmax(axis)(c)
 
 
 def logsoftmax(c, axis=-1):
@@ -949,17 +950,17 @@ def logsoftmax(c, axis=-1):
     axis, = axis
     if c.broadcastable[axis]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    return logsoftmax_op(c) if axis == (c.ndim - 1) else LogSoftmax(axis)(c)
+    return LogSoftmax(axis)(c)
 
 
 @opt.register_specialize('fast_compile_gpu')
-@gof.local_optimizer([softmax_op])
+@gof.local_optimizer([Softmax])
 def local_softmax_with_bias(node):
     """
     Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias).
 
     """
-    if node.op == softmax_op:
+    if isinstance(node.op, Softmax):
         x, = node.inputs
         if x.owner and x.owner.op == tensor.add:
             vectors = []
@@ -1048,7 +1049,7 @@ def softmax_simplifier(numerators, denominators):
                                 matching_denom = denominator
                                 break
         if matching_denom:
-            softmax = softmax_op(x)
+            softmax = Softmax(x.ndim - 1)(x)
             copy_stack_trace(numerator, softmax)
             numerators.remove(numerator)
             denominators.remove(matching_denom)
@@ -1666,7 +1667,7 @@ def crossentropy_to_crossentropy_with_softmax(fgraph):
             if node.op == crossentropy_categorical_1hot:
                 nll, = node.outputs
                 sm, one_of_n = node.inputs
-                if sm.owner and sm.owner.op == softmax_op:
+                if sm.owner and isinstance(sm.owner.op, Softmax):
                     x, = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(
                         x, tensor.zeros_like(x[0]), one_of_n)
@@ -1715,7 +1716,7 @@ def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
 def local_argmax_pushdown(node):
     if isinstance(node.op, tensor.MaxAndArgmax) and node.inputs[0].owner and \
             len(node.outputs[0].clients) > 0 and node.inputs[0].owner.op in \
-            (softmax_op, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
+            (Softmax(), softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
              softmax_with_bias):
         if theano.config.warn.argmax_pushdown_bug:
             logging.getLogger('theano.tensor.nnet.nnet').warn(
@@ -1828,8 +1829,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
             except Exception:
                 pass
 
-    if sm is not None and sm.owner and sm.owner.op in (softmax_op,
-                                                       softmax_with_bias):
+    if sm is not None and sm.owner and (isinstance(sm.owner.op, Softmax) or sm.owner.op == softmax_with_bias):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
             assert sm_w_bias[0].owner.op == softmax_with_bias
