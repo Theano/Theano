@@ -12,7 +12,7 @@ import theano
 from theano import Op, Apply, tensor, config, Variable
 from theano.scalar import (as_scalar, constant, Log, get_scalar_type,
                            int32 as int_t, bool as bool_t, uint32 as uint32_t)
-from theano.tensor import as_tensor_variable
+from theano.tensor import as_tensor_variable, Argmax
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp, ParamsType, EnumList
 from theano.gof.cmodule import GCC_compiler
@@ -37,6 +37,7 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, GpuAllocEmpty,
                         empty_like, GpuArrayType, HostFromGpu)
 from .elemwise import GpuElemwise, GpuCAReduceCuda
+from .reduction import GpuMaxAndArgmax
 
 # These don't exist in gpuarray
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
@@ -1592,8 +1593,9 @@ class GpuDnnReduction(DnnBase):
         self.c_axis = self._convert_axis(axis)
         # axis is a list of axes to reduce on
         self.axis = axis
-        if return_indices and (red_op != 'max' and red_op != 'min'):
-            raise ValueError("Can't request indices for something other than min or max")
+        if return_indices and (red_op != 'maximum' and red_op != 'minimum'):
+            raise ValueError("Can't request indices for something other than"
+                             " minimum or maximum")
         self.return_indices = return_indices
 
     def _convert_axis(self, axis):
@@ -1897,7 +1899,7 @@ class GpuDnnDropoutOp(DnnBase):
         return Apply(self, [inp, descriptor, state],
                      [inp.type(), state.type(), gpudata_type()])
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         assert self.inplace, "GpuDnnDropoutOp not inplace"
 
 
@@ -3121,6 +3123,66 @@ def local_dnn_reduction(node):
                             node.op.acc_dtype,
                             node.op.dtype,
                             False)(node.inputs[0]),)
+
+
+@register_opt('cudnn')
+@local_optimizer([GpuMaxAndArgmax])
+def local_cudnn_maxandargmax(node):
+    if not isinstance(node.op, GpuMaxAndArgmax):
+        return
+
+    if not dnn_available(node.inputs[0].type.context_name):
+        return
+
+    if version(raises=False) < 6000:
+        return
+
+    if node.inputs[0].ndim > 8:
+        return
+
+    if node.inputs[0].dtype != node.outputs[0].dtype:
+        return
+
+    if node.inputs[0].dtype not in ['float16', 'float32', 'float64']:
+        return
+
+    # order of the axes influences the output indices
+    if (node.op.axis is not None and
+            tuple(sorted(node.op.axis)) != node.op.axis):
+        return
+
+    max, arg = GpuDnnReduction('maximum', node.op.axis, node.outputs[0].dtype,
+                               node.outputs[0].dtype, True)(node.inputs[0])
+
+    # cudnn can only return int32 indices
+    return (max, as_gpuarray_variable(arg.astype('int64'),
+                                      node.outputs[1].type.context_name))
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([Argmax])
+@register_opt2([Argmax], 'fast_compile', 'cudnn')
+def local_dnn_argmax(op, ctx_name, inputs, outputs):
+    if not dnn_available(ctx_name):
+        return
+
+    if version(raises=False) < 6000:
+        return
+
+    if inputs[0].ndim > 8:
+        return
+
+    if inputs[0].dtype not in ['float16', 'float32', 'float64']:
+        return
+
+    # order of the axes influences the output indices
+    if op.axis is not None and tuple(sorted(op.axis)) != op.axis:
+        return
+
+    max, arg = GpuDnnReduction('maximum', op.axis, inputs[0].dtype,
+                               inputs[0].dtype, True)(*inputs)
+
+    return [as_gpuarray_variable(arg.astype('int64'), ctx_name)]
 
 
 class NoCuDNNRaise(Optimizer):
