@@ -33,7 +33,8 @@ from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv2d_gradInputs,
                                               AbstractConv3d,
                                               AbstractConv3d_gradWeights,
-                                              AbstractConv3d_gradInputs)
+                                              AbstractConv3d_gradInputs,
+                                              get_conv_output_shape)
 from theano.tensor.nnet.neighbours import Images2Neibs
 from theano.tensor.nnet.ctc import ConnectionistTemporalClassification
 import theano.tensor.nlinalg as nlinalg
@@ -1792,17 +1793,48 @@ class ConvMetaOptimizer(LocalCudaMetaOptimizer):
 
     def provide_inputs(self, node, inputs):
         result = {}
-        img, kern = node.inputs
-        vars = (img, kern)
 
         shapes = (node.op.imshp, node.op.kshp)
         if(node.op.imshp is None or node.op.kshp is None or
                 any([s is None for shape in shapes for s in shape])):
             return result
 
-        for(var, shape) in zip(vars, shapes):
-            result[var] = theano.shared(np.random.random(shape).astype(theano.config.floatX),
-                                        var.name, borrow=True)
+        if type(node.op) in [AbstractConv2d, AbstractConv3d]:
+            img, kern = node.inputs
+            for(var, shape) in zip((img, kern), shapes):
+                result[var] = theano.shared(np.random.random(shape).astype(theano.config.floatX),
+                                            var.name, borrow=True)
+
+        if type(node.op) in [AbstractConv2d_gradWeights, AbstractConv3d_gradWeights]:
+            img, top, kshape = node.inputs
+
+            tshp = get_conv_output_shape(node.op.imshp,
+                                         node.op.kshp,
+                                         node.op.border_mode,
+                                         node.op.subsample,
+                                         node.op.filter_dilation)
+
+            result[kshape] = theano.tensor.as_tensor_variable(node.op.kshp[-2:])
+
+            for(var, shape) in zip((img, top), (node.op.imshp, tshp)):
+                result[var] = theano.shared(np.random.random(shape).astype(theano.config.floatX),
+                                            var.name, borrow=True)
+
+        if type(node.op) in [AbstractConv2d_gradInputs, AbstractConv3d_gradInputs]:
+            kern, top, ishape = node.inputs
+
+            tshp = get_conv_output_shape(node.op.imshp,
+                                         node.op.kshp,
+                                         node.op.border_mode,
+                                         node.op.subsample,
+                                         node.op.filter_dilation)
+
+            result[ishape] = theano.tensor.as_tensor_variable(node.op.imshp[-2:])
+
+            for(var, shape) in zip((kern, top), (node.op.kshp, tshp)):
+                result[var] = theano.shared(np.random.random(shape).astype(theano.config.floatX),
+                                            var.name, borrow=True)
+
         return result
 
 
