@@ -96,8 +96,7 @@ class t_gemm(TestCase):
             cmp_linker(copy(z), a, x, y, b, 'c|py')
             cmp_linker(copy(z), a, x, y, b, 'py')
 
-            if (not dtype.startswith("complex") and
-                    theano.config.cxx):
+            if (not dtype.startswith("complex") and theano.config.cxx):
                 # If theano.config.blas.ldflags is empty, Theano will use
                 # a NumPy C implementation of [sd]gemm_.
                 cmp_linker(copy(z), a, x, y, b, 'c')
@@ -873,7 +872,6 @@ def test_dot22scalar():
                     def check_dot22scalar(func, len_topo_scalar=-1):
                         topo = func.maker.fgraph.toposort()
                         ops = [x.op for x in topo]
-                        # classes = [type(x.op) for x in topo]
                         dtype4_upcast = theano.scalar.upcast(dtype4, dtype1,
                                                              dtype2)
 
@@ -1316,9 +1314,7 @@ class BaseGemv(object):
     def test_simple(self):
         alpha, beta, a, x, y = [self.shared(value)
                                 for value in self.get_data()]
-        desired_oy = alpha.get_value() * \
-            matrixmultiply(a.get_value(), x.get_value()) + \
-            beta.get_value() * y.get_value()
+        desired_oy = alpha.get_value() * matrixmultiply(a.get_value(), x.get_value()) + beta.get_value() * y.get_value()
 
         oy = alpha * T.dot(a, x) + beta * y
 
