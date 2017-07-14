@@ -56,8 +56,8 @@ class Optimizer(object):
         # in subclasses from other bases.
         return id(self) == id(other)
 
-    def __neq__(self, other):
-        # added to override the  __neq__ implementation that may be inherited
+    def __ne__(self, other):
+        # added to override the  __ne__ implementation that may be inherited
         # in subclasses from other bases.
         return id(self) != id(other)
 
@@ -492,8 +492,7 @@ class _metadict:
                 except Exception:
                     if item is item2:
                         return value
-            else:
-                return default
+            return default
 
     def clear(self):
         self.d = {}
