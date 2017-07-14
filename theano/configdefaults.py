@@ -1502,7 +1502,7 @@ AddConfigVar('cycle_detection',
              "The interaction of which one give the lower peak memory usage is"
              "complicated and not predictable, so if you are close to the peak"
              "memory usage, triyng both could give you a small gain. ",
-             EnumStr('regular', 'fast'),
+             EnumStr('fast', 'regular'),
              in_c_key=False)
 
 
