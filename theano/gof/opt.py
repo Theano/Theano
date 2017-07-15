@@ -1134,17 +1134,19 @@ class LocalMetaOptimizer(LocalOptimizer):
     def __init__(self, optimizers=()):
         self._tracks = [x for o in optimizers for x in o.tracks()]
         self.optimizers = list(optimizers)
-        self.verbose = config.metaopt.verbose
+        self.verbose = True
         self.track_dict = defaultdict(lambda: [])
 
         for o in optimizers:
             for c in o.tracks():
                 self.track_dict[c].append(o)
 
-    def register(self, optimizer):
-        self.optimizers.append(optimizer)
-        for c in optimizer.tracks():
-            self.track_dict[c].append(optimizer)
+    def register(self, optimizers):
+        self.optimizers.extend(optimizers)
+        for o in optimizers:
+            for c in o.tracks():
+                self.track_dict[c].append(o)
+                self._tracks.append(c)
 
     def tracks(self):
         return self._tracks
