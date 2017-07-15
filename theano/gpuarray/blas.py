@@ -690,8 +690,8 @@ class BaseGpuCorrMM(CGpuKernelBase):
     size_t kH, kW, dil_kH, dil_kW;
     if (direction != 1) {
         // weight is an input variable, we can just read its shape
-        kH = PyGpuArray_DIMS(weights)[2];
-        kW = PyGpuArray_DIMS(weights)[3];
+        kH = PyGpuArray_DIMS(weights)[wdim-2];
+        kW = PyGpuArray_DIMS(weights)[wdim-1];
     }
     else {
         if (%(height)s != -1) {
@@ -909,7 +909,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
         if (odim == 6) {
             PyErr_Format(PyExc_RuntimeError,
                     "BaseGpuCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld %%lld %%lld",
-                    out_dim[0], out_dim[1], out_dim[2], out_dim[3]);
+                    out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4], out_dim[5]);
         }
         %(fail)s
     }
@@ -1011,11 +1011,13 @@ class GpuCorrMM(BaseGpuCorrMM):
         top = gpu_contiguous(top)
         d_bottom = GpuCorrMM_gradInputs(self.border_mode,
                                         self.subsample,
-                                        self.filter_dilation)(
+                                        self.filter_dilation,
+                                        self.unshared)(
             weights, top, bottom.shape[-2:])
         d_weights = GpuCorrMM_gradWeights(self.border_mode,
                                           self.subsample,
-                                          self.filter_dilation)(
+                                          self.filter_dilation,
+                                          self.unshared)(
             bottom, top, weights.shape[-2:])
         return d_bottom, d_weights
 
@@ -1081,11 +1083,12 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
         weights = gpu_contiguous(weights)
         d_bottom = GpuCorrMM_gradInputs(self.border_mode,
                                         self.subsample,
-                                        self.filter_dilation)(weights,
-                                                              top,
-                                                              bottom.shape[-2:])
+                                        self.filter_dilation,
+                                        self.unshared)(weights,
+                                                       top,
+                                                       bottom.shape[-2:])
         d_top = GpuCorrMM(
-            self.border_mode, self.subsample, self.filter_dilation)(bottom, weights)
+            self.border_mode, self.subsample, self.filter_dilation, self.unshared)(bottom, weights)
         d_height_width = (
             theano.gradient.DisconnectedType()(),
             ) * 2 if len(inp) == 4 else ()
@@ -1137,7 +1140,7 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
             assert shape[0].ndim == 0
             assert shape[1].ndim == 0
 
-        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[-3],
                          False, False]
         return Apply(self, [kern, topgrad] + height_width, [GpuArrayType(dtype=topgrad.dtype,
                                                                          context_name=ctx_name,
@@ -1156,12 +1159,14 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
         bottom = gpu_contiguous(bottom)
         d_weights = GpuCorrMM_gradWeights(self.border_mode,
                                           self.subsample,
-                                          self.filter_dilation)(bottom,
-                                                                top,
-                                                                weights.shape[-2:])
+                                          self.filter_dilation,
+                                          self.unshared)(bottom,
+                                                         top,
+                                                         weights.shape[-2:])
         d_top = GpuCorrMM(self.border_mode,
                           self.subsample,
-                          self.filter_dilation)(bottom, weights)
+                          self.filter_dilation,
+                          self.unshared)(bottom, weights)
         d_height_width = (
             theano.gradient.DisconnectedType()(),
             ) * 2 if len(inp) == 4 else ()
@@ -1783,7 +1788,7 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
             assert shape[1].ndim == 0
             assert shape[2].ndim == 0
 
-        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[-3],
                          False, False, False]
         return Apply(self, [kern, topgrad] + height_width_depth,
                      [GpuArrayType(dtype=topgrad.dtype,

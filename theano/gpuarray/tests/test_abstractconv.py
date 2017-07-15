@@ -26,7 +26,7 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
         # provide_shape is not used by the cuDNN impementation
         cls.provide_shape = [False]
 
-    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
+    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1), u=False):
         if not dnn_available(test_ctx_name):
             raise SkipTest(dnn_available.msg)
         mode = mode_with_gpu
@@ -50,7 +50,7 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip, target_op=GpuDnnConvGradI)
 
-    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), u=False, expect_error=False):
         if not dnn_available(test_ctx_name):
             raise SkipTest(dnn_available.msg)
         if fd != (1, 1):
@@ -84,7 +84,7 @@ class TestDnnConv3d(test_abstract_conv.BaseTestConv3d):
         # provide_shape is not used by the cuDNN impementation
         cls.provide_shape = [False]
 
-    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
+    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1), u=False):
         if not dnn_available(test_ctx_name):
             raise SkipTest(dnn_available.msg)
         mode = mode_with_gpu
@@ -108,7 +108,7 @@ class TestDnnConv3d(test_abstract_conv.BaseTestConv3d):
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip, target_op=GpuDnnConvGradI)
 
-    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1), expect_error=False):
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1), u=False, expect_error=False):
         if not dnn_available(test_ctx_name):
             raise SkipTest(dnn_available.msg)
         if fd != (1, 1, 1):
@@ -141,7 +141,7 @@ class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
         cls.shared = staticmethod(gpuarray_shared_constructor)
         cls.mode = mode_with_gpu.excluding('cudnn')
 
-    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
+    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1), u=False):
         mode = self.mode
         o = self.get_output_shape(i, f, s, b, fd)
         self.run_fwd(inputs_shape=i, filters_shape=f,
@@ -150,23 +150,23 @@ class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
                      filter_flip=flip, target_op=(GpuCorrMM,
                                                   GpuCorrMM_gradWeights,
                                                   GpuCorrMM_gradInputs),
-                     filter_dilation=fd)
+                     filter_dilation=fd, unshared=u)
         self.run_gradweight(inputs_shape=i, filters_shape=f,
                             output_shape=o, subsample=s,
                             verify_grad=True, mode=mode,
                             provide_shape=provide_shape, border_mode=b,
                             filter_flip=flip,
                             target_op=GpuCorrMM_gradWeights,
-                            filter_dilation=fd)
+                            filter_dilation=fd, unshared=u)
         self.run_gradinput(inputs_shape=i, filters_shape=f,
                            output_shape=o, subsample=s,
                            verify_grad=True, mode=mode,
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip,
                            target_op=GpuCorrMM_gradInputs,
-                           filter_dilation=fd)
+                           filter_dilation=fd, unshared=u)
 
-    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), u=False, expect_error=False):
         mode = self.mode
         if not expect_error:
             self.run_gradinput(inputs_shape=i, filters_shape=f,
@@ -175,7 +175,7 @@ class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
                                provide_shape=provide_shape, border_mode=b,
                                filter_flip=flip,
                                target_op=GpuCorrMM_gradInputs,
-                               filter_dilation=fd)
+                               filter_dilation=fd, unshared=u)
         else:
             assert_raises(ValueError,
                           self.run_gradinput,
@@ -186,7 +186,7 @@ class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
                           filter_flip=flip,
                           target_op=GpuCorrMM_gradInputs,
                           ref=None,
-                          filter_dilation=fd)
+                          filter_dilation=fd, unshared=u)
 
 
 class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
@@ -196,7 +196,7 @@ class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
         cls.shared = staticmethod(gpuarray_shared_constructor)
         cls.mode = mode_with_gpu.excluding('cudnn')
 
-    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
+    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1), u=False):
         mode = self.mode
         o = self.get_output_shape(i, f, s, b, fd)
         self.run_fwd(inputs_shape=i, filters_shape=f,
@@ -221,7 +221,7 @@ class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
                            target_op=GpuCorr3dMM_gradInputs,
                            filter_dilation=fd)
 
-    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1), expect_error=False):
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1), u=False, expect_error=False):
         mode = self.mode
         if not expect_error:
             self.run_gradinput(inputs_shape=i, filters_shape=f,

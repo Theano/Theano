@@ -1569,7 +1569,8 @@ def local_abstractconv_gemm(node):
                 (None not in node.op.imshp[-2:]) and
                 (node.op.kshp is not None) and
                 (None not in node.op.kshp) and
-                border_mode != "half"):
+                border_mode != "half" and
+                not unshared):
             # we know the kernel and output size
             prod1 = node.op.kshp[0] * node.op.kshp[-3]
             prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
@@ -1585,7 +1586,7 @@ def local_abstractconv_gemm(node):
                                              filter_dilation,
                                              unshared)(
                     gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
-                    gpu_contiguous(kern.dimshuffle(kern_axes)))
+                    gpu_contiguous(kern.dimshuffle(1, 0, 2, 3)))
                 # (we need to wrap the result in as_gpuarray_variable,
                 # because we are not allowed to replace a GpuArray with
                 # a DimShuffle instance in a graph optimization)
