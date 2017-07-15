@@ -1778,18 +1778,15 @@ def local_abstractconv3d_gradinputs_gemm(node):
     return [rval]
 
 
-class LocalCudaMetaOptimizer(LocalMetaOptimizer):
+class ConvMetaOptimizer(LocalMetaOptimizer):
+
+    def __init__(self, optimizers=()):
+        super(ConvMetaOptimizer, self).__init__(optimizers)
 
     def time_call(self, fn):
         start = time.time()
         fn()[0].sync()
         return time.time() - start
-
-
-class ConvMetaOptimizer(LocalCudaMetaOptimizer):
-
-    def __init__(self, optimizers=()):
-        super(ConvMetaOptimizer, self).__init__(optimizers)
 
     def provide_inputs(self, node, inputs):
         result = {}
