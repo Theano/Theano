@@ -3075,15 +3075,16 @@ def dnn_spatialtf(img, theta, scale_width=1, scale_height=1, alpha=None, beta=No
                  img.shape[3] * scale_width)
     grid_dims = tuple(map(lambda v: as_scalar(v).astype('int32'), list(grid_dims)))
 
-    img = gpu_contiguous(img)
-    theta = gpu_contiguous(theta)
-
-    output = GpuAllocEmpty(img.dtype, infer_context_name(img))(*grid_dims)
-
     # Create spatial transformer descriptor
     desc = GpuDnnTransformerDescriptor(dtype)(grid_dims)
     # Create grid dimensions variable
     grid_dims_var = as_tensor_variable(grid_dims)
+
+    context_name = infer_context_name(desc)
+    img = gpu_contiguous(as_gpuarray_variable(img, context_name))
+    theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
+
+    output = GpuAllocEmpty(img.dtype, context_name)(*grid_dims)
     # Setup spatial transformer
     transformer = GpuDnnTransformer(dtype)(img, theta, output, grid_dims_var, desc, alpha, beta)
     return transformer
