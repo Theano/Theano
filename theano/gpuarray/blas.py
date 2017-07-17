@@ -296,7 +296,7 @@ class GpuGer(BlasOp):
         vars = dict(out=out[0], A=inp[0], alpha=inp[1], x=inp[2], y=inp[3],
                     fail=sub['fail'], name=name, params=sub['params'])
         code = """
-               if (%(params)s->inplace || !GpuArray_ISONESEGMENT(&%(A)s->ga)) {
+               if (!%(params)s->inplace || !GpuArray_ISONESEGMENT(&%(A)s->ga)) {
                  %(out)s = theano_try_copy(%(out)s, %(A)s);
                  if (%(out)s == NULL) {
                    %(fail)s
