@@ -18,7 +18,7 @@ from theano.gof.utils import ANY_TYPE, comm_guard, FALL_THROUGH, iteritems
 ################################
 
 
-class Variable:
+class Variable(object):
     """
     Serves as a base class of variables for the purpose of unification.
     "Unification" here basically means matching two patterns, see the
