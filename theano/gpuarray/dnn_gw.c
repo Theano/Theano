@@ -83,6 +83,9 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   size_t output_offset = PyGpuArray_STRIDE(output, 0) / params->num_groups;
 
   cudnnConvolutionBwdFilterAlgo_t algo = params->conv_algo;
+  #ifdef DEBUG
+  char algorithm_name[128];
+  #endif
 
   cuda_enter(c->ctx);
 
@@ -180,6 +183,16 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         }
 
         algo = choice.algo;
+
+        #ifdef DEBUG
+        if (count == 0) {
+            PyErr_SetString(PyExc_RuntimeError, "No best-timed conv gradweight algorithm found");
+            return 1;
+        } else {
+            fprintf(stderr, " (%d best-timed conv gradweight algorithms) ", count);
+        }
+        #endif
+
       } else {
         err = cudnnGetConvolutionBackwardFilterAlgorithm(
           params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output),
@@ -198,6 +211,17 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       algo = prev_algo;
     }
 
+    #ifdef DEBUG
+    if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name)) {
+        return 1;
+    };
+    // NB: This is printed only when algorithm is chosen at runtime.
+    if (reuse_algo)
+        fprintf(stderr, "(reused %s) ", algorithm_name);
+    else
+        fprintf(stderr, "(using %s) ", algorithm_name);
+    #endif
+
     if (params->choose_once) {
       reuse_algo = 1;
     } else {
@@ -206,15 +230,6 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         prev_top_dims[i] = PyGpuArray_DIM(output, i);
       }
     }
-
-    #ifdef DEBUG
-    char algorithm_name[128];
-    if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name)) {
-        return 1;
-    };
-    // NB: This is printed only when algorithm is chosen at runtime.
-    fprintf(stderr, "(using %s) ", algorithm_name);
-    #endif
   }
 
   // The FFT implementation does not support strides, 1x1 filters or inputs

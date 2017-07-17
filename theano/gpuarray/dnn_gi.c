@@ -13,8 +13,8 @@ if (PARAMS->choose_algo) {
 
 int reuse_algo;
 cudnnConvolutionBwdDataAlgo_t prev_algo;
-size_t prev_kern_dims[5] = {0};
-size_t prev_top_dims[5] = {0};
+size_t prev_kern_dims[5];
+size_t prev_top_dims[5];
 
 int
 APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
@@ -82,6 +82,9 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   size_t output_offset = PyGpuArray_STRIDE(output, 0) / params->num_groups;
 
   cudnnConvolutionBwdDataAlgo_t algo = params->conv_algo;
+  #ifdef DEBUG
+  char algorithm_name[128];
+  #endif
 
   cuda_enter(c->ctx);
 
@@ -178,6 +181,16 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       }
 
       algo = choice.algo;
+
+      #ifdef DEBUG
+      if (count == 0) {
+          PyErr_SetString(PyExc_RuntimeError, "No best-timed conv gradinput algorithm found");
+          return 1;
+      } else {
+          fprintf(stderr, " (%d best-timed conv gradinput algorithms) ", count);
+      }
+      #endif
+
     } else {
       err = cudnnGetConvolutionBackwardDataAlgorithm(
         params->handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output),
@@ -195,6 +208,18 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       algo = prev_algo;
     }
 
+    #ifdef DEBUG
+    char algorithm_name[128];
+    if (0 != theano_enum_to_string_cudnnConvolutionBwdDataAlgo_t(algo, algorithm_name)) {
+        return 1;
+    };
+    // NB: This is printed only when algorithm is chosen at runtime.
+    if (reuse_algo)
+        fprintf(stderr, "(reused %s) ", algorithm_name);
+    else
+        fprintf(stderr, "(using %s) ", algorithm_name);
+    #endif
+
     if (params->choose_once) {
       reuse_algo = 1;
     } else {
@@ -203,15 +228,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
         prev_top_dims[i] = PyGpuArray_DIM(output, i);
       }
     }
-
-    #ifdef DEBUG
-    char algorithm_name[128];
-    if (0 != theano_enum_to_string_cudnnConvolutionBwdDataAlgo_t(algo, algorithm_name)) {
-        return 1;
-    };
-    // NB: This is printed only when algorithm is chosen at runtime.
-    fprintf(stderr, "(using %s) ", algorithm_name);
-    #endif
   }
 
   // The FFT implementation does not support strides, 1x1 filters or inputs
