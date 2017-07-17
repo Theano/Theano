@@ -42,7 +42,18 @@ export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
 # Then install
 (cd libgpuarray && python setup.py install --home=$LIBDIR)
 
-# Testing theano to build cache
+set -x
+
+# Test theano core
+PARTS="theano -e gpuarray"
+THEANO_PARAM="${PARTS} --with-timer --timer-top-n 10 --with-xunit --xunit-file=theanocore_tests.xml"
+FLAGS="mode=FAST_RUN,floatX=float32,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,base_compiledir=$BASECOMPILEDIR"
+THEANO_FLAGS=${FLAGS} bin/theano-nose ${THEANO_PARAM}
+
+# Testing theano (the gpuarray parts)
+THEANO_GPUARRAY_TESTS="theano/gpuarray/tests \
+                       theano/scan_module/tests/test_scan.py:T_Scan_Gpuarray \
+                       theano/scan_module/tests/test_scan_checkpoints.py:TestScanCheckpoint.test_memory"
 FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,base_compiledir=$BASECOMPILEDIR"
 FLAGS=${FLAGS},magma.enabled=true # Enable magma GPU library
-THEANO_FLAGS=${FLAGS} bin/theano-nose theano
+THEANO_FLAGS=${FLAGS} time nosetests --with-xunit --xunit-file=theanogpuarray_tests.xml ${THEANO_GPUARRAY_TESTS}
