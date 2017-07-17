@@ -87,7 +87,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   cuda_enter(c->ctx);
 
   if (params->choose_algo) {
-    if (params->choose_once) {
+    if (!params->choose_once) {
       reuse_algo = 1;
       for (unsigned int i = 0; i < PyGpuArray_NDIM(input); i++) {
         reuse_algo = (reuse_algo &&
