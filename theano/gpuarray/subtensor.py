@@ -771,8 +771,7 @@ class GpuAdvancedIncSubtensor1(Op):
             else:
                 opname = 'increment'
             raise TypeError(
-                'cannot %s x subtensor with ndim=%s'
-                ' by y with ndim=%s to x subtensor with ndim=%s ' % (
+                'cannot %s x subtensor with ndim=%s by y with ndim=%s ' % (
                     opname, x_.type.ndim, y_.type.ndim))
 
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
@@ -995,8 +994,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
             else:
                 opname = 'increment'
             raise TypeError(
-                'cannot %s x subtensor with ndim=%s'
-                ' by y with ndim=%s to x subtensor with ndim=%s ' % (
+                'cannot %s x subtensor with ndim=%s by y with ndim=%s ' % (
                     opname, x_.type.ndim, y_.type.ndim))
 
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])

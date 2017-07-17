@@ -28,7 +28,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   float af = alpha, bf = beta;
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
-  if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(km)[1]) {
+  if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(km)[1] * params->num_groups) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuDnnConv images and kernel must have the same stack size");
     return 1;
@@ -71,12 +71,16 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     return 0;
   }
 
-  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
+  if (c_set_tensor_for_conv(input, APPLY_SPECIFIC(input), params->num_groups) == -1)
     return 1;
-  if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
+  if (c_set_tensor_for_conv(output, APPLY_SPECIFIC(output), params->num_groups) == -1)
     return 1;
-  if (c_set_filter(*kerns, APPLY_SPECIFIC(kerns)) == -1)
+  if (c_set_filter(*kerns, APPLY_SPECIFIC(kerns), params->num_groups) == -1)
     return 1;
+
+  size_t input_offset = PyGpuArray_STRIDE(input, 0) / params->num_groups;
+  size_t kern_offset = PyGpuArray_STRIDE(*kerns, 0) * PyGpuArray_DIM(*kerns, 0) / params->num_groups;
+  size_t output_offset = PyGpuArray_STRIDE(output, 0) / params->num_groups;
 
   cudnnConvolutionBwdFilterAlgo_t algo = params->conv_algo;
 
@@ -93,7 +97,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   }
   if (PyGpuArray_NDIM(input) == 4) {
     if ((PyGpuArray_DIMS(output)[0] != expected_output_dims[0]) ||
-        (PyGpuArray_DIMS(output)[1] != expected_output_dims[1]) ||
+        (PyGpuArray_DIMS(output)[1] / params->num_groups != expected_output_dims[1]) ||
         (PyGpuArray_DIMS(output)[2] != expected_output_dims[2]) ||
         (PyGpuArray_DIMS(output)[3] != expected_output_dims[3])) {
       PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%dx%ld"
@@ -273,14 +277,18 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   cuda_wait(output->ga.data, GPUARRAY_CUDA_WAIT_READ);
   cuda_wait((*kerns)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
-  err = cudnnConvolutionBackwardFilter(
-    params->handle,
-    alpha_p,
-    APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
-    APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output),
-    desc, algo, worksize == 0 ? NULL : *(void **)workspace, worksize,
-    beta_p,
-    APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(*kerns));
+  for ( int g = 0; g < params->num_groups; g++)
+  {
+
+    err = cudnnConvolutionBackwardFilter(
+      params->handle,
+      alpha_p,
+      APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input) + input_offset * g ,
+      APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output) + output_offset * g,
+      desc, algo, worksize == 0 ? NULL : *(void **)workspace, worksize,
+      beta_p,
+      APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(*kerns) + kern_offset * g);
+  }
 
   if (worksize != 0)
     gpudata_release(workspace);

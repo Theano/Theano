@@ -1,7 +1,7 @@
 #section support_code
 
 static int
-c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
+c_set_tensor_for_conv(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc, size_t groups) {
   cudnnDataType_t dt;
   size_t ds;
   switch (var->ga.typecode) {
@@ -42,7 +42,8 @@ c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
     strs[i] = 1;
     dims[i] = 1;
   }
-
+  //only for grouped convolution i.e when groups > 1
+  dims[1] = dims[1] / groups;
   cudnnStatus_t err = cudnnSetTensorNdDescriptor(desc, dt, nd < 3 ? 3 : nd,
                                                  dims, strs);
   if (err != CUDNN_STATUS_SUCCESS) {
@@ -52,6 +53,11 @@ c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
     return -1;
   }
   return 0;
+}
+
+static int
+c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
+ return c_set_tensor_for_conv(var, desc, 1);
 }
 
 static int c_make_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t *desc) {
@@ -71,7 +77,7 @@ static int c_make_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t *desc)
 }
 
 static int
-c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
+c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc, size_t groups) {
   cudnnDataType_t dt;
   cudnnStatus_t err;
 
@@ -111,6 +117,7 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
   /* Filters can't be less than 3d so we pad */
   for (unsigned int i = nd; i < 3; i++)
     dims[i] = 1;
+  dims[0] = dims[0] / groups;
 
   if (nd < 3)
     nd = 3;
@@ -135,7 +142,7 @@ static int c_make_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t *desc) {
                  cudnnGetErrorString(err));
     return -1;
   }
-  if (c_set_filter(var, *desc) != 0) {
+  if (c_set_filter(var, *desc, 1) != 0) {
     cudnnDestroyFilterDescriptor(*desc);
     return -1;
   }

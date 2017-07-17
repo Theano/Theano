@@ -1315,7 +1315,6 @@ class GpuJoin(HideC, Join):
         fail = sub['fail']
         out = out_[0]
         copy_inputs_to_list = '\n'.join(copy_to_list)
-        restype = restype
         ctx = sub['params']
 
         code = """

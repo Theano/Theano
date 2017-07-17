@@ -8386,6 +8386,19 @@ class T_Choose(utt.InferShapeTester):
             n_c = np.choose(A, B, mode=m)
             assert np.allclose(t_c, n_c)
 
+    def test_method(self):
+        a = tensor.vector(dtype='int32')
+        b = tensor.matrix(dtype='float32')
+
+        A = np.random.randint(0, 4, 4).astype('int32')
+        B = np.asarray(np.random.rand(4, 4), dtype='float32')
+
+        for m in self.modes:
+            f = function([a, b], a.choose(b, mode=m))
+            t_c = f(A, B)
+            n_c = A.choose(B, mode=m)
+            assert np.allclose(t_c, n_c)
+
     def test_broadcasted(self):
         a = tensor.scalar(dtype='int32')
         b = tensor.matrix(dtype='float32')

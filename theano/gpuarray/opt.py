@@ -1533,7 +1533,8 @@ def local_abstractconv_gemm(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
-    if ((border_mode == 'full') and (subsample == (1, 1))):
+
+    if ((border_mode == 'full') and (subsample == (1, 1)) and node.op.num_groups == 1):
         if not node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1]
         # need to dimshuffle the kernel for full convolution
@@ -1550,8 +1551,9 @@ def local_abstractconv_gemm(node):
         # By default use GpuCorrMM
         rval = GpuCorrMM(border_mode,
                          subsample,
-                         filter_dilation)(gpu_contiguous(img),
-                                          gpu_contiguous(kern))
+                         filter_dilation,
+                         node.op.num_groups)(gpu_contiguous(img),
+                                             gpu_contiguous(kern))
 
         # call GpuCorrMM_gradWeights if good
         # (the latter is faster if batchsize * kernelHeight * kernelWidth
@@ -1669,7 +1671,8 @@ def local_abstractconv_gradweights_gemm(node):
 
     rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
                                  subsample=node.op.subsample,
-                                 filter_dilation=node.op.filter_dilation)(
+                                 filter_dilation=node.op.filter_dilation,
+                                 num_groups=node.op.num_groups)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
     if node.op.filter_flip:
         rval = rval[:, :, ::-1, ::-1]
@@ -1713,7 +1716,8 @@ def local_abstractconv_gradinputs_gemm(node):
 
     rval = GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
                                 subsample=node.op.subsample,
-                                filter_dilation=node.op.filter_dilation)(
+                                filter_dilation=node.op.filter_dilation,
+                                num_groups=node.op.num_groups)(
         gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
     return [rval]
 

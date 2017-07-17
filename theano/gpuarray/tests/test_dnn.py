@@ -18,13 +18,19 @@ from theano.tensor.nnet import bn
 
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
-from ..type import gpuarray_shared_constructor
+from ..type import gpuarray_shared_constructor, GpuArrayType
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, ref_cast
 from . import test_nnet
 from .rnn_support import Model, GRU, LSTM, WrapperLayer
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim
+
+try:
+    import pygpu
+except ImportError:
+    pass
 
 mode_with_gpu = mode_with_gpu.including()
 # Globally disabled for mode_without_gpu
@@ -1506,6 +1512,55 @@ def test_dnn_reduction_opt():
         yield dnn_reduction, 2, idtype, adtype, odtype
 
 
+def dnn_reduction_strides(shp, shuffle, slice):
+    utt.fetch_seed()
+    inp = GpuArrayType('float32', (False,) * len(shp),
+                       context_name=test_ctx_name)()
+    tmp = inp.dimshuffle(shuffle)[slice]
+    res = tmp.sum(acc_dtype='float32', dtype='float32')
+    f = theano.function([inp], res, mode=mode_with_gpu)
+    assert any(isinstance(n.op, dnn.GpuDnnReduction)
+               for n in f.maker.fgraph.apply_nodes)
+    data = np.random.random(shp).astype('float32')
+    res = np.sum(data)
+    gdata = pygpu.array(data, context=inp.type.context)
+    gres = f(gdata)
+    utt.assert_allclose(res, np.array(gres))
+
+
+def test_dnn_reduction_strides():
+    yield dnn_reduction_strides, (2, 3, 2), (1, 0, 2), slice(None, None, None)
+    yield dnn_reduction_strides, (2, 3, 2), (0, 1, 2), slice(None, None, -1)
+
+
+def dnn_maxargmax(nd, idtype, axis):
+    inp = T.TensorType(idtype, (False,) * nd)()
+    res = T.max_and_argmax(inp, axis=axis)
+    f = theano.function([inp], res, mode=mode_with_gpu)
+    assert any(isinstance(n.op, dnn.GpuDnnReduction)
+               for n in f.maker.fgraph.apply_nodes)
+
+
+def test_dnn_maxandargmax_opt():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
+
+    for nd in range(1, 9):
+        yield dnn_maxargmax, nd, 'float32', None
+
+    for idtype in ('float64', 'float16'):
+        yield dnn_maxargmax, 2, idtype, None
+
+    yield dnn_maxargmax, 3, 'float32', (0, 1)
+    yield dnn_maxargmax, 3, 'float32', (0, 2)
+    yield dnn_maxargmax, 3, 'float32', (1, 2)
+    yield dnn_maxargmax, 3, 'float32', (0, 1, 2)
+    yield dnn_maxargmax, 3, 'float32', (0,)
+    yield dnn_maxargmax, 3, 'float32', (1,)
+    yield dnn_maxargmax, 3, 'float32', (2,)
+    yield dnn_maxargmax, 3, 'float32', ()
+
+
 def test_dnn_batchnorm_train():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
@@ -2209,3 +2264,37 @@ def test_dnn_rnn_lstm_grad_c():
                                            (i + 1) * len(cudnn_grads_layer)]
         for j, g in enumerate(cudnn_grads_layer):
             utt.assert_allclose(ref_grads_layer[j], g)
+
+
+def dconv2d(border_mode, subsample, filter_dilation, num_groups):
+    def dconv(img, kern):
+        return dnn.dnn_conv(img, kern, border_mode=border_mode, subsample=subsample, dilation=filter_dilation,
+                            conv_mode='conv', direction_hint='forward', workmem=None,
+                            algo=None, precision=None, num_groups=num_groups)
+    return dconv
+
+
+def dconv2dw(border_mode, subsample, filter_dilation, num_groups):
+    def dconvw(img, topgrad, kshp):
+        return dnn.dnn_gradweight(img, topgrad, kshp, border_mode=border_mode, subsample=subsample, dilation=filter_dilation,
+                                  conv_mode='conv', precision=None, algo=None, num_groups=num_groups)
+    return dconvw
+
+
+def dconv2di(border_mode, subsample, filter_dilation, num_groups):
+    def dconvi(kern, topgrad, imshp):
+        return dnn.dnn_gradinput(kern, topgrad, imshp, border_mode=border_mode, subsample=subsample, dilation=filter_dilation,
+                                 conv_mode='conv', precision=None, algo=None, num_groups=num_groups)
+    return dconvi
+
+
+class Cudnn_grouped_conv(Grouped_conv_noOptim):
+    mode = mode_with_gpu
+    conv2d = staticmethod(dconv2d)
+    conv2d_gradw = staticmethod(dconv2dw)
+    conv2d_gradi = staticmethod(dconv2di)
+    conv2d_op = dnn.GpuDnnConv
+    conv2d_gradw_op = dnn.GpuDnnConvGradW
+    conv2d_gradi_op = dnn.GpuDnnConvGradI
+    flip_filter = False
+    is_dnn = True
