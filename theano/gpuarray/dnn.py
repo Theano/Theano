@@ -2719,6 +2719,9 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     if version(raises=False) < 6000 and op.filter_dilation != (1, 1):
         return None
 
+    if op.unshared:
+        return None
+
     inp1 = inputs[0]
     inp2 = inputs[1]
 
@@ -2807,6 +2810,8 @@ def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
+    if node.op.unshared:
+        return None
     if isinstance(node.op, AbstractConv2d):
         return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d):
@@ -2818,6 +2823,8 @@ def local_abstractconv_gw_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
+    if node.op.unshared:
+        return None
     if isinstance(node.op, AbstractConv2d_gradWeights):
         return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d_gradWeights):
@@ -2829,6 +2836,8 @@ def local_abstractconv_gi_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
+    if node.op.unshared:
+        return None
     if isinstance(node.op, AbstractConv2d_gradInputs):
         return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d_gradInputs):

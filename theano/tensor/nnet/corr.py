@@ -8,7 +8,7 @@ import theano
 from theano import Apply
 from theano import gof
 from theano.gof import ParamsType, EnumList
-from theano.scalar import int64
+from theano.scalar import int64, int8
 from theano.tensor import as_tensor_variable, TensorType
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor import blas_headers
@@ -40,9 +40,11 @@ class BaseCorrMM(gof.OpenMPOp):
         Perform subsampling of the output (default: (1, 1)).
     filter_dilation
         Perform dilated correlation (default: (1,1))
+    unshared
+        Perform unshared correlation (default: False)
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample', 'filter_dilation')
+    __props__ = ('border_mode', 'subsample', 'filter_dilation', 'unshared')
 
     _direction = None
 
@@ -51,10 +53,11 @@ class BaseCorrMM(gof.OpenMPOp):
                                                 ('DIRECTION_BACKPROP_INPUTS', 'backprop inputs')),  # 2
                              dH=int64, dW=int64,
                              dilH=int64, dilW=int64,
-                             padH=int64, padW=int64)
+                             padH=int64, padW=int64,
+                             unshared=int8)
 
     def __init__(self, border_mode="valid", subsample=(1, 1),
-                 filter_dilation=(1, 1), openmp=None):
+                 filter_dilation=(1, 1), unshared=False, openmp=None):
         super(BaseCorrMM, self).__init__(openmp=openmp)
         if isinstance(border_mode, integer_types):
             if border_mode < 0:
@@ -82,6 +85,7 @@ class BaseCorrMM(gof.OpenMPOp):
             raise ValueError("filter_dilation must have two elements")
         self.subsample = tuple(subsample)
         self.filter_dilation = tuple(filter_dilation)
+        self.unshared = unshared
 
         if not theano.config.blas.ldflags:
             # Theano will use a NumPy C implementation of [sd]gemm_ instead.
@@ -124,11 +128,12 @@ class BaseCorrMM(gof.OpenMPOp):
     padW = property(lambda self: self.pad[1])
 
     def __str__(self):
-        return '%s{%s, %s, %s}' % (
+        return '%s{%s, %s, %s, %s}' % (
             self.__class__.__name__,
             self.border_mode,
             str(self.subsample),
-            str(self.filter_dilation))
+            str(self.filter_dilation),
+            str(self.unshared))
 
     @staticmethod
     def as_common_dtype(in1, in2):
@@ -167,7 +172,7 @@ class BaseCorrMM(gof.OpenMPOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (6, self.openmp, blas_header_version())
+        return (7, self.openmp, blas_header_version())
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -177,12 +182,14 @@ class BaseCorrMM(gof.OpenMPOp):
         assert dtype in ('float32', 'float64')
         if dtype == 'float32':
             sub['gemm'] = 'sgemm_'
+            sub['gemv'] = 'sgemv_'
             sub['float_type'] = 'npy_float'
             sub['float_typenum'] = 'NPY_FLOAT'
             sub['n_bytes'] = 4
             sub['c_float_type'] = 'float'
         else:
             sub['gemm'] = 'dgemm_'
+            sub['gemv'] = 'dgemv_'
             sub['float_type'] = 'npy_double'
             sub['float_typenum'] = 'NPY_DOUBLE'
             sub['n_bytes'] = 8
@@ -274,6 +281,7 @@ class BaseCorrMM(gof.OpenMPOp):
     int dilW = %(params)s->dilW;
     int padH = %(params)s->padH;
     int padW = %(params)s->padW;
+    int unshared = %(params)s->unshared;
 
     PyArrayObject * bottom = %(bottom)s;
     PyArrayObject * weights = %(weights)s;
@@ -297,13 +305,17 @@ class BaseCorrMM(gof.OpenMPOp):
             break;
     }
 
+    int wdim, odim;
+    wdim = unshared ? 6 : 4;
+    odim = 4; //Can be set to 6 later for unshared backprop wrt weights
+
     // Obtain or infer kernel width and height
     // (we need to know it early to be able to handle auto-padding)
     int kH, kW, dil_kH, dil_kW;
     if (direction != 1) {
         // weight is an input variable, we can just read its shape
-        kH = PyArray_DIMS(weights)[2];
-        kW = PyArray_DIMS(weights)[3];
+        kH = PyArray_DIMS(weights)[wdim-2];
+        kW = PyArray_DIMS(weights)[wdim-1];
     }
     else {
         if (%(height)s != -1) {
@@ -357,28 +369,45 @@ class BaseCorrMM(gof.OpenMPOp):
     }
 
     // Infer output shape
-    npy_intp out_dim[4];
+    npy_intp out_dim[6];
+    out_dim[4] = out_dim[5] = 0; //Only used for unshared backprop wrt weights
     switch(direction) {
     case 0:  // forward pass
         // output is top: (batchsize, num_filters, height, width)
         // height and width: top = (bottom + 2*pad - ((weight-1)*dil + 1)) / sample + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(bottom)[0];
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[0];
-        out_dim[2] = (npy_intp)((PyArray_DIMS(bottom)[2] + 2*padH - ((PyArray_DIMS(weights)[2]-1)*dilH + 1)) / dH + 1);
-        out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - ((PyArray_DIMS(weights)[3]-1)*dilW + 1)) / dW + 1);
+        out_dim[2] = (npy_intp)((PyArray_DIMS(bottom)[2] + 2*padH - ((PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1)) / dH + 1);
+        out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - ((PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1)) / dW + 1);
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
         {
-            PyErr_Format(PyExc_ValueError,
-                         "CorrMM: impossible output shape\\n"
-                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
-                         (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
-                         (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
-                         (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
-                         (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
-                         (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
-                         (long int)out_dim[3]);
+            if (unshared) {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld %%ld %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
+                             (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
+                             (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
+                             (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                             (long int)PyArray_DIMS(weights)[4], (long int)PyArray_DIMS(weights)[5],
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3]);
+            }
+            else {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
+                             (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
+                             (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
+                             (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3]);
+            }
             %(fail)s
         }
         break;
@@ -386,46 +415,89 @@ class BaseCorrMM(gof.OpenMPOp):
         // output is weights: (num_filters, num_channels, height, width)
         // height and width: weights = (bottom + 2*pad - (top - 1) * sample - 1) / dil + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[1];
-        out_dim[1] = (npy_intp)PyArray_DIMS(bottom)[1];
-        out_dim[2] = (npy_intp)kH;  // already inferred further above
-        out_dim[3] = (npy_intp)kW;  // how convenient
-        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "CorrMM backprop wrt. weights: impossible output shape\\n"
-                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
-                         (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
-                         (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
-                         (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
-                         (long int)out_dim[3],
-                         (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
-                         (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
-            %(fail)s
+        if (unshared){
+            odim = 6;
+            out_dim[1] = (npy_intp)PyArray_DIMS(top)[2];
+            out_dim[2] = (npy_intp)PyArray_DIMS(top)[3];
+        }
+        out_dim[wdim-3] = (npy_intp)PyArray_DIMS(bottom)[1];
+        out_dim[wdim-2] = (npy_intp)kH;  // already inferred further above
+        out_dim[wdim-1] = (npy_intp)kW;  // how convenient
+        if (unshared) {
+            if (out_dim[0] < 0 || out_dim[1] <= 0 || out_dim[2] <= 0 || out_dim[3] < 0
+                    || out_dim[4] <= 0 || out_dim[5] <= 0){
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM backprop wrt. weights: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld %%ld %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
+                             (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3], (long int)out_dim[4], (long int)out_dim[5],
+                             (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
+                             (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
+            }
+        }
+        else {
+            if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM backprop wrt. weights: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
+                             (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3],
+                             (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
+                             (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
+                %(fail)s
+            }
         }
         break;
     case 2:  // backprop wrt. inputs
         // output is bottom: (batchsize, num_channels, height, width)
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
-        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[1];
-        out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH);
-        out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW);
-        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "CorrMM backprop wrt. inputs: impossible output shape\\n"
-                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
-                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
-                         (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
-                         (long int)out_dim[3],
-                         (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
-                         (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
-                         (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
-                         (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
-            %(fail)s
+        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[wdim-3];
+        out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1 - 2*padH);
+        out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1 - 2*padW);
+        if (unshared) {
+            if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM backprop wrt. inputs: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3],
+                             (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
+                             (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                             (long int)PyArray_DIMS(weights)[4], (long int)PyArray_DIMS(weights)[5],
+                             (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
+                             (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
+                %(fail)s
+            }
+        }
+        else {
+            if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+            {
+                PyErr_Format(PyExc_ValueError,
+                             "CorrMM backprop wrt. inputs: impossible output shape\\n"
+                             "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                             (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
+                             (long int)out_dim[3],
+                             (long int)PyArray_DIMS(weights)[0], (long int)PyArray_DIMS(weights)[1],
+                             (long int)PyArray_DIMS(weights)[2], (long int)PyArray_DIMS(weights)[3],
+                             (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
+                             (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
+                %(fail)s
+            }
         }
         break;
     default:
@@ -435,13 +507,19 @@ class BaseCorrMM(gof.OpenMPOp):
 
     // Prepare output array
     int typenum;
-    if ( !(*out
-           && PyArray_NDIM(*out)==4
+    int failure;
+    failure = !(*out
+           && PyArray_NDIM(*out)==odim
            && PyArray_IS_C_CONTIGUOUS(*out)
            && PyArray_DIMS(*out)[0]==out_dim[0]
            && PyArray_DIMS(*out)[1]==out_dim[1]
            && PyArray_DIMS(*out)[2]==out_dim[2]
-           && PyArray_DIMS(*out)[3]==out_dim[3]))
+           && PyArray_DIMS(*out)[3]==out_dim[3]);
+    if (odim == 6){
+        failure = failure || !(PyArray_DIMS(*out)[4]==out_dim[4]
+                && PyArray_DIMS(*out)[5]==out_dim[5]);
+    }
+    if ( failure )
     {
         Py_XDECREF(*out);
         if (direction != 1) {
@@ -451,21 +529,29 @@ class BaseCorrMM(gof.OpenMPOp):
           typenum = PyArray_TYPE(bottom);
         }
         //Change to PyArray_ZEROS which is faster than PyArray_EMPTY.
-        *out = (PyArrayObject*)PyArray_ZEROS(4,
+        *out = (PyArrayObject*)PyArray_ZEROS(odim,
                                           out_dim,
                                           typenum,
                                           0);
         if (NULL == *out)
         {
-            PyErr_Format(PyExc_RuntimeError,
-                    "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
-                    (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3]);
+            if (odim == 4) {
+                PyErr_Format(PyExc_RuntimeError,
+                        "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
+                        (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3]);
+            }
+            if (odim == 6) {
+                PyErr_Format(PyExc_RuntimeError,
+                        "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
+                        (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3],
+                        (long long)out_dim[4], (long long)out_dim[5]);
+            }
             %(fail)s
         }
     }
 
     // Call corrMM code
-    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW, padH, padW);
+    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW, padH, padW, unshared);
     if (out2==NULL){
        %(fail)s
     }
@@ -501,6 +587,9 @@ class CorrMM(BaseCorrMM):
         The filter dilation operation applied to each input image.
         Should be a tuple with 2 elements.
         Set to `(1, 1)` to disable filter dilation.
+    unshared:
+        Boolean value. If true, then a different kernel will be applied to
+        each region of the input image.
 
     """
 
@@ -512,8 +601,12 @@ class CorrMM(BaseCorrMM):
         img, kern = self.as_common_dtype(img, kern)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
-        if kern.type.ndim != 4:
-            raise TypeError('kern must be 4D tensor')
+        if self.unshared is True:
+            if kern.type.ndim != 6:
+                raise TypeError('kern must be 6D tensor')
+        else:
+            if kern.type.ndim != 4:
+                raise TypeError('kern must be 4D tensor')
 
         broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
                          False, False]
@@ -541,12 +634,14 @@ class CorrMM(BaseCorrMM):
         top, = grads
         d_bottom = CorrMM_gradInputs(self.border_mode,
                                      self.subsample,
-                                     self.filter_dilation)(weights, top,
-                                                           bottom.shape[-2:])
+                                     self.filter_dilation,
+                                     self.unshared)(weights, top,
+                                                    bottom.shape[-2:])
         d_weights = CorrMM_gradWeights(self.border_mode,
                                        self.subsample,
-                                       self.filter_dilation)(bottom, top,
-                                                             weights.shape[-2:])
+                                       self.filter_dilation,
+                                       self.unshared)(bottom, top,
+                                                      weights.shape[-2:])
         return d_bottom, d_weights
 
 
@@ -580,8 +675,12 @@ class CorrMM_gradWeights(BaseCorrMM):
         else:
             height_width = [as_tensor_variable(shape[0]).astype('int64'), as_tensor_variable(shape[1]).astype('int64')]
 
-        broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
-                         False, False]
+        if self.unshared is True:
+            broadcastable = [topgrad.type.broadcastable[0], False, False,
+                             img.type.broadcastable[1], False, False]
+        else:
+            broadcastable = [topgrad.type.broadcastable[0], img.type.broadcastable[1],
+                             False, False]
         dtype = img.type.dtype
         return Apply(self, [img, topgrad] + height_width,
                      [TensorType(dtype, broadcastable)()])
@@ -617,7 +716,10 @@ class CorrMM_gradWeights(BaseCorrMM):
             kW = 2 - imshp[1] + (topshp[1] - 1) * dW
         else:
             kW = imshp[1] + 2 * padW - (topshp[1] - 1) * dW
-        return [(nkern, ssize, kH, kW)]
+        if self.unshared is True:
+            return [(nkern, topshp[0], topshp[1], ssize, kH, kW)]
+        else:
+            return [(nkern, ssize, kH, kW)]
 
     def c_code(self, node, nodename, inp, out_, sub):
         bottom, top = inp[:2]
@@ -632,11 +734,13 @@ class CorrMM_gradWeights(BaseCorrMM):
         weights, = grads
         d_bottom = CorrMM_gradInputs(self.border_mode,
                                      self.subsample,
-                                     self.filter_dilation)(weights, top,
-                                                           bottom.shape[-2:])
+                                     self.filter_dilation,
+                                     self.unshared)(weights, top,
+                                                    bottom.shape[-2:])
         d_top = CorrMM(self.border_mode,
                        self.subsample,
-                       self.filter_dilation)(bottom, weights)
+                       self.filter_dilation,
+                       self.unshared)(bottom, weights)
         d_height_width = ((theano.gradient.DisconnectedType()(),) * 2
                           if len(inp) == 4 else ())
         return (d_bottom, d_top) + d_height_width
@@ -666,8 +770,12 @@ class CorrMM_gradInputs(BaseCorrMM):
         kern = as_tensor_variable(kern)
         topgrad = as_tensor_variable(topgrad)
         kern, topgrad = self.as_common_dtype(kern, topgrad)
-        if kern.type.ndim != 4:
-            raise TypeError('kern must be 4D tensor')
+        if self.unshared is True:
+            if kern.type.ndim != 6:
+                raise TypeError('kern must be 6D tensor')
+        else:
+            if kern.type.ndim != 4:
+                raise TypeError('kern must be 4D tensor')
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
         if shape is None:
@@ -678,7 +786,7 @@ class CorrMM_gradInputs(BaseCorrMM):
             height_width = [as_tensor_variable(shape[0]).astype('int64'),
                             as_tensor_variable(shape[1]).astype('int64')]
 
-        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[-3],
                          False, False]
         dtype = kern.type.dtype
         return Apply(self, [kern, topgrad] + height_width,
@@ -697,7 +805,7 @@ class CorrMM_gradInputs(BaseCorrMM):
         dH, dW = self.subsample
         kshp = input_shape[0]
         topshp = input_shape[1]
-        ssize, kshp = kshp[1], list(kshp[2:])
+        ssize, kshp = kshp[-3], list(kshp[-2:])
         bsize, topshp = topshp[0], list(topshp[2:])
         height_width = node.inputs[-2:]
         if padH == -1:
@@ -738,12 +846,14 @@ class CorrMM_gradInputs(BaseCorrMM):
         bottom, = grads
         d_weights = CorrMM_gradWeights(self.border_mode,
                                        self.subsample,
-                                       self.filter_dilation)(bottom,
-                                                             top,
-                                                             weights.shape[-2:])
+                                       self.filter_dilation,
+                                       self.unshared)(bottom,
+                                                      top,
+                                                      weights.shape[-2:])
         d_top = CorrMM(self.border_mode,
                        self.subsample,
-                       self.filter_dilation)(bottom, weights)
+                       self.filter_dilation,
+                       self.unshared)(bottom, weights)
         d_height_width = ((theano.gradient.DisconnectedType()(),) *
                           2 if len(inp) == 4 else ())
         return (d_weights, d_top) + d_height_width

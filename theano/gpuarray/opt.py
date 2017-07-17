@@ -1533,25 +1533,31 @@ def local_abstractconv_gemm(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
+    unshared = node.op.unshared
+    flip = (slice(None),) * (kern.ndim - 2) + \
+        (slice(None, None, -1),) * 2
+    kern_axes = (1, 0) + tuple(i for i in range(2, kern.ndim))
     if ((border_mode == 'full') and (subsample == (1, 1))):
         if not node.op.filter_flip:
-            kern = kern[:, :, ::-1, ::-1]
+            kern = kern[flip]
         # need to dimshuffle the kernel for full convolution
-        kern = kern.dimshuffle(1, 0, 2, 3)
+        kern = kern.dimshuffle(kern_axes)
         # call GpuCorrMM_gradInputs
         rval = GpuCorrMM_gradInputs('valid',
                                     subsample,
-                                    filter_dilation)(
+                                    filter_dilation,
+                                    unshared)(
             gpu_contiguous(kern), gpu_contiguous(img))
     else:
         # need to flip the kernel if necessary
         if node.op.filter_flip:
-            kern = kern[:, :, ::-1, ::-1]
+            kern = kern[flip]
         # By default use GpuCorrMM
         rval = GpuCorrMM(border_mode,
                          subsample,
-                         filter_dilation)(gpu_contiguous(img),
-                                          gpu_contiguous(kern))
+                         filter_dilation,
+                         unshared)(gpu_contiguous(img),
+                                   gpu_contiguous(kern))
 
         # call GpuCorrMM_gradWeights if good
         # (the latter is faster if batchsize * kernelHeight * kernelWidth
@@ -1563,11 +1569,12 @@ def local_abstractconv_gemm(node):
                 (None not in node.op.imshp[-2:]) and
                 (node.op.kshp is not None) and
                 (None not in node.op.kshp) and
-                border_mode != "half"):
+                border_mode != "half" and
+                not unshared):
             # we know the kernel and output size
-            prod1 = node.op.kshp[0] * node.op.kshp[1]
+            prod1 = node.op.kshp[0] * node.op.kshp[-3]
             prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
-                     (node.op.imshp[-1] - node.op.kshp[1] + 1))
+                     (node.op.imshp[-1] - node.op.kshp[-3] + 1))
             if (None not in node.op.imshp[:1]):
                 # we also know batchsize and input channels
                 prod1 *= node.op.imshp[0]
@@ -1576,7 +1583,8 @@ def local_abstractconv_gemm(node):
             if prod1 > prod2:
                 rval = GpuCorrMM_gradWeights(border_mode,
                                              subsample,
-                                             filter_dilation)(
+                                             filter_dilation,
+                                             unshared)(
                     gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
                     gpu_contiguous(kern.dimshuffle(1, 0, 2, 3)))
                 # (we need to wrap the result in as_gpuarray_variable,
@@ -1669,10 +1677,13 @@ def local_abstractconv_gradweights_gemm(node):
 
     rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
                                  subsample=node.op.subsample,
-                                 filter_dilation=node.op.filter_dilation)(
+                                 filter_dilation=node.op.filter_dilation,
+                                 unshared=node.op.unshared)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
+    flip = (slice(None),) * (rval.ndim - 2) + \
+        (slice(None, None, -1),) * 2
     if node.op.filter_flip:
-        rval = rval[:, :, ::-1, ::-1]
+        rval = rval[flip]
     rval = tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
     rval = as_gpuarray_variable(rval, context_name=ctx)
     return [rval]
@@ -1709,11 +1720,14 @@ def local_abstractconv_gradinputs_gemm(node):
         return None
 
     if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (kern.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        kern = kern[flip]
 
     rval = GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
                                 subsample=node.op.subsample,
-                                filter_dilation=node.op.filter_dilation)(
+                                filter_dilation=node.op.filter_dilation,
+                                unshared=node.op.unshared)(
         gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
     return [rval]
 

@@ -19,9 +19,13 @@ class TestCorrMM(unittest.TestCase):
                        border_mode='valid',
                        filter_dilation=(1, 1),
                        subsample=(1, 1),
+                       unshared=False,
                        verify_grad=False):
         inputs_shape = [inputs_shape[i] for i in (0, 3, 1, 2)]
-        filters_shape = [filters_shape[i] for i in (0, 3, 1, 2)]
+        if unshared:
+            filters_shape = [filters_shape[i] for i in (0, 1, 2, 5, 3, 4)]
+        else:
+            filters_shape = [filters_shape[i] for i in (0, 3, 1, 2)]
 
         inputs_val = np.random.random(inputs_shape).astype(config.floatX)
         filters_val = np.random.random(filters_shape).astype(config.floatX)
@@ -31,13 +35,15 @@ class TestCorrMM(unittest.TestCase):
 
         conv_ref = CorrMM(border_mode=border_mode,
                           filter_dilation=filter_dilation,
-                          subsample=subsample)(ref_cast(inputs),
-                                               ref_cast(filters))
+                          subsample=subsample,
+                          unshared=unshared)(ref_cast(inputs),
+                                             ref_cast(filters))
         f_ref = theano.function([], conv_ref, mode=mode_without_gpu)
 
         conv = GpuCorrMM(border_mode=border_mode,
                          filter_dilation=filter_dilation,
-                         subsample=subsample)(inputs, filters)
+                         subsample=subsample,
+                         unshared=unshared)(inputs, filters)
         f = theano.function([], conv, mode=mode_with_gpu)
 
         res_ref = f_ref()
@@ -47,7 +53,8 @@ class TestCorrMM(unittest.TestCase):
         if verify_grad:
             utt.verify_grad(GpuCorrMM(border_mode=border_mode,
                                       filter_dilation=filter_dilation,
-                                      subsample=subsample),
+                                      subsample=subsample,
+                                      unshared=unshared),
                             [inputs_val, filters_val], mode=mode_with_gpu)
 
     def test_valid(self):
@@ -56,12 +63,6 @@ class TestCorrMM(unittest.TestCase):
         self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
                             filters_shape=(10, 6, 12, 1),
                             subsample=(2, 2))
-        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
-                            filters_shape=(10, 6, 12, 1),
-                            subsample=(2, 2))
-        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
-                            filters_shape=(10, 6, 12, 1),
-                            subsample=(3, 3))
         self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
                             filters_shape=(10, 6, 12, 1),
                             subsample=(3, 3))
@@ -115,6 +116,41 @@ class TestCorrMM(unittest.TestCase):
                                     filter_dilation=filter_dilation,
                                     border_mode=border_mode,
                                     verify_grad=True)
+
+    def test_unshared(self):
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 15, 1, 6, 12, 1),
+                            unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 8, 1, 6, 12, 1),
+                            subsample=(2, 2), unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 5, 1, 6, 12, 1),
+                            subsample=(3, 3), unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 5, 1, 6, 12, 1),
+                            subsample=(3, 2), unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 15, 1, 6, 12, 1),
+                            subsample=(1, 2), unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 15, 1, 6, 12, 1),
+                            border_mode='valid', unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 21, 13, 6, 12, 1),
+                            border_mode='half', unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 25, 23, 6, 12, 1),
+                            border_mode='full', unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 15, 1, 6, 12, 1),
+                            border_mode=(0, 0), unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 17, 5, 6, 12, 1),
+                            border_mode=(1, 2), unshared=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 12, 1),
+                            filters_shape=(10, 21, 5, 6, 12, 1),
+                            border_mode=(3, 2), unshared=True)
 
     def run_gradweight(self, inputs_shape, filters_shape, dCdH_shape,
                        subsample=(1, 1)):

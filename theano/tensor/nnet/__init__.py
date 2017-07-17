@@ -39,7 +39,7 @@ from .abstract_conv import conv3d
 
 def conv2d(input, filters, input_shape=None, filter_shape=None,
            border_mode='valid', subsample=(1, 1), filter_flip=True,
-           image_shape=None, filter_dilation=(1, 1), **kwargs):
+           image_shape=None, filter_dilation=(1, 1), unshared=False, **kwargs):
     """
     This function will build the symbolic graph for convolving a mini-batch of a
     stack of 2D inputs with a set of 2D filters. The implementation is modelled
@@ -53,18 +53,22 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         (batch size, input channels, input rows, input columns).
         See the optional parameter ``input_shape``.
 
-    filters: symbolic 4D tensor
+    filters: symbolic 4D or 6D tensor
         Set of filters used in CNN layer of shape
-        (output channels, input channels, filter rows, filter columns).
+        (output channels, input channels, filter rows, filter columns)
+        for normal convolution and
+        (output channels, output rows, output columns, input channels,
+        filter rows, filter columns)
+        for unshared convolution.
         See the optional parameter ``filter_shape``.
 
-    input_shape: None, tuple/list of len 4 of int or Constant variable
+    input_shape: None, tuple/list of len 4 or 6 of int or Constant variable
         The shape of the input parameter.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that this
         element is not known at compile time.
 
-    filter_shape: None, tuple/list of len 4 of int or Constant variable
+    filter_shape: None, tuple/list of len 4 or 6 of int or Constant variable
         The shape of the filters parameter.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that this
@@ -102,6 +106,11 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
     filter_dilation: tuple of len 2
         Factor by which to subsample (stride) the input.
         Also called dilation elsewhere.
+
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different kernel will be used for each region of the
+        input.
 
     kwargs: Any other keyword arguments are accepted for backwards
             compatibility, but will be ignored.
@@ -152,12 +161,12 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
 
     return abstract_conv2d(input, filters, input_shape, filter_shape,
                            border_mode, subsample, filter_flip,
-                           filter_dilation)
+                           filter_dilation, unshared)
 
 
 def conv2d_transpose(input, filters, output_shape, filter_shape=None,
                      border_mode='valid', input_dilation=(1, 1),
-                     filter_flip=True, filter_dilation=(1, 1)):
+                     filter_flip=True, filter_dilation=(1, 1), unshared=False):
     """
     This function will build the symbolic graph for applying a transposed
     convolution over a mini-batch of a stack of 2D inputs with a set of 2D
@@ -209,6 +218,11 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
         Factor by which to subsample (stride) the input.
         Also called dilation elsewhere.
 
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different kernel will be used for each region of the
+        input.
+
     Returns
     -------
     Symbolic 4D tensor
@@ -235,4 +249,5 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
                                   border_mode=border_mode,
                                   subsample=input_dilation,
                                   filter_flip=filter_flip,
-                                  filter_dilation=filter_dilation)
+                                  filter_dilation=filter_dilation,
+                                  unshared=unshared)
