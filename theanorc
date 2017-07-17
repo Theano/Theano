@@ -1,6 +1,7 @@
 [global]
 base_compiledir=/tmp/theano
 floatX=float32
+mode=FAST_RUN
 
 #### Default device selection
 ## 'device=cuda' corresponds to the new 'gpuarray' backend (config.gpuarray or [gpuarray] below)
