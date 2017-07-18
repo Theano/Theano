@@ -187,7 +187,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
           PyErr_SetString(PyExc_RuntimeError, "No best-timed conv gradinput algorithm found");
           return 1;
       } else {
-          fprintf(stderr, " (%d best-timed conv gradinput algorithms) ", count);
+          fprintf(stderr, "(%d best-timed conv gradinput algorithms)\n", count);
       }
       #endif
 
@@ -214,9 +214,9 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
         return 1;
     // NB: This is printed only when algorithm is chosen at runtime.
     if (reuse_algo)
-        fprintf(stderr, "(reused %s) ", algorithm_name);
+        fprintf(stderr, "(reused %s)\n", algorithm_name);
     else
-        fprintf(stderr, "(using %s) ", algorithm_name);
+        fprintf(stderr, "(using %s)\n", algorithm_name);
     #endif
 
     if (params->choose_once) {

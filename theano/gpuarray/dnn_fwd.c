@@ -147,7 +147,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
             PyErr_SetString(PyExc_RuntimeError, "No best-timed conv fwd algorithm found");
             return 1;
         } else {
-            fprintf(stderr, " (%d best-timed conv fwd algorithms) ", count);
+            fprintf(stderr, "(%d best-timed conv fwd algorithms)\n", count);
         }
         #endif
 
@@ -174,9 +174,9 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         return 1;
     // NB: This is printed only when algorithm is chosen at runtime.
     if (reuse_algo)
-        fprintf(stderr, "(reused %s) ", algorithm_name);
+        fprintf(stderr, "(reused %s)\n", algorithm_name);
     else
-        fprintf(stderr, "(using %s) ", algorithm_name);
+        fprintf(stderr, "(using %s)\n", algorithm_name);
     #endif
 
     if (params->choose_once) {
@@ -198,7 +198,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     #ifdef DEBUG
     if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
         return 1;
-    fprintf(stderr, "(%s unsupported for 3D: fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM) ", algorithm_name);
+    fprintf(stderr, "(%s unsupported for 3D: fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM)\n", algorithm_name);
     #endif
     algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
   }
@@ -211,7 +211,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   {
     #ifdef DEBUG
     fprintf(stderr, "(CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM "
-                    "will fail with batch size > 2^16, fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM) ");
+                    "will fail with batch size > 2^16, fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM)\n");
     #endif
     algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
   }
@@ -283,7 +283,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
         return 1;
       fprintf(stderr, "(%s error getting worksize: "
-                      "fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM) ", algorithm_name);
+                      "fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM)\n", algorithm_name);
       #endif
 
       algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
