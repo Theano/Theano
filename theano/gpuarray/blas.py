@@ -72,7 +72,7 @@ class GpuGemv(BlasOp):
 
     def perform(self, node, inputs, out_storage, params):
         y, alpha, A, x, beta = inputs
-        inplace = params['inplace']
+        inplace = params.inplace
         if inplace and y.strides[0] < 0:
             inplace = False
         if A.shape[1] == 0:
@@ -96,10 +96,6 @@ class GpuGemv(BlasOp):
                  Py_XDECREF(%(out)s);
                  %(out)s = %(y)s;
                  Py_INCREF(%(out)s);
-               }
-               %(out)s = theano_try_copy(%(out)s, %(y)s);
-               if (%(out)s == NULL) {
-                 %(fail)s
                }
                """ % vars
         # in case of possible speed up using blas dot,
@@ -201,7 +197,7 @@ class GpuGemm(BlasOp):
 
     def perform(self, node, inputs, outputs, params):
         C, alpha, A, B, beta = inputs
-        inplace = params['inplace']
+        inplace = params.inplace
         if inplace and not C.flags.forc:
             inplace = False
         outputs[0][0] = blas.gemm(alpha, A, B, beta, C,
@@ -276,7 +272,7 @@ class GpuGer(BlasOp):
 
     def perform(self, node, inp, out, params):
         A, alpha, x, y = inp
-        inplace = params['inplace']
+        inplace = params.inplace
         if inplace and not A.flags.forc:
             inplace = False
         out[0][0] = blas.ger(alpha, x, y, A,
