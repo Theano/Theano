@@ -1799,7 +1799,7 @@ class ConvMetaOptimizer(LocalMetaOptimizer):
         if type(node.op) in [AbstractConv2d, AbstractConv3d]:
             img, kern = node.inputs
             for(var, shape) in zip((img, kern), shapes):
-                result[var] = theano.shared(np.random.random(shape).astype(theano.config.floatX),
+                result[var] = theano.shared(np.random.random(shape).astype(var.dtype),
                                             var.name, borrow=True)
 
         if type(node.op) in [AbstractConv2d_gradWeights, AbstractConv3d_gradWeights]:
@@ -1814,7 +1814,7 @@ class ConvMetaOptimizer(LocalMetaOptimizer):
             result[kshape] = theano.tensor.as_tensor_variable(node.op.kshp[-2:])
 
             for(var, shape) in zip((img, top), (node.op.imshp, tshp)):
-                result[var] = theano.shared(np.random.random(shape).astype(theano.config.floatX),
+                result[var] = theano.shared(np.random.random(shape).astype(var.dtype),
                                             var.name, borrow=True)
 
         if type(node.op) in [AbstractConv2d_gradInputs, AbstractConv3d_gradInputs]:
@@ -1829,7 +1829,7 @@ class ConvMetaOptimizer(LocalMetaOptimizer):
             result[ishape] = theano.tensor.as_tensor_variable(node.op.imshp[-2:])
 
             for(var, shape) in zip((kern, top), (node.op.kshp, tshp)):
-                result[var] = theano.shared(np.random.random(shape).astype(theano.config.floatX),
+                result[var] = theano.shared(np.random.random(shape).astype(var.dtype),
                                             var.name, borrow=True)
 
         return result
