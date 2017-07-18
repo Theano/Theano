@@ -84,11 +84,11 @@ class Cholesky(Op):
         """
         Cholesky decomposition reverse-mode gradient update.
 
-        Symbolic expression for reverse-mode Cholesky gradient taken from [0]_
+        Symbolic expression for reverse-mode Cholesky gradient taken from [#]_
 
         References
         ----------
-        .. [0] I. Murray, "Differentiation of the Cholesky decomposition",
+        .. [#] I. Murray, "Differentiation of the Cholesky decomposition",
            http://arxiv.org/abs/1602.07527
 
         """
@@ -158,12 +158,12 @@ class CholeskyGrad(Op):
 
     def perform(self, node, inputs, outputs):
         """
-        Implements the "reverse-mode" gradient [1]_ for the
+        Implements the "reverse-mode" gradient [#]_ for the
         Cholesky factorization of a positive-definite matrix.
 
         References
         ----------
-        .. [1] S. P. Smith. "Differentiation of the Cholesky Algorithm".
+        .. [#] S. P. Smith. "Differentiation of the Cholesky Algorithm".
            Journal of Computational and Graphical Statistics,
            Vol. 4, No. 2 (Jun.,1995), pp. 134-147
            http://www.jstor.org/stable/1390762
@@ -268,13 +268,13 @@ class Solve(Op):
 
     def grad(self, inputs, output_gradients):
         """
-        Reverse-mode gradient updates for matrix solve operation c = A \ b.
+        Reverse-mode gradient updates for matrix solve operation c = A \\\ b.
 
-        Symbolic expression for updates taken from [1]_.
+        Symbolic expression for updates taken from [#]_.
 
         References
         ----------
-        ..[1] M. B. Giles, "An extended collection of matrix derivative results
+        .. [#] M. B. Giles, "An extended collection of matrix derivative results
           for forward and reverse mode automatic differentiation",
           http://eprints.maths.ox.ac.uk/1079/
 
