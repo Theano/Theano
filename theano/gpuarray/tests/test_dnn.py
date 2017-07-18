@@ -2499,8 +2499,8 @@ def test_dnn_spatialtf_grad():
 
     op = dnn.dnn_spatialtf(t_img, t_theta, scale_height=0.25, scale_width=0.75)
 
-    grad = T.grad(None, wrt=[t_img, t_theta], known_grads={op: t_dy})
-    grad_fn = theano.function([t_img, t_theta, t_dy], grad)
+    grad_i, grad_t = T.grad(None, wrt=[t_img, t_theta], known_grads={op: t_dy})
+    grad_fn = theano.function([t_img, t_theta, t_dy], [grad_i, grad_t])
     grad_fn(img, theta, dy)
 
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradI)
