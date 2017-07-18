@@ -2847,13 +2847,19 @@ class GpuDnnTransformerDescriptor(COp):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), config.dnn.include_path]
+        header_dirs = [os.path.dirname(__file__)]
+        if config.dnn.include_path:
+            headers_dirs += [config.dnn.include_path]
+        return header_dirs
 
     def c_libraries(self):
         return ['cudnn']
 
     def c_lib_dirs(self):
-        return [config.dnn.library_path]
+        lib_dirs = []
+        if config.dnn.library_path:
+            lib_dirs += [config.dnn.library_path]
+        return lib_dirs
 
     def do_constant_folding(self, node):
         return False
