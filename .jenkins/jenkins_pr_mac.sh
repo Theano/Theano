@@ -13,8 +13,8 @@ rsync -a $HOME/.theano/buildbot_theano_mac/ $BASECOMPILEDIR
 export PATH="/Users/jenkins/miniconda2/bin:/usr/local/bin:$PATH"
 
 # CUDA
-export PATH=/Developer/NVIDIA/CUDA-8.0/bin${PATH:+:${PATH}}
-export DYLD_LIBRARY_PATH=/Developer/NVIDIA/CUDA-8.0/lib\
+export PATH=/usr/local/cuda/bin${PATH:+:${PATH}}
+export DYLD_LIBRARY_PATH=/usr/local/cuda/lib\
                          ${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
 
 # Build libgpuarray
