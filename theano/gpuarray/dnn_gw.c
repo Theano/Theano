@@ -212,9 +212,8 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     }
 
     #ifdef DEBUG
-    if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name)) {
+    if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name))
         return 1;
-    };
     // NB: This is printed only when algorithm is chosen at runtime.
     if (reuse_algo)
         fprintf(stderr, "(reused %s) ", algorithm_name);

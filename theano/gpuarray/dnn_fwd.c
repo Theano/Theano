@@ -170,9 +170,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
 
     #ifdef DEBUG
-    if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name)) {
+    if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
         return 1;
-    };
     // NB: This is printed only when algorithm is chosen at runtime.
     if (reuse_algo)
         fprintf(stderr, "(reused %s) ", algorithm_name);
@@ -197,9 +196,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING))
   {
     #ifdef DEBUG
-    if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name)) {
+    if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
         return 1;
-    };
     fprintf(stderr, "(%s unsupported for 3D: fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM) ", algorithm_name);
     #endif
     algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
@@ -282,9 +280,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       // Fallback to none algo if not supported
 
       #ifdef DEBUG
-      if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name)) {
+      if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
         return 1;
-      };
       fprintf(stderr, "(%s error getting worksize: "
                       "fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM) ", algorithm_name);
       #endif
