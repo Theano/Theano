@@ -17,7 +17,6 @@ def _ctc_find_lib():
     Find the directory that contains libwarpctc.so
     """
     if config.ctc.root != '':
-        lib_found = False
         for lib_dir in ["build", "lib", "lib64"]:
             lib_path = os.path.join(config.ctc.root, lib_dir)
             if os.path.isdir(lib_path) and os.path.exists(lib_path):
