@@ -145,16 +145,19 @@ stage:
     stage: test
     <<: *TEST_TEMPLATE
     when: manual
+    allow_failure: true
 
 .L2_test: &L2_TEST
     stage: test
     <<: *TEST_TEMPLATE
     when: manual
+    allow_failure: true
 
 .L3_test: &L3_TEST
     stage: test
     <<: *TEST_TEMPLATE
     when: manual
+    allow_failure: true
 
 "Run all L1 tests":
     <<: *MANUAL_TEST_TRIGGER
