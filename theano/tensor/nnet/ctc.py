@@ -198,9 +198,9 @@ def ctc(activations, labels, input_lengths):
 
     Notes
     -----
-    Using the loss function requires that Baidu's warp-ctc library is installed. If the
-    warp-ctc library is not on the compiler's default library path, the configuration
-    variable ``config.ctc.root`` be properly set.
+    Using the loss function requires that the Baidu's warp-ctc library be installed.
+    If the warp-ctc library is not on the compiler's default library path, the
+    configuration variable ``config.ctc.root`` must be properly set.
 
     Parameters
     ----------
