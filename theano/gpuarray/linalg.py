@@ -13,7 +13,8 @@ from theano.scalar import bool as bool_t
 from theano.gof import COp, ParamsType
 from theano.gpuarray import GpuArrayType
 
-from .basic_ops import as_gpuarray_variable, gpu_contiguous, infer_context_name
+from .basic_ops import (CGpuKernelBase, as_gpuarray_variable, gpu_contiguous,
+                        infer_context_name)
 from .type import gpu_context_type
 
 try:
@@ -257,6 +258,9 @@ class GpuCholesky(Op):
             self.destroy_map = {0: [0]}
         super(GpuCholesky, self).__init__()
 
+    def clone_inplace(self):
+        return self.__class__(lower=self.lower, inplace=True)
+
     def make_node(self, inp):
         if not cusolver_available:
             raise RuntimeError('CUSOLVER is not available and '
@@ -349,7 +353,39 @@ def gpu_cholesky(A, lower=True):
     return GpuCholesky(lower)(A)
 
 
-class GpuMagmaSVD(COp):
+# TODO: add support for float64
+class GpuMagmaBase(COp):
+    """Base class for magma related operations. Add the necessary headers,
+    libraries and optionally the location of headers and library.
+    """
+    def c_headers(self):
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'magma.h']
+
+    def c_header_dirs(self):
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.magma.include_path:
+            dirs.append(config.magma.include_path)
+        return dirs
+
+    def c_libraries(self):
+        return ['magma']
+
+    def c_lib_dirs(self):
+        if config.magma.library_path:
+            return [config.magma.library_path]
+        return []
+
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        from skcuda.magma import magma_init
+        ctx = node.inputs[0].type.context
+        if not getattr(ctx, 'is_magma_initialized', False):
+            with ctx:
+                magma_init()
+                ctx.is_magma_initialized = True
+
+
+class GpuMagmaSVD(GpuMagmaBase):
     """Computes the svd of a matrix :math:`A` using magma library.
 
     .. warning::
@@ -370,30 +406,14 @@ class GpuMagmaSVD(COp):
         self.compute_uv = compute_uv
         COp.__init__(self, ['magma_svd.c'], 'APPLY_SPECIFIC(magma_svd)')
 
-    def c_headers(self):
-        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
-                'gpuarray_helper.h', 'magma.h']
-
-    def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if config.magma.include_path:
-            dirs.append(config.magma.include_path)
-        return dirs
-
-    def c_libraries(self):
-        return ['magma']
-
-    def c_lib_dirs(self):
-        if config.magma.library_path:
-            return [config.magma.library_path]
-        return []
-
     def make_node(self, A):
         ctx_name = infer_context_name(A)
         A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
         if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
-        assert A.dtype == 'float32'
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
         if self.compute_uv:
             return theano.Apply(self, [A],
                                 # return S, U, VT
@@ -408,6 +428,7 @@ class GpuMagmaSVD(COp):
                                               context_name=ctx_name)()])
 
     def prepare_node(self, node, storage_map, compute_map, impl):
+        super(GpuMagmaSVD, self).prepare_node(node, storage_map, compute_map, impl)
         # Check node to prevent eventual errors with old pickled nodes.
         if self.compute_uv:
             A, B, C = node.outputs
@@ -459,7 +480,7 @@ def gpu_svd(a, full_matrices=1, compute_uv=1):
     return out
 
 
-class GpuMagmaMatrixInverse(COp):
+class GpuMagmaMatrixInverse(GpuMagmaBase):
     """Computes the inverse of a matrix :math:`A` using magma library.
     """
     __props__ = ('inplace', )
@@ -472,34 +493,18 @@ class GpuMagmaMatrixInverse(COp):
         if self.inplace:
             self.destroy_map = {0: [0]}
 
-    def c_headers(self):
-        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
-                'gpuarray_helper.h', 'magma.h']
-
-    def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if config.magma.include_path:
-            dirs.append(config.magma.include_path)
-        return dirs
-
-    def c_libraries(self):
-        return ['magma']
-
-    def c_lib_dirs(self):
-        if config.magma.library_path:
-            return [config.magma.library_path]
-        return []
-
     def clone_inplace(self):
         return self.__class__(inplace=True)
 
-    def make_node(self, x):
-        ctx_name = infer_context_name(x)
-        x = as_gpuarray_variable(x, ctx_name)
-        assert x.dtype == 'float32'
-        if x.ndim != 2:
+    def make_node(self, A):
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
+        if A.ndim != 2:
             raise LinAlgError("Matrix rank error")
-        return theano.Apply(self, [x], [x.type()])
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
+        return theano.Apply(self, [A], [A.type()])
 
     def get_params(self, node):
         return self.params_type.get_params(self, context=node.inputs[0].type.context)
@@ -518,3 +523,153 @@ def gpu_matrix_inverse(a):
 
     """
     return GpuMagmaMatrixInverse()(a)
+
+
+class GpuMagmaCholesky(GpuMagmaBase, CGpuKernelBase):
+    """Computes the cholesky decomposition of a matrix :math:`A` using magma
+    library.
+
+    """
+    __props__ = ('lower', 'inplace')
+    check_input = False
+    params_type = ParamsType(lower=bool_t, inplace=bool_t, context=gpu_context_type)
+
+    def __init__(self, lower=True, inplace=False):
+        self.lower = lower
+        COp.__init__(self, ['magma_cholesky.c'], 'APPLY_SPECIFIC(magma_cholesky)')
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def clone_inplace(self):
+        return self.__class__(lower=self.lower, inplace=True)
+
+    def make_node(self, A):
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
+        if A.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
+        return theano.Apply(self, [A], [A.type()])
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
+
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
+
+class GpuMagmaQR(GpuMagmaBase, CGpuKernelBase):
+    """Computes the qr decomposition of a matrix :math:`A` using magma
+    library.
+
+    Parameters
+    ----------
+    complete : If `False`, returns only r.
+
+    .. warning::
+
+        Because of implementation constraints, this Op returns outputs
+        in order ``R, Q``. Use :func:`theano.gpuarray.linalg.gpu_qr`
+        to get them in expected order ``Q, R``.
+    """
+    __props__ = ('complete', )
+    _cop_num_inputs = 1
+    _cop_num_outputs = 2
+    check_input = False
+    params_type = ParamsType(complete=bool_t, context=gpu_context_type)
+
+    def __init__(self, complete=True):
+        self.complete = complete
+        COp.__init__(self, ['magma_qr.c'], 'APPLY_SPECIFIC(magma_qr)')
+
+    def make_node(self, A):
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
+        if A.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
+        if self.complete:
+            return theano.Apply(self, [A],
+                                # return R, Q
+                                [A.type(), A.type()])
+        else:
+            return theano.Apply(self, [A],
+                                # return R
+                                [A.type()])
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
+
+
+def gpu_qr(a, complete=True):
+    """
+    This function performs the QR on GPU.
+
+    Parameters
+    ----------
+    complete : bool, optional
+        If `False`, returns only r.
+
+    Returns
+    -------
+    Q, R : matrices
+
+    """
+    out = GpuMagmaQR(complete)(a)
+    if complete:
+        R, Q = out
+        out = [Q, R]
+    return out
+
+
+class GpuMagmaEigh(GpuMagmaBase):
+    """Computes the eigen decomposition of a symmetric matrix :math:`A` using magma
+    library.
+
+    Parameters
+    ----------
+    UPLO : Specifies whether the calculation is done with the lower triangular
+           part of matrix (`L`, default) or the upper triangular part (`U`).
+    compute_v : If `True`, computes eigenvalues and eigenvectors (`True`,
+                default). If `False`, computes only eigenvalues of matrix.
+    """
+    __props__ = ('lower', 'compute_v')
+    _cop_num_inputs = 1
+    _cop_num_outputs = 2
+    check_input = False
+    params_type = ParamsType(lower=bool_t, compute_v=bool_t,
+                             context=gpu_context_type)
+
+    def __init__(self, UPLO='L', compute_v=True):
+        assert UPLO in ['L', 'U']
+        self.lower = UPLO == 'L'
+        self.compute_v = compute_v
+        COp.__init__(self, ['magma_eigh.c'], 'APPLY_SPECIFIC(magma_eigh)')
+
+    def make_node(self, A):
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        A = gpu_contiguous(A)
+        if A.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        if A.dtype != 'float32':
+            raise TypeError("only `float32` is supported for now")
+        if self.compute_v:
+            return theano.Apply(self, [A],
+                                # return D, V
+                                [GpuArrayType(A.dtype, broadcastable=[False],
+                                              context_name=ctx_name)(),
+                                 A.type()])
+        else:
+            return theano.Apply(self, [A],
+                                # return D
+                                [GpuArrayType(A.dtype, broadcastable=[False],
+                                              context_name=ctx_name)()])
+
+    def get_params(self, node):
+        return self.params_type.get_params(self, context=node.inputs[0].type.context)
