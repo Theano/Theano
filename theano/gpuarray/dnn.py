@@ -2903,7 +2903,7 @@ class GpuDnnTransformer(DnnBase):
         self.dtype = dtype
 
     def make_node(self, img, theta, output, desc, alpha=None, beta=None):
-        context_name = infer_context_name(img)
+        context_name = infer_context_name(desc)
 
         img = gpu_contiguous(as_gpuarray_variable(img, context_name))
         if img.type.ndim != 4:
@@ -2938,19 +2938,16 @@ class GpuDnnTransformer(DnnBase):
 
     def L_op(self, inputs, outputs, grads):
         img, theta, output, desc, alpha, beta = inputs
-
         _, grid = outputs
         dy = grads[0]
 
         dimg, dgrid = GpuDnnTransformerGradI(self.dtype)(img, theta, grid, dy,
                                                          desc, alpha, beta)
         dtheta = GpuDnnTransformerGradT(self.dtype)(dgrid, desc)
+        dalpha = theano.gradient.grad_not_implemented(self, 4, alpha)
+        dbeta = theano.gradient.grad_not_implemented(self, 5, beta)
 
-        return [dimg, dtheta,
-                theano.gradient.grad_undefined(self, 2, output),
-                DisconnectedType()(),
-                theano.gradient.grad_undefined(self, 4, alpha),
-                theano.gradient.grad_undefined(self, 5, beta)]
+        return [dimg, dtheta, dy, DisconnectedType()(), dalpha, dbeta]
 
     def connection_pattern(self, node):
         # not connected to desc
@@ -3011,6 +3008,22 @@ class GpuDnnTransformerGradI(DnnBase):
 
         return Apply(self, inputs, outputs)
 
+    def L_op(self, inputs, outputs, grads):
+        img, theta, grid, grid_dims, dy, desc, alpha, beta = inputs
+        dimg_out, dgrid = outputs
+        grad_cost = grads[0]
+
+        dimg = dimg_out * grad_cost
+        dtheta = GpuDnnTransformerGradT(self.dtype)(dgrid, desc)
+        dgrid_dims = grad_not_implemented(self, grid_dims, 3)
+        d_dy = grad_not_implemented(self, dy, 4)
+
+        dalpha = grad_not_implemented(self, alpha, 5)
+        dbeta = grad_not_implemented(self, beta, 6)
+
+        return [dimg, dtheta, dgrid, dgrid_dims, d_dy,
+                DisconnectedType()(), dalpha, dbeta]
+
     def connection_pattern(self, node):
         # not connected to desc
         return [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [0, 0], [1, 1], [1, 1]]
@@ -3038,6 +3051,12 @@ class GpuDnnTransformerGradT(DnnBase):
         outputs = [dtheta]
 
         return Apply(self, inputs, outputs)
+
+    def L_op(self, inputs, outputs, grads):
+        dgrid, desc = inputs
+        grad_cost = grads[0]
+        dtheta = outputs * grad_cost
+        return [dtheta, DisconnectedType()()]
 
     def connection_pattern(self, node):
         # not connected to desc

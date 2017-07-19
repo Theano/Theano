@@ -2508,3 +2508,23 @@ def test_dnn_spatialtf_grad():
 
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
                 for node in grad_fn.maker.fgraph.toposort()])
+
+    # Verify grad wrt input
+    def functor_wrt_i(input):
+        out = GpuAllocEmpty(theano.config.floatX, context_name=test_ctx_name)(*out_shp)
+        desc = dnn.GpuDnnTransformerDescriptor(theano.config.floatX)(out_shp)
+        transformed_input = dnn.GpuDnnTransformer(theano.config.floatX)(input, theta, out, desc)
+        grad = T.grad(T.mean(transformed_input), input)
+        return grad
+
+
+    # Verify grad wrt theta
+    def functor_wrt_t(theta):
+        out = GpuAllocEmpty(theano.config.floatX, context_name=test_ctx_name)(*out_shp)
+        desc = dnn.GpuDnnTransformerDescriptor(theano.config.floatX)(out_shp)
+        transformed_input = dnn.GpuDnnTransformer(theano.config.floatX)(img, theta, out, desc)
+        grad = T.grad(T.mean(transformed_input), theta)
+        return grad
+
+    utt.verify_grad(functor_wrt_i, [img])
+    utt.verify_grad(functor_wrt_t, [theta])
