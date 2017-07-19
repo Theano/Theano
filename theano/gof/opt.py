@@ -3041,20 +3041,29 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
     return True
 
 
-class CheckStrackTracehFeature(object):
+class CheckStrackTraceFeature(object):
     def on_import(self, fgraph, node, reason):
-        if not check_stack_trace(fgraph, 'all'):
-            raise NotImplementedError(
-                "Empty stack trace! The optimization that whose"
-                " stacktrace is empty is %s", reason)
+        if theano.config.check_stack_trace == 'check_all':
+            if not check_stack_trace(fgraph, 'all'):
+                raise NotImplementedError(
+                    "Empty stack trace! The optimization that whose"
+                    " stacktrace is empty is %s", reason)
+        if theano.config.check_stack_trace == 'check_and_skip':
+            if not check_stack_trace(fgraph, 'all'):
+                apply_nodes_to_check = fgraph.apply_nodes
+                for node in apply_nodes_to_check:
+                    for output in node.outputs:
+                        if not hasattr(output.tag, 'trace') or not output.tag.trace:
+                            output.tag.trace = ['This is a dummy value! The stack trace of ' +
+                                                str(reason) + ' was empty!']
 
 
 class CheckStackTraceOptimization(Optimizer):
     """Optimizer that serves to add ShapeFeature as an fgraph feature."""
 
     def add_requirements(self, fgraph):
-        if not hasattr(fgraph, 'CheckStrackTracehFeature'):
-            fgraph.attach_feature(CheckStrackTracehFeature())
+        if not hasattr(fgraph, 'CheckStrackTraceFeature'):
+            fgraph.attach_feature(CheckStrackTraceFeature())
 
     def apply(self, fgraph):
         pass
