@@ -2422,10 +2422,6 @@ register_opt('fast_compile')(abstractconv_groupopt)
 from .dnn import (local_abstractconv_cudnn, local_abstractconv_gw_cudnn,
                   local_abstractconv_gi_cudnn)     # noqa: 402
 
-conv_metaopt = ConvMetaOptimizer()
-abstractconv_groupopt.register('conv_metaopt', conv_metaopt, 0, 'conv_meta')
-
-
 abstractconv_groupopt.register('local_abstractconv_dnn',
                                local_abstractconv_cudnn, 20,
                                'conv_dnn',
@@ -2463,7 +2459,10 @@ abstractconv_groupopt.register('local_abstractconv3d_gradinputs',
                                'conv_gemm',
                                'gpuarray', 'fast_compile', 'fast_run')
 
+conv_metaopt = ConvMetaOptimizer()
 conv_metaopt.register(abstractconv_groupopt.query(*['+' + name for name in abstractconv_groupopt._names]).opts)
+abstractconv_groupopt.register('conv_metaopt', conv_metaopt, 'conv_meta', position=0)
+
 # Register cuDNN batch normalization implementation
 
 # We import these opts here instead of at the top of this file
