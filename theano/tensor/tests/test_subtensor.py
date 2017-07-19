@@ -1546,7 +1546,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
         typ = tensor.TensorType(self.m.type.dtype, self.ix2.type.broadcastable)
         assert a.type == typ, (a.type, typ)
         f = theano.function([self.m, self.ix1, self.ix12], a,
-                            allow_input_downcast=True)
+                            allow_input_downcast=True,
+                            mode=self.mode)
         aval = f([[.4, .9, .1],
                   [5, 6, 7],
                   [.5, .3, .15]],
@@ -1564,7 +1565,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
         assert a.type == self.m.type, (a.type, self.m.type)
         f = theano.function([self.m, self.ix1, self.ix12, inc], [a, g_inc],
-                            allow_input_downcast=True)
+                            allow_input_downcast=True,
+                            mode=self.mode)
         aval, gval = f([[.4, .9, .1],
                         [5, 6, 7],
                         [.5, .3, .15]],
@@ -1584,7 +1586,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
         assert a.type == self.m.type, (a.type, self.m.type)
         f = theano.function([self.m, self.ix1, inc], [a, g_inc],
-                            allow_input_downcast=True)
+                            allow_input_downcast=True,
+                            mode=self.mode)
         aval, gval = f([[.4, .9, .1],
                         [5, 6, 7],
                         [.5, .3, .15]],
@@ -1601,7 +1604,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
         assert a.type == self.m.type, (a.type, self.m.type)
         f = theano.function([self.m, self.ix1, self.ix2], a,
-                            allow_input_downcast=True)
+                            allow_input_downcast=True,
+                            mode=self.mode)
         aval = f([[.4, .9, .1],
                   [5, 6, 7],
                   [.5, .3, .15]],
@@ -1615,13 +1619,13 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
     def test_advanced_indexing(self):
         # tests advanced indexing in Theano for 2D and 3D tensors
-        rng = np.random.RandomState(utt.seed_rng())
+        rng = np.random.RandomState(utt.fetch_seed())
         a = rng.uniform(size=(3, 3))
         b = theano.shared(a)
         i = tensor.iscalar()
         j = tensor.iscalar()
         z = b[[i, j], :]
-        f1 = theano.function([i, j], z)
+        f1 = theano.function([i, j], z, mode=self.mode)
         cmd = f1(0, 1) == a[[0, 1], :]
         self.assertTrue(cmd.all())
 
@@ -1629,7 +1633,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         bb = theano.shared(aa)
         k = tensor.iscalar()
         z = bb[[i, j, k], :, i:k]
-        f2 = theano.function([i, j, k], z)
+        f2 = theano.function([i, j, k], z, mode=self.mode)
         cmd = f2(0, 1, 2) == aa[[0, 1, 2], :, 0:2]
         self.assertTrue(cmd.all())
 
@@ -1650,14 +1654,15 @@ class TestAdvancedSubtensor(unittest.TestCase):
         r_idx = np.arange(xx.shape[1])[:, np.newaxis]
         c_idx = np.arange(xx.shape[2])[np.newaxis, :]
 
-        out = X[b_idx, r_idx, c_idx].eval({X: xx})
+        f = theano.function([X], X[b_idx, r_idx, c_idx], mode=self.mode)
+        out = f(xx)
         utt.assert_allclose(out, xx[b_idx, r_idx, c_idx])
 
     def test_adv_sub_slice(self):
         # Reported in https://github.com/Theano/Theano/issues/5898
         var = self.shared(np.zeros([3, 3], dtype=config.floatX))
         slc = tensor.slicetype()
-        f = theano.function([slc], var[slc])
+        f = theano.function([slc], var[slc], mode=self.mode)
         s = slice(1, 3)
         f(s)
 
