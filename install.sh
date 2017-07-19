@@ -18,7 +18,7 @@ cd ${THIS_DIR}/third_party/pycuda \
 
 echo "=== Building skcuda ..."
 cd ${THIS_DIR}/third_party/scikit-cuda \
-    && ${SUDO} pip install . || exit 1
+    && ${SUDO} pip install  --upgrade  . || exit 1
 
 echo "=== Building gpuarray ..."
 cd ${THIS_DIR}/libgpuarray \
@@ -27,18 +27,18 @@ cd ${THIS_DIR}/libgpuarray \
     && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
     && VERBOSE=1 ${SUDO} ${MAKE} ${MAKEFLAGS} install \
     && cd .. \
-    && ${SUDO} pip install . \
+    && ${SUDO} pip install  --upgrade . \
     && ${SUDO} ldconfig || exit 1
 
 echo "=== Installing Theano ..."
 cd ${THIS_DIR} \
-    && ${SUDO} pip install -e . || exit 1
+    && ${SUDO} pip install  --upgrade . || exit 1
 
 echo "=== Finished installing Theano."
 
 echo "=== Installing Lasagne ..."
 
-cd ${THIS_DIR}/third_party/Lasagne && ${SUDO} pip install --no-deps -e . || exit 1
+cd ${THIS_DIR}/third_party/Lasagne && ${SUDO} pip install --upgrade --no-deps . || exit 1
 
 echo "=== Finished installing Lasagne."
 

@@ -256,6 +256,7 @@ class TestAlloc(test_basic.TestAlloc):
     dtype = "float32"
     mode = mode_with_gpu
     shared = staticmethod(gpuarray_shared_constructor)
+    print "Calling GpuAlloc(test_ctx_name) =" + test_ctx_name
     allocs = [GpuAlloc(test_ctx_name), GpuAlloc(test_ctx_name), T.Alloc()]
 
 

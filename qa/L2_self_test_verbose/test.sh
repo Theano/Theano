@@ -13,4 +13,5 @@ export THEANO_FLAGS="floatX=float32,device=cpu,mode=FAST_RUN"
 #
 #exec theano-nose --verbose --exclude theano/sandbox/cuda -a '!slow'
 
-exec theano-nose --verbose -a '!slow'
+exec theano-nose --verbose -a '!slow' $@
+
