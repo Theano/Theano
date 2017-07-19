@@ -44,6 +44,7 @@ grad_time = 0
 def format_as(use_list, use_tuple, outputs):
     """
     Formats the outputs according to the flags `use_list` and `use_tuple`.
+
     If `use_list` is True, `outputs` is returned as a list (if `outputs`
     is not a list or a tuple then it is converted in a one element list).
     If `use_tuple` is True, `outputs` is returned as a tuple (if `outputs`
@@ -163,20 +164,23 @@ disconnected_type = DisconnectedType()
 def Rop(f, wrt, eval_points, disconnected_outputs="raise",
         return_disconnected="zero"):
     """
-    Computes the R operation on `f` wrt to `wrt` evaluated at points given
-    in `eval_points`. Mathematically this stands for the jacobian of `f` wrt
+    Computes the R operation on `f` wrt to `wrt` at `eval_points`.
+
+    Mathematically this stands for the jacobian of `f` wrt
     to `wrt` right muliplied by the eval points.
 
-    :type f: Variable or list of Variables
-             `f` stands for the output of the computational graph to which you
-             want to apply the R operator
-    :type wrt: Variable or list of `Variables`s
-               variables for which you compute the R operator of the expression
-               described by `f`
-    :type eval_points: Variable or list of Variables
-                       evalutation points for each of the variables in `wrt`
-    :type disconnected_outputs: str
-        Defines the behaviour if some of the variables in `f` are
+    Parameters
+    ----------
+    f : :class:`~theano.gof.graph.Variable` or list of Variables
+        `f` stands for the output of the computational graph to which you
+        want to apply the R operator
+    wrt : :class:`~theano.gof.graph.Variable` or list of Variables
+        variables for which you compute the R operator of the expression
+        described by `f`
+    eval_points : :class:`~theano.gof.graph.Variable` or list of Variables
+        evalutation points for each of the variables in `wrt`
+    disconnected_outputs : str
+        Defines the behaviour if some of the variables in `f`
         have no dependency on any of the variable in `wrt` (or if
         all links are non-differentiable). The possible values are:
 
@@ -184,16 +188,18 @@ def Rop(f, wrt, eval_points, disconnected_outputs="raise",
         - 'warn': consider the gradient zero, and print a warning.
         - 'raise': raise DisconnectedInputError.
 
-    :type return_disconnected : {'zero', 'None', 'Disconnected'}
+    return_disconnected : {'zero', 'None', 'Disconnected'}
         - 'zero' : If wrt[i] is disconnected, return value i will be
-                   wrt[i].zeros_like()
+          wrt[i].zeros_like()
         - 'None' : If wrt[i] is disconnected, return value i will be
-                   None
+          None
         - 'Disconnected' : returns variables of type DisconnectedType
 
-    :rtype: :class:`~theano.gof.Variable` or list/tuple of Variables depending on type of f
-    :return: symbolic expression such that
-        R_op[i] = sum_j ( d f[i] / d wrt[j]) eval_point[j]
+    Returns
+    -------
+    :class:`~theano.gof.graph.Variable` or list/tuple of Variables depending on type of f
+        Symbolic expression such that
+        R_op[i] = sum_j (d f[i] / d wrt[j]) eval_point[j]
         where the indices in that expression are magic multidimensional
         indices that specify both the position within a list and all
         coordinates of the tensor element in the last.
@@ -349,22 +355,27 @@ def Rop(f, wrt, eval_points, disconnected_outputs="raise",
 def Lop(f, wrt, eval_points, consider_constant=None,
         disconnected_inputs='raise'):
     """
-    Computes the L operation on `f` wrt to `wrt` evaluated at points given
-    in `eval_points`. Mathematically this stands for the jacobian of `f` wrt
+    Computes the L operation on `f` wrt to `wrt` at `eval_points`.
+
+    Mathematically this stands for the jacobian of `f` wrt
     to `wrt` left muliplied by the eval points.
 
-    :type f: Variable or list of Variables
+    Parameters
+    ----------
+    f : :class:`~theano.gof.graph.Variable` or list of Variables
         `f` stands for the output of the computational graph to which you
         want to apply the L operator
-    :type wrt: Variable or list of `Variables`s
+    wrt : :class:`~theano.gof.graph.Variable` or list of Variables
         variables for which you compute the L operator of the expression
         described by `f`
-    :type eval_points: Variable or list of Variables
-                        evalutation points for each of the variables in `f`
+    eval_points : :class:`~theano.gof.graph.Variable` or list of Variables
+        evalutation points for each of the variables in `f`
 
-    :rtype: :class:`~theano.gof.Variable` or list/tuple of Variables depending on type of f
-    :return: symbolic expression such that
-        L_op[i] = sum_i ( d f[i] / d wrt[j]) eval_point[i]
+    Returns
+    -------
+    :class:`~theano.gof.Variable` or list/tuple of Variables depending on type of f
+        Symbolic expression such that
+        L_op[i] = sum_i (d f[i] / d wrt[j]) eval_point[i]
         where the indices in that expression are magic multidimensional
         indices that specify both the position within a list and all
         coordinates of the tensor element in the last
@@ -405,8 +416,7 @@ def grad(cost, wrt, consider_constant=None,
          known_grads=None, return_disconnected='zero',
          null_gradients='raise'):
     """
-    Return symbolic gradients for one or more variables with respect to some
-    cost.
+    Return symbolic gradients of one cost with respect to one or more variables.
 
     For more information about how automatic differentiation works in Theano,
     see :mod:`gradient`. For information on how to implement the gradient of
@@ -414,13 +424,13 @@ def grad(cost, wrt, consider_constant=None,
 
     Parameters
     ----------
-    cost : :class:`~theano.gof.Variable` scalar (0-dimensional) tensor variable or None
-        Value with respect to which we are differentiating.  May be
-        `None` if known_grads is provided.
-    wrt : :class:`~theano.gof.Variable` or list of Variables
-        term[s] for which we want gradients
+    cost : :class:`~theano.gof.graph.Variable` scalar (0-dimensional) tensor variable or ``None``
+        Value that we are differentiating (that we want the gradient of).
+        May be `None` if `known_grads` is provided.
+    wrt : :class:`~theano.gof.graph.Variable` or list of Variables
+        Term[s] with respect to which we want gradients
     consider_constant : list of variables
-        expressions not to backpropagate through
+        Expressions not to backpropagate through
     disconnected_inputs : {'ignore', 'warn', 'raise'}
         Defines the behaviour if some of the variables in `wrt` are
         not part of the computational graph computing `cost` (or if
@@ -439,9 +449,9 @@ def grad(cost, wrt, consider_constant=None,
         variables but do not know the original cost.
     return_disconnected : {'zero', 'None', 'Disconnected'}
         - 'zero' : If wrt[i] is disconnected, return value i will be
-                   wrt[i].zeros_like()
+          wrt[i].zeros_like()
         - 'None' : If wrt[i] is disconnected, return value i will be
-                   None
+          None
         - 'Disconnected' : returns variables of type DisconnectedType
     null_gradients : {'raise', 'return'}
         Defines the behaviour if some of the variables in `wrt` have a
@@ -453,7 +463,7 @@ def grad(cost, wrt, consider_constant=None,
     Returns
     -------
     variable or list/tuple of variables (matches `wrt`)
-        symbolic expression of gradient of `cost` with respect to each
+        Symbolic expression of gradient of `cost` with respect to each
         of the `wrt` terms.  If an element of `wrt` is not
         differentiable with respect to the output, then a zero
         variable is returned.
@@ -670,50 +680,46 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
             next_grad = dict(zip(grad_ends[i], next_grad))
             param_grads.extend(param_grad)
 
-    :type wrt: list of variables
-    :param wrt:
-      Gradients are computed with respect to `wrt`.
+    Parameters
+    ----------
 
-    :type end: list of variables
-    :param end:
-      Theano variables at which to end gradient descent (they are
-      considered constant in theano.grad).  For convenience, the
-      gradients with respect to these variables are also returned.
+    wrt : list of variables
+        Gradients are computed with respect to `wrt`.
 
-    :type start: dictionary of variables
-    :param start:
-      If not None, a dictionary mapping variables to their
-      gradients. This is useful when the gradient on some variables
-      are known. These are used to compute the gradients backwards up
-      to the variables in `end` (they are used as known_grad in
-      theano.grad).
+    end : list of variables
+        Theano variables at which to end gradient descent (they are
+        considered constant in theano.grad).  For convenience, the
+        gradients with respect to these variables are also returned.
 
-    :type cost: :class:`~theano.gof.Variable` scalar (0-dimensional) variable
-    :param cost:
-      Additional costs for which to compute the gradients.  For
-      example, these could be weight decay, an l1 constraint, MSE,
-      NLL, etc. May optionally be None if start is provided.  Warning
-      : If the gradients of `cost` with respect to any of the `start`
-      variables is already part of the `start` dictionary, then it may
-      be counted twice with respect to `wrt` and `end`.
+    start : dictionary of variables
+        If not None, a dictionary mapping variables to their
+        gradients. This is useful when the gradient on some variables
+        are known. These are used to compute the gradients backwards up
+        to the variables in `end` (they are used as known_grad in
+        theano.grad).
 
-      .. warning::
+    cost : :class:`~theano.gof.Variable` scalar (0-dimensional) variable
+        Additional costs for which to compute the gradients.  For
+        example, these could be weight decay, an l1 constraint, MSE,
+        NLL, etc. May optionally be None if start is provided.
 
-        If the gradients of `cost` with respect to any of the `start`
-        variables is already part of the `start` dictionary, then it
-        may be counted twice with respect to `wrt` and `end`.
+        .. warning::
 
+            If the gradients of `cost` with respect to any of the `start`
+            variables is already part of the `start` dictionary, then it
+            may be counted twice with respect to `wrt` and `end`.
 
-    :type details: bool
-    :param details:
-      When True, additionally returns the list of gradients from
-      `start` and of `cost`, respectively, with respect to `wrt` (not
-      `end`).
+    details : bool
+        When True, additionally returns the list of gradients from
+        `start` and of `cost`, respectively, with respect to `wrt` (not
+        `end`).
 
-    :rtype: Tuple of 2 or 4 Lists of Variables
+    Returns
+    -------
+    Tuple of 2 or 4 Lists of Variables
+        Returns lists of gradients with respect to `wrt` and `end`,
+        respectively.
 
-    :return: Returns lists of gradients with respect to `wrt` and `end`,
-            respectively.
 
     .. versionadded:: 0.7
     '''
@@ -808,37 +814,40 @@ def _populate_var_to_app_to_idx(outputs, wrt, consider_constant):
     """
     Helper function for grad function.
 
-    outputs: a list of variables we want to take gradients of
+    Parameters
+    ----------
+    outputs
+        a list of variables we want to take gradients of
 
-    wrt: a list of variables we want to take the gradient with
+    wrt
+        a list of variables we want to take the gradient with
         respect to.
 
-    consider_constant: a list of variables not to backpropagate
-        through.
+    consider_constant
+        a list of variables not to backpropagate through.
 
-    returns:
+    Returns
+    -------
+    var_to_app_to_idx:
+        A dictionary mapping a variable to a second dictionary.
+        The second dictionary maps apply nodes acting on this
+        variable to the variable's index in the apply node's
+        input list.
 
-     var_to_app_to_idx:
+        This dictionary will only contain variables that
+        meet two criteria:
 
-      A dictionary mapping a variable to a second dictionary.
-      The second dictionary maps apply nodes acting on this
-      variable to the variable's index in the apply node's
-      input list.
+        1) The elements of at least one output are a
+           function of the elements of the variable
 
-      This dictionary will only contain variables that
-      meet two criteria:
+        2) The elements of the variable are a function of the
+           elements of at least one member of wrt.
 
-       1) The elements of at least one output are a
-          function of the elements of the variable
+    This set is exactly the set of variables that connect
+    the variables in wrt to the cost being differentiated.
 
-       2) The elements of the variable are a function of the
-          elements of at least one member of wrt.
-
-      This set is exactly the set of variables that connect
-      the variables in wrt to the cost being differentiated.
-
-      (A variable in consider_constant is not a function of
-      anything)
+    (A variable in consider_constant is not a function of
+    anything)
 
     """
 
@@ -967,30 +976,35 @@ class DisconnectedInputError(ValueError):
 
 def _populate_grad_dict(var_to_app_to_idx,
                         grad_dict, wrt, cost_name=None):
-    """
-        Helper function for grad function.
+    """Helper function for grad function.
 
-        var_to_app_to_idx: a dictionary mapping a variable to
-                a second dictionary.
-                the second dictionary maps apply nodes acting on
-                this variable to the variable's index in the apply
-                node's input list
+    Parameters
+    ----------
+    var_to_app_to_idx : dict
+        a dictionary mapping a variable to a second dictionary.
+        the second dictionary maps apply nodes acting on
+        this variable to the variable's index in the apply
+        node's input list
+    grad_dict : dict
+        A dictionary mapping variables to their gradients.
+        Should be populated by grad function, which should:
 
-        grad_dict: A dictionary mapping variables to their gradients.
-                   Should be populated by grad function, which should:
-                       -Set the gradient with respect to the cost to 1
-                       -Load all gradients from known_grads, possibly
-                        overriding the cost
-                       -Set the gradient for disconnected
-                        inputs to a variable with type DisconnectedType()
+        - Set the gradient with respect to the cost to 1
+        - Load all gradients from known_grads, possibly
+          overriding the cost
+        - Set the gradient for disconnected
+          inputs to a variable with type DisconnectedType()
 
-        wrt: the minimal set of variables that must be included in grad_dict
+    wrt : list of Variables
+        the minimal set of variables that must be included in `grad_dict`
+    cost_name: string
+        The name of the cost being differentiated, optional.
+        Used to name the grad with respect to x as (d<cost_name>/dx)
 
-        cost_name: The name of the cost being differentiated, optional.
-                    used to name the grad with respect to x as
-                    (d<cost_name>/dx)
-
-        returns: a list of gradients corresponding to wrt
+    Returns
+    -------
+    list of Variables
+        A list of gradients corresponding to `wrt`
 
     """
     # build a dict mapping node to the terms node contributes to each of
@@ -1421,18 +1435,22 @@ class numeric_grad(object):
     def __init__(self, f, pt, eps=None, out_type=None):
         """Return the gradient of f at pt.
 
-        :param f: a differentiable function such that f(*pt) is a scalar
-        :param pt: an ndarray, a list of ndarrays or tuple of ndarrays
-        :param out_type: dtype of output, if complex (i.e. 'complex32' or
-        'complex64')
         This function computes the gradient by a one-sided finite
         differences of a fixed step size (eps).
 
-        It is assumed that f(...) will return a scalar.
-        It is assumed that all f's inputs are numpy.ndarray objects.
-
-        :param eps: the stepsize for the finite differencing.  None means
-          input dtype-dependent. See `type_eps`.
+        Parameters
+        ----------
+        f : a differentiable function such that f(*pt) is a scalar
+            The function to compute the gradient of.
+            It is assumed that f(...) will return a scalar.
+            It is assumed that all f's inputs are numpy.ndarray objects.
+        pt : an ndarray, a list of ndarrays or tuple of ndarrays
+            The point where to evaluate the gradient
+        out_type: float
+            dtype of output, if complex (i.e. 'complex32' or 'complex64')
+        eps : float, optional
+            The stepsize for the finite differencing.  None means
+            input dtype-dependent. See `type_eps`.
         """
 
         def prod(inputs):
@@ -1515,6 +1533,7 @@ class numeric_grad(object):
 
         Formulas used:
             abs_err = abs(a - b)
+
             rel_err = abs_err / max(abs(a) + abs(b), 1e-8)
 
         The denominator is clipped at 1e-8 to avoid dividing by 0 when a and b
@@ -1609,46 +1628,56 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 no_debug_ref=True):
     """Test a gradient by Finite Difference Method. Raise error on failure.
 
-    Example:
-        >>> verify_grad(theano.tensor.tanh,
-        ...             (np.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
-        ...             rng=np.random)
-
     Raises an Exception if the difference between the analytic gradient and
     numerical gradient (computed through the Finite Difference Method) of a
     random projection of the fun's output to a scalar exceeds the given
     tolerance.
 
-    :param fun: a Python function that takes Theano variables as inputs,
-        and returns a Theano variable. For instance, an Op instance with
-        a single output.
-    :param pt: the list of numpy.ndarrays to use as input values.
-        These arrays must be either float16, float32, or float64 arrays.
-    :param n_tests: number of times to run the test
-    :param rng: random number generator used to sample u, we test gradient
-        of sum(u * fun) at pt
-    :param eps: stepsize used in the Finite Difference Method (Default
-        None is type-dependent)
-        Raising the value of eps can raise or lower the absolute and
-        relative errors of the verification depending on the
-        Op. Raising eps does not lower the verification quality
-        for linear operations. It
-        is better to raise eps than raising abs_tol or rel_tol.
-    :param out_type: dtype of output, if complex (i.e. 'complex32' or
-        'complex64')
-    :param abs_tol: absolute tolerance used as threshold for gradient
-        comparison
-    :param rel_tol: relative tolerance used as threshold for gradient
-        comparison
-    :param cast_to_output_type: if the output is float32 and
-        cast_to_output_type is True, cast the random projection to
-        float32. Otherwise it is float64. float16 is not handled here.
-    :param no_debug_ref: Don't use DebugMode for the numerical
-        gradient function.
+    Examples
+    --------
+    >>> verify_grad(theano.tensor.tanh,
+    ...             (np.asarray([[2, 3, 4], [-1, 3.3, 9.9]]),),
+    ...             rng=np.random)
 
-    :note: This function does not support multiple outputs. In
-        tests/test_scan.py there is an experimental verify_grad that
-        covers that case as well by using random projections.
+    Parameters
+    ----------
+    fun : a Python function
+        `fun` takes Theano variables as inputs, and returns a Theano variable.
+        For instance, an Op instance with  a single output.
+    pt : list of numpy.ndarrays
+        Input values, points where the gradient is estimated.
+        These arrays must be either float16, float32, or float64 arrays.
+    n_tests : int
+        number of times to run the test
+    rng : numpy.random.RandomState, optional
+        random number generator used to sample the output random projection `u`,
+        we test gradient of sum(u * fun) at `pt`
+    eps : float, optional
+        stepsize used in the Finite Difference Method (Default
+        None is type-dependent).
+        Raising the value of eps can raise or lower the absolute
+        and relative errors of the verification depending on the
+        Op. Raising eps does not lower the verification quality for
+        linear operations. It is better to raise `eps` than raising
+        `abs_tol` or `rel_tol`.
+    out_type : string
+        dtype of output, if complex (i.e., 'complex32' or 'complex64')
+    abs_tol : float
+        absolute tolerance used as threshold for gradient comparison
+    rel_tol : float
+        relative tolerance used as threshold for gradient comparison
+    cast_to_output_type : bool
+        if the output is float32 and cast_to_output_type is True, cast
+        the random projection to float32. Otherwise it is float64.
+        float16 is not handled here.
+    no_debug_ref : bool
+        Don't use DebugMode for the numerical gradient function.
+
+    Note
+    ----
+    This function does not support multiple outputs. In
+    tests/test_scan.py there is an experimental verify_grad that
+    covers that case as well by using random projections.
 
     """
     # The import is here to prevent circular import.
@@ -1813,26 +1842,33 @@ verify_grad.E_grad = GradientError
 def jacobian(expression, wrt, consider_constant=None,
              disconnected_inputs='raise'):
     """
-    :type expression: Vector (1-dimensional) Variable
-    :type wrt: Variable or list of Variables
+    Compute the full Jacobian, row by row.
 
-    :param consider_constant: a list of expressions not to backpropagate
-        through
+    Parameters
+    ----------
+    expression : Vector (1-dimensional) :class:`~theano.gof.graph.Variable`
+        Values that we are differentiating (that we want the Jacobian of)
+    wrt : :class:`~theano.gof.graph.Variable` or list of Variables
+        Term[s] with respect to which we compute the Jacobian
+    consider_constant : list of variables
+        Expressions not to backpropagate through
 
-    :type disconnected_inputs: string
-    :param disconnected_inputs: Defines the behaviour if some of the variables
-        in ``wrt`` are not part of the computational graph computing ``cost``
+    disconnected_inputs: string
+        Defines the behaviour if some of the variables
+        in `wrt` are not part of the computational graph computing `cost`
         (or if all links are non-differentiable). The possible values are:
+
         - 'ignore': considers that the gradient on these parameters is zero.
         - 'warn': consider the gradient zero, and print a warning.
         - 'raise': raise an exception.
 
-    :return: either a instance of Variable or list/tuple of Variables
-            (depending upon `wrt`) repesenting the jacobian of `expression`
-            with respect to (elements of) `wrt`. If an element of `wrt` is not
-            differentiable with respect to the output, then a zero
-            variable is returned. The return value is of same type
-            as `wrt`: a list/tuple or TensorVariable in all cases.
+    Returns
+    -------
+    :class:`~theano.gof.graph.Variable` or list/tuple of Variables (depending upon `wrt`)
+        The Jacobian of `expression` with respect to (elements of) `wrt`.
+        If an element of `wrt` is not differentiable with respect to the
+        output, then a zero variable is returned. The return value is
+        of same type as `wrt`: a list/tuple or TensorVariable in all cases.
     """
     from theano.tensor import arange
     # Check inputs have the right format
@@ -1886,27 +1922,29 @@ def jacobian(expression, wrt, consider_constant=None,
 def hessian(cost, wrt, consider_constant=None,
             disconnected_inputs='raise'):
     """
-    :type cost: Scalar (0-dimensional) Variable.
-    :type wrt: Vector (1-dimensional tensor) 'Variable' or list of
-               vectors (1-dimensional tensors) Variables
-
-    :param consider_constant: a list of expressions not to backpropagate
-        through
-
-    :type disconnected_inputs: string
-    :param disconnected_inputs: Defines the behaviour if some of the variables
+    Parameters
+    ----------
+    cost: Scalar (0-dimensional) variable.
+    wrt: Vector (1-dimensional tensor) 'Variable' or list of
+    vectors (1-dimensional tensors) Variables
+    consider_constant:
+        a list of expressions not to backpropagate through
+    disconnected_inputs: string
+        Defines the behaviour if some of the variables
         in ``wrt`` are not part of the computational graph computing ``cost``
         (or if all links are non-differentiable). The possible values are:
+
         - 'ignore': considers that the gradient on these parameters is zero.
         - 'warn': consider the gradient zero, and print a warning.
         - 'raise': raise an exception.
 
-    :return: either a instance of Variable or list/tuple of Variables
-            (depending upon `wrt`) repressenting the Hessian of the `cost`
-            with respect to (elements of) `wrt`. If an element of `wrt` is not
-            differentiable with respect to the output, then a zero
-            variable is returned. The return value is of same type
-            as `wrt`: a list/tuple or TensorVariable in all cases.
+    Returns
+    -------
+    :class:`~theano.gof.graph.Variable` or list/tuple of Variables
+        The Hessian of the `cost` with respect to (elements of) `wrt`.
+        If an element of `wrt` is not differentiable with respect to the
+        output, then a zero variable is returned. The return value is
+        of same type as `wrt`: a list/tuple or TensorVariable in all cases.
     """
     from theano.tensor import arange
     # Check inputs have the right format
@@ -2034,10 +2072,16 @@ def zero_grad(x):
     through with a value of zero. In other words, the gradient of
     the expression is truncated to 0.
 
-    :param x: A Theano expression whose gradient should be truncated.
+    Parameters
+    ----------
+    x: :class:`~theano.gof.graph.Variable`
+        A Theano expression whose gradient should be truncated.
 
-    :return: The expression is returned unmodified, but its gradient
-        is now truncated to 0.
+    Returns
+    -------
+    :class:`~theano.gof.graph.Variable`
+        An expression equivalent to ``x``, with its gradient
+        truncated to 0.
     """
     return zero_grad_(x)
 
@@ -2058,18 +2102,24 @@ undefined_grad_ = UndefinedGrad()
 
 def undefined_grad(x):
     """
-    Consider the gradient of this variable undefined and
-    generate an error message if its gradient is taken.
+    Consider the gradient of this variable undefined.
+
+    This will generate an error message if its gradient is taken.
 
     The expression itself is unaffected, but when its gradient is
     computed, or the gradient of another expression that this
     expression is a subexpression of, an error message will be generated
     specifying such gradient is not defined.
 
-    :param x: A Theano expression whose gradient should be undefined.
+    Parameters
+    ----------
+    x: :class:`~theano.gof.graph.Variable`
+        A Theano expression whose gradient should be undefined.
 
-    :return: The expression is returned unmodified, but its gradient
-        is now undefined.
+    Returns
+    -------
+    :class:`~theano.gof.graph.Variable`
+        An expression equivalent to ``x``, with its gradient undefined.
     """
     return undefined_grad_(x)
 
@@ -2090,8 +2140,9 @@ disconnected_grad_ = DisconnectedGrad()
 
 def disconnected_grad(x):
     """
-    Consider an expression constant when computing gradients,
-    while effectively not backpropagating through it.
+    Consider an expression constant when computing gradients.
+
+    It will effectively not backpropagating through it.
 
     The expression itself is unaffected, but when its gradient is
     computed, or the gradient of another expression that this
@@ -2101,11 +2152,17 @@ def disconnected_grad(x):
     has to go through the underlying computational graph related to the
     expression.
 
-    :param x: A Theano expression whose gradient should not be
-              backpropagated through.
+    Parameters
+    ----------
+    x: :class:`~theano.gof.graph.Variable`
+        A Theano expression whose gradient should not be
+        backpropagated through.
 
-    :return: The expression is returned unmodified, but its gradient
-        is now effectively truncated to 0.
+    Returns
+    -------
+    :class:`~theano.gof.graph.Variable`
+        An expression equivalent to ``x``, with its gradient
+        now effectively truncated to 0.
     """
     return disconnected_grad_(x)
 
@@ -2133,23 +2190,28 @@ def grad_clip(x, lower_bound, upper_bound):
 
     This is an elemwise operation.
 
-    :param x: the variable we want its gradient inputs clipped
-    :param lower_bound: The lower bound of the gradient value
-    :param upper_bound: The upper bound of the gradient value.
+    Parameters
+    ----------
+    x:
+        The variable we want its gradient inputs clipped
+    lower_bound:
+        The lower bound of the gradient value
+    upper_bound:
+        The upper bound of the gradient value.
 
-    :examples:
+    Examples
+    --------
+    >>> x = theano.tensor.scalar()
+    >>> z = theano.tensor.grad(grad_clip(x, -1, 1)**2, x)
+    >>> z2 = theano.tensor.grad(x**2, x)
+    >>> f = theano.function([x], outputs = [z, z2])
+    >>> print(f(2.0))
+    [array(1.0), array(4.0)]
 
-        x = theano.tensor.scalar()
-
-        z = theano.tensor.grad(grad_clip(x, -1, 1)**2, x)
-        z2 = theano.tensor.grad(x**2, x)
-
-        f = theano.function([x], outputs = [z, z2])
-
-        print(f(2.0))  # output (1.0, 4.0)
-
-    :note: We register an opt in tensor/opt.py that remove the GradClip.
-       So it have 0 cost in the forward and only do work in the grad.
+    Note
+    ----
+    We register an opt in tensor/opt.py that remove the GradClip.
+    So it have 0 cost in the forward and only do work in the grad.
 
     """
     return GradClip(lower_bound, upper_bound)(x)
@@ -2167,21 +2229,25 @@ def grad_scale(x, multiplier):
     """
     This op scale or inverse the gradient in the backpropagation.
 
-    :param x: the variable we want its gradient inputs scale
-    :param multiplier: scale of the gradient
+    Parameters
+    ----------
+    x:
+        The variable we want its gradient inputs scale
+    multiplier:
+        Scale of the gradient
 
-    :examples:
-
-        x = theano.tensor.fscalar()
-        fx = theano.tensor.sin(x)
-
-        fp = theano.tensor.grad(fx, wrt=x)
-        fprime = theano.function([x], fp)
-        print(fprime(2))#-0.416
-
-        f_inverse=grad_scale(fx,-1.)
-        fpp = theano.tensor.grad(f_inverse, wrt=x)
-        fpprime = theano.function([x], fpp)
-        print(fpprime(2))#0.416
+    Examples
+    --------
+    >>> x = theano.tensor.fscalar()
+    >>> fx = theano.tensor.sin(x)
+    >>> fp = theano.tensor.grad(fx, wrt=x)
+    >>> fprime = theano.function([x], fp)
+    >>> print(fprime(2))  # doctest: +ELLIPSIS
+    -0.416...
+    >>> f_inverse=grad_scale(fx, -1.)
+    >>> fpp = theano.tensor.grad(f_inverse, wrt=x)
+    >>> fpprime = theano.function([x], fpp)
+    >>> print(fpprime(2))  # doctest: +ELLIPSIS
+    0.416...
     """
     return GradScale(multiplier)(x)
