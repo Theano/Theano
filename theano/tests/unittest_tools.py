@@ -447,11 +447,16 @@ class AttemptManyTimes:
         return attempt_multiple_times
 
 
-def expectedFailure_fast(f):
+def assertFailure_fast(f):
     """A Decorator to handle the test cases that are failing when
     THEANO_FLAGS =cycle_detection='fast'.
     """
     if theano.config.cycle_detection == 'fast':
-        return unittest.expectedFailure(f)
+        class TestAssertion(unittest.TestCase):
+            def runTest(self, *args, **kwargs):
+                with self.assertRaises(Exception):
+                    f(*args, **kwargs)
+        test_assertion = TestAssertion()
+        return test_assertion
     else:
         return f

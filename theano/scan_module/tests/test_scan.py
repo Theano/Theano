@@ -886,7 +886,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(numpy_out, theano_out)
 
     # simple rnn ; compute inplace version 1
-    @utt.expectedFailure_fast
+    @utt.assertFailure_fast
     def test_inplace1(self):
         rng = np.random.RandomState(utt.fetch_seed())
         vW = asarrayX(np.random.uniform())
@@ -951,7 +951,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(theano_x1, numpy_x1)
 
     # simple rnn ; compute inplace version 2
-    @utt.expectedFailure_fast
+    @utt.assertFailure_fast
     def test_inplace2(self):
         rng = np.random.RandomState(utt.fetch_seed())
         vW = asarrayX(np.random.uniform())
@@ -1023,7 +1023,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(theano_x0, numpy_x0)
         utt.assert_allclose(theano_x1, numpy_x1)
 
-    @utt.expectedFailure_fast
+    @utt.assertFailure_fast
     def test_inplace3(self):
         rng = np.random.RandomState(utt.fetch_seed())
 

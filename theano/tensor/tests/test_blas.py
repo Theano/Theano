@@ -500,7 +500,7 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
         raise
 
 
-@unittest_tools.expectedFailure_fast
+@unittest_tools.assertFailure_fast
 def test_gemm_opt0():
     # Many subgraphs whose dots can be eliminated
     X, Y, Z, a, b = XYZab()
@@ -529,7 +529,7 @@ def test_gemm_opt0():
     just_gemm([X, Y, Z, a, b], [Z - a * b * a * T.dot(X, Y)])
 
 
-@unittest_tools.expectedFailure_fast
+@unittest_tools.assertFailure_fast
 def test_gemm_opt_double_gemm():
     # This is the pattern that shows up in the autoencoder
     X, Y, Z, a, b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
