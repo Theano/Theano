@@ -1134,7 +1134,7 @@ class LocalMetaOptimizer(LocalOptimizer):
     def __init__(self, optimizers=()):
         self._tracks = [x for o in optimizers for x in o.tracks()]
         self.optimizers = list(optimizers)
-        self.verbose = True
+        self.verbose = config.metaopt.verbose
         self.track_dict = defaultdict(lambda: [])
 
         for o in optimizers:
@@ -1176,14 +1176,14 @@ class LocalMetaOptimizer(LocalOptimizer):
             missing.difference_update(givens.keys())
         # ensure we have data for all input variables that need it
         if missing:
-            if self.verbose:
+            if self.verbose > 0:
                 print(("%s cannot meta-optimize %s, "
                        "%d of %d input shapes unknown" %
                        (self.__class__.__name__, node, len(missing), node.nin)))
             return
         # now we can apply the different optimizations in turn,
         # compile the resulting subgraphs and time their execution
-        if self.verbose:
+        if self.verbose > 1:
             print(("%s meta-optimizing %s (%d choices):" %
                    (self.__class__.__name__, node, len(self.optimizers))))
         timings = []
@@ -1195,20 +1195,20 @@ class LocalMetaOptimizer(LocalOptimizer):
                                          on_unused_input='ignore')
                     timing = min(self.time_call(fn) for _ in range(3))
                 except Exception as e:
-                    if self.verbose:
+                    if self.verbose > 0:
                         print("* %s: exception" % opt, e)
                     continue
                 else:
-                    if self.verbose:
+                    if self.verbose > 1:
                         print("* %s: %.5g sec" % (opt, timing))
                     timings.append((timing, outputs, opt))
             else:
-                if self.verbose:
+                if self.verbose > 0:
                     print("* %s: not applicable" % opt)
         # finally, we choose the fastest one
         if timings:
             timings.sort()
-            if self.verbose:
+            if self.verbose > 1:
                 print("= %s" % timings[0][2])
             return timings[0][1]
         return

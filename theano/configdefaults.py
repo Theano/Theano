@@ -1450,8 +1450,9 @@ AddConfigVar('blas.ldflags',
 
 AddConfigVar(
     'metaopt.verbose',
-    "Enable verbose output for meta optimizers",
-    theano.configparser.BoolParam(False),
+    "0 for silent, 1 for only warnings, 2 for full output with"
+    "timings and selected implementation",
+    theano.configparser.IntParam(0),
     in_c_key=False)
 
 AddConfigVar('profile',
