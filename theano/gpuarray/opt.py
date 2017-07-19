@@ -2460,7 +2460,15 @@ abstractconv_groupopt.register('local_abstractconv3d_gradinputs',
                                'gpuarray', 'fast_compile', 'fast_run')
 
 conv_metaopt = ConvMetaOptimizer()
-conv_metaopt.register(abstractconv_groupopt.query(*['+' + name for name in abstractconv_groupopt._names]).opts)
+running_list = ['+fast_run' if config.mode == 'Mode' else '+' + config.mode]
+
+if config.optimizer_including:
+    running_list += ['+' + name for name in config.optimizer_including.split(':')]
+
+if config.optimizer_excluding:
+    running_list += ['-' + name for name in config.optimizer_excluding.split(':')]
+
+conv_metaopt.register(abstractconv_groupopt.query(*running_list).opts)
 abstractconv_groupopt.register('conv_metaopt', conv_metaopt, 'conv_meta', position=0)
 
 # Register cuDNN batch normalization implementation
