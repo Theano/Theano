@@ -178,6 +178,7 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
                          outputs=outputs)
 
     def L_op(self, inputs, outputs, output_grads):
+        assert self.compute_grad and len(outputs) == 2
         gradients = outputs[1]
         assert gradients is not None
 

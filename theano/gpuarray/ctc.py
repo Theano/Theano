@@ -117,6 +117,7 @@ class GpuConnectionistTemporalClassification(gof.COp):
 
     def L_op(self, inputs, outputs, output_grads):
         # Gradients computed by Op
+        assert self.compute_grad and len(outputs) == 2
         gradients = outputs[1]
         assert gradients is not None
 
