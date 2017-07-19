@@ -139,9 +139,6 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
             header_dirs += [os.path.join(config.ctc.root, "include")]
         return header_dirs
 
-    def c_compile_args(self):
-        return gof.OpenMPOp.c_compile_args(self)
-
     def c_headers(self):
         return ["ctc.h"] + gof.OpenMPOp.c_headers(self)
 
