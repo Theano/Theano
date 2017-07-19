@@ -234,3 +234,14 @@ def test_gemv_zeros():
     tmp = f(A, b)
     assert np.allclose(tmp,
                        np.zeros((dim,)))
+
+
+def test_gemv_dot_strides():
+    # Reported in https://github.com/Theano/Theano/issues/6142
+    xv = rand(5)
+    yv = rand(5, 1)
+    x = gpuarray_shared_constructor(xv)
+    y = gpuarray_shared_constructor(yv, broadcastable=(False, True))
+    f = theano.function([], tensor.dot(x, y[::-1]), mode=mode_with_gpu)
+    out = f()
+    utt.assert_allclose(out, np.dot(xv, yv[::-1]))
