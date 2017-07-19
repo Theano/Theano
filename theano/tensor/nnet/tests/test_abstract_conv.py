@@ -770,6 +770,10 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
                            mode=mode)
 
     def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
+
         mode = theano.Mode(optimizer=None)
         if not expect_error:
             self.run_gradinput(inputs_shape=i, filters_shape=f,
@@ -904,6 +908,9 @@ class TestCpuConv2d(BaseTestConv2d):
                           filter_dilation=fd)
 
     def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
+
         if fd != (1, 1):
             raise SkipTest("No dilation implementation for basic cpu ConvOp.")
         mode = self.mode

@@ -441,6 +441,8 @@ def test_reallocation():
 
 
 def test_no_recycling():
+    if theano.config.cxx == '':
+        raise SkipTest('need c++')
     x = theano.tensor.vector()
     for lnk in [vm.VM_Linker(use_cloop=True),
                 vm.VM_Linker(use_cloop=False, lazy=True),
