@@ -1,23 +1,21 @@
 #section support_code_apply
 
-int APPLY_SPECIFIC(dnn_sptf_desc)(npy_int32 dim_nimages,
-                                  npy_int32 dim_nchannels,
-                                  npy_int32 dim_height,
-                                  npy_int32 dim_width,
+int APPLY_SPECIFIC(dnn_sptf_desc)(PyArrayObject * dims,
                                   cudnnSpatialTransformerDescriptor_t * desc,
                                   PARAMS_TYPE * params)
 {
     cudnnStatus_t err;
 
-    const int nimages = (int) dim_nimages;
-    const int nchannels = (int) dim_nchannels;
-    const int height = (int) dim_height;
-    const int width = (int) dim_width;
+    const int nimages = *((int *) PyArray_GETPTR1(dims, 0));
+    const int nchannels = *((int *) PyArray_GETPTR1(dims, 1));
+    const int height = *((int *) PyArray_GETPTR1(dims, 2));
+    const int width = *((int *) PyArray_GETPTR1(dims, 3));
 
     if ( nimages == 0 || nchannels == 0 || height == 0 || width == 0 )
     {
-        PyErr_SetString( PyExc_RuntimeError, "Invalid grid dimensions" );
-        return -1;
+        PyErr_SetString( PyExc_RuntimeError,
+                         "GpuDnnTransformerDescriptor: invalid grid dimensions" );
+        return 1;
     }
 
     // num_images, num_channels, height, width
@@ -27,9 +25,9 @@ int APPLY_SPECIFIC(dnn_sptf_desc)(npy_int32 dim_nimages,
     if ( CUDNN_STATUS_SUCCESS != err )
     {
         PyErr_Format( PyExc_MemoryError,
-            "Failed to allocate spatial transformer descriptor: %s",
+            "GpuDnnTransformerDescriptor: could not allocate descriptor: %s",
             cudnnGetErrorString( err ) );
-        return -1;
+        return 1;
     }
 
     // Currently, only the bilinear sampler is supported by cuDNN,
@@ -39,9 +37,9 @@ int APPLY_SPECIFIC(dnn_sptf_desc)(npy_int32 dim_nimages,
     if ( CUDNN_STATUS_SUCCESS != err )
     {
         PyErr_Format( PyExc_MemoryError,
-            "Failed to initialize spatial transformer descriptor: %s",
+            "GpuDnnTransformerDescriptor: could not initialize descriptor: %s",
             cudnnGetErrorString( err ) );
-        return -1;
+        return 1;
     }
 
     return 0;

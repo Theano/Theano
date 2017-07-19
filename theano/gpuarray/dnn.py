@@ -2849,7 +2849,7 @@ class GpuDnnTransformerDescriptor(COp):
     def c_header_dirs(self):
         header_dirs = [os.path.dirname(__file__)]
         if config.dnn.include_path:
-            headers_dirs += [config.dnn.include_path]
+            header_dirs += [config.dnn.include_path]
         return header_dirs
 
     def c_libraries(self):
@@ -2866,20 +2866,14 @@ class GpuDnnTransformerDescriptor(COp):
 
     def __init__(self, dtype=theano.config.floatX):
         COp.__init__(self, ["c_code/dnn_sptf_desc.c"], "APPLY_SPECIFIC(dnn_sptf_desc)")
-
         assert cudnn.cudnnDataType_t.has_alias(dtype)
         self.dtype = dtype
 
     def make_node(self, dimensions):
-        # cuDNN supports only 2D transformations, and the output tensor must
-        # have exactly 4 dimensions: (num_images, num_channels, height, width)
-        assert len(dimensions) == 4
-        dimensions = tuple(dimensions)
-        nimages, nchannels, height, width = dimensions
-
-        node = Apply(self, [nimages, nchannels, height, width],
+        dimensions = as_tensor_variable(dimensions)
+        node = Apply(self, [dimensions],
                      [CDataType("cudnnSpatialTransformerDescriptor_t",
-                                freefunc="cudnnDestroySpatialTransformerDescriptor")()])
+                      freefunc="cudnnDestroySpatialTransformerDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
         # default it returns False all the time. To prevent DebugMode from
         # complaining because of the MergeOptimizer, we make this variable
@@ -2908,23 +2902,22 @@ class GpuDnnTransformer(DnnBase):
         DnnBase.__init__(self, ["c_code/dnn_sptf.c"], "APPLY_SPECIFIC(dnn_sptf)")
         self.dtype = dtype
 
-    def make_node(self, img, theta, output, grid_dims, desc, alpha=None, beta=None):
-        assert theta.dtype in ('float16', 'float32', 'float64')
-
+    def make_node(self, img, theta, output, desc, alpha=None, beta=None):
         context_name = infer_context_name(img)
 
-        theta = as_gpuarray_variable(theta, context_name)
-        img = as_gpuarray_variable(img, context_name)
-        grid_dims = as_tensor_variable(grid_dims)
-        output = as_gpuarray_variable(output, context_name)
-
-        grid = GpuArrayType(dtype=self.dtype,
-                            broadcastable=img.type.ndim * (False,),
-                            context_name=context_name)()
-
+        img = gpu_contiguous(as_gpuarray_variable(img, context_name))
         if img.type.ndim != 4:
             raise TypeError('img must be a 4D tensor')
+        elif img.dtype not in ('float16', 'float32', 'float64'):
+            raise TypeError('img type must be floating-point')
 
+        theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
+        assert theta.dtype in ('float16', 'float32', 'float64')
+
+        # Setup grid dimensions using input from descriptor
+        grid_dims = as_tensor_variable(desc.owner.inputs[0])
+
+        output = gpu_contiguous(as_gpuarray_variable(output, context_name))
         if output.type.ndim != 4:
             raise TypeError('output must be a 4D tensor')
 
@@ -2934,6 +2927,10 @@ class GpuDnnTransformer(DnnBase):
 
         alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
         beta = ensure_dt(beta, _zero, 'beta', img.dtype)
+
+        grid = GpuArrayType(dtype=self.dtype,
+                            broadcastable=img.type.ndim * (False,),
+                            context_name=context_name)()
 
         inputs = [img, theta, grid_dims, desc, alpha, beta]
         outputs = [output.type(), grid]
@@ -2973,7 +2970,7 @@ class GpuDnnTransformerGradI(DnnBase):
         DnnBase.__init__(self, ["c_code/dnn_sptf_gi.c"], "APPLY_SPECIFIC(dnn_sptf_gi)")
         self.dtype = dtype
 
-    def make_node(self, img, theta, grid, grid_dims, dy, desc, alpha, beta):
+    def make_node(self, img, theta, grid, dy, desc, alpha, beta):
         context_name = infer_context_name(img)
 
         if img.ndim != 4:
@@ -2984,7 +2981,10 @@ class GpuDnnTransformerGradI(DnnBase):
         img = as_gpuarray_variable(gpu_contiguous(img), context_name)
         theta = as_gpuarray_variable(gpu_contiguous(theta), context_name)
         grid = as_gpuarray_variable(gpu_contiguous(grid), context_name)
-        grid_dims = as_tensor_variable(grid_dims)
+
+        # Setup grid dimensions from descriptor's input
+        grid_dims = as_tensor_variable(desc.owner.inputs[0])
+
         dy = as_gpuarray_variable(dy, context_name)
         alpha = as_scalar(alpha)
         beta = as_scalar(beta)
@@ -3070,29 +3070,26 @@ def dnn_spatialtf(img, theta, scale_width=1, scale_height=1, alpha=None, beta=No
 
     Also, the only grid sampler method available is the bilinear interpolation.
     """
+    grid_dims = (img.shape[0], img.shape[1],
+                 img.shape[2] * scale_height,
+                 img.shape[3] * scale_width)
+    grid_dims = tuple([as_scalar(v).astype('int32') for v in grid_dims])
+
+    # Create spatial transformer descriptor
+    desc = GpuDnnTransformerDescriptor(dtype)(grid_dims)
+
+    context_name = infer_context_name(desc)
+    img = gpu_contiguous(as_gpuarray_variable(img, context_name))
+    theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
 
     # inp is a 4D tensor with shape: (num_inputs, num_channels, height, width)
     assert img.ndim == 4
     # Theta is an array of transformation matrices and must have shape: (num_images, 2, 3)
     assert theta.ndim == 3
 
-    grid_dims = (img.shape[0], img.shape[1],
-                 img.shape[2] * scale_height,
-                 img.shape[3] * scale_width)
-    grid_dims = tuple(map(lambda v: as_scalar(v).astype('int32'), list(grid_dims)))
-
-    # Create spatial transformer descriptor
-    desc = GpuDnnTransformerDescriptor(dtype)(grid_dims)
-    # Create grid dimensions variable
-    grid_dims_var = as_tensor_variable(grid_dims)
-
-    context_name = infer_context_name(desc)
-    img = gpu_contiguous(as_gpuarray_variable(img, context_name))
-    theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
-
     output = GpuAllocEmpty(img.dtype, context_name)(*grid_dims)
     # Setup spatial transformer
-    transformer = GpuDnnTransformer(dtype)(img, theta, output, grid_dims_var, desc, alpha, beta)
+    transformer = GpuDnnTransformer(dtype)(img, theta, output, desc, alpha, beta)
     return transformer
 
 
