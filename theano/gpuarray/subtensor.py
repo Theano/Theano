@@ -180,7 +180,7 @@ class GpuSubtensor(HideC, Subtensor):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 
 class GpuIncSubtensor(IncSubtensor):
@@ -1050,6 +1050,8 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
         kname = "k_vector_add_fast"
         k_var = "k_vector_add_fast_" + nodename
         code = """
+
+#if __CUDA_API_VERSION__ < 9000
 /*
  * This is an atomicAdd that works for doubles since that is not provided
  * natively by cuda before arch 6.0.
@@ -1067,7 +1069,6 @@ __device__ ga_double atomicAdd(ga_double* address, ga_double val) {
     return __longlong_as_double(old);
 }
 #endif
-
 __device__ ga_double atomicExch(ga_double *address, ga_double val) {
     return atomicExch((ga_ulong *)address,
                       __double_as_longlong(val));
@@ -1127,7 +1128,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
   return (ga_half)__byte_perm(old, 0,
                                   ((ga_size)addr & 2) ? 0x4432 : 0x4410);
 }
-
+#endif
         KERNEL void k_vector_add_fast(const ga_size numRowsX,
                                       const ga_size numColsX,
                                       const ga_ssize stridesX0,

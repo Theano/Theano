@@ -22,9 +22,9 @@ cd ${THIS_DIR}/third_party/scikit-cuda \
 
 echo "=== Building gpuarray ..."
 cd ${THIS_DIR}/libgpuarray \
-    && cmake -E make_directory build \
+    && rm -fr build && cmake -E make_directory build \
     && cd build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+    && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
     && VERBOSE=1 ${SUDO} ${MAKE} ${MAKEFLAGS} install \
     && cd .. \
     && ${SUDO} pip install  --upgrade . \
