@@ -484,6 +484,7 @@ class Softmax(gof.Op):
 
     def __init__(self, axis=-1):
         self.axis = axis
+        self.grad_op = SoftmaxGrad(self.axis)
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
@@ -500,7 +501,7 @@ class Softmax(gof.Op):
     def L_op(self, inp, outputs, grads):
         x, = inp
         g_sm, = grads
-        return [SoftmaxGrad(self.axis)(g_sm, outputs[0])]
+        return [self.grad_op(g_sm, outputs[0])]
 
     def R_op(self, inputs, eval_points):
         # The Jacobian is symmetric so the R_op is the same as the grad
@@ -704,6 +705,7 @@ class LogSoftmax(gof.Op):
 
     def __init__(self, axis=-1):
         self.axis = axis
+        self.sm_op = Softmax(self.axis)
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
@@ -721,7 +723,7 @@ class LogSoftmax(gof.Op):
 
     def grad(self, inp, grads):
         x, = inp
-        sm = Softmax(self.axis)(x)
+        sm = self.sm_op(x)
         return [grads[0] - tensor.sum(grads[0], axis=self.axis, keepdims=True) * sm]
 
     def R_op(self, inputs, eval_points):
@@ -918,7 +920,7 @@ def local_logsoftmax_grad(node):
         grads = node.inputs[0].owner.inputs[0]
         if grads.broadcastable[1] and not sm.broadcastable[1]:
             grads = tensor.alloc(grads, grads.shape[0], sm.shape[1])
-        ret = grads - tensor.sum(grads, axis=1, keepdims=True) * sm
+        ret = grads - tensor.sum(grads, axis=-1, keepdims=True) * sm
         ret.tag.values_eq_approx = values_eq_approx_remove_nan
         copy_stack_trace(node.outputs[0], ret)
         return [ret]
