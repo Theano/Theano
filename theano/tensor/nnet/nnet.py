@@ -926,6 +926,38 @@ def local_logsoftmax_grad(node):
         return [ret]
 
 
+@opt.register_specialize('fast_compile')
+@gof.local_optimizer([subtensor.AdvancedSubtensor1, tensor.log])
+def local_advanced1_indexing_logsoftmax_onehot(node):
+    log = None
+    sm = None
+    # First case: log(softmax(x))[labels]
+    if isinstance(node.op, subtensor.AdvancedSubtensor1):
+        try:
+            log, labels = node.inputs
+        except Exception:
+            pass
+        if log and log.owner and log.owner.op == tensor.log:
+            sm = log.owner.inputs[0]
+
+    # Second case: log(softmax(x)[labels])
+    elif node.op == tensor.log:
+        pre_log = node.inputs[0].owner
+        if pre_log and isinstance(pre_log.op, subtensor.AdvancedSubtensor1):
+            try:
+                sm, labels = pre_log.inputs
+            except Exception:
+                pass
+
+    if sm is not None and sm.owner and isinstance(sm.owner.op, Softmax):
+        inVars = sm.owner.inputs[0]
+        new_op = LogSoftmax(sm.owner.op.axis)
+        ret = new_op(inVars)[labels]
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([sm.owner.inputs[0], sm.owner.outputs[0]], ret)
+        return [ret]
+
+
 def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
