@@ -430,7 +430,7 @@ class GpuDimShuffle(HideC, DimShuffle):
             s = "GpuDimShuffle{%s}"
         return s % (','.join(str(x) for x in self.new_order))
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, params):
         input, = inp
         storage, = out
 
