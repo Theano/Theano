@@ -25,10 +25,16 @@ except ImportError:
     pygpu_available = False
 
 cusolver_available = False
+cublas_available = False
 try:
     import skcuda
-    from skcuda import cusolver
-    cusolver_available = True
+    try:
+        from skcuda import cusolver
+        cusolver_available = True
+    except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
+        pass
+    from skcuda import cublas
+    cublas_available = True
 except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
     pass
 
@@ -67,10 +73,19 @@ def attach_cusolver_handle_to_context(ctx):
         with ctx:
             ctx.cusolver_handle = cusolver.cusolverDnCreate()
 
+def attach_cublas_handle_to_context(ctx):
+    handle = getattr(ctx, 'cublas_handle', None)
+    if handle is None:
+        with ctx:
+            ctx.cublas_handle = cublas.cublasCreate()
+
 # it is a subset of all cases available in slinalg's MATRIX_STRUCTURE
 MATRIX_STRUCTURES_SOLVE = (
     'general',
-    'symmetric')
+    'symmetric',
+    'lower_triangular',
+    'upper_triangular'
+)
 
 
 class GpuCusolverSolve(Op):
@@ -99,6 +114,9 @@ class GpuCusolverSolve(Op):
         if not cusolver_available:
             raise RuntimeError('CUSOLVER is not available and '
                                'GpuCusolverSolve Op can not be constructed.')
+        elif not cublas_available and self.A_structure in ('lower_triangular', 'upper_triangular'):
+            raise RuntimeError('CUBLAS is not available and '
+                               'GpuCusolverSolve Op can not be constructed.')
         if skcuda.__version__ <= '0.5.1':
             warnings.warn('The GpuSolve op requires scikit-cuda > 0.5.1 to work with CUDA 8')
         context_name = infer_context_name(inp1, inp2)
@@ -123,7 +141,10 @@ class GpuCusolverSolve(Op):
 
     def prepare_node(self, node, storage_map, compute_map, impl):
         ctx = node.inputs[0].type.context
-        attach_cusolver_handle_to_context(ctx)
+        if self.A_structure in ('general', 'symmetric'):
+            attach_cusolver_handle_to_context(ctx)
+        else:
+            attach_cublas_handle_to_context(ctx)
 
     def check_dev_info(self, dev_info):
         val = np.asarray(dev_info)[0]
@@ -198,6 +219,23 @@ class GpuCusolverSolve(Op):
                 cusolverDnSpotrs(
                     context.cusolver_handle, 0, n, m, A_ptr, lda,
                     b_ptr, ldb, dev_info_ptr)
+
+        elif self.A_structure in ('lower_triangular', 'upper_triangular'):
+            uplo = 0 if self.A_structure == 'lower_triangular' else 1
+            if A.flags['C_CONTIGUOUS']:
+                # If A is in C-order we tranpose it to F-order, however than
+                # A changes from upper to lower and from lower to upper 
+                uplo = 1 - uplo
+            # Always left as we assume
+            side = 0
+            # Here diagonal is always valid
+            diag = 0
+            # No multiply
+            alpha = 1.0
+            with context:
+                cublas.cublasStrsm(
+                    context.cublas_handle, side, uplo, trans, diag, n, m,
+                    alpha, A_ptr, lda, b_ptr, ldb)
 
         else:
             # general case for A
