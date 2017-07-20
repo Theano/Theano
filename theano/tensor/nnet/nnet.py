@@ -1565,6 +1565,8 @@ class CrossentropyCategorical1Hot(gof.Op):
         """
         _coding_dist = tensor.as_tensor_variable(coding_dist)
         _true_one_of_n = tensor.as_tensor_variable(true_one_of_n)
+        if _coding_dist.type.ndim == 1:
+            _coding_dist = tensor.shape_padleft(_coding_dist, n_ones=1)
         if _coding_dist.type.ndim != 2:
             raise TypeError('matrix required for argument: coding_dist')
         if _true_one_of_n.type not in (tensor.lvector, tensor.ivector):
@@ -1580,9 +1582,7 @@ class CrossentropyCategorical1Hot(gof.Op):
     def perform(self, node, inp, out):
         coding, one_of_n = inp
         y_out, = out
-        y = np.zeros_like(coding[:, 0])
-        for i in xrange(len(y)):
-            y[i] = -np.log(coding[i, one_of_n[i]])
+        y = -np.log(coding[range(coding.shape[0]), one_of_n])
         y_out[0] = y
 
     def infer_shape(self, node, in_shapes):
