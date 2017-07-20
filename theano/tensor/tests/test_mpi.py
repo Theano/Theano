@@ -6,11 +6,14 @@ import subprocess
 import os
 from theano.gof.sched import sort_schedule_fn
 
+from theano.configparser import change_flags
+
 mpi_scheduler = sort_schedule_fn(*mpi_cmps)
 mpi_linker = theano.OpWiseCLinker(schedule=mpi_scheduler)
 mpi_mode = theano.Mode(linker=mpi_linker)
 
 
+@change_flags(compute_test_value='off')
 def test_recv():
     x = recv((10, 10), 'float64', 0, 11)
     assert x.dtype == 'float64'
@@ -29,6 +32,7 @@ def test_send():
     assert sendnode.op.tag  == 11
 
 
+@change_flags(compute_test_value='off')
 def test_can_make_function():
     x = recv((5, 5), 'float32', 0, 11)
     y = x+1
@@ -61,6 +65,7 @@ def test_mpi_send_wait_cmp():
     assert mpi_send_wait_cmp(waitnode, addnode) > 0  # wait happens last
 
 
+@change_flags(compute_test_value='off')
 def test_mpi_tag_ordering():
     x = recv((2, 2), 'float32', 1, 12)
     y = recv((2, 2), 'float32', 1, 11)
