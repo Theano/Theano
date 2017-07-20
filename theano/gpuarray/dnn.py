@@ -2833,15 +2833,13 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
-class GpuDnnTransformerDescriptor(COp):
-
+class GpuDnnTransformerDesc(COp):
     """
     This Op builds a spatial transformer descriptor for use in spatial transformer network
     operations.
     """
-
-    __props__ = ('dtype',)
-    params_type = ParamsType(dtype=cudnn.cudnnDataType_t)
+    __props__ = ('precision',)
+    params_type = ParamsType(precision=cudnn.cudnnDataType_t)
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -2864,10 +2862,10 @@ class GpuDnnTransformerDescriptor(COp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, dtype=theano.config.floatX):
+    def __init__(self, precision=theano.config.floatX):
         COp.__init__(self, ["c_code/dnn_sptf_desc.c"], "APPLY_SPECIFIC(dnn_sptf_desc)")
-        assert cudnn.cudnnDataType_t.has_alias(dtype)
-        self.dtype = dtype
+        assert cudnn.cudnnDataType_t.has_alias(precision)
+        self.precision = precision
 
     def make_node(self, dimensions):
         dimensions = as_tensor_variable(dimensions)
@@ -2883,7 +2881,7 @@ class GpuDnnTransformerDescriptor(COp):
         return node
 
     def c_code_cache_version(self):
-        return (super(GpuDnnTransformerDescriptor, self).c_code_cache_version(), version())
+        return (super(GpuDnnTransformerDesc, self).c_code_cache_version(), version())
 
 
 class GpuDnnTransformer(DnnBase):
@@ -2892,18 +2890,21 @@ class GpuDnnTransformer(DnnBase):
     implements the grid generator and sampler. The localization network can
     be built using neural net components of Theano.
     """
-    __props__ = ('dtype',)
-    _cop_num_inputs = 6
+    __props__ = ()
+    _cop_num_inputs = 4
     _cop_num_outputs = 2
     _f16_ok = True
     default_output = 0
 
-    def __init__(self, dtype):
+    def __init__(self):
         DnnBase.__init__(self, ["c_code/dnn_sptf.c"], "APPLY_SPECIFIC(dnn_sptf)")
-        self.dtype = dtype
 
-    def make_node(self, img, theta, output, desc, alpha=None, beta=None):
+    def make_node(self, img, theta, desc):
         context_name = infer_context_name(desc)
+
+        if (not isinstance(desc.type, CDataType) or
+                desc.type.ctype != 'cudnnSpatialTransformerDescriptor_t'):
+            raise ValueError('desc must be cudnnSpatialTransformerDescriptor_t')
 
         img = gpu_contiguous(as_gpuarray_variable(img, context_name))
         if img.type.ndim != 4:
@@ -2913,61 +2914,52 @@ class GpuDnnTransformer(DnnBase):
 
         theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
         assert theta.dtype in ('float16', 'float32', 'float64')
+        assert theta.ndim == 3
 
         # Setup grid dimensions using input from descriptor
         grid_dims = as_tensor_variable(desc.owner.inputs[0])
 
-        output = gpu_contiguous(as_gpuarray_variable(output, context_name))
-        if output.type.ndim != 4:
-            raise TypeError('output must be a 4D tensor')
+        output = GpuArrayType(dtype=img.dtype,
+                              broadcastable=img.type.ndim * (False,),
+                              context_name=context_name)()
 
-        if (not isinstance(desc.type, CDataType) or
-                desc.type.ctype != 'cudnnSpatialTransformerDescriptor_t'):
-            raise ValueError('desc must be cudnnSpatialTransformerDescriptor_t')
-
-        alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
-        beta = ensure_dt(beta, _zero, 'beta', img.dtype)
-
-        grid = GpuArrayType(dtype=self.dtype,
+        grid = GpuArrayType(dtype=img.dtype,
                             broadcastable=img.type.ndim * (False,),
                             context_name=context_name)()
 
-        inputs = [img, theta, grid_dims, desc, alpha, beta]
-        outputs = [output.type(), grid]
+        inputs = [img, theta, grid_dims, desc]
+        outputs = [output, grid]
         return Apply(self, inputs, outputs)
 
     def L_op(self, inputs, outputs, grads):
-        img, theta, output, desc, alpha, beta = inputs
+        img, theta, grid_dims, desc = inputs
         _, grid = outputs
         dy = grads[0]
 
-        dimg, dgrid = GpuDnnTransformerGradI(self.dtype)(img, theta, grid, dy,
-                                                         desc, alpha, beta)
-        dtheta = GpuDnnTransformerGradT(self.dtype)(dgrid, desc)
-        dalpha = theano.gradient.grad_not_implemented(self, 4, alpha)
-        dbeta = theano.gradient.grad_not_implemented(self, 5, beta)
+        dimg, dgrid = GpuDnnTransformerGradI()(img, theta, grid, dy, desc)
+        dtheta = GpuDnnTransformerGradT()(dgrid, desc)
+        dgrid_dims = grad_not_implemented(self, grid_dims, 2)
 
-        return [dimg, dtheta, dy, DisconnectedType()(), dalpha, dbeta]
+        return [dimg, dtheta, dgrid_dims, DisconnectedType()()]
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1, 1], [1, 1], [1, 1], [0, 0], [1, 1], [1, 1]]
+        return [[1, 1], [1, 1], [1, 1], [0, 0]]
 
 
 class GpuDnnTransformerGradI(DnnBase):
     """
     Gradients of inputs of the spatial transformer
     """
-    __props__ = ('dtype',)
-    _cop_num_inputs = 8
+    __props__ = ()
+    _cop_num_inputs = 6
     _cop_num_outputs = 2
     _f16_ok = True
 
     def __init__(self, dtype=theano.config.floatX):
         DnnBase.__init__(self, ["c_code/dnn_sptf_gi.c"], "APPLY_SPECIFIC(dnn_sptf_gi)")
-        self.dtype = dtype
 
-    def make_node(self, img, theta, grid, dy, desc, alpha, beta):
+    def make_node(self, img, theta, grid, dy, desc):
         context_name = infer_context_name(img, theta, grid, dy, desc)
 
         if (not isinstance(desc.type, CDataType) or
@@ -2993,58 +2985,50 @@ class GpuDnnTransformerGradI(DnnBase):
         if img.ndim != 4:
             raise TypeError('img must have 4 dimensions.')
 
-        alpha = as_scalar(alpha)
-        beta = as_scalar(beta)
-
-        dimg = GpuArrayType(dtype=self.dtype,
+        dimg = GpuArrayType(dtype=img.dtype,
                             broadcastable=img.type.ndim * (False,),
                             context_name=context_name)()
-        dgrid = GpuArrayType(dtype=self.dtype,
+        dgrid = GpuArrayType(dtype=img.dtype,
                              broadcastable=img.type.ndim * (False,),
                              context_name=context_name)()
 
-        inputs = [img, theta, grid, grid_dims, dy, desc, alpha, beta]
+        inputs = [img, theta, grid, grid_dims, dy, desc]
         outputs = [dimg, dgrid]
 
         return Apply(self, inputs, outputs)
 
     def L_op(self, inputs, outputs, grads):
-        img, theta, grid, grid_dims, dy, desc, alpha, beta = inputs
+        img, theta, grid, grid_dims, dy, desc = inputs
         dimg_out, dgrid = outputs
         grad_cost = grads[0]
 
         dimg = dimg_out * grad_cost
-        dtheta = GpuDnnTransformerGradT(self.dtype)(dgrid, desc)
+        dtheta = GpuDnnTransformerGradT()(dgrid, desc)
         dgrid_dims = grad_not_implemented(self, grid_dims, 3)
         d_dy = grad_not_implemented(self, dy, 4)
 
-        dalpha = grad_not_implemented(self, alpha, 5)
-        dbeta = grad_not_implemented(self, beta, 6)
-
-        return [dimg, dtheta, dgrid, dgrid_dims, d_dy,
-                DisconnectedType()(), dalpha, dbeta]
+        return [dimg, dtheta, dgrid, dgrid_dims, d_dy, DisconnectedType()()]
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [0, 0], [1, 1], [1, 1]]
+        return [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [0, 0]]
 
 
 class GpuDnnTransformerGradT(DnnBase):
     """
     Gradients of the affine transformation generated by the localisation network
     """
-    __props__ = ('dtype',)
+    __props__ = ()
     _cop_num_inputs = 2
     _cop_num_outputs = 1
     _f16_ok = True
 
-    def __init__(self, dtype=theano.config.floatX):
+    def __init__(self):
         DnnBase.__init__(self, ["c_code/dnn_sptf_gt.c"], "APPLY_SPECIFIC(dnn_sptf_gt)")
-        self.dtype = dtype
 
     def make_node(self, dgrid, desc):
         context_name = infer_context_name(dgrid)
-        dtheta = GpuArrayType(dtype=self.dtype,
+        dtheta = GpuArrayType(dtype=dgrid.dtype,
                               broadcastable=(dgrid.type.ndim - 1) * (False,),
                               context_name=context_name)()
         inputs = [dgrid, desc]
@@ -3063,8 +3047,7 @@ class GpuDnnTransformerGradT(DnnBase):
         return [[1], [0]]
 
 
-def dnn_spatialtf(img, theta, scale_width=1, scale_height=1, alpha=None, beta=None,
-                  dtype=theano.config.floatX):
+def dnn_spatialtf(img, theta, scale_width=1, scale_height=1, precision=theano.config.floatX):
     """
     GPU spatial transformer using cuDNN from NVIDIA.
 
@@ -3105,7 +3088,7 @@ def dnn_spatialtf(img, theta, scale_width=1, scale_height=1, alpha=None, beta=No
     grid_dims = tuple([as_scalar(v).astype('int32') for v in grid_dims])
 
     # Create spatial transformer descriptor
-    desc = GpuDnnTransformerDescriptor(dtype)(grid_dims)
+    desc = GpuDnnTransformerDesc(precision)(grid_dims)
 
     context_name = infer_context_name(desc)
     img = gpu_contiguous(as_gpuarray_variable(img, context_name))
@@ -3116,9 +3099,8 @@ def dnn_spatialtf(img, theta, scale_width=1, scale_height=1, alpha=None, beta=No
     # Theta is an array of transformation matrices and must have shape: (num_images, 2, 3)
     assert theta.ndim == 3
 
-    output = GpuAllocEmpty(img.dtype, context_name)(*grid_dims)
     # Setup spatial transformer
-    transformer = GpuDnnTransformer(dtype)(img, theta, output, desc, alpha, beta)
+    transformer = GpuDnnTransformer()(img, theta, desc)
     return transformer
 
 

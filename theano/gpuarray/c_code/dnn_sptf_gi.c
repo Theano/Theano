@@ -60,7 +60,6 @@ APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
                             PyArrayObject * grid_dims,
                             PyGpuArrayObject * dy,
                             cudnnSpatialTransformerDescriptor_t desc,
-                            double alpha, double beta,
                             PyGpuArrayObject ** input_grad,
                             PyGpuArrayObject ** grid_grad,
                             cudnnHandle_t _handle)
@@ -68,6 +67,7 @@ APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
     PyGpuContextObject * gpu_ctx = input->context;
     void * alpha_p;
     void * beta_p;
+    double alpha = 1.0, beta = 0.0;
     float af = alpha, bf = beta;
     cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
     int input_num_images, input_num_channels,
