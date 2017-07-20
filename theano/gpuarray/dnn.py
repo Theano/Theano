@@ -2918,6 +2918,10 @@ class GpuDnnTransformer(DnnBase):
 
         # Setup grid dimensions using input from descriptor
         grid_dims = as_tensor_variable(desc.owner.inputs[0])
+        assert grid_dims.dtype in theano.tensor.basic.int_dtypes
+        assert grid_dims.ndim == 1
+        # Ensure 64-bit ints are passed to the C code
+        grid_dims = theano.tensor.basic.cast(grid_dims, 'int64')
 
         output = GpuArrayType(dtype=img.dtype,
                               broadcastable=img.type.ndim * (False,),
@@ -2952,7 +2956,7 @@ class GpuDnnTransformerGradI(DnnBase):
     Gradients of inputs of the spatial transformer
     """
     __props__ = ()
-    _cop_num_inputs = 6
+    _cop_num_inputs = 5
     _cop_num_outputs = 2
     _f16_ok = True
 
@@ -2978,9 +2982,6 @@ class GpuDnnTransformerGradI(DnnBase):
         if img.ndim != grid.ndim:
             raise TypeError('grid should have the same number of dimensions as img')
 
-        # Setup grid dimensions from descriptor's input
-        grid_dims = as_tensor_variable(desc.owner.inputs[0])
-
         dy = as_gpuarray_variable(dy, context_name)
         if dy.ndim != 4:
             raise TypeError('dy must have 4 dimensions.')
@@ -2988,26 +2989,25 @@ class GpuDnnTransformerGradI(DnnBase):
         dimg = img.type()
         dgrid = grid.type()
 
-        inputs = [img, theta, grid, grid_dims, dy, desc]
+        inputs = [img, theta, grid, dy, desc]
         outputs = [dimg, dgrid]
 
         return Apply(self, inputs, outputs)
 
     def L_op(self, inputs, outputs, grads):
-        img, theta, grid, grid_dims, dy, desc = inputs
+        img, theta, grid, dy, desc = inputs
         dimg_out, dgrid = outputs
         grad_cost = grads[0]
 
         dimg = dimg_out * grad_cost
         dtheta = GpuDnnTransformerGradT()(dgrid, desc)
-        dgrid_dims = grad_not_implemented(self, grid_dims, 3)
-        d_dy = grad_not_implemented(self, dy, 4)
+        d_dy = grad_not_implemented(self, dy, 3)
 
-        return [dimg, dtheta, dgrid, dgrid_dims, d_dy, DisconnectedType()()]
+        return [dimg, dtheta, dgrid, d_dy, DisconnectedType()()]
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [0, 0]]
+        return [[1, 1], [1, 1], [1, 1], [1, 1], [0, 0]]
 
 
 class GpuDnnTransformerGradT(DnnBase):

@@ -57,7 +57,6 @@ int
 APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
                             PyGpuArrayObject * theta,
                             PyGpuArrayObject * grid,
-                            PyArrayObject * grid_dims,
                             PyGpuArrayObject * dy,
                             cudnnSpatialTransformerDescriptor_t desc,
                             PyGpuArrayObject ** input_grad,

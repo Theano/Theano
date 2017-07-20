@@ -6,10 +6,10 @@ int APPLY_SPECIFIC(dnn_sptf_desc)(PyArrayObject * dims,
 {
     cudnnStatus_t err;
 
-    const int nimages = *((int *) PyArray_GETPTR1(dims, 0));
-    const int nchannels = *((int *) PyArray_GETPTR1(dims, 1));
-    const int height = *((int *) PyArray_GETPTR1(dims, 2));
-    const int width = *((int *) PyArray_GETPTR1(dims, 3));
+    const int nimages = (int) *((npy_int64 *) PyArray_GETPTR1(dims, 0));
+    const int nchannels = (int) *((npy_int64 *) PyArray_GETPTR1(dims, 1));
+    const int height = (int) *((npy_int64 *) PyArray_GETPTR1(dims, 2));
+    const int width = (int) *((npy_int64 *) PyArray_GETPTR1(dims, 3));
 
     if ( nimages == 0 || nchannels == 0 || height == 0 || width == 0 )
     {
