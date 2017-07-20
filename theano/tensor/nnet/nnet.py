@@ -33,6 +33,7 @@ from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
 from theano.scalar import Scalar
+from theano.tensor import (Subtensor, AdvancedSubtensor, AdvancedSubtensor1)
 
 ############
 #
@@ -889,6 +890,39 @@ def local_logsoftmax(node):
         return [ret]
 
 
+@opt.register_specialize('fast_compile')
+@gof.local_optimizer([tensor.Elemwise])
+def local_indexing_logsoftmax(node):
+    list_classes = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
+    if (isinstance(node.op, tensor.Elemwise) and
+            isinstance(node.op.scalar_op, scalar.basic.Log) and
+            node.inputs[0].owner is not None):
+
+            if isinstance(node.inputs[0].owner.op, Softmax):
+                softmax_input = node.inputs[0].owner.inputs[0]
+                axis = node.inputs[0].owner.op.axis
+                ret = LogSoftmax(axis)(softmax_input)
+                ret.tag.values_eq_approx = values_eq_approx_remove_inf
+                copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+                return [ret]
+
+            elif isinstance(node.inputs[0].owner.op, list_classes):
+                subtensor_op = node.inputs[0].owner.op
+                subtensor_input = node.inputs[0].owner.inputs[0]
+                subtensor_inputs = node.inputs[0].owner.inputs[1]
+                if isinstance(subtensor_input.owner.op, Softmax):
+                    softmax_op = subtensor_input.owner.op
+                    softmax_input = subtensor_input.owner.inputs[0]
+                    axis = softmax_op.axis
+                    ret = subtensor_op(LogSoftmax(axis)(softmax_input), subtensor_inputs)
+                    ret.tag.values_eq_approx = values_eq_approx_remove_inf
+                    copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+                    return [ret]
+
+            else:
+                return
+
+
 # This is not registered in stabilize, as it cause some crossentropy
 # optimization to not be inserted.
 @opt.register_specialize('stabilize', 'fast_compile')
@@ -923,38 +957,6 @@ def local_logsoftmax_grad(node):
         ret = grads - tensor.sum(grads, axis=-1, keepdims=True) * sm
         ret.tag.values_eq_approx = values_eq_approx_remove_nan
         copy_stack_trace(node.outputs[0], ret)
-        return [ret]
-
-
-@opt.register_specialize('fast_compile')
-@gof.local_optimizer([subtensor.AdvancedSubtensor1, tensor.log])
-def local_advanced1_indexing_logsoftmax_onehot(node):
-    log = None
-    sm = None
-    # First case: log(softmax(x))[labels]
-    if isinstance(node.op, subtensor.AdvancedSubtensor1):
-        try:
-            log, labels = node.inputs
-        except Exception:
-            pass
-        if log and log.owner and log.owner.op == tensor.log:
-            sm = log.owner.inputs[0]
-
-    # Second case: log(softmax(x)[labels])
-    elif node.op == tensor.log:
-        pre_log = node.inputs[0].owner
-        if pre_log and isinstance(pre_log.op, subtensor.AdvancedSubtensor1):
-            try:
-                sm, labels = pre_log.inputs
-            except Exception:
-                pass
-
-    if sm is not None and sm.owner and isinstance(sm.owner.op, Softmax):
-        inVars = sm.owner.inputs[0]
-        new_op = LogSoftmax(sm.owner.op.axis)
-        ret = new_op(inVars)[labels]
-        ret .tag.values_eq_approx = values_eq_approx_remove_inf
-        copy_stack_trace([sm.owner.inputs[0], sm.owner.outputs[0]], ret)
         return [ret]
 
 
