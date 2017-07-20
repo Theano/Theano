@@ -88,15 +88,23 @@ class T_Softmax(utt.InferShapeTester):
         self._compile_and_check([admat], [Softmax()(admat)],
                                 [admat_val], Softmax)
 
-    def test_multi_axis(self):
+    def test_multi_axes(self):
         dims = 4
         shape = (5,) * dims
         xv = np.random.randn(*shape).astype(config.floatX)
-        for axes in xrange(1, dims + 1):
+        for d in xrange(1, dims + 1):
+            # Create a TensorType of the same dimensions as
+            # as the data we want to test.
             x = T.TensorType(dtype=config.floatX,
-                             broadcastable=(False,) * axes)()
+                             broadcastable=(False,) * d)()
             outputs = softmax_op(x)
-            test_val = xv[((0,) * (dims - axes))]
+
+            # Make a slice of the test data that has the
+            # dimensions we need by doing xv[0,...,0]
+            # For example, for an array of shape (5,), we
+            # need to do xv[0, 0, 0, 0].
+            test_val = xv[((0,) * (dims - d))]
+
             f = theano.function([x], outputs)
             gt_val = (np.exp(test_val) /
                       np.exp(test_val).sum(axis=-1, keepdims=True))
