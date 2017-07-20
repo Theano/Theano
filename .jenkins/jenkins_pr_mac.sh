@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # Script for Jenkins continuous integration testing on macOS
@@ -13,9 +14,9 @@ rsync -a $HOME/.theano/buildbot_theano_mac/ $BASECOMPILEDIR
 export PATH="/Users/jenkins/miniconda2/bin:/usr/local/bin:$PATH"
 
 # CUDA
-export PATH=/usr/local/cuda/bin${PATH:+:${PATH}}
-export DYLD_LIBRARY_PATH=/usr/local/cuda/lib\
-                         ${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
+export PATH=/usr/local/cuda/bin:${PATH}
+export DYLD_LIBRARY_PATH=/usr/local/cuda/lib:${DYLD_LIBRARY_PATH}
+export CPLUS_INCLUDE_PATH=/usr/local/cuda/include:${HOME}/cuda/include:${CPLUS_INCLUDE_PATH}
 
 # Build libgpuarray
 GPUARRAY_CONFIG="Release"
@@ -45,9 +46,12 @@ export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
 # Then install
 (cd libgpuarray && python setup.py install --home=$LIBDIR)
 
+export DYLD_LIBRARY_PATH=${LIBDIR}/lib:${DYLD_LIBRARY_PATH}
+export CPLUS_INCLUDE_PATH=:${LIBDIR}/include:${CPLUS_INCLUDE_PATH}
+
 python -c 'import pygpu; print(pygpu.__file__)'
 
 # Testing theano
 THEANO_PARAM="theano --with-timer --timer-top-n 10 --with-xunit --xunit-file=theano_mac_pr_tests.xml"
-FLAGS=init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,base_compiledir=$BASECOMPILEDIR,dnn.library_path=$HOME/cuda/lib,dnn.include_path=$HOME/cuda/include,gcc.cxxflags="-I/usr/local/cuda/include -I$LIBDIR/include -rpath $HOME/cuda/lib -L$HOME/.local/lib"
+FLAGS=init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,base_compiledir=$BASECOMPILEDIR,dnn.library_path=$HOME/cuda/lib,gcc.cxxflags="-L${LIBDIR}/lib"
 THEANO_FLAGS=${FLAGS} python bin/theano-nose ${THEANO_PARAM}

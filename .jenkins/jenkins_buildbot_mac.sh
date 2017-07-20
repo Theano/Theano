@@ -13,9 +13,9 @@ export THEANO_FLAGS=init_gpu_device=cuda
 export PATH="/Users/jenkins/miniconda2/bin:/usr/local/bin:$PATH"
 
 # CUDA
-export PATH=/usr/local/cuda/bin${PATH:+:${PATH}}
-export DYLD_LIBRARY_PATH=/usr/local/cuda/lib\
-                         ${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}
+export PATH=/usr/local/cuda/bin:${PATH}
+export DYLD_LIBRARY_PATH=/usr/local/cuda/lib:${DYLD_LIBRARY_PATH}
+export CPLUS_INCLUDE_PATH=/usr/local/cuda/include:${HOME}/cuda/include:${CPLUS_INCLUDE_PATH}
 
 # Build libgpuarray
 GPUARRAY_CONFIG="Release"
@@ -45,6 +45,9 @@ export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
 # Then install
 (cd libgpuarray && python setup.py install --home=$LIBDIR)
 
+export DYLD_LIBRARY_PATH=${LIBDIR}/lib:${DYLD_LIBRARY_PATH}
+export CPLUS_INCLUDE_PATH=:${LIBDIR}/include:${CPLUS_INCLUDE_PATH}
+
 python -c 'import pygpu; print(pygpu.__file__)'
 
 mkdir -p ${BUILDBOT_DIR}
@@ -58,4 +61,4 @@ set -x
 # Fast run and float32
 FILE=${BUILDBOT_DIR}/theano_python_fastrun_f32_tests.xml
 NAME=mac_fastrun_f32
-THEANO_FLAGS=$THEANO_FLAGS,base_compiledir=$BASECOMPILEDIR,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32,dnn.library_path=$HOME/cuda/lib,dnn.include_path=$HOME/cuda/include,gcc.cxxflags="-I/usr/local/cuda/include -I$LIBDIR/include -rpath $HOME/cuda/lib -L$HOME/.local/lib" python bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
+THEANO_FLAGS=$THEANO_FLAGS,base_compiledir=$BASECOMPILEDIR,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32,dnn.library_path=${HOME}/cuda/lib,gcc.cxxflags="-L${LIBDIR}/lib" python bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
