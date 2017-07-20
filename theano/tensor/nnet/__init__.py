@@ -35,6 +35,7 @@ import warnings
 from .abstract_conv import conv2d as abstract_conv2d
 from .abstract_conv import conv2d_grad_wrt_inputs
 from .abstract_conv import conv3d
+from .abstract_conv import separable_conv2d
 
 
 def conv2d(input, filters, input_shape=None, filter_shape=None,
