@@ -2985,12 +2985,8 @@ class GpuDnnTransformerGradI(DnnBase):
         if dy.ndim != 4:
             raise TypeError('dy must have 4 dimensions.')
 
-        dimg = GpuArrayType(dtype=img.dtype,
-                            broadcastable=img.type.ndim * (False,),
-                            context_name=context_name)()
-        dgrid = GpuArrayType(dtype=img.dtype,
-                             broadcastable=img.type.ndim * (False,),
-                             context_name=context_name)()
+        dimg = img.type()
+        dgrid = grid.type()
 
         inputs = [img, theta, grid, grid_dims, dy, desc]
         outputs = [dimg, dgrid]
