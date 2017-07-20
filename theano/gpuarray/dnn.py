@@ -2982,8 +2982,8 @@ class GpuDnnTransformerGradI(DnnBase):
         grid_dims = as_tensor_variable(desc.owner.inputs[0])
 
         dy = as_gpuarray_variable(dy, context_name)
-        if img.ndim != 4:
-            raise TypeError('img must have 4 dimensions.')
+        if dy.ndim != 4:
+            raise TypeError('dy must have 4 dimensions.')
 
         dimg = GpuArrayType(dtype=img.dtype,
                             broadcastable=img.type.ndim * (False,),
