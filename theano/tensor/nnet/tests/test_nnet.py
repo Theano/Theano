@@ -1015,15 +1015,18 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             mode = 'FAST_RUN'
         rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(5).astype(config.floatX)
-        y_val = np.asarray([2])
+        y_val = 2
 
         x = T.vector('x')
-        y = T.lvector('y')
+        y = T.lscalar('y')
 
         # Test that a biased softmax is optimized correctly
         bias_expressions = [
             T.sum(-T.log(softmax(x)[y])),
-            -T.sum(T.log(softmax(x)[y]))]
+            T.sum(-T.log(softmax(x))[y]),
+            -T.sum(T.log(softmax(x)[y])),
+            -T.sum(T.log(softmax(x))[y]),
+        ]
 
         for expr in bias_expressions:
             f = theano.function([x, y], expr, mode=mode)
@@ -1031,10 +1034,11 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 printing.debugprint(f)
             try:
                 ops = [node.op for node in f.maker.fgraph.toposort()]
-                assert len(ops) == 5
-                assert crossentropy_softmax_argmax_1hot_with_bias in ops
-                assert not [1 for o in ops
-                            if isinstance(o, T.AdvancedSubtensor)]
+                # assert len(ops) == 5
+                # assert crossentropy_softmax_argmax_1hot_with_bias in ops
+                # assert not [1 for o in ops
+                #             if isinstance(o, T.AdvancedSubtensor)]
+                assert logsoftmax_op in ops
                 f(x_val, y_val)
             except Exception:
                 theano.printing.debugprint(f)
