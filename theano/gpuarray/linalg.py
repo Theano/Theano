@@ -74,11 +74,13 @@ def attach_cusolver_handle_to_context(ctx):
         with ctx:
             ctx.cusolver_handle = cusolver.cusolverDnCreate()
 
+
 def attach_cublas_handle_to_context(ctx):
     handle = getattr(ctx, 'cublas_handle', None)
     if handle is None:
         with ctx:
             ctx.cublas_handle = cublas.cublasCreate()
+
 
 # it is a subset of all cases available in slinalg's MATRIX_STRUCTURE
 MATRIX_STRUCTURES_SOLVE = (
@@ -243,6 +245,7 @@ class GpuCusolverSolve(Op):
 
         z[0] = b
 
+
 class GpuCublasTriangularSolve(Op):
     """
     CUBLAS GPU Triangular Solve Op.
@@ -356,6 +359,7 @@ class GpuCublasTriangularSolve(Op):
                                    n, m, alpha, A_ptr, lda, b_ptr, ldb)
 
         x[0] = b
+
 
 def gpu_solve(A, b, A_structure='general', trans='N'):
     if A_structure == 'lower':
