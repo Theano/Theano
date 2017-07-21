@@ -1627,6 +1627,47 @@ def local_abstractconv_gemm(node):
     return [rval]
 
 
+@local_optimizer([AbstractConv2d])
+def local_abstractconv_gemm_alternative(node):
+    if not isinstance(node.op, AbstractConv2d):
+        return None
+    img, kern = node.inputs
+    if (not isinstance(img.type, GpuArrayType) or
+            not isinstance(kern.type, GpuArrayType)):
+        return None
+    ctx = infer_context_name(img, kern)
+
+    border_mode = node.op.border_mode
+    subsample = node.op.subsample
+    filter_dilation = node.op.filter_dilation
+
+    if border_mode == 'full' and subsample == (1, 1):
+        if not node.op.filter_flip:
+            kern = kern[:, :, ::-1, ::-1]
+
+        kern = kern.dimshuffle(1, 0, 2, 3)
+        rval = GpuCorrMM_gradInputs('valid',
+                                    subsample,
+                                    filter_dilation)(
+            gpu_contiguous(kern), gpu_contiguous(img))
+
+    elif border_mode == 'valid' and subsample == (1, 1) and filter_dilation == (1, 1):
+        if node.op.filter_flip:
+            kern = kern[:, :, ::-1, ::-1]
+
+        rval = GpuCorrMM_gradWeights(border_mode,
+                                     subsample,
+                                     filter_dilation)(
+            gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
+            gpu_contiguous(kern.dimshuffle(1, 0, 2, 3)))
+        rval = as_gpuarray_variable(rval.dimshuffle(1, 0, 2, 3),
+                                    context_name=ctx)
+    else:
+        return None
+
+    return [rval]
+
+
 @local_optimizer([AbstractConv3d])
 def local_abstractconv3d_gemm(node):
     if not isinstance(node.op, AbstractConv3d):
@@ -2469,6 +2510,7 @@ if config.optimizer_excluding:
     running_list += ['-' + name for name in config.optimizer_excluding.split(':')]
 
 conv_metaopt.register(abstractconv_groupopt.query(*running_list).opts)
+conv_metaopt.register([local_abstractconv_gemm_alternative])
 abstractconv_groupopt.register('conv_metaopt', conv_metaopt, 'conv_meta', position=0)
 
 # Register cuDNN batch normalization implementation
