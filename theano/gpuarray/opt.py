@@ -76,7 +76,8 @@ from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
                      cusolver_available, GpuMagmaMatrixInverse, gpu_svd,
-                     GpuMagmaCholesky, gpu_qr, GpuMagmaEigh)
+                     GpuMagmaCholesky, gpu_qr, GpuMagmaEigh,
+                     GpuCublasTriangularSolve, cublas_available)
 from .neighbours import GpuImages2Neibs
 
 _logger = logging.getLogger("theano.gpuarray.opt")
@@ -2101,13 +2102,21 @@ def local_gpua_images2neibs(op, context_name, inputs, outputs):
 @op_lifter([slinalg.Solve])
 @register_opt2([theano.tensor.slinalg.Solve], 'fast_compile')
 def local_gpu_solve(op, context_name, inputs, outputs):
-    if not cusolver_available:
-        return
     if inputs[0].dtype not in ['float16', 'float32']:
         return
     if op.A_structure not in MATRIX_STRUCTURES_SOLVE:
         return
-    op = GpuCusolverSolve(A_structure=op.A_structure)
+
+    if op.A_structure in ['lower_triangular', 'upper_triangular']:
+        if not cublas_available:
+            return
+        lower = op.A_structure == 'lower_triangular'
+        op = GpuCublasTriangularSolve(lower)
+    else:
+        if not cusolver_available:
+            return
+        op = GpuCusolverSolve(A_structure=op.A_structure)
+
     if inputs[0].dtype == 'float16':
         return op(inputs[0].astype('float32'),
                   inputs[1].astype('float32')).astype('float16')

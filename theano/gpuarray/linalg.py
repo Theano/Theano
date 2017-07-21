@@ -32,6 +32,13 @@ try:
 except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
     pass
 
+cublas_available = False
+try:
+    from skcuda import cublas
+    cublas_available = True
+except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
+    pass
+
 if cusolver_available:
     # Add cusolver call as it is missing in skcuda
     # SPOTRS
@@ -67,10 +74,18 @@ def attach_cusolver_handle_to_context(ctx):
         with ctx:
             ctx.cusolver_handle = cusolver.cusolverDnCreate()
 
+def attach_cublas_handle_to_context(ctx):
+    handle = getattr(ctx, 'cublas_handle', None)
+    if handle is None:
+        with ctx:
+            ctx.cublas_handle = cublas.cublasCreate()
+
 # it is a subset of all cases available in slinalg's MATRIX_STRUCTURE
 MATRIX_STRUCTURES_SOLVE = (
     'general',
-    'symmetric')
+    'symmetric',
+    'lower_triangular',
+    'upper_triangular')
 
 
 class GpuCusolverSolve(Op):
@@ -228,8 +243,126 @@ class GpuCusolverSolve(Op):
 
         z[0] = b
 
+class GpuCublasTriangularSolve(Op):
+    """
+    CUBLAS GPU Triangular Solve Op.
+    
+    Parameters
+    ----------
+    lower
+        Whether system is lower-triangular (True) or upper-triangular (False).
+    trans
+        Whether to take the transpose of the input matrix or not.
+    """
+    __props__ = ('trans', 'lower')
+
+    def __init__(self, lower=True, trans='N'):
+        self.trans = trans
+        self.lower = lower
+        super(GpuCublasTriangularSolve, self).__init__()
+
+    def make_node(self, inp1, inp2):
+        if not cublas_available:
+            raise RuntimeError('CUBLAS is not available and '
+                               'GpuCublasTriangularSolve Op can not be constructed.')
+        context_name = infer_context_name(inp1, inp2)
+
+        inp1 = as_gpuarray_variable(inp1, context_name)
+        inp2 = as_gpuarray_variable(inp2, context_name)
+
+        inp1 = gpu_contiguous(inp1)
+        inp2 = gpu_contiguous(inp2)
+
+        # this op can only operate on float32 matrices
+        assert inp1.ndim == 2
+        assert inp2.ndim in [1, 2]
+        assert inp1.dtype == 'float32'
+        assert inp2.dtype == 'float32'
+
+        return theano.Apply(
+        self, [inp1, inp2],
+        [GpuArrayType('float32',
+                        broadcastable=inp2.broadcastable,
+                        context_name=context_name)()])
+
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        ctx = node.inputs[0].type.context
+        attach_cublas_handle_to_context(ctx)
+
+    def perform(self, node, inputs, outputs):
+        ctx = node.inputs[0].type.context
+
+        # Solution set 
+        x = outputs[0]
+
+        # Matrix.
+        A = inputs[0]
+
+        # right hand side
+        b = inputs[1]
+
+        assert(len(A.shape) == 2)
+        assert(len(b.shape) in [1,2])
+        
+        # implicitly deal with the difference between C order
+        # and fortran order by flipping the trans and lower flags
+        lower = not self.lower
+        trans = self.trans
+        if trans in ['T', 'C']:
+            trans = 'N'
+            l, n = A.shape
+        elif trans == 'N':
+            trans = 'T'
+            n, l = A.shape
+        else:
+            raise ValueError('Invalid value for trans')
+
+        if b.ndim == 2:
+            k, m = b.shape
+        else:
+            k, = b.shape
+            m = 1
+
+        if l != n:
+            raise ValueError('A must be a square matrix')
+        if n != k:
+            raise ValueError('A and b must be aligned.')
+
+        lda = max(1, n)
+        ldb = max(1, k)
+
+        # solution overwrites right hand side on exit
+        b = pygpu.array(b, copy=True, order='F')
+    
+        A_ptr = A.gpudata
+        b_ptr = b.gpudata
+
+        # unit scalar used for multiplication
+        alpha = 1.0
+        # indicates matrix A is on left of B
+        side = 'l'
+        # set whether upper or lower part of matrix A stored
+        uplo = 'l' if lower else 'u'
+        # indicates elements on diagonal of matrix A may not be unity
+        diag = 'n'
+
+        with ctx:
+            if b.ndim == 1:
+                # matrix vector solve
+                cublas.cublasStrsv(ctx.cublas_handle, uplo, trans, diag, n,
+                                   A_ptr, lda, b_ptr, 1)
+            else:
+                cublas.cublasStrsm(ctx.cublas_handle, side, uplo, trans, diag,
+                                   n, m, alpha, A_ptr, lda, b_ptr, ldb)
+
+        x[0] = b
 
 def gpu_solve(A, b, A_structure='general', trans='N'):
+    if A_structure == 'lower':
+        return GpuCublasTriangularSolve(True, trans)(A, b)
+    elif A_structure == 'upper':
+        return GpuCublasTriangularSolve(False, trans)(A, b)
+
     return GpuCusolverSolve(A_structure, trans)(A, b)
 
 
