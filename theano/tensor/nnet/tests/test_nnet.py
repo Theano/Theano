@@ -34,7 +34,9 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 elu,
                                 binary_crossentropy,
                                 sigmoid_binary_crossentropy,
-                                confusion_matrix)
+                                confusion_matrix,
+                                gumbel_softmax)
+
 from theano.tensor import matrix, vector, lvector, scalar
 from theano.tensor.nnet.nnet import softsign
 from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
@@ -1814,3 +1816,51 @@ def test_confusion_matrix():
         outs = f(case[0], case[1])
         for exp, out in zip(out_exp, outs):
             utt.assert_allclose(exp, out)
+
+
+def np_onehot(arr, nb_class=None):
+    if nb_class is None:
+        nb_class = np.max(arr) + 1
+    else:
+        assert nb_class > 0
+        assert nb_class >= np.max(arr)
+    result = np.zeros(shape=(len(arr), nb_class))
+    result[np.arange(len(arr)), arr] = 1
+    return result.astype(int)
+
+
+def test_gumbel_softmax():
+
+    test_matrix = tensor.imatrix('test_matrix')
+    temp = tensor.fscalar('temp')
+
+    # Basic test
+    from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
+    seed = theano.tests.unittest_tools.fetch_seed()
+    rng = np.random.RandomState(seed)
+    srng = RandomStreams(seed)
+
+    # Constants
+    test_vec = rng.random_integers(low=0, high=255, size=256).reshape(1, 256).astype('int32')
+    test_mat = rng.random_integers(low=0, high=255, size=2560).reshape(10, 256).astype('int32')
+    low_temp = np.float32(1e-2)
+    high_temp = np.float32(10)
+
+    gs_soft = gumbel_softmax(test_matrix, temp, srng, hard=False)
+    gs_hard = gumbel_softmax(test_matrix, temp, srng, hard=True)
+
+    f = theano.function([test_matrix, temp], [gs_hard, gs_soft])
+    low_hard_vec = f(test_vec, low_temp)[0]
+    low_hard_mat = f(test_mat, low_temp)[0]
+    low_soft_vec = f(test_vec, low_temp)[1]
+    low_soft_mat = f(test_mat, low_temp)[1]
+
+    high_hard_vec = f(test_vec, high_temp)[0]
+    high_hard_mat = f(test_mat, high_temp)[0]
+
+    # At low temperature, the approximation must hold good
+    utt.assert_allclose(low_hard_vec, low_soft_vec)
+    utt.assert_allclose(low_hard_mat, low_soft_mat)
+    # Basic Check
+    utt.assert_allclose(high_hard_mat, np.argmax(np_onehot(test_mat, test_mat.shape[-1]), -1))
+    utt.assert_allclose(high_hard_vec, np.argmax(np_onehot(test_vec, test_vec.shape[-1]), -1))
