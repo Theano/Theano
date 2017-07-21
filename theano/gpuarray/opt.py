@@ -1117,6 +1117,7 @@ def local_advincsub1_gpua_inplace(node):
         if not node.op.inplace:
             return [node.op.clone_inplace()(*node.inputs)]
 
+
 # AllocDiag
 @register_opt('fast_compile')
 @op_lifter([tensor.AllocDiag])
@@ -1127,12 +1128,14 @@ def local_gpu_alloc_diag(op, context_name, inputs, outputs):
         return False
     return GpuAllocDiag(offset=op.offset)
 
+
 # ExtractDiag
 @register_opt('fast_compile')
 @op_lifter([tensor.ExtractDiag])
 @register_opt2([theano.tensor.ExtractDiag], 'fast_compile')
 def local_gpu_extract_diag(op, context_name, inputs, outputs):
     return GpuExtractDiag(offset=op.offset, axis1=op.axis1, axis2=op.axis2, view=op.view)
+
 
 @register_opt('fast_compile')
 @op_lifter([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod])
