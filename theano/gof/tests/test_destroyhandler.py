@@ -12,6 +12,8 @@ from theano.gof import destroyhandler
 from theano.gof.fg import FunctionGraph, InconsistencyError
 from theano.gof.toolbox import ReplaceValidate
 
+from theano.configparser import change_flags
+
 from copy import copy
 
 
@@ -429,6 +431,7 @@ def test_value_repl():
     consistent(g)
 
 
+@change_flags(compute_test_value='off')
 def test_value_repl_2():
     x, y, z = inputs()
     sy = sigmoid(y)

@@ -15,6 +15,8 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
 
+from theano.configparser import change_flags
+
 # TODO: test MRG_RandomStreams
 # Partly done in test_consistency_randomstreams
 
@@ -666,9 +668,10 @@ def test_overflow_cpu():
     # run with THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32
     rng = MRG_RandomStreams(np.random.randint(1234))
     fct = rng.uniform
-    # should raise error as the size overflows
-    sizes = [(2**31, ), (2**32, ), (2**15, 2**16,), (2, 2**15, 2**15)]
-    rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=True)
+    with change_flags(compute_test_value='off'):
+        # should raise error as the size overflows
+        sizes = [(2**31, ), (2**32, ), (2**15, 2**16,), (2, 2**15, 2**15)]
+        rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=True)
     # should not raise error
     sizes = [(2**5, ), (2**5, 2**5), (2**5, 2**5, 2**5)]
     rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=False)

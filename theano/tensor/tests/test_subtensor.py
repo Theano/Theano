@@ -34,6 +34,7 @@ from theano.tensor.subtensor import (AdvancedIncSubtensor,
 from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
+from theano.configparser import change_flags
 
 if PY3:
     def L(i):
@@ -126,14 +127,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             return
         self.fail()
 
+    @change_flags(compute_test_value='off')
     def test1_err_bounds(self):
         n = self.shared(np.ones(3, dtype=self.dtype))
-        ctv_backup = config.compute_test_value
-        config.compute_test_value = 'off'
-        try:
-            t = n[7]
-        finally:
-            config.compute_test_value = ctv_backup
+        t = n[7]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         # Silence expected error messages
         _logger = logging.getLogger('theano.gof.opt')
@@ -223,26 +220,23 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval.shape == (2,))
         self.assertTrue((tval == [0.0, 2.0]).all())
 
+    @change_flags(compute_test_value='off')
     def test2_err_bounds0(self):
         n = self.shared(np.ones((2, 3), dtype=self.dtype) * 5)
-        ctv_backup = config.compute_test_value
-        config.compute_test_value = 'off'
-        try:
-            for idx in [(0, 4), (0, -4)]:
-                t = n[idx]
-                self.assertTrue(isinstance(t.owner.op, Subtensor))
-                # Silence expected warnings
-                _logger = logging.getLogger('theano.gof.opt')
-                oldlevel = _logger.level
-                _logger.setLevel(logging.CRITICAL)
-                try:
-                    self.assertRaises(IndexError,
-                                      self.eval_output_and_check, [t])
-                finally:
-                    _logger.setLevel(oldlevel)
-        finally:
-            config.compute_test_value = ctv_backup
+        for idx in [(0, 4), (0, -4)]:
+            t = n[idx]
+            self.assertTrue(isinstance(t.owner.op, Subtensor))
+            # Silence expected warnings
+            _logger = logging.getLogger('theano.gof.opt')
+            oldlevel = _logger.level
+            _logger.setLevel(logging.CRITICAL)
+            try:
+                self.assertRaises(IndexError,
+                                  self.eval_output_and_check, [t])
+            finally:
+                _logger.setLevel(oldlevel)
 
+    @change_flags(compute_test_value='off')
     def test2_err_bounds1(self):
         n = self.shared((np.ones((2, 3), dtype=self.dtype) * 5))
         t = n[4:5, 3]

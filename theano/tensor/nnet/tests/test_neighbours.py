@@ -8,6 +8,7 @@ import theano.tensor as T
 from theano.tensor.nnet.neighbours import images2neibs, neibs2images, Images2Neibs
 
 from theano.tests import unittest_tools
+from theano.configparser import change_flags
 
 mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
@@ -140,6 +141,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                 # print g()
                 # assert numpy.allclose(images.get_value(borrow=True), g())
 
+    @change_flags(compute_test_value='off')
     def test_neibs_bad_shape(self):
         shape = (2, 3, 10, 10)
         for dtype in self.dtypes:
@@ -287,6 +289,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                     f_full = theano.function([], x_using_full, mode=self.mode)
                     unittest_tools.assert_allclose(f_valid(), f_full())
 
+    @change_flags(compute_test_value='off')
     def test_neibs_bad_shape_wrap_centered(self):
         shape = (2, 3, 10, 10)
 

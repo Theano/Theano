@@ -130,7 +130,7 @@ class TestConv3D(utt.InferShapeTester):
         self.rb.name = 'rb'
         self.V = shared(N.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX))
         self.V.name = 'V'
-        self.d = shared(N.ndarray(shape=(3, ), dtype=int))
+        self.d = shared(N.ones(shape=(3, ), dtype=int))
         self.d.name = 'd'
 
         self.H = conv3D(self.V, self.W, self.b, self.d)
