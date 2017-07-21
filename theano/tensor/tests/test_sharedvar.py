@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import six
 
+import nose
 import numpy as np
 import unittest
 from functools import update_wrapper
@@ -379,7 +380,7 @@ def makeSharedTester(shared_constructor_,
             x2 = self.cast_value(x2)
 
             # Test that we can replace with values of the same shape
-            x1_shared = self.shared_constructor(x1_1)
+            x1_shared = self.shared_constructor(x1_1, const_shape=False)
             x1_specify_shape = tensor.specify_shape(x1_shared, x1_1.shape)
             x1_shared.set_value(x1_2)
             assert np.allclose(self.ref_fct(x1_shared.get_value(borrow=True)),
@@ -445,7 +446,7 @@ def makeSharedTester(shared_constructor_,
             x2 = self.cast_value(x2)
 
             # Test that we can replace with values of the same shape
-            x1_shared = self.shared_constructor(x1_1)
+            x1_shared = self.shared_constructor(x1_1, const_shape=False)
             x1_specify_shape = tensor.specify_shape(x1_shared,
                                                     (tensor.as_tensor_variable(x1_1.shape[0]),
                                                      x1_shared.shape[1]))
@@ -604,3 +605,28 @@ def test_scalar_shared_options():
     # Simple test to make sure we do not loose that fonctionality.
     theano.shared(value=0., name='lk', borrow=True)
     theano.shared(value=np.float32(0.), name='lk', borrow=True)
+
+
+def test_const_shape():
+    shared = tensor._shared
+
+    # test const_shape=True
+    s = shared(np.ones((2, 4)), const_shape=True)
+    assert s.container.const_shape
+    nose.tools.assert_raises(ValueError, s.set_value, np.zeros((1, 4)))
+    s.set_value(np.zeros((2, 4)))
+
+    # test const_shape=False
+    s = shared(np.ones((2, 4)), const_shape=False)
+    assert not s.container.const_shape
+    s.set_value(np.zeros((1, 4)))
+
+    # test const_shape default
+    s = shared(np.ones((2, 4)))
+    if theano.config.build_infer_shape:
+        assert s.container.const_shape
+        nose.tools.assert_raises(ValueError, s.set_value, np.zeros((1, 4)))
+        s.set_value(np.zeros((2, 4)))
+    else:
+        assert not s.container.const_shape
+        s.set_value(np.zeros((1, 4)))

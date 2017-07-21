@@ -4186,7 +4186,8 @@ class T_Join_and_Split(unittest.TestCase):
         a_val = rng.rand(1, 4, 1).astype(self.floatX)
         b_val = rng.rand(1, 3, 1).astype(self.floatX)
 
-        a = self.shared(a_val, broadcastable=(False, False, True))
+        a = self.shared(a_val, broadcastable=(False, False, True),
+                        const_shape=False)
         b = self.shared(b_val, broadcastable=(True, False, True))
         c = self.join_op(1, a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
@@ -4354,8 +4355,8 @@ class T_Join_and_Split(unittest.TestCase):
                               dtype=self.floatX)
 
         x1 = self.shared(get_mat(3, 4))
-        x2 = self.shared(get_mat(2, 4))
-        x3 = self.shared(get_mat(1, 4))
+        x2 = self.shared(get_mat(2, 4), const_shape=False)
+        x3 = self.shared(get_mat(1, 4), const_shape=False)
 
         # Test dim 0
         z = self.join_op(0, x1, x2, x3)
@@ -7456,7 +7457,7 @@ class test_diag(unittest.TestCase):
             assert (r == v).all()
 
         # Test matrix input
-        xx = self.shared(rng.rand(3, 5))
+        xx = self.shared(rng.rand(3, 5), const_shape=False)
         g = diag(xx)
         assert isinstance(g.owner.op, ExtractDiag)
         f = theano.function([], g)

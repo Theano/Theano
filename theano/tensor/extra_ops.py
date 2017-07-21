@@ -1173,7 +1173,15 @@ class Unique(theano.Op):
                 z[i][0] = outs[i]
 
     def infer_shape(self, node, i0_shapes):
-        ret = node.fgraph.shape_feature.default_infer_shape(node, i0_shapes)
+        if hasattr(node, 'fgraph'):
+            ret = node.fgraph.shape_feature.default_infer_shape(node, i0_shapes)
+        else:
+            ret = []
+            for o in node.outputs:
+                shp = []
+                for i in range(o.ndim):
+                    shp.append(theano.tensor.opt.Shape_i(i)(o))
+                ret.append(shp)
         if self.return_inverse:
             shape = (basic.prod(i0_shapes[0]), )
             if self.return_index:

@@ -8,6 +8,7 @@ compatible with `gof`'s :doc:`graph` routines.
 from __future__ import absolute_import, print_function, division
 
 import inspect
+from itertools import count
 import logging
 import numpy as np
 import os
@@ -613,6 +614,67 @@ class PureOp(object):
         """
         return_list = kwargs.pop('return_list', False)
         node = self.make_node(*inputs, **kwargs)
+
+        # Infer shape
+        if hasattr(node.op, 'infer_shape') and theano.config.build_infer_shape:
+            def get_shape(x):
+                shp = None
+                if hasattr(x.tag, 'shape'):
+                    shp = x.tag.shape
+                elif isinstance(x, theano.Constant) and hasattr(x.data,
+                                                                'shape'):
+                    shp = x.data.shape
+                elif isinstance(x, theano.compile.SharedVariable):
+                    # TODO: Here we suppose SharedVariable have constanst shapes
+                    d = x.get_value(
+                        borrow=True, return_internal_type=True)
+                    if hasattr(d, 'shape'):
+                        shp = d.shape
+                if shp is None and hasattr(x, 'ndim'):
+                    shp = (None,) * x.ndim
+                # For type that don't have a ndim/shape
+                if shp is None:
+                    return shp
+                shp = list(shp)
+                try:
+                    # Don't change the auto_name
+                    autoname_id = next(graph.Variable.__count__)
+                    graph.Variable.__count__ = count(autoname_id)
+
+                    for idx, s in enumerate(shp):
+                        if s is None:
+                            s = theano.scalar.int64()
+                            s = theano.tensor.lscalar()
+                        else:
+                            assert s >= 0
+                            s = theano.tensor.constant(s, dtype='int64')
+                        shp[idx] = s
+                finally:
+                    graph.Variable.__count__ = count(autoname_id)
+                return tuple(shp)
+
+            inp_shps = [get_shape(x) for x in node.inputs]
+            with theano.configparser.change_flags(compute_test_value='off'):
+                try:
+                    out_shps = node.op.infer_shape(node, inp_shps)
+                except (theano.tensor.basic.ShapeError, NotImplementedError):
+                    out_shps = [None] * len(node.outputs)
+            for v, shp in zip(node.outputs, out_shps):
+                if shp is None:
+                    v.tag.shape = None
+                    continue
+                shp = list(shp)
+                for idx, s in enumerate(shp):
+                    try:
+                        s = theano.tensor.get_scalar_constant_value(s)
+                        # We want python int, not numpy array.
+                        s = int(s)
+                        assert s >= 0
+                    except theano.tensor.NotScalarConstantError:
+                        s = None
+                    shp[idx] = s
+                v.tag.shape = shp
+                assert v.ndim == len(shp)
 
         if config.compute_test_value != 'off':
             run_perform = True

@@ -91,7 +91,8 @@ class Test_SharedVariable(unittest.TestCase):
             name='u',
             type=Tensor(broadcastable=[False], dtype='float64'),
             value=np.asarray([1., 2.]),
-            strict=False)
+            strict=False,
+            const_shape=False)
 
         # check that assignments to value are cast properly
         u.set_value([3, 4])

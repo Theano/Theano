@@ -435,9 +435,13 @@ class T_random_function(utt.InferShapeTester):
         self.assertTrue(np.all(val1 == numpy_val1))
 
         # This call lacks "ndim_added=1", so ndim_added defaults to 0.
-        # A ValueError should be raised.
+        # A IndexError/ValueError should be raised.
         rf0 = RandomFunction(permutation_helper, tensor.imatrix, 8)
-        post_r0, out0 = rf0(rng_R, (7,), 8)
+        # The infer_shape raise an indexerror
+        with theano.configparser.change_flags(build_infer_shape=True):
+            self.assertRaises(IndexError, rf0, rng_R, (7,), 8)
+        with theano.configparser.change_flags(build_infer_shape=False):
+            post_r0, out0 = rf0(rng_R, (7,), 8)
         f0 = compile.function(
                 [compile.In(rng_R,
                     value=np.random.RandomState(utt.fetch_seed()),
