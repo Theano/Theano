@@ -249,7 +249,7 @@ class GpuCusolverSolve(Op):
 class GpuCublasTriangularSolve(Op):
     """
     CUBLAS GPU Triangular Solve Op.
-    
+
     Parameters
     ----------
     lower
@@ -282,11 +282,10 @@ class GpuCublasTriangularSolve(Op):
         assert inp1.dtype == 'float32'
         assert inp2.dtype == 'float32'
 
-        return theano.Apply(
-        self, [inp1, inp2],
-        [GpuArrayType('float32',
-                        broadcastable=inp2.broadcastable,
-                        context_name=context_name)()])
+        return theano.Apply(self, [inp1, inp2],
+                            [GpuArrayType('float32',
+                                          broadcastable=inp2.broadcastable,
+                                          context_name=context_name)()])
 
     def prepare_node(self, node, storage_map, compute_map, impl):
         ctx = node.inputs[0].type.context
@@ -295,7 +294,7 @@ class GpuCublasTriangularSolve(Op):
     def perform(self, node, inputs, outputs):
         ctx = node.inputs[0].type.context
 
-        # Solution set 
+        # Solution set
         x = outputs[0]
 
         # Matrix.
@@ -305,8 +304,8 @@ class GpuCublasTriangularSolve(Op):
         b = inputs[1]
 
         assert(len(A.shape) == 2)
-        assert(len(b.shape) in [1,2])
-        
+        assert(len(b.shape) in [1, 2])
+
         # implicitly deal with the difference between C order
         # and fortran order by flipping the trans and lower flags
         lower = not self.lower
@@ -336,7 +335,7 @@ class GpuCublasTriangularSolve(Op):
 
         # solution overwrites right hand side on exit
         b = pygpu.array(b, copy=True, order='F')
-    
+
         A_ptr = A.gpudata
         b_ptr = b.gpudata
 
