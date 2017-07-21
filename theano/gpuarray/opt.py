@@ -71,7 +71,8 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor1,
                         GpuAdvancedIncSubtensor,
                         GpuAdvancedIncSubtensor1,
-                        GpuAdvancedIncSubtensor1_dev20)
+                        GpuAdvancedIncSubtensor1_dev20,
+                        GpuAllocDiag, GpuExtractDiag)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
@@ -1116,6 +1117,22 @@ def local_advincsub1_gpua_inplace(node):
         if not node.op.inplace:
             return [node.op.clone_inplace()(*node.inputs)]
 
+# AllocDiag
+@register_opt('fast_compile')
+@op_lifter([tensor.AllocDiag])
+@register_opt2([theano.tensor.AllocDiag], 'fast_compile')
+def local_gpu_alloc_diag(op, context_name, inputs, outputs):
+    if outputs[0].ndim != 2:
+        # AllocDiag only supports 2d output
+        return False
+    return GpuAllocDiag(offset=op.offset)
+
+# ExtractDiag
+@register_opt('fast_compile')
+@op_lifter([tensor.ExtractDiag])
+@register_opt2([theano.tensor.ExtractDiag], 'fast_compile')
+def local_gpu_extract_diag(op, context_name, inputs, outputs):
+    return GpuExtractDiag(offset=op.offset, axis1=op.axis1, axis2=op.axis2, view=op.view)
 
 @register_opt('fast_compile')
 @op_lifter([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod])
