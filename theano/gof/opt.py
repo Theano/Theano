@@ -1185,9 +1185,9 @@ class LocalMetaOptimizer(LocalOptimizer):
         # compile the resulting subgraphs and time their execution
         if self.verbose > 1:
             print(("%s meta-optimizing %s (%d choices):" %
-                   (self.__class__.__name__, node, len(self.optimizers))))
+                   (self.__class__.__name__, node, len(self.track_dict[type(node.op)]))))
         timings = []
-        for opt in (self.track_dict[type(node.op)] + self.track_dict[node.op]):
+        for opt in self.track_dict[type(node.op)]:
             outputs = opt.transform(node)
             if outputs:
                 try:
