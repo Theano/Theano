@@ -1050,8 +1050,7 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
         kname = "k_vector_add_fast"
         k_var = "k_vector_add_fast_" + nodename
         code = """
-
-#if __CUDA_API_VERSION__ < 9000
+#if __CUDACC_VER_MAJOR__ < 9
 /*
  * This is an atomicAdd that works for doubles since that is not provided
  * natively by cuda before arch 6.0.
