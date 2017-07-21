@@ -1073,27 +1073,26 @@ class GpuContiguous(Op):
                                      context_name=infer_context_name(input))
         return Apply(self, [input], [input.type()])
 
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
+
     def c_headers(self):
-        return ['<numpy_compat.h>']
+        return ['<gpuarray_helper.h>']
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def c_code(self, node, name, inp, out, sub):
-        input, = inp
-        z, = out
-        fail = sub['fail']
-        str = """
+        return """
         {
-            if (GpuArray_IS_C_CONTIGUOUS(&(%(input)s->ga))){
+            if (GpuArray_IS_C_CONTIGUOUS(&(%(input)s->ga))) {
                 Py_XDECREF(%(z)s);
                 %(z)s = %(input)s;
                 Py_INCREF(%(z)s);
 
-            } else if ((NULL == %(z)s)""" % locals()
-        for i in xrange(len(node.inputs[0].type.broadcastable)):
-            str += "\n|| (PyGpuArray_DIMS(%(input)s)[%(i)s] != PyGpuArray_DIMS(%(z)s)[%(i)s])" % locals()
-        str += """
+            } else if (NULL == %(z)s
+                || !theano_size_check(%(z)s, PyGpuArray_NDIM(%(input)s), PyGpuArray_DIMS(%(input)s),
+                                      %(input)s->ga.typecode)
                 || !GpuArray_IS_C_CONTIGUOUS(&(%(z)s->ga)))
             {
                 Py_XDECREF(%(z)s);
@@ -1102,12 +1101,11 @@ class GpuContiguous(Op):
                 {
                     %(fail)s;
                 }
-            }else if(pygpu_move(%(z)s, %(input)s) == -1) {
+            } else if(pygpu_move(%(z)s, %(input)s) == -1) {
                 %(fail)s;
             }
         }
-        """ % locals()
-        return str
+        """ % dict(input=inp[0], z=out[0], fail=sub['fail'])
 
 gpu_contiguous = GpuContiguous()
 
