@@ -30,10 +30,10 @@ int dnn_rnn_desc(int hidden_size, int num_layers,
     return -1;
   }
 
-  err = cudnnSetRNNDescriptor(desc, hidden_size, num_layers, ddesc,
+  err = cudnnSetRNNDescriptor(handle, desc, hidden_size, num_layers, ddesc,
                               (cudnnRNNInputMode_t)input_mode,
                               (cudnnDirectionMode_t)direction_mode,
-                              (cudnnRNNMode_t)rnn_mode, data_type);
+                              (cudnnRNNMode_t)rnn_mode, CUDNN_RNN_ALGO_STANDARD, data_type);
   if (err != CUDNN_STATUS_SUCCESS) {
     cudnnDestroyRNNDescriptor(desc);
     PyErr_SetString(PyExc_RuntimeError, "Can't set RNN descriptor");
