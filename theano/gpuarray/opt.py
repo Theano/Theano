@@ -1831,6 +1831,32 @@ def local_abstractconv_gradinputs_gemm(node):
     return [rval]
 
 
+@local_optimizer([AbstractConv2d_gradInputs])
+def local_abstractconv_gradinputs_gemm_alt(node):
+    if not isinstance(node.op, AbstractConv2d_gradInputs):
+        return None
+    kern, topgrad, shape = node.inputs
+    if not isinstance(kern.type, GpuArrayType) or \
+            not isinstance(topgrad.type, GpuArrayType):
+        return None
+    border_mode = node.op.border_mode
+    subsample = node.op.subsample
+    filter_dilation = node.op.filter_dilation
+
+    if border_mode == 'valid' and subsample == (1, 1):
+        if not node.op.filter_flip:
+            kern = kern[:, :, ::-1, ::-1]
+
+        rval = GpuCorrMM(border_mode='full',
+                         subsample=subsample,
+                         filter_dilation=filter_dilation)(
+            gpu_contiguous(topgrad),
+            gpu_contiguous(kern.dimshuffle(1, 0, 2, 3)))
+        return [rval]
+    else:
+        return None
+
+
 @local_optimizer([AbstractConv3d_gradInputs])
 def local_abstractconv3d_gradinputs_gemm(node):
     if not isinstance(node.op, AbstractConv3d_gradInputs):
@@ -2543,6 +2569,7 @@ if config.optimizer_excluding:
 conv_metaopt.register(abstractconv_groupopt.query(*running_list).opts)
 conv_metaopt.register([local_abstractconv_gemm_alternative])
 conv_metaopt.register([local_abstractconv_gemm_gradweights_alt])
+conv_metaopt.register([local_abstractconv_gradinputs_gemm_alt])
 abstractconv_groupopt.register('conv_metaopt', conv_metaopt, 'conv_meta', position=0)
 
 # Register cuDNN batch normalization implementation
