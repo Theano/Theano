@@ -4,7 +4,8 @@
 	branch = master
 [submodule "libgpuarray"]
 	path = libgpuarray
-	url = https://github.com/Theano/libgpuarray.git
+	url = https://github.com/borisfom/libgpuarray.git
+	branch = fp16-fix
 [submodule "third_party/scikit-cuda"]
 	path = third_party/scikit-cuda
 	url = https://github.com/lebedov/scikit-cuda.git
