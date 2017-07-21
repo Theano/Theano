@@ -325,6 +325,9 @@ solve_lower_triangular = Solve(A_structure='lower_triangular', lower=True)
 """Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is lower triangular."""
 solve_upper_triangular = Solve(A_structure='upper_triangular', lower=False)
 """Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is upper triangular."""
+# symmetric solves
+solve_symmetric = Solve(A_structure='symmetric')
+"""Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is symmetric."""
 
 # TODO: Optimizations to replace multiplication by matrix inverse
 #      with solve() Op (still unwritten)

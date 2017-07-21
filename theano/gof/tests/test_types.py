@@ -252,6 +252,8 @@ class TestEnumTypes(TestCase):
         assert ref == out, (ref, out)
 
     def test_op_with_cenumtype(self):
+        if theano.config.cxx == '':
+            raise SkipTest('need c++')
         sizeof_int = MyOpCEnumType('int')()
         sizeof_float = MyOpCEnumType('float')()
         sizeof_long_long = MyOpCEnumType('long long')()

@@ -33,6 +33,7 @@ from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv3d,
                                               AbstractConv3d_gradWeights,
                                               AbstractConv3d_gradInputs)
+from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor.nlinalg as nlinalg
 import theano.tensor.signal.pool as pool
 import theano.tensor.slinalg as slinalg
@@ -76,6 +77,7 @@ from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
                      cusolver_available, GpuMagmaMatrixInverse, gpu_svd,
                      GpuMagmaCholesky, gpu_qr, GpuMagmaEigh)
+from .neighbours import GpuImages2Neibs
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -2084,6 +2086,14 @@ def local_gpu_maxandargmax(op, context_name, inputs, outputs):
         ret = op(casted_inputs)
         return [ret[0].astype('float16'), ret[1]]
     return op
+
+
+@register_opt('fast_compile')
+@op_lifter([Images2Neibs])
+@register_opt2([Images2Neibs], 'fast_compile')
+def local_gpua_images2neibs(op, context_name, inputs, outputs):
+    if op.mode in ['valid', 'half', 'full', 'ignore_borders', 'wrap_centered']:
+        return GpuImages2Neibs(op.mode)
 
 
 # solve

@@ -511,40 +511,48 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
 
         x = x.reshape(nshp)
 
-        narrays = 0
         transp = list(range(x.ndim))
+        # number of array-indexed dimensions
         p = 0
-        # ap gives the position of the array in case there is only one.
-        # if there are more than one (narray > 1) it should be ignored.
-        ap = 0
+        # ap represents the axis in the resulting array where the
+        # dimensions indexed by arrays and ints will be inserted.
+        # For instance, if all such dimensions are grouped together,
+        # it corresponds to the index of the first such dimension in the
+        # inital array.  If these dimensions are split (with slices
+        # inbetween), then the resulting dimensions will be moved to the
+        # beginning, and ap will be 0.
+        # If no such dimension has been encountered, ap is None.
+        ap = None
+        # Indicates whether we have already encountered an index (array
+        # or number), and then a slice.
+        slice_after_idx = False
         for k, i in enumerate(list(nidx)):
-            if (isinstance(i, np.ndarray) and
-                    i.ndim != 0):
+            if (isinstance(i, np.ndarray) and i.ndim != 0):
                 transp.remove(k)
                 transp.insert(p, k)
-                ap += k
                 i = nidx.pop(k)
                 nidx.insert(p, i)
                 p += 1
-                narrays += 1
+                if ap is None:
+                    # first non-slice index
+                    ap = k
+                elif slice_after_idx:
+                    # We already encountered at least an array or int, and then
+                    # a slice. Array-indexed axes are not grouped,
+                    # moving to the beginning
+                    ap = 0
             else:
-                if narrays == 0:
-                    try:
-                        i.__index__()
-                        # We shift back the position of the array by the
-                        # number of dimensions that are removed by
-                        # indexing.  If ap is bigger than 0 it means we
-                        # have encountered at least one array.
-                        if ap >= 0:
-                            ap -= 1
-                        # If this index is before the first array then
-                        # we will not move the array back to its
-                        # position.  Mark this by faking that there
-                        # are more than two arrays.  This is crazy
-                        # numpy behaviour so blame them.
-                        narrays = 2
-                    except Exception:
-                        pass
+                try:
+                    i.__index__()
+                    if ap is None:
+                        ap = k
+                    # indices do not break the contiguity of
+                    # array-indexed axes
+                except Exception:
+                    # If we already encountered an array/int index, it
+                    # means future ones will not be grouped.
+                    if ap is not None:
+                        slice_after_idx = True
 
         x = x.transpose(*transp)
 
@@ -552,11 +560,15 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         x = x.__getitem__(idx_)
 
         if p == 0:
+            assert ap is None
             # The only indexing was through slices and indices.
             # This can happen with symbolic slices for instance.
             # Since no view_map is set, we need to copy the returned value
             out[0] = x.copy()
             return
+
+        # At this point, we should have encountered at least one array
+        assert ap is not None
 
         # flatten the array-indexed dimensions
         shape = ((np.prod(x.shape[0: p]),) +
@@ -578,10 +590,9 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         out_flat_shp = take_idx.shape + x.shape[p:]
         o = out_flat.reshape(out_flat_shp)
 
-        # If there was only one array we need to move the indexed
-        # dimension(s) back to the position of the array, which is
-        # stored in ap.  Note that ap is invalid is narrays != 1.
-        if narrays == 1:
+        if ap != 0:
+            # Put the resulting indexing at the place that NumPy
+            # decided was the right one.
             ntransp = list(range(take_idx.ndim, o.ndim))
             ntransp[ap:ap] = list(range(take_idx.ndim))
             o = o.transpose(*ntransp)

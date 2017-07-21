@@ -294,11 +294,11 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     err = cudnnConvolutionBackwardData(
       params->handle,
       alpha_p,
-      APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns) + kern_offset * g,
-      APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output) + output_offset * g,
+      APPLY_SPECIFIC(kerns), ((char *)PyGpuArray_DEV_DATA(kerns)) + kern_offset * g,
+      APPLY_SPECIFIC(output), ((char *)PyGpuArray_DEV_DATA(output)) + output_offset * g,
       desc, algo, worksize == 0 ? NULL : *(void **)workspace, worksize,
       beta_p,
-      APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(*input) + input_offset * g);
+      APPLY_SPECIFIC(input), ((char *)PyGpuArray_DEV_DATA(*input)) + input_offset * g);
   }
 
   if (worksize != 0)
