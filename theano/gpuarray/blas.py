@@ -7,7 +7,7 @@ from theano import Apply, config, Op
 
 from theano.compile import optdb
 from theano.gof import LocalOptGroup, ParamsType
-from theano.scalar import Scalar
+from theano.scalar import bool as bool_t
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.opt import in2out
 
@@ -39,7 +39,7 @@ class GpuGemv(BlasOp):
     Gemv on the GPU.
 
     """
-    params_type = ParamsType(inplace=Scalar('bool'))
+    params_type = ParamsType(inplace=bool_t)
     __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
@@ -155,7 +155,7 @@ class GpuGemm(BlasOp):
     Gemm on the GPU.
 
     """
-    params_type = ParamsType(inplace=Scalar('bool'))
+    params_type = ParamsType(inplace=bool_t)
     __props__ = ('inplace',)
     _f16_ok = True
 
@@ -244,7 +244,7 @@ class GpuGer(BlasOp):
     Ger on the GPU.
 
     """
-    params_type = ParamsType(inplace=Scalar('bool'))
+    params_type = ParamsType(inplace=bool_t)
     __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
@@ -378,7 +378,7 @@ gpu_dot22 = GpuDot22()
 
 
 class GpuGemmBatch(BlasOp):
-    params_type = ParamsType(inplace=Scalar('bool'))
+    params_type = ParamsType(inplace=bool_t)
     __props__ = ('inplace',)
     _f16_ok = True
 
