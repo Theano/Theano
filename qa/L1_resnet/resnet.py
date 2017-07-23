@@ -21,8 +21,6 @@ from lasagne.layers import ElemwiseSumLayer
 from lasagne.layers import DenseLayer
 from lasagne.nonlinearities import rectify, softmax
 
-from platoon.channel import Worker
-from platoon.training.global_dynamics import AverageSGD
 
 worker = None
 
