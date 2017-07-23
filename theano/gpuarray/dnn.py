@@ -2888,6 +2888,43 @@ def local_abstractconv_cudnn(node):
         return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
+@local_optimizer([AbstractConv2d])
+def local_abstractconv_cudnn_alternative(node):
+    if not isinstance(node.op, AbstractConv2d):
+        return
+
+    if version(raises=False) < 6000 and node.op.filter_dilation != (1, 1):
+        return None
+
+    inp1 = node.inputs[0]
+    inp2 = node.inputs[1]
+
+    if not dnn_available(inp1.type.context_name):
+        return
+
+    if node.op.filter_flip:
+        conv_mode = 'conv'
+    else:
+        conv_mode = 'cross'
+
+    if node.op.border_mode == 'full':
+        direction_hint = 'bprop inputs'
+    elif node.op.border_mode == 'valid':
+        direction_hint = 'bprop weights'
+    else:
+        return None
+
+    rval = dnn_conv(inp1, inp2,
+                    border_mode=node.op.border_mode,
+                    subsample=node.op.subsample,
+                    dilation=node.op.filter_dilation,
+                    direction_hint=direction_hint,
+                    conv_mode=conv_mode,
+                    num_groups=node.op.num_groups)
+
+    return [rval]
+
+
 @local_optimizer([AbstractConv2d_gradWeights, AbstractConv3d_gradWeights])
 def local_abstractconv_gw_cudnn(node):
     ctx = infer_context_name(*node.inputs)
