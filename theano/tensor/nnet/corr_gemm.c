@@ -184,7 +184,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                 "  weight shape: %%d %%d %%d %%d\n"
                 "  top shape: %%ld %%ld %%ld %%ld (expected %%d %%d %%d %%d)\n",
                 batchSize, nChannels, bottomHeight, bottomWidth,
-                nFilters, nChannels, kH, kW,
+                nFilters, nChannels / numgroups, kH, kW,
                 PyArray_DIMS(top)[0], PyArray_DIMS(top)[1],
                 PyArray_DIMS(top)[2], PyArray_DIMS(top)[3],
                 batchSize, nFilters, topHeight, topWidth);
