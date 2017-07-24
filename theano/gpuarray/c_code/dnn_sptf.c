@@ -127,7 +127,7 @@ APPLY_SPECIFIC(dnn_sptf)(PyGpuArrayObject * input,
     if ( PyGpuArray_DIM( input, 0 ) != num_images )
     {
         PyErr_Format( PyExc_RuntimeError,
-            "GpuDnnTransformer: expected input to have %d inputs, got %d inputs.",
+            "GpuDnnTransformer: expected batch size %d, got %d.",
             num_images, PyGpuArray_DIM( input, 0 ) );
         return 1;
     }
