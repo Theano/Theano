@@ -525,40 +525,14 @@ def train_resnet(
             f_update(lrate)
             print("Func call time", time.time() - func_time)
             overhead_time = time.time()
-#            asgd()
             print("Overhead time", time.time() - overhead_time)
-#        res = worker.send_req('time')
 
         print('Train cost:', cost)
 
-        if numpy.mod(epoch, validFreq) == 0:
-            # do validation
-            # trick : each worker can do their valid without talking to the controller
-            # even if they finish before another worker, they will wait in the next
-            # epoch at the calling of all_reduce when they need to sync again
-            valid_err = pred_error(f_pred, valid, kf_valid)
-            test_err = pred_error(f_pred, test, kf_test)
-
-            # they do need to send the result to the controller
-#            res = worker.send_req('pred_errors', dict(test_err=float(test_err),
-#                                  valid_err=float(valid_err), epoch=epoch))
-
-            if res == 'best':
-                # should save the param at best
-                pass
-
-        if res == 'stop':
+        if epoch > 10:
             break
         epoch += 1
 
-    # Release all shared resources.
- #   worker.close()
-
 
 if __name__ == '__main__':
-    # See function train for all possible parameter and there definition.
-#    parser = Worker.default_parser()
-#    args = parser.parse_args()
-
-#    worker = Worker(**Worker.default_arguments(args))
     train_resnet()

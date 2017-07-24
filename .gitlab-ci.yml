@@ -290,6 +290,13 @@ L0_convnet_benchmarks_googlenet--P100_R384_4GPU:
       TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-googlenet.sh"
 
+L0_convnet_benchmarks_resnet--P100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *P100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-resnet.sh"
+
 L1_mnist_sgd--P100_R384_4GPU:
     <<: *L1_TEST
     <<: *P100_R384_4GPU
@@ -310,21 +317,6 @@ L1_mnist_lenet--P100_R384_4GPU:
     variables:
       TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
       TEST_SCRIPT: "./test-lenet.sh"
-
-L1_resnet--P100_R384_4GPU:
-    <<: *L1_TEST
-    <<: *P100_R384_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_resnet"
-      TEST_SCRIPT: "./test-resnet.sh"
-
-L1_rnn--P100_R384_4GPU:
-    <<: *L1_TEST
-    <<: *P100_R384_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_rnn"
-      TEST_SCRIPT: "./test-rnn.sh"
-
 
 L2_self_test_verbose--P100_R384_4GPU:
     <<: *L2_TEST
@@ -368,6 +360,13 @@ L0_convnet_benchmarks_googlenet--V100_R384_4GPU:
       TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-googlenet.sh"
 
+L0_convnet_benchmarks_resnet--V100_R384_4GPU:
+    <<: *L0_TEST
+    <<: *V100_R384_4GPU
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-resnet.sh"
+
 L1_mnist_sgd--V100_R384_4GPU:
     <<: *L1_TEST
     <<: *V100_R384_4GPU
@@ -388,20 +387,6 @@ L1_mnist_lenet--V100_R384_4GPU:
     variables:
       TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
       TEST_SCRIPT: "./test-lenet.sh"
-
-L1_resnet--V100_R384_4GPU:
-    <<: *L1_TEST
-    <<: *V100_R384_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_resnet"
-      TEST_SCRIPT: "./test-resnet.sh"
-
-L1_rnn--V100_R384_4GPU:
-    <<: *L1_TEST
-    <<: *V100_R384_4GPU
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_rnn"
-      TEST_SCRIPT: "./test-rnn.sh"
 
 L2_self_test_verbose--V100_R384_4GPU:
     <<: *L2_TEST
