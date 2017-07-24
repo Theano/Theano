@@ -2300,8 +2300,8 @@ class AbstractConv_gradInputs(BaseAbstractConv):
             mshp0 = mat.shape[0] // self.num_groups
             mshp1 = mat.shape[1] * self.num_groups
             mat = mat.reshape((self.num_groups, mshp0) + mat.shape[1:])
-            mat = mat.transpose((1, 0, 2, 3, 4))
-            mat = mat.reshape((mshp0, mshp1) + mat.shape[-2:])
+            mat = mat.transpose((1, 0, 2) + tuple(range(3, 3 + self.convdim)))
+            mat = mat.reshape((mshp0, mshp1) + mat.shape[-self.convdim:])
             return mat
         kern = correct_for_groups(kern)
         kern = kern.transpose(axes_order)

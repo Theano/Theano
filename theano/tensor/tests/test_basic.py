@@ -57,7 +57,7 @@ from theano.tensor import (
 
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
-
+from theano.configparser import change_flags
 
 imported_scipy_special = False
 mode_no_scipy = get_default_mode()
@@ -443,6 +443,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 # instantiated on the following bad inputs: %s"
                 # % (self.op, testname, node, inputs))
 
+        @change_flags(compute_test_value='off')
         def test_bad_runtime(self):
             if skip:
                 raise SkipTest(skip)
@@ -4383,14 +4384,15 @@ class T_Join_and_Split(unittest.TestCase):
             for node in topo:
                 assert not isinstance(node.op, type(self.join_op))
 
-        # Test hide error
-        x1.set_value(get_mat(3, 4))
-        x2.set_value(get_mat(3, 4))
-        x3.set_value(get_mat(2, 5))
-        if not self.hide_error:
-            self.assertRaises(ValueError, f)
-        else:
-            f()
+        with change_flags(compute_test_value='off'):
+            # Test hide error
+            x1.set_value(get_mat(3, 4))
+            x2.set_value(get_mat(3, 4))
+            x3.set_value(get_mat(2, 5))
+            if not self.hide_error:
+                self.assertRaises(ValueError, f)
+            else:
+                f()
 
     def test_rebroadcast(self):
         # Regression test for a crash that used to happen when rebroadcasting.
@@ -4432,6 +4434,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert np.allclose(o1, m.get_value(borrow=True))
         assert np.allclose(o2, m.get_value(borrow=True)[4:])
 
+    @change_flags(compute_test_value='off')
     def test_split_neg(self):
         rng = np.random.RandomState(seed=utt.fetch_seed())
         m = self.shared(rng.rand(4, 6).astype(self.floatX))
@@ -7321,11 +7324,12 @@ class T_get_scalar_constant_value(unittest.TestCase):
         a = opt.Assert()(c, c > 1)
         assert get_scalar_constant_value(a) == 2
 
-        # condition is always False
-        a = opt.Assert()(c, c > 2)
-        self.assertRaises(
-            tensor.NotScalarConstantError,
-            get_scalar_constant_value, a)
+        with change_flags(compute_test_value='off'):
+            # condition is always False
+            a = opt.Assert()(c, c > 2)
+            self.assertRaises(
+                tensor.NotScalarConstantError,
+                get_scalar_constant_value, a)
 
         # condition is not constant
         a = opt.Assert()(c, c > x)
