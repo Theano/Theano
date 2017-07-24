@@ -139,6 +139,7 @@ class DimShuffle(COp):
         # because of importation issues related to TensorType.
         return ParamsType(input_broadcastable=TensorType(dtype='bool', broadcastable=(False,)),
                           _new_order=theano.tensor.lvector,
+                          transposition=theano.tensor.lvector,
                           inplace=theano.scalar.bool)
 
     @property
@@ -147,6 +148,10 @@ class DimShuffle(COp):
         # self.new_order may contain 'x', which is not a valid integer value.
         # We replace it with -1.
         return [(-1 if x == 'x' else x) for x in self.new_order]
+
+    @property
+    def transposition(self):
+        return self.shuffle + self.drop
 
     def __init__(self, input_broadcastable, new_order, inplace=True):
         COp.__init__(self, [self.c_func_file], self.c_func_name)
@@ -206,8 +211,6 @@ class DimShuffle(COp):
         if not hasattr(self, 'func_files'):
             # Perhaps we are loading an old `Op` version of DimShuffle.
             # Let's just build the COp.
-            self.c_func_file = 'c_code/dimshuffle.c'
-            self.c_func_name = 'cpu_dimshuffle'
             COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def make_node(self, _input):
