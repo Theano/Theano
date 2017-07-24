@@ -2961,6 +2961,8 @@ def local_abstractconv_cudnn_alternative(node):
                 conv = conv[:, :, ::-1, ::-1]
 
             rval = as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3), ctx_name)
+        else:
+            return None
 
     if isinstance(op, AbstractConv2d_gradInputs):
         if border_mode == 'valid' and subsample == (1, 1) and num_groups == 1:
@@ -2985,6 +2987,8 @@ def local_abstractconv_cudnn_alternative(node):
             shape = assert_conv_shape(shape)
             out = GpuAllocEmpty(dtype=topgrad.dtype, context_name=ctx_name)(*shape)
             rval = GpuDnnConv(algo=None, num_groups=num_groups)(topgrad, kerns, out, desc)
+        else:
+            return None
 
     return [rval]
 
