@@ -1,13 +1,9 @@
 #section init_code_struct
 
-if (PARAMS->choose_algo) {
-  reuse_algo = 0;
-  prev_algo = PARAMS->conv_algo;
-  if (!PARAMS->choose_once) {
-      memset(prev_img_dims, 0, sizeof(prev_img_dims));
-      memset(prev_top_dims, 0, sizeof(prev_top_dims));
-  }
-}
+reuse_algo = 0;
+prev_algo = PARAMS->conv_algo;
+memset(prev_img_dims, 0, sizeof(prev_img_dims));
+memset(prev_top_dims, 0, sizeof(prev_top_dims));
 
 #section support_code_struct
 
@@ -188,9 +184,12 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         if (count == 0) {
             PyErr_SetString(PyExc_RuntimeError, "No best-timed conv gradweight algorithm found");
             return 1;
-        } else {
-            fprintf(stderr, "(%d best-timed conv gradweight algorithms)\n", count);
-        }
+        } else if (choice.status != CUDNN_STATUS_SUCCESS) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "error getting best-timed gradweight algo: %s",
+                         cudnnGetErrorString(choice.status));
+            return 1;
+        } // Else, count is necessarly 1 for current implementation.
         #endif
 
       } else {
