@@ -2936,11 +2936,11 @@ class GpuDnnTransformer(DnnBase):
         return Apply(self, inputs, outputs)
 
     def L_op(self, inputs, outputs, grads):
-        img, theta, grid_dims, desc = inputs
+        img, _, grid_dims, desc = inputs
         _, grid = outputs
         dy = grads[0]
 
-        dimg, dgrid = GpuDnnTransformerGradI()(img, theta, grid, dy, desc)
+        dimg, dgrid = GpuDnnTransformerGradI()(img, grid, dy, desc)
         dtheta = GpuDnnTransformerGradT()(dgrid, desc)
         dgrid_dims = grad_not_implemented(self, grid_dims, 2)
 
@@ -2956,15 +2956,15 @@ class GpuDnnTransformerGradI(DnnBase):
     Gradients of inputs of the spatial transformer
     """
     __props__ = ()
-    _cop_num_inputs = 5
+    _cop_num_inputs = 4
     _cop_num_outputs = 2
     _f16_ok = True
 
     def __init__(self, dtype=theano.config.floatX):
         DnnBase.__init__(self, ["c_code/dnn_sptf_gi.c"], "APPLY_SPECIFIC(dnn_sptf_gi)")
 
-    def make_node(self, img, theta, grid, dy, desc):
-        context_name = infer_context_name(img, theta, grid, dy, desc)
+    def make_node(self, img, grid, dy, desc):
+        context_name = infer_context_name(img, grid, dy, desc)
 
         if (not isinstance(desc.type, CDataType) or
                 desc.type.ctype != 'cudnnSpatialTransformerDescriptor_t'):
@@ -2973,10 +2973,6 @@ class GpuDnnTransformerGradI(DnnBase):
         img = as_gpuarray_variable(gpu_contiguous(img), context_name)
         if img.ndim != 4:
             raise TypeError('img must have 4 dimensions.')
-
-        theta = as_gpuarray_variable(gpu_contiguous(theta), context_name)
-        if theta.ndim != 3:
-            raise TypeError('theta must have 3 dimensions')
 
         grid = as_gpuarray_variable(gpu_contiguous(grid), context_name)
         if img.ndim != grid.ndim:
@@ -2989,25 +2985,24 @@ class GpuDnnTransformerGradI(DnnBase):
         dimg = img.type()
         dgrid = grid.type()
 
-        inputs = [img, theta, grid, dy, desc]
+        inputs = [img, grid, dy, desc]
         outputs = [dimg, dgrid]
 
         return Apply(self, inputs, outputs)
 
     def L_op(self, inputs, outputs, grads):
-        img, theta, grid, dy, desc = inputs
+        img, grid, dy, desc = inputs
         dimg_out, dgrid = outputs
         grad_cost = grads[0]
 
         dimg = dimg_out * grad_cost
-        dtheta = GpuDnnTransformerGradT()(dgrid, desc)
-        d_dy = grad_not_implemented(self, dy, 3)
+        d_dy = grad_not_implemented(self, dy, 2)
 
-        return [dimg, dtheta, dgrid, d_dy, DisconnectedType()()]
+        return [dimg, dgrid, d_dy, DisconnectedType()()]
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1, 1], [1, 1], [1, 1], [1, 1], [0, 0]]
+        return [[1, 1], [1, 1], [1, 1], [0, 0]]
 
 
 class GpuDnnTransformerGradT(DnnBase):

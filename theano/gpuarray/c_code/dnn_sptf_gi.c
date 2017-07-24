@@ -55,7 +55,6 @@ if ( APPLY_SPECIFIC(dydesc) != NULL )
 
 int
 APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
-                            PyGpuArrayObject * theta,
                             PyGpuArrayObject * grid,
                             PyGpuArrayObject * dy,
                             cudnnSpatialTransformerDescriptor_t desc,
@@ -90,15 +89,6 @@ APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
     default:
         PyErr_SetString( PyExc_TypeError,
             "GpuDnnTransformerGradI: unsupported type for input in spatial transformer gradients" );
-        return -1;
-    }
-
-    if ( theta->ga.typecode != GA_FLOAT &&
-         theta->ga.typecode != GA_DOUBLE &&
-         theta->ga.typecode != GA_HALF )
-    {
-        PyErr_SetString( PyExc_TypeError,
-            "GpuDnnTransformerGradI: unsupported data type for theta in spatial transformer gradients." );
         return -1;
     }
 
@@ -138,7 +128,6 @@ APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
     cuda_enter( gpu_ctx->ctx );
 
     cuda_wait( input->ga.data, GPUARRAY_CUDA_WAIT_READ );
-    cuda_wait( theta->ga.data, GPUARRAY_CUDA_WAIT_READ );
     cuda_wait( grid->ga.data, GPUARRAY_CUDA_WAIT_READ );
     cuda_wait( dy->ga.data, GPUARRAY_CUDA_WAIT_READ );
     cuda_wait( (*input_grad)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
@@ -151,7 +140,6 @@ APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
         PyGpuArray_DEV_DATA( *grid_grad ) );
 
     cuda_record( input->ga.data, GPUARRAY_CUDA_WAIT_READ );
-    cuda_record( theta->ga.data, GPUARRAY_CUDA_WAIT_READ );
     cuda_record( grid->ga.data, GPUARRAY_CUDA_WAIT_READ );
     cuda_record( dy->ga.data, GPUARRAY_CUDA_WAIT_READ );
     cuda_record( (*input_grad)->ga.data, GPUARRAY_CUDA_WAIT_WRITE );
