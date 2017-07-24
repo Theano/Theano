@@ -33,6 +33,11 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
                     "stack size");
     return 1;
   }
+  if ((PyGpuArray_DIMS(kerns)[0] % params->num_groups) != 0) {
+    PyErr_SetString(PyExc_ValueError,
+		    "Number of filters must be divisible by number of groups");
+    return 1;
+  }
 
   switch (im->ga.typecode) {
   case GA_DOUBLE:
