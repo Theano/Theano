@@ -2930,6 +2930,36 @@ def local_abstractconv_cudnn_alternative(node):
                         conv_mode=conv_mode,
                         num_groups=num_groups)
 
+    if isinstance(op, AbstractConv2d_gradWeights):
+        if(border_mode == 'valid' and subsample == (1, 1) and
+           filter_dilation == (1, 1) and num_groups == 1):
+            img = gpu_contiguous(inp1)
+            topgrad = gpu_contiguous(inp2)
+            ctx_name = infer_context_name(img, topgrad)
+            img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3))
+            topgrad = gpu_contiguous(topgrad.dimshuffle(1, 0, 2, 3))
+            ishape = [shape_i_op(i)(img) for i in range(img.ndim)]
+            tshape = [shape_i_op(i)(topgrad) for i in range(topgrad.ndim)]
+            out_shp = get_conv_output_shape(ishape,
+                                            tshape,
+                                            border_mode=border_mode,
+                                            subsample=subsample,
+                                            filter_dilation=filter_dilation)
+
+            out_shp = assert_conv_shape(out_shp)
+            out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
+            desc = GpuDnnConvDesc(border_mode=border_mode,
+                                  subsample=subsample,
+                                  dilation=filter_dilation,
+                                  conv_mode='cross',
+                                  precision=precision)(out.shape)
+
+            conv = GpuDnnConv(algo=None, num_groups=num_groups)(img, topgrad, out, desc)
+            if conv_mode == 'conv':
+                conv = conv[:, :, ::-1, ::-1]
+
+            rval = as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3), ctx_name)
+
     if isinstance(op, AbstractConv2d_gradInputs):
         if border_mode == 'valid' and subsample == (1, 1) and num_groups == 1:
             kerns = gpu_contiguous(inp1.dimshuffle(1, 0, 2, 3))
