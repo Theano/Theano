@@ -13,7 +13,7 @@ APPLY_SPECIFIC(dnn_sptf_gt)(PyGpuArrayObject * dgrid,
 
     const size_t dtheta_dims[3] = { num_images, 2, 3 };
 
-    if ( theano_prep_output( dtheta, 3, &(dtheta_dims[0]), dgrid->ga.typecode,
+    if ( theano_prep_output( dtheta, 3, dtheta_dims, dgrid->ga.typecode,
                              GA_C_ORDER, gpu_ctx ) != 0 )
         return 1;
 
