@@ -3018,7 +3018,12 @@ class GpuDnnTransformerGradT(DnnBase):
         DnnBase.__init__(self, ["c_code/dnn_sptf_gt.c"], "APPLY_SPECIFIC(dnn_sptf_gt)")
 
     def make_node(self, dgrid, desc):
-        context_name = infer_context_name(dgrid)
+        context_name = infer_context_name(desc)
+
+        dgrid = as_gpuarray_variable(dgrid, context_name)
+        assert dgrid.dtype in ('float16', 'float32', 'float64')
+        assert dgrid.ndim == 4
+
         dtheta = GpuArrayType(dtype=dgrid.dtype,
                               broadcastable=(dgrid.type.ndim - 1) * (False,),
                               context_name=context_name)()
