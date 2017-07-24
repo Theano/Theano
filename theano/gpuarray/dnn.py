@@ -2869,6 +2869,10 @@ class GpuDnnTransformerDesc(COp):
 
     def make_node(self, dimensions):
         dimensions = as_tensor_variable(dimensions)
+        assert dimensions.dtype in theano.tensor.basic.int_dtypes
+        assert dimensions.ndim == 1
+        dimensions = theano.tensor.basic.cast(dimensions, 'int64')
+
         node = Apply(self, [dimensions],
                      [CDataType("cudnnSpatialTransformerDescriptor_t",
                       freefunc="cudnnDestroySpatialTransformerDescriptor")()])
