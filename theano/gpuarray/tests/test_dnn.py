@@ -2456,8 +2456,10 @@ def test_dnn_spatialtf():
     st_dnn = dnn.dnn_spatialtf(t_img, t_theta, scale_height=scale_height,
                                scale_width=scale_width)
     st_dnn_func = theano.function([t_img, t_theta], st_dnn)
-    # Check if function graph contains the spatial transformer Op
-    assert any([isinstance(node.op, dnn.GpuDnnTransformer)
+    # Check if function graph contains the spatial transformer's grid and sampler Ops
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerGrid)
+                for node in st_dnn_func.maker.fgraph.toposort()])
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerSampler)
                 for node in st_dnn_func.maker.fgraph.toposort()])
 
     img_out_gpu = st_dnn_func(img, transform)
@@ -2508,21 +2510,3 @@ def test_dnn_spatialtf_grad():
 
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
                 for node in grad_fn.maker.fgraph.toposort()])
-
-    # Verify grad wrt input
-    def functor_wrt_i(input):
-        desc = dnn.GpuDnnTransformerDesc(theano.config.floatX)(out_shp)
-        transformed_input = dnn.GpuDnnTransformer()(input, theta, desc)
-        grad = T.grad(T.mean(transformed_input), input)
-        return grad
-
-
-    # Verify grad wrt theta
-    def functor_wrt_t(theta):
-        desc = dnn.GpuDnnTransformerDesc(theano.config.floatX)(out_shp)
-        transformed_input = dnn.GpuDnnTransformer()(img, theta, out, desc)
-        grad = T.grad(T.mean(transformed_input), theta)
-        return grad
-
-    utt.verify_grad(functor_wrt_i, [img])
-    utt.verify_grad(functor_wrt_t, [theta])
