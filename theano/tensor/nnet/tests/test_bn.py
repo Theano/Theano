@@ -293,7 +293,7 @@ def test_batch_normalization_train_grad_grad():
                 x_mean_val = np.random.randn(*param_shape).astype('float64')
                 x_invstd_val = np.random.randn(*param_shape).astype('float64')
 
-                utt.verify_grad(bn_grad_wrt_inputs_f, [x_val, dy_val, scale_val, x_mean_val, x_invstd_val])
+                utt.verify_grad(bn_grad_wrt_inputs_f, [x_val, dy_val, scale_val, x_mean_val, x_invstd_val], abs_tol=5e-4, rel_tol=5e-4)
                 utt.verify_grad(bn_grad_wrt_scale_f, [x_val, dy_val, scale_val, x_mean_val, x_invstd_val])
                 utt.verify_grad(bn_grad_wrt_bias_f, [x_val, dy_val, scale_val, x_mean_val, x_invstd_val])
 
