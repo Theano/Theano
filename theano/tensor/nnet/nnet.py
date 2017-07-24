@@ -2423,7 +2423,7 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
 
 def elu(x, alpha=1):
     """
-    Compute the element-wise exponential linear activation function.
+    Compute the element-wise exponential linear activation function [2]_.
 
     .. versionadded:: 0.8.0
 
@@ -2441,11 +2441,36 @@ def elu(x, alpha=1):
 
     References
     -----
-    .. [1] Djork-Arne Clevert,  Thomas Unterthiner, Sepp Hochreiter
+    .. [2] Djork-Arne Clevert,  Thomas Unterthiner, Sepp Hochreiter
         "Fast and Accurate Deep Network Learning by
         Exponential Linear Units (ELUs)" <http://arxiv.org/abs/1511.07289>`.
     """
     return tensor.switch(x > 0, x, alpha * tensor.expm1(x))
+
+
+def selu(x):
+    """Compute the element-wise Scaled Exponential Linear unit [3]_.
+
+    .. versionadded:: 0.9.0
+
+    Parameters
+    ----------
+    x : symbolic tensor
+        Tensor to compute the activation function for.
+
+    Returns
+    -------
+    symbolic tensor
+        Element-wise scaled exponential linear activation function applied to `x`.
+
+    References
+    ----------
+    .. [3] Klambauer G, Unterthiner T, Mayr A, Hochreiter S.
+        "Self-Normalizing Neural Networks" <https://arxiv.org/abs/1706.02515>
+    """
+    alpha = 1.6732632423543772848170429916717
+    scale = 1.0507009873554804934193349852946
+    return scale * elu(x, alpha)
 
 
 class ScalarSoftsign(theano.scalar.UnaryScalarOp):
