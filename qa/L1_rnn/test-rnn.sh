@@ -1,3 +1,3 @@
-export THEANO_FLAGS="floatX=float32,device=cpu,mode=FAST_RUN"
+export THEANO_FLAGS="floatX=float32,mode=FAST_RUN"
 
 exec python recurrent.py
