@@ -2915,9 +2915,11 @@ def local_abstractconv_cudnn_alternative(node):
         conv_mode = 'cross'
 
     if isinstance(op, AbstractConv2d):
+        if border_mode == 'half' or subsample != (1, 1) or num_groups != 1:
+            return None
         if border_mode == 'full':
             direction_hint = 'bprop inputs'
-        elif border_mode == 'valid':
+        elif border_mode == 'valid' and filter_dilation == (1, 1):
             direction_hint = 'bprop weights'
         else:
             return None
