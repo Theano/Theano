@@ -102,10 +102,10 @@ APPLY_SPECIFIC(dnn_sptf)(PyGpuArrayObject * input,
     }
 
     // Obtain grid dimensions
-    num_images = (int) *( (npy_int *) PyArray_GETPTR1( grid_dims, 0 ) );
-    num_channels = (int) *( (npy_int *) PyArray_GETPTR1( grid_dims, 1 ) );
-    height = (int) *( (npy_int *) PyArray_GETPTR1( grid_dims, 2 ) );
-    width = (int) *( (npy_int *) PyArray_GETPTR1( grid_dims, 3 ) );
+    num_images = (int) *( (npy_int64 *) PyArray_GETPTR1( grid_dims, 0 ) );
+    num_channels = (int) *( (npy_int64 *) PyArray_GETPTR1( grid_dims, 1 ) );
+    height = (int) *( (npy_int64 *) PyArray_GETPTR1( grid_dims, 2 ) );
+    width = (int) *( (npy_int64 *) PyArray_GETPTR1( grid_dims, 3 ) );
 
     gpu_grid_dims[0] = num_images;
     gpu_grid_dims[1] = height;
