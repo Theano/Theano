@@ -1137,10 +1137,6 @@ class LocalMetaOptimizer(LocalOptimizer):
         self.verbose = config.metaopt.verbose
         self.track_dict = defaultdict(lambda: [])
 
-        for o in optimizers:
-            for c in o.tracks():
-                self.track_dict[c].append(o)
-
     def register(self, optimizers):
         self.optimizers.extend(optimizers)
         for o in optimizers:
