@@ -2774,7 +2774,7 @@ class GpuDnnTransformerDesc(COp):
 
     def make_node(self, dimensions):
         dimensions = as_tensor_variable(dimensions)
-        assert dimensions.dtype in theano.tensor.basic.int_dtypes
+        assert dimensions.dtype in theano.tensor.basic.integer_dtypes
         assert dimensions.ndim == 1
         dimensions = theano.tensor.basic.cast(dimensions, 'int64')
 
@@ -2815,7 +2815,7 @@ class GpuDnnTransformerGrid(DnnBase):
 
         # Setup grid dimensions using input from descriptor
         grid_dims = as_tensor_variable(desc.owner.inputs[0])
-        assert grid_dims.dtype in theano.tensor.basic.int_dtypes
+        assert grid_dims.dtype in theano.tensor.basic.integer_dtypes
         assert grid_dims.ndim == 1
         # Ensure 64-bit ints are passed to the C code
         grid_dims = theano.tensor.basic.cast(grid_dims, 'int64')
