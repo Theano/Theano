@@ -68,9 +68,6 @@ APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
     double alpha = 1.0, beta = 0.0;
     float af = alpha, bf = beta;
     cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
-    int input_num_images, input_num_channels,
-        input_height, input_width;
-    int num_images, num_channels, height, width;
 
     switch (input->ga.typecode)
     {
