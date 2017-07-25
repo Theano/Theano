@@ -232,8 +232,8 @@ class DnnVersion(Op):
         res = []
         if config.dnn.include_path:
             res.append(config.dnn.include_path)
-        if config.dnn.cuda_include_path:
-            res.append(config.dnn.cuda_include_path)
+        if config.cuda.include_path:
+            res.append(config.cuda.include_path)
         return res
 
     def c_libraries(self):
@@ -375,8 +375,8 @@ class DnnBase(COp):
         dirs = [os.path.dirname(__file__), pygpu.get_include()]
         if config.dnn.include_path:
             dirs.append(config.dnn.include_path)
-        if config.dnn.cuda_include_path:
-            dirs.append(config.dnn.cuda_include_path)
+        if config.cuda.include_path:
+            dirs.append(config.cuda.include_path)
         return dirs
 
     def c_libraries(self):
