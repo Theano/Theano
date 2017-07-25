@@ -6,7 +6,8 @@ import theano
 from theano import Apply, config, Op
 
 from theano.compile import optdb
-from theano.gof import LocalOptGroup
+from theano.gof import LocalOptGroup, ParamsType
+from theano.scalar import bool as bool_t
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.opt import in2out
 
@@ -38,6 +39,7 @@ class GpuGemv(BlasOp):
     Gemv on the GPU.
 
     """
+    params_type = ParamsType(inplace=bool_t)
     __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
@@ -68,9 +70,9 @@ class GpuGemv(BlasOp):
         beta = beta.astype(expected)
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
-    def perform(self, node, inputs, out_storage):
+    def perform(self, node, inputs, out_storage, params):
         y, alpha, A, x, beta = inputs
-        inplace = self.inplace
+        inplace = params.inplace
         if inplace and y.strides[0] < 0:
             inplace = False
         if A.shape[1] == 0:
@@ -82,27 +84,20 @@ class GpuGemv(BlasOp):
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], y=inp[0], alpha=inp[1], A=inp[2], x=inp[3],
-                    beta=inp[4], fail=sub['fail'], name=name)
-        if self.inplace:
-            code = """
-                   if (%(y)s->ga.strides[0] <= 0) {
-                     %(out)s = theano_try_copy(%(out)s, %(y)s);
-                     if (%(out)s == NULL) {
-                       %(fail)s
-                     }
-                   } else {
-                     Py_XDECREF(%(out)s);
-                     %(out)s = %(y)s;
-                     Py_INCREF(%(out)s);
-                   }
-                   """ % vars
-        else:
-            code = """
-                   %(out)s = theano_try_copy(%(out)s, %(y)s);
-                   if (%(out)s == NULL) {
-                       %(fail)s
-                   }
-                   """ % vars
+                    beta=inp[4], fail=sub['fail'], name=name,
+                    params=sub['params'])
+        code = """
+               if (!%(params)s->inplace || %(y)s->ga.strides[0] <= 0) {
+                 %(out)s = theano_try_copy(%(out)s, %(y)s);
+                 if (%(out)s == NULL) {
+                   %(fail)s
+                 }
+               } else {
+                 Py_XDECREF(%(out)s);
+                 %(out)s = %(y)s;
+                 Py_INCREF(%(out)s);
+               }
+               """ % vars
         # in case of possible speed up using blas dot,
         # temporary hack A to 1D for vector-vector dot
         code += """
@@ -156,6 +151,7 @@ class GpuGemm(BlasOp):
     Gemm on the GPU.
 
     """
+    params_type = ParamsType(inplace=bool_t)
     __props__ = ('inplace',)
     _f16_ok = True
 
@@ -195,9 +191,9 @@ class GpuGemm(BlasOp):
         assert C.ndim == 2
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
-    def perform(self, node, inputs, outputs):
+    def perform(self, node, inputs, outputs, params):
         C, alpha, A, B, beta = inputs
-        inplace = self.inplace
+        inplace = params.inplace
         if inplace and not C.flags.forc:
             inplace = False
         outputs[0][0] = blas.gemm(alpha, A, B, beta, C,
@@ -205,35 +201,26 @@ class GpuGemm(BlasOp):
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], C=inp[0], alpha=inp[1], A=inp[2], B=inp[3],
-                    beta=inp[4], fail=sub['fail'], name=name)
-        if self.inplace:
-            code = """
-                   if (!GpuArray_ISONESEGMENT(&%(C)s->ga)) {
-                     %(out)s = theano_try_copy(%(out)s, %(C)s);
-                     if (%(out)s == NULL) {
-                       %(fail)s
-                     }
-                   } else {
-                     Py_XDECREF(%(out)s);
-                     %(out)s = %(C)s;
-                     Py_INCREF(%(out)s);
-                   }
-                   """ % vars
-        else:
-            code = """
-                   %(out)s = theano_try_copy(%(out)s, %(C)s);
-                   if (%(out)s == NULL) {
-                       %(fail)s
-                   }
-                   """ % vars
-        code += """
-        if (pygpu_blas_rgemm(cb_no_trans, cb_no_trans,
-                             ((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
-                             %(A)s, %(B)s,
-                             ((dtype_%(beta)s *)PyArray_DATA(%(beta)s))[0],
-                             %(out)s, 0) == -1) {
-            %(fail)s
-        }
+                    beta=inp[4], fail=sub['fail'], name=name,
+                    params=sub['params'])
+        code = """
+               if (!%(params)s->inplace || !GpuArray_ISONESEGMENT(&%(C)s->ga)) {
+                 %(out)s = theano_try_copy(%(out)s, %(C)s);
+                 if (%(out)s == NULL) {
+                   %(fail)s
+                 }
+               } else {
+                 Py_XDECREF(%(out)s);
+                 %(out)s = %(C)s;
+                 Py_INCREF(%(out)s);
+               }
+               if (pygpu_blas_rgemm(cb_no_trans, cb_no_trans,
+                                    ((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
+                                    %(A)s, %(B)s,
+                                    ((dtype_%(beta)s *)PyArray_DATA(%(beta)s))[0],
+                                    %(out)s, 0) == -1) {
+                 %(fail)s
+               }
         """ % vars
         if config.gpuarray.sync:
             code += """
@@ -242,7 +229,7 @@ class GpuGemm(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
 gpugemm_no_inplace = GpuGemm(inplace=False)
 gpugemm_inplace = GpuGemm(inplace=True)
@@ -253,6 +240,7 @@ class GpuGer(BlasOp):
     Ger on the GPU.
 
     """
+    params_type = ParamsType(inplace=bool_t)
     __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
@@ -278,9 +266,9 @@ class GpuGer(BlasOp):
         assert y.ndim == 1
         return Apply(self, [A, alpha, x, y], [A.type()])
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, params):
         A, alpha, x, y = inp
-        inplace = self.inplace
+        inplace = params.inplace
         if inplace and not A.flags.forc:
             inplace = False
         out[0][0] = blas.ger(alpha, x, y, A,
@@ -288,33 +276,23 @@ class GpuGer(BlasOp):
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], A=inp[0], alpha=inp[1], x=inp[2], y=inp[3],
-                    fail=sub['fail'], name=name)
-        if self.inplace:
-            code = """
-                   if (!GpuArray_ISONESEGMENT(&%(A)s->ga)) {
-                     %(out)s = theano_try_copy(%(out)s, %(A)s);
-                     if (%(out)s == NULL) {
-                       %(fail)s
-                     }
-                   } else {
-                     Py_XDECREF(%(out)s);
-                     %(out)s = %(A)s;
-                     Py_INCREF(%(out)s);
-                   }
-                   """ % vars
-        else:
-            code = """
-                   %(out)s = theano_try_copy(%(out)s, %(A)s);
-                   if (%(out)s == NULL) {
-                       %(fail)s
-                   }
-                   """ % vars
-        code += """
-        if (pygpu_blas_rger(((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
-                            %(x)s, %(y)s, %(out)s, 0) == -1) {
-            %(fail)s
-        }
-        """ % vars
+                    fail=sub['fail'], name=name, params=sub['params'])
+        code = """
+               if (!%(params)s->inplace || !GpuArray_ISONESEGMENT(&%(A)s->ga)) {
+                 %(out)s = theano_try_copy(%(out)s, %(A)s);
+                 if (%(out)s == NULL) {
+                   %(fail)s
+                 }
+               } else {
+                 Py_XDECREF(%(out)s);
+                 %(out)s = %(A)s;
+                 Py_INCREF(%(out)s);
+               }
+               if (pygpu_blas_rger(((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
+                                %(x)s, %(y)s, %(out)s, 0) == -1) {
+                 %(fail)s
+               }
+               """ % vars
         if config.gpuarray.sync:
             code += """
             GpuArray_sync(&%(out)s->ga);
@@ -322,7 +300,7 @@ class GpuGer(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 
 gpuger_no_inplace = GpuGer(inplace=False)
@@ -396,6 +374,7 @@ gpu_dot22 = GpuDot22()
 
 
 class GpuGemmBatch(BlasOp):
+    params_type = ParamsType(inplace=bool_t)
     __props__ = ('inplace',)
     _f16_ok = True
 
@@ -432,11 +411,11 @@ class GpuGemmBatch(BlasOp):
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], C=inp[0], alpha=inp[1], A=inp[2], B=inp[3],
-                    beta=inp[4], inplace=int(self.inplace),
+                    beta=inp[4], params=sub['params'],
                     fail=sub['fail'], name=name)
         code = """
         int err;
-        if (%(inplace)s){
+        if (%(params)s->inplace){
                    if (!GpuArray_ISONESEGMENT(&%(C)s->ga)) {
                      %(out)s = theano_try_copy(%(out)s, %(C)s);
                      if (%(out)s == NULL) {
@@ -472,7 +451,7 @@ class GpuGemmBatch(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 gpugemmbatch_no_inplace = GpuGemmBatch(inplace=False)
 gpugemmbatch_inplace = GpuGemmBatch(inplace=True)
