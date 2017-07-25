@@ -2310,7 +2310,7 @@ def test_dnn_spatialtf():
     Spatial Transformer implementation using Theano from Lasagne
     Original author: skaae (https://github.com/skaae)
     """
-    def spatialtf_cpu(theta, inp, scale_height, scale_width, border_mode='nearest'):
+    def spatialtf_cpu(inp, theta, scale_height, scale_width, border_mode='nearest'):
         num_batch, num_channels, height, width = inp.shape
         theta = T.reshape(theta, (-1, 2, 3))
 
@@ -2435,42 +2435,40 @@ def test_dnn_spatialtf():
         grid = T.concatenate([x_t_flat, y_t_flat, ones], axis=0)
         return grid
 
-    # Generate random set of RGB images with 256x256 resolution (pixel values in [0, 255])
-    img_dims = (10, 256, 256, 3)  # images are usually NHWC
-    img = np.random.randint(low=0, high=256, size=img_dims)
-    # Convert from NHWC to NCHW
-    img = np.transpose(img, axes=(0, 3, 1, 2)).astype(theano.config.floatX)
+    # Generate random set of RGB images with 256x256 resolution (pixel values
+    # in [0, 255]). The set of images is generated in the expected (NCHW) format
+    img_dims = (10, 3, 32, 32)
+    img = np.random.randint(low=0, high=256, size=img_dims).astype(theano.config.floatX)
     scale_height = 0.25
     scale_width = 0.75
 
     # Transformation matrix
-    theta = [[-1, 0, 0],
-             [0, -1, 0]]
-
-    transform = np.asarray(img_dims[0] * [theta], dtype=theano.config.floatX)
+    transform = [[-1, 0, 0],
+                 [0, -1, 0]]
+    theta = np.asarray(img_dims[0] * [transform], dtype=theano.config.floatX)
 
     # Create symbolic variables for inputs and transformations
     t_img = T.tensor4('img')
     t_theta = T.tensor3('theta')
 
-    st_dnn = dnn.dnn_spatialtf(t_img, t_theta, scale_height=scale_height,
+    st_dnn = dnn.dnn_spatialtf(t_img, t_theta,
+                               scale_height=scale_height,
                                scale_width=scale_width)
     st_dnn_func = theano.function([t_img, t_theta], st_dnn)
     # Check if function graph contains the spatial transformer's grid and sampler Ops
-    assert any([isinstance(node.op, dnn.GpuDnnTransformerGrid)
-                for node in st_dnn_func.maker.fgraph.toposort()])
-    assert any([isinstance(node.op, dnn.GpuDnnTransformerSampler)
-                for node in st_dnn_func.maker.fgraph.toposort()])
+    apply_nodes = st_dnn_func.maker.fgraph.apply_nodes
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerGrid) for node in apply_nodes])
+    assert any([isinstance(node.op, dnn.GpuDnnTransformerSampler) for node in apply_nodes])
 
-    img_out_gpu = st_dnn_func(img, transform)
-    img_out = np.asarray(img_out_gpu)
+    img_out_gpu = st_dnn_func(img, theta)
+    img_out_gpu = np.asarray(img_out_gpu)
 
     # Setup CPU Op
-    st_cpu = spatialtf_cpu(t_theta, t_img, scale_height, scale_width, 'nearest')
-    st_cpu_func = theano.function([t_theta, t_img], [st_cpu], mode=mode_without_gpu)
-    res, = st_cpu_func(transform, img)
+    st_cpu = spatialtf_cpu(t_img, t_theta, scale_height, scale_width, 'nearest')
+    st_cpu_func = theano.function([t_img, t_theta], st_cpu, mode=mode_without_gpu)
+    img_out_cpu = st_cpu_func(img, theta)
 
-    utt.assert_allclose(img_out, res, rtol=1e-2, atol=1e-2)
+    utt.assert_allclose(img_out_cpu, img_out_gpu, rtol=1e-2, atol=1e-2)
 
 
 def test_dnn_spatialtf_grad():
