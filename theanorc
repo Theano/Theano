@@ -19,7 +19,7 @@ enabled=True
 #### Configure the new 'gpuarray' backend
 [gpuarray]
 ## Cache will grow automatically as needed
-preallocate=0.2
+preallocate=0.45
 
 
 [nvcc]
