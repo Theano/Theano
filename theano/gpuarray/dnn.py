@@ -2950,6 +2950,10 @@ class GpuDnnTransformerGradT(DnnBase):
     def make_node(self, dgrid, desc):
         context_name = infer_context_name(desc)
 
+        if (not isinstance(desc.type, CDataType) or
+                desc.type.ctype != 'cudnnSpatialTransformerDescriptor_t'):
+            raise ValueError('desc must be cudnnSpatialTransformerDescriptor_t')
+
         dgrid = as_gpuarray_variable(dgrid, context_name)
         assert dgrid.dtype in ('float16', 'float32', 'float64')
         assert dgrid.ndim == 4
