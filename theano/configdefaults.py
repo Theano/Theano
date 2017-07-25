@@ -325,13 +325,15 @@ AddConfigVar('dnn.conv.precision',
              in_c_key=False)
 
 
-def get_dnn_path():
+def get_cuda_root():
     # We look for the cuda path since we need headers from there
     v = os.getenv('CUDA_ROOT', "")
     if v:
         return v
     s = os.getenv("PATH")
     if not s:
+        if os.path.exists('/usr/local/cuda'):
+            return '/usr/local/cuda'
         return ''
     for dir in s.split(os.path.pathsep):
         if os.path.exists(os.path.join(dir, "nvcc")):
@@ -341,7 +343,7 @@ def get_dnn_path():
 
 AddConfigVar('dnn.base_path',
              "Install location of cuDNN.",
-             StrParam(get_cuda_root),
+             StrParam(''),
              in_c_key=False)
 
 
@@ -354,6 +356,19 @@ def default_dnn_inc_path():
 AddConfigVar('dnn.include_path',
              "Location of the cudnn header",
              StrParam(default_dnn_inc_path),
+             in_c_key=False)
+
+
+def default_dnn_cuda_inc_path():
+    cuda_root = get_cuda_root()
+    if cuda_root:
+        return os.path.join(cuda_root, 'include')
+    return ''
+
+
+AddConfigVar('dnn.cuda_include_path',
+             "Location of the cuda include for cudnn",
+             StrParam(default_dnn_cuda_inc_path),
              in_c_key=False)
 
 
