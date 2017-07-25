@@ -2511,4 +2511,8 @@ def test_dnn_spatialtf_grad():
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
                 for node in grad_fn.maker.fgraph.toposort()])
 
-    utt.verify_grad(dnn.dnn_spatialtf(t_img, theta), [img], mode=mode_with_gpu)
+    def fn_wrt_i(img, theta):
+        op = dnn.dnn_spatialtf(img, theta)
+        return op
+
+    utt.verify_grad(fn_wrt_i, [img, theta], mode=mode_with_gpu)
