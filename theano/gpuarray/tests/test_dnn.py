@@ -2437,7 +2437,7 @@ def test_dnn_spatialtf():
 
     # Generate random set of RGB images with 256x256 resolution (pixel values
     # in [0, 255]). The set of images is generated in the expected (NCHW) format
-    img_dims = (10, 3, 32, 32)
+    img_dims = (5, 3, 16, 16)
     img = np.random.randint(low=0, high=256, size=img_dims).astype(theano.config.floatX)
     scale_height = 0.25
     scale_width = 0.75
@@ -2477,40 +2477,35 @@ def test_dnn_spatialtf_grad():
 
     utt.seed_rng()
 
-    # Generate random set of RGB images with 256x256 resolution (pixel values in [0, 255])
-    img_dims = (1, 256, 256, 3)  # images are usually NHWC
-    img = np.random.randint(low=0, high=256, size=img_dims)
-    # Convert from NHWC to NCHW
-    img = np.transpose(img, axes=(0, 3, 1, 2)).astype(theano.config.floatX)
+    inputs = T.tensor4('inputs')
+    theta = T.tensor3('theta')
 
-    # Transformation matrix
-    transform = [[-1, 0, 0],
-                 [0, -1, 0]]
+    out = dnn.dnn_spatialtf(inputs, theta, scale_height=0.25, scale_width=0.75)
+    out_mean = T.mean(out)
+    mean_gi = T.grad(out_mean, [inputs])
+    mean_gt = T.grad(out_mean, [theta])
 
-    theta = np.asarray(img_dims[0] * [transform], dtype=theano.config.floatX)
-
-    out_shp = (img.shape[0], img.shape[1], int(img.shape[2] * 0.25),
-               int(img.shape[3] * 0.75))
-    dy = -1 + 2 * np.random.randn(*out_shp).astype(theano.config.floatX)
-
-    t_img = T.tensor4('img')
-    t_theta = T.tensor3('theta')
-    t_dy = T.tensor4('dy')
-
-    op = dnn.dnn_spatialtf(t_img, t_theta, scale_height=0.25, scale_width=0.75)
-
-    grad_i, grad_t = T.grad(None, wrt=[t_img, t_theta], known_grads={op: t_dy})
-    grad_fn = theano.function([t_img, t_theta, t_dy], [grad_i, grad_t])
-    grad_fn(img, theta, dy)
-
+    f_gi = theano.function([inputs, theta], mean_gi)
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradI)
-                for node in grad_fn.maker.fgraph.toposort()])
+                for node in f_gi.maker.fgraph.apply_nodes])
 
+    f_gt = theano.function([inputs, theta], mean_gt)
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
-                for node in grad_fn.maker.fgraph.toposort()])
+                for node in f_gt.maker.fgraph.apply_nodes])
 
-    def fn_wrt_i(img, theta):
-        op = dnn.dnn_spatialtf(img, theta)
-        return op
+    # Generate random set of RGB images with 256x256 resolution (pixel values
+    # in [0, 255]). The set of images is generated in the expected (NCHW) format
+    input_dims = (5, 3, 16, 16)
+    inputs_val = np.random.randint(low=0, high=256, size=input_dims).astype(theano.config.floatX)
+    # Tensor with transformations
+    theta_val = np.random.random((input_dims[0], 2, 3)).astype(theano.config.floatX)
 
-    utt.verify_grad(fn_wrt_i, [img, theta], mode=mode_with_gpu)
+    # Check that the gradients are computed
+    f_gi(inputs_val, theta_val)
+    f_gt(inputs_val, theta_val)
+
+    def grad_functor(inputs, theta):
+        out = dnn.dnn_spatialtf(inputs, theta)
+        return out
+
+    utt.verify_grad(grad_functor, [inputs_val, theta_val], mode=mode_with_gpu)
