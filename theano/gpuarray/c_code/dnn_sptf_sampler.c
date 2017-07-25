@@ -76,14 +76,14 @@ APPLY_SPECIFIC(dnn_sptf_sampler)(PyGpuArrayObject * input,
 
     out_dims[0] = (size_t) PyGpuArray_DIM(input, 0); // num_images
     out_dims[1] = (size_t) PyGpuArray_DIM(input, 1); // num_channels
-    out_dims[2] = (size_t) PyGpuArray_DIM(grid, 1); // grid width
-    out_dims[3] = (size_t) PyGpuArray_DIM(grid, 2); // grid height
+    out_dims[2] = (size_t) PyGpuArray_DIM(grid, 1); // grid height
+    out_dims[3] = (size_t) PyGpuArray_DIM(grid, 2); // grid width
 
     if ( out_dims[0] == 0 || out_dims[1] == 0 || out_dims[2] == 0 || out_dims[3] == 0 )
     {
         PyErr_SetString( PyExc_RuntimeError,
             "GpuDnnTransformerSampler: one of the sampler dimensions is zero" );
-        return 1; 
+        return 1;
     }
 
     if ( theano_prep_output( output, 4, out_dims, input->ga.typecode,
@@ -126,3 +126,4 @@ APPLY_SPECIFIC(dnn_sptf_sampler)(PyGpuArrayObject * input,
 
     return 0;
 }
+
