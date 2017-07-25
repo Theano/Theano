@@ -1,14 +1,13 @@
-
 #!/bin/bash
 
-# Script for Jenkins continuous integration testing on macOS
+BUILDBOT_DIR=$WORKSPACE/nightly_build
+THEANO_PARAM="theano --with-timer --timer-top-n 10"
+BASECOMPILEDIR=$HOME/.theano/buildbot_theano_mac
+# Set test reports using nosetests xunit
+XUNIT="--with-xunit --xunit-file="
+SUITE="--xunit-testsuite-name="
 
-# Print commands as they are executed
-set -x
-
-# Copy cache from master
-BASECOMPILEDIR=$HOME/.theano/pr_theano_mac
-rsync -a $HOME/.theano/buildbot_theano_mac/ $BASECOMPILEDIR
+export THEANO_FLAGS=init_gpu_device=cuda
 
 # Set path for conda and cmake
 export PATH="/Users/jenkins/miniconda2/bin:/usr/local/bin:$PATH"
@@ -51,7 +50,15 @@ export CPLUS_INCLUDE_PATH=:${LIBDIR}/include:${CPLUS_INCLUDE_PATH}
 
 python -c 'import pygpu; print(pygpu.__file__)'
 
-# Testing theano
-THEANO_PARAM="theano --with-timer --timer-top-n 10 --with-xunit --xunit-file=theano_mac_pr_tests.xml"
-FLAGS=init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,base_compiledir=$BASECOMPILEDIR,dnn.library_path=$HOME/cuda/lib,gcc.cxxflags="-L${LIBDIR}/lib"
-THEANO_FLAGS=${FLAGS} python bin/theano-nose ${THEANO_PARAM}
+mkdir -p ${BUILDBOT_DIR}
+ls -l ${BUILDBOT_DIR}
+echo "Directory of stdout/stderr ${BUILDBOT_DIR}"
+echo
+echo
+
+set -x
+
+# Fast run and float32
+FILE=${BUILDBOT_DIR}/theano_python_fastrun_f32_tests.xml
+NAME=mac_fastrun_f32
+THEANO_FLAGS=$THEANO_FLAGS,base_compiledir=$BASECOMPILEDIR,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32,dnn.library_path=${HOME}/cuda/lib,gcc.cxxflags="-L${LIBDIR}/lib" python bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
