@@ -325,7 +325,8 @@ AddConfigVar('dnn.conv.precision',
              in_c_key=False)
 
 
-def get_cuda_root():
+def get_dnn_path():
+    # We look for the cuda path since we need headers from there
     v = os.getenv('CUDA_ROOT', "")
     if v:
         return v
@@ -338,25 +339,58 @@ def get_cuda_root():
     return ''
 
 
-def default_dnn_include_path():
-    cuda_root = get_cuda_root()
-    if cuda_root == '':
-        return ''
-    return os.path.join(cuda_root, 'include')
+AddConfigVar('dnn.base_path',
+             "Install location of cuDNN.",
+             StrParam(get_cuda_root),
+             in_c_key=False)
+
+
+def default_dnn_inc_path():
+    if theano.config.dnn.base_path != '':
+        return os.path.join(theano.config.dnn.base_path, 'include')
+    return ''
 
 
 AddConfigVar('dnn.include_path',
-             "Location of the cudnn header (defaults to the cuda root)",
-             # We keep the default here since cudnn needs headers from cuda
-             StrParam(default_dnn_include_path()),
-             # Added elsewhere in the c key only when needed.
+             "Location of the cudnn header",
+             StrParam(default_dnn_inc_path),
              in_c_key=False)
 
+
+def default_dnn_lib_path():
+    if theano.config.dnn.base_path != '':
+        path = os.path.join(theano.config.dnn.base_path, 'lib')
+        if sys.platform == 'win32':
+            path = os.path.join(path, 'x64')
+        return path
+    return ''
+
+
 AddConfigVar('dnn.library_path',
-             "Location of the cudnn library (defaults to the cuda root)",
-             StrParam(''),
-             # Added elsewhere in the c key only when needed.
+             "Location of the cudnn link library.",
+             StrParam(default_dnn_lib_path),
              in_c_key=False)
+
+
+def default_dnn_bin_path():
+    if type(theano.config.dnn).base_path.is_default:
+        return ''
+    else:
+        if theano.config.dnn.base_path != '':
+            if sys.platform == 'win32':
+                return os.path.join(theano.config.dnn.base_path, 'bin')
+            else:
+                return theano.config.dnn.library_path
+        return ''
+
+
+AddConfigVar('dnn.bin_path',
+             "Location of the cuDNN load library "
+             "(on non-windows platforms, "
+             "this is the same as dnn.library_path)",
+             StrParam(default_dnn_bin_path),
+             in_c_key=False)
+
 
 AddConfigVar('dnn.enabled',
              "'auto', use cuDNN if available, but silently fall back"
