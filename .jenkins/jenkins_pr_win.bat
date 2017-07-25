@@ -47,5 +47,5 @@ cd ..
 
 set THEANO_PARAM=theano --with-timer --timer-top-n 10 --with-xunit --xunit-file=theano_win_pr_tests.xml
 set NAME=pr_win
-set THEANO_FLAGS=%THEANO_FLAGS%,mode=FAST_RUN,floatX=float32,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,compiledir=%COMPILEDIR:\=\\%,dnn.base_path=%CUDNNPATH%,dnn.cuda_include_path="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\include",gcc.cxxflags='-I"C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\include" -I%LIBDIR:\=\\%\\include -L"C:\\Program Files\\NVIDIA GPU Computing Toolkit\CUDA\\v8.0\\lib\\x64" -L%LIBDIR:\=\\%\\lib'
+set THEANO_FLAGS=%THEANO_FLAGS%,mode=FAST_RUN,floatX=float32,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,compiledir=%COMPILEDIR:\=\\%,dnn.base_path="%CUDNNPATH%",gcc.cxxflags='-I%LIBDIR:\=\\%\\include -L%LIBDIR:\=\\%\\lib'
 python bin\theano-nose %THEANO_PARAM% --xunit-testsuite-name=%NAME%

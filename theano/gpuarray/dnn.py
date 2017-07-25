@@ -140,6 +140,8 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
     params.extend(['-I%s%s%s' % (path_wrapper, os.path.dirname(__file__), path_wrapper)])
     if config.dnn.include_path:
         params.extend(['-I%s%s%s' % (path_wrapper, config.dnn.include_path, path_wrapper)])
+    if config.cuda.include_path:
+        params.extend(['-I%s%s%s' % (path_wrapper, config.cuda.include_path, path_wrapper)])
     if config.dnn.library_path:
         params.extend(['-L%s%s%s' % (path_wrapper, config.dnn.library_path, path_wrapper)])
     # Do not run here the test program. It would run on the
