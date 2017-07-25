@@ -3021,16 +3021,6 @@ class GpuDnnTransformerGradI(DnnBase):
 
         return Apply(self, inputs, outputs)
 
-    def L_op(self, inputs, outputs, grads):
-        img, grid, dy, desc = inputs
-        dimg_out, dgrid = outputs
-        grad_cost = grads[0]
-
-        dimg = dimg_out * grad_cost
-        d_dy = grad_not_implemented(self, dy, 2)
-
-        return [dimg, dgrid, d_dy, DisconnectedType()()]
-
     def connection_pattern(self, node):
         # not connected to desc
         return [[1, 1], [1, 1], [1, 1], [0, 0]]
@@ -3062,12 +3052,6 @@ class GpuDnnTransformerGradT(DnnBase):
         outputs = [dtheta]
 
         return Apply(self, inputs, outputs)
-
-    def L_op(self, inputs, outputs, grads):
-        dgrid, desc = inputs
-        grad_cost = grads[0]
-        dtheta = outputs * grad_cost
-        return [dtheta, DisconnectedType()()]
 
     def connection_pattern(self, node):
         # not connected to desc
