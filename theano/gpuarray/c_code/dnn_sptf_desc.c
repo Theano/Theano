@@ -1,15 +1,15 @@
 #section support_code_apply
 
-int APPLY_SPECIFIC(dnn_sptf_desc)(PyArrayObject * dims,
+int APPLY_SPECIFIC(dnn_sptf_desc)(PyArrayObject * out_dims,
                                   cudnnSpatialTransformerDescriptor_t * desc,
                                   PARAMS_TYPE * params)
 {
     cudnnStatus_t err;
 
-    const int nimages = (int) *((npy_int64 *) PyArray_GETPTR1(dims, 0));
-    const int nchannels = (int) *((npy_int64 *) PyArray_GETPTR1(dims, 1));
-    const int height = (int) *((npy_int64 *) PyArray_GETPTR1(dims, 2));
-    const int width = (int) *((npy_int64 *) PyArray_GETPTR1(dims, 3));
+    const int nimages = (int) *((npy_int64 *) PyArray_GETPTR1(out_dims, 0));
+    const int nchannels = (int) *((npy_int64 *) PyArray_GETPTR1(out_dims, 1));
+    const int height = (int) *((npy_int64 *) PyArray_GETPTR1(out_dims, 2));
+    const int width = (int) *((npy_int64 *) PyArray_GETPTR1(out_dims, 3));
 
     if ( nimages == 0 || nchannels == 0 || height == 0 || width == 0 )
     {
