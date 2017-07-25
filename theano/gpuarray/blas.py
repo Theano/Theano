@@ -767,7 +767,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
                 PyErr_Format(PyExc_ValueError,
                              "GpuCorrMM: impossible output shape\\n"
                              "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                             "  weights shape: %%ld x %%ld x %%ld x %%ld %%ld %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld x %%ld\\n"
                              "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
                              PyGpuArray_DIMS(bottom)[0], PyGpuArray_DIMS(bottom)[1],
                              PyGpuArray_DIMS(bottom)[2], PyGpuArray_DIMS(bottom)[3],
@@ -812,7 +812,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
                 PyErr_Format(PyExc_ValueError,
                              "GpuCorrMM backprop wrt. weights: impossible output shape\\n"
                              "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                             "  weights shape: %%ld x %%ld x %%ld x %%ld %%ld %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld x %%ld\\n"
                              "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
                              PyGpuArray_DIMS(bottom)[0], PyGpuArray_DIMS(bottom)[1],
                              PyGpuArray_DIMS(bottom)[2], PyGpuArray_DIMS(bottom)[3],
@@ -855,7 +855,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
                 PyErr_Format(PyExc_ValueError,
                              "GpuCorrMM backprop wrt. inputs: impossible output shape\\n"
                              "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                             "  weight shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weight shape: %%ld x %%ld x %%ld x %%ld x %%ld x %%ld\\n"
                              "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
                              out_dim[0], out_dim[1], out_dim[2], out_dim[3],
                              PyGpuArray_DIMS(weights)[0], PyGpuArray_DIMS(weights)[1],

@@ -378,7 +378,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         if (unshared) {
             PyErr_Format(PyExc_ValueError,
                     "GpuCorrMM requires weight to be C-contiguous, "
-                    "but strides are: %ld %ld %ld %ld\n",
+                    "but strides are: %ld %ld %ld %ld %ld %ld\n",
                     PyGpuArray_STRIDES(weight)[0],
                     PyGpuArray_STRIDES(weight)[1],
                     PyGpuArray_STRIDES(weight)[2],
@@ -449,10 +449,10 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                 topWidth != PyGpuArray_DIMS(weight)[2]) {
             PyErr_Format(PyExc_ValueError,
                     "GpuCorrMM regions in kernel must match output regions:\n"
-                    "  bottom shape: %d %d %d %d\n"
-                    "  weight shape: %d %ld %ld %d %d %d"
-                    " (expected %d %d %d %d %d %d)\n"
-                    "  top shape(calculated): %d %d %d %d\n",
+                    "  bottom shape: %ld %ld %ld %ld\n"
+                    "  weight shape: %ld %ld %ld %ld %ld %ld"
+                    " (expected %ld %ld %ld %ld %ld %ld)\n"
+                    "  top shape(calculated): %ld %ld %ld %ld\n",
                     batchSize, nChannels, bottomHeight, bottomWidth,
                     nFilters, PyGpuArray_DIMS(weight)[1],
                     PyGpuArray_DIMS(weight)[2], nChannels, kH, kW,
@@ -466,9 +466,9 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                 topWidth != PyGpuArray_DIMS(top)[3]) {
             PyErr_Format(PyExc_ValueError,
                     "GpuCorrMM shape inconsistency:\n"
-                    "  bottom shape: %d %d %d %d\n"
-                    "  weight shape: %d %d %d %d %d %d\n"
-                    "  top shape: %ld %ld %ld %ld (expected %d %d %d %d)\n",
+                    "  bottom shape: %ld %ld %ld %ld\n"
+                    "  weight shape: %ld %ld %ld %ld %ld %ld\n"
+                    "  top shape: %ld %ld %ld %ld (expected %ld %ld %ld %ld)\n",
                     batchSize, nChannels, bottomHeight, bottomWidth,
                     nFilters, nChannels, topHeight, topWidth, kH, kW,
                     PyGpuArray_DIMS(top)[0], PyGpuArray_DIMS(top)[1],
