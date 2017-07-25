@@ -2904,7 +2904,7 @@ class GpuDnnTransformerGradI(DnnBase):
     _f16_ok = True
     check_input = False
 
-    def __init__(self, dtype=theano.config.floatX):
+    def __init__(self):
         DnnBase.__init__(self, ["c_code/dnn_sptf_gi.c"], "APPLY_SPECIFIC(dnn_sptf_gi)")
 
     def make_node(self, img, grid, dy, desc):
