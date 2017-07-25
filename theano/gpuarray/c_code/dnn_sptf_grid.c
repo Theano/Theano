@@ -77,4 +77,3 @@ APPLY_SPECIFIC(dnn_sptf_grid)(PyGpuArrayObject * theta,
 
     return 0;
 }
-
