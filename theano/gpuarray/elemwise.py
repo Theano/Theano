@@ -504,7 +504,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_mask = tuple(reduce_mask)
         self.reduce_mask = reduce_mask
 
-        # used to make sure that callfs to scalar op
+        # used to make sure that calls to scalar op
         # have unique name arguments
         self._n_scalar_op_calls = 0
         CAReduceDtype.__init__(self, scalar_op, axis=axis,
