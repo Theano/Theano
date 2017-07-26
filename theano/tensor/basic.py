@@ -4709,7 +4709,6 @@ def vertical_stack(*args):
     return concatenate(args, axis=0)
 
 
-
 class Reshape(Op):
     """Perform a reshape operation of the input x to the new shape shp.
     The number of dimensions to which to reshape to (ndim) must be
@@ -4731,7 +4730,6 @@ class Reshape(Op):
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.ndim)
-
 
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
@@ -4918,8 +4916,6 @@ def reshape(x, newshape, ndim=None):
     op = Reshape(ndim)
     rval = op(x, newshape)
     return rval
-
-
 
 
 class Flatten(Op):
