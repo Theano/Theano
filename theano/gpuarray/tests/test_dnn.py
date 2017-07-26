@@ -2435,8 +2435,8 @@ def test_dnn_spatialtf():
         grid = T.concatenate([x_t_flat, y_t_flat, ones], axis=0)
         return grid
 
-    # Generate random set of RGB images with 256x256 resolution (pixel values
-    # in [0, 255]). The set of images is generated in the expected (NCHW) format
+    # Generate random set of RGB images (pixel values in [0, 255]). The set of
+    # images is generated in the expected (NCHW) format
     img_dims = (5, 3, 16, 16)
     img = np.random.randint(low=0, high=256, size=img_dims).astype(theano.config.floatX)
     scale_height = 0.25
@@ -2493,8 +2493,8 @@ def test_dnn_spatialtf_grad():
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
                 for node in f_gt.maker.fgraph.apply_nodes])
 
-    # Generate random set of RGB images with 256x256 resolution (pixel values
-    # in [0, 255]). The set of images is generated in the expected (NCHW) format
+    # Generate random set of RGB images(pixel values in [0, 255]). The set of
+    # images is generated in the expected (NCHW) format
     input_dims = (5, 3, 16, 16)
     inputs_val = np.random.randint(low=0, high=256, size=input_dims).astype(theano.config.floatX)
     # Tensor with transformations
