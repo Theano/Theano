@@ -1511,7 +1511,7 @@ AddConfigVar('check_stack_trace',
              " optimization. check_all checks if the stack trace is added"
              " and check_and_skip checks all the stack trace of optimizations"
              " but skips the ones that have a dummy value ",
-             EnumStr('check_and_skip', 'check_all', 'not_checking'),
+             EnumStr('not_checking', 'check_and_skip', 'check_all'),
              in_c_key=False)
 
 
