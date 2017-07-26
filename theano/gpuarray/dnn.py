@@ -426,13 +426,28 @@ class GpuDnnConvDesc(COp):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), config.dnn.include_path]
+        dirs = [os.path.dirname(__file__)]
+        if config.dnn.include_path:
+            dirs.append(config.dnn.include_path)
+        if config.cuda.include_path:
+            dirs.append(config.cuda.include_path)
+        return dirs
 
     def c_libraries(self):
         return ['cudnn']
 
     def c_lib_dirs(self):
-        return [config.dnn.library_path]
+        if config.dnn.library_path:
+            return [config.dnn.library_path]
+        return []
+
+    def c_compile_args(self):
+        if config.dnn.bin_path:
+            if sys.platform == 'darwin':
+                return ['-Wl,-rpath,' + config.dnn.bin_path]
+            else:
+                return ['-Wl,-rpath,"' + config.dnn.bin_path + '"']
+        return []
 
     def do_constant_folding(self, node):
         return False
