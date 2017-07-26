@@ -3015,8 +3015,8 @@ def dnn_spatialtf(img, theta, scale_width=1, scale_height=1, precision=theano.co
     Also, the only grid sampler method available is the bilinear interpolation.
     """
     out_dims = (img.shape[0], img.shape[1],
-                img.shape[2] * scale_height,
-                img.shape[3] * scale_width)
+                theano.tensor.ceil(img.shape[2] * scale_height),
+                theano.tensor.ceil(img.shape[3] * scale_width))
     out_dims = tuple([as_scalar(v).astype('int64') for v in out_dims])
 
     # Create spatial transformer descriptor
