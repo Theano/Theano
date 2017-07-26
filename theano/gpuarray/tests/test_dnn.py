@@ -2342,7 +2342,8 @@ def test_dnn_spatialtf():
         height_f = T.cast(height, theano.config.floatX)
         width_f = T.cast(width, theano.config.floatX)
 
-        # scale coordinates from [-1, 1] to [0, width/height - 1]
+        # scale coordinates from [-1, 1] to [0, dimension - 1], where dimension
+        # can be the width or height
         x = (x + 1) / 2 * (width_f - 1)
         y = (y + 1) / 2 * (height_f - 1)
 
