@@ -5,6 +5,7 @@ import logging
 import sys
 import unittest
 from parameterized import parameterized
+from nose.tools import assert_raises
 
 from six import integer_types
 from six.moves import StringIO
@@ -452,11 +453,8 @@ def assertFailure_fast(f):
     THEANO_FLAGS =cycle_detection='fast'.
     """
     if theano.config.cycle_detection == 'fast':
-        class TestAssertion(unittest.TestCase):
-            def runTest(self, *args, **kwargs):
-                with self.assertRaises(Exception):
-                    f(*args, **kwargs)
-        test_assertion = TestAssertion()
-        return test_assertion
+        def new_test(*args, **kwargs):
+            assert_raises(f, *args, **kwargs)
+        return new_test
     else:
         return f
