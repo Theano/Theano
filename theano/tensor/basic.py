@@ -4733,9 +4733,6 @@ class Reshape(Op):
         return '%s{%s}' % (self.__class__.__name__, self.ndim)
 
 
-    def get_params(self, node):
-         return int(self.ndim)
-
     def make_node(self, x, shp):
         x = as_tensor_variable(x)
         shp_orig = shp
@@ -4874,6 +4871,8 @@ class Reshape(Op):
             new_ndim = self.ndim
             sdtype = node.inputs[1].type.dtype_specs()[1]
             fail = sub['fail']
+            params = sub['params']
+
             return """
             assert (PyArray_NDIM(%(shp)s) == 1);
             npy_intp new_dims[%(params)s->ndim];
