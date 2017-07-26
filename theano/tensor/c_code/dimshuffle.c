@@ -99,5 +99,6 @@ int cpu_dimshuffle(PyArrayObject* input, PyArrayObject** res, PARAMS_TYPE* param
 
     free(strides);
     free(dimensions);
+
     return 0;
 }

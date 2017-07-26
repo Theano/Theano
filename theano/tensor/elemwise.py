@@ -139,7 +139,7 @@ class DimShuffle(COp):
         # because of importation issues related to TensorType.
         return ParamsType(input_broadcastable=TensorType(dtype='bool', broadcastable=(False,)),
                           _new_order=theano.tensor.lvector,
-                          transposition=theano.tensor.lvector,
+                          transposition=TensorType(dtype='uint32', broadcastable=(False,)),
                           inplace=theano.scalar.bool)
 
     @property

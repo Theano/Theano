@@ -27,21 +27,16 @@ int gpu_dimshuffle(PyGpuArrayObject* input, PyGpuArrayObject** out, PARAMS_TYPE*
     /** Do shuffle. **/
 
     new_order = (npy_int64*) PyArray_DATA(params->_new_order);
-    transposition = (unsigned int*) malloc(nd_in * sizeof(unsigned int));
+    /* Type of params->transposition (npy_uint32) should be an alias of unsigned int
+     * on platforms supported by Theano. */
+    transposition = (unsigned int*) PyArray_DATA(params->transposition);
     sh = (size_t*) malloc(nd_out * sizeof(size_t));
-    if (transposition == NULL || sh == NULL) {
+    if (sh == NULL) {
         PyErr_NoMemory();
-        free(transposition);
-        free(sh);
         return 1;
-    }
-    for (npy_intp i = 0; i < nd_in; ++i) {
-        transposition[i] = ((npy_int64*) PyArray_DATA(params->transposition))[i];
     }
     tmp = pygpu_transpose(input, transposition);
     if (!tmp) {
-        PyErr_SetString(PyExc_RuntimeError, "GpuDimShuffle: unable to transpose input.");
-        free(transposition);
         free(sh);
         return 1;
     }
@@ -56,21 +51,18 @@ int gpu_dimshuffle(PyGpuArrayObject* input, PyGpuArrayObject** out, PARAMS_TYPE*
     }
     *out = pygpu_reshape(tmp, nd_out, sh, GA_ANY_ORDER, 1, -1);
     Py_DECREF(tmp);
-    free(transposition);
     free(sh);
 
-    /** End shuffle. **/
-
     if (*out == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "GpuDimShuffle: unable to reshape output.");
         return 1;
     }
+
+    /** End shuffle. **/
 
     if (!params->inplace) {
         tmp = pygpu_copy(*out, GA_ANY_ORDER);
         Py_DECREF(*out);
         if (!tmp) {
-            PyErr_SetString(PyExc_RuntimeError, "GpuDimShuffle: unable to copy output.");
             *out = NULL;
             return 1;
         }
