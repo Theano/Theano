@@ -54,6 +54,6 @@ echo "Directory of stdout/stderr %BUILDBOT_DIR%"
 
 REM Fast run and float32
 set FILE=%BUILDBOT_DIR%\theano_python2_fastrun_f32_tests.xml
-set NAME=fastrun_f32
-set THEANO_FLAGS=%THEANO_FLAGS%,compiledir=%COMPILEDIR:\=\\%,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32,dnn.include_path=%CUDNNPATH:\=\\%\\include,dnn.library_path=%CUDNNPATH:\=\\%\\lib\\x64,gcc.cxxflags='-I"C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\include" -I%LIBDIR:\=\\%\\include -L"C:\\Program Files\\NVIDIA GPU Computing Toolkit\CUDA\\v8.0\\lib\\x64" -L%LIBDIR:\=\\%\\lib'
+set NAME=win_fastrun_f32
+set THEANO_FLAGS=%THEANO_FLAGS%,compiledir=%COMPILEDIR:\=\\%,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32,dnn.base_path="%CUDNNPATH%",gcc.cxxflags='-I%LIBDIR:\=\\%\\include -L%LIBDIR:\=\\%\\lib'
 python bin\theano-nose %THEANO_PARAM% %XUNIT%%FILE% %SUITE%%NAME%
