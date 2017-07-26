@@ -3047,7 +3047,7 @@ class CheckStrackTraceFeature(object):
             if not check_stack_trace(fgraph, 'all'):
                 raise NotImplementedError(
                     "Empty stack trace! The optimization that whose"
-                    " stacktrace is empty is %s", reason)
+                    " stacktrace is empty is" + str(reason))
         if theano.config.check_stack_trace == 'check_and_skip':
             if not check_stack_trace(fgraph, 'all'):
                 apply_nodes_to_check = fgraph.apply_nodes
