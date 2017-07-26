@@ -3046,19 +3046,19 @@ class CheckStrackTraceFeature(object):
         # In optdb we only register the CheckStackTraceOptimization when
         # theano.config.check_stack_trace is not off but we also double check here.
         if theano.config.check_stack_trace != 'off' and not check_stack_trace(fgraph, 'all'):
-            if theano.config.check_stack_trace == 'warn':
-                    warnings.warn(
-                        'Empty stack trace! The optimization that inserted this variable is' + str(reason))
             if theano.config.check_stack_trace == 'raise':
                     raise NotImplementedError(
                         'Empty stack trace! The optimization that inserted this variable is' + str(reason))
-            if theano.config.check_stack_trace == 'log':
-                    apply_nodes_to_check = fgraph.apply_nodes
-                    for node in apply_nodes_to_check:
-                        for output in node.outputs:
-                            if not hasattr(output.tag, 'trace') or not output.tag.trace:
-                                output.tag.trace = [[('', 0, 'Empty stack trace! The optimization that' +
-                                                     'inserted this variable is ' + str(reason), '')]]
+            elif theano.config.check_stack_trace in ['log', 'warn']:
+                apply_nodes_to_check = fgraph.apply_nodes
+                for node in apply_nodes_to_check:
+                    for output in node.outputs:
+                        if not hasattr(output.tag, 'trace') or not output.tag.trace:
+                            output.tag.trace = [[('', 0, 'Empty stack trace! The optimization that' +
+                                                 'inserted this variable is ' + str(reason), '')]]
+                if theano.config.check_stack_trace == 'warn':
+                        warnings.warn(
+                            'Empty stack trace! The optimization that inserted this variable is' + str(reason))
 
 
 class CheckStackTraceOptimization(Optimizer):
