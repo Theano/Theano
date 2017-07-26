@@ -1512,7 +1512,7 @@ AddConfigVar('check_stack_trace',
              "that inserted that variable."
              "warn: prints a warning if a stack trace is missing"
              "raise: raises an exception if a stack trace is missing",
-             EnumStr('off', 'log', 'warn', 'raise'),
+             EnumStr('log', 'off', 'warn', 'raise'),
              in_c_key=False)
 
 
