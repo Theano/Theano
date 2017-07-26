@@ -3043,6 +3043,8 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
 
 class CheckStrackTraceFeature(object):
     def on_import(self, fgraph, node, reason):
+        # In optdb we only register the CheckStackTraceOptimization when
+        # theano.config.check_stack_trace is not off but we also double check here.
         if theano.config.check_stack_trace != 'off' and not check_stack_trace(fgraph, 'all'):
             if theano.config.check_stack_trace == 'warn':
                     warnings.warn(
@@ -3060,7 +3062,7 @@ class CheckStrackTraceFeature(object):
 
 
 class CheckStackTraceOptimization(Optimizer):
-    """Optimizer that serves to add ShapeFeature as an fgraph feature."""
+    """Optimizer that serves to add CheckStackTraceOptimization as an fgraph feature."""
 
     def add_requirements(self, fgraph):
         if not hasattr(fgraph, 'CheckStrackTraceFeature'):
