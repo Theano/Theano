@@ -1506,12 +1506,13 @@ AddConfigVar('cycle_detection',
              in_c_key=False)
 
 AddConfigVar('check_stack_trace',
-             "A flag for checking the stack trace during the optimization"
-             " process. The default is not checking the stack trace of any"
-             " optimization. check_all checks if the stack trace is added"
-             " and check_and_skip checks all the stack trace of optimizations"
-             " but skips the ones that have a dummy value ",
-             EnumStr('not_checking', 'check_and_skip', 'check_all'),
+             "A flag for checking the stack trace during the optimization process. "
+             "default (off): does not check the stack trace of any optimization "
+             "log: inserts a dummy stack trace that identifies the optimization"
+             "that inserted that variable."
+             "warn: prints a warning if a stack trace is missing"
+             "raise: raises an exception if a stack trace is missing",
+             EnumStr('off', 'log', 'warn', 'raise'),
              in_c_key=False)
 
 

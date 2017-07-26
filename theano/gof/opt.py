@@ -3043,18 +3043,20 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
 
 class CheckStrackTraceFeature(object):
     def on_import(self, fgraph, node, reason):
-        if theano.config.check_stack_trace == 'check_all':
-            if not check_stack_trace(fgraph, 'all'):
-                raise NotImplementedError(
-                    'Empty stack trace! The optimization that inserted that variable is' + str(reason))
-        if theano.config.check_stack_trace == 'check_and_skip':
-            if not check_stack_trace(fgraph, 'all'):
-                apply_nodes_to_check = fgraph.apply_nodes
-                for node in apply_nodes_to_check:
-                    for output in node.outputs:
-                        if not hasattr(output.tag, 'trace') or not output.tag.trace:
-                            output.tag.trace = [[('', 0, 'Empty stack trace! The optimization that' +
-                                                 'inserted that variable is ' + str(reason), '')]]
+        if theano.config.check_stack_trace != 'off' and not check_stack_trace(fgraph, 'all'):
+            if theano.config.check_stack_trace == 'warn':
+                    warnings.warn(
+                        'Empty stack trace! The optimization that inserted this variable is' + str(reason))
+            if theano.config.check_stack_trace == 'raise':
+                    raise NotImplementedError(
+                        'Empty stack trace! The optimization that inserted this variable is' + str(reason))
+            if theano.config.check_stack_trace == 'log':
+                    apply_nodes_to_check = fgraph.apply_nodes
+                    for node in apply_nodes_to_check:
+                        for output in node.outputs:
+                            if not hasattr(output.tag, 'trace') or not output.tag.trace:
+                                output.tag.trace = [[('', 0, 'Empty stack trace! The optimization that' +
+                                                     'inserted this variable is ' + str(reason), '')]]
 
 
 class CheckStackTraceOptimization(Optimizer):
