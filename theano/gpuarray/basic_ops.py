@@ -1157,12 +1157,11 @@ class GpuReshape(HideC, tensor.Reshape):
         out[0] = x.reshape(tuple(shp))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, shape = inputs
         output, = outputs
-        new_ndim = self.ndim
         sdtype = node.inputs[1].type.dtype_specs()[1]
         fail = sub['fail']
         params = sub['params']
