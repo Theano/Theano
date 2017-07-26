@@ -3054,8 +3054,8 @@ class CheckStrackTraceFeature(object):
                 for node in apply_nodes_to_check:
                     for output in node.outputs:
                         if not hasattr(output.tag, 'trace') or not output.tag.trace:
-                            output.tag.trace = ['This is a dummy value! The stack trace of ' +
-                                                str(reason) + ' was empty!']
+                            output.tag.trace = [[('/dummy/path', 0, 'This is a dummy value! The stack trace of ' +
+                                                 str(reason) + ' was empty!', 'dummy(value)')]]
 
 
 class CheckStackTraceOptimization(Optimizer):
