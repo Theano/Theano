@@ -4868,11 +4868,9 @@ class Reshape(Op):
         if isinstance(node.inputs[0], TensorVariable):
             x, shp = inputs
             z, = outputs
-            new_ndim = self.ndim
             sdtype = node.inputs[1].type.dtype_specs()[1]
             fail = sub['fail']
             params = sub['params']
-
             return """
             assert (PyArray_NDIM(%(shp)s) == 1);
             npy_intp new_dims[%(params)s->ndim];
