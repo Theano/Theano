@@ -970,10 +970,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
-                # assert len(ops) == 4
-                # assert crossentropy_softmax_1hot_with_bias_dx in ops
-                # assert softmax_op in ops
-                # assert softmax_grad not in ops
                 g(x_val, y_val)
             except Exception:
                 theano.printing.debugprint(g)
