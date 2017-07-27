@@ -2015,7 +2015,7 @@ class ConvMetaOptimizer(LocalMetaOptimizer):
                                          node.op.subsample,
                                          node.op.filter_dilation)
 
-            result[kshape] = theano.tensor.as_tensor_variable(node.op.kshp[-2:])
+            result[kshape] = theano.tensor.as_tensor_variable(node.op.kshp[2:])
 
             for(var, shape) in zip((img, top), (node.op.imshp, tshp)):
                 result[var] = theano.shared(np.random.random(shape).astype(var.dtype),
@@ -2032,7 +2032,7 @@ class ConvMetaOptimizer(LocalMetaOptimizer):
                                          node.op.subsample,
                                          node.op.filter_dilation)
 
-            result[ishape] = theano.tensor.as_tensor_variable(node.op.imshp[-2:])
+            result[ishape] = theano.tensor.as_tensor_variable(node.op.imshp[2:])
 
             for(var, shape) in zip((kern, top), (node.op.kshp, tshp)):
                 result[var] = theano.shared(np.random.random(shape).astype(var.dtype),
