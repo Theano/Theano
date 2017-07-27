@@ -2469,8 +2469,8 @@ def test_dnn_spatialtf():
     st_cpu_func = theano.function([t_img, t_theta], st_cpu, mode=mode_without_gpu)
     img_out_cpu = st_cpu_func(img, theta)
 
-    atol, rtol = None, None
-    if theano.config.floatX == 'float16':
+    atol, rtol = None, None  # use default absolute and relative error tolerances
+    if theano.config.floatX == 'float16':  # float16 requires higher tolerances
         atol, rtol = 1e-0, 1e-2
     utt.assert_allclose(img_out_cpu, img_out_gpu, atol=atol, rtol=rtol)
 
