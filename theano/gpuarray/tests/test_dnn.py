@@ -2469,7 +2469,7 @@ def test_dnn_spatialtf():
     st_cpu_func = theano.function([t_img, t_theta], st_cpu, mode=mode_without_gpu)
     img_out_cpu = st_cpu_func(img, theta)
 
-    utt.assert_allclose(img_out_cpu, img_out_gpu, rtol=1e-2, atol=1e-2)
+    utt.assert_allclose(img_out_cpu, img_out_gpu)
 
 
 def test_dnn_spatialtf_grad():
