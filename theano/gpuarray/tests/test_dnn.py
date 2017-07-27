@@ -2519,4 +2519,4 @@ def test_dnn_spatialtf_grad():
     # Using float16 currently produces an infinite absolute error,
     # thus the following test fails
     utt.verify_grad(grad_functor, [inputs_val, theta_val], mode=mode_with_gpu,
-        abs_tol=atol, rel_tol=rtol)
+                    abs_tol=atol, rel_tol=rtol)
