@@ -29,7 +29,8 @@ from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 # For history
 from theano.compile import Rebroadcast, Shape, shape
-from theano.scalar import Scalar
+from theano.scalar import int32
+
 
 # We use these exceptions as well.
 import theano.scalar.sharedvar
@@ -4719,7 +4720,7 @@ class Reshape(Op):
 
     check_input = False
     __props__ = ("ndim",)
-    params_type = ParamsType(ndim=Scalar('int32'))
+    params_type = ParamsType(ndim=int32)
     # name does not participate because it doesn't affect computations
 
     def __init__(self, ndim, name=None):
