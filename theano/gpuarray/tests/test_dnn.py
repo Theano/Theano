@@ -2509,4 +2509,5 @@ def test_dnn_spatialtf_grad():
         out = dnn.dnn_spatialtf(inputs, theta)
         return out
 
-    utt.verify_grad(grad_functor, [inputs_val, theta_val], mode=mode_with_gpu)
+    utt.verify_grad(grad_functor, [inputs_val, theta_val], mode=mode_with_gpu,
+        abs_tol=1e-3, rel_tol=1e-3)
