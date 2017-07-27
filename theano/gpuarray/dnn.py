@@ -2937,6 +2937,9 @@ class GpuDnnTransformerGradI(DnnBase):
 
     def __init__(self):
         DnnBase.__init__(self, ["c_code/dnn_sptf_gi.c"], "APPLY_SPECIFIC(dnn_sptf_gi)")
+        if theano.config.floatX == 'float16' or theano.config.floatX == 'float32':
+            warnings.warn(('GpuDnnTransformerGradI: computing gradients with float16 or '
+                           'float32 might produce incorrect results due to lower precision.'))
 
     def make_node(self, img, grid, dy, desc):
         context_name = infer_context_name(img, grid, dy, desc)
@@ -2982,6 +2985,9 @@ class GpuDnnTransformerGradT(DnnBase):
 
     def __init__(self):
         DnnBase.__init__(self, ["c_code/dnn_sptf_gt.c"], "APPLY_SPECIFIC(dnn_sptf_gt)")
+        if theano.config.floatX == 'float16' or theano.config.floatX == 'float32':
+            warnings.warn(('GpuDnnTransformerGradT: computing gradients with float16 or '
+                           'float32 might produce incorrect results due to lower precision.'))
 
     def make_node(self, dgrid, desc):
         context_name = infer_context_name(desc)
