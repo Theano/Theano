@@ -165,11 +165,6 @@ class CuDNNV51(object):
         if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING:
             if ndim == 2:
                 return is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision)
-                # NB: For cuDNN V6:
-                # " Data Type Config Support: PSEUDO_HALF_CONFIG, FLOAT_CONFIG
-                # (DOUBLE_CONFIG is also supported when the task can be handled by 1D FFT,
-                # ie, one of the filter dimension, width or height is 1)"
-                # Could be checked only when being in C code.
             if ndim == 3:
                 return not is_true_half_config(dtype, precision)
         if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD:
@@ -210,9 +205,6 @@ class CuDNNV51(object):
         if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING:
             if ndim == 2:
                 return is_pseudo_half_config(dtype, precision) or is_float_config(dtype, precision)
-                # NB: For cuDNN V6: "(DOUBLE_CONFIG is also supported when the task can be handled by 1D FFT,
-                # ie, one of the filter dimension, width or height is 1)"
-                # Could be checked only when being in C code.
             if ndim == 3:
                 return not is_true_half_config(dtype, precision)
         if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD:
@@ -265,12 +257,44 @@ class CuDNNV6(CuDNNV51):
                                       ('CUDNN_REDUCE_TENSOR_NORM2', 'norm2'),
                                       ctype='cudnnReduceTensorOp_t')
 
+    def fwd_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
+        is_supported = super(CuDNNV6, self).fwd_algo_supports_dtype_config(algo, dtype, precision, ndim)
+        if not is_supported:
+            algorithms = self.cudnnConvolutionFwdAlgo_t
+            algo = algorithms.fromalias(algo)
+            if algo == algorithms.CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING:
+                # NB: For cuDNN V6:
+                # "Data Type Config Support: PSEUDO_HALF_CONFIG, FLOAT_CONFIG
+                # (DOUBLE_CONFIG is also supported when the task can be handled by 1D FFT,
+                # ie, one of the filter dimension, width or height is 1)"
+                # Could be checked only in C code. By default, let's allow DOUBLE_CONFIG.
+                return ndim == 2 and (is_pseudo_half_config(dtype, precision) or
+                                      is_float_config(dtype, precision) or
+                                      is_double_config(dtype, precision))
+        return is_supported
+
     def bwd_filter_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
         is_supported = super(CuDNNV6, self).bwd_filter_algo_supports_dtype_config(algo, dtype, precision, ndim)
         if not is_supported:
             algorithms = self.cudnnConvolutionBwdFilterAlgo_t
             algo = algorithms.fromalias(algo)
             if algo == algorithms.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING:
+                return ndim == 2 and (is_pseudo_half_config(dtype, precision) or
+                                      is_float_config(dtype, precision) or
+                                      is_double_config(dtype, precision))
+        return is_supported
+
+    def bwd_data_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
+        is_supported = super(CuDNNV6, self).bwd_data_algo_supports_dtype_config(algo, dtype, precision, ndim)
+        if not is_supported:
+            algorithms = self.cudnnConvolutionBwdDataAlgo_t
+            algo = algorithms.fromalias(algo)
+            if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING:
+                # NB: For cuDNN V6:
+                # "Data Type Config Support: PSEUDO_HALF_CONFIG, FLOAT_CONFIG
+                # (DOUBLE_CONFIG is also supported when the task can be handled by 1D FFT,
+                # ie, one of the filter dimension, width or height is 1)"
+                # Could be checked only in C code. By default, let's allow DOUBLE_CONFIG.
                 return ndim == 2 and (is_pseudo_half_config(dtype, precision) or
                                       is_float_config(dtype, precision) or
                                       is_double_config(dtype, precision))

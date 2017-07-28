@@ -16,7 +16,7 @@
 from __future__ import absolute_import, print_function, division
 
 import sys
-from itertools import product
+from itertools import product, chain
 
 import nose
 import numpy as np
@@ -316,6 +316,19 @@ class ConvCaseGenerator:
                                all_border_modes, all_conv_modes, all_alphas, all_betas))
 
 
+class ConvCaseGeneratorChain:
+    """
+    Help class to concatenate many conv case generators.
+    """
+
+    def __init__(self, *conv_case_generators):
+        assert all(isinstance(g, ConvCaseGenerator) for g in conv_case_generators)
+        self.generators = conv_case_generators
+
+    def get_cases(self, filter=None):
+        return chain(*[generator.get_cases(filter) for generator in self.generators])
+
+
 class CuDNNV51ConvCaseGenerator(object):
     """
     Helper class to generate specific test cases for every algorithm supported by cuDNN V5.1.
@@ -430,14 +443,18 @@ class CuDNNV6ConvCaseGenerator(CuDNNV51ConvCaseGenerator):
 
     def _fwd_fft_tiling(self, ndim):
         if ndim == 2:
-            filters_sizes = [(32, 5), (256, 1), (10, 10), (5, 1)]
             subsamples = [(1, 1)]
-            borders = [(1, 1), (2, 1)]
-            return ConvCaseGenerator(ndim=ndim,
-                                     filters_sizes=filters_sizes,
-                                     subsamples=subsamples,
-                                     borders=borders,
-                                     dilations=self._dilations(ndim))
+            # wDesc's filter height must be greater than convDesc's zero-padding height
+            # wDesc's filter width must be greater than convDesc's zero-padding width
+            filters_sizes = [(32, 5), (10, 10)]
+            borders = [(1, 1), (6, 4)]
+            generator1 = ConvCaseGenerator(ndim=ndim, dilations=self._dilations(ndim), subsamples=subsamples,
+                                           filters_sizes=filters_sizes, borders=borders)
+            filters_sizes = [(256, 1), (5, 1)]
+            borders = [(1, 0), (2, 0)]
+            generator2 = ConvCaseGenerator(ndim=ndim, dilations=self._dilations(ndim), subsamples=subsamples,
+                                           filters_sizes=filters_sizes, borders=borders)
+            return ConvCaseGeneratorChain(generator1, generator2)
         if ndim == 3:
             return super(CuDNNV6ConvCaseGenerator, self)._fwd_fft_tiling(ndim)
 
@@ -445,10 +462,10 @@ class CuDNNV6ConvCaseGenerator(CuDNNV51ConvCaseGenerator):
         return self._fwd_none(ndim)
 
     def _gw_fft_tiling(self, ndim):
-        inputs_sizes = [(256, 1), (20, 1)]
+        inputs_sizes = [(247, 1), (20, 1)]
         filters_sizes = [(3, 1), (10, 1)]
         subsamples = [(1,) * ndim]
-        borders = [(1, 1), (2, 1)]
+        borders = [(1, 0), (2, 0)]
         return ConvCaseGenerator(ndim=ndim,
                                  inputs_sizes=inputs_sizes,
                                  filters_sizes=filters_sizes,
@@ -467,6 +484,8 @@ class CuDNNV6ConvCaseGenerator(CuDNNV51ConvCaseGenerator):
     def gw(self, algo, ndim):
         if algo == self.NONE:
             return self._gw_none(ndim)
+        if algo == self.FFT_TILING:
+            return self._gw_fft_tiling(ndim)
         return super(CuDNNV6ConvCaseGenerator, self).gw(algo, ndim)
 
     def gi(self, algo, ndim):

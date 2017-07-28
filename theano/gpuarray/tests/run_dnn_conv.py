@@ -126,8 +126,8 @@ if args.algo not in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
     if test == BWD_DATA:
         check_config = cudnn.bwd_data_algo_supports_dtype_config(args.algo, args.dtype, args.precision, ndim)
     if not check_config:
-        raise ValueError('%s computation does not support configuration (%s, %s) for algo %s.' % (
-            test, args.dtype, args.precision, args.algo))
+        print('Warning: %s computation does not normally support configuration (%s, %s) for algo %s.' % (
+            test, args.dtype, args.precision, args.algo), file=sys.stderr)
 algo = args.algo
 dtype = args.dtype
 precision = args.precision
