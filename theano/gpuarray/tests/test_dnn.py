@@ -2511,8 +2511,10 @@ def test_dnn_spatialtf_grad():
         return out
 
     atol, rtol = None, None
-    if theano.config.floatX == 'float16' or theano.config.floatX == 'float32':
-        atol, rtol = 5e-2, 5e-2
+    if theano.config.floatX == 'float32':
+        rtol = 5e-2
+    elif theano.config.floatX == 'float16':
+        rtol = 1e-0
 
     utt.verify_grad(grad_functor, [inputs_val, theta_val], mode=mode_with_gpu,
                     abs_tol=atol, rel_tol=rtol)
