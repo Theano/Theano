@@ -2436,10 +2436,9 @@ def test_dnn_spatialtf():
         grid = T.concatenate([x_t_flat, y_t_flat, ones], axis=0)
         return grid
 
-    # Generate random set of RGB images (pixel values in [0, 255]). The set of
-    # images is generated in the expected (NCHW) format
     img_dims = (5, 3, 16, 16)
-    img = np.random.randint(low=0, high=256, size=img_dims).astype(theano.config.floatX)
+    img = np.random.random(size=img_dims).astype(theano.config.floatX)
+
     scale_height = 0.25
     scale_width = 0.75
 
@@ -2452,9 +2451,7 @@ def test_dnn_spatialtf():
     t_img = T.tensor4('img')
     t_theta = T.tensor3('theta')
 
-    st_dnn = dnn.dnn_spatialtf(t_img, t_theta,
-                               scale_height=scale_height,
-                               scale_width=scale_width)
+    st_dnn = dnn.dnn_spatialtf(t_img, t_theta, scale_height=scale_height, scale_width=scale_width)
     st_dnn_func = theano.function([t_img, t_theta], st_dnn)
     # Check if function graph contains the spatial transformer's grid and sampler Ops
     apply_nodes = st_dnn_func.maker.fgraph.apply_nodes
@@ -2469,9 +2466,10 @@ def test_dnn_spatialtf():
     st_cpu_func = theano.function([t_img, t_theta], st_cpu, mode=mode_without_gpu)
     img_out_cpu = st_cpu_func(img, theta)
 
-    atol, rtol = None, None  # use default absolute and relative error tolerances
-    if theano.config.floatX == 'float16':  # float16 requires higher tolerances
-        atol, rtol = 1e-0, 1e-2
+    atol, rtol = None, None
+    if theano.config.floatX == 'float16':
+        # Raise relative error tolerance when using float16
+        rtol = 5e-2
     utt.assert_allclose(img_out_cpu, img_out_gpu, atol=atol, rtol=rtol)
 
 
@@ -2497,12 +2495,12 @@ def test_dnn_spatialtf_grad():
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
                 for node in f_gt.maker.fgraph.apply_nodes])
 
-    # Generate random set of RGB images(pixel values in [0, 255]). The set of
-    # images is generated in the expected (NCHW) format
     input_dims = (5, 3, 16, 16)
-    inputs_val = np.random.randint(low=0, high=256, size=input_dims).astype(theano.config.floatX)
+    inputs_val = np.random.random(size=input_dims).astype(theano.config.floatX)
+
     # Tensor with transformations
     theta_val = np.random.random((input_dims[0], 2, 3)).astype(theano.config.floatX)
+    theta /= 100
 
     # Check that the gradients are computed
     f_gi(inputs_val, theta_val)
@@ -2512,11 +2510,9 @@ def test_dnn_spatialtf_grad():
         out = dnn.dnn_spatialtf(inputs, theta)
         return out
 
-    atol, rtol = 1e-3, 1e-3
-    if theano.config.floatX == 'float32':  # use higher error tolerances with float32
-        atol, rtol = 1e-0, 1e-1
+    atol, rtol = None, None
+    if theano.config.floatX == 'float16' or theano.config.floatX == 'float32':
+        atol, rtol = 5e-2, 5e-2
 
-    # Using float16 currently produces an infinite absolute error,
-    # thus the following test fails
     utt.verify_grad(grad_functor, [inputs_val, theta_val], mode=mode_with_gpu,
                     abs_tol=atol, rel_tol=rtol)
