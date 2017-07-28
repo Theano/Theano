@@ -3,7 +3,7 @@ import logging
 from collections import OrderedDict
 
 from nose.plugins.skip import SkipTest
-from nose_parameterized import parameterized
+from parameterized import parameterized
 import numpy as np
 from itertools import product, chain
 
