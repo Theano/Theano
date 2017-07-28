@@ -227,13 +227,14 @@ optdb.register('merge3', gof.MergeOptimizer(),
                100, 'fast_run', 'merge')
 
 if theano.config.check_stack_trace in ['raise', 'warn', 'log']:
-    tags = ('fast_run', 'fast_compile')
+    _tags = ('fast_run', 'fast_compile')
 
 if theano.config.check_stack_trace == 'off':
-    tags = ()
+    _tags = ()
 
 optdb.register('CheckStackTrace',
-               gof.CheckStackTraceOptimization(), -1, *tags)
+               gof.CheckStackTraceOptimization(), -1, *_tags)
+del _tags
 
 
 class Mode(object):

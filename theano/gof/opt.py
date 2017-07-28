@@ -3047,8 +3047,8 @@ class CheckStrackTraceFeature(object):
         # theano.config.check_stack_trace is not off but we also double check here.
         if theano.config.check_stack_trace != 'off' and not check_stack_trace(fgraph, 'all'):
             if theano.config.check_stack_trace == 'raise':
-                    raise NotImplementedError(
-                        'Empty stack trace! The optimization that inserted this variable is' + str(reason))
+                    raise AssertionError(
+                        'Empty stack trace! The optimization that inserted this variable is ' + str(reason))
             elif theano.config.check_stack_trace in ['log', 'warn']:
                 apply_nodes_to_check = fgraph.apply_nodes
                 for node in apply_nodes_to_check:
