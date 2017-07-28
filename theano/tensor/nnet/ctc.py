@@ -227,7 +227,6 @@ def ctc(activations, labels, input_lengths):
 
 # Disable gradient computation if not needed
 @register_canonicalize
-@register_stabilize
 @local_optimizer([ConnectionistTemporalClassification])
 def local_ctc_no_grad(node):
     if isinstance(node.op, ConnectionistTemporalClassification):
