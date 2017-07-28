@@ -467,8 +467,8 @@ class _tensor_py_operators(object):
         # Convert boolean arrays to calls to mask.nonzero()
         tmp_args = []
         for arg in args:
-            if (isinstance(arg, (np.ndarray, TensorVariable, TensorConstant,
-                                 theano.tensor.sharedvar.TensorSharedVariable)) and
+            if (isinstance(arg, (np.ndarray, theano.tensor.Variable)) and
+                    hasattr(arg, 'dtype') and hasattr(arg, 'nonzero') and
                     arg.dtype == 'bool'):
                 tmp_args += arg.nonzero()
             else:
