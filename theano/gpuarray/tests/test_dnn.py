@@ -2502,7 +2502,7 @@ def test_dnn_spatialtf_grad():
     theta_val = np.random.random((input_dims[0], 2, 3)).astype(theano.config.floatX)
     # Using smaller values for theta, increases the precision of gradients
     # when using lower precision. Tests might fail for lower precision data
-    # types if the values of theta or the inputs are very high. 
+    # types if the values of theta or the inputs are very high.
     theta /= 100
 
     # Check that the gradients are computed
