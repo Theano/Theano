@@ -1,20 +1,16 @@
 #section init_code_struct
 
-if (PARAMS->choose_algo) {
-  reuse_algo = 0;
-  prev_algo = PARAMS->conv_algo;
-  if (!PARAMS->choose_once) {
-      memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
-      memset(prev_top_dims, 0, sizeof(prev_top_dims));
-  }
-}
+reuse_algo = 0;
+prev_algo = PARAMS->conv_algo;
+memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
+memset(prev_top_dims, 0, sizeof(prev_top_dims));
 
 #section support_code_struct
 
 int reuse_algo;
 cudnnConvolutionBwdDataAlgo_t prev_algo;
-size_t prev_kern_dims[5] = {0};
-size_t prev_top_dims[5] = {0};
+size_t prev_kern_dims[5];
+size_t prev_top_dims[5];
 
 int
 APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
@@ -82,6 +78,9 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   size_t output_offset = PyGpuArray_STRIDE(output, 0) / params->num_groups;
 
   cudnnConvolutionBwdDataAlgo_t algo = params->conv_algo;
+  #ifdef DEBUG
+  char algorithm_name[128];
+  #endif
 
   cuda_enter(c->ctx);
 
@@ -178,6 +177,19 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       }
 
       algo = choice.algo;
+
+      #ifdef DEBUG
+      if (count == 0) {
+          PyErr_SetString(PyExc_RuntimeError, "No best-timed conv gradinput algorithm found");
+          return 1;
+      } else if (choice.status != CUDNN_STATUS_SUCCESS) {
+          PyErr_Format(PyExc_RuntimeError,
+                       "error getting best-timed gradinput algo: %s",
+                       cudnnGetErrorString(choice.status));
+          return 1;
+      } // Else, count is necessarly 1 for current implementation.
+      #endif
+
     } else {
       err = cudnnGetConvolutionBackwardDataAlgorithm(
         params->handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output),
@@ -195,6 +207,17 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       algo = prev_algo;
     }
 
+    #ifdef DEBUG
+    char algorithm_name[128];
+    if (0 != theano_enum_to_string_cudnnConvolutionBwdDataAlgo_t(algo, algorithm_name))
+        return 1;
+    // NB: This is printed only when algorithm is chosen at runtime.
+    if (reuse_algo)
+        fprintf(stderr, "(reused %s)\n", algorithm_name);
+    else
+        fprintf(stderr, "(using %s)\n", algorithm_name);
+    #endif
+
     if (params->choose_once) {
       reuse_algo = 1;
     } else {
@@ -203,15 +226,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
         prev_top_dims[i] = PyGpuArray_DIM(output, i);
       }
     }
-
-    #ifdef DEBUG
-    char algorithm_name[128];
-    if (0 != theano_enum_to_string_cudnnConvolutionBwdDataAlgo_t(algo, algorithm_name)) {
-        return 1;
-    };
-    // NB: This is printed only when algorithm is chosen at runtime.
-    fprintf(stderr, "(using %s) ", algorithm_name);
-    #endif
   }
 
   // The FFT implementation does not support strides, 1x1 filters or inputs
