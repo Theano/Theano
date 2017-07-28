@@ -10,7 +10,6 @@ from .elemwise import GpuDimShuffle
 from theano.gradient import grad_undefined
 from theano.gof import local_optimizer
 from theano.tensor.opt import register_canonicalize
-from theano.tensor.opt import register_stabilize
 from theano.tensor.nnet.ctc import ctc_available
 
 import os

@@ -7,7 +7,6 @@ from theano import gof
 from theano.gof import local_optimizer
 from theano.gof.cmodule import GCC_compiler
 from theano.tensor.opt import register_canonicalize
-from theano.tensor.opt import register_stabilize
 from theano.tensor.extra_ops import cpu_contiguous
 from theano.gradient import grad_undefined
 
