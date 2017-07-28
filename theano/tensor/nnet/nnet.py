@@ -33,7 +33,7 @@ from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
 from theano.scalar import Scalar
-from theano.tensor import (Subtensor, AdvancedSubtensor, AdvancedSubtensor1, AdvancedIncSubtensor1, AdvancedIncSubtensor)
+from theano.tensor import (Subtensor, AdvancedSubtensor, AdvancedSubtensor1)
 
 ############
 #
@@ -485,7 +485,7 @@ class Softmax(gof.Op):
 
     def __init__(self, axis=-1):
         self.axis = axis
-        self.grad_op = SoftmaxGrad(self.axis)
+        self.softmax_grad_op = SoftmaxGrad(self.axis)
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
@@ -502,7 +502,7 @@ class Softmax(gof.Op):
     def L_op(self, inp, outputs, grads):
         x, = inp
         g_sm, = grads
-        return [self.grad_op(g_sm, outputs[0])]
+        return [self.softmax_grad_op(g_sm, outputs[0])]
 
     def R_op(self, inputs, eval_points):
         # The Jacobian is symmetric so the R_op is the same as the grad
@@ -706,7 +706,7 @@ class LogSoftmax(gof.Op):
 
     def __init__(self, axis=-1):
         self.axis = axis
-        self.sm_op = Softmax(self.axis)
+        self.softmax_op = Softmax(self.axis)
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
@@ -724,7 +724,7 @@ class LogSoftmax(gof.Op):
 
     def grad(self, inp, grads):
         x, = inp
-        sm = self.sm_op(x)
+        sm = self.softmax_op(x)
         return [grads[0] - tensor.sum(grads[0], axis=self.axis, keepdims=True) * sm]
 
     def R_op(self, inputs, eval_points):
@@ -869,27 +869,6 @@ logsoftmax_op = LogSoftmax()
 
 # This is not registered in stabilize, as it cause some crossentropy
 # optimization to not be inserted.
-"""
-@opt.register_specialize('stabilize', 'fast_compile')
-@gof.local_optimizer([tensor.Elemwise])
-def local_logsoftmax(node):
-    #Detect Log(Softmax(x)) and replace it with LogSoftmax(x)
-
-    # Note: only forward pass is affected
-    if (isinstance(node.op, tensor.Elemwise) and
-            isinstance(node.op.scalar_op, scalar.basic.Log) and
-            len(node.inputs) == 1 and
-            node.inputs[0].owner is not None and
-            isinstance(node.inputs[0].owner.op, Softmax)):
-        inVars = node.inputs[0].owner.inputs[0]
-        new_op = LogSoftmax()
-        ret = new_op(inVars)
-        ret .tag.values_eq_approx = values_eq_approx_remove_inf
-        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
-        return [ret]
-"""
-
-
 @opt.register_specialize('stabilize', 'fast_compile')
 @gof.local_optimizer([tensor.Elemwise])
 def local_logsoftmax(node):
@@ -923,9 +902,6 @@ def local_logsoftmax(node):
                     ret.tag.values_eq_approx = values_eq_approx_remove_inf
                     copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
                     return [ret]
-
-            else:
-                return
 
 
 # This is not registered in stabilize, as it cause some crossentropy
@@ -995,6 +971,11 @@ def local_indexing_logsoftmax_grad(node):
         except:
             return
 
+        out_grad = 1
+        if incr.owner and incr.owner.op == tensor.neg:
+            incr = incr.owner.inputs[0]
+            out_grad = - out_grad
+
         if incr.owner and incr.owner.op == tensor.true_div:
             num, denom = incr.owner.inputs
             if not denom.owner:
@@ -1032,7 +1013,7 @@ def local_indexing_logsoftmax_grad(node):
             else:
                 return
 
-            grads = d_sm
+            grads = d_sm * out_grad
             axis = sm.owner.op.axis
             if grads.broadcastable[axis] and not sm.broadcastable[axis]:
                 grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
