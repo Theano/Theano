@@ -11,7 +11,8 @@ class PdbBreakpoint(Op):
     """
     This is an identity-like op with the side effect of enforcing a
     conditional breakpoint, inside a theano function, based on a symbolic
-    scalar condition.
+    scalar condition. It automatically detects available debuggers and uses
+    the first available in the following order: `pudb`, `ipdb`, or `pdb`.
 
     :type name: String
     :param name: name of the conditional breakpoint. To be printed when the
