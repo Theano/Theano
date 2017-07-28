@@ -761,9 +761,9 @@ class TestDnnConv2D(BaseTestDnnConv):
                                          border_mode=(1, 0), should_fail=True),
                      ConvCase.fwd(algo='small', dtype='float32', precision='float32',
                                   inputs_shape=(65536, 2, 2, 2), filters_shape=(1, 2, 2, 2)),
+                     # NB: Due to current workaround (see dnn_fwd.c), this test won't fail for cuDNN < v6100.
                      ConvCase.fwd(algo='small', dtype='float32', precision='float32',
-                                  inputs_shape=(65537, 2, 2, 2), filters_shape=(1, 2, 2, 2),
-                                  should_fail=(version(raises=False) <= 6020))]
+                                  inputs_shape=(65537, 2, 2, 2), filters_shape=(1, 2, 2, 2))]
 
 
 class TestDnnConv3D(BaseTestDnnConv):
@@ -779,9 +779,9 @@ class TestDnnConv3D(BaseTestDnnConv):
 
     special_cases = [ConvCase.fwd(algo='small', dtype='float32', precision='float32',
                                   inputs_shape=(65536, 2, 2, 2, 2), filters_shape=(1, 2, 2, 2, 2)),
+                     # NB: Due to current workaround (see dnn_fwd.c), this test won't fail for cuDNN < v6100.
                      ConvCase.fwd(algo='small', dtype='float32', precision='float32',
-                                  inputs_shape=(65537, 2, 2, 2, 2), filters_shape=(1, 2, 2, 2, 2),
-                                  should_fail=(version(raises=False) <= 6020))]
+                                  inputs_shape=(65537, 2, 2, 2, 2), filters_shape=(1, 2, 2, 2, 2))]
 
 
 def test_true_half_config_support():
