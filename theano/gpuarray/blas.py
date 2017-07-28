@@ -140,7 +140,7 @@ class GpuGemv(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
