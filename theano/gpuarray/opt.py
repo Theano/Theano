@@ -2067,6 +2067,18 @@ class ConvMetaOptimizer(LocalMetaOptimizer):
 
         return result
 
+    def get_opts(self, node):
+        opts = [opt for opt in self.track_dict[type(node.op)]
+                if opt in self.tag_dict['default']]
+        opt_include = config.optimizer_including.split(':')
+        opt_exclude = config.optimizer_excluding.split(':')
+        for in_opt in opt_include:
+            opts = opts + [opt for opt in self.track_dict[type(node.op)]
+                           if opt in self.tag_dict[in_opt]]
+        for ex_opt in opt_exclude:
+            opts = [opt for opt in opts if opt not in self.tag_dict[ex_opt]]
+        return opts
+
 
 # This deals with any abstract convs that have a transfer somewhere
 @register_opt('fast_compile', 'conv_dnn', 'cudnn')
@@ -2690,24 +2702,44 @@ abstractconv_groupopt.register('local_abstractconv3d_gradinputs',
                                'gpuarray', 'fast_compile', 'fast_run')
 
 conv_metaopt = ConvMetaOptimizer()
-running_list = ['+fast_run' if config.mode == 'Mode' else '+' + config.mode]
 
-if config.optimizer_including:
-    running_list += ['+' + name for name in config.optimizer_including.split(':')]
+conv_metaopt.register(local_abstractconv_cudnn,
+                      ['default', 'cudnn', 'conv_dnn'])
+conv_metaopt.register(local_abstractconv_gw_cudnn,
+                      ['default', 'cudnn', 'conv_dnn'])
+conv_metaopt.register(local_abstractconv_gi_cudnn,
+                      ['default', 'cudnn', 'conv_dnn'])
+conv_metaopt.register(local_abstractconv_gemm,
+                      ['default', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv3d_gemm,
+                      ['default', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv_gradweights_gemm,
+                      ['default', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv3d_gradweights_gemm,
+                      ['default', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv_gradinputs_gemm,
+                      ['default', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv3d_gradinputs_gemm,
+                      ['default', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv_gemm_alternative,
+                      ['default', 'alternative', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv_gemm_gradweights_alt,
+                      ['default', 'alternative', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv_gradinputs_gemm_alt,
+                      ['default', 'alternative', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv_cudnn_alternative,
+                      ['default', 'alternative', 'cudnn', 'conv_dnn'])
+conv_metaopt.register(local_abstractconv3d_cudnn_alternative,
+                      ['default', 'alternative', 'cudnn', 'conv_dnn'])
+conv_metaopt.register(local_abstractconv3d_alt,
+                      ['default', 'alternative', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv3d_gemm_gradweights_alt,
+                      ['default', 'alternative', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv3d_gradinputs_gemm_alt,
+                      ['default', 'alternative', 'conv_gemm'])
+conv_metaopt.register(local_abstractconv3d2d,
+                      ['alternative', 'conv3d2d'])
 
-if config.optimizer_excluding:
-    running_list += ['-' + name for name in config.optimizer_excluding.split(':')]
-
-conv_metaopt.register(abstractconv_groupopt.query(*running_list).opts)
-conv_metaopt.register([local_abstractconv_gemm_alternative])
-conv_metaopt.register([local_abstractconv_gemm_gradweights_alt])
-conv_metaopt.register([local_abstractconv_gradinputs_gemm_alt])
-conv_metaopt.register([local_abstractconv_cudnn_alternative])
-conv_metaopt.register([local_abstractconv3d2d])
-conv_metaopt.register([local_abstractconv3d_alt])
-conv_metaopt.register([local_abstractconv3d_gemm_gradweights_alt])
-conv_metaopt.register([local_abstractconv3d_gradinputs_gemm_alt])
-conv_metaopt.register([local_abstractconv3d_cudnn_alternative])
 abstractconv_groupopt.register('conv_metaopt', conv_metaopt, 'conv_meta', position=0)
 
 # Register cuDNN batch normalization implementation

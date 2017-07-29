@@ -1136,13 +1136,15 @@ class LocalMetaOptimizer(LocalOptimizer):
         self.optimizers = list(optimizers)
         self.verbose = config.metaopt.verbose
         self.track_dict = defaultdict(lambda: [])
+        self.tag_dict = defaultdict(lambda: [])
 
-    def register(self, optimizers):
-        self.optimizers.extend(optimizers)
-        for o in optimizers:
-            for c in o.tracks():
-                self.track_dict[c].append(o)
-                self._tracks.append(c)
+    def register(self, optimizer, tag_list):
+        self.optimizers.append(optimizer)
+        for c in optimizer.tracks():
+            self.track_dict[c].append(optimizer)
+            self._tracks.append(c)
+        for tag in tag_list:
+            self.tag_dict[tag].append(optimizer)
 
     def tracks(self):
         return self._tracks
@@ -1181,9 +1183,9 @@ class LocalMetaOptimizer(LocalOptimizer):
         # compile the resulting subgraphs and time their execution
         if self.verbose > 1:
             print(("%s meta-optimizing %s (%d choices):" %
-                   (self.__class__.__name__, node, len(self.track_dict[type(node.op)]))))
+                   (self.__class__.__name__, node, len(self.get_opts(node)))))
         timings = []
-        for opt in self.track_dict[type(node.op)]:
+        for opt in self.get_opts(node):
             outputs = opt.transform(node)
             if outputs:
                 try:
@@ -1217,6 +1219,12 @@ class LocalMetaOptimizer(LocalOptimizer):
 
         """
         raise NotImplementedError()
+
+    def get_opts(self, node):
+        """
+        Can be overrided to change the way opts are selected
+        """
+        return self.track_dict[type(node.op)]
 
     def time_call(self, fn):
         start = time.time()
