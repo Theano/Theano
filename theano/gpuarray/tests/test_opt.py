@@ -821,9 +821,9 @@ class Conv_opt_test(unittest.TestCase):
         utt.assert_allclose(conv_func(), ref_func())
 
     def test_optimizers(self):
-        imshp2d = [(2, 3, 5, 5)]
-        kshp2d = [(4, 3, 3, 3)]
-        tshp2d = [(2, 4, 3, 3)]
+        imshp2d = [(2, 3, 5, 5), (2, 2, 5, 7), (2, 1, 3, 3)]
+        kshp2d = [(4, 3, 3, 3), (3, 2, 3, 5), (4, 1, 1, 1)]
+        tshp2d = [(2, 4, 3, 3), (2, 3, 3, 3), (2, 4, 3, 3)]
 
         for imshp, kshp, tshp in zip(imshp2d, kshp2d, tshp2d):
             # forward passes
@@ -842,9 +842,9 @@ class Conv_opt_test(unittest.TestCase):
             self.optimizer_2d([tshp, kshp, imshp], 2,
                               local_abstractconv_cudnn_alternative)
 
-        imshp3d = [(2, 3, 5, 5, 5)]
-        kshp3d = [(4, 3, 3, 3, 3)]
-        tshp3d = [(2, 4, 3, 3, 3)]
+        imshp3d = [(2, 3, 5, 5, 5), (2, 2, 5, 7, 5), (2, 1, 3, 3, 3)]
+        kshp3d = [(4, 3, 3, 3, 3), (3, 2, 3, 5, 3), (4, 1, 1, 1, 1)]
+        tshp3d = [(2, 4, 3, 3, 3), (2, 3, 3, 3, 3), (2, 4, 3, 3, 3)]
 
         for imshp, kshp, tshp in zip(imshp3d, kshp3d, tshp3d):
             # forwards passes
@@ -852,11 +852,8 @@ class Conv_opt_test(unittest.TestCase):
                               local_abstractconv3d_alt)
             self.optimizer_3d([imshp, kshp, tshp], 0,
                               local_abstractconv3d2d)
-            '''
-            will fail until bug is fixed
             self.optimizer_3d([imshp, kshp, tshp], 0,
                               local_abstractconv3d_cudnn_alternative)
-            '''
             # backward pass wrt weight
             self.optimizer_3d([imshp, tshp, kshp], 1,
                               local_abstractconv3d_gemm_gradweights_alt)
@@ -868,3 +865,32 @@ class Conv_opt_test(unittest.TestCase):
                               local_abstractconv3d_gradinputs_gemm_alt)
             self.optimizer_3d([tshp, kshp, imshp], 2,
                               local_abstractconv3d_cudnn_alternative)
+
+        # conv2d forward pass with Non-default border_mode and filter_dilation
+        imshp2d = [(2, 3, 5, 5), (4, 2, 5, 5)]
+        kshp2d = [(4, 3, 3, 3), (3, 2, 3, 3)]
+        filter_dilation = [(1, 1), (2, 2)]
+        for imshp, kshp, fdil in zip(imshp2d, kshp2d, filter_dilation):
+            self.optimizer_2d([imshp, kshp], 0,
+                              local_abstractconv_gemm_alternative,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            # works only for cudnn > 6.0
+            self.optimizer_2d([imshp, kshp], 0,
+                              local_abstractconv_cudnn_alternative,
+                              border_mode='full',
+                              filter_dilation=fdil)
+        # conv3d forward pass with Non-default border_mode and filter_dilation
+        imshp3d = [(2, 3, 5, 5, 5), (4, 2, 5, 5, 5)]
+        kshp3d = [(4, 3, 3, 3, 3), (3, 2, 3, 3, 3)]
+        filter_dilation = [(1, 1, 1), (2, 2, 2)]
+        for imshp, kshp, fdil in zip(imshp3d, kshp3d, filter_dilation):
+            self.optimizer_3d([imshp, kshp], 0,
+                              local_abstractconv3d_alt,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            # works only for cudnn > 6.0
+            self.optimizer_3d([imshp, kshp], 0,
+                              local_abstractconv3d_cudnn_alternative,
+                              border_mode='full',
+                              filter_dilation=fdil)
