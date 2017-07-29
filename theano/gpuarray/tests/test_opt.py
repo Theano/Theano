@@ -778,15 +778,33 @@ class Conv_opt_test(unittest.TestCase):
         inp2 = theano.shared(np.random.random(input_shapes[1]).astype(theano.config.floatX))
         if(direction == 0):
             abstract_op = AbstractConv3d
-            conv_op = conv3d(inp1, inp2)
+            conv_op = conv3d(inp1,
+                             inp2,
+                             input_shapes[0],
+                             input_shapes[1],
+                             border_mode=border_mode,
+                             subsample=subsample,
+                             filter_dilation=filter_dilation)
 
         if(direction == 1):
             abstract_op = AbstractConv3d_gradWeights
-            conv_op = conv3d_grad_wrt_weights(inp1, inp2, input_shapes[2])
+            conv_op = conv3d_grad_wrt_weights(inp1,
+                                              inp2,
+                                              input_shapes[2],
+                                              input_shapes[0],
+                                              border_mode=border_mode,
+                                              subsample=subsample,
+                                              filter_dilation=filter_dilation)
 
         if(direction == 2):
             abstract_op = AbstractConv3d_gradInputs
-            conv_op = conv3d_grad_wrt_inputs(inp1, inp2, input_shapes[2])
+            conv_op = conv3d_grad_wrt_inputs(inp1,
+                                             inp2,
+                                             input_shapes[2],
+                                             input_shapes[1],
+                                             border_mode=border_mode,
+                                             subsample=subsample,
+                                             filter_dilation=filter_dilation)
 
         ref_func = theano.function([], conv_op)
         conv_node = conv_op.owner
@@ -803,32 +821,50 @@ class Conv_opt_test(unittest.TestCase):
         utt.assert_allclose(conv_func(), ref_func())
 
     def test_optimizers(self):
-        self.optimizer_2d([(2, 3, 5, 5), (4, 3, 3, 3), (2, 4, 3, 3)], 0,
-                          local_abstractconv_gemm_alternative)
-        self.optimizer_2d([(2, 3, 5, 5), (2, 4, 3, 3), (4, 3, 3, 3)], 1,
-                          local_abstractconv_gemm_gradweights_alt)
-        self.optimizer_2d([(2, 4, 3, 3), (4, 3, 3, 3), (2, 3, 5, 5)], 2,
-                          local_abstractconv_gradinputs_gemm_alt)
-        self.optimizer_2d([(2, 3, 5, 5), (4, 3, 3, 3), (2, 4, 3, 3)], 0,
-                          local_abstractconv_cudnn_alternative)
-        self.optimizer_2d([(2, 3, 5, 5), (2, 4, 3, 3), (4, 3, 3, 3)], 1,
-                          local_abstractconv_cudnn_alternative)
-        self.optimizer_2d([(2, 4, 3, 3), (4, 3, 3, 3), (2, 3, 5, 5)], 2,
-                          local_abstractconv_cudnn_alternative)
-        self.optimizer_3d([(2, 3, 5, 5, 5), (4, 3, 3, 3, 3), (2, 4, 3, 3, 3)], 0,
-                          local_abstractconv3d_alt)
-        self.optimizer_3d([(2, 3, 5, 5, 5), (4, 3, 3, 3, 3), (2, 4, 3, 3, 3)], 0,
-                          local_abstractconv3d2d)
-        self.optimizer_3d([(2, 3, 5, 5, 5), (2, 4, 3, 3, 3), (4, 3, 3, 3, 3)], 1,
-                          local_abstractconv3d_gemm_gradweights_alt)
-        self.optimizer_3d([(2, 4, 3, 3, 3), (4, 3, 3, 3, 3), (2, 3, 5, 5, 5)], 2,
-                          local_abstractconv3d_gradinputs_gemm_alt)
-        '''
-        will fail until bug is fixed
-        self.optimizer_3d([(2, 3, 5, 5, 5), (4, 3, 3, 3, 3), (2, 4, 3, 3, 3)], 0,
-                          local_abstractconv3d_cudnn_alternative)
-        '''
-        self.optimizer_3d([(2, 3, 5, 5, 5), (2, 4, 3, 3, 3), (4, 3, 3, 3, 3)], 1,
-                          local_abstractconv3d_cudnn_alternative)
-        self.optimizer_3d([(2, 4, 3, 3, 3), (4, 3, 3, 3, 3), (2, 3, 5, 5, 5)], 2,
-                          local_abstractconv3d_cudnn_alternative)
+        imshp2d = [(2, 3, 5, 5)]
+        kshp2d = [(4, 3, 3, 3)]
+        tshp2d = [(2, 4, 3, 3)]
+
+        for imshp, kshp, tshp in zip(imshp2d, kshp2d, tshp2d):
+            # forward passes
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              local_abstractconv_gemm_alternative)
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              local_abstractconv_cudnn_alternative)
+            # backwards wrt weights
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              local_abstractconv_gemm_gradweights_alt)
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              local_abstractconv_cudnn_alternative)
+            # backwards wrt to inputs
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              local_abstractconv_gradinputs_gemm_alt)
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              local_abstractconv_cudnn_alternative)
+
+        imshp3d = [(2, 3, 5, 5, 5)]
+        kshp3d = [(4, 3, 3, 3, 3)]
+        tshp3d = [(2, 4, 3, 3, 3)]
+
+        for imshp, kshp, tshp in zip(imshp3d, kshp3d, tshp3d):
+            # forwards passes
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              local_abstractconv3d_alt)
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              local_abstractconv3d2d)
+            '''
+            will fail until bug is fixed
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              local_abstractconv3d_cudnn_alternative)
+            '''
+            # backward pass wrt weight
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              local_abstractconv3d_gemm_gradweights_alt)
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              local_abstractconv3d_cudnn_alternative)
+
+            # backward pass wrt inputs
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              local_abstractconv3d_gradinputs_gemm_alt)
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              local_abstractconv3d_cudnn_alternative)
