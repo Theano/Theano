@@ -1103,7 +1103,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
         if conv_mode == 'conv':
             # We need to flip manually. These 'kerns' are not the kernels
             # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
-            kerns = kerns[:, :, ::-1, ::-1]
+            kerns = kerns[:, :, ::-1, ::-1, ::-1]
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3, 4))
         out_shp = (shape_i(kerns, 1, fgraph),
                    shape_i(img, 1, fgraph),
