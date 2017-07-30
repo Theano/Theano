@@ -206,3 +206,136 @@ def argsort(a, axis=-1, kind='quicksort', order=None):
         a = a.flatten()
         axis = 0
     return ArgSortOp(kind, order)(a, axis)
+
+
+class PartitionOp(theano.Op):
+    """
+    This class is a wrapper for numpy partition function.
+
+    """
+
+    __props__ = ("kth","kind", "order")
+
+    def __init__(self, kth, kind, order=None):
+        self.kth=kth
+        self.kind = kind
+        self.order = order
+
+    def __str__(self):
+        return (self.__class__.__name__ +
+                "{%s, %s, %s}" % (self.kth,self.kind, str(self.order)))
+
+    def make_node(self, input, axis=-1):
+        input = theano.tensor.as_tensor_variable(input)
+        axis = theano.tensor.as_tensor_variable(axis)
+        bcast = input.type.broadcastable
+        return theano.Apply(self, [input, axis], [theano.tensor.TensorType(
+            dtype="int64", broadcastable=bcast)()])
+
+    def perform(self, node, inputs, output_storage):
+        a = inputs[0]
+        axis = inputs[1]
+        z = output_storage[0]
+        z[0] = theano._asarray(np.partition(a, self.kth, axis, self.kind, self.order),
+                               dtype=node.outputs[0].dtype)
+
+    def infer_shape(self, node, inputs_shapes):
+        if (isinstance(node.inputs[1], theano.Constant) and
+                node.inputs[1].data is None):
+            return [(mul(*inputs_shapes[0]),)]
+        # axis should not be None, so there should be the same number of
+        # dimensions in the input and output
+        assert node.inputs[0].ndim == node.outputs[0].ndim
+        assert inputs_shapes[1] == ()
+        return [inputs_shapes[0]]
+
+    def grad(self, inputs, output_grads):
+        # No grad defined for intergers.
+        inp, axis = inputs
+        inp_grad = inp.zeros_like()
+        axis_grad = theano.gradient.grad_undefined(
+            self, 1, axis,
+            "partition is not defined for non-integer axes so"
+            " partition(x, axis+eps) is undefined")
+        return [inp_grad, axis_grad]
+
+
+def partition(a, kth, axis=-1, kind='introselect', order=None):
+    """
+    Return a partitioned copy of an array.
+    Creates a copy of the array with its elements rearranged in such a way that the value of the element in k-th position is in the position it would be in a sorted array. All elements smaller than the k-th element are moved before this element and all equal or greater are moved behind it. The ordering of the elements in the two partitions is undefined.
+        kth : int or sequence of ints
+            Element index to partition by. The k-th value of the element will be in its final sorted position and all smaller elements will be moved before it and all equal or greater elements behind it. The order all elements in the partitions is undefined. If provided with a sequence of k-th it will partition all elements indexed by k-th of them into their sorted position at once.
+        kind : {\'introselect\'}, optional
+            Selection algorithm. Default is \'introselect\'.
+    """
+    if axis is None:
+        a = a.flatten()
+        axis = 0
+    return PartitionOp(kth, kind, order)(a, axis)
+
+class ArgPartitionOp(theano.Op):
+    """
+    This class is a wrapper for numpy argpartition function.
+
+    """
+
+    __props__ = ("kth","kind", "order")
+
+    def __init__(self, kth, kind, order=None):
+        self.kth=kth
+        self.kind = kind
+        self.order = order
+
+    def __str__(self):
+        return (self.__class__.__name__ +
+                "{%s, %s, %s}" % (self.kth,self.kind, str(self.order)))
+
+    def make_node(self, input, axis=-1):
+        input = theano.tensor.as_tensor_variable(input)
+        axis = theano.tensor.as_tensor_variable(axis)
+        bcast = input.type.broadcastable
+        return theano.Apply(self, [input, axis], [theano.tensor.TensorType(
+            dtype="int64", broadcastable=bcast)()])
+
+    def perform(self, node, inputs, output_storage):
+        a = inputs[0]
+        axis = inputs[1]
+        z = output_storage[0]
+        z[0] = theano._asarray(np.argpartition(a, self.kth, axis, self.kind, self.order),
+                               dtype=node.outputs[0].dtype)
+
+    def infer_shape(self, node, inputs_shapes):
+        if (isinstance(node.inputs[1], theano.Constant) and
+                node.inputs[1].data is None):
+            return [(mul(*inputs_shapes[0]),)]
+        # axis should not be None, so there should be the same number of
+        # dimensions in the input and output
+        assert node.inputs[0].ndim == node.outputs[0].ndim
+        assert inputs_shapes[1] == ()
+        return [inputs_shapes[0]]
+
+    def grad(self, inputs, output_grads):
+        # No grad defined for intergers.
+        inp, axis = inputs
+        inp_grad = inp.zeros_like()
+        axis_grad = theano.gradient.grad_undefined(
+            self, 1, axis,
+            "partition is not defined for non-integer axes so"
+            " partition(x, axis+eps) is undefined")
+        return [inp_grad, axis_grad]
+
+
+def argpartition(a, kth, axis=-1, kind='introselect', order=None):
+    """
+    Perform an indirect partition along the given axis using the algorithm specified by the kind keyword. It returns an array of indices of the same shape as a that index data along the given axis in partitioned order.
+    Creates a copy of the array with its elements rearranged in such a way that the value of the element in k-th position is in the position it would be in a sorted array. All elements smaller than the k-th element are moved before this element and all equal or greater are moved behind it. The ordering of the elements in the two partitions is undefined.
+        kth : int or sequence of ints
+            Element index to partition by. The k-th value of the element will be in its final sorted position and all smaller elements will be moved before it and all equal or greater elements behind it. The order all elements in the partitions is undefined. If provided with a sequence of k-th it will partition all elements indexed by k-th of them into their sorted position at once.
+        kind : {\'introselect\'}, optional
+            Selection algorithm. Default is \'introselect\'.
+    """
+    if axis is None:
+        a = a.flatten()
+        axis = 0
+    return ArgPartitionOp(kth, kind, order)(a, axis)

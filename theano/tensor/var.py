@@ -701,6 +701,14 @@ class _tensor_py_operators(object):
         """See `theano.tensor.argsort`."""
         return theano.tensor.argsort(self, axis, kind, order)
 
+    def partition(self, kth, axis=-1, kind='introselect', order=None):
+        """See `theano.tensor.partition`."""
+        return theano.tensor.partition(self, kth, axis, kind, order)
+
+    def argpartition(self, kth, axis=-1, kind='introselect', order=None):
+        """See `theano.tensor.argpartition`."""
+        return theano.tensor.argpartition(self, kth, axis, kind, order)
+
     def clip(self, a_min, a_max):
         "Clip (limit) the values in an array."
         return theano.tensor.basic.clip(self, a_min, a_max)
