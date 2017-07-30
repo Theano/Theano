@@ -278,13 +278,13 @@ def test_partition():
 def test_partition_grad():
     # Testing grad of partition
     data = np.random.rand(2, 3).astype(theano.config.floatX)
-    utt.verify_grad(lambda x: partition(x, axis=-1), [data])
+    utt.verify_grad(lambda x: partition(x, 2, axis=-1), [data])
 
     data = np.random.rand(2, 3, 4, 5).astype(theano.config.floatX)
-    utt.verify_grad(lambda x: partition(x, axis=-3), [data])
+    utt.verify_grad(lambda x: partition(x, 2, axis=-3), [data])
 
     data = np.random.rand(2, 3, 3).astype(theano.config.floatX)
-    utt.verify_grad(lambda x: partition(x, axis=2), [data])
+    utt.verify_grad(lambda x: partition(x, 2, axis=2), [data])
 
 def test_argpartition():
     # Set up
@@ -341,10 +341,10 @@ def test_argpartition():
 def test_argargpartition_grad():
     # Testing grad of argpartition
     data = np.random.rand(2, 3).astype(theano.config.floatX)
-    utt.verify_grad(lambda x: argpartition(x, axis=-1), [data])
+    utt.verify_grad(lambda x: argpartition(x, 2, axis=-1), [data])
 
     data = np.random.rand(2, 3, 4, 5).astype(theano.config.floatX)
-    utt.verify_grad(lambda x: argpartition(x, axis=-3), [data])
+    utt.verify_grad(lambda x: argpartition(x, 2, axis=-3), [data])
 
     data = np.random.rand(2, 3, 3).astype(theano.config.floatX)
-    utt.verify_grad(lambda x: argpartition(x, axis=2), [data])
+    utt.verify_grad(lambda x: argpartition(x, 2, axis=2), [data])
