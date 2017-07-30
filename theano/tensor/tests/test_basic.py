@@ -8105,6 +8105,18 @@ class TestTensorInstanceMethods(unittest.TestCase):
         assert_array_equal(X.argsort().eval({X: x}), x.argsort())
         assert_array_equal(X.argsort(1).eval({X: x}), x.argsort(1))
 
+    def test_partition(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.partition(2).eval({X: x}), x.partition(2))
+        assert_array_equal(X.partition(1,1).eval({X: x}), x.partition(1,1))
+
+    def test_argpartition(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.argpartition(2).eval({X: x}), x.argpartition(2))
+        assert_array_equal(X.argpartition(2,1).eval({X: x}), x.argpartition(2,1))
+
     def test_clip(self):
         X, Y = self.vars
         x, y = self.vals

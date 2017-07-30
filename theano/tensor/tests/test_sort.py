@@ -9,6 +9,8 @@ from theano import tensor
 
 from theano.tensor.sort import sort, SortOp
 from theano.tensor.sort import argsort, ArgSortOp
+from theano.tensor.sort import partition, PartitionOp
+from theano.tensor.sort import argpartition, ArgPartitionOp
 
 
 class test_sort(unittest.TestCase):
@@ -219,3 +221,130 @@ def test_argsort_grad():
 
     data = np.random.rand(2, 3, 3).astype(theano.config.floatX)
     utt.verify_grad(lambda x: argsort(x, axis=2), [data])
+
+
+def test_partition():
+    # Set up
+    rng = np.random.RandomState(seed=utt.fetch_seed())
+    m_val = rng.rand(3, 5)
+    v_val = rng.rand(8)
+
+    # Example 1
+    a = tensor.dmatrix()
+    w = partition(a,2)
+    f = theano.function([a], w)
+    gv = f(m_val)
+    gt = np.partition(m_val,2)
+    assert np.allclose(gv, gt)
+
+    # Example 2
+    a = tensor.dmatrix()
+    axis = tensor.lscalar()
+    w = partition(a, 2, axis)
+    f = theano.function([a, axis], w)
+    for axis_val in 0, 1:
+        gv = f(m_val, axis_val)
+        gt = np.partition(m_val,2, axis_val)
+        assert np.allclose(gv, gt)
+
+    # Example 3
+    a = tensor.dmatrix()
+    kth = tensor.lscalar()
+    w = partition(a, kth)
+    f = theano.function([a, kth], w)
+    for kth_val in 1, 3:
+        gv = f(m_val, kth_val)
+        gt = np.partition(m_val,kth_val)
+        assert np.allclose(gv, gt)
+
+    # Example 4
+    a = tensor.dvector()
+    w2 = partition(a,3)
+    f = theano.function([a], w2)
+    gv = f(v_val)
+    gt = np.partition(v_val,3)
+    assert np.allclose(gv, gt)
+
+
+    # Example 5: Testing axis=None
+    a = tensor.dmatrix()
+    w2 = partition(a, None)
+    f = theano.function([a], w2)
+    gv = f(m_val)
+    gt = np.partition(m_val, 3, None)
+    assert np.allclose(gv, gt)
+
+
+def test_partition_grad():
+    # Testing grad of partition
+    data = np.random.rand(2, 3).astype(theano.config.floatX)
+    utt.verify_grad(lambda x: partition(x, axis=-1), [data])
+
+    data = np.random.rand(2, 3, 4, 5).astype(theano.config.floatX)
+    utt.verify_grad(lambda x: partition(x, axis=-3), [data])
+
+    data = np.random.rand(2, 3, 3).astype(theano.config.floatX)
+    utt.verify_grad(lambda x: partition(x, axis=2), [data])
+
+def test_argpartition():
+    # Set up
+    rng = np.random.RandomState(seed=utt.fetch_seed())
+    m_val = rng.rand(3, 5)
+    v_val = rng.rand(8)
+
+    # Example 1
+    a = tensor.dmatrix()
+    w = argpartition(a,2)
+    f = theano.function([a], w)
+    gv = f(m_val)
+    gt = np.argpartition(m_val,2)
+    assert np.allclose(gv, gt)
+
+    # Example 2
+    a = tensor.dmatrix()
+    axis = tensor.lscalar()
+    w = argpartition(a, 2, axis)
+    f = theano.function([a, axis], w)
+    for axis_val in 0, 1:
+        gv = f(m_val, axis_val)
+        gt = np.argpartition(m_val,2, axis_val)
+        assert np.allclose(gv, gt)
+
+    # Example 3
+    a = tensor.dmatrix()
+    kth = tensor.lscalar()
+    w = argpartition(a, kth)
+    f = theano.function([a, kth], w)
+    for kth_val in 1, 3:
+        gv = f(m_val, kth_val)
+        gt = np.argpartition(m_val,kth_val)
+        assert np.allclose(gv, gt)
+
+    # Example 4
+    a = tensor.dvector()
+    w2 = argpartition(a,3)
+    f = theano.function([a], w2)
+    gv = f(v_val)
+    gt = np.argpartition(v_val,3)
+    assert np.allclose(gv, gt)
+
+
+    # Example 5: Testing axis=None
+    a = tensor.dmatrix()
+    w2 = argpartition(a, None)
+    f = theano.function([a], w2)
+    gv = f(m_val)
+    gt = np.argpartition(m_val, 3, None)
+    assert np.allclose(gv, gt)
+
+
+def test_argargpartition_grad():
+    # Testing grad of argpartition
+    data = np.random.rand(2, 3).astype(theano.config.floatX)
+    utt.verify_grad(lambda x: argpartition(x, axis=-1), [data])
+
+    data = np.random.rand(2, 3, 4, 5).astype(theano.config.floatX)
+    utt.verify_grad(lambda x: argpartition(x, axis=-3), [data])
+
+    data = np.random.rand(2, 3, 3).astype(theano.config.floatX)
+    utt.verify_grad(lambda x: argpartition(x, axis=2), [data])
