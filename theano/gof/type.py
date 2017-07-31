@@ -658,7 +658,7 @@ class CDataType(Type):
     """
     __props__ = ('ctype', 'freefunc', 'headers', 'header_dirs',
                  'libraries', 'lib_dirs', 'extra_support_code',
-                 'version')
+                 'compile_args', 'version')
 
     def __init__(self, ctype, freefunc=None, headers=(), header_dirs=(),
                  libraries=(), lib_dirs=(), compile_args=(),
