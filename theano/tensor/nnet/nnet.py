@@ -897,11 +897,14 @@ def local_logsoftmax(node):
                 if subtensor_input.owner is not None and isinstance(subtensor_input.owner.op, Softmax):
                     softmax_op = subtensor_input.owner.op
                     softmax_input = subtensor_input.owner.inputs[0]
-                    axis = softmax_op.axis
-                    ret = subtensor_op(LogSoftmax(axis)(softmax_input), *subtensor_inputs)
-                    ret.tag.values_eq_approx = values_eq_approx_remove_inf
-                    copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
-                    return [ret]
+                    # If we have a matrix, we still use the
+                    # CrossentropySoftmaxArgmax1HotWithBias
+                    if softmax_input.type.ndim != 2:
+                        axis = softmax_op.axis
+                        ret = subtensor_op(LogSoftmax(axis)(softmax_input), *subtensor_inputs)
+                        ret.tag.values_eq_approx = values_eq_approx_remove_inf
+                        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+                        return [ret]
 
 
 # This is not registered in stabilize, as it cause some crossentropy
