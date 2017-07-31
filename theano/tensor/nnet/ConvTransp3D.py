@@ -1,5 +1,7 @@
 from __future__ import absolute_import, print_function, division
 
+import warnings
+
 import numpy as np
 from six.moves import xrange
 
@@ -343,7 +345,16 @@ class ConvTransp3D(theano.Op):
         return strutil.render_string(codeSource, locals())
 
 
-convTransp3D = ConvTransp3D()
+_convTransp3D = ConvTransp3D()
+
+
+def convTransp3D(W, b, d, H, RShape=None):
+    warnings.warn("convTransp3D is deprecated and will be removed in 0.11.  "
+                  "Use conv3d_grad_wrt_inputs instead.",
+                  DeprecationWarning,
+                  stacklevel=2)
+    return _convTransp3D(W, b, d, H, RShape)
+
 
 # If the input size wasn't a multiple of D we may need to cause some automatic padding to get the right size of reconstruction
 
