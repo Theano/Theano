@@ -847,13 +847,13 @@ class Function(object):
                     if not is_aliased:
                         args_share_memory.append([i])
 
-                # Check for groups of more than one argument that share memory
-                for group in args_share_memory:
-                    if len(group) > 1:
-                        # copy all but the first
-                        for j in group[1:]:
-                            self.input_storage[j].storage[0] = copy.copy(
-                                self.input_storage[j].storage[0])
+            # Check for groups of more than one argument that share memory
+            for group in args_share_memory:
+                if len(group) > 1:
+                    # copy all but the first
+                    for j in group[1:]:
+                        self.input_storage[j].storage[0] = copy.copy(
+                            self.input_storage[j].storage[0])
 
         # Check if inputs are missing, or if inputs were set more than once, or
         # if we tried to provide inputs that are supposed to be implicit.
