@@ -1095,9 +1095,11 @@ def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
             set_instead_of_inc=set_instead_of_inc)
 
 
-@register_opt('fast_compile')
-@op_lifter([tensor.AdvancedIncSubtensor])
-@register_opt2([tensor.AdvancedIncSubtensor], 'fast_compile')
+# Do not register this optimization for now, as it slows down the
+# execution by a lot in important cases.
+# @register_opt('fast_compile')
+# @op_lifter([tensor.AdvancedIncSubtensor])
+# @register_opt2([tensor.AdvancedIncSubtensor], 'fast_compile')
 def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
     if not op.set_instead_of_inc:
         return GpuAdvancedIncSubtensor()

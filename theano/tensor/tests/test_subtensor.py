@@ -402,7 +402,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         s1 = s[newaxis]
         assert s1.broadcastable == (True,), s1
 
-        vs1, vn3, vn4 = theano.function([s], [s1, n3, n4])(-2.0)
+        vs1, vn3, vn4 = theano.function([s], [s1, n3, n4], mode=self.mode)(-2.0)
 
         assert np.all(vs1 == [-2.0])
         assert np.all(vn3 ==
@@ -1148,7 +1148,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
         m1 = set_subtensor(m[:, i], 0)
         m2 = inc_subtensor(m[:, i], 1)
-        f = theano.function([m, i], [m1, m2])
+        f = theano.function([m, i], [m1, m2], mode=self.mode)
 
         m_val = rand(3, 5)
         i_val = randint_ranged(min=0, max=4, shape=(4,))
@@ -1173,7 +1173,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         m1 = set_subtensor(m[:, i], 0)
         m2 = inc_subtensor(m[:, i], 1)
 
-        f = theano.function([m, i], [m1, m2])
+        f = theano.function([m, i], [m1, m2], mode=self.mode)
 
         m_val = rand(5, 7)
         i_val = randint_ranged(min=0, max=6, shape=(4, 2))
@@ -1208,7 +1208,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 sub_m = m[:, i]
                 m1 = set_subtensor(sub_m, np.zeros(shp_v))
                 m2 = inc_subtensor(sub_m, np.ones(shp_v))
-                f = theano.function([m, i], [m1, m2])
+                f = theano.function([m, i], [m1, m2], mode=self.mode)
 
                 m_val = rand(3, 5)
                 i_val = randint_ranged(min=0, max=4, shape=shp_i)
@@ -1245,7 +1245,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 sub_m = m[:, i]
                 m1 = set_subtensor(sub_m, np.zeros(shp_v))
                 m2 = inc_subtensor(sub_m, np.ones(shp_v))
-                f = theano.function([m, i], [m1, m2])
+                f = theano.function([m, i], [m1, m2], mode=self.mode)
 
                 m_val = rand(3, 5)
                 i_val = randint_ranged(min=0, max=4, shape=shp_i)
@@ -1267,7 +1267,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test_take(self):
         a = tensor.matrix()
-        f = theano.function([a], a.take(0, axis=-1), allow_input_downcast=True)
+        f = theano.function(
+            [a], a.take(0, axis=-1),
+            allow_input_downcast=True, mode=self.mode)
         f(np.random.normal(0, 1, (30, 4)))
 
 

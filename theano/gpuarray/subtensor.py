@@ -621,6 +621,10 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         y = inp[1]
         idx = inp[2:]
         x = x.copy()
+        # Get a handle to the GpuElemwise object that will be called.
+        # It is not necessary to have the right number of dimensions,
+        # so we just pass symbolic x and y.
+        iadd = get_iadd(node.inputs[0], node.inputs[1])
 
         # convert all indices to np.array
         for i in range(len(idx)):
@@ -699,15 +703,10 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                 else:
                     val = y_flat[j]
 
-                tmp = pygpu.elemwise.elemwise2(
-                    x_flat[i], '+', val, x_flat[i],
-                    broadcast=True,
-                    convert_f16=True
-                )
-                x_flat.__setitem__(i, tmp)
+                iadd(x_flat[i], val, broadcast=True)
         else:
-            k = get_iadd(node.inputs[0], node.inputs[1])
-            if x_flat.shape[-len(y_flat.shape):] == y_flat.shape or y_flat.shape == ():
+            if (x_flat.shape[-len(y_flat.shape):] == y_flat.shape or
+                    y_flat.shape == ()):
                 # y_flat has to be broadcast over axes of x_flat[i]
 
                 for i in take_idx.flatten():
@@ -715,13 +714,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                         x_flat_sub = x_flat[i].__getitem__(index)
                     else:
                         x_flat_sub = x_flat[i]
-                    tmp = pygpu.elemwise.elemwise2(
-                        x_flat_sub, '+', y_flat, x_flat_sub,
-                        broadcast=True,
-                        convert_f16=True
-                    )
-                    x_flat[i].__setitem__(index, tmp)
-
+                    iadd(x_flat_sub, y_flat, broadcast=True)
             else:
                 # y_flat's first axis corresponds to first exist of x_flat
                 for j, i in enumerate(take_idx.flatten()):
@@ -729,7 +722,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                         x_flat_sub = x_flat[i].__getitem__(index)
                     else:
                         x_flat_sub = x_flat[i]
-                    k(x_flat_sub, y_flat[j % y_flat.shape[0]], broadcast=True)
+                    iadd(x_flat_sub, y_flat[j % y_flat.shape[0]], broadcast=True)
         x_ = x_flat.reshape(x_.shape).transpose(*rtransp)
         out[0] = x_
 
