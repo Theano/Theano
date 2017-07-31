@@ -931,11 +931,12 @@ def local_logsoftmax_grad(node):
                        subtensor.AdvancedIncSubtensor))):
         # get parameters from unoptimized op
         sm = node.inputs[0].owner.inputs[1]
+        axis = sm.owner.op.axis
         # sm_input = node.inputs[1].owner.inputs[0]
         grads = node.inputs[0].owner.inputs[0]
-        if grads.broadcastable[-1] and not sm.broadcastable[-1]:
-            grads = tensor.alloc(grads, grads.shape[0], sm.shape[-1])
-        ret = grads - tensor.sum(grads, axis=-1, keepdims=True) * sm
+        if grads.broadcastable[axis] and not sm.broadcastable[axis]:
+            grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
+        ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
         ret.tag.values_eq_approx = values_eq_approx_remove_nan
         copy_stack_trace(node.outputs[0], ret)
         return [ret]
@@ -1036,6 +1037,9 @@ def softmax(c):
 
 
 def logsoftmax(c):
+    c = as_tensor_variable(c)
+    if c.broadcastable[-1]:
+        warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
     return logsoftmax_op(c)
 
 
