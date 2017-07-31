@@ -1496,6 +1496,18 @@ AddConfigVar('cycle_detection',
              EnumStr('regular', 'fast'),
              in_c_key=False)
 
+AddConfigVar('check_stack_trace',
+             "A flag for checking the stack trace during the optimization process. "
+             "default (off): does not check the stack trace of any optimization "
+             "log: inserts a dummy stack trace that identifies the optimization"
+             "that inserted the variable that had an empty stack trace."
+             "warn: prints a warning if a stack trace is missing and also a dummy"
+             "stack trace is inserted that indicates which optimization inserted"
+             "the variable that had an empty stack trace."
+             "raise: raises an exception if a stack trace is missing",
+             EnumStr('off', 'log', 'warn', 'raise'),
+             in_c_key=False)
+
 
 def _timeout_default():
     return theano.config.compile.wait * 24
