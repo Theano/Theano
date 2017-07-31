@@ -13,6 +13,7 @@ from itertools import chain
 import time
 import warnings
 import numpy as np
+import pygpu
 
 import theano
 from theano import config, gof
@@ -1693,7 +1694,9 @@ class FunctionMaker(object):
         if self.sync:
             for i, inp in enumerate(input_storage):
                 if i in self.fgraph.update_mapping.values():
-                    inp.data.sync()
+                    if (hasattr(theano, "gpuarray") and
+                       isinstance(inp.data, pygpu.gpuarray.GpuArray)):
+                        inp.data.sync()
 
         fn.profile = self.profile
         return fn

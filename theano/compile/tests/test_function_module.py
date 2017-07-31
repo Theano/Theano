@@ -909,28 +909,29 @@ def test_empty_givens_updates():
 
 
 def test_sync():
-    x = T.fmatrix('x')
-    w = theano.shared(np.random.rand(300, 500).astype('float32'), 'w')
-    b = theano.shared(np.zeros((500)).astype('float32'), 'b')
+    if theano.config.device == 'cuda':
+        x = T.fmatrix('x')
+        w = theano.shared(np.random.rand(300, 500).astype('float32'), 'w')
+        b = theano.shared(np.zeros((500)).astype('float32'), 'b')
 
-    y = T.dot(x, w) + b.dimshuffle('x', 0)
+        y = T.dot(x, w) + b.dimshuffle('x', 0)
 
-    updates = [(w, w + T.sum(T.dot(x, w) +
-                             T.dot(5 * x, 2 * w)))]
+        updates = [(w, w + T.sum(T.dot(x, w) +
+                                 T.dot(5 * x, 2 * w)))]
 
-    f = theano.function([x], y, updates=updates, sync=True)
-    g = theano.function([x], y, updates=updates, sync=False)
-    x_ = np.random.rand(100, 300).astype('float32')
-    f(x_)
-    g(x_)
-    t_0 = time.time()
-    for i in range(1000):
+        f = theano.function([x], y, updates=updates, sync=True)
+        g = theano.function([x], y, updates=updates, sync=False)
+        x_ = np.random.rand(100, 300).astype('float32')
         f(x_)
-    t_1 = time.time()
-    for i in range(1000):
         g(x_)
-    t_2 = time.time()
-    assert (t_1 - t_0) > (t_2 - t_1)
+        t_0 = time.time()
+        for i in range(1000):
+            f(x_)
+        t_1 = time.time()
+        for i in range(1000):
+            g(x_)
+        t_2 = time.time()
+        assert (t_1 - t_0) > (t_2 - t_1)
 
 
 if __name__ == '__main__':
