@@ -952,7 +952,7 @@ def local_indexing_logsoftmax_grad(node):
     #           arange(y.shape[0]),
     #           y)
     #   which arises from the gradient of log(softmax(x)[arange(y.shape[0]), y])
-    if not (node.op == softmax_grad):
+    if not (isinstance(node.op, SoftmaxGrad)):
         return
 
     sm = None
@@ -1197,7 +1197,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
                 or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('x must be 2-d tensor of floats', x.type)
         if b.type.ndim != 1 \
-                or x.type.dtype not in tensor.float_dtypes:
+                or b.type.dtype not in tensor.float_dtypes:
             raise ValueError('b must be 1-d tensor of floats', b.type)
         if y_idx.type.ndim != 1 \
                 or y_idx.type.dtype not in tensor.discrete_dtypes:
