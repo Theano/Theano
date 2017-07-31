@@ -6,8 +6,8 @@
 set -x
 
 # Copy cache from master
-BASECOMPILEDIR=$HOME/.theano/pr_theano
-rsync -a $HOME/cache/ $HOME/.theano/pr_theano
+BASECOMPILEDIR=$HOME/.theano
+rsync -a --delete $HOME/cache/master/ $BASECOMPILEDIR
 
 echo "===== Testing theano core"
 
