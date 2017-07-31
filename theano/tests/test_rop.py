@@ -383,8 +383,7 @@ class test_RopLop(RopLop_checker):
         self.check_mat_rop_lop(self.mx.sum(axis=1), (self.mat_in_shape[0],))
 
     def test_softmax(self):
-        # Softmax adds an extra dimnesion !
-        self.check_rop_lop(tensor.nnet.softmax(self.x)[0], self.in_shape[0])
+        self.check_rop_lop(tensor.nnet.softmax(self.x), self.in_shape)
 
     def test_alloc(self):
         # Alloc of the sum of x into a vector
