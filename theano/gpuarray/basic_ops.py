@@ -166,9 +166,6 @@ class Kernel(object):
     codevar: str
         the name of the variable for the code object.
         (defaults to `kcode_` + name)
-    binvar: str
-        the name of the variable for the binary object.
-        (defaults to `kbin_` + name)
     objvar: str
         the name of the variable for the kernel object.
         (defaults to `k_` + name)
@@ -182,8 +179,7 @@ class Kernel(object):
     """
 
     def __init__(self, code, params, name, flags,
-                 codevar=None, binvar=None, objvar=None, fname=None,
-                 sname=None):
+                 codevar=None, objvar=None, fname=None, sname=None):
         self.code = code
         self.params = params
         self.name = name
@@ -191,9 +187,6 @@ class Kernel(object):
         if codevar is None:
             codevar = 'kcode_' + name
         self.codevar = codevar
-        if binvar is None:
-            binvar = 'kbin_' + name
-        self.binvar = binvar
         if objvar is None:
             objvar = 'k_' + name
         self.objvar = objvar
@@ -453,8 +446,7 @@ int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
     def kernel_version(self, node):
         """
         If you override :meth:`c_code_cache_version_apply`, call this
-        method to have the version of the kernel support code and
-        device.
+        method to have the version of the kernel support code.
 
         Parameters
         ----------
@@ -462,7 +454,7 @@ int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
             The node that we need the cache version for.
 
         """
-        return (8, self.get_gpu_context(node).bin_id)
+        return (9,)
 
 
 def forward_string_meth(name):
