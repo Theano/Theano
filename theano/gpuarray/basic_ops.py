@@ -1129,7 +1129,7 @@ class GpuReshape(HideC, tensor.Reshape):
                              context_name=ctx_name)
         return Apply(self, [x, shp], [otype()])
 
-    def perform(self, node, inp, out_):
+    def perform(self, node, inp, out_, params):
         x, shp = inp
         out, = out_
         if (len(shp) != self.ndim):
@@ -1157,33 +1157,33 @@ class GpuReshape(HideC, tensor.Reshape):
         out[0] = x.reshape(tuple(shp))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, shape = inputs
         output, = outputs
-        new_ndim = self.ndim
         sdtype = node.inputs[1].type.dtype_specs()[1]
         fail = sub['fail']
+        params = sub['params']
         return """
         size_t old_size = 1, new_size = 1;
-        size_t new_dims[%(new_ndim)s];
+        size_t new_dims[%(params)s->ndim];
         int compute_axis = -1;
 
         assert (PyArray_NDIM(%(shape)s) == 1);
-        if (PyArray_DIM(%(shape)s, 0) != %(new_ndim)s)
+        if (PyArray_DIM(%(shape)s, 0) != %(params)s->ndim)
         {
             PyErr_Format(PyExc_ValueError,
                          "GpuReshape: given shape is of incorrect "
                          "length (%%d should be %%d).",
-                         PyArray_DIM(%(shape)s, 0), %(new_ndim)s);
+                         PyArray_DIM(%(shape)s, 0), %(params)s->ndim);
             %(fail)s;
         }
 
         for (size_t i = 0; i < %(x)s->ga.nd; ++i)
             old_size *= %(x)s->ga.dimensions[i];
 
-        for (size_t i = 0; i < %(new_ndim)s; ++i)
+        for (size_t i = 0; i < %(params)s->ndim; ++i)
         {
             new_dims[i] = ((%(sdtype)s*)(
                     PyArray_BYTES(%(shape)s) +
@@ -1224,7 +1224,7 @@ class GpuReshape(HideC, tensor.Reshape):
         }
 
         Py_XDECREF(%(output)s);
-        %(output)s = pygpu_reshape(%(x)s, %(new_ndim)s, new_dims,
+        %(output)s = pygpu_reshape(%(x)s, %(params)s->ndim, new_dims,
                                    GA_C_ORDER, 0, compute_axis);
         if (%(output)s == NULL)
         {

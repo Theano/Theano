@@ -226,6 +226,16 @@ optdb.register('add_destroy_handler', AddDestroyHandler(),
 optdb.register('merge3', gof.MergeOptimizer(),
                100, 'fast_run', 'merge')
 
+if theano.config.check_stack_trace in ['raise', 'warn', 'log']:
+    _tags = ('fast_run', 'fast_compile')
+
+if theano.config.check_stack_trace == 'off':
+    _tags = ()
+
+optdb.register('CheckStackTrace',
+               gof.CheckStackTraceOptimization(), -1, *_tags)
+del _tags
+
 
 class Mode(object):
     """
