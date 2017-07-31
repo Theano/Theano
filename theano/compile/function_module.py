@@ -1390,7 +1390,8 @@ class FunctionMaker(object):
     def __init__(self, inputs, outputs,
                  mode=None, accept_inplace=False, function_builder=Function,
                  profile=None, on_unused_input=None, fgraph=None,
-                 output_keys=None):
+                 output_keys=None, sync=False):
+        self.sync = sync
         mode = theano.compile.mode.get_mode(mode)
 
         # Assert old way of working isn't used
@@ -1688,6 +1689,12 @@ class FunctionMaker(object):
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs,
                                    defaults, self.unpack_single,
                                    self.return_none, self.output_keys, self)
+
+        if self.sync:
+            for i, inp in enumerate(input_storage):
+                if i in self.fgraph.update_mapping.values():
+                    inp.data.sync()
+
         fn.profile = self.profile
         return fn
 
@@ -1733,7 +1740,7 @@ def register_checker(checker):
 
 def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   name=None, profile=None, on_unused_input=None,
-                  output_keys=None):
+                  output_keys=None, sync=False):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -1804,7 +1811,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   accept_inplace=accept_inplace,
                   profile=profile,
                   on_unused_input=on_unused_input,
-                  output_keys=output_keys)
+                  output_keys=output_keys,
+                  sync=sync)
         with theano.configparser.change_flags(compute_test_value="off"):
             fn = m.create(defaults)
     finally:
