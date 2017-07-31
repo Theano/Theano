@@ -225,14 +225,6 @@ dnn_available.msg = None
 
 
 def CUDNNDataType(name, freefunc=None):
-    hdirs = []
-    if config.dnn.include_path:
-        hdirs.append(config.dnn.include_path)
-    if config.cuda.include_path:
-        hdirs.append(config.cuda.include_path)
-    ldirs = []
-    if config.dnn.library_path:
-        ldirs.append(config.dnn.library_path)
     cargs = []
     if config.dnn.bin_path:
         if sys.platform == 'darwin':
@@ -242,9 +234,10 @@ def CUDNNDataType(name, freefunc=None):
 
     return CDataType(name, freefunc,
                      headers=['cudnn.h'],
-                     header_dirs=hdirs,
+                     header_dirs=[config.dnn.include_path,
+                                  config.cuda.include_path],
                      libraries=['cudnn'],
-                     lib_dirs=ldirs,
+                     lib_dirs=[config.dnn.library_path],
                      compile_args=cargs,
                      version=version(raises=False))
 
@@ -256,20 +249,13 @@ class DnnVersion(Op):
         return ['cudnn.h']
 
     def c_header_dirs(self):
-        res = []
-        if config.dnn.include_path:
-            res.append(config.dnn.include_path)
-        if config.cuda.include_path:
-            res.append(config.cuda.include_path)
-        return res
+        return [config.dnn.include_path, config.cuda.include_path]
 
     def c_libraries(self):
         return ['cudnn']
 
     def c_lib_dirs(self):
-        if config.dnn.library_path:
-            return [config.dnn.library_path]
-        return []
+        return [config.dnn.library_path]
 
     def c_compile_args(self):
         if config.dnn.bin_path:
@@ -394,20 +380,14 @@ class DnnBase(COp):
                 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if config.dnn.include_path:
-            dirs.append(config.dnn.include_path)
-        if config.cuda.include_path:
-            dirs.append(config.cuda.include_path)
-        return dirs
+        return [os.path.dirname(__file__), pygpu.get_include(),
+                config.dnn.include_path, config.cuda.include_path]
 
     def c_libraries(self):
         return ['cudnn', 'gpuarray']
 
     def c_lib_dirs(self):
-        if config.dnn.library_path:
-            return [config.dnn.library_path]
-        return []
+        return [config.dnn.library_path]
 
     def c_compile_args(self):
         if config.dnn.bin_path:
@@ -446,20 +426,14 @@ class GpuDnnConvDesc(COp):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__)]
-        if config.dnn.include_path:
-            dirs.append(config.dnn.include_path)
-        if config.cuda.include_path:
-            dirs.append(config.cuda.include_path)
-        return dirs
+        return [os.path.dirname(__file__), config.dnn.include_path,
+                config.cuda.include_path]
 
     def c_libraries(self):
         return ['cudnn']
 
     def c_lib_dirs(self):
-        if config.dnn.library_path:
-            return [config.dnn.library_path]
-        return []
+        return [config.dnn.library_path]
 
     def c_compile_args(self):
         if config.dnn.bin_path:
