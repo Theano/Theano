@@ -970,7 +970,10 @@ class GpuAllocEmpty(HideC, AllocEmpty):
     def __init__(self, dtype, context_name):
         self.dtype = dtype
         self.context_name = context_name
-        self.typecode = gpuarray.dtype_to_typecode(self.dtype)
+
+    @property
+    def typecode(self):
+        return gpuarray.dtype_to_typecode(self.dtype)
 
     def get_params(self, node):
         return self.params_type.get_params(context=get_context(self.context_name),
