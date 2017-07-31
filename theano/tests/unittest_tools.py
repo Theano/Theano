@@ -453,8 +453,11 @@ def assertFailure_fast(f):
     THEANO_FLAGS =cycle_detection='fast'.
     """
     if theano.config.cycle_detection == 'fast':
-        def new_test(*args, **kwargs):
-            assert_raises(f, *args, **kwargs)
-        return new_test
+        class TestAssertion(unittest.TestCase):
+            def runTest(self, *args, **kwargs):
+                with self.assertRaises(Exception):
+                    f(*args, **kwargs)
+        test_assertion = TestAssertion()
+        return test_assertion
     else:
         return f
