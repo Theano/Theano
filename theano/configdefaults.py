@@ -360,9 +360,18 @@ AddConfigVar('dnn.conv.precision',
              in_c_key=False)
 
 
+# We want to default to the cuda root if cudnn is installed there
+def default_dnn_base_path():
+    root = get_cuda_root()
+    # The include doesn't change location between OS.
+    if root and os.path.exists(os.path.join(root, 'include', 'cudnn.h')):
+        return root
+    return ''
+
+
 AddConfigVar('dnn.base_path',
              "Install location of cuDNN.",
-             StrParam(''),
+             StrParam(default_dnn_base_path),
              in_c_key=False)
 
 
