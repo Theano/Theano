@@ -909,7 +909,7 @@ def test_empty_givens_updates():
 
 
 def test_sync():
-    if theano.config.device == 'cuda':
+    if theano.config.device == 'cuda' and theano.gpuarray.pygpu_activated:
         x = T.fmatrix('x')
         w = theano.shared(np.random.rand(300, 500).astype('float32'), 'w')
         b = theano.shared(np.zeros((500)).astype('float32'), 'b')

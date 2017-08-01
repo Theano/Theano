@@ -13,7 +13,6 @@ from itertools import chain
 import time
 import warnings
 import numpy as np
-import pygpu
 
 import theano
 from theano import config, gof
@@ -1011,8 +1010,10 @@ class Function(object):
         for i, inp in enumerate(self.input_storage):
             if i in self.maker.fgraph.update_mapping.values():
                 if (hasattr(theano, "gpuarray") and
-                   isinstance(inp.data, pygpu.gpuarray.GpuArray)):
-                    inp.data.sync()
+                   theano.gpuarray.pygpu_activated):
+                        import pygpu
+                        if isinstance(inp.data, pygpu.gpuarray.GpuArray):
+                            inp.data.sync()
 
 
 # pickling/deepcopy support for Function
