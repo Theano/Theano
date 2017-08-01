@@ -962,7 +962,7 @@ class GpuAllocEmpty(HideC, AllocEmpty):
     Allocate uninitialized memory on the GPU.
 
     """
-    __props__ = ('dtype', 'context_name', 'typecode')
+    __props__ = ('dtype', 'context_name')
     _f16_ok = True
     params_type = ParamsType(context=gpu_context_type,
                              typecode=int32_t)

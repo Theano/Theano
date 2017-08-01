@@ -6633,7 +6633,7 @@ class Choose(Op):
 class AllocEmpty(gof.Op):
     """Implement Alloc on the cpu, but without initializing memory."""
 
-    __props__ = ("dtype", "typecode")
+    __props__ = ("dtype", )
     params_type = ParamsType(typecode=int32_t)
 
     # specify the type of the data
