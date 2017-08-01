@@ -968,12 +968,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         utt.verify_grad(
             inc_slice(slice(1, 2, None), slice(None, None, None)),
             (np.asarray([[0, 1], [2, 3], [4, 5.]]),
-             np.asarray([[9, 9.]]),))
+             np.asarray([[9, 9.]]),),
+            mode=self.mode)
 
         # single element
         utt.verify_grad(
             inc_slice(2, 1),
-            (np.asarray([[0, 1], [2, 3], [4, 5.]]), np.asarray(9.),))
+            (np.asarray([[0, 1], [2, 3], [4, 5.]]), np.asarray(9.),),
+            mode=self.mode)
 
     def test_inc_and_set_subtensor(self):
         """
