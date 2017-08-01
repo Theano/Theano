@@ -9,6 +9,7 @@ import sys
 
 import theano
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_RUNTIME
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.gpuarray.cudnn_defs import (HALF, FLOAT, DOUBLE,
                                         TRUE_HALF_CONFIG, PSEUDO_HALF_CONFIG, FLOAT_CONFIG, DOUBLE_CONFIG)
 from theano.gpuarray.tests.check_dnn_conv import (cudnn, TestDnnConv2D, TestDnnConv3D, CheckDnn)
@@ -144,4 +145,6 @@ if test == BWD_FILTER:
     tests.run_conv_gradweight(algo, dtype, precision, parameters)
 if test == BWD_DATA:
     tests.run_conv_gradinput(algo, dtype, precision, parameters)
+print('Output shape:', get_conv_output_shape(args.input_shape, args.filter_shape, args.border_mode,
+                                             args.subsample, args.dilation))
 print('... OK')
