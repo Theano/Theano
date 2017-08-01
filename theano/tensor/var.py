@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+import collections
 import copy
 import traceback as tb
 import warnings
@@ -458,6 +459,18 @@ class _tensor_py_operators(object):
 
     # SLICING/INDEXING
     def __getitem__(self, args):
+
+        def includes_bool(args_el):
+            if (isinstance(args_el, (np.bool_, bool)) or
+                    (hasattr(args_el, 'dtype') and args_el.dtype == 'bool')):
+                return True
+            if (not isinstance(args_el, theano.tensor.Variable) and
+                    isinstance(args_el, collections.Iterable)):
+                for el in args_el:
+                    if includes_bool(el):
+                        return True
+            return False
+
         if (isinstance(args, list) and
                 any([isinstance(a, slice) for a in args])):
             pass
@@ -467,11 +480,25 @@ class _tensor_py_operators(object):
         # Convert boolean arrays to calls to mask.nonzero()
         tmp_args = []
         for arg in args:
+            # NumPy arrays or tensors of type bool can be converted to
+            # normal integer indices.
             if (isinstance(arg, (np.ndarray, theano.tensor.Variable)) and
                     hasattr(arg, 'dtype') and hasattr(arg, 'nonzero') and
                     arg.dtype == 'bool'):
                 tmp_args += arg.nonzero()
             else:
+                # Python arrays can contain a mixture of bools and integers,
+                # which requires complex rules to handle all special cases.
+                # These rules differ slightly between NumPy versions.
+                # Since earlier versions of Theano did not support any boolean
+                # indexing, it is safe to throw an error if we encounter
+                # any of these difficult cases.
+                if includes_bool(arg):
+                    raise TypeError('TensorType does not support Python bools '
+                                    'for indexing, such as tensor[[True, False]]. '
+                                    'To use a boolean mask, convert the mask to '
+                                    'a NumPy array first, e.g., '
+                                    'tensor[numpy.array([True, False])].')
                 tmp_args.append(arg)
         args = tuple(tmp_args)
 

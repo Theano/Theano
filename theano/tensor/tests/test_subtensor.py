@@ -399,6 +399,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert_array_equal(numpy_n4[numpy_n > 2, ...], n4[n > 2, ...].eval())
         assert_array_equal(numpy_n4[numpy_n > 2, ..., 1], n4[n > 2, ..., 1].eval())
 
+        # special cases: Python bools and bools nested in Python arrays are not supported
+        self.assertRaises(TypeError, n.__getitem__, (True,))
+        self.assertRaises(TypeError, n.__getitem__, (False,))
+        self.assertRaises(TypeError, n.__getitem__, (True, False))
+        self.assertRaises(TypeError, n.__getitem__, ([True, False]))
+        self.assertRaises(TypeError, n.__getitem__, ([0, 1], [0, False]))
+        self.assertRaises(TypeError, n.__getitem__, ([0, 1], [0, theano.shared(True)]))
+
     def test_newaxis(self):
         """
         newaxis support comes from logic in the __getitem__ of TensorType
