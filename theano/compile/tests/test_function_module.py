@@ -919,8 +919,9 @@ def test_sync():
         updates = [(w, w + T.sum(T.dot(x, w) +
                                  T.dot(5 * x, 2 * w)))]
 
-        f = theano.function([x], y, updates=updates, sync=True)
-        g = theano.function([x], y, updates=updates, sync=False)
+        f = theano.function([x], y, updates=updates)
+        f.sync_shared()
+        g = theano.function([x], y, updates=updates)
         x_ = np.random.rand(100, 300).astype('float32')
         f(x_)
         g(x_)

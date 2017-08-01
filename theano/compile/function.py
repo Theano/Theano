@@ -76,7 +76,7 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
              rebuild_strict=True, allow_input_downcast=None, profile=None,
-             on_unused_input=None, sync=False):
+             on_unused_input=None):
     """
     Return a :class:`callable object <theano.compile.function_module.Function>`
     that will calculate `outputs` from `inputs`.
@@ -323,8 +323,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                    allow_input_downcast=allow_input_downcast,
                    on_unused_input=on_unused_input,
                    profile=profile,
-                   output_keys=output_keys,
-                   sync=sync)
+                   output_keys=output_keys)
     # We need to add the flag check_aliased inputs if we have any mutable or
     # borrowed used defined inputs
     fn._check_for_aliased_inputs = check_for_aliased_inputs
