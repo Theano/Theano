@@ -1557,7 +1557,7 @@ AddConfigVar('cycle_detection',
              "The interaction of which one give the lower peak memory usage is"
              "complicated and not predictable, so if you are close to the peak"
              "memory usage, triyng both could give you a small gain.",
-             EnumStr('fast', 'regular'),
+             EnumStr('regular', 'fast'),
              in_c_key=False)
 
 AddConfigVar('check_stack_trace',
