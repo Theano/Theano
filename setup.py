@@ -66,9 +66,10 @@ def find_packages(where='.', exclude=()):
         where, prefix = stack.pop(0)
         for name in os.listdir(where):
             fn = os.path.join(where, name)
-            if ('.' not in name and os.path.isdir(fn) and
+            if ('.' not in name and os.path.isdir(fn) and (
+                name == 'c_code' or
                 os.path.isfile(os.path.join(fn, '__init__.py'))
-            ):
+            )):
                 out.append(prefix+name)
                 stack.append((fn, prefix+name+'.'))
     for pat in list(exclude) + ['ez_setup', 'distribute_setup']:
