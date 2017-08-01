@@ -29,6 +29,11 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
                     "GpuDnnConv images and kernel must have the same stack size");
     return 1;
   }
+  if ((PyGpuArray_DIMS(output)[1] % params->num_groups) != 0) {
+    PyErr_SetString(PyExc_ValueError,
+		    "Number of output channels must be divisible by number of groups");
+    return 1;
+  }
 
   switch (input->ga.typecode) {
   case GA_DOUBLE:
