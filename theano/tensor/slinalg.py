@@ -93,7 +93,6 @@ class Cholesky(Op):
 
         """
 
-        x = inputs[0]
         dz = gradients[0]
         chol_x = outputs[0]
 
