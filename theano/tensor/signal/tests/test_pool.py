@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 
 from nose.plugins.skip import SkipTest
-from nose_parameterized import parameterized
+from parameterized import parameterized
 from itertools import product
 import os
 import unittest

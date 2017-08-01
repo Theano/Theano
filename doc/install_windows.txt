@@ -24,7 +24,7 @@ Install requirements and optional packages
 
 .. code-block:: bash
 
-    conda install numpy scipy mkl-service libpython <m2w64-toolchain> <nose> <nose-parameterized> <sphinx> <pydot-ng>
+    conda install numpy scipy mkl-service libpython <m2w64-toolchain> <nose> <parameterized> <sphinx> <pydot-ng>
 
 .. note::
 

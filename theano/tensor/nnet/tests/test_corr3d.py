@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from nose.tools import assert_equals
-from nose_parameterized import parameterized
+from parameterized import parameterized
 
 import numpy as np
 from six import integer_types

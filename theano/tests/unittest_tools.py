@@ -4,7 +4,7 @@ from functools import wraps
 import logging
 import sys
 import unittest
-from nose_parameterized import parameterized
+from parameterized import parameterized
 
 from six import integer_types
 from six.moves import StringIO
