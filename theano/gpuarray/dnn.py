@@ -72,16 +72,16 @@ def _dnn_lib():
     if _dnn_lib.handle is None:
         import ctypes.util
 
-        if config.dnn.library_path != "":
+        if config.dnn.bin_path != "":
             if sys.platform == 'darwin':
-                dnn_handle = _load_lib(os.path.join(config.dnn.library_path, 'libcudnn.dylib'))
+                dnn_handle = _load_lib(os.path.join(config.dnn.bin_path, 'libcudnn.dylib'))
             elif sys.platform == 'win32':
                 for name in WIN32_CUDNN_NAMES:
-                    dnn_handle = _load_lib(os.path.join(config.dnn.library_path, name))
+                    dnn_handle = _load_lib(os.path.join(config.dnn.bin_path, name))
                     if dnn_handle is not None:
                         break
             else:
-                dnn_handle = _load_lib(os.path.join(config.dnn.library_path, 'libcudnn.so'))
+                dnn_handle = _load_lib(os.path.join(config.dnn.bin_path, 'libcudnn.so'))
         else:
             lib_name = ctypes.util.find_library('cudnn')
             if lib_name is None and sys.platform == 'win32':
@@ -135,12 +135,13 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 }
 """
 
-    params = ["-l", "cudnn", "-I" + os.path.dirname(__file__)]
     path_wrapper = "\"" if os.name == 'nt' else ""
     params = ["-l", "cudnn"]
     params.extend(['-I%s%s%s' % (path_wrapper, os.path.dirname(__file__), path_wrapper)])
     if config.dnn.include_path:
         params.extend(['-I%s%s%s' % (path_wrapper, config.dnn.include_path, path_wrapper)])
+    if config.cuda.include_path:
+        params.extend(['-I%s%s%s' % (path_wrapper, config.cuda.include_path, path_wrapper)])
     if config.dnn.library_path:
         params.extend(['-L%s%s%s' % (path_wrapper, config.dnn.library_path, path_wrapper)])
     # Do not run here the test program. It would run on the
@@ -223,6 +224,24 @@ def dnn_available(context_name):
 dnn_available.msg = None
 
 
+def CUDNNDataType(name, freefunc=None):
+    cargs = []
+    if config.dnn.bin_path:
+        if sys.platform == 'darwin':
+            cargs.append('-Wl,-rpath,' + config.dnn.bin_path)
+        else:
+            cargs.append('-Wl,-rpath,"' + config.dnn.bin_path + '"')
+
+    return CDataType(name, freefunc,
+                     headers=['cudnn.h'],
+                     header_dirs=[config.dnn.include_path,
+                                  config.cuda.include_path],
+                     libraries=['cudnn'],
+                     lib_dirs=[config.dnn.library_path],
+                     compile_args=cargs,
+                     version=version(raises=False))
+
+
 class DnnVersion(Op):
     __props__ = ()
 
@@ -230,22 +249,20 @@ class DnnVersion(Op):
         return ['cudnn.h']
 
     def c_header_dirs(self):
-        return [config.dnn.include_path] if config.dnn.include_path else []
+        return [config.dnn.include_path, config.cuda.include_path]
 
     def c_libraries(self):
         return ['cudnn']
 
     def c_lib_dirs(self):
-        if config.dnn.library_path:
-            return [config.dnn.library_path]
-        return []
+        return [config.dnn.library_path]
 
     def c_compile_args(self):
-        if config.dnn.library_path:
+        if config.dnn.bin_path:
             if sys.platform == 'darwin':
-                return ['-Wl,-rpath,' + config.dnn.library_path]
+                return ['-Wl,-rpath,' + config.dnn.bin_path]
             else:
-                return ['-Wl,-rpath,"' + config.dnn.library_path + '"']
+                return ['-Wl,-rpath,"' + config.dnn.bin_path + '"']
         return []
 
     def c_support_code(self):
@@ -305,12 +322,7 @@ def version(raises=True):
     return version.v
 version.v = None
 
-handle_type = CDataType('cudnnHandle_t', 'cudnnDestroy',
-                        headers=['cudnn.h'],
-                        header_dirs=[config.dnn.include_path],
-                        libraries=['cudnn'],
-                        lib_dirs=[config.dnn.library_path],
-                        version=version(raises=False))
+handle_type = CUDNNDataType('cudnnHandle_t', 'cudnnDestroy')
 
 # Get cuDNN definitions to be used.
 cudnn = cudnn_defs.get_definitions(version(raises=False))
@@ -368,25 +380,21 @@ class DnnBase(COp):
                 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
-        if config.dnn.include_path:
-            dirs.append(config.dnn.include_path)
-        return dirs
+        return [os.path.dirname(__file__), pygpu.get_include(),
+                config.dnn.include_path, config.cuda.include_path]
 
     def c_libraries(self):
         return ['cudnn', 'gpuarray']
 
     def c_lib_dirs(self):
-        if config.dnn.library_path:
-            return [config.dnn.library_path]
-        return []
+        return [config.dnn.library_path]
 
     def c_compile_args(self):
-        if config.dnn.library_path:
+        if config.dnn.bin_path:
             if sys.platform == 'darwin':
-                return ['-Wl,-rpath,' + config.dnn.library_path]
+                return ['-Wl,-rpath,' + config.dnn.bin_path]
             else:
-                return ['-Wl,-rpath,"' + config.dnn.library_path + '"']
+                return ['-Wl,-rpath,"' + config.dnn.bin_path + '"']
         return []
 
     def c_code_cache_version(self):
@@ -418,13 +426,22 @@ class GpuDnnConvDesc(COp):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), config.dnn.include_path]
+        return [os.path.dirname(__file__), config.dnn.include_path,
+                config.cuda.include_path]
 
     def c_libraries(self):
         return ['cudnn']
 
     def c_lib_dirs(self):
         return [config.dnn.library_path]
+
+    def c_compile_args(self):
+        if config.dnn.bin_path:
+            if sys.platform == 'darwin':
+                return ['-Wl,-rpath,' + config.dnn.bin_path]
+            else:
+                return ['-Wl,-rpath,"' + config.dnn.bin_path + '"']
+        return []
 
     def do_constant_folding(self, node):
         return False
@@ -466,9 +483,8 @@ class GpuDnnConvDesc(COp):
         kern_shape = theano.tensor.basic.cast(kern_shape, 'int64')
 
         node = Apply(self, [kern_shape],
-                     [CDataType("cudnnConvolutionDescriptor_t",
-                                freefunc="cudnnDestroyConvolutionDescriptor",
-                                version=version(raises=False))()])
+                     [CUDNNDataType("cudnnConvolutionDescriptor_t",
+                                    freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
         # default it returns False all the time. To prevent DebugMode from
         # complaining because of the MergeOptimizer, we make this variable
@@ -1278,9 +1294,8 @@ class GpuDnnPoolDesc(Op):
 
     def make_node(self):
         node = Apply(self, [],
-                     [CDataType("cudnnPoolingDescriptor_t",
-                                freefunc="cudnnDestroyPoolingDescriptor",
-                                version=version(raises=False))()])
+                     [CUDNNDataType("cudnnPoolingDescriptor_t",
+                                    freefunc="cudnnDestroyPoolingDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
         # default it returns False all the time. To prevent DebugMode from
         # complaining because of the MergeOptimizer, we make this variable
@@ -1938,9 +1953,8 @@ class GpuDnnBatchNormGrad(DnnBase):
         return [shape[0], shape[2], shape[2]]
 
 gpudata_type = CDataType('gpudata *', 'gpudata_release')
-dropoutdesc_type = CDataType('cudnnDropoutDescriptor_t',
-                             'cudnnDestroyDropoutDescriptor',
-                             version=version(raises=False))
+dropoutdesc_type = CUDNNDataType('cudnnDropoutDescriptor_t',
+                                 'cudnnDestroyDropoutDescriptor')
 
 
 class GpuDnnDropoutOp(DnnBase):
@@ -2008,9 +2022,8 @@ def dropout(x, dropout=0.0, seed=4242):
     y, odesc = GpuDnnDropoutOp()(x, desc)
     return y, desc, odesc, states
 
-rnndesc_type = CDataType('cudnnRNNDescriptor_t',
-                         'cudnnDestroyRNNDescriptor',
-                         version=version(raises=False))
+rnndesc_type = CUDNNDataType('cudnnRNNDescriptor_t',
+                             'cudnnDestroyRNNDescriptor')
 
 
 def as_i32(v):

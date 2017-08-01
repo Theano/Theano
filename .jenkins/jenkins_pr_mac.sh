@@ -18,6 +18,9 @@ export PATH=/usr/local/cuda/bin:${PATH}
 export DYLD_LIBRARY_PATH=/usr/local/cuda/lib:${DYLD_LIBRARY_PATH}
 export CPLUS_INCLUDE_PATH=/usr/local/cuda/include:${HOME}/cuda/include:${CPLUS_INCLUDE_PATH}
 
+# CUDNN
+export CUDNNPATH=${HOME}/cuda
+
 # Build libgpuarray
 GPUARRAY_CONFIG="Release"
 DEVICE=cuda
@@ -53,5 +56,5 @@ python -c 'import pygpu; print(pygpu.__file__)'
 
 # Testing theano
 THEANO_PARAM="theano --with-timer --timer-top-n 10 --with-xunit --xunit-file=theano_mac_pr_tests.xml"
-FLAGS=init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,base_compiledir=$BASECOMPILEDIR,dnn.library_path=$HOME/cuda/lib,gcc.cxxflags="-L${LIBDIR}/lib"
+FLAGS=init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,base_compiledir=$BASECOMPILEDIR,dnn.base_path=${CUDNNPATH},gcc.cxxflags="-L${LIBDIR}/lib"
 THEANO_FLAGS=${FLAGS} python bin/theano-nose ${THEANO_PARAM}
