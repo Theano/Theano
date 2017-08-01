@@ -33,7 +33,7 @@ from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
 from theano.scalar import Scalar
-from theano.tensor import (Subtensor, AdvancedSubtensor, AdvancedSubtensor1)
+from theano.tensor import (Subtensor, AdvancedSubtensor, AdvancedSubtensor1, IncSubtensor, AdvancedIncSubtensor, AdvancedIncSubtensor1)
 
 ############
 #
@@ -955,6 +955,8 @@ def local_indexing_logsoftmax_grad(node):
     #           arange(y.shape[0]),
     #           y)
     #   which arises from the gradient of log(softmax(x)[arange(y.shape[0]), y])
+    list_classes_IncSubtensor = ((IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
+    list_classes_Subtensor = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
     if not (isinstance(node.op, SoftmaxGrad)):
         return
 
@@ -967,24 +969,29 @@ def local_indexing_logsoftmax_grad(node):
     if not((sm is not None) and sm.owner and isinstance(sm.owner.op, Softmax)):
         return
 
-    if d_sm.owner and isinstance(d_sm.owner.op, subtensor.AdvancedIncSubtensor):
+    if d_sm.owner and isinstance(d_sm.owner.op, list_classes_IncSubtensor):
         try:
-            z = d_sm.owner.inputs[0]
             incr = d_sm.owner.inputs[1]
-            subtensor_inputs = d_sm.owner.inputs[2:]
+            subtensor_inputs, = d_sm.owner.inputs[2:]
         except:
             return
 
-        out_grad = 1
+        out_grad = 1.
         if incr.owner and incr.owner.op == tensor.neg:
             incr = incr.owner.inputs[0]
             out_grad = - out_grad
 
         if incr.owner and incr.owner.op == tensor.true_div:
             num, denom = incr.owner.inputs
+
+            if num.ndim == 1 or np.all(num.broadcastable):
+                out_grad *= -num
+            else:
+                return
+
             if not denom.owner:
                 return
-            if isinstance(denom.owner.op, subtensor.AdvancedSubtensor):
+            if isinstance(denom.owner.op, list_classes_Subtensor):
                 # Base case
                 adv_subtensor = denom
                 # out_grad /= 1.
@@ -992,7 +999,7 @@ def local_indexing_logsoftmax_grad(node):
                 # Try to find the AdvancedSubtensor node mentionned above,
                 # and the output gradient
                 for i, input in enumerate(denom.owner.inputs):
-                    if input.owner and isinstance(input.owner.op, subtensor.AdvancedSubtensor):
+                    if input.owner and isinstance(input.owner.op, list_classes_Subtensor):
                         other_inputs = [in_ for (j, in_) in enumerate(denom.owner.inputs) if j != i]
                         if len(other_inputs) == 1:
                             rest = other_inputs[0]
@@ -1001,6 +1008,7 @@ def local_indexing_logsoftmax_grad(node):
                         # Check that rest is a vector or a scalar
                         if rest.ndim == 1 or np.all(rest.broadcastable):
                             adv_subtensor = input
+                            out_grad /= rest
                             break
             else:
                 return
@@ -1008,23 +1016,17 @@ def local_indexing_logsoftmax_grad(node):
             if adv_subtensor is not None:
                 try:
                     maybe_sm = adv_subtensor.owner.inputs[0]
-                    maybes_subtensor_inputs = adv_subtensor.owner.inputs[1:]
+                    maybes_subtensor_inputs, = adv_subtensor.owner.inputs[1:]
                 except Exception:
                     return
-
                 if (not (maybe_sm is sm and maybes_subtensor_inputs is subtensor_inputs)):
                     return
             else:
                 return
 
-            grads = d_sm * out_grad
-            axis = sm.owner.op.axis
-            if grads.broadcastable[axis] and not sm.broadcastable[axis]:
-                grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
-            out_grads = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
-            ret = d_sm.owner.op(z, out_grads, subtensor_inputs)
+            ret = out_grad * d_sm.owner.op(-sm, 1, subtensor_inputs)
             ret.tag.values_eq_approx = values_eq_approx_remove_nan
-            copy_stack_trace(node.outputs[0], ret)
+            copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
             return [ret]
 
 
