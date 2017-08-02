@@ -22,9 +22,6 @@ from .nnet import (
     confusion_matrix, softsign)
 from . import opt
 from .conv import ConvOp
-from .Conv3D import *
-from .ConvGrad3D import *
-from .ConvTransp3D import *
 from .sigm import (softplus, sigmoid, sigmoid_inplace,
                    scalar_sigmoid, ultra_fast_sigmoid,
                    hard_sigmoid)
