@@ -56,8 +56,8 @@ class Optimizer(object):
         # in subclasses from other bases.
         return id(self) == id(other)
 
-    def __neq__(self, other):
-        # added to override the  __neq__ implementation that may be inherited
+    def __ne__(self, other):
+        # added to override the  __ne__ implementation that may be inherited
         # in subclasses from other bases.
         return id(self) != id(other)
 
@@ -492,8 +492,7 @@ class _metadict:
                 except Exception:
                     if item is item2:
                         return value
-            else:
-                return default
+            return default
 
     def clear(self):
         self.d = {}
@@ -3039,3 +3038,34 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
                 return False
 
     return True
+
+
+class CheckStrackTraceFeature(object):
+    def on_import(self, fgraph, node, reason):
+        # In optdb we only register the CheckStackTraceOptimization when
+        # theano.config.check_stack_trace is not off but we also double check here.
+        if theano.config.check_stack_trace != 'off' and not check_stack_trace(fgraph, 'all'):
+            if theano.config.check_stack_trace == 'raise':
+                    raise AssertionError(
+                        'Empty stack trace! The optimization that inserted this variable is ' + str(reason))
+            elif theano.config.check_stack_trace in ['log', 'warn']:
+                apply_nodes_to_check = fgraph.apply_nodes
+                for node in apply_nodes_to_check:
+                    for output in node.outputs:
+                        if not hasattr(output.tag, 'trace') or not output.tag.trace:
+                            output.tag.trace = [[('', 0, 'Empty stack trace! The optimization that' +
+                                                 'inserted this variable is ' + str(reason), '')]]
+                if theano.config.check_stack_trace == 'warn':
+                        warnings.warn(
+                            'Empty stack trace! The optimization that inserted this variable is' + str(reason))
+
+
+class CheckStackTraceOptimization(Optimizer):
+    """Optimizer that serves to add CheckStackTraceOptimization as an fgraph feature."""
+
+    def add_requirements(self, fgraph):
+        if not hasattr(fgraph, 'CheckStrackTraceFeature'):
+            fgraph.attach_feature(CheckStrackTraceFeature())
+
+    def apply(self, fgraph):
+        pass

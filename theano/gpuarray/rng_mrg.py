@@ -61,18 +61,21 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             otype = 'ga_half'
             # limit the values of the state that we use.
             mask = '& 0x7fff'
-            NORM = '3.0518e-05f'  # numpy.float16(1.0/(2**15+8))
+            offset = '+ 1'
+            NORM = '3.0458e-05f'  # numpy.float16(1.0/(2**15+33))
             # this was determined by finding the biggest number such that
-            # numpy.float16(number * (M1 & 0x7fff)) < 1.0
+            # numpy.float16(number * ((M1 & 0x7fff) + 1)) < 1.0
         elif self.output_type.dtype == 'float32':
             otype = 'float'
             mask = ''
+            offset = ''
             NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
             # this was determined by finding the biggest number such that
             # numpy.float32(number * M1) < 1.0
         elif self.output_type.dtype == 'float64':
             otype = 'double'
             mask = ''
+            offset = ''
             NORM = '4.656612873077392578125e-10'
         else:
             raise ValueError('Unsupported data type for output',
@@ -143,11 +146,11 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                 x21 = y2;
 
                 if (x11 <= x21) {
-                    sample_data[i] = %(write)s(((x11 - x21 + M1) %(mask)s) * %(NORM)s);
+                    sample_data[i] = %(write)s((((x11 - x21 + M1) %(mask)s) %(offset)s) * %(NORM)s);
                 }
                 else
                 {
-                    sample_data[i] = %(write)s(((x11 - x21) %(mask)s) * %(NORM)s);
+                    sample_data[i] = %(write)s((((x11 - x21) %(mask)s) %(offset)s) * %(NORM)s);
                 }
             }
 
@@ -299,7 +302,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                    """ % dict(fail=sub['fail']))
 
     def c_code_cache_version(self):
-        return (15,)
+        return (16,)
 
 
 @register_opt2([mrg_uniform], 'fast_compile')

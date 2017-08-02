@@ -11,6 +11,7 @@ from theano.tensor.nnet.corr import CorrMM, CorrMM_gradWeights, CorrMM_gradInput
 from ..type import gpuarray_shared_constructor
 from ..blas import GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs
 from .config import mode_with_gpu, mode_without_gpu, ref_cast
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim
 
 
 class TestCorrMM(unittest.TestCase):
@@ -219,3 +220,15 @@ class TestCorrMM(unittest.TestCase):
                             verify_grad=False)
         self.run_gradinput(inputs_shape=(1, 1024, 3, 1),
                            filters_shape=(1, 1, 1, 1024))
+
+
+class TestGroupGpuCorr2d(Grouped_conv_noOptim):
+    mode = theano.compile.get_mode("FAST_RUN")
+    conv2d = GpuCorrMM
+    conv2d_gradw = GpuCorrMM_gradWeights
+    conv2d_gradi = GpuCorrMM_gradInputs
+    conv2d_op = GpuCorrMM
+    conv2d_gradw_op = GpuCorrMM_gradWeights
+    conv2d_gradi_op = GpuCorrMM_gradInputs
+    flip_filter = True
+    is_dnn = False

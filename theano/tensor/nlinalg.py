@@ -539,7 +539,7 @@ class QRIncomplete(Op):
     Incomplete QR Decomposition.
 
     Computes the QR decomposition of a matrix.
-    Factor the matrix a as qr and return a single matrix.
+    Factor the matrix a as qr and return a single matrix R.
 
     """
 
@@ -552,15 +552,14 @@ class QRIncomplete(Op):
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2, "The input of qr function should be a matrix."
-        q = theano.tensor.matrix(dtype=x.dtype)
-        return Apply(self, [x], [q])
+        r = theano.tensor.matrix(dtype=x.dtype)
+        return Apply(self, [x], [r])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
-        (q,) = outputs
+        (r,) = outputs
         assert x.ndim == 2, "The input of qr function should be a matrix."
-        q[0] = self._numop(x,
-                           self.mode)
+        r[0] = self._numop(x, self.mode)
 
 
 def qr(a, mode="reduced"):

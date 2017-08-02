@@ -14,7 +14,7 @@ import theano
 from theano.compat import izip
 from theano.configparser import config
 from theano import gof
-from theano.gof import Apply, Constant, Op, Variable
+from theano.gof import Apply, Constant, Op, Variable, ParamsType
 from theano.gof.type import Generic
 
 from theano.tensor import elemwise
@@ -29,6 +29,8 @@ from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 # For history
 from theano.compile import Rebroadcast, Shape, shape
+from theano.scalar import int32
+
 
 # We use these exceptions as well.
 import theano.scalar.sharedvar
@@ -1429,21 +1431,31 @@ class Argmax(Op):
     nin = 2  # tensor, axis
     nout = 1
     E_axis = 'invalid axis'
-    __props__ = ()
+    __props__ = ('axis',)
     _f16_ok = True
+
+    params_type = ParamsType(c_axis=scal.int64)
+
+    def __init__(self, axis):
+        if axis is not None:
+            axis = tuple(axis)
+        self.axis = tuple(axis)
+
+    def get_params(self, node):
+        if self.axis is not None and len(self.axis) == 1:
+            c_axis = np.int64(self.axis[0])
+        else:
+            # The value here doesn't matter, it won't be used
+            c_axis = np.int64(-1)
+        return self.params_type.get_params(c_axis=c_axis)
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
-        # Check axis and convert it to a Python list of integers.
-        axis = check_and_normalize_axes(x, axis)
-        if len(axis) == 0:
-            axis = NoneConst.clone()
+        if self.axis is None:
             all_axes = list(range(x.ndim))
         else:
-            all_axes = axis
-            axis = _as_tensor_variable(axis)
-            assert axis.ndim == 1
-        inputs = [x, axis]
+            all_axes = self.axis
+        inputs = [x]
 
         # We keep the original broadcastable flags for dimensions on which
         # we do not perform the argmax.
@@ -1452,13 +1464,16 @@ class Argmax(Op):
         outputs = [tensor('int64', broadcastable, name='argmax')]
         return Apply(self, inputs, outputs)
 
-    def perform(self, node, inp, outs):
-        x, axes = inp
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        if len(node.inputs) == 2:
+            raise ValueError('You are trying to compile a graph with an old Argmax node.  Either reoptimize your graph or rebuild it to get the new node format.')
+
+    def perform(self, node, inp, outs, params):
+        x, = inp
+        axes = self.axis
         max_idx, = outs
         if axes is None:
             axes = tuple(range(x.ndim))
-        else:
-            axes = tuple(int(ax) for ax in axes)
 
         # Numpy does not support multiple axes for argmax
         # Work around
@@ -1476,18 +1491,18 @@ class Argmax(Op):
                                      dtype='int64')
 
     def c_code(self, node, name, inp, out, sub):
-        x, axis = inp
+        x, = inp
         argmax, = out
         fail = sub["fail"]
-        if NoneConst.equals(node.inputs[1]):
+        params = sub["params"]
+        if self.axis is None:
             axis_code = "axis = NPY_MAXDIMS;"
         else:
-            assert node.inputs[1].ndim == 1
-            # Fall back to perform() if there are multiple axes
-            if len(node.inputs[1].data) > 1:
+            if len(self.axis) > 1:
                 raise NotImplementedError()
+            # params is only used here for now
             axis_code = """
-            axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
+            axis = %(params)s->c_axis;
             if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
                 PyErr_SetString(PyExc_ValueError,
                 "Argmax, bad axis argument");
@@ -1522,28 +1537,20 @@ class Argmax(Op):
         return ret % locals()
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
     def infer_shape(self, node, shapes):
-        ishape, axis_shape = shapes
-        axis = node.inputs[1]
-        if axis.data is None:
+        ishape, = shapes
+        if self.axis is None:
             return [()]
         rval = tuple([ishape[i] for (i, b) in enumerate(
-            node.inputs[0].type.broadcastable) if i not in axis.data])
+            node.inputs[0].type.broadcastable) if i not in self.axis])
         return [rval]
 
     def grad(self, inp, grads):
-        x, axis = inp
+        x, = inp
 
-        axis_grad = grad_undefined(
-            self, 1, axis,
-            "argmax is not defined for non-integer axes so"
-            " argmax(x, axis+eps) is undefined")
-
-        return [x.zeros_like(), axis_grad]
-
-_argmax = Argmax()
+        return [x.zeros_like()]
 
 
 def makeKeepDims(x, y, axis):
@@ -4705,20 +4712,19 @@ def vertical_stack(*args):
 
 class Reshape(Op):
     """Perform a reshape operation of the input x to the new shape shp.
-
     The number of dimensions to which to reshape to (ndim) must be
     known at graph build time.
-
     """
     view_map = {0: [0]}  # output 0 is potentially aliased to inputs [0]
     _f16_ok = True
 
     check_input = False
     __props__ = ("ndim",)
+    params_type = ParamsType(ndim=int32)
     # name does not participate because it doesn't affect computations
 
     def __init__(self, ndim, name=None):
-        self.ndim = ndim
+        self.ndim = int(ndim)
         if ndim < 0:
             raise ValueError("The output dimensions after reshape must be 0 or greater")
         assert name is None, 'name attribute for Reshape has been deprecated'
@@ -4758,7 +4764,7 @@ class Reshape(Op):
                     pass
             return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcasts)])
 
-    def perform(self, node, inp, out_):
+    def perform(self, node, inp, out_, params):
         x, shp = inp
         out, = out_
         if (len(shp) != self.ndim):
@@ -4855,22 +4861,22 @@ class Reshape(Op):
                            for i in xrange(self.ndim)])]
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if isinstance(node.inputs[0], TensorVariable):
             x, shp = inputs
             z, = outputs
-            new_ndim = self.ndim
             sdtype = node.inputs[1].type.dtype_specs()[1]
             fail = sub['fail']
+            params = sub['params']
             return """
             assert (PyArray_NDIM(%(shp)s) == 1);
-            npy_intp new_dims[%(new_ndim)s];
+            npy_intp new_dims[%(params)s->ndim];
             PyArray_Dims newshape;
             newshape.ptr = new_dims;
-            newshape.len = %(new_ndim)s;
-            for (int ii = 0; ii < %(new_ndim)s; ++ii)
+            newshape.len = %(params)s->ndim;
+            for (int ii = 0; ii < %(params)s->ndim; ++ii)
             {
                 // -- We do not want an explicit cast here. the shp can be any
                 // -- int* dtype. The compiler will explicitly upcast it, but
@@ -4881,8 +4887,7 @@ class Reshape(Op):
                         ii * PyArray_STRIDES(%(shp)s)[0]))[0];
             }
             Py_XDECREF(%(z)s);
-            %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape,
-                NPY_CORDER);
+            %(z)s = (PyArrayObject *) PyArray_Newshape(%(x)s, &newshape, NPY_CORDER);
             if (!%(z)s)
             {
                 //The error message should have been set by PyArray_Newshape
@@ -5857,53 +5862,6 @@ class Dot(Op):
         if eval_points[0] is None and eval_points[1] is None:
             return [None]
 
-        debugger_available = config.compute_test_value != 'off'
-
-        if debugger_available:
-            try:
-                iv0 = gof.op.get_test_value(inputs[0])
-            except AttributeError:
-                gof.op.missing_test_message(
-                    'first input passed to Dot.R_op has no test value')
-                debugger_available = False
-
-            try:
-                iv1 = gof.op.get_test_value(inputs[1])
-            except AttributeError:
-                gof.op.missing_test_message(
-                    'second input passed to Dot.R_op has no test value')
-                debugger_available = False
-
-            if eval_points[0]:
-                try:
-                    ev0 = gof.op.get_test_value(eval_points[0])
-                except AttributeError:
-                    gof.op.missing_test_message(
-                        'first eval point passed to Dot.R_op '
-                        'has no test value')
-                    debugger_available = False
-            if eval_points[1]:
-                try:
-                    ev1 = gof.op.get_test_value(eval_points[1])
-                except AttributeError:
-                    gof.op.missing_test_message(
-                        'second eval point passed to Dot.R_op '
-                        'has no test value')
-                    debugger_available = False
-
-        if debugger_available:
-            input_values = [iv0, iv1]
-            eval_point_values = [ev0, ev1]
-
-            for i in xrange(2):
-                if eval_point_values[i] is not None and \
-                   input_values[i].shape != eval_point_values[i].shape:
-                    raise ValueError(
-                        'input ' + str(i) + ' and eval_point ' + str(i) +
-                        ' to Dot.R_op should have the same shape, but '
-                        'their shapes are %s and %s, respectively' % (
-                            str(input_values[i].shape),
-                            str(eval_point_values[i].shape)))
         if eval_points[0]:
             t1 = self(eval_points[0], inputs[1])
         if eval_points[1]:

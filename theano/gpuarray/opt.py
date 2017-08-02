@@ -33,6 +33,7 @@ from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv3d,
                                               AbstractConv3d_gradWeights,
                                               AbstractConv3d_gradInputs)
+from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor.nlinalg as nlinalg
 import theano.tensor.signal.pool as pool
 import theano.tensor.slinalg as slinalg
@@ -70,11 +71,15 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor1,
                         GpuAdvancedIncSubtensor,
                         GpuAdvancedIncSubtensor1,
-                        GpuAdvancedIncSubtensor1_dev20)
+                        GpuAdvancedIncSubtensor1_dev20,
+                        GpuAllocDiag, GpuExtractDiag)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
-                     cusolver_available, GpuMagmaMatrixInverse, gpu_svd)
+                     cusolver_available, GpuMagmaMatrixInverse, gpu_svd,
+                     GpuMagmaCholesky, gpu_qr, GpuMagmaEigh,
+                     GpuCublasTriangularSolve, cublas_available)
+from .neighbours import GpuImages2Neibs
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -1114,6 +1119,25 @@ def local_advincsub1_gpua_inplace(node):
             return [node.op.clone_inplace()(*node.inputs)]
 
 
+# AllocDiag
+@register_opt('fast_compile')
+@op_lifter([tensor.AllocDiag])
+@register_opt2([theano.tensor.AllocDiag], 'fast_compile')
+def local_gpu_alloc_diag(op, context_name, inputs, outputs):
+    if outputs[0].ndim != 2:
+        # AllocDiag only supports 2d output
+        return False
+    return GpuAllocDiag(offset=op.offset)
+
+
+# ExtractDiag
+@register_opt('fast_compile')
+@op_lifter([tensor.ExtractDiag])
+@register_opt2([theano.tensor.ExtractDiag], 'fast_compile')
+def local_gpu_extract_diag(op, context_name, inputs, outputs):
+    return GpuExtractDiag(offset=op.offset, axis1=op.axis1, axis2=op.axis2, view=op.view)
+
+
 @register_opt('fast_compile')
 @op_lifter([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod])
 @register_opt2([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod], 'fast_compile')
@@ -1533,7 +1557,8 @@ def local_abstractconv_gemm(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
-    if ((border_mode == 'full') and (subsample == (1, 1))):
+
+    if ((border_mode == 'full') and (subsample == (1, 1)) and node.op.num_groups == 1):
         if not node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1]
         # need to dimshuffle the kernel for full convolution
@@ -1550,8 +1575,9 @@ def local_abstractconv_gemm(node):
         # By default use GpuCorrMM
         rval = GpuCorrMM(border_mode,
                          subsample,
-                         filter_dilation)(gpu_contiguous(img),
-                                          gpu_contiguous(kern))
+                         filter_dilation,
+                         node.op.num_groups)(gpu_contiguous(img),
+                                             gpu_contiguous(kern))
 
         # call GpuCorrMM_gradWeights if good
         # (the latter is faster if batchsize * kernelHeight * kernelWidth
@@ -1563,7 +1589,8 @@ def local_abstractconv_gemm(node):
                 (None not in node.op.imshp[-2:]) and
                 (node.op.kshp is not None) and
                 (None not in node.op.kshp) and
-                border_mode != "half"):
+                border_mode != "half" and
+                node.op.num_groups == 1):
             # we know the kernel and output size
             prod1 = node.op.kshp[0] * node.op.kshp[1]
             prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
@@ -1669,7 +1696,8 @@ def local_abstractconv_gradweights_gemm(node):
 
     rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
                                  subsample=node.op.subsample,
-                                 filter_dilation=node.op.filter_dilation)(
+                                 filter_dilation=node.op.filter_dilation,
+                                 num_groups=node.op.num_groups)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
     if node.op.filter_flip:
         rval = rval[:, :, ::-1, ::-1]
@@ -1713,7 +1741,8 @@ def local_abstractconv_gradinputs_gemm(node):
 
     rval = GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
                                 subsample=node.op.subsample,
-                                filter_dilation=node.op.filter_dilation)(
+                                filter_dilation=node.op.filter_dilation,
+                                num_groups=node.op.num_groups)(
         gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
     return [rval]
 
@@ -2081,18 +2110,34 @@ def local_gpu_maxandargmax(op, context_name, inputs, outputs):
     return op
 
 
+@register_opt('fast_compile')
+@op_lifter([Images2Neibs])
+@register_opt2([Images2Neibs], 'fast_compile')
+def local_gpua_images2neibs(op, context_name, inputs, outputs):
+    if op.mode in ['valid', 'half', 'full', 'ignore_borders', 'wrap_centered']:
+        return GpuImages2Neibs(op.mode)
+
+
 # solve
 @register_opt('fast_compile')
 @op_lifter([slinalg.Solve])
 @register_opt2([theano.tensor.slinalg.Solve], 'fast_compile')
 def local_gpu_solve(op, context_name, inputs, outputs):
-    if not cusolver_available:
-        return
     if inputs[0].dtype not in ['float16', 'float32']:
         return
     if op.A_structure not in MATRIX_STRUCTURES_SOLVE:
         return
-    op = GpuCusolverSolve(A_structure=op.A_structure)
+
+    if op.A_structure in ['lower_triangular', 'upper_triangular']:
+        if not cublas_available:
+            return
+        lower = op.A_structure == 'lower_triangular'
+        op = GpuCublasTriangularSolve(lower)
+    else:
+        if not cusolver_available:
+            return
+        op = GpuCusolverSolve(A_structure=op.A_structure)
+
     if inputs[0].dtype == 'float16':
         return op(inputs[0].astype('float32'),
                   inputs[1].astype('float32')).astype('float16')
@@ -2108,9 +2153,6 @@ def local_inplace_gpu_solve(node):
 
 
 # Cholesky decomposition
-@register_opt('fast_compile')
-@op_lifter([slinalg.Cholesky])
-@register_opt2([theano.tensor.slinalg.Cholesky], 'fast_compile')
 def local_gpu_cholesky(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
@@ -2121,19 +2163,99 @@ def local_gpu_cholesky(op, context_name, inputs, outputs):
         return op(inputs[0].astype('float32')).astype('float16')
 
     return op
+matrix_ops_db = LocalGroupDB()
+matrix_ops_db2 = LocalGroupDB(local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
+matrix_ops_db2.__name__ = "matrix_ops_db2"
+
+# For Cholesky decomposition, magma 2.2 is slower than cusolver 8 (tested for
+# matrices of size 1000). Thus, cusolver is prioritized during graph
+# optimizations. To explicitly use magma, you should disable cusolver using
+# `optimizer_excluding=cusolver` in Theano config.
+lifter = op_lifter([slinalg.Cholesky])(local_gpu_cholesky)
+matrix_ops_db.register("local_gpu_cholesky", lifter,
+                       'gpuarray', 'fast_compile', 'fast_run', 'cusolver',
+                       position=0)
+matrix_ops_db2.register("local_gpu_cholesky",
+                        local_optimizer([slinalg.Cholesky])(local_gpu_cholesky),
+                        'gpuarray', 'fast_compile', 'fast_run', 'cusolver',
+                        position=0)
+register_opt('fast_compile', name='matrix_ops_db')(matrix_ops_db)
+register_opt2([slinalg.Solve], 'fast_compile', name='matrix_ops_db2')(matrix_ops_db2)
 
 
 @register_inplace()
 @local_optimizer([GpuCholesky], inplace=True)
-def local_inplace_cholesky(node):
+def local_inplace_gpu_cholesky(node):
     if isinstance(node.op, GpuCholesky) and not node.op.inplace:
-        return [GpuCholesky(lower=node.op.lower, inplace=True)(*node.inputs)]
+        return [node.op.clone_inplace()(*node.inputs)]
+
+
+def local_gpu_magma_cholesky(op, context_name, inputs, outputs):
+    if not config.magma.enabled:
+        return
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaCholesky(lower=op.lower, inplace=op.destructive)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
+lifter = op_lifter([slinalg.Cholesky])(local_gpu_magma_cholesky)
+matrix_ops_db.register("local_gpu_magma_cholesky", lifter,
+                       'gpuarray', 'fast_compile', 'fast_run', 'magma',
+                       position=1)
+matrix_ops_db2.register("local_gpu_magma_cholesky",
+                        local_optimizer([slinalg.Cholesky])(local_gpu_magma_cholesky),
+                        'gpuarray', 'fast_compile', 'fast_run', 'magma',
+                        position=1)
+
+
+@register_inplace()
+@local_optimizer([GpuMagmaCholesky], inplace=True)
+def local_inplace_gpu_magma_cholesky(node):
+    if isinstance(node.op, GpuMagmaCholesky) and not node.op.inplace:
+        return [node.op.clone_inplace()(*node.inputs)]
+
+
+# QR decomposition
+@register_opt('magma', 'fast_compile')
+@op_lifter([nlinalg.QRFull])
+@register_opt2([theano.tensor.nlinalg.QRFull], 'magma', 'fast_compile')
+def local_gpu_magma_qr(op, context_name, inputs, outputs):
+    if not config.magma.enabled or op.mode != 'reduced':
+        return
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    x = inputs[0]
+    if inputs[0].dtype == 'float16':
+        x = inputs[0].astype('float32')
+    out = gpu_qr(x, complete=True)
+    if inputs[0].dtype == 'float16':
+        return [o.astype('float16') for o in out]
+    return out
 
 
 @register_opt('magma', 'fast_compile')
+@op_lifter([nlinalg.QRIncomplete])
+@register_opt2([theano.tensor.nlinalg.QRIncomplete], 'magma', 'fast_compile')
+def local_gpu_magma_qr_incomplete(op, context_name, inputs, outputs):
+    if not config.magma.enabled:
+        return
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    x = inputs[0]
+    if inputs[0].dtype == 'float16':
+        x = inputs[0].astype('float32')
+    out = gpu_qr(x, complete=False)
+    if inputs[0].dtype == 'float16':
+        return [out.astype('float16')]
+    return out
+
+
+# Matrix inverse
+@register_opt('magma', 'fast_compile')
 @op_lifter([nlinalg.MatrixInverse])
 @register_opt2([theano.tensor.nlinalg.MatrixInverse], 'magma', 'fast_compile')
-def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
+def local_gpu_magma_matrix_inverse(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
     if inputs[0].dtype not in ['float16', 'float32']:
@@ -2146,16 +2268,31 @@ def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
 
 @register_inplace()
 @local_optimizer([GpuMagmaMatrixInverse])
-def local_inplace_matrix_inverse_inplace(node):
-    if isinstance(node.op, GpuMagmaMatrixInverse):
-        if not node.op.inplace:
-            return [node.op.clone_inplace()(*node.inputs)]
+def local_inplace_gpu_magma_matrix_inverse(node):
+    if isinstance(node.op, GpuMagmaMatrixInverse) and not node.op.inplace:
+        return [node.op.clone_inplace()(*node.inputs)]
 
 
+# Eigen decomposition of a symmetric matrix
+@register_opt('magma', 'fast_compile')
+@op_lifter([nlinalg.Eigh])
+@register_opt2([theano.tensor.nlinalg.Eigh], 'magma', 'fast_compile')
+def local_gpu_magma_eigh(op, context_name, inputs, outputs):
+    if not config.magma.enabled:
+        return
+    if inputs[0].dtype not in ['float16', 'float32']:
+        return
+    op = GpuMagmaEigh(UPLO=op.UPLO, compute_v=True)
+    if inputs[0].dtype == 'float16':
+        return op(inputs[0].astype('float32')).astype('float16')
+    return op
+
+
+# Singular Value Decomposition
 @register_opt('magma', 'fast_compile')
 @op_lifter([nlinalg.SVD])
 @register_opt2([theano.tensor.nlinalg.SVD], 'magma', 'fast_compile')
-def local_gpu_svd(op, context_name, inputs, outputs):
+def local_gpu_magma_svd(op, context_name, inputs, outputs):
     if not config.magma.enabled:
         return
     if inputs[0].dtype not in ['float16', 'float32']:

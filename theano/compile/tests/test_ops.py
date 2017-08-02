@@ -39,7 +39,7 @@ class OpDecoratorTests(utt.InferShapeTester):
         x = dmatrix('x')
         x.tag.test_value = np.zeros((2, 2))
         y = dvector('y')
-        y.tag.test_value = [0, 0]
+        y.tag.test_value = [0, 0, 0, 0]
 
         @as_op([dmatrix, dvector], dvector)
         def cumprod_plus(x, y):
@@ -55,7 +55,7 @@ class OpDecoratorTests(utt.InferShapeTester):
         x = dmatrix('x')
         x.tag.test_value = np.zeros((2, 2))
         y = dvector('y')
-        y.tag.test_value = [0, 0]
+        y.tag.test_value = [0, 0, 0, 0]
 
         def infer_shape(node, shapes):
             x, y = shapes

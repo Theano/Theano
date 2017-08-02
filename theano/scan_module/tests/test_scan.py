@@ -5465,3 +5465,76 @@ class TestMissingInputError(unittest.TestCase):
 
         _, updates = theano.scan(count_up, n_steps=20)
         func = theano.function(inputs=[inc], outputs=[], updates=updates)
+
+
+class TestGradUntil(unittest.TestCase):
+
+    def setUp(self):
+        self.x = tensor.vector(name='x')
+        self.threshold = tensor.scalar(name='threshold', dtype='int64')
+        self.seq = np.arange(15, dtype=theano.config.floatX)
+        self.numpy_output = self.seq[:7]**2
+        z = np.zeros(8, dtype=theano.config.floatX)
+        self.numpy_gradient = 2 * np.concatenate([self.seq[:7], z], axis=0)
+
+    def test_grad_until(self):
+        r, _ = theano.scan(lambda x, u: (x * x,
+                                         theano.scan_module.until(x > u)),
+                           sequences=self.x,
+                           non_sequences=[self.threshold])
+        g = theano.grad(r.sum(), self.x)
+        f = theano.function([self.x, self.threshold], [r, g])
+        theano_output, theano_gradient = f(self.seq, 5)
+
+        utt.assert_allclose(theano_output, self.numpy_output)
+        utt.assert_allclose(theano_gradient, self.numpy_gradient)
+
+    def test_grad_until_ndim_greater_one(self):
+        def tile_array(inp):
+            n_cols = 5
+            return np.tile(inp.reshape((-1, 1)), (1, n_cols))
+
+        X = tensor.matrix(name='x')
+        arr = tile_array(self.seq)
+        r, _ = theano.scan(lambda x, u: (x * x,
+                                         theano.scan_module.until(
+                                             tensor.all(x > u))),
+                           sequences=X,
+                           non_sequences=[self.threshold])
+        g = theano.grad(r.sum(), X)
+        f = theano.function([X, self.threshold], [r, g])
+        theano_output, theano_gradient = f(arr, 5)
+
+        utt.assert_allclose(theano_output, tile_array(self.numpy_output))
+        utt.assert_allclose(theano_gradient, tile_array(self.numpy_gradient))
+
+    def test_grad_until_and_truncate(self):
+        n = 3
+        r, _ = theano.scan(lambda x, u: (x * x,
+                                         theano.scan_module.until(x > u)),
+                           sequences=self.x,
+                           non_sequences=[self.threshold],
+                           truncate_gradient=n)
+        g = theano.grad(r.sum(), self.x)
+        f = theano.function([self.x, self.threshold], [r, g])
+        theano_output, theano_gradient = f(self.seq, 5)
+
+        self.numpy_gradient[:7 - n] = 0
+        utt.assert_allclose(theano_output, self.numpy_output)
+        utt.assert_allclose(theano_gradient, self.numpy_gradient)
+
+    def test_grad_until_and_truncate_sequence_taps(self):
+        n = 3
+        r, _ = theano.scan(lambda x, y, u: (x * y,
+                                            theano.scan_module.until(y > u)),
+                           sequences=dict(input=self.x, taps=[-2, 0]),
+                           non_sequences=[self.threshold],
+                           truncate_gradient=n)
+        g = theano.grad(r.sum(), self.x)
+        f = theano.function([self.x, self.threshold], [r, g])
+        theano_output, theano_gradient = f(self.seq, 6)
+
+        # Gradient computed by hand:
+        numpy_grad = np.array([0, 0, 0, 5, 6, 10, 4, 5, 0, 0, 0, 0, 0, 0, 0])
+        numpy_grad = numpy_grad.astype(theano.config.floatX)
+        utt.assert_allclose(theano_gradient, numpy_grad)

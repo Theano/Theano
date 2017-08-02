@@ -10,6 +10,7 @@ import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, conv
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim
 
 
 class TestCorr2D(utt.InferShapeTester):
@@ -414,6 +415,49 @@ class TestCorr2D(utt.InferShapeTester):
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), (1, 2), non_contiguous=True)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), (2, 1), non_contiguous=True)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 2, non_contiguous=True)
+
+
+class TestGroupCorr2d(Grouped_conv_noOptim):
+    if theano.config.mode == "FAST_COMPILE":
+        mode = theano.compile.get_mode("FAST_RUN")
+    else:
+        mode = None
+    conv2d = corr.CorrMM
+    conv2d_gradw = corr.CorrMM_gradWeights
+    conv2d_gradi = corr.CorrMM_gradInputs
+    conv2d_op = corr.CorrMM
+    conv2d_gradw_op = corr.CorrMM_gradWeights
+    conv2d_gradi_op = corr.CorrMM_gradInputs
+    flip_filter = True
+    is_dnn = False
+
+    def test_graph(self):
+        # define common values  first
+        groups = 3
+        bottom = np.random.rand(3, 6, 5, 5).astype(theano.config.floatX)
+        kern = np.random.rand(9, 2, 3, 3).astype(theano.config.floatX)
+        bottom_sym = T.tensor4('bottom')
+        kern_sym = T.tensor4('kern')
+
+        # grouped convolution graph
+        conv_group = self.conv2d(num_groups=groups)(bottom_sym, kern_sym)
+        gconv_func = theano.function([bottom_sym, kern_sym], conv_group, mode=self.mode)
+
+        # Graph for the normal hard way
+        kern_offset = kern_sym.shape[0] // groups
+        bottom_offset = bottom_sym.shape[1] // groups
+        split_conv_output = [self.conv2d()(bottom_sym[:, i * bottom_offset:(i + 1) * bottom_offset, :, :],
+                             kern_sym[i * kern_offset:(i + 1) * kern_offset, :, :, :])
+                             for i in range(groups)]
+        concatenated_output = T.concatenate(split_conv_output, axis=1)
+        conv_func = theano.function([bottom_sym, kern_sym], concatenated_output, mode=self.mode)
+
+        # calculate outputs for each graph
+        gconv_output = gconv_func(bottom, kern)
+        conv_output = conv_func(bottom, kern)
+
+        # compare values
+        utt.assert_allclose(gconv_output, conv_output)
 
 
 if __name__ == '__main__':

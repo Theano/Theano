@@ -9,7 +9,7 @@ import theano
 from theano import gof
 from theano.compat import izip
 from theano.configparser import change_flags
-from theano.gof import Apply, Op, OpenMPOp
+from theano.gof import Apply, Op, COp, OpenMPOp, ParamsType
 from theano import scalar
 from theano.scalar import get_scalar_type
 from theano.printing import pprint
@@ -50,7 +50,7 @@ def TensorConstant(*inputs, **kwargs):
 #   DimShuffle   #
 ##################
 
-class DimShuffle(Op):
+class DimShuffle(COp):
     """
     Allows to reorder the dimensions of a tensor or insert or remove
     broadcastable dimensions.
@@ -130,12 +130,33 @@ class DimShuffle(Op):
     _f16_ok = True
     check_input = False
     __props__ = ("input_broadcastable", "new_order", "inplace")
+    c_func_file = 'c_code/dimshuffle.c'
+    c_func_name = 'cpu_dimshuffle'
+
+    @property
+    def params_type(self):
+        # We can't directly create `params_type` as class attribute
+        # because of importation issues related to TensorType.
+        return ParamsType(input_broadcastable=TensorType(dtype='bool', broadcastable=(False,)),
+                          _new_order=theano.tensor.lvector,
+                          transposition=TensorType(dtype='uint32', broadcastable=(False,)),
+                          inplace=theano.scalar.bool)
+
+    @property
+    def _new_order(self):
+        # Param for C code.
+        # self.new_order may contain 'x', which is not a valid integer value.
+        # We replace it with -1.
+        return [(-1 if x == 'x' else x) for x in self.new_order]
+
+    @property
+    def transposition(self):
+        return self.shuffle + self.drop
 
     def __init__(self, input_broadcastable, new_order, inplace=True):
-        input_broadcastable = tuple(input_broadcastable)
-        self.input_broadcastable = input_broadcastable
-        new_order = tuple(new_order)
-        self.new_order = new_order
+        COp.__init__(self, [self.c_func_file], self.c_func_name)
+        self.input_broadcastable = tuple(input_broadcastable)
+        self.new_order = tuple(new_order)
         if inplace is True:
             self.inplace = inplace
         else:
@@ -185,6 +206,13 @@ class DimShuffle(Op):
         if self.inplace:
             self.view_map = {0: [0]}
 
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if not hasattr(self, 'func_files'):
+            # Perhaps we are loading an old `Op` version of DimShuffle.
+            # Let's just build the COp.
+            COp.__init__(self, [self.c_func_file], self.c_func_name)
+
     def make_node(self, _input):
         input = as_tensor_variable(_input)
         ib = tuple(input.type.broadcastable)
@@ -222,7 +250,7 @@ class DimShuffle(Op):
         else:
             return "DimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, params):
         input, = inp
         storage, = out
         # drop
@@ -259,104 +287,6 @@ class DimShuffle(Op):
         if None in eval_points:
             return [None]
         return self(*eval_points, **dict(return_list=True))
-
-    def c_code(self, node, name, inp, out, sub):
-        input, = inp
-        res, = out
-        basename = input + '__view_or_copy'
-
-        def statements(lst):
-            return ';\n'.join(lst) + ';'
-
-        nd_in = len(self.input_broadcastable)
-        nd_out = len(self.new_order)
-
-        check_input_nd = [('if (PyArray_NDIM(%(input)s) != ' + str(nd_in) + ')'
-                           '{PyErr_SetString(PyExc_NotImplementedError, '
-                           '"input nd"); %(fail)s;}')]
-
-        clear_output = ['if (%(res)s) {Py_XDECREF(%(res)s);}']
-
-        # get the copy / view of the input depending on whether we're doingi
-        # things inplace or not.
-        if self.inplace:
-            get_base = ['{ PyArrayObject * %(basename)s = %(input)s',
-                        'Py_INCREF((PyObject*)%(basename)s)']
-        else:
-            get_base = [
-                ('{ PyArrayObject * %(basename)s = '
-                 '(PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s,'
-                 ' NULL, 0, 0, NPY_ARRAY_ALIGNED|NPY_ARRAY_ENSURECOPY,'
-                 ' NULL)')]
-
-        shape_statements = ['npy_intp dimensions[%i]' % nd_out]
-        for i, o in enumerate(self.new_order):
-            if o != 'x':
-                shape_statements += [('dimensions[' + str(
-                    i) + '] = PyArray_DIMS(%(basename)s)[' + str(o) + ']')]
-            else:
-                shape_statements += [('dimensions[' + str(i) + '] = 1')]
-
-        strides_statements = ['npy_intp strides[%i]' % nd_out]
-
-        # set the strides of the non-broadcasted dimensions
-        for i, o in enumerate(self.new_order):
-            if o != 'x':
-                strides_statements += [('strides[' + str(i) +
-                                        '] = PyArray_DIMS(%(basename)s)[' +
-                                        str(o) +
-                                        '] == 1? 0 : '
-                                        'PyArray_STRIDES(%(basename)s)[' +
-                                        str(o) + ']')]
-            else:
-                strides_statements += [('strides[' + str(i) + '] = 0')]
-
-        # set the strides of the broadcasted dimensions
-        # this algorithm is from numpy: PyArray_Newshape() in
-        # cvs/numpy/numpy/core/src/multiarraymodule.c
-        if nd_out > 0:
-            strides_statements.append(
-                'if (strides[' +
-                str(nd_out) +
-                '-1] == 0) strides[' +
-                str(nd_out) +
-                '-1] = PyArray_DESCR(%(basename)s)->elsize'
-            )
-        for i in xrange(nd_out - 2, -1, -1):
-            strides_statements.append(
-                "if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * "
-                "dimensions[%(i)s+1]" % dict(i=str(i)))
-
-        close_bracket = [
-            # create a new array,
-            ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
-             '' + str(nd_out) + ', dimensions, '
-             'PyArray_TYPE(%(basename)s), strides, '
-             'PyArray_DATA(%(basename)s), PyArray_ITEMSIZE(%(basename)s), '
-             # borrow only the writable flag from the base
-             # the NPY_OWNDATA flag will default to 0.
-             '(NPY_ARRAY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), '
-             'NULL)'),
-            'if (%(res)s == NULL) %(fail)s;',
-            # recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
-            'PyArray_UpdateFlags(%(res)s, NPY_ARRAY_UPDATE_ALL)',
-            # we are making a view in both inplace and non-inplace cases
-            """
-PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
-"""
-            '}']
-
-        full_code = statements(check_input_nd +
-                               clear_output +
-                               get_base +
-                               shape_statements +
-                               strides_statements +
-                               close_bracket)
-
-        return full_code % dict(locals(), **sub)
-
-    def c_code_cache_version(self):
-        return (3,)
 
     def grad(self, inp, grads):
         x, = inp

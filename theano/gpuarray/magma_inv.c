@@ -5,7 +5,7 @@ setup_ext_cuda();
 #section support_code_struct
 
 int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **A_inv,
-                              PARAMS_TYPE* params) {
+                              PARAMS_TYPE *params) {
   const size_t *dims;
   magma_int_t N, ldwork, info;
   magma_int_t *piv = NULL;
@@ -20,12 +20,11 @@ int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **A_inv,
 
   // This is early to match the exit() in the fail label.
   cuda_enter(params->context->ctx);
-  magma_init();
 
   if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuMagmaMatrixInverse: requires data to be C-contiguous");
-    return 1;
+    goto fail;
   }
   if (PyGpuArray_NDIM(A) != 2) {
     PyErr_SetString(PyExc_ValueError,
@@ -93,7 +92,6 @@ fail:
     magma_free(piv);
   if (dwork != NULL)
     gpudata_release(dwork);
-  magma_finalize();
   cuda_exit(params->context->ctx);
   return res;
 }

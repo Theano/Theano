@@ -37,8 +37,8 @@ class GpuMaxAndArgmax(Op):
         broadcastable = [b for i, b in enumerate(X.type.broadcastable)
                          if i not in all_axes]
         inputs = [as_gpuarray_variable(X, context_name)]
-        outputs = [GpuArrayType(X.type.dtype, broadcastable, context_name=context_name, name='max')(),
-                   GpuArrayType(self.argmax_dtype, broadcastable, context_name=context_name, name='argmax')()]
+        outputs = [GpuArrayType(X.type.dtype, broadcastable, context_name=context_name)(),
+                   GpuArrayType(self.argmax_dtype, broadcastable, context_name=context_name)()]
         return Apply(self, inputs, outputs)
 
     def c_headers(self):

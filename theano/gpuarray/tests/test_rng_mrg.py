@@ -9,6 +9,7 @@ from theano.configparser import change_flags
 from theano.sandbox import rng_mrg
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.sandbox.tests.test_rng_mrg import java_samples, rng_mrg_overflow
+from theano.sandbox.tests.test_rng_mrg import test_f16_nonzero as cpu_f16_nonzero
 from theano.tests import unittest_tools as utt
 
 from .config import mode_with_gpu as mode
@@ -162,3 +163,7 @@ def test_validate_input_types_gpuarray_backend():
         rstate = np.zeros((7, 6), dtype="int32")
         rstate = gpuarray_shared_constructor(rstate)
         rng_mrg.mrg_uniform.new(rstate, ndim=None, dtype="float32", size=(3,))
+
+
+def test_f16_nonzero():
+    cpu_f16_nonzero(mode=mode, op_to_check=GPUA_mrg_uniform)

@@ -65,7 +65,7 @@ from theano.gof.opt import (
     LocalOptimizer, local_optimizer, LocalOptGroup,
     OpSub, OpRemove, PatternSub,
     NavigatorOptimizer, TopoOptimizer, EquilibriumOptimizer,
-    OpKeyOptimizer)
+    OpKeyOptimizer, CheckStackTraceOptimization)
 
 from theano.gof.optdb import \
     DB, LocalGroupDB, Query, \

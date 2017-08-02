@@ -407,12 +407,13 @@ class SupportCodeError(Exception):
     """
 
 
-class GpuDimShuffle(HideC, DimShuffle):
+class GpuDimShuffle(DimShuffle):
     """
     DimShuffle on the GPU.
 
     """
     _f16_ok = True
+    c_func_name = 'gpu_dimshuffle'
 
     def make_node(self, input):
         ctx_name = infer_context_name(input)
@@ -430,7 +431,7 @@ class GpuDimShuffle(HideC, DimShuffle):
             s = "GpuDimShuffle{%s}"
         return s % (','.join(str(x) for x in self.new_order))
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, params):
         input, = inp
         storage, = out
 
@@ -447,66 +448,6 @@ class GpuDimShuffle(HideC, DimShuffle):
             res = res.copy()
 
         storage[0] = res
-
-    def c_support_code_apply(self, node, name):
-        def copy_shape(nd_out):
-            stmts = []
-            e = 0
-            for d in range(nd_out):
-                if d in self.augment:
-                    stmts.append("sh[%s] = 1;" % (d,))
-                else:
-                    stmts.append("sh[%s] = tmp->ga.dimensions[%s];" % (d, e))
-                    e += 1
-            return '\n            '.join(stmts)
-
-        return """
-        static const unsigned int %(name)s_ax[] = {%(shuffle)s};
-
-        static PyGpuArrayObject *%(name)s_f(PyGpuArrayObject *a) {
-            PyGpuArrayObject *res, *tmp;
-            size_t sh[%(nd_out)s];
-
-            tmp = pygpu_transpose(a, %(name)s_ax);
-            if (!tmp) return NULL;
-            %(copy_shape)s
-            res = pygpu_reshape(tmp, %(nd_out)s, sh, GA_ANY_ORDER, 1, -1);
-            Py_DECREF(tmp);
-            return res;
-        }
-        """ % dict(shuffle=', '.join(str(a) for a in (self.shuffle + self.drop)),
-                   name=name, nd_out=len(self.new_order),
-                   copy_shape=copy_shape(len(self.new_order)))
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        d = dict(name=name, fail=sub['fail'], inp=inputs[0], out=outputs[0],
-                 nd=len(self.input_broadcastable))
-        process = """
-        PyGpuArrayObject *tmp = NULL;
-        if (%(inp)s->ga.nd != %(nd)s) {
-            PyErr_SetString(PyExc_TypeError, "input nd");
-            %(fail)s
-        }
-
-        Py_XDECREF(%(out)s);
-        %(out)s = %(name)s_f(%(inp)s);
-        if (%(out)s == NULL) {%(fail)s}
-        """ % d
-
-        if not self.inplace:
-            process += """
-            tmp = pygpu_copy(%(out)s, GA_ANY_ORDER);
-            Py_DECREF(%(out)s);
-            if (!tmp) {
-                %(out)s = NULL;
-                %(fail)s
-            }
-            %(out)s = tmp;
-            """ % d
-        return process
-
-    def c_code_cache_version(self):
-        return (5,)
 
 
 class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
