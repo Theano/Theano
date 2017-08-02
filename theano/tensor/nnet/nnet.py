@@ -301,6 +301,8 @@ class SoftmaxGrad(gof.Op):
     params_type = ParamsType(axis=Scalar('int8'))
 
     def __init__(self, axis=-1):
+        # Make sur that axis =-1 until it is tested
+        assert axis == -1
         self.axis = axis
 
     def __setstate__(self, state):
@@ -490,6 +492,8 @@ class Softmax(gof.Op):
     params_type = ParamsType(axis=Scalar('int8'))
 
     def __init__(self, axis=-1):
+        # Make sur that axis =-1 until it is tested
+        assert axis == -1
         self.axis = axis
 
     def __setstate__(self, state):
@@ -720,6 +724,8 @@ class LogSoftmax(gof.Op):
     params_type = ParamsType(axis=Scalar('int8'))
 
     def __init__(self, axis=-1):
+        # Make sur that axis =-1 until it is tested
+        assert axis == -1
         self.axis = axis
 
     def __setstate__(self, state):
