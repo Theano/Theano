@@ -1007,13 +1007,13 @@ class Function(object):
         return [i.variable for i in self.maker.inputs if i.implicit]
 
     def sync_shared(self):
-        for i, inp in enumerate(self.input_storage):
-            if i in self.maker.fgraph.update_mapping.values():
-                if (hasattr(theano, "gpuarray") and
-                   theano.gpuarray.pygpu_activated):
-                        import pygpu
-                        if isinstance(inp.data, pygpu.gpuarray.GpuArray):
-                            inp.data.sync()
+        if (hasattr(theano, "gpuarray") and
+                theano.gpuarray.pygpu_activated):
+            import pygpu
+            for i, inp in enumerate(self.input_storage):
+                if i in self.maker.fgraph.update_mapping.values():
+                    if isinstance(inp.data, pygpu.gpuarray.GpuArray):
+                        inp.data.sync()
 
 
 # pickling/deepcopy support for Function
