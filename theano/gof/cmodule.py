@@ -2278,6 +2278,14 @@ class GCC_compiler(Compiler):
             # improved loading times on most platforms (win32 is
             # different, as usual).
             cmd.append('-fvisibility=hidden')
+        if lib_filename.find(" ") != -1:
+            lib_filename = str("\"" + lib_filename + "\"")
+            cmd.exten(['-o', lib_filename])
+            lib_filename = lib_filename.replace("\"", "")
+        else:
+            cmd.extend(['-o', lib_filename])
+        if cppfilename.find(" ") != -1:
+            cppfilename = str("\"" + cppfilename + "\"")
         cmd.extend(['-o', lib_filename])
         cmd.append(cppfilename)
         cmd.extend(['-l%s' % l for l in libs])
