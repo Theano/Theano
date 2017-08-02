@@ -579,14 +579,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-
-        if theano.config.cycle_detection == 'fast':
-            assert (fgraph.outputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
-        else:
-            assert str(fgraph.outputs[0].owner.op) == 'OutputGuard'
-            assert (fgraph.outputs[0].owner.inputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
+        assert (fgraph.outputs[0].owner.op ==
+                crossentropy_softmax_argmax_1hot_with_bias)
 
     def test_softmax_optimizations_vector(self):
         x = tensor.vector('x')
@@ -599,13 +593,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-        if theano.config.cycle_detection == 'fast':
-            assert (fgraph.outputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
-        else:
-            assert str(fgraph.outputs[0].owner.op) == 'OutputGuard'
-            assert (fgraph.outputs[0].owner.inputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
+        assert (fgraph.outputs[0].owner.op ==
+                crossentropy_softmax_argmax_1hot_with_bias)
 
     def test_softmax_optimizations_w_bias(self):
         x = tensor.matrix('x')
@@ -633,15 +622,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         #    print node.op
         # print printing.pprint(node.outputs[0])
         # print '===='
-        if theano.config.cycle_detection == 'fast':
-            assert len(fgraph.toposort()) == 1
-            assert (fgraph.outputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
-        else:
-            assert len(fgraph.toposort()) == 2
-            assert str(fgraph.outputs[0].owner.op) == 'OutputGuard'
-            assert (fgraph.outputs[0].owner.inputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
+        assert len(fgraph.toposort()) == 1
+        assert (fgraph.outputs[0].owner.op ==
+                crossentropy_softmax_argmax_1hot_with_bias)
 
     def test_softmax_optimizations_w_bias2(self):
         x = tensor.matrix('x')
@@ -667,15 +650,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         # for node in fgraph.toposort():
         #    print node.op
         # print '===='
-        if theano.config.cycle_detection == 'fast':
-            assert len(fgraph.toposort()) == 2
-            assert (fgraph.outputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
-        else:
-            assert len(fgraph.toposort()) == 3
-            assert str(fgraph.outputs[0].owner.op) == 'OutputGuard'
-            assert (fgraph.outputs[0].owner.inputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
+        assert len(fgraph.toposort()) == 2
+        assert (fgraph.outputs[0].owner.op ==
+                crossentropy_softmax_argmax_1hot_with_bias)
 
     def test_softmax_optimizations_w_bias_vector(self):
         x = tensor.vector('x')
@@ -698,15 +675,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         # for node in fgraph.toposort():
         #    print node.op
         # print '===='
-        if theano.config.cycle_detection == 'fast':
-            assert len(fgraph.toposort()) == 2
-            assert (fgraph.outputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
-        else:
-            assert len(fgraph.toposort()) == 3
-            assert str(fgraph.outputs[0].owner.op) == 'OutputGuard'
-            assert (fgraph.outputs[0].owner.inputs[0].owner.op ==
-                    crossentropy_softmax_argmax_1hot_with_bias)
+        assert len(fgraph.toposort()) == 2
+        assert (fgraph.outputs[0].owner.op ==
+                crossentropy_softmax_argmax_1hot_with_bias)
 
     def test_softmax_grad_optimizations(self):
         x = tensor.matrix('x')
@@ -1408,12 +1379,7 @@ def test_argmax_pushdown_bias():
     # for node in fgraph.toposort():
     #    print node.op
     types_to_check = (tensor.DimShuffle, tensor.Elemwise, tensor.Argmax)
-
-    if theano.config.cycle_detection == 'fast':
-        assert len(fgraph.toposort()) == 3
-    else:
-        assert len(fgraph.toposort()) == 4
-        assert str(fgraph.toposort()[3].op) == 'OutputGuard'
+    assert len(fgraph.toposort()) == 3
 
     for i, type in enumerate(types_to_check):
         assert isinstance(fgraph.toposort()[i].op, type)
@@ -1437,11 +1403,7 @@ def test_argmax_pushdown_bias():
     # print 'AFTER'
     # for node in fgraph.toposort():
     #    print node.op
-    if theano.config.cycle_detection == 'fast':
-        assert len(fgraph.toposort()) == 2
-    else:
-        assert len(fgraph.toposort()) == 3
-        assert str(fgraph.toposort()[2].op) == 'OutputGuard'
+    assert len(fgraph.toposort()) == 2
     assert isinstance(fgraph.toposort()[0].op, SoftmaxWithBias)
     assert isinstance(fgraph.toposort()[1].op, tensor.CAReduce)
     assert isinstance(fgraph.toposort()[1].op.scalar_op, theano.scalar.Maximum)
