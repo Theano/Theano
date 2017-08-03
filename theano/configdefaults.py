@@ -407,15 +407,12 @@ AddConfigVar('dnn.library_path',
 
 
 def default_dnn_bin_path():
-    if type(theano.config.dnn).base_path.is_default:
-        return ''
-    else:
-        if theano.config.dnn.base_path != '':
-            if sys.platform == 'win32':
-                return os.path.join(theano.config.dnn.base_path, 'bin')
-            else:
-                return theano.config.dnn.library_path
-        return ''
+    if theano.config.dnn.base_path != '':
+        if sys.platform == 'win32':
+            return os.path.join(theano.config.dnn.base_path, 'bin')
+        else:
+            return theano.config.dnn.library_path
+    return ''
 
 
 AddConfigVar('dnn.bin_path',
