@@ -1,8 +1,9 @@
 REM CUDNN PATH
 set CUDNNPATH=C:\lib\cuda
 
-REM Set conda python, cuda, cmake path
-set PATH=%PATH%;C:\ProgramData\Miniconda2;%CUDNNPATH%\bin;C:\Program Files\CMake\bin
+REM Set conda python, cudnn, cmake path
+set PATH=%PATH%;C:\ProgramData\Miniconda2;C:\ProgramData\Miniconda2\Library\usr\bin;C:\ProgramData\Miniconda2\Library\bin;C:\ProgramData\Miniconda2\Scripts
+set PATH=%PATH%;%CUDNNPATH%\bin;C:\Program Files\CMake\bin
 
 set BUILDBOT_DIR=%WORKSPACE%\nightly_build
 set COMPILEDIR=C:\Jenkins\theano_cache\buildbot_windows
@@ -38,7 +39,7 @@ cmake --build . --target install
 cd ..\..
 
 REM Set conda gcc path
-set PATH=%PATH%;C:\ProgramData\Miniconda2;C:\ProgramData\Miniconda2\Library\mingw-w64\bin;C:\ProgramData\Miniconda2\Library\usr\bin;C:\ProgramData\Miniconda2\Library\bin;C:\ProgramData\Miniconda2\Scripts
+set PATH=%PATH%;C:\ProgramData\Miniconda2\Library\mingw-w64\bin
 
 REM Build the pygpu modules
 cd libgpuarray
