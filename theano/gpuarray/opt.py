@@ -2007,8 +2007,8 @@ def local_abstractconv3d_gradinputs_gemm_alt(node):
 
 class ConvMetaOptimizer(LocalMetaOptimizer):
 
-    def __init__(self, optimizers=()):
-        super(ConvMetaOptimizer, self).__init__(optimizers)
+    def __init__(self):
+        super(ConvMetaOptimizer, self).__init__()
 
     def time_call(self, fn):
         start = time.time()

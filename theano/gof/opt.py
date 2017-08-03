@@ -1131,12 +1131,12 @@ class LocalMetaOptimizer(LocalOptimizer):
 
     """
 
-    def __init__(self, optimizers=()):
-        self._tracks = [x for o in optimizers for x in o.tracks()]
-        self.optimizers = list(optimizers)
+    def __init__(self):
         self.verbose = config.metaopt.verbose
         self.track_dict = defaultdict(lambda: [])
         self.tag_dict = defaultdict(lambda: [])
+        self._tracks = []
+        self.optimizers = []
 
     def register(self, optimizer, tag_list):
         self.optimizers.append(optimizer)
