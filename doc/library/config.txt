@@ -759,6 +759,14 @@ import theano and print the config variable, as in:
 
     Location of the magma library.
 
+.. attribute:: config.ctc.root
+
+    Default: ``''``
+
+    Location of the warp-ctc folder. The folder should contain either a build,
+    lib or lib64 subfolder with the shared library (libwarpctc.so), and another
+    subfolder called include, with the CTC library header.
+
 .. attribute:: config.gcc.cxxflags
 
     Default: ``""``

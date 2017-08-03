@@ -34,6 +34,7 @@ from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv3d_gradWeights,
                                               AbstractConv3d_gradInputs)
 from theano.tensor.nnet.neighbours import Images2Neibs
+from theano.tensor.nnet.ctc import ConnectionistTemporalClassification
 import theano.tensor.nlinalg as nlinalg
 import theano.tensor.signal.pool as pool
 import theano.tensor.slinalg as slinalg
@@ -80,6 +81,7 @@ from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
                      GpuMagmaCholesky, gpu_qr, GpuMagmaEigh,
                      GpuCublasTriangularSolve, cublas_available)
 from .neighbours import GpuImages2Neibs
+from .ctc import GpuConnectionistTemporalClassification
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -161,6 +163,7 @@ def register_inplace(*tags, **kwargs):
             60, 'fast_run', 'inplace', 'gpuarray', *tags)
         return local_opt
     return f
+
 
 register_opt('fast_compile')(theano.tensor.opt.local_track_shape_i)
 register_opt(final_opt=True, name='gpua_constant_folding')(
@@ -582,6 +585,7 @@ def local_cut_gpu_transfers(node):
                 else:
                     return [node.op(n2.inputs[0])]
 
+
 gpu_cut_copies.register('cut_gpua_host_transfers', local_cut_gpu_transfers,
                         'fast_compile', 'fast_run', 'gpuarray')
 gpu_cut_copies.register('cut_gpua_constant_transfers',
@@ -652,6 +656,8 @@ def local_gpua_alloc_empty_to_zeros(node):
         z = np.asarray(0, dtype=node.outputs[0].dtype)
         return [GpuAlloc(context_name)(as_gpuarray_variable(z, context_name),
                                        *node.inputs)]
+
+
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.
@@ -1540,6 +1546,8 @@ def local_conv_gpu_conv(node):
                 return [tensor.as_tensor_variable(out)]
             else:
                 return [out]
+
+
 register_opt()(local_conv_gpu_conv)
 
 
@@ -1812,6 +1820,8 @@ def local_gpu_pool(op, ctx_name, inputs, outputs):
         inp_padded = pad_dims(inp, 2, nd)
         ret_padded = op(inp_padded, ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+
+
 pool_db = LocalGroupDB()
 pool_db2 = LocalGroupDB(local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
 pool_db2.__name__ = "pool_db2"
@@ -1849,6 +1859,8 @@ def local_gpu_max_pool_grad(op, ctx_name, inputs, outputs):
         ret_padded = op(inp_padded, out_padded, out_grad_padded,
                         ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+
+
 lifter = op_lifter([pool.MaxPoolGrad])(local_gpu_max_pool_grad)
 pool_db.register("local_gpu_max_pool_grad", lifter,
                  'gpuarray', 'fast_compile', 'fast_run',
@@ -1879,6 +1891,8 @@ def local_gpu_average_pool_grad(op, ctx_name, inputs, outputs):
         ret_padded = op(inp_padded, out_grad_padded,
                         ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+
+
 lifter = op_lifter([pool.AveragePoolGrad])(local_gpu_average_pool_grad)
 pool_db.register("local_gpu_average_pool_grad", lifter,
                  'gpuarray', 'fast_compile', 'fast_run',
@@ -1975,6 +1989,7 @@ def local_assert_no_cpu_op(node):
                 raise AssertionError("The Op %s is on CPU." % node)
             elif config.assert_no_cpu_op == "pdb":
                 pdb.set_trace()
+
 
 # Register the local_assert_no_cpu_op:
 assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op,
@@ -2307,6 +2322,15 @@ def local_gpu_magma_svd(op, context_name, inputs, outputs):
         else:
             out = [out.astype('float16')]
     return out
+
+
+@register_opt('ctc', 'fast_compile')
+@op_lifter([theano.tensor.nnet.ctc.ConnectionistTemporalClassification])
+@register_opt2([ConnectionistTemporalClassification], 'ctc', 'fast_compile')
+def local_gpu_ctc(op, context_name, inputs, outputs):
+    op = GpuConnectionistTemporalClassification(compute_grad=op.compute_grad)
+    return op.make_node(*inputs).outputs
+
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.
