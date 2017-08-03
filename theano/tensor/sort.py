@@ -34,7 +34,7 @@ class SortOp(theano.Op):
 
     def infer_shape(self, node, inputs_shapes):
         if (isinstance(node.inputs[1], theano.Constant) and
-                node.inputs[1].data is None):
+                    node.inputs[1].data is None):
             # That means axis = None,
             # So the array is flattened before being sorted
             return [(mul(*inputs_shapes[0]),)]
@@ -90,6 +90,7 @@ class SortOp(theano.Op):
                                                                      axis, i))
             indices.append(index_val)
         return indices
+
     """
     def R_op(self, inputs, eval_points):
         # R_op can receive None as eval_points.
@@ -163,7 +164,7 @@ class ArgSortOp(theano.Op):
 
     def infer_shape(self, node, inputs_shapes):
         if (isinstance(node.inputs[1], theano.Constant) and
-                node.inputs[1].data is None):
+                    node.inputs[1].data is None):
             return [(mul(*inputs_shapes[0]),)]
         # axis should not be None, so there should be the same number of
         # dimensions in the input and output
@@ -180,6 +181,7 @@ class ArgSortOp(theano.Op):
             "argsort is not defined for non-integer axes so"
             " argsort(x, axis+eps) is undefined")
         return [inp_grad, axis_grad]
+
     """
     def R_op(self, inputs, eval_points):
         # R_op can receive None as eval_points.
@@ -214,16 +216,16 @@ class PartitionOp(theano.Op):
 
     """
 
-    __props__ = ("kth","kind", "order")
+    __props__ = ("kth", "kind", "order")
 
     def __init__(self, kth, kind, order=None):
-        self.kth=kth
+        self.kth = kth
         self.kind = kind
         self.order = order
 
     def __str__(self):
         return (self.__class__.__name__ +
-                "{%s, %s, %s}" % (self.kth,self.kind, str(self.order)))
+                "{%s, %s, %s}" % (self.kth, self.kind, str(self.order)))
 
     def make_node(self, input, axis=-1):
         input = theano.tensor.as_tensor_variable(input)
@@ -241,7 +243,7 @@ class PartitionOp(theano.Op):
 
     def infer_shape(self, node, inputs_shapes):
         if (isinstance(node.inputs[1], theano.Constant) and
-                node.inputs[1].data is None):
+                    node.inputs[1].data is None):
             return [(mul(*inputs_shapes[0]),)]
         # axis should not be None, so there should be the same number of
         # dimensions in the input and output
@@ -274,22 +276,23 @@ def partition(a, kth, axis=-1, kind='introselect', order=None):
         axis = 0
     return PartitionOp(kth, kind, order)(a, axis)
 
+
 class ArgPartitionOp(theano.Op):
     """
     This class is a wrapper for numpy argpartition function.
 
     """
 
-    __props__ = ("kth","kind", "order")
+    __props__ = ("kth", "kind", "order")
 
     def __init__(self, kth, kind, order=None):
-        self.kth=kth
+        self.kth = kth
         self.kind = kind
         self.order = order
 
     def __str__(self):
         return (self.__class__.__name__ +
-                "{%s, %s, %s}" % (self.kth,self.kind, str(self.order)))
+                "{%s, %s, %s}" % (self.kth, self.kind, str(self.order)))
 
     def make_node(self, input, axis=-1):
         input = theano.tensor.as_tensor_variable(input)
@@ -307,7 +310,7 @@ class ArgPartitionOp(theano.Op):
 
     def infer_shape(self, node, inputs_shapes):
         if (isinstance(node.inputs[1], theano.Constant) and
-                node.inputs[1].data is None):
+                    node.inputs[1].data is None):
             return [(mul(*inputs_shapes[0]),)]
         # axis should not be None, so there should be the same number of
         # dimensions in the input and output
