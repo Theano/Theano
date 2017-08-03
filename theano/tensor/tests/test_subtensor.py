@@ -380,24 +380,43 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert_array_equal(numpy_n[0, mask], n[0, mask].eval())
         assert_array_equal(numpy_n[:, mask], n[:, mask].eval())
         assert_array_equal(numpy_n[:, mask], n[:, self.shared(mask)].eval())
+        assert_array_equal(numpy_n[1:, mask], n[1:, mask].eval())
+        assert_array_equal(numpy_n[:1, mask], n[:1, mask].eval())
 
-        # indexing with a boolean array
+        # indexing with a boolean ndarray
         mask = np.array([[True, False, True], [False, False, True]])
         assert_array_equal(numpy_n[mask], n[mask].eval())
         assert_array_equal(numpy_n[mask], n[self.shared(mask)].eval())
-
-        # for the GpuArray tests, self.shared will create GpuArray variables,
-        # but we also need to test the combination of GPU and normal TensorVariables
-        n_cpu = theano.shared(numpy_n)
-        assert_array_equal(numpy_n[mask], n[theano.shared(mask)].eval())
-        assert_array_equal(numpy_n[mask], n[theano.tensor.constant(mask)].eval())
-        assert_array_equal(numpy_n[mask], n_cpu[self.shared(mask)].eval())
 
         # indexing with ellipsis
         numpy_n4 = np.arange(48, dtype=self.dtype).reshape((2, 3, 4, 2))
         n4 = self.shared(numpy_n4)
         assert_array_equal(numpy_n4[numpy_n > 2, ...], n4[n > 2, ...].eval())
         assert_array_equal(numpy_n4[numpy_n > 2, ..., 1], n4[n > 2, ..., 1].eval())
+
+        # the boolean mask should have the correct shape
+        # - too large, padded with True
+        mask = np.array([True, False, True])
+        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, n[mask, ...].eval)
+        mask = np.array([[True, False, False, True], [False, True, False, True]])
+        self.assertRaises(IndexError, n[mask].eval)
+        # - too large, padded with False (this works in NumPy < 0.13.0)
+        mask = np.array([True, False, False])
+        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, n[mask, ...].eval)
+        mask = np.array([[True, False, False, False], [False, True, False, False]])
+        self.assertRaises(IndexError, n[mask].eval)
+        # - mask too small (this works in NumPy < 0.13.0)
+        mask = np.array([True])
+        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, n[mask, ...].eval)
+        mask = np.array([[True], [True]])
+        self.assertRaises(IndexError, n[mask].eval)
+        # - too many dimensions
+        mask = np.array([[[True, False, False],
+                          [False, True, False]]])
+        self.assertRaises(IndexError, n[mask].eval)
 
         # special cases: Python bools and bools nested in Python arrays are not supported
         self.assertRaises(TypeError, n.__getitem__, (True,))
