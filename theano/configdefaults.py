@@ -362,7 +362,7 @@ AddConfigVar('dnn.conv.precision',
 
 # We want to default to the cuda root if cudnn is installed there
 def default_dnn_base_path():
-    root = get_cuda_root()
+    root = theano.config.cuda.root
     # The include doesn't change location between OS.
     if root and os.path.exists(os.path.join(root, 'include', 'cudnn.h')):
         return root
@@ -389,9 +389,13 @@ AddConfigVar('dnn.include_path',
 
 def default_dnn_lib_path():
     if theano.config.dnn.base_path != '':
-        path = os.path.join(theano.config.dnn.base_path, 'lib')
         if sys.platform == 'win32':
-            path = os.path.join(path, 'x64')
+            path = os.path.join(theano.config.dnn.base_path, 'lib', 'x64')
+        elif sys.platform == 'darwin':
+            path = os.path.join(theano.config.dnn.base_path, 'lib')
+        else:
+            # This is linux
+            path = os.path.join(theano.config.dnn.base_path, 'lib64')
         return path
     return ''
 
