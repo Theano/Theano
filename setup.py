@@ -169,7 +169,7 @@ def do_setup():
           },
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
-                   '*.h', '*.cpp', 'ChangeLog'],
+                   '*.h', '*.cpp', 'ChangeLog', 'c_code/*'],
               'theano.misc': ['*.sh'],
               'theano.d3viz' : ['html/*','css/*','js/*']
           },

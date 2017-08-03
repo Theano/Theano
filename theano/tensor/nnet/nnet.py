@@ -901,7 +901,7 @@ logsoftmax_op = LogSoftmax()
 def local_logsoftmax(node):
     """
     Detect Log(Softmax(x)) and replace it with LogSoftmax(x) and
-    detect Log(Softmax(x)[i]) and replace it with LogSoftmax(x)[idx]
+    detect Log(Softmax(x)[*idx]) and replace it with LogSoftmax(x)[*idx]
     Note: only forward pass is affected
     """
     list_classes = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
@@ -909,6 +909,7 @@ def local_logsoftmax(node):
             isinstance(node.op.scalar_op, scalar.basic.Log) and
             node.inputs[0].owner is not None):
 
+            # Case log(softmax(x))
             if isinstance(node.inputs[0].owner.op, Softmax):
                 softmax_input = node.inputs[0].owner.inputs[0]
                 axis = node.inputs[0].owner.op.axis
@@ -917,17 +918,23 @@ def local_logsoftmax(node):
                 copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
                 return [ret]
 
-            # We check the case log(softmax(x)[y])
+            # Case log(softmax(x)[*idx])
             elif isinstance(node.inputs[0].owner.op, list_classes):
                 subtensor_op = node.inputs[0].owner.op
                 subtensor_input = node.inputs[0].owner.inputs[0]
-                subtensor_idx = node.inputs[0].owner.inputs[1:]
+                # We check if the subtensor input is a softmax
                 if subtensor_input.owner is not None and isinstance(subtensor_input.owner.op, Softmax):
+                    subtensor_idx = node.inputs[0].owner.inputs[1:]
                     softmax_op = subtensor_input.owner.op
                     softmax_input = subtensor_input.owner.inputs[0]
-                    # If we have a matrix, we still use the
-                    # CrossentropySoftmaxArgmax1HotWithBias
-                    # if softmax_input.type.ndim != 2:
+                    # We dedect the case
+                    # log(softmax(x)[arange(y.shape[0]), y]) that will
+                    # be optimized by local_advanced_indexing_crossentropy_onehot
+                    if len(subtensor_idx) == 2:
+                        rows, labels = subtensor_idx
+                        if _check_rows_is_arange_len_labels(rows, labels) and labels.ndim == 1 and softmax_input.ndim == 2:
+                            return
+                    # We replace with the log_softmax op
                     axis = softmax_op.axis
                     ret = subtensor_op(LogSoftmax(axis)(softmax_input), *subtensor_idx)
                     ret.tag.values_eq_approx = values_eq_approx_remove_inf

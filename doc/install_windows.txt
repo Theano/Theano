@@ -24,12 +24,19 @@ Install requirements and optional packages
 
 .. code-block:: bash
 
-    conda install numpy scipy mkl-service libpython <m2w64-toolchain> <nose> <parameterized> <sphinx> <pydot-ng>
+    conda install numpy scipy mkl-service libpython <m2w64-toolchain> <nose> <sphinx> <pydot-ng> <git>
 
 .. note::
 
     * Arguments between <...> are optional.
     * ``m2w64-toolchain`` package provides a fully-compatible version of GCC and is then highly recommended.
+    * ``git`` package installs git source control through conda, which is required for the development versions of Theano and libgpuarray
+
+Package ``parameterized`` is also optional but may be required for unit testing. It is available via ``pip``.
+
+.. code-block:: bash
+
+    pip install parameterized
 
 .. _gpu_windows:
 
