@@ -528,6 +528,8 @@ TensorVariable
     .. method:: nonzero_values(self)
     .. method:: sort(self, axis=-1, kind='quicksort', order=None)
     .. method:: argsort(self, axis=-1, kind='quicksort', order=None)
+    .. method:: partition(self, kth, axis=-1, kind='introselect', order=None)
+    .. method:: argpartition(self, kth, axis=-1, kind='introselect', order=None)
     .. method:: clip(self, a_min, a_max)
     .. method:: conf()
     .. method:: repeat(repeats, axis=None)
