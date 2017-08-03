@@ -1,5 +1,7 @@
 from __future__ import absolute_import, print_function, division
 
+import warnings
+
 import numpy as np
 from six.moves import xrange
 
@@ -582,6 +584,10 @@ def conv3D(V, W, b, d):
     the last `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_
 
 """
+    warnings.warn("conv3D() is deprecated and will be removed in 0.11.  "
+                  "Use conv3d() instead.",
+                  DeprecationWarning,
+                  stacklevel=2)
     return _conv3D(V, W, b, d)
 
 

@@ -1,4 +1,7 @@
 from __future__ import absolute_import, print_function, division
+
+import warnings
+
 from six.moves import xrange
 
 import numpy as np
@@ -280,4 +283,12 @@ class ConvGrad3D(theano.Op):
         return strutil.render_string(codeSource, locals())
 
 
-convGrad3D = ConvGrad3D()
+_convGrad3D = ConvGrad3D()
+
+
+def convGrad3D(V, d, WShape, dCdH):
+    warnings.warn("conGrad3D is deprecated and will be removed in 0.11.  "
+                  "Use conv3d_grad_wrt_weights instead.",
+                  DeprecationWarning,
+                  stacklevel=2)
+    return _convGrad3D(V, d, WShape, dCdH)
