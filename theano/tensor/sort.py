@@ -214,7 +214,7 @@ class PartitionOp(theano.Op):
 
     """
 
-    __props__ = ("kth","kind", "order")
+    __props__ = ("kth", "kind", "order")
 
     def __init__(self, kth, kind, order=None):
         self.kth=kth
@@ -223,21 +223,21 @@ class PartitionOp(theano.Op):
 
     def __str__(self):
         return (self.__class__.__name__ +
-                "{%s, %s, %s}" % (self.kth,self.kind, str(self.order)))
+                "{%s, %s, %s}" % (self.kth, self.kind, str(self.order)))
 
     def make_node(self, input, axis=-1):
         input = theano.tensor.as_tensor_variable(input)
         axis = theano.tensor.as_tensor_variable(axis)
         bcast = input.type.broadcastable
         return theano.Apply(self, [input, axis], [theano.tensor.TensorType(
-            dtype="int64", broadcastable=bcast)()])
+                dtype="int64", broadcastable=bcast)()])
 
     def perform(self, node, inputs, output_storage):
         a = inputs[0]
         axis = inputs[1]
         z = output_storage[0]
         z[0] = theano._asarray(np.partition(a, self.kth, axis, self.kind, self.order),
-                               dtype=node.outputs[0].dtype)
+                dtype=node.outputs[0].dtype)
 
     def infer_shape(self, node, inputs_shapes):
         if (isinstance(node.inputs[1], theano.Constant) and
@@ -280,7 +280,7 @@ class ArgPartitionOp(theano.Op):
 
     """
 
-    __props__ = ("kth","kind", "order")
+    __props__ = ("kth", "kind", "order")
 
     def __init__(self, kth, kind, order=None):
         self.kth=kth
@@ -289,7 +289,7 @@ class ArgPartitionOp(theano.Op):
 
     def __str__(self):
         return (self.__class__.__name__ +
-                "{%s, %s, %s}" % (self.kth,self.kind, str(self.order)))
+                "{%s, %s, %s}" % (self.kth, self.kind, str(self.order)))
 
     def make_node(self, input, axis=-1):
         input = theano.tensor.as_tensor_variable(input)
