@@ -909,7 +909,8 @@ def test_empty_givens_updates():
 
 
 def test_sync():
-    if theano.config.device == 'cuda' and theano.gpuarray.pygpu_activated:
+    import theano.gpuarray.tests.config
+    if theano.gpuarray.pygpu_activated:
         x = T.fmatrix('x')
         w = theano.shared(np.random.rand(2000, 2000).astype('float32'), 'w')
         b = theano.shared(np.zeros((2000)).astype('float32'), 'b')
@@ -919,21 +920,20 @@ def test_sync():
         updates = [(w, w + T.dot(w, x) + T.dot(w, w))]
 
         f = theano.function([x], y, updates=updates)
-        f.sync_shared()
-        g = theano.function([x], y, updates=updates)
         x_ = np.random.rand(2000, 2000).astype('float32')
         f(x_)
-        g(x_)
         t_0 = time.time()
         for i in range(1000):
             f(x_)
         t_1 = time.time()
-        for i in range(1000):
-            g(x_)
+        f.sync_shared()
         t_2 = time.time()
-        assert (t_1 - t_0) > (t_2 - t_1)
+        for i in range(1000):
+            f(x_)
+        t_3 = time.time()
+        assert (t_1 - t_0) > (t_3 - t_2)
     else:
-        raise SkipTest("Sync is only availble when device is cuda.")
+        raise SkipTest("Sync is only availble when pygpu is activated.")
 
 
 if __name__ == '__main__':
