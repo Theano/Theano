@@ -814,7 +814,7 @@ class LogSoftmax(gof.Op):
                     Py_XDECREF(%(sm)s);
                     %(sm)s = (PyArrayObject*)PyArray_SimpleNew(ndim_x, PyArray_DIMS(%(x)s),
                         PyArray_TYPE(%(x)s));
-                    if(!%(sm)s) 
+                    if(!%(sm)s)
                     {
                         PyErr_SetString(PyExc_MemoryError,
                             "Failed to allocate memory for sm output");
