@@ -2561,7 +2561,7 @@ class Scan(PureOp):
                     n_zeros = inputs[0] - n_steps
                     shp = (n_zeros,)
                     if x.ndim > 1:
-                        shp = shp + x.shape[1:]
+                        shp = shp + tuple(x.shape[i] for i in range(1, x.ndim))
                     z = tensor.zeros(shp, dtype=x.dtype)
                     x = tensor.concatenate([x[::-1], z], axis=0)
                     gradients.append(x)
@@ -2589,7 +2589,7 @@ class Scan(PureOp):
                     n_zeros = inputs[0] - grad_steps
                     shp = (n_zeros,)
                     if x.ndim > 1:
-                        shp = shp + x.shape[1:]
+                        shp = shp + tuple(x.shape[i] for i in range(1, x.ndim))
                     z = tensor.zeros(shp, dtype=x.dtype)
                     x = tensor.concatenate([x[::-1], z], axis=0)
                     gradients.append(x)

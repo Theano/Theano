@@ -233,6 +233,41 @@ AddConfigVar('gpuarray.single_stream',
              in_c_key=False)
 
 
+def get_cuda_root():
+    # We look for the cuda path since we need headers from there
+    v = os.getenv('CUDA_ROOT', "")
+    if v:
+        return v
+    v = os.getenv('CUDA_PATH', "")
+    if v:
+        return v
+    s = os.getenv("PATH")
+    if not s:
+        return ''
+    for dir in s.split(os.path.pathsep):
+        if os.path.exists(os.path.join(dir, "nvcc")):
+            return os.path.dirname(os.path.abspath(dir))
+    return ''
+
+
+AddConfigVar('cuda.root',
+             "Location of the cuda installation",
+             StrParam(get_cuda_root),
+             in_c_key=False)
+
+
+def default_cuda_include():
+    if theano.config.cuda.root:
+        return os.path.join(theano.config.cuda.root, 'include')
+    return ''
+
+
+AddConfigVar('cuda.include_path',
+             "Location of the cuda includes",
+             StrParam(default_cuda_include),
+             in_c_key=False)
+
+
 def safe_no_dnn_workmem(workmem):
     """
     Make sure the user is not attempting to use dnn.conv.workmem`.
@@ -326,38 +361,68 @@ AddConfigVar('dnn.conv.precision',
              in_c_key=False)
 
 
-def get_cuda_root():
-    v = os.getenv('CUDA_ROOT', "")
-    if v:
-        return v
-    s = os.getenv("PATH")
-    if not s:
-        return ''
-    for dir in s.split(os.path.pathsep):
-        if os.path.exists(os.path.join(dir, "nvcc")):
-            return os.path.dirname(os.path.abspath(dir))
+# We want to default to the cuda root if cudnn is installed there
+def default_dnn_base_path():
+    root = theano.config.cuda.root
+    # The include doesn't change location between OS.
+    if root and os.path.exists(os.path.join(root, 'include', 'cudnn.h')):
+        return root
     return ''
 
 
-def default_dnn_include_path():
-    cuda_root = get_cuda_root()
-    if cuda_root == '':
-        return ''
-    return os.path.join(cuda_root, 'include')
+AddConfigVar('dnn.base_path',
+             "Install location of cuDNN.",
+             StrParam(default_dnn_base_path),
+             in_c_key=False)
+
+
+def default_dnn_inc_path():
+    if theano.config.dnn.base_path != '':
+        return os.path.join(theano.config.dnn.base_path, 'include')
+    return ''
 
 
 AddConfigVar('dnn.include_path',
-             "Location of the cudnn header (defaults to the cuda root)",
-             # We keep the default here since cudnn needs headers from cuda
-             StrParam(default_dnn_include_path()),
-             # Added elsewhere in the c key only when needed.
+             "Location of the cudnn header",
+             StrParam(default_dnn_inc_path),
              in_c_key=False)
 
+
+def default_dnn_lib_path():
+    if theano.config.dnn.base_path != '':
+        if sys.platform == 'win32':
+            path = os.path.join(theano.config.dnn.base_path, 'lib', 'x64')
+        elif sys.platform == 'darwin':
+            path = os.path.join(theano.config.dnn.base_path, 'lib')
+        else:
+            # This is linux
+            path = os.path.join(theano.config.dnn.base_path, 'lib64')
+        return path
+    return ''
+
+
 AddConfigVar('dnn.library_path',
-             "Location of the cudnn library (defaults to the cuda root)",
-             StrParam(''),
-             # Added elsewhere in the c key only when needed.
+             "Location of the cudnn link library.",
+             StrParam(default_dnn_lib_path),
              in_c_key=False)
+
+
+def default_dnn_bin_path():
+    if theano.config.dnn.base_path != '':
+        if sys.platform == 'win32':
+            return os.path.join(theano.config.dnn.base_path, 'bin')
+        else:
+            return theano.config.dnn.library_path
+    return ''
+
+
+AddConfigVar('dnn.bin_path',
+             "Location of the cuDNN load library "
+             "(on non-windows platforms, "
+             "this is the same as dnn.library_path)",
+             StrParam(default_dnn_bin_path),
+             in_c_key=False)
+
 
 AddConfigVar('dnn.enabled',
              "'auto', use cuDNN if available, but silently fall back"
@@ -1497,6 +1562,18 @@ AddConfigVar('cycle_detection',
              EnumStr('regular', 'fast'),
              in_c_key=False)
 
+AddConfigVar('check_stack_trace',
+             "A flag for checking the stack trace during the optimization process. "
+             "default (off): does not check the stack trace of any optimization "
+             "log: inserts a dummy stack trace that identifies the optimization"
+             "that inserted the variable that had an empty stack trace."
+             "warn: prints a warning if a stack trace is missing and also a dummy"
+             "stack trace is inserted that indicates which optimization inserted"
+             "the variable that had an empty stack trace."
+             "raise: raises an exception if a stack trace is missing",
+             EnumStr('off', 'log', 'warn', 'raise'),
+             in_c_key=False)
+
 
 def _timeout_default():
     return theano.config.compile.wait * 48
@@ -1764,6 +1841,13 @@ AddConfigVar(
         allow_override=False),
     in_c_key=False)
 
+AddConfigVar(
+    'ctc.root',
+    'Directory which contains the root of Baidu CTC library. It is assumed \
+    that the compiled library is either inside the build, lib or lib64 \
+    subdirectory, and the header inside the include directory.',
+    StrParam('', allow_override=False),
+    in_c_key=False)
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
 for key in THEANO_FLAGS_DICT.keys():

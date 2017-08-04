@@ -1,13 +1,9 @@
 #section init_code_struct
 
-if (PARAMS->choose_algo) {
-  reuse_algo = 0;
-  prev_algo = PARAMS->conv_algo;
-  if (!PARAMS->choose_once) {
-    memset(prev_img_dims, 0, sizeof(prev_img_dims));
-    memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
-  }
-}
+reuse_algo = 0;
+prev_algo = PARAMS->conv_algo;
+memset(prev_img_dims, 0, sizeof(prev_img_dims));
+memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
 
 #section support_code_struct
 
@@ -32,6 +28,11 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(kerns)[1] * params->num_groups) {
     PyErr_SetString(PyExc_ValueError,
 		    "images and kernel must have the same stack size");
+    return 1;
+  }
+  if ((PyGpuArray_DIMS(kerns)[0] % params->num_groups) != 0) {
+    PyErr_SetString(PyExc_ValueError,
+		    "Number of filters must be divisible by number of groups");
     return 1;
   }
 
@@ -83,6 +84,9 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   size_t output_offset = PyGpuArray_STRIDE(*output, 0) / params->num_groups;
 
   cudnnConvolutionFwdAlgo_t algo = params->conv_algo;
+  #ifdef DEBUG
+  char algorithm_name[128];
+  #endif
 
   cuda_enter(c->ctx);
 
@@ -138,6 +142,19 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
           return 1;
         }
         algo = choice.algo;
+
+        #ifdef DEBUG
+        if (count == 0) {
+            PyErr_SetString(PyExc_RuntimeError, "No best-timed conv fwd algorithm found");
+            return 1;
+        } else if (choice.status != CUDNN_STATUS_SUCCESS) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "error getting best-timed FWD algo: %s",
+                         cudnnGetErrorString(choice.status));
+            return 1;
+        } // Else, count is necessarly 1 for current implementation.
+        #endif
+
       } else {
         err = cudnnGetConvolutionForwardAlgorithm(
           params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
@@ -156,6 +173,16 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       algo = prev_algo;
     }
 
+    #ifdef DEBUG
+    if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
+        return 1;
+    // NB: This is printed only when algorithm is chosen at runtime.
+    if (reuse_algo)
+        fprintf(stderr, "(reused %s)\n", algorithm_name);
+    else
+        fprintf(stderr, "(using %s)\n", algorithm_name);
+    #endif
+
     if (params->choose_once) {
       reuse_algo = 1;
     } else {
@@ -164,15 +191,6 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         prev_kern_dims[i] = PyGpuArray_DIM(kerns, i);
       }
     }
-
-    #ifdef DEBUG
-    char algorithm_name[128];
-    if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name)) {
-        return 1;
-    };
-    // NB: This is printed only when algorithm is chosen at runtime.
-    fprintf(stderr, "(using %s) ", algorithm_name);
-    #endif
   }
 
   /* Only these algos are supported for 3d conv with cuDNN >= V5.1. */
@@ -180,14 +198,27 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       !(algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM ||
         algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM ||
         algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING))
+  {
+    #ifdef DEBUG
+    if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
+        return 1;
+    fprintf(stderr, "(%s unsupported for 3D: fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM)\n", algorithm_name);
+    #endif
     algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+  }
 
   // Algo `small` does not work for a batch size > 2^16, with cuDNN >= V5.1.
   // Issue should be resolved for cuDNN > V6.0.
   if (cudnnGetVersion() < 6100 &&
       algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM &&
       PyGpuArray_DIM(input, 0) > 65536)
-      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+  {
+    #ifdef DEBUG
+    fprintf(stderr, "(CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM "
+                    "will fail with batch size > 2^16, fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM)\n");
+    #endif
+    algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+  }
 
   // The FFT implementation does not support strides, 1x1 filters or inputs
   // with a spatial dimension larger than 1024. The tiled-FFT implementation
@@ -197,6 +228,12 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   // can't.
   // The following code is 2d-specific but it is fine as FFT and tiled-FFT are
   // defined only for 2d filters
+  /* NB:
+  TODO: These checkings seems outdated for FFT algorithms with cuDNN >= 5.1.
+  New conditions apply and may depend on number of dimensions (2D or 3D)
+  e.g. for FFT_TILING.
+  TODO: More globally, how to handle CUDNN_STATUS_NOT_SUPPORTED with unsupported algorithms?
+  */
   if ((algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT ||
        algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING) && PyGpuArray_NDIM(input) == 4) {
 
@@ -245,7 +282,14 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
     if (err == CUDNN_STATUS_NOT_SUPPORTED) {
       // Fallback to none algo if not supported
-      // TODO: Print a warning
+
+      #ifdef DEBUG
+      if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
+        return 1;
+      fprintf(stderr, "(%s error getting worksize: "
+                      "fallback to CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM)\n", algorithm_name);
+      #endif
+
       algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
 
       err = cudnnGetConvolutionForwardWorkspaceSize(params->handle,

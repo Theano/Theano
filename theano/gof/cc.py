@@ -1065,7 +1065,8 @@ class CLinker(link.Linker):
                     ret += x.c_header_dirs()
             except utils.MethodNotDefined:
                 pass
-        return utils.uniq(ret)
+        # filter out empty strings/None
+        return [r for r in utils.uniq(ret) if r]
 
     def libraries(self):
         """
@@ -1107,7 +1108,8 @@ class CLinker(link.Linker):
                     ret += x.c_lib_dirs()
             except utils.MethodNotDefined:
                 pass
-        return utils.uniq(ret)
+        # filter out empty strings/None
+        return [r for r in utils.uniq(ret) if r]
 
     def __compile__(self, input_storage=None, output_storage=None,
                     storage_map=None, keep_lock=False):

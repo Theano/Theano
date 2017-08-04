@@ -80,7 +80,7 @@ class Cholesky(Op):
             else:
                 z[0] = (np.zeros(x.shape) * np.nan).astype(x.dtype)
 
-    def grad(self, inputs, gradients):
+    def L_op(self, inputs, outputs, gradients):
         """
         Cholesky decomposition reverse-mode gradient update.
 
@@ -93,9 +93,8 @@ class Cholesky(Op):
 
         """
 
-        x = inputs[0]
         dz = gradients[0]
-        chol_x = self(x)
+        chol_x = outputs[0]
 
         # Replace the cholesky decomposition with 1 if there are nans
         # or solve_upper_triangular will throw a ValueError.
@@ -266,7 +265,7 @@ class Solve(Op):
             cols = Bshape[1]  # b is a Matrix
             return [(rows, cols)]
 
-    def grad(self, inputs, output_gradients):
+    def L_op(self, inputs, outputs, output_gradients):
         """
         Reverse-mode gradient updates for matrix solve operation c = A \\\ b.
 
@@ -280,7 +279,7 @@ class Solve(Op):
 
         """
         A, b = inputs
-        c = self(A, b)
+        c = outputs[0]
         c_bar = output_gradients[0]
         trans_map = {
             'lower_triangular': 'upper_triangular',

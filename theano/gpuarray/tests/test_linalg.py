@@ -248,8 +248,13 @@ class TestMagma(unittest.TestCase):
         test_rng = np.random.RandomState(seed=1)
         A_val_gpu = gpuarray_shared_constructor(test_rng.rand(N, N).astype('float32') * 2 - 1)
         A_val_copy = A_val_gpu.get_value()
-        fn = theano.function([], GpuMagmaMatrixInverse(inplace=True)(A_val_gpu),
-                             mode=mode_with_gpu, accept_inplace=True)
+        A_val_gpu_inv = GpuMagmaMatrixInverse()(A_val_gpu)
+        fn = theano.function([], A_val_gpu_inv, mode=mode_with_gpu, updates=[(A_val_gpu, A_val_gpu_inv)])
+        assert any([
+            node.op.inplace
+            for node in fn.maker.fgraph.toposort() if
+            isinstance(node.op, GpuMagmaMatrixInverse)
+        ])
         fn()
         utt.assert_allclose(np.eye(N), np.dot(A_val_gpu.get_value(), A_val_copy), atol=5e-3)
 
@@ -359,8 +364,13 @@ class TestMagma(unittest.TestCase):
         A = self.rand_symmetric(1000)
         A_gpu = gpuarray_shared_constructor(A)
         A_copy = A_gpu.get_value()
-        fn = theano.function([], GpuMagmaCholesky(inplace=True)(A_gpu),
-                             mode=mode_with_gpu, accept_inplace=True)
+        C = GpuMagmaCholesky()(A_gpu)
+        fn = theano.function([], C, mode=mode_with_gpu, updates=[(A_gpu, C)])
+        assert any([
+            node.op.inplace
+            for node in fn.maker.fgraph.toposort() if
+            isinstance(node.op, GpuMagmaCholesky)
+        ])
         fn()
         L = A_gpu.get_value()
         utt.assert_allclose(np.dot(L, L.T), A_copy, atol=1e-3)

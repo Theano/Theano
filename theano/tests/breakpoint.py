@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-import pdb
+import imp
 
 import theano
 from theano.gof import Op, Apply
@@ -11,7 +11,8 @@ class PdbBreakpoint(Op):
     """
     This is an identity-like op with the side effect of enforcing a
     conditional breakpoint, inside a theano function, based on a symbolic
-    scalar condition.
+    scalar condition. It automatically detects available debuggers and uses
+    the first available in the following order: `pudb`, `ipdb`, or `pdb`.
 
     :type name: String
     :param name: name of the conditional breakpoint. To be printed when the
@@ -116,7 +117,16 @@ class PdbBreakpoint(Op):
             print("Their contents can be altered and, when execution")
             print("resumes, the updated values will be used.")
             print("-------------------------------------------------")
-            pdb.set_trace()
+
+            if imp.find_module('pudb'):
+                import pudb
+                pudb.set_trace()
+            elif imp.find_module('ipdb'):
+                import ipdb
+                ipdb.set_trace()
+            else:
+                import pdb
+                pdb.set_trace()
 
             # Take the new values in monitored, cast them back to their
             # original type and store them in the output_storage

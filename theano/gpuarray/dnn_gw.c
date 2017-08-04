@@ -1,13 +1,9 @@
 #section init_code_struct
 
-if (PARAMS->choose_algo) {
-  reuse_algo = 0;
-  prev_algo = PARAMS->conv_algo;
-  if (!PARAMS->choose_once) {
-      memset(prev_img_dims, 0, sizeof(prev_img_dims));
-      memset(prev_top_dims, 0, sizeof(prev_top_dims));
-  }
-}
+reuse_algo = 0;
+prev_algo = PARAMS->conv_algo;
+memset(prev_img_dims, 0, sizeof(prev_img_dims));
+memset(prev_top_dims, 0, sizeof(prev_top_dims));
 
 #section support_code_struct
 
@@ -31,6 +27,11 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(km)[1] * params->num_groups) {
     PyErr_SetString(PyExc_ValueError,
                     "GpuDnnConv images and kernel must have the same stack size");
+    return 1;
+  }
+  if ((PyGpuArray_DIMS(output)[1] % params->num_groups) != 0) {
+    PyErr_SetString(PyExc_ValueError,
+		    "Number of output channels must be divisible by number of groups");
     return 1;
   }
 
@@ -83,6 +84,9 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   size_t output_offset = PyGpuArray_STRIDE(output, 0) / params->num_groups;
 
   cudnnConvolutionBwdFilterAlgo_t algo = params->conv_algo;
+  #ifdef DEBUG
+  char algorithm_name[128];
+  #endif
 
   cuda_enter(c->ctx);
 
@@ -180,6 +184,19 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         }
 
         algo = choice.algo;
+
+        #ifdef DEBUG
+        if (count == 0) {
+            PyErr_SetString(PyExc_RuntimeError, "No best-timed conv gradweight algorithm found");
+            return 1;
+        } else if (choice.status != CUDNN_STATUS_SUCCESS) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "error getting best-timed gradweight algo: %s",
+                         cudnnGetErrorString(choice.status));
+            return 1;
+        } // Else, count is necessarly 1 for current implementation.
+        #endif
+
       } else {
         err = cudnnGetConvolutionBackwardFilterAlgorithm(
           params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output),
@@ -198,6 +215,16 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       algo = prev_algo;
     }
 
+    #ifdef DEBUG
+    if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name))
+        return 1;
+    // NB: This is printed only when algorithm is chosen at runtime.
+    if (reuse_algo)
+        fprintf(stderr, "(reused %s)\n", algorithm_name);
+    else
+        fprintf(stderr, "(using %s)\n", algorithm_name);
+    #endif
+
     if (params->choose_once) {
       reuse_algo = 1;
     } else {
@@ -206,15 +233,6 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         prev_top_dims[i] = PyGpuArray_DIM(output, i);
       }
     }
-
-    #ifdef DEBUG
-    char algorithm_name[128];
-    if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name)) {
-        return 1;
-    };
-    // NB: This is printed only when algorithm is chosen at runtime.
-    fprintf(stderr, "(using %s) ", algorithm_name);
-    #endif
   }
 
   // The FFT implementation does not support strides, 1x1 filters or inputs

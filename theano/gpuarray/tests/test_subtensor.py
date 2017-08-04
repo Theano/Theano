@@ -274,6 +274,12 @@ def test_adv_subtensor():
 
 
 class test_gpuextractdiag(unittest.TestCase):
+    def test_extractdiag_opt(self):
+        x = tensor.matrix()
+        fn = theano.function([x], tensor.ExtractDiag()(x), mode=mode_with_gpu)
+        assert any([isinstance(node.op, GpuExtractDiag)
+                    for node in fn.maker.fgraph.toposort()])
+
     def test_matrix(self):
         x = tensor.matrix()
         np_x = np.arange(77).reshape(7, 11).astype(theano.config.floatX)
@@ -308,6 +314,12 @@ class test_gpuextractdiag(unittest.TestCase):
 
 
 class test_gpuallocdiag(unittest.TestCase):
+    def test_allocdiag_opt(self):
+        x = tensor.vector()
+        fn = theano.function([x], tensor.AllocDiag()(x), mode=mode_with_gpu)
+        assert any([isinstance(node.op, GpuAllocDiag)
+                    for node in fn.maker.fgraph.toposort()])
+
     def test_matrix(self):
         x = tensor.vector()
         np_x = np.arange(7).astype(theano.config.floatX)
@@ -328,8 +340,8 @@ class test_gpuallocdiag(unittest.TestCase):
         grad_x = tensor.grad(sum_mtx_x, x)
         grad_mtx_x = tensor.grad(sum_mtx_x, mtx_x)
 
-        fn_grad_x = theano.function([x], grad_x)
-        fn_grad_mtx_x = theano.function([x], grad_mtx_x)
+        fn_grad_x = theano.function([x], grad_x, mode=mode_with_gpu)
+        fn_grad_mtx_x = theano.function([x], grad_mtx_x, mode=mode_with_gpu)
 
         computed_grad_x = fn_grad_x(np_x)
         computed_grad_mtx_x = fn_grad_mtx_x(np_x)
@@ -342,8 +354,8 @@ class test_gpuallocdiag(unittest.TestCase):
         grad_x = tensor.grad(sum_mtx_x, x)
         grad_mtx_x = tensor.grad(sum_mtx_x, mtx_x)
 
-        fn_grad_x = theano.function([x], grad_x)
-        fn_grad_mtx_x = theano.function([x], grad_mtx_x)
+        fn_grad_x = theano.function([x], grad_x, mode=mode_with_gpu)
+        fn_grad_mtx_x = theano.function([x], grad_mtx_x, mode=mode_with_gpu)
 
         computed_grad_x = fn_grad_x(np_x)
         computed_grad_mtx_x = fn_grad_mtx_x(np_x)
@@ -356,8 +368,8 @@ class test_gpuallocdiag(unittest.TestCase):
         grad_x = tensor.grad(sum_mtx_x, x)
         grad_mtx_x = tensor.grad(sum_mtx_x, mtx_x)
 
-        fn_grad_x = theano.function([x], grad_x)
-        fn_grad_mtx_x = theano.function([x], grad_mtx_x)
+        fn_grad_x = theano.function([x], grad_x, mode=mode_with_gpu)
+        fn_grad_mtx_x = theano.function([x], grad_mtx_x, mode=mode_with_gpu)
 
         computed_grad_x = fn_grad_x(np_x)
         computed_grad_mtx_x = fn_grad_mtx_x(np_x)

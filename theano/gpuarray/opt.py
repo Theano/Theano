@@ -34,6 +34,7 @@ from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv3d_gradWeights,
                                               AbstractConv3d_gradInputs)
 from theano.tensor.nnet.neighbours import Images2Neibs
+from theano.tensor.nnet.ctc import ConnectionistTemporalClassification
 import theano.tensor.nlinalg as nlinalg
 import theano.tensor.signal.pool as pool
 import theano.tensor.slinalg as slinalg
@@ -71,13 +72,16 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor1,
                         GpuAdvancedIncSubtensor,
                         GpuAdvancedIncSubtensor1,
-                        GpuAdvancedIncSubtensor1_dev20)
+                        GpuAdvancedIncSubtensor1_dev20,
+                        GpuAllocDiag, GpuExtractDiag)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
                      cusolver_available, GpuMagmaMatrixInverse, gpu_svd,
-                     GpuMagmaCholesky, gpu_qr, GpuMagmaEigh)
+                     GpuMagmaCholesky, gpu_qr, GpuMagmaEigh,
+                     GpuCublasTriangularSolve, cublas_available)
 from .neighbours import GpuImages2Neibs
+from .ctc import GpuConnectionistTemporalClassification
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -159,6 +163,7 @@ def register_inplace(*tags, **kwargs):
             60, 'fast_run', 'inplace', 'gpuarray', *tags)
         return local_opt
     return f
+
 
 register_opt('fast_compile')(theano.tensor.opt.local_track_shape_i)
 register_opt(final_opt=True, name='gpua_constant_folding')(
@@ -580,6 +585,7 @@ def local_cut_gpu_transfers(node):
                 else:
                     return [node.op(n2.inputs[0])]
 
+
 gpu_cut_copies.register('cut_gpua_host_transfers', local_cut_gpu_transfers,
                         'fast_compile', 'fast_run', 'gpuarray')
 gpu_cut_copies.register('cut_gpua_constant_transfers',
@@ -650,6 +656,8 @@ def local_gpua_alloc_empty_to_zeros(node):
         z = np.asarray(0, dtype=node.outputs[0].dtype)
         return [GpuAlloc(context_name)(as_gpuarray_variable(z, context_name),
                                        *node.inputs)]
+
+
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.
@@ -1098,9 +1106,11 @@ def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
             set_instead_of_inc=set_instead_of_inc)
 
 
-@register_opt('fast_compile')
-@op_lifter([tensor.AdvancedIncSubtensor])
-@register_opt2([tensor.AdvancedIncSubtensor], 'fast_compile')
+# Do not register this optimization for now, as it slows down the
+# execution by a lot in important cases.
+# @register_opt('fast_compile')
+# @op_lifter([tensor.AdvancedIncSubtensor])
+# @register_opt2([tensor.AdvancedIncSubtensor], 'fast_compile')
 def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
     if not op.set_instead_of_inc:
         return GpuAdvancedIncSubtensor()
@@ -1115,6 +1125,25 @@ def local_advincsub1_gpua_inplace(node):
                             GpuAdvancedIncSubtensor1_dev20)):
         if not node.op.inplace:
             return [node.op.clone_inplace()(*node.inputs)]
+
+
+# AllocDiag
+@register_opt('fast_compile')
+@op_lifter([tensor.AllocDiag])
+@register_opt2([theano.tensor.AllocDiag], 'fast_compile')
+def local_gpu_alloc_diag(op, context_name, inputs, outputs):
+    if outputs[0].ndim != 2:
+        # AllocDiag only supports 2d output
+        return False
+    return GpuAllocDiag(offset=op.offset)
+
+
+# ExtractDiag
+@register_opt('fast_compile')
+@op_lifter([tensor.ExtractDiag])
+@register_opt2([theano.tensor.ExtractDiag], 'fast_compile')
+def local_gpu_extract_diag(op, context_name, inputs, outputs):
+    return GpuExtractDiag(offset=op.offset, axis1=op.axis1, axis2=op.axis2, view=op.view)
 
 
 @register_opt('fast_compile')
@@ -1519,6 +1548,8 @@ def local_conv_gpu_conv(node):
                 return [tensor.as_tensor_variable(out)]
             else:
                 return [out]
+
+
 register_opt()(local_conv_gpu_conv)
 
 
@@ -1568,7 +1599,8 @@ def local_abstractconv_gemm(node):
                 (None not in node.op.imshp[-2:]) and
                 (node.op.kshp is not None) and
                 (None not in node.op.kshp) and
-                border_mode != "half"):
+                border_mode != "half" and
+                node.op.num_groups == 1):
             # we know the kernel and output size
             prod1 = node.op.kshp[0] * node.op.kshp[1]
             prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
@@ -1790,6 +1822,8 @@ def local_gpu_pool(op, ctx_name, inputs, outputs):
         inp_padded = pad_dims(inp, 2, nd)
         ret_padded = op(inp_padded, ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+
+
 pool_db = LocalGroupDB()
 pool_db2 = LocalGroupDB(local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
 pool_db2.__name__ = "pool_db2"
@@ -1827,6 +1861,8 @@ def local_gpu_max_pool_grad(op, ctx_name, inputs, outputs):
         ret_padded = op(inp_padded, out_padded, out_grad_padded,
                         ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+
+
 lifter = op_lifter([pool.MaxPoolGrad])(local_gpu_max_pool_grad)
 pool_db.register("local_gpu_max_pool_grad", lifter,
                  'gpuarray', 'fast_compile', 'fast_run',
@@ -1857,6 +1893,8 @@ def local_gpu_average_pool_grad(op, ctx_name, inputs, outputs):
         ret_padded = op(inp_padded, out_grad_padded,
                         ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+
+
 lifter = op_lifter([pool.AveragePoolGrad])(local_gpu_average_pool_grad)
 pool_db.register("local_gpu_average_pool_grad", lifter,
                  'gpuarray', 'fast_compile', 'fast_run',
@@ -1953,6 +1991,7 @@ def local_assert_no_cpu_op(node):
                 raise AssertionError("The Op %s is on CPU." % node)
             elif config.assert_no_cpu_op == "pdb":
                 pdb.set_trace()
+
 
 # Register the local_assert_no_cpu_op:
 assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op,
@@ -2101,13 +2140,21 @@ def local_gpua_images2neibs(op, context_name, inputs, outputs):
 @op_lifter([slinalg.Solve])
 @register_opt2([theano.tensor.slinalg.Solve], 'fast_compile')
 def local_gpu_solve(op, context_name, inputs, outputs):
-    if not cusolver_available:
-        return
     if inputs[0].dtype not in ['float16', 'float32']:
         return
     if op.A_structure not in MATRIX_STRUCTURES_SOLVE:
         return
-    op = GpuCusolverSolve(A_structure=op.A_structure)
+
+    if op.A_structure in ['lower_triangular', 'upper_triangular']:
+        if not cublas_available:
+            return
+        lower = op.A_structure == 'lower_triangular'
+        op = GpuCublasTriangularSolve(lower)
+    else:
+        if not cusolver_available:
+            return
+        op = GpuCusolverSolve(A_structure=op.A_structure)
+
     if inputs[0].dtype == 'float16':
         return op(inputs[0].astype('float32'),
                   inputs[1].astype('float32')).astype('float16')
@@ -2277,6 +2324,15 @@ def local_gpu_magma_svd(op, context_name, inputs, outputs):
         else:
             out = [out.astype('float16')]
     return out
+
+
+@register_opt('ctc', 'fast_compile')
+@op_lifter([theano.tensor.nnet.ctc.ConnectionistTemporalClassification])
+@register_opt2([ConnectionistTemporalClassification], 'ctc', 'fast_compile')
+def local_gpu_ctc(op, context_name, inputs, outputs):
+    op = GpuConnectionistTemporalClassification(compute_grad=op.compute_grad)
+    return op.make_node(*inputs).outputs
+
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.
