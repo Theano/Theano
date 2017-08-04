@@ -105,7 +105,7 @@ APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
     default:
         PyErr_SetString( PyExc_TypeError,
             "GpuDnnTransformerGradI: unsupported type for input in spatial transformer gradients" );
-        return -1;
+        return 1;
     }
 
     if ( grid->ga.typecode != GA_FLOAT &&
@@ -114,7 +114,7 @@ APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
     {
         PyErr_SetString( PyExc_TypeError,
             "GpuDnnTransformerGradI: unsupported data type for grid in spatial transformer gradients." );
-        return -1;
+        return 1;
     }
 
     if ( theano_prep_output( input_grad, PyGpuArray_NDIM( input ),
@@ -187,7 +187,7 @@ APPLY_SPECIFIC(dnn_sptf_gi)(PyGpuArrayObject * input,
             "GpuDnnTransformerGradI: failed to compute gradients of the inputs: %s",
             cudnnGetErrorString( err ) );
 
-        return -1;
+        return 1;
     }
 
     return 0;
