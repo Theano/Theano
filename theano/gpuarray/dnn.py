@@ -2915,7 +2915,7 @@ class GpuDnnTransformerGradT(DnnBase):
         return Apply(self, inputs, outputs)
 
 
-def dnn_spatialtf(img, theta, scale_width=1, scale_height=1, precision=theano.config.floatX):
+def dnn_spatialtf(img, theta, scale_width=1, scale_height=1):
     """
     GPU spatial transformer using cuDNN from NVIDIA.
 
