@@ -856,6 +856,8 @@ class TestCpuConv2d(BaseTestConv2d):
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1), u=False):
         if fd != (1, 1):
             raise SkipTest("No dilation implementation for basic cpu ConvOp.")
+        if u:
+            raise SkipTest("No unshared implementation for basic cpu ConvOp.")
         if not theano.config.cxx:
             raise SkipTest("Need cxx to test conv2d")
 

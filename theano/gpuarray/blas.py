@@ -893,7 +893,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
     out_dim_size[2] = (size_t)out_dim[2];
     out_dim_size[3] = (size_t)out_dim[3];
 
-    if (unshared && direction == 1) {
+    if (odim == 6) {
         out_dim_size[4] = (size_t)out_dim[4];
         out_dim_size[5] = (size_t)out_dim[5];
     }

@@ -31,7 +31,7 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
             raise SkipTest(dnn_available.msg)
         mode = mode_with_gpu
 
-        if fd != (1, 1):
+        if fd != (1, 1) or u:
             raise SkipTest("Doesn't have CUDNN implementation")
         o = self.get_output_shape(i, f, s, b, fd)
 
@@ -199,6 +199,8 @@ class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1), u=False):
         mode = self.mode
         o = self.get_output_shape(i, f, s, b, fd)
+        if u:
+            raise SkipTest("Unshared not implemented for 3D")
         self.run_fwd(inputs_shape=i, filters_shape=f,
                      subsample=s, verify_grad=True, mode=mode,
                      provide_shape=provide_shape, border_mode=b,

@@ -1537,7 +1537,7 @@ def local_abstractconv_gemm(node):
     flip = (slice(None),) * (kern.ndim - 2) + \
         (slice(None, None, -1),) * 2
     kern_axes = (1, 0) + tuple(i for i in range(2, kern.ndim))
-    if ((border_mode == 'full') and (subsample == (1, 1))):
+    if ((border_mode == 'full') and (subsample == (1, 1)) and not unshared):
         if not node.op.filter_flip:
             kern = kern[flip]
         # need to dimshuffle the kernel for full convolution

@@ -385,7 +385,7 @@ class BaseCorrMM(gof.OpenMPOp):
                 PyErr_Format(PyExc_ValueError,
                              "CorrMM: impossible output shape\\n"
                              "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                             "  weights shape: %%ld x %%ld x %%ld x %%ld %%ld %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld x %%ld\\n"
                              "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
                              (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
                              (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
@@ -429,7 +429,7 @@ class BaseCorrMM(gof.OpenMPOp):
                 PyErr_Format(PyExc_ValueError,
                              "CorrMM backprop wrt. weights: impossible output shape\\n"
                              "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                             "  weights shape: %%ld x %%ld x %%ld x %%ld %%ld %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld x %%ld\\n"
                              "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
                              (long int)PyArray_DIMS(bottom)[0], (long int)PyArray_DIMS(bottom)[1],
                              (long int)PyArray_DIMS(bottom)[2], (long int)PyArray_DIMS(bottom)[3],
@@ -470,7 +470,7 @@ class BaseCorrMM(gof.OpenMPOp):
                 PyErr_Format(PyExc_ValueError,
                              "CorrMM backprop wrt. inputs: impossible output shape\\n"
                              "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
-                             "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                             "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld x %%ld\\n"
                              "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
                              (long int)out_dim[0], (long int)out_dim[1], (long int)out_dim[2],
                              (long int)out_dim[3],
