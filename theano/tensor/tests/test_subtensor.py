@@ -120,12 +120,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test0_err_invalid(self):
         # it is impossible to retrieve a view of a 0-d tensor
         n = self.shared(np.ones((), dtype=self.dtype))
-        try:
-            n[0]
-        except ValueError as e:
-            self.assertTrue(hasattr(e, 'subtensor_invalid'))
-            return
-        self.fail()
+        self.assertRaises(IndexError, n.__getitem__, 0)
 
     @change_flags(compute_test_value='off')
     def test1_err_bounds(self):
@@ -184,12 +179,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test1_err_invalid(self):
         n = self.shared(np.ones(1, dtype=self.dtype))
-        try:
-            n[0, 0]
-        except ValueError as e:
-            self.assertTrue(hasattr(e, 'subtensor_invalid'))
-            return
-        self.fail()
+        self.assertRaises(IndexError, n.__getitem__, (0, 0))
 
     def test1_ok_elem(self):
         n = self.shared(np.ones(1, dtype=self.dtype) * 5)

@@ -280,11 +280,6 @@ class Subtensor(Op):
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
 
     """
-    e_invalid = ('The index list is longer (size %d) than the number of '
-                 'dimensions of the tensor(namely %d). You are asking for '
-                 'a dimension of the tensor that does not exist! You might '
-                 'need to use dimshuffle to add extra dimension to your '
-                 'tensor.')
     e_subslice = 'nested slicing is not supported'
     e_indextype = "Invalid index type or slice for Subtensor"
     debug = 0
@@ -473,10 +468,7 @@ class Subtensor(Op):
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
-            exception = ValueError(Subtensor.e_invalid % (
-                len(idx_list), x.type.ndim))
-            exception.subtensor_invalid = True
-            raise exception
+            raise IndexError('too many indices for array')
 
         input_types = Subtensor.collapse(idx_list,
                                          lambda entry: isinstance(entry,
@@ -1292,12 +1284,7 @@ class IncSubtensor(Op):
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
-            exception = ValueError(
-                Subtensor.e_invalid % (
-                    len(idx_list),
-                    x.type.ndim))
-            exception.subtensor_invalid = True
-            raise exception
+            raise IndexError('too many indices for array')
 
         input_types = Subtensor.collapse(
             idx_list,
