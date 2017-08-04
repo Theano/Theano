@@ -924,14 +924,13 @@ def test_sync():
         f(x_)
         t_0 = time.time()
         for i in range(1000):
+            f.sync_shared()
             f(x_)
         t_1 = time.time()
-        f.sync_shared()
-        t_2 = time.time()
         for i in range(1000):
             f(x_)
-        t_3 = time.time()
-        assert (t_1 - t_0) > (t_3 - t_2)
+        t_2 = time.time()
+        assert (t_1 - t_0) > (t_2 - t_1)
     else:
         raise SkipTest("Sync is only availble when pygpu is activated.")
 
