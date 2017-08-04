@@ -10,7 +10,7 @@ except ImportError:
 
 import theano
 import theano.sandbox.multinomial
-from theano import Apply, config
+from theano import Apply
 from theano.gof import Op
 
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
@@ -137,7 +137,6 @@ KERNEL void k_multi_warp_multinomial(
         out, = outputs
         fail = sub['fail']
         ctx = sub['params']
-        sync = bool(config.gpuarray.sync)
         kname = self.gpu_kernels(node, name)[0].objvar
         out_typecode = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         in_typecode = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
@@ -212,15 +211,14 @@ KERNEL void k_multi_warp_multinomial(
                 GpuKernel_error(&%(kname)s, err));
             %(fail)s;
         }
-        if(%(sync)d)
-            GpuArray_sync(&(out->ga));
+
     } // END NESTED SCOPE
         """ % locals()
 
         return s
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
 
 class GPUAChoiceFromUniform(GpuKernelBase, Op):
@@ -360,7 +358,6 @@ KERNEL void k_multi_warp_multinomial_wor(
         replace = int(self.replace)
         fail = sub['fail']
         ctx = sub['params']
-        sync = bool(config.gpuarray.sync)
         kname = self.gpu_kernels(node, name)[0].objvar
         s = """
     PyGpuArrayObject * pvals = %(pvals)s;
@@ -447,15 +444,14 @@ KERNEL void k_multi_warp_multinomial_wor(
            Py_DECREF(pvals_copy);
            %(fail)s;
         }
-        if(%(sync)d)
-            GpuArray_sync(&(out->ga));
+
         Py_DECREF(pvals_copy);
     } // END NESTED SCOPE
         """ % locals()
         return s
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
 
 @register_opt('fast_compile')

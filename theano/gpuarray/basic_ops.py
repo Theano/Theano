@@ -849,8 +849,6 @@ class GpuAlloc(HideC, Alloc):
                 out[0][...] = v
         else:
             out[0][...] = v
-        if config.gpuarray.sync:
-            out[0].sync()
 
     def c_code(self, node, name, inp, out, sub):
         vv = inp[0]
@@ -915,13 +913,10 @@ class GpuAlloc(HideC, Alloc):
         """ % dict(name=name, ndim=ndim, zz=zz, vv=vv, ctx=sub['params'],
                    fail=sub['fail'], memset_0=memset_0)
 
-        if config.gpuarray.sync:
-            code += "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
-
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def do_constant_folding(self, node):
         from . import subtensor, blas
@@ -1382,7 +1377,7 @@ class GpuSplit(HideC, Split):
     # we reuse the perform of the CPU op, which is suitable
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>']
@@ -1514,13 +1509,6 @@ class GpuSplit(HideC, Split):
         free(split_points);
         """
 
-        if config.gpuarray.sync:
-            main_code += """
-        for (i = 0; i < splits_count; ++i) {
-            GpuArray_sync(&((*outputs[i])->ga));
-        }
-        """
-
         return main_code % locals()
 
 
@@ -1649,7 +1637,6 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size a_off,
         fail = sub['fail']
         ctx = sub['params']
         typecode = pygpu.gpuarray.dtype_to_typecode(self.dtype)
-        sync = bool(config.gpuarray.sync)
         kname = self.gpu_kernels(node, name)[0].objvar
         s = """
         size_t dims[2] = {0, 0};
@@ -1689,11 +1676,9 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size a_off,
             }
         }
 
-        if(%(sync)d)
-            GpuArray_sync(&%(z)s->ga);
         """ % locals()
 
         return s
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
