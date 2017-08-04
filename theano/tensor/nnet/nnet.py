@@ -950,7 +950,7 @@ def local_logsoftmax_grad(node):
     """
     Detect Log(Softmax(x))'s grad and replace it with LogSoftmax(x)'s grad
     Detect two cases:
-    1. d_sm = (out_grad / softmax(x))
+    1. d_sm = (out_grad / softmax(x)) which arises from the gradient of log(softmax(x))
     2. d_sm =
     IncSubtensor_op(
               zeros_like(softmax(x)),
@@ -962,31 +962,30 @@ def local_logsoftmax_grad(node):
     list_classes_IncSubtensor = ((IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
     list_classes_Subtensor = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
     if (isinstance(node.op, SoftmaxGrad) and
-        len(node.inputs) == 2 and
-        node.inputs[0].owner is not None and
-        len(node.inputs[0].owner.inputs) >= 2 and
-        node.inputs[0].owner.inputs[1].owner is not None and
-        isinstance(node.inputs[1].owner.op, Softmax)):
+            len(node.inputs) == 2 and
+            node.inputs[0].owner is not None and
+            len(node.inputs[0].owner.inputs) >= 2 and
+            node.inputs[0].owner.inputs[1].owner is not None and
+            isinstance(node.inputs[1].owner.op, Softmax)):
 
         # Case where d_sm = (grads / softmax(x))
         if (node.inputs[0].owner.op == tensor.true_div and
-            isinstance(node.inputs[0].owner.inputs[1].owner.op, Softmax) and
-            node.inputs[1] == node.inputs[0].owner.inputs[1] and
-            # skip if it will be optimized by
-            # local_advanced_indexing_crossentropy_onehot_grad
-            not (node.inputs[0].owner.inputs[0].owner is not None and
-            isinstance(node.inputs[0].owner.inputs[0].owner.op, AdvancedIncSubtensor))):
-                # get parameters from unoptimized op
-                sm = node.inputs[0].owner.inputs[1]
-                axis = sm.owner.op.axis
-                # sm_input = node.inputs[1].owner.inputs[0]
-                grads = node.inputs[0].owner.inputs[0]
-                if grads.broadcastable[axis] and not sm.broadcastable[axis]:
-                    grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
-                ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
-                ret.tag.values_eq_approx = values_eq_approx_remove_nan
-                copy_stack_trace(node.outputs[0], ret)
-                return [ret]
+                isinstance(node.inputs[0].owner.inputs[1].owner.op, Softmax) and
+                node.inputs[1] == node.inputs[0].owner.inputs[1] and
+                # skip if it will be optimized by
+                # local_advanced_indexing_crossentropy_onehot_grad
+                not (node.inputs[0].owner.inputs[0].owner is not None and isinstance(node.inputs[0].owner.inputs[0].owner.op, AdvancedIncSubtensor))):
+            # get parameters from unoptimized op
+            sm = node.inputs[0].owner.inputs[1]
+            axis = sm.owner.op.axis
+            # sm_input = node.inputs[1].owner.inputs[0]
+            grads = node.inputs[0].owner.inputs[0]
+            if grads.broadcastable[axis] and not sm.broadcastable[axis]:
+                grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
+            ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
+            ret.tag.values_eq_approx = values_eq_approx_remove_nan
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
 
         # Case where d_sm = IncSubtensor_op(zeros_like(softmax(x)), -out_grad /
         # subtensor_op(softmax(x), *idx),, *idx)
@@ -1034,13 +1033,13 @@ def local_logsoftmax_grad(node):
                 # that is inside the denominator match the subtensor_op(softmax(x), *idx)
                 # that is the second argument of the SoftmaxGrad
                 if (subtensor_op is not None and
-                    len(subtensor_op.owner.inputs) >= 2 and
-                    subtensor_op.owner.inputs[0] is sm and
-                    subtensor_op.owner.inputs[1:] == subtensor_idx):
-                        ret = out_grad * d_sm.owner.op(-sm, 1, *subtensor_idx)
-                        ret.tag.values_eq_approx = values_eq_approx_remove_nan
-                        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
-                        return [ret]
+                        len(subtensor_op.owner.inputs) >= 2 and
+                        subtensor_op.owner.inputs[0] is sm and
+                        subtensor_op.owner.inputs[1:] == subtensor_idx):
+                    ret = out_grad * d_sm.owner.op(-sm, 1, *subtensor_idx)
+                    ret.tag.values_eq_approx = values_eq_approx_remove_nan
+                    copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+                    return [ret]
 
 
 def softmax_graph(c):
