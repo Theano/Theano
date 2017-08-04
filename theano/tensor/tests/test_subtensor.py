@@ -622,7 +622,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test_err_invalid_list(self):
         n = self.shared(np.asarray(5, dtype=self.dtype))
-        self.assertRaises(TypeError, n.__getitem__, [0, 0])
+        self.assertRaises(IndexError, n.__getitem__, [0, 0])
 
     def test_err_invalid_2list_dtype(self):
         n = self.shared(np.ones((3, 3), dtype=self.dtype) * 5)
@@ -1372,7 +1372,7 @@ class TestIncSubtensor1(unittest.TestCase):
         self.adv1q = tensor.lvector()  # advanced 1d query
 
     def test_cant_adv_idx_into_scalar(self):
-        self.assertRaises(TypeError, lambda: self.s[self.adv1q])
+        self.assertRaises(IndexError, lambda: self.s[self.adv1q])
 
     def test_index_into_vec_w_vec(self):
         a = self.v[self.adv1q]
@@ -1521,7 +1521,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         return tval
 
     def test_cant_adv_idx_into_scalar(self):
-        self.assertRaises(TypeError, lambda: self.s[self.ix1])
+        self.assertRaises(IndexError, lambda: self.s[self.ix1])
 
     def test_index_into_vec_w_vec(self):
         a = self.v[self.ix1]
