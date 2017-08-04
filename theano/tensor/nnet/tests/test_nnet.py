@@ -193,13 +193,11 @@ def test_multiple_axes():
             inputs=[x],
             outputs=T.log(T.nnet.softmax(x))
         )
-        if not np.allclose(f(in_val),
-                           np.log(np.exp(in_val) / np.exp(in_val).sum(axis=-1))):
-            print(f(in_val))
-            print(np.log(np.exp(in_val) / np.exp(in_val).sum(axis=-1)))
+        ops = [node.op for node in f.maker.fgraph.toposort()]
+        assert logsoftmax_op in ops
         assert np.allclose(
             f(in_val),
-            np.log(np.exp(in_val) / np.exp(in_val).sum(axis=-1))
+            np.log(np.exp(in_val) / np.exp(in_val).sum(axis=-1, keepdims=True))
         )
 
     def test_grad(in_val):
@@ -210,8 +208,8 @@ def test_multiple_axes():
         utt.verify_grad(f, [in_val])
 
     for axes in xrange(1, 5 + 1):
-        dimensions = (2,) * axes
-        in_val = np.random.randn(*dimensions).astype(config.floatX)
+        dimensions = (5,) * axes
+        in_val = 10 * np.random.randn(*dimensions).astype(config.floatX)
         yield test_vals, in_val
         yield test_grad, in_val
 
@@ -251,10 +249,10 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
 #        assert np.allclose(f(xv),
 #                           np.log(np.exp(xv) / np.exp(xv).sum()))
 
-    def test_vector_grad(self):
-        def f(a):
-            return logsoftmax_op(a)
-        utt.verify_grad(f, [np.random.rand(4)])
+#    def test_vector_grad(self):
+#        def f(a):
+#            return logsoftmax_op(a)
+#        utt.verify_grad(f, [np.random.rand(4)])
 
     def test_allclose(self):
         m = theano.config.mode
