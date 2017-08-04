@@ -908,27 +908,59 @@ def test_empty_givens_updates():
     function([theano.In(x)], y, updates={})
 
 
-def test_sync():
+def test_sync_update():
     import theano.gpuarray.tests.config
     if theano.gpuarray.pygpu_activated:
-        x = T.fmatrix('x')
-        w = theano.shared(np.random.rand(2000, 2000).astype('float32'), 'w')
-        b = theano.shared(np.zeros((2000)).astype('float32'), 'b')
+        sizes = [100, 500, 1000, 2000, 5000, 10000, 20000, 40000]
+        size = sizes[0]
+        w = theano.gpuarray.gpuarray_shared_constructor(
+            np.random.rand(size, size).astype('float32'), 'w',
+            target=theano.gpuarray.tests.config.test_ctx_name)
+        x = theano.gpuarray.gpuarray_shared_constructor(
+            np.random.rand(size, size).astype('float32'), 'w',
+            target=theano.gpuarray.tests.config.test_ctx_name)
 
-        y = T.dot(x, x) + b.dimshuffle('x', 0)
+        updates = [(w, w + np.asarray(0.001, 'float32') * T.dot(x, x))]
 
-        updates = [(w, w + T.dot(w, x) + T.dot(w, w))]
+        f = theano.function([], updates=updates,
+                            mode=theano.gpuarray.tests.config.mode_with_gpu)
+        assert len(f.maker.fgraph.apply_nodes) == 1
+        assert any(isinstance(n.op, theano.gpuarray.blas.GpuGemm)
+                   for n in f.maker.fgraph.apply_nodes)
+        # Make sure libgpuarray have compile all kernels
+        f()
+        f.sync_shared()
 
-        f = theano.function([x], y, updates=updates)
-        x_ = np.random.rand(2000, 2000).astype('float32')
-        f(x_)
-        t_0 = time.time()
-        for i in range(1000):
+        # Find a good size that will take about .5s.
+        # This is to make the test more stable across different GPUs.
+        size = sizes[-1]
+        for i in sizes:
+            data = np.random.rand(i, i).astype('float32')
+            w.set_value(data)
+            x.set_value(data)
+            t0 = time.time()
+            f()
             f.sync_shared()
-            f(x_)
+            t1 = time.time()
+            if (t1 - t0) < 0.5:
+                continue
+            size = i
+            break
+        # sync to make sure all computation are done
+        f.sync_shared()
+
+        t_0 = time.time()
+        for i in range(3):
+            f()
+            # Sync after each call to see the slowdown from sync.
+            f.sync_shared()
+            time.sleep(.5)
         t_1 = time.time()
-        for i in range(1000):
-            f(x_)
+        for i in range(3):
+            f()
+            time.sleep(.5)
+        f.sync_shared()
+        # Sync to make sure all computation are finished.
         t_2 = time.time()
         assert (t_1 - t_0) > (t_2 - t_1)
     else:
