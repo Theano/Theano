@@ -225,7 +225,8 @@ stabilize          "+++++"       "++"            Only applies stability opts
 =================  ============  ==============  ==================================================
 
 For a detailed list of the specific optimizations applied for each of these
-optimizers, see :ref:`optimizations`. Also, see :ref:`unsafe_optimization`.
+optimizers, see :ref:`optimizations`. Also, see :ref:`unsafe_optimization` and
+:ref:`faster-theano-function-compilation`.
 
 
 .. _using_debugmode:
