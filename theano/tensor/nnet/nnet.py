@@ -949,121 +949,98 @@ def local_logsoftmax(node):
 def local_logsoftmax_grad(node):
     """
     Detect Log(Softmax(x))'s grad and replace it with LogSoftmax(x)'s grad
-
-    Note: only grad is affected
+    Detect two cases:
+    1. d_sm = (out_grad / softmax(x))
+    2. d_sm =
+    IncSubtensor_op(
+              zeros_like(softmax(x)),
+              -out_grad / subtensor_op(softmax(x), *idx),
+              *idx)
+    which arises from the gradient of log(softmax(x)[*idx])
     """
+
+    list_classes_IncSubtensor = ((IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
+    list_classes_Subtensor = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
     if (isinstance(node.op, SoftmaxGrad) and
         len(node.inputs) == 2 and
         node.inputs[0].owner is not None and
-        node.inputs[0].owner.op == tensor.true_div and
         len(node.inputs[0].owner.inputs) >= 2 and
         node.inputs[0].owner.inputs[1].owner is not None and
-        node.inputs[0].owner.inputs[1].owner.op == softmax_op and
-        node.inputs[1] == node.inputs[0].owner.inputs[1] and
-        not (
+        isinstance(node.inputs[1].owner.op, Softmax)):
+
+        # Case where d_sm = (grads / softmax(x))
+        if (node.inputs[0].owner.op == tensor.true_div and
+            isinstance(node.inputs[0].owner.inputs[1].owner.op, Softmax) and
+            node.inputs[1] == node.inputs[0].owner.inputs[1] and
             # skip if it will be optimized by
             # local_advanced_indexing_crossentropy_onehot_grad
-            node.inputs[0].owner.op == tensor.true_div and
-            node.inputs[0].owner.inputs[0].owner is not None and
-            isinstance(node.inputs[0].owner.inputs[0].owner.op,
-                       subtensor.AdvancedIncSubtensor))):
-        # get parameters from unoptimized op
-        sm = node.inputs[0].owner.inputs[1]
-        axis = sm.owner.op.axis
-        # sm_input = node.inputs[1].owner.inputs[0]
-        grads = node.inputs[0].owner.inputs[0]
-        if grads.broadcastable[axis] and not sm.broadcastable[axis]:
-            grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
-        ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
-        ret.tag.values_eq_approx = values_eq_approx_remove_nan
-        copy_stack_trace(node.outputs[0], ret)
-        return [ret]
+            not (node.inputs[0].owner.inputs[0].owner is not None and
+            isinstance(node.inputs[0].owner.inputs[0].owner.op, AdvancedIncSubtensor))):
+                # get parameters from unoptimized op
+                sm = node.inputs[0].owner.inputs[1]
+                axis = sm.owner.op.axis
+                # sm_input = node.inputs[1].owner.inputs[0]
+                grads = node.inputs[0].owner.inputs[0]
+                if grads.broadcastable[axis] and not sm.broadcastable[axis]:
+                    grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
+                ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
+                ret.tag.values_eq_approx = values_eq_approx_remove_nan
+                copy_stack_trace(node.outputs[0], ret)
+                return [ret]
 
+        # Case where d_sm = IncSubtensor_op(zeros_like(softmax(x)), -out_grad /
+        # subtensor_op(softmax(x), *idx),, *idx)
+        if(isinstance(node.inputs[0].owner.op, list_classes_IncSubtensor)):
+            d_sm, sm = node.inputs
+            incr = d_sm.owner.inputs[1]
+            subtensor_idx = d_sm.owner.inputs[2:]
+            out_grad = 1.
+            softmax_input = sm.owner.inputs[0]
+            # We dedect the case
+            # log(softmax(x)[arange(y.shape[0]), y]) that will
+            # be optimized by local_advanced_indexing_crossentropy_onehot
+            if len(subtensor_idx) == 2:
+                rows, labels = subtensor_idx
+                if _check_rows_is_arange_len_labels(rows, labels) and labels.ndim == 1 and softmax_input.ndim == 2:
+                    return
 
-@opt.register_specialize('fast_compile')
-@gof.local_optimizer([SoftmaxGrad])
-def local_indexing_logsoftmax_grad(node):
-    # Detect:
-    #  IncSubtensor_op(
-    #           zeros_like(softmax(x)),
-    #           -out_grad / subtensor_op(softmax(x), *idx),
-    #           *idx)
-    #  which arises from the gradient of log(softmax(x)[*idx])
-    list_classes_IncSubtensor = ((IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
-    list_classes_Subtensor = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
-    if not (isinstance(node.op, SoftmaxGrad)):
-        return
+            if incr.owner.op == tensor.neg:
+                incr = incr.owner.inputs[0]
+                out_grad = - out_grad
 
-    sm = None
-    try:
-        d_sm, sm = node.inputs
-    except Exception:
-        return
-
-    if not ((sm is not None) and sm.owner and isinstance(sm.owner.op, Softmax)):
-        return
-
-    x_var = sm.owner.inputs[0]
-    # In case of matrices, we'll use the crossentropy optimization
-    if x_var.ndim == 2:
-        return
-
-    if d_sm.owner and isinstance(d_sm.owner.op, list_classes_IncSubtensor):
-        incr = d_sm.owner.inputs[1]
-        subtensor_idx, = d_sm.owner.inputs[2:]
-
-        out_grad = 1.
-        if incr.owner and incr.owner.op == tensor.neg:
-            incr = incr.owner.inputs[0]
-            out_grad = - out_grad
-
-        if incr.owner and incr.owner.op == tensor.true_div:
-            num, denom = incr.owner.inputs
-
-            if num.ndim == 1 or np.all(num.broadcastable):
+            # Here, we try to find the subtensor_op(softmax(x), *idx)
+            # that is inside the denominator of the IncSubtensor
+            if incr.owner.op == tensor.true_div and incr.owner.inputs[1].owner is not None:
+                num, denom = incr.owner.inputs
                 out_grad *= -num
-            else:
-                return
-
-            if not denom.owner:
-                return
-            if isinstance(denom.owner.op, list_classes_Subtensor):
-                # Base case
-                subtensor_op = denom
-                # out_grad /= 1.
-            elif denom.owner.op == tensor.mul:
-                # Try to find the AdvancedSubtensor node mentionned above,
-                # and the output gradient
-                for i, input in enumerate(denom.owner.inputs):
-                    if input.owner and isinstance(input.owner.op, list_classes_Subtensor):
-                        other_inputs = [in_ for (j, in_) in enumerate(denom.owner.inputs) if j != i]
-                        if len(other_inputs) == 1:
-                            rest = other_inputs[0]
-                        else:
-                            rest = tensor.mul(*[other_inputs])
-                        # Check that rest is a vector or a scalar
-                        if rest.ndim == 1 or np.all(rest.broadcastable):
+                subtensor_op = None
+                if isinstance(denom.owner.op, list_classes_Subtensor):
+                    subtensor_op = denom
+                elif denom.owner.op == tensor.mul:
+                    # Try to find the AdvancedSubtensor node mentionned above,
+                    # and the output gradient
+                    for i, input in enumerate(denom.owner.inputs):
+                        if input.owner and isinstance(input.owner.op, list_classes_Subtensor):
+                            other_inputs = [in_ for (j, in_) in enumerate(denom.owner.inputs) if j != i]
+                            if len(other_inputs) == 1:
+                                rest = other_inputs[0]
+                            else:
+                                rest = tensor.mul(*[other_inputs])
                             subtensor_op = input
                             out_grad /= rest
                             break
-            else:
-                return
 
-            if subtensor_op is not None:
-                try:
-                    maybe_sm = subtensor_op.owner.inputs[0]
-                    maybes_subtensor_idx, = subtensor_op.owner.inputs[1:]
-                except Exception:
-                    return
-                if (not (maybe_sm is sm and maybes_subtensor_idx is subtensor_idx)):
-                    return
-            else:
-                return
-
-            ret = out_grad * d_sm.owner.op(-sm, 1, subtensor_idx)
-            ret.tag.values_eq_approx = values_eq_approx_remove_nan
-            copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
-            return [ret]
+                # And we verify that the subtensor_op(softmax(x), *idx)
+                # that is inside the denominator match the subtensor_op(softmax(x), *idx)
+                # that is the second argument of the SoftmaxGrad
+                if (subtensor_op is not None and
+                    len(subtensor_op.owner.inputs) >= 2 and
+                    subtensor_op.owner.inputs[0] is sm and
+                    subtensor_op.owner.inputs[1:] == subtensor_idx):
+                        ret = out_grad * d_sm.owner.op(-sm, 1, *subtensor_idx)
+                        ret.tag.values_eq_approx = values_eq_approx_remove_nan
+                        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+                        return [ret]
 
 
 def softmax_graph(c):
