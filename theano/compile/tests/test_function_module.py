@@ -909,6 +909,12 @@ def test_empty_givens_updates():
 
 
 def test_sync_update():
+    # This test if sync_update work. This can only be tested when
+    # there is a GPU.  To test if we really sync, we compare a case we
+    # can run in parallel GPU and CPU computation. Then we sync to
+    # disable that parallel computation. Then we assert the time is
+    # higher.
+
     import theano.gpuarray.tests.config
     if theano.gpuarray.pygpu_activated:
         sizes = [100, 500, 1000, 2000, 5000, 10000, 20000, 40000]
