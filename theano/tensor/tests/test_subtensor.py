@@ -363,6 +363,11 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             assert_array_equal(tval, numpy_tval)
 
     def test_boolean(self):
+        def numpy_inc_subtensor(x, idx, a):
+            x = x.copy()
+            x[idx] += a
+            return x
+
         numpy_n = np.arange(6, dtype=self.dtype).reshape((2, 3))
         n = self.shared(numpy_n)
 
@@ -374,6 +379,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         # indexing with a mask for some dimensions
         mask = np.array([True, False])
         assert_array_equal(numpy_n[mask], n[mask].eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, 1),
+                           inc_subtensor(n[mask], 1).eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, numpy_n[mask]),
+                           inc_subtensor(n[mask], n[mask]).eval())
 
         # indexing with a mask for the second dimension
         mask = np.array([True, False, True])
@@ -382,41 +391,66 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert_array_equal(numpy_n[:, mask], n[:, self.shared(mask)].eval())
         assert_array_equal(numpy_n[1:, mask], n[1:, mask].eval())
         assert_array_equal(numpy_n[:1, mask], n[:1, mask].eval())
+        assert_array_equal(numpy_n[1:, mask, np.newaxis], n[1:, mask, np.newaxis].eval())
+        assert_array_equal(numpy_n[np.newaxis, 1:, mask], n[np.newaxis, 1:, mask].eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, [0, mask], 1),
+                           inc_subtensor(n[0, mask], 1).eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, [Ellipsis, mask], 1),
+                           inc_subtensor(n[:, mask], 1).eval())
 
         # indexing with a boolean ndarray
         mask = np.array([[True, False, True], [False, False, True]])
         assert_array_equal(numpy_n[mask], n[mask].eval())
         assert_array_equal(numpy_n[mask], n[self.shared(mask)].eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, 1),
+                           inc_subtensor(n[mask], 1).eval())
 
         # indexing with ellipsis
         numpy_n4 = np.arange(48, dtype=self.dtype).reshape((2, 3, 4, 2))
         n4 = self.shared(numpy_n4)
         assert_array_equal(numpy_n4[numpy_n > 2, ...], n4[n > 2, ...].eval())
         assert_array_equal(numpy_n4[numpy_n > 2, ..., 1], n4[n > 2, ..., 1].eval())
+        assert_array_equal(numpy_n4[numpy_n > 2, ..., 0, 1], n4[n > 2, ..., 0, 1].eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n4, [numpy_n > 2, Ellipsis], 1),
+                           inc_subtensor(n4[n > 2, ...], 1).eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n4, [numpy_n > 2, Ellipsis, 1], 1),
+                           inc_subtensor(n4[n > 2, ..., 1], 1).eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n4, [numpy_n > 2, Ellipsis, 0, 1], 1),
+                           inc_subtensor(n4[n > 2, ..., 0, 1], 1).eval())
 
         # the boolean mask should have the correct shape
         # - too large, padded with True
         mask = np.array([True, False, True])
         self.assertRaises(IndexError, n[mask].eval)
         self.assertRaises(IndexError, n[mask, ...].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask, ...], 1).eval)
         mask = np.array([[True, False, False, True], [False, True, False, True]])
         self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
         # - too large, padded with False (this works in NumPy < 0.13.0)
         mask = np.array([True, False, False])
         self.assertRaises(IndexError, n[mask].eval)
         self.assertRaises(IndexError, n[mask, ...].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask, ...], 1).eval)
         mask = np.array([[True, False, False, False], [False, True, False, False]])
         self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
         # - mask too small (this works in NumPy < 0.13.0)
         mask = np.array([True])
         self.assertRaises(IndexError, n[mask].eval)
         self.assertRaises(IndexError, n[mask, ...].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask, ...], 1).eval)
         mask = np.array([[True], [True]])
         self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
         # - too many dimensions
         mask = np.array([[[True, False, False],
                           [False, True, False]]])
-        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, n.__getitem__, mask)
+        self.assertRaises(IndexError, n.__getitem__, mask)
 
         # special cases: Python bools and bools nested in Python arrays are not supported
         self.assertRaises(TypeError, n.__getitem__, (True,))

@@ -477,15 +477,19 @@ class _tensor_py_operators(object):
         elif not isinstance(args, tuple):
             args = args,
 
-        # Convert boolean arrays to calls to mask.nonzero()
-        tmp_args = []
-        for arg in args:
-            # NumPy arrays or tensors of type bool can be converted to
-            # normal integer indices.
-            if (isinstance(arg, (np.ndarray, theano.tensor.Variable)) and
-                    hasattr(arg, 'dtype') and hasattr(arg, 'nonzero') and
-                    arg.dtype == 'bool'):
-                tmp_args += arg.nonzero()
+        # Count the dimensions, check for bools and find ellipses.
+        ellipses = []
+        index_dim_count = 0
+        for i, arg in enumerate(args):
+            if arg is np.newaxis:
+                # no increase in index_dim_count
+                pass
+            elif arg is Ellipsis:
+                # no increase in index_dim_count
+                ellipses.append(i)
+            elif (isinstance(arg, (np.ndarray, theano.tensor.Variable)) and
+                    hasattr(arg, 'dtype') and arg.dtype == 'bool'):
+                index_dim_count += arg.ndim
             else:
                 # Python arrays can contain a mixture of bools and integers,
                 # which requires complex rules to handle all special cases.
@@ -499,25 +503,22 @@ class _tensor_py_operators(object):
                                     'To use a boolean mask, convert the mask to '
                                     'a NumPy array first, e.g., '
                                     'tensor[numpy.array([True, False])].')
-                tmp_args.append(arg)
-        args = tuple(tmp_args)
+                index_dim_count += 1
+
+        # Check if the number of dimensions isn't too large.
+        if self.ndim < index_dim_count:
+            raise IndexError('too many indices for array')
 
         # Convert an Ellipsis if provided into an appropriate number of
         # slice(None).
-        ellipses = [i
-                    for i, index in enumerate(args)
-                    if index is Ellipsis]
         if len(ellipses) > 1:
             raise IndexError(
                 "an index can only have a single Ellipsis (`...`)")
         elif len(ellipses) == 1:
-            new_axes = sum(1
-                           for index in args
-                           if index is np.newaxis)  # numpy.newaxis is None
             ellipsis_at = ellipses[0]
             args = list(args)
             args[ellipsis_at: ellipsis_at + 1] = (
-                [slice(None)] * (self.ndim - (len(args) - 1 - new_axes)))
+                [slice(None)] * (self.ndim - index_dim_count))
 
         # Force input to be int64 datatype if input is an empty list or tuple
         # Else leave it as is if it is a real number
@@ -533,7 +534,12 @@ class _tensor_py_operators(object):
         axis = None
         for i, arg in enumerate(args):
             try:
-                if arg is not np.newaxis:
+                if (isinstance(arg, (np.ndarray, theano.tensor.Variable)) and
+                        hasattr(arg, 'dtype') and arg.dtype == 'bool'):
+                    advanced = True
+                    axis = None
+                    break
+                elif arg is not np.newaxis:
                     theano.tensor.subtensor.Subtensor.convert(arg)
             except theano.tensor.subtensor.AdvancedIndexingError:
                 if advanced:

@@ -2062,7 +2062,7 @@ def as_index_variable(idx):
     if isinstance(idx, gof.Variable) and isinstance(idx.type, NoneTypeT):
         return idx
     idx = theano.tensor.as_tensor_variable(idx)
-    if idx.type.dtype not in theano.tensor.integer_dtypes:
+    if idx.type.dtype not in theano.tensor.integer_dtypes and idx.type.dtype != 'bool':
         raise TypeError('index must be integers')
     return idx
 
@@ -2091,7 +2091,10 @@ def adv_index_broadcastable_pattern(a, idx):
         if isinstance(v.type, SliceType):
             return slice(None, None)
 
-        return np.zeros((2,) * v.ndim, int)
+        if v.dtype == 'bool':
+            return np.ones((2,) * v.ndim, v.dtype)
+        else:
+            return np.zeros((2,) * v.ndim, int)
 
     newidx = tuple(map(replace_slice, idx))
 
@@ -2099,6 +2102,32 @@ def adv_index_broadcastable_pattern(a, idx):
     fakeshape = [2 - bc for bc in a.broadcastable]
     retshape = np.empty(fakeshape)[newidx].shape
     return tuple([dim == 1 for dim in retshape])
+
+
+def check_advanced_indexing_dimensions(input, idx_list):
+    """
+    This function checks if the index list in idx_list is correct.
+    If there are any boolean masks, we check if the mask has the
+    same shape as the input. This is enforced in NumPy 0.13.0 and
+    newer, but not by earlier versions. If the size is not the same,
+    this method raises an IndexError.
+    """
+    dim_seen = 0
+    for index in idx_list:
+        if index is np.newaxis:
+            # skip, does not count as an input dimension
+            pass
+        elif isinstance(index, np.ndarray) and index.dtype == 'bool':
+            for i in xrange(index.ndim):
+                if index.shape[i] != input.shape[dim_seen + i]:
+                    raise IndexError('boolean index did not match indexed array '
+                                     'along dimension %d; dimension is %d but '
+                                     'corresponding boolean dimension is %d' %
+                                     (dim_seen + i, input.shape[dim_seen + i],
+                                      index.shape[i]))
+            dim_seen += index.ndim
+        else:
+            dim_seen += 1
 
 
 class AdvancedSubtensor(Op):
@@ -2146,6 +2175,7 @@ class AdvancedSubtensor(Op):
 
     def perform(self, node, inputs, out_):
         out, = out_
+        check_advanced_indexing_dimensions(inputs[0], inputs[1:])
         rval = inputs[0].__getitem__(inputs[1:])
         # When there are no arrays, we are not actually doing advanced
         # indexing, so __getitem__ will not return a copy.
@@ -2214,6 +2244,8 @@ class AdvancedIncSubtensor(Op):
     def perform(self, node, inputs, out_):
         # TODO: 1. opt to make this in place 2. generalize as described in
         # AdvancedSubtensor's perform TODO
+
+        check_advanced_indexing_dimensions(inputs[0], inputs[2:])
 
         out, = out_
         if not self.inplace:

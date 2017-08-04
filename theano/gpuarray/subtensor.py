@@ -4,7 +4,7 @@ import os
 
 import numpy as np
 from six import integer_types
-from six.moves import StringIO
+from six.moves import StringIO, xrange
 
 from theano import tensor, gof, Op
 from theano.gof import ParamsType
@@ -481,6 +481,37 @@ if (err != GA_NO_ERROR) {
         return (0,)
 
 
+def check_and_convert_boolean_masks(input, idx_list):
+    """
+    This function checks if the boolean mask arrays in the index have
+    the right shape and converts them to index arrays by calling nonzero.
+    For each boolean mask, we check if the mask has the
+    same shape as the input. This is enforced in NumPy 0.13.0 and
+    newer, but not by earlier versions. If the size is not the same,
+    this method raises an IndexError.
+    """
+    dim_seen = 0
+    out_idx_list = []
+    for index in idx_list:
+        if index is np.newaxis:
+            # skip, does not count as an input dimension
+            out_idx_list.append(index)
+        elif isinstance(index, np.ndarray) and index.dtype == 'bool':
+            for i in xrange(index.ndim):
+                if index.shape[i] != input.shape[dim_seen + i]:
+                    raise IndexError('boolean index did not match indexed array '
+                                     'along dimension %d; dimension is %d but '
+                                     'corresponding boolean dimension is %d' %
+                                     (dim_seen + i, input.shape[dim_seen + i],
+                                      index.shape[i]))
+            dim_seen += index.ndim
+            out_idx_list += index.nonzero()
+        else:
+            dim_seen += 1
+            out_idx_list.append(index)
+    return out_idx_list
+
+
 class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
     """
     AdvancedSubtensor On the GPU.
@@ -498,6 +529,9 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         out, = out_
         x = inputs[0]
         idx = inputs[1:]
+
+        # convert boolean masks to index arrays
+        idx = check_and_convert_boolean_masks(x, idx)
 
         # detect and transpose array indices
         nidx = []
@@ -630,6 +664,9 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         for i in range(len(idx)):
             if isinstance(idx[i], gpuarray.GpuArray):
                 idx[i] = np.asarray(idx[i])
+
+        # convert boolean masks to index arrays
+        idx = check_and_convert_boolean_masks(x, idx)
 
         # Insert axes for None indexing
         nidx = []
