@@ -2962,16 +2962,6 @@ def dnn_spatialtf(img, theta, scale_width=1, scale_height=1):
                 theano.tensor.ceil(img.shape[2] * scale_height),
                 theano.tensor.ceil(img.shape[3] * scale_width))
     out_dims = tuple([as_scalar(v).astype('int64') for v in out_dims])
-
-    context_name = infer_context_name(img, theta)
-    img = gpu_contiguous(as_gpuarray_variable(img, context_name))
-    theta = gpu_contiguous(as_gpuarray_variable(theta, context_name))
-
-    # inp is a 4D tensor with shape: (num_inputs, num_channels, height, width)
-    assert img.ndim == 4
-    # Theta is an array of transformation matrices and must have shape: (num_images, 2, 3)
-    assert theta.ndim == 3
-
     # Setup spatial transformer
     grid = GpuDnnTransformerGrid()(theta, out_dims)
     sampler = GpuDnnTransformerSampler()(img, grid)
