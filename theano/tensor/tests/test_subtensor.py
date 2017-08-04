@@ -385,7 +385,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert_array_equal(numpy_n[np.newaxis, 1:, mask], n[np.newaxis, 1:, mask].eval())
         assert_array_equal(numpy_inc_subtensor(numpy_n, [0, mask], 1),
                            inc_subtensor(n[0, mask], 1).eval())
-        assert_array_equal(numpy_inc_subtensor(numpy_n, [Ellipsis, mask], 1),
+        assert_array_equal(numpy_inc_subtensor(numpy_n, [slice(None), mask], 1),
                            inc_subtensor(n[:, mask], 1).eval())
 
         # indexing with a boolean ndarray

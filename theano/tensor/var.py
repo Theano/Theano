@@ -534,12 +534,7 @@ class _tensor_py_operators(object):
         axis = None
         for i, arg in enumerate(args):
             try:
-                if (isinstance(arg, (np.ndarray, theano.tensor.Variable)) and
-                        hasattr(arg, 'dtype') and arg.dtype == 'bool'):
-                    advanced = True
-                    axis = None
-                    break
-                elif arg is not np.newaxis:
+                if arg is not np.newaxis:
                     theano.tensor.subtensor.Subtensor.convert(arg)
             except theano.tensor.subtensor.AdvancedIndexingError:
                 if advanced:
@@ -555,6 +550,7 @@ class _tensor_py_operators(object):
                     equal_slices(a, slice(None)) for a in args[:axis]) and
                 all(isinstance(a, slice) and
                     equal_slices(a, slice(None)) for a in args[axis + 1:]) and
+                (not hasattr(args[axis], 'dtype') or args[axis].dtype != 'bool') and
                 isinstance(args[axis],
                            (np.ndarray, list,
                             TensorVariable, TensorConstant,

@@ -336,6 +336,11 @@ class Subtensor(Op):
                         theano.tensor.wscalar, theano.tensor.bscalar]
         invalid_tensor_types = [theano.tensor.fscalar, theano.tensor.dscalar,
                                 theano.tensor.cscalar, theano.tensor.zscalar]
+
+        if (isinstance(entry, (np.ndarray, theano.tensor.Variable)) and
+                hasattr(entry, 'dtype') and entry.dtype == 'bool'):
+            raise AdvancedIndexingError(Subtensor.e_indextype, entry)
+
         if (isinstance(entry, gof.Variable) and
             (entry.type in invalid_scal_types or
              entry.type in invalid_tensor_types)):
@@ -2049,8 +2054,8 @@ def as_index_variable(idx):
     if isinstance(idx, gof.Variable) and isinstance(idx.type, NoneTypeT):
         return idx
     idx = theano.tensor.as_tensor_variable(idx)
-    if idx.type.dtype not in theano.tensor.integer_dtypes and idx.type.dtype != 'bool':
-        raise TypeError('index must be integers')
+    if idx.type.dtype not in theano.tensor.discrete_dtypes:
+        raise TypeError('index must be integers or a boolean mask')
     return idx
 
 
