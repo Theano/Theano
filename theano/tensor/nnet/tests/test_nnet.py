@@ -182,40 +182,74 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
                                 [admat_val, advec_val], SoftmaxWithBias)
 
 
-class T_LogSoftmax(utt.InferShapeTester):
+def test_multiple_axes():
+    def test_vals(in_val):
+        x = T.TensorType(
+            dtype=config.floatX,
+            broadcastable=(False,) * in_val.ndim
+        )('x')
 
-    def test0(self):
-        def f(a):
-            return logsoftmax_op(a)[:, 0]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+        f = theano.function(
+            inputs=[x],
+            outputs=T.log(T.nnet.softmax(x))
+        )
+        if not np.allclose(f(in_val),
+                           np.log(np.exp(in_val) / np.exp(in_val).sum(axis=-1))):
+            print(f(in_val))
+            print(np.log(np.exp(in_val) / np.exp(in_val).sum(axis=-1)))
+        assert np.allclose(
+            f(in_val),
+            np.log(np.exp(in_val) / np.exp(in_val).sum(axis=-1))
+        )
 
-    def test1(self):
-        def f(a):
-            return logsoftmax_op(a)[:, 1]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+    def test_grad(in_val):
+        def f(x):
+            idx = (in_val.ndim - 1) * (0,) + (1,)
+            return T.log(T.nnet.softmax(x))[idx]
 
-    def test2(self):
-        def f(a):
-            return logsoftmax_op(a)[:, 2]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+        utt.verify_grad(f, [in_val])
 
-    def test3(self):
-        def f(a):
-            return logsoftmax_op(a)[:, 3]
-        utt.verify_grad(f, [np.random.rand(3, 4)])
+    for axes in xrange(1, 5 + 1):
+        dimensions = (2,) * axes
+        in_val = np.random.randn(*dimensions).astype(config.floatX)
+        yield test_vals, in_val
+        yield test_grad, in_val
 
-    def test_matrix(self):
-        def f(a):
-            return logsoftmax_op(a)
-        utt.verify_grad(f, [np.random.rand(3, 4)])
 
-    def test_vector(self):
-        x = T.vector()
-        f = theano.function([x], logsoftmax_op(x))
+class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
 
-        xv = np.random.randn(6).astype(config.floatX)
-        assert np.allclose(f(xv),
-                           np.log(np.exp(xv) / np.exp(xv).sum()))
+#    def test0(self):
+#        def f(a):
+#            return logsoftmax_op(a)[:, 0]
+#        utt.verify_grad(f, [np.random.rand(3, 4)])
+#
+#    def test1(self):
+#        def f(a):
+#            return logsoftmax_op(a)[:, 1]
+#        utt.verify_grad(f, [np.random.rand(3, 4)])
+#
+#    def test2(self):
+#        def f(a):
+#            return logsoftmax_op(a)[:, 2]
+#        utt.verify_grad(f, [np.random.rand(3, 4)])
+#
+#    def test3(self):
+#        def f(a):
+#            return logsoftmax_op(a)[:, 3]
+#        utt.verify_grad(f, [np.random.rand(3, 4)])
+#
+#    def test_matrix(self):
+#        def f(a):
+#            return logsoftmax_op(a)
+#        utt.verify_grad(f, [np.random.rand(3, 4)])
+#
+#    def test_vector(self):
+#        x = T.vector()
+#        f = theano.function([x], logsoftmax_op(x))
+#
+#        xv = np.random.randn(6).astype(config.floatX)
+#        assert np.allclose(f(xv),
+#                           np.log(np.exp(xv) / np.exp(xv).sum()))
 
     def test_vector_grad(self):
         def f(a):
