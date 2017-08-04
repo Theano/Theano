@@ -4,15 +4,17 @@ cudnnSpatialTransformerDescriptor_t APPLY_SPECIFIC(sptf);
 
 #section init_code_struct
 
-cudnnStatus_t APPLY_SPECIFIC(err) = CUDNN_STATUS_SUCCESS;
 APPLY_SPECIFIC(sptf) = NULL;
 
-if ((APPLY_SPECIFIC(err) = cudnnCreateSpatialTransformerDescriptor(&APPLY_SPECIFIC(sptf))) != CUDNN_STATUS_SUCCESS)
 {
-    PyErr_Format(PyExc_MemoryError,
-        "GpuDnnTransformerGrid: could not allocate spatial transformer descriptor (sptf): %s",
-        cudnnGetErrorString(APPLY_SPECIFIC(err)));
-    FAIL;
+    cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
+    if ((err = cudnnCreateSpatialTransformerDescriptor(&APPLY_SPECIFIC(sptf))) != CUDNN_STATUS_SUCCESS)
+    {
+        PyErr_Format(PyExc_MemoryError,
+            "GpuDnnTransformerGrid: could not allocate spatial transformer descriptor (sptf): %s",
+            cudnnGetErrorString(err));
+        FAIL;
+    }
 }
 
 #section cleanup_code_struct
