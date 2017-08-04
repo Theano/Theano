@@ -82,10 +82,10 @@ class TestSignalConv2D(unittest.TestCase):
 
     def test_basic(self):
 
-        #Basic functionality of nnet.conv.ConvOp is already tested by
-        #its own test suite.  We just have to test whether or not
-        #signal.conv.conv2d can support inputs and filters of type
-        #matrix or tensor3.
+        # Basic functionality of nnet.conv.ConvOp is already tested by
+        # its own test suite.  We just have to test whether or not
+        # signal.conv.conv2d can support inputs and filters of type
+        # matrix or tensor3.
 
         if(not theano.tensor.nnet.conv.imported_scipy_signal and
            theano.config.cxx == ""):
@@ -105,9 +105,9 @@ class TestSignalConv2D(unittest.TestCase):
 
     def test_bug_josh_reported(self):
         
-        #Test refers to a bug reported by Josh, when due to a bad merge these
-        #few lines of code failed. See
-        #http://groups.google.com/group/theano-dev/browse_thread/thread/8856e7ca5035eecb
+        # Test refers to a bug reported by Josh, when due to a bad merge these
+        # few lines of code failed. See
+        # http://groups.google.com/group/theano-dev/browse_thread/thread/8856e7ca5035eecb
 
         m1 = theano.tensor.matrix()
         m2 = theano.tensor.matrix()
