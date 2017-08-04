@@ -1455,6 +1455,18 @@ AddConfigVar(
     theano.configparser.IntParam(0),
     in_c_key=False)
 
+AddConfigVar('metaopt.optimizer_excluding',
+             ("exclude optimizers with these tags. "
+              "Separate tags with ':'."),
+             StrParam(""),
+             in_c_key=False)
+
+AddConfigVar('metaopt.optimizer_including',
+             ("include optimizers with these tags. "
+              "Separate tags with ':'."),
+             StrParam(""),
+             in_c_key=False)
+
 AddConfigVar('profile',
              "If VM should collect profile information",
              BoolParam(False),
