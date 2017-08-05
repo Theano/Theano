@@ -422,12 +422,12 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
         mode = theano.compile.get_mode("FAST_RUN")
     else:
         mode = None
-    conv2d = corr.CorrMM
-    conv2d_gradw = corr.CorrMM_gradWeights
-    conv2d_gradi = corr.CorrMM_gradInputs
-    conv2d_op = corr.CorrMM
-    conv2d_gradw_op = corr.CorrMM_gradWeights
-    conv2d_gradi_op = corr.CorrMM_gradInputs
+    conv = corr.CorrMM
+    conv_gradw = corr.CorrMM_gradWeights
+    conv_gradi = corr.CorrMM_gradInputs
+    conv_op = corr.CorrMM
+    conv_gradw_op = corr.CorrMM_gradWeights
+    conv_gradi_op = corr.CorrMM_gradInputs
     flip_filter = True
     is_dnn = False
 
@@ -440,13 +440,13 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
         kern_sym = T.tensor4('kern')
 
         # grouped convolution graph
-        conv_group = self.conv2d(num_groups=groups)(bottom_sym, kern_sym)
+        conv_group = self.conv(num_groups=groups)(bottom_sym, kern_sym)
         gconv_func = theano.function([bottom_sym, kern_sym], conv_group, mode=self.mode)
 
         # Graph for the normal hard way
         kern_offset = kern_sym.shape[0] // groups
         bottom_offset = bottom_sym.shape[1] // groups
-        split_conv_output = [self.conv2d()(bottom_sym[:, i * bottom_offset:(i + 1) * bottom_offset, :, :],
+        split_conv_output = [self.conv()(bottom_sym[:, i * bottom_offset:(i + 1) * bottom_offset, :, :],
                              kern_sym[i * kern_offset:(i + 1) * kern_offset, :, :, :])
                              for i in range(groups)]
         concatenated_output = T.concatenate(split_conv_output, axis=1)
