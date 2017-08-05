@@ -1,6 +1,6 @@
-"""
-Tests of printing functionality
-"""
+
+# Tests of printing functionality
+
 from __future__ import absolute_import, print_function, division
 import logging
 
@@ -16,11 +16,11 @@ from theano.printing import min_informative_str, debugprint
 
 
 def test_pydotprint_cond_highlight():
-    """
-    This is a REALLY PARTIAL TEST.
 
-    I did them to help debug stuff.
-    """
+    # This is a REALLY PARTIAL TEST.
+
+    # I did them to help debug stuff.
+
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
@@ -59,13 +59,13 @@ def test_pydotprint_return_image():
 
 
 def test_pydotprint_long_name():
-    """This is a REALLY PARTIAL TEST.
+    #This is a REALLY PARTIAL TEST.
 
-    It prints a graph where there are variable and apply nodes whose long
-    names are different, but not the shortened names.
-    We should not merge those nodes in the dot graph.
+    # It prints a graph where there are variable and apply nodes whose long
+    # names are different, but not the shortened names.
+    # We should not merge those nodes in the dot graph.
 
-    """
+
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
@@ -84,7 +84,7 @@ def test_pydotprint_long_name():
 
 
 def test_pydotprint_profile():
-    """Just check that pydotprint does not crash with profile."""
+    # Just check that pydotprint does not crash with profile.
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
@@ -99,8 +99,8 @@ def test_pydotprint_profile():
 
 
 def test_min_informative_str():
-    """ evaluates a reference output to make sure the
-        min_informative_str function works as intended """
+    # evaluates a reference output to make sure the
+    # min_informative_str function works as intended
 
     A = tensor.matrix(name='A')
     B = tensor.matrix(name='B')
@@ -114,11 +114,11 @@ def test_min_informative_str():
 
     mis = min_informative_str(G).replace("\t", "        ")
 
-    reference = """A. Elemwise{add,no_inplace}
- B. C
- C. Elemwise{add,no_inplace}
-  D. D
-  E. E"""
+    reference = #A. Elemwise{add,no_inplace}
+ # B. C
+ # C. Elemwise{add,no_inplace}
+ # D. D
+ # E. E
 
     if mis != reference:
         print('--' + mis + '--')

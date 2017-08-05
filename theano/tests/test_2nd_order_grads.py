@@ -1,6 +1,6 @@
-"""
-Test for jacobian/hessian functions in Theano
-"""
+
+# Test for jacobian/hessian functions in Theano
+
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 from theano.tests import unittest_tools as utt
@@ -145,9 +145,9 @@ def test004_hessian():
 
 
 def test_jacobian_disconnected_inputs():
-    """
-    Test that disconnected inputs are properly handled by jacobian.
-    """
+
+    # Test that disconnected inputs are properly handled by jacobian.
+    
     v1 = tensor.vector()
     v2 = tensor.vector()
     jacobian_v = theano.gradient.jacobian(1 + v1, v2, disconnected_inputs='ignore')
