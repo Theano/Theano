@@ -21,10 +21,10 @@ one = theano.tensor.as_tensor_variable(1.)
 
 
 def grad_sources_inputs(sources, inputs):
-    """
-    This implements the old grad_sources_inputs function in terms of
-    the new interface so the tests don't need to be rewritten.
-    """
+
+    # This implements the old grad_sources_inputs function in terms of
+    # the new interface so the tests don't need to be rewritten.
+
     if inputs is None:
         inputs = theano.gof.graph.inputs([source[0] for source in sources])
     return dict(izip(inputs, theano.gradient.grad(cost=None, known_grads=dict(sources),

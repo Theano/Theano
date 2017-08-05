@@ -1,6 +1,6 @@
-"""
-Test flake8 errors.
-"""
+
+# Test flake8 errors.
+
 from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 import os
@@ -108,9 +108,9 @@ whitelist_flake8 = [
 
 
 def list_files(dir_path=theano.__path__[0], pattern='*.py', no_match=".#"):
-    """
-    List all files under theano's path.
-    """
+    
+    # List all files under theano's path.
+
     files_list = []
     for (dir, _, files) in os.walk(dir_path):
         for f in files:
@@ -140,11 +140,11 @@ def test_format_flake8():
 
 
 def print_files_information_flake8():
-    """
-    Print the list of files which can be removed from the whitelist and the
-    list of files which do not respect FLAKE8 formatting that aren't in the
-    whitelist.
-    """
+
+    # Print the list of files which can be removed from the whitelist and the
+    # list of files which do not respect FLAKE8 formatting that aren't in the
+    # whitelist.
+
     infracting_files = []
     non_infracting_files = []
     for path in list_files():
@@ -166,12 +166,12 @@ def print_files_information_flake8():
 
 
 def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
-    """
-    List all .py files under dir_path (theano path), check if they follow
-    flake8 format, save all the error-formatted files into
-    theano_filelist.txt. This function is used for generating
-    the "whitelist_flake8" in this file.
-    """
+
+    # List all .py files under dir_path (theano path), check if they follow
+    # flake8 format, save all the error-formatted files into
+    # theano_filelist.txt. This function is used for generating
+    # the "whitelist_flake8" in this file.
+
 
     with open('theano_filelist.txt', 'a') as f_txt:
         for (dir, _, files) in os.walk(dir_path):
