@@ -8,5 +8,5 @@ pydot2
 Cython
 parameterized
 scipy==0.13
--e . --install-option="--no-deps"
+
 
