@@ -1710,12 +1710,12 @@ class TestConv2dGrads(unittest.TestCase):
 
 
 class Grouped_conv_noOptim(unittest.TestCase):
-    conv2d = theano.tensor.nnet.abstract_conv.AbstractConv2d
-    conv2d_gradw = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
-    conv2d_gradi = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
-    conv2d_op = theano.tensor.nnet.abstract_conv.AbstractConv2d
-    conv2d_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
-    conv2d_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+    conv = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv_gradw = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv_gradi = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+    conv_op = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
     mode = theano.Mode(optimizer=None)
     flip_filter = False
     is_dnn = False
@@ -1729,36 +1729,49 @@ class Grouped_conv_noOptim(unittest.TestCase):
         self.top_shape = [(5, 6, 3, 3), (4, 6, 3, 3), (3, 4, 3, 1), (2, 4, 5, 3)]
         self.filter_dilation = (1, 1)
         self.ref_mode = 'FAST_RUN'
+        self.convdim = 2
+        self.corr_fwd = conv2d_corr
+        self.corr_gradw = conv2d_corr_gw
+        self.corr_gradi = conv2d_corr_gi
         if theano.config.cxx == "":
             raise SkipTest("CorrMM needs cxx")
 
     def test_fwd(self):
-        img_sym = theano.tensor.tensor4('img')
-        kern_sym = theano.tensor.tensor4('kern')
+        if self.convdim == 2:
+            img_sym = theano.tensor.tensor4('img')
+            kern_sym = theano.tensor.tensor4('kern')
+        else:
+            img_sym = theano.tensor.tensor5('img')
+            kern_sym = theano.tensor.tensor5('kern')
+
         for imshp, kshp, groups in zip(self.img_shape, self.kern_shape, self.num_groups):
             img = np.random.random(imshp).astype(theano.config.floatX)
             kern = np.random.random(kshp).astype(theano.config.floatX)
             split_imgs = np.split(img, groups, axis=1)
             split_kern = np.split(kern, groups, axis=0)
 
-            grouped_conv_op = self.conv2d(border_mode=self.border_mode,
-                                          subsample=self.subsample,
-                                          filter_dilation=self.filter_dilation,
-                                          num_groups=groups)
+            grouped_conv_op = self.conv(border_mode=self.border_mode,
+                                        subsample=self.subsample,
+                                        filter_dilation=self.filter_dilation,
+                                        num_groups=groups)
             if self.flip_filter:
-                grouped_conv_output = grouped_conv_op(img_sym, kern_sym[:, :, ::-1, ::-1])
+                if self.convdim == 2:
+                    grouped_conv_output = grouped_conv_op(img_sym, kern_sym[:, :, ::-1, ::-1])
+                else:
+                    grouped_conv_output = grouped_conv_op(img_sym, kern_sym[:, :, ::-1, ::-1, ::-1])
             else:
                 grouped_conv_output = grouped_conv_op(img_sym, kern_sym)
+
             grouped_func = theano.function([img_sym, kern_sym], grouped_conv_output, mode=self.mode)
-            assert any([isinstance(node.op, self.conv2d_op)
+            assert any([isinstance(node.op, self.conv_op)
                        for node in grouped_func.maker.fgraph.toposort()])
             grouped_output = grouped_func(img, kern)
 
-            ref_conv_op = conv2d_corr(img_sym,
-                                      kern_sym,
-                                      border_mode=self.border_mode,
-                                      subsample=self.subsample,
-                                      filter_dilation=self.filter_dilation)
+            ref_conv_op = self.corr_fwd(img_sym,
+                                        kern_sym,
+                                        border_mode=self.border_mode,
+                                        subsample=self.subsample,
+                                        filter_dilation=self.filter_dilation)
             ref_func = theano.function([img_sym, kern_sym], ref_conv_op,
                                        mode=self.ref_mode)
             ref_concat_output = [ref_func(img_arr, kern_arr)
@@ -1773,34 +1786,43 @@ class Grouped_conv_noOptim(unittest.TestCase):
                             eps=1)
 
     def test_gradweights(self):
-        img_sym = theano.tensor.tensor4('img')
-        top_sym = theano.tensor.tensor4('top')
+        if self.convdim == 2:
+            img_sym = theano.tensor.tensor4('img')
+            top_sym = theano.tensor.tensor4('kern')
+        else:
+            img_sym = theano.tensor.tensor5('img')
+            top_sym = theano.tensor.tensor5('kern')
         for imshp, kshp, tshp, groups in zip(self.img_shape, self.kern_shape, self.top_shape, self.num_groups):
             img = np.random.random(imshp).astype(theano.config.floatX)
             top = np.random.random(tshp).astype(theano.config.floatX)
             split_imgs = np.split(img, groups, axis=1)
             split_top = np.split(top, groups, axis=1)
 
-            grouped_convgrad_op = self.conv2d_gradw(border_mode=self.border_mode,
-                                                    subsample=self.subsample,
-                                                    filter_dilation=self.filter_dilation,
-                                                    num_groups=groups)
+            grouped_convgrad_op = self.conv_gradw(border_mode=self.border_mode,
+                                                  subsample=self.subsample,
+                                                  filter_dilation=self.filter_dilation,
+                                                  num_groups=groups)
             grouped_conv_output = grouped_convgrad_op(img_sym,
                                                       top_sym,
-                                                      tensor.as_tensor_variable(kshp if self.is_dnn else kshp[-2:]))
+                                                      tensor.as_tensor_variable(
+                                                          kshp if self.is_dnn
+                                                          else kshp[-self.convdim:]))
             if self.flip_filter:
-                grouped_conv_output = grouped_conv_output[:, :, ::-1, ::-1]
+                if self.convdim == 2:
+                    grouped_conv_output = grouped_conv_output[:, :, ::-1, ::-1]
+                else:
+                    grouped_conv_output = grouped_conv_output[:, :, ::-1, ::-1, ::-1]
             grouped_func = theano.function([img_sym, top_sym], grouped_conv_output, mode=self.mode)
-            assert any([isinstance(node.op, self.conv2d_gradw_op)
+            assert any([isinstance(node.op, self.conv_gradw_op)
                        for node in grouped_func.maker.fgraph.toposort()])
             grouped_output = grouped_func(img, top)
 
-            ref_conv_op = conv2d_corr_gw(img_sym,
-                                         top_sym,
-                                         kshp,
-                                         border_mode=self.border_mode,
-                                         subsample=self.subsample,
-                                         filter_dilation=self.filter_dilation)
+            ref_conv_op = self.corr_gradw(img_sym,
+                                          top_sym,
+                                          kshp,
+                                          border_mode=self.border_mode,
+                                          subsample=self.subsample,
+                                          filter_dilation=self.filter_dilation)
             ref_func = theano.function([img_sym, top_sym], ref_conv_op,
                                        mode=self.ref_mode)
             ref_concat_output = [ref_func(img_arr, top_arr)
@@ -1811,42 +1833,51 @@ class Grouped_conv_noOptim(unittest.TestCase):
 
             def conv_gradweight(inputs_val, output_val):
                 return grouped_convgrad_op(inputs_val, output_val,
-                                           tensor.as_tensor_variable(kshp if self.is_dnn else kshp[-2:]))
+                                           tensor.as_tensor_variable(
+                                               kshp if self.is_dnn
+                                               else kshp[-self.convdim:]))
 
             utt.verify_grad(conv_gradweight,
                             [img, top],
                             mode=self.mode, eps=1)
 
     def test_gradinputs(self):
-        kern_sym = theano.tensor.tensor4('kern')
-        top_sym = theano.tensor.tensor4('top')
+        if self.convdim == 2:
+            kern_sym = theano.tensor.tensor4('kern')
+            top_sym = theano.tensor.tensor4('top')
+        else:
+            kern_sym = theano.tensor.tensor5('kern')
+            top_sym = theano.tensor.tensor5('top')
         for imshp, kshp, tshp, groups in zip(self.img_shape, self.kern_shape, self.top_shape, self.num_groups):
             kern = np.random.random(kshp).astype(theano.config.floatX)
             top = np.random.random(tshp).astype(theano.config.floatX)
             split_kerns = np.split(kern, groups, axis=0)
             split_top = np.split(top, groups, axis=1)
 
-            grouped_convgrad_op = self.conv2d_gradi(border_mode=self.border_mode,
-                                                    subsample=self.subsample,
-                                                    filter_dilation=self.filter_dilation,
-                                                    num_groups=groups)
+            grouped_convgrad_op = self.conv_gradi(border_mode=self.border_mode,
+                                                  subsample=self.subsample,
+                                                  filter_dilation=self.filter_dilation,
+                                                  num_groups=groups)
             if self.flip_filter:
-                grouped_conv_output = grouped_convgrad_op(kern_sym[:, :, ::-1, ::-1], top_sym, tensor.as_tensor_variable(imshp[-2:]))
+                grouped_conv_output = grouped_convgrad_op(kern_sym[:, :, ::-1, ::-1], top_sym,
+                                                          tensor.as_tensor_variable(imshp[-self.convdim:]))
             else:
                 grouped_conv_output = grouped_convgrad_op(kern_sym,
                                                           top_sym,
-                                                          tensor.as_tensor_variable(imshp if self.is_dnn else imshp[-2:]))
+                                                          tensor.as_tensor_variable(
+                                                              imshp if self.is_dnn
+                                                              else imshp[-self.convdim:]))
             grouped_func = theano.function([kern_sym, top_sym], grouped_conv_output, mode=self.mode)
-            assert any([isinstance(node.op, self.conv2d_gradi_op)
+            assert any([isinstance(node.op, self.conv_gradi_op)
                        for node in grouped_func.maker.fgraph.toposort()])
             grouped_output = grouped_func(kern, top)
 
-            ref_conv_op = conv2d_corr_gi(kern_sym,
-                                         top_sym,
-                                         imshp,
-                                         border_mode=self.border_mode,
-                                         subsample=self.subsample,
-                                         filter_dilation=self.filter_dilation)
+            ref_conv_op = self.corr_gradi(kern_sym,
+                                          top_sym,
+                                          imshp,
+                                          border_mode=self.border_mode,
+                                          subsample=self.subsample,
+                                          filter_dilation=self.filter_dilation)
             ref_func = theano.function([kern_sym, top_sym], ref_conv_op,
                                        mode=self.ref_mode)
             ref_concat_output = [ref_func(kern_arr, top_arr)
@@ -1857,11 +1888,41 @@ class Grouped_conv_noOptim(unittest.TestCase):
 
             def conv_gradinputs(filters_val, output_val):
                 return grouped_convgrad_op(filters_val, output_val,
-                                           tensor.as_tensor_variable(imshp if self.is_dnn else imshp[-2:]))
+                                           tensor.as_tensor_variable(
+                                               imshp if self.is_dnn
+                                               else imshp[-self.convdim:]))
 
             utt.verify_grad(conv_gradinputs,
                             [kern, top],
                             mode=self.mode, eps=1)
+
+
+class Grouped_conv3d_noOptim(Grouped_conv_noOptim):
+    conv = theano.tensor.nnet.abstract_conv.AbstractConv3d
+    conv_gradw = theano.tensor.nnet.abstract_conv.AbstractConv3d_gradWeights
+    conv_gradi = theano.tensor.nnet.abstract_conv.AbstractConv3d_gradInputs
+    conv_op = theano.tensor.nnet.abstract_conv.AbstractConv3d
+    conv_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv3d_gradWeights
+    conv_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv3d_gradInputs
+    mode = theano.Mode(optimizer=None)
+    flip_filter = False
+    is_dnn = False
+
+    def setUp(self):
+        self.num_groups = [3, 2, 4, 4]
+        self.border_mode = 'valid'
+        self.subsample = (1, 1, 1)
+        self.img_shape = [(2, 6, 5, 5, 5), (1, 4, 7, 5, 7), (1, 8, 5, 3, 5), (2, 4, 7, 7, 7)]
+        self.kern_shape = [(3, 2, 3, 3, 3), (6, 2, 5, 3, 5), (4, 2, 3, 3, 3), (4, 1, 3, 5, 3)]
+        self.top_shape = [(2, 3, 3, 3, 3), (1, 6, 3, 3, 3), (1, 4, 3, 1, 3), (2, 4, 5, 3, 5)]
+        self.filter_dilation = (1, 1, 1)
+        self.ref_mode = 'FAST_RUN'
+        self.convdim = 3
+        self.corr_fwd = conv3d_corr
+        self.corr_gradw = conv3d_corr_gw
+        self.corr_gradi = conv3d_corr_gi
+        if theano.config.cxx == "":
+            raise SkipTest("CorrMM needs cxx")
 
 
 class Separable_conv(unittest.TestCase):
