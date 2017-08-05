@@ -735,6 +735,10 @@ def conv3d(input,
         Factor by which to subsample (stride) the input.
         Also called dilation elsewhere.
 
+    num_groups : int
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
+
     Returns
     -------
     Symbolic 5D tensor
@@ -986,6 +990,9 @@ def conv3d_grad_wrt_inputs(output_grad,
     filter_dilation : tuple of len 3
         The filter dilation used in the forward pass.
         Also known as input striding.
+    num_groups : int
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
 
     Returns
     -------
@@ -1246,6 +1253,9 @@ def conv3d_grad_wrt_weights(input,
     filter_dilation : tuple of len 3
         The filter dilation used in the forward pass.
         Also known as input striding.
+    num_groups : int
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
 
     Returns
     -------
