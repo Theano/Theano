@@ -51,10 +51,11 @@ class BaseCorr3dMM(gof.OpenMPOp):
                                                 ('DIRECTION_BACKPROP_INPUTS', 'backprop inputs')),  # 2
                              dH=int64, dW=int64, dD=int64,
                              dilH=int64, dilW=int64, dilD=int64,
-                             padH=int64, padW=int64, padD=int64)
+                             padH=int64, padW=int64, padD=int64,
+                             num_groups=int64)
 
     def __init__(self, border_mode="valid", subsample=(1, 1, 1),
-                 filter_dilation=(1, 1, 1), openmp=None):
+                 filter_dilation=(1, 1, 1), openmp=None, num_groups=1):
         super(BaseCorr3dMM, self).__init__(openmp=openmp)
         if isinstance(border_mode, integer_types):
             if border_mode < 0:
@@ -82,6 +83,9 @@ class BaseCorr3dMM(gof.OpenMPOp):
             raise ValueError("filter_dilation must have three elements")
         self.subsample = tuple(subsample)
         self.filter_dilation = tuple(filter_dilation)
+        if num_groups < 1:
+            raise ValueError("Number of groups should be greater than 0")
+        self.num_groups = num_groups
 
         if not theano.config.blas.ldflags:
             # Theano will use a NumPy C implementation of [sd]gemm_ instead.
@@ -127,11 +131,12 @@ class BaseCorr3dMM(gof.OpenMPOp):
     padD = property(lambda self: self.pad[2])
 
     def __str__(self):
-        return '%s{%s, %s, %s}' % (
+        return '%s{%s, %s, %s, %s}' % (
             self.__class__.__name__,
             self.border_mode,
             str(self.subsample),
-            str(self.filter_dilation))
+            str(self.filter_dilation),
+            str(self.num_groups))
 
     @staticmethod
     def as_common_dtype(in1, in2):
@@ -293,6 +298,7 @@ class BaseCorr3dMM(gof.OpenMPOp):
     int padH = %(params)s->padH;
     int padW = %(params)s->padW;
     int padD = %(params)s->padD;
+    int numgroups = %(params)s->num_groups;
 
     PyArrayObject * bottom = %(bottom)s;
     PyArrayObject * weights = %(weights)s;
@@ -428,7 +434,7 @@ class BaseCorr3dMM(gof.OpenMPOp):
         // output is weights: (num_filters, num_channels, height, width, depth)
         // height and width: weights = (bottom + 2*pad - (top - 1) * sample - 1) / dil + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[1];
-        out_dim[1] = (npy_intp)PyArray_DIMS(bottom)[1];
+        out_dim[1] = (npy_intp)PyArray_DIMS(bottom)[1] / numgroups;
         out_dim[2] = (npy_intp)kH;  // already inferred further above
         out_dim[3] = (npy_intp)kW;  // how convenient
         out_dim[4] = (npy_intp)kD;
@@ -454,7 +460,7 @@ class BaseCorr3dMM(gof.OpenMPOp):
         // output is bottom: (batchsize, num_channels, height, width, depth)
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
-        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[1];
+        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[1] * numgroups;
         out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH);
         out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW);
         out_dim[4] = (npy_intp)((%(depth)s != -1) ? %(depth)s : (PyArray_DIMS(top)[4] - 1) * dD + (PyArray_DIMS(weights)[4]-1)*dilD + 1 - 2*padD);
@@ -516,7 +522,8 @@ class BaseCorr3dMM(gof.OpenMPOp):
 
     // Call corr3dMM code
     out2 = corr3dMM(%(bottom)s, %(weights)s, %(top)s, direction,
-                    dH, dW, dD, dilH, dilW, dilD, padH, padW, padD);
+                    dH, dW, dD, dilH, dilW, dilD, padH, padW, padD,
+                    numgroups);
     if (out2==NULL){
        %(fail)s
     }
@@ -592,12 +599,14 @@ class Corr3dMM(BaseCorr3dMM):
         top, = grads
         d_bottom = Corr3dMM_gradInputs(self.border_mode,
                                        self.subsample,
-                                       self.filter_dilation)(weights, top,
-                                                             bottom.shape[-3:])
+                                       self.filter_dilation,
+                                       num_groups=self.num_groups)(weights, top,
+                                                                   bottom.shape[-3:])
         d_weights = Corr3dMM_gradWeights(self.border_mode,
                                          self.subsample,
-                                         self.filter_dilation)(bottom, top,
-                                                               weights.shape[-3:])
+                                         self.filter_dilation,
+                                         num_groups=self.num_groups)(bottom, top,
+                                                                     weights.shape[-3:])
         return d_bottom, d_weights
 
 
@@ -691,11 +700,13 @@ class Corr3dMM_gradWeights(BaseCorr3dMM):
         weights, = grads
         d_bottom = Corr3dMM_gradInputs(self.border_mode,
                                        self.subsample,
-                                       self.filter_dilation)(weights, top,
-                                                             bottom.shape[-3:])
+                                       self.filter_dilation,
+                                       num_groups=self.num_groups)(weights, top,
+                                                                   bottom.shape[-3:])
         d_top = Corr3dMM(self.border_mode,
                          self.subsample,
-                         self.filter_dilation)(bottom, weights)
+                         self.filter_dilation,
+                         num_groups=self.num_groups)(bottom, weights)
         d_height_width_depth = ((theano.gradient.DisconnectedType()(),) * 3
                                 if len(inp) == 5 else ())
         return (d_bottom, d_top) + d_height_width_depth
@@ -738,8 +749,12 @@ class Corr3dMM_gradInputs(BaseCorr3dMM):
                                   as_tensor_variable(shape[1]).astype('int64'),
                                   as_tensor_variable(shape[2]).astype('int64')]
 
-        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
-                         False, False, False]
+        if self.num_groups > 1:
+            broadcastable = [topgrad.type.broadcastable[0], False,
+                             False, False, False]
+        else:
+            broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+                             False, False, False]
         dtype = kern.type.dtype
         return Apply(self, [kern, topgrad] + height_width_depth,
                      [TensorType(dtype, broadcastable)()])
@@ -807,12 +822,14 @@ class Corr3dMM_gradInputs(BaseCorr3dMM):
         bottom, = grads
         d_weights = Corr3dMM_gradWeights(self.border_mode,
                                          self.subsample,
-                                         self.filter_dilation)(bottom,
-                                                               top,
-                                                               weights.shape[-3:])
+                                         self.filter_dilation,
+                                         num_groups=self.num_groups)(bottom,
+                                                                     top,
+                                                                     weights.shape[-3:])
         d_top = Corr3dMM(self.border_mode,
                          self.subsample,
-                         self.filter_dilation)(bottom, weights)
+                         self.filter_dilation,
+                         num_groups=self.num_groups)(bottom, weights)
         d_height_width_depth = ((theano.gradient.DisconnectedType()(),) * 3
                                 if len(inp) == 5 else ())
         return (d_weights, d_top) + d_height_width_depth

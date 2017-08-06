@@ -127,7 +127,8 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
                         const int dilD = 1,
                         const int padH = 0,
                         const int padW = 0,
-                        const int padD = 0)
+                        const int padD = 0,
+                        const int numgroups=1)
 {
     if (PyArray_NDIM(bottom) != 5)
     {
@@ -178,7 +179,7 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
     const int kH = PyArray_DIMS(weight)[2];
     const int kW = PyArray_DIMS(weight)[3];
     const int kD = PyArray_DIMS(weight)[4];
-    if (nChannels != PyArray_DIMS(weight)[1]) {
+    if (nChannels != PyArray_DIMS(weight)[1] * numgroups) {
         PyErr_SetString(PyExc_ValueError,
                 "Corr3dMM images and kernel must have the same stack size\n");
         return NULL;
@@ -210,7 +211,7 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
                 "  weight shape: %%d %%d %%d %%d %%d\n"
                 "  top shape: %%ld %%ld %%ld %%ld %%ld (expected %%d %%d %%d %%d %%d)\n",
                 batchSize, nChannels, bottomHeight, bottomWidth, bottomDepth,
-                nFilters, nChannels, kH, kW, kD,
+                nFilters, nChannels / numgroups, kH, kW, kD,
                 PyArray_DIMS(top)[0], PyArray_DIMS(top)[1],
                 PyArray_DIMS(top)[2], PyArray_DIMS(top)[3], PyArray_DIMS(top)[4],
                 batchSize, nFilters, topHeight, topWidth, topDepth);
@@ -241,12 +242,16 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
     }
 
     // Define some useful variables
-    const int bottom_stride = PyArray_STRIDES(bottom)[0]/%(n_bytes)f;
-    const int top_stride = PyArray_STRIDES(top)[0]/%(n_bytes)f;
-    const int K_ = col_dim[1];
+    const int batch_bottom_stride = PyArray_STRIDES(bottom)[0]/%(n_bytes)f;
+    const int group_bottom_stride = (PyArray_STRIDES(bottom)[1] * nChannels / numgroups)/%(n_bytes)f;
+    const int batch_top_stride = PyArray_STRIDES(top)[0]/%(n_bytes)f;
+    const int group_top_stride = (PyArray_STRIDES(top)[1] * nFilters / numgroups)/%(n_bytes)f;
+    const int K_ = col_dim[1] / numgroups;
     const int N_ = col_dim[2];
-    const int col_stride = (K_ * N_);
-    const int M_ = nFilters;
+    const int col_stride = (K_ * N_ * numgroups);
+    const int group_col_stride = (K_ * N_);
+    const int group_weight_stride = (PyArray_STRIDES(weight)[0] * nFilters / numgroups)/%(n_bytes)f;
+    const int M_ = nFilters / numgroups;
     const %(c_float_type)s one = 1.0;
     const %(c_float_type)s zero = 0.0;
     char NTrans = 'N';
@@ -280,18 +285,21 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
         for (int n = 0; n < batchSize; ++n) {
             int tid = %(omp_get_thread_num)s;
             // First, im3d2col
-            im3d2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels,
-                     bottomHeight, bottomWidth, bottomDepth,
+            im3d2col((%(float_type)s*)PyArray_DATA(bottom) + n * batch_bottom_stride,
+                     nChannels, bottomHeight, bottomWidth, bottomDepth,
                      kH, kW, kD, dilH, dilW, dilD, padH, padW, padD, dH, dW, dD,
                      (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
-            // Second, gemm
-            %(gemm)s(&NTrans, &NTrans,
-                   &N_, &M_, &K_,
-                   &one,
-                   (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride, &N_,
-                   (%(float_type)s*)PyArray_DATA(weight), &K_,
-                   &zero,
-                   (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_);
+
+            for ( int g = 0; g < numgroups; ++g){
+                // Second, gemm
+                %(gemm)s(&NTrans, &NTrans,
+                         &N_, &M_, &K_,
+                         &one,
+                         (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride + g * group_col_stride, &N_,
+                         (%(float_type)s*)PyArray_DATA(weight) + g * group_weight_stride, &K_,
+                         &zero,
+                         (%(float_type)s*)PyArray_DATA(top) + n * batch_top_stride + g * group_top_stride, &N_);
+            }
         }
         // Restore to previous blas threads
         %(blas_set_num_threads)s(blas_threads_saved);
@@ -300,7 +308,7 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
         output = weight;
         npy_intp weight_dim[2];
         weight_dim[0] = (npy_intp)max_threads;
-        weight_dim[1] = (npy_intp)(M_ * K_);
+        weight_dim[1] = (npy_intp)(M_ * K_ * numgroups);
         PyArrayObject* local_weight = (PyArrayObject*)PyArray_ZEROS(2,
                                    weight_dim, PyArray_TYPE(weight), 0);
 
@@ -322,22 +330,25 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
         for (int n = 0; n < batchSize; ++n) {
             int tid = %(omp_get_thread_num)s;
             // First, im2col
-            im3d2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels,
-                     bottomHeight, bottomWidth, bottomDepth,
+            im3d2col((%(float_type)s*)PyArray_DATA(bottom) + n * batch_bottom_stride,
+                     nChannels, bottomHeight, bottomWidth, bottomDepth,
                      kH, kW, kD, dilH, dilW, dilD, padH, padW, padD, dH, dW, dD,
                      (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
-            // Second, gemm
-            // Note that we accumulate into weight. We do so by setting beta = 0
-            // for the first iteration and beta = 1 for subsequent ones. (This
-            // is faster than setting weight to all zeros before the loop.)
-            %(gemm)s(&Trans, &NTrans,
-                   &K_, &M_, &N_,
-                   &one,
-                   (%(float_type)s*)PyArray_DATA(col) + tid * col_stride, &N_,
-                   (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
-                   (n == 0) ? &zero : &one,
-                   (%(float_type)s*)PyArray_DATA(local_weight) + 
-                   tid * weight_dim[1], &K_);
+
+            for ( int g = 0; g < numgroups; ++g){
+                // Second, gemm
+                // Note that we accumulate into weight. We do so by setting beta = 0
+                // for the first iteration and beta = 1 for subsequent ones. (This
+                // is faster than setting weight to all zeros before the loop.)
+                %(gemm)s(&Trans, &NTrans,
+                         &K_, &M_, &N_,
+                         &one,
+                         (%(float_type)s*)PyArray_DATA(col) + tid * col_stride + g * group_col_stride, &N_,
+                         (%(float_type)s*)PyArray_DATA(top) + n * batch_top_stride + g * group_top_stride, &N_,
+                         (n == 0) ? &zero : &one,
+                         (%(float_type)s*)PyArray_DATA(local_weight) + g * group_weight_stride +
+                         tid * weight_dim[1], &K_);
+            }
         }
         // Restore to previous blas threads
         %(blas_set_num_threads)s(blas_threads_saved);
@@ -370,20 +381,23 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
         %(blas_set_num_threads)s(1);
         %(omp_flags)s
         for (int n = 0; n < batchSize; ++n) {
-            // gemm into columns
+
             int tid = %(omp_get_thread_num)s;
-            %(gemm)s(&NTrans, &Trans,
-                   &N_, &K_, &M_,
-                   &one,
-                   (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
-                   (%(float_type)s*)PyArray_DATA(weight), &K_,
-                   &zero,
-                   (%(float_type)s*)PyArray_DATA(col) + tid * col_stride, &N_);
+            for ( int g = 0; g < numgroups; ++g){
+                // gemm into columns
+                %(gemm)s(&NTrans, &Trans,
+                         &N_, &K_, &M_,
+                         &one,
+                         (%(float_type)s*)PyArray_DATA(top) + n * batch_top_stride + g * group_top_stride, &N_,
+                         (%(float_type)s*)PyArray_DATA(weight) + g * group_weight_stride, &K_,
+                         &zero,
+                         (%(float_type)s*)PyArray_DATA(col) + tid * col_stride + g * group_col_stride, &N_);
+            }
             // col2im back to the data
             col2im3d((%(float_type)s*)PyArray_DATA(col) + tid * col_stride, nChannels,
                      bottomHeight, bottomWidth, bottomDepth,
                      kH, kW, kD, dilH, dilW, dilD, padH, padW, padD, dH, dW, dD,
-                     (%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride);
+                     (%(float_type)s*)PyArray_DATA(bottom) + n * batch_bottom_stride);
         }
         // Restore to previous blas threads
         %(blas_set_num_threads)s(blas_threads_saved);
