@@ -77,9 +77,8 @@ class TestCTC(unittest.TestCase):
         utt.assert_allclose(cpu_cost, cost_from_gpu)
 
     def check_grads_disabled(self, activations, labels, input_length):
-        """
-        Check if optimization to disable gradients is working
-        """
+        # Check if optimization to disable gradients is working
+
         gpu_ctc_cost = gpu_ctc(activations, labels, input_length)
         gpu_ctc_function = theano.function([], [gpu_ctc_cost])
         for node in gpu_ctc_function.maker.fgraph.apply_nodes:

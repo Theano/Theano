@@ -1,6 +1,4 @@
-"""
-This test is for testing the NanGuardMode.
-"""
+# This test is for testing the NanGuardMode.
 from __future__ import absolute_import, print_function, division
 
 import logging

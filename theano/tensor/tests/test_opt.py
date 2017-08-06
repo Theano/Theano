@@ -339,14 +339,12 @@ class test_canonize(unittest.TestCase):
         print(pprint(g.outputs[0]))
 
     def test_elemwise_multiple_inputs_optimisation(self):
-        """verify that the Canonizer merge sequential Elemwise({mul,add}) part 1
-
-        This part are that case that is done, but don't include case
-        that are not implemented but are suposed to be.
-
-        Test with and without DimShuffle
-
-        """
+        # verify that the Canonizer merge sequential Elemwise({mul,add}) part 1
+        #
+        # This part are that case that is done, but don't include case
+        # that are not implemented but are suposed to be.
+        #
+        # Test with and without DimShuffle
 
         shp = (5, 5)
         fx, fy, fz = fmatrices('xyz')
@@ -425,11 +423,10 @@ class test_canonize(unittest.TestCase):
             assert(out_dtype == out.dtype)
 
     def test_elemwise_multiple_inputs_optimisation2(self):
-        """
-        verify that the Canonizer merge sequential Elemwise({mul,add}) part 2.
-        This part are that case that should have been done, but that are not implemented.
-        Test with and without DimShuffle
-        """
+        # verify that the Canonizer merge sequential Elemwise({mul,add}) part 2.
+        # This part are that case that should have been done, but that are not implemented.
+        # Test with and without DimShuffle
+
         raise SkipTest("Current implementation of Canonizer does not "
                        "implement all cases. Skip the corresponding test.")
 
@@ -502,18 +499,17 @@ class test_canonize(unittest.TestCase):
 
     @attr('slow')
     def test_multiple_case(self):
-        """ test those case take from the comment in Canonizer
-        x / x -> 1
-        (x * y) / x -> y
-        x / y / x -> 1 / y
-        x / y / z -> x / (y * z)
-        x / (y / z) -> (x * z) / y
-        (a / b) * (b / c) * (c / d) -> a / d
-        (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
-        2 * x / 2 -> x
-        with and without DimShuffle
-        TODO: with DimShuffle
-        """
+        # test those case take from the comment in Canonizer
+        # x / x -> 1
+        # (x * y) / x -> y
+        # x / y / x -> 1 / y
+        # x / y / z -> x / (y * z)
+        # x / (y / z) -> (x * z) / y
+        # (a / b) * (b / c) * (c / d) -> a / d
+        # (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
+        # 2 * x / 2 -> x
+        # with and without DimShuffle
+        # TODO: with DimShuffle
 
         shp = (3, 3)
         fx, fy, fz, fw = fmatrices('xyzw')
@@ -712,10 +708,8 @@ class test_canonize(unittest.TestCase):
             assert(out_dtype == out.dtype)
 
     def test_abs_mul_div(self):
-        """
-        test that if we have
-        4 * x / abs(2*x) it get simplifier during canonicalisation.
-        """
+        # test that if we have
+        # 4 * x / abs(2*x) it get simplifier during canonicalisation.
 
         x = T.dscalar()
         # a = T.abs_(x)
@@ -807,17 +801,14 @@ class test_canonize(unittest.TestCase):
             assert(out_dtype == out.dtype)
 
     def test_dont_merge_if_multiple_client(self):
-        """ test those case take from the comment in Canonizer
-        """
+        # test those case take from the comment in Canonizer
         raise SkipTest("Not implemented")
 
     def test_canonicalize_nan(self):
-        """
-        Regression test for bug in canonicalization of NaN values.
+        # Regression test for bug in canonicalization of NaN values.
+        # This bug caused an infinite loop which was caught by the equilibrium
+        # optimizer, resulting in an error log message.
 
-        This bug caused an infinite loop which was caught by the equilibrium
-        optimizer, resulting in an error log message.
-        """
         sio = StringIO()
         handler = logging.StreamHandler(sio)
         handler.setLevel(logging.ERROR)
@@ -870,7 +861,7 @@ def test_merge_abs_bugfix():
 
 
 def test_mixeddiv():
-    """Test that int division is preserved"""
+    # Test that int division is preserved
     i = iscalar()
     d = dscalar()
     assert 0 == function([i, d], d * (i // (i + 1)))(3, 1.0)
@@ -913,11 +904,10 @@ class test_fusion(unittest.TestCase):
     topo_exclude = ()
 
     def do(self, mode, shared_fn, shp, nb_repeat=1, assert_len_topo=True, slice=None):
-        """
-        param shared_fn: if None, will use compile.function
-        verify that the elemwise fusion work
-        Test with and without DimShuffle
-        """
+        # param shared_fn: if None, will use compile.function
+        # verify that the elemwise fusion work
+        # Test with and without DimShuffle
+
         # TODO: disable the canonizer?
         def my_init(shp, dtype='float64', num=0):
             ret = np.zeros(shp, dtype=dtype) + num
@@ -1196,11 +1186,10 @@ class test_fusion(unittest.TestCase):
         f(*[list(range(i, 4 + i)) for i in xrange(35)])
 
     def test_pickle_big_fusion(self):
-        """In the past, pickle of Composite generated in tha case
-        crashed with max recusion limit. So we where not able to
-        generate C code in that case.
+        # In the past, pickle of Composite generated in that case
+        # crashed with max recusion limit. So we where not able to
+        # generate C code in that case.
 
-        """
         if not theano.config.cxx:
             raise SkipTest("no c compiler, so can't use big elemwise!")
         factors = []
@@ -1228,10 +1217,8 @@ class test_fusion(unittest.TestCase):
         dlogp(2, np.random.rand(n))
 
     def speed_fusion(self, s=None):
-        """
-        param type s: a slice object
-        param s: a slice to apply to the case to execute. If None, exec all case.
-        """
+        # param type s: a slice object
+        # param s: a slice to apply to the case to execute. If None, exec all case.
 
         shp = (3000, 3000)
         shp = (1000, 1000)
@@ -1287,11 +1274,10 @@ class test_fusion(unittest.TestCase):
 
 
 class TimesN(theano.scalar.basic.UnaryScalarOp):
-    """Used in test TestCompositeCodegen
+    # Used in test TestCompositeCodegen
+    # Must be outside of the class, otherwise, the c cache code can't
+    # pickle this class and this cause stuff printing during test.
 
-    Must be outside of the class, otherwise, the c cache code can't
-    pickle this class and this cause stuff printing during test.
-    """
     def __eq__(self, other):
         return super(TimesN, self).__eq__(other) and self.n == other.n
 
@@ -1318,10 +1304,9 @@ class TimesN(theano.scalar.basic.UnaryScalarOp):
 
 
 class TestCompositeCodegen(unittest.TestCase):
-    """
-    Test The Composite Ops code generation in a case where there is multiple
-    scalar ops with support code.
-    """
+    # Test The Composite Ops code generation in a case where there is multiple
+    # scalar ops with support code.
+
     def setUp(self):
         upgrade_to_float = theano.scalar.basic.upgrade_to_float
 
@@ -3926,12 +3911,12 @@ class test_shapeoptimizer(unittest.TestCase):
 
     @staticmethod
     def max_pool_c01b(c01b, pool_shp, pool_stride, img_shp):
-        """Like max_pool but with input using axes ('c', 0, 1, 'b')
-          (Alex Krizhevsky format)
+        # Like max_pool but with input using axes ('c', 0, 1, 'b')
+        #   (Alex Krizhevsky format)
+        #
+        # pool_shp, pool_stride and img_shp are int that represent
+        # the same shp in x and y.
 
-        pool_shp, pool_stride and img_shp are int that represent
-        the same shp in x and y.
-        """
         mx = None
 
         # Compute index in pooled space of last needed pool
@@ -3980,9 +3965,9 @@ class test_shapeoptimizer(unittest.TestCase):
         f()
 
     def test_constant_merge(self):
-        """This test the error in gh-1122 that is a caused by the
-        combination of merge optimizer and ShapeFeature.
-        """
+        # This test the error in gh-1122 that is a caused by the
+        # combination of merge optimizer and ShapeFeature.
+
         x = tensor.constant([0, 0])
         y = x[1:]
         x1 = x - tensor.join(0, y, y)
@@ -4553,9 +4538,7 @@ class T_func_inverse(unittest.TestCase):
 
     def assert_func_pair_optimized(self, func1, func2, data,
                                    should_copy=True, is_complex=False):
-        """
-        Check that a pair of funcs is optimized properly
-        """
+        # Check that a pair of funcs is optimized properly
 
         x = T.cmatrix() if is_complex else T.fmatrix()
         o = func2(func1(x))
@@ -4580,9 +4563,7 @@ class T_func_inverse(unittest.TestCase):
                          "Inverse functions not removed!")
 
     def test(self):
-        """
-        test optimization for consecutive functional inverses
-        """
+        # test optimization for consecutive functional inverses
 
         dx = np.random.rand(5, 4).astype("float32")
         self.assert_func_pair_optimized(T.deg2rad, T.rad2deg, dx)
@@ -4610,10 +4591,9 @@ class T_func_inverse(unittest.TestCase):
 
 
 def test_constant_folding():
-    """ Test that constant folding get registered at fast_compile
+    # Test that constant folding get registered at fast_compile
+    # An error removed that registration during the registration.
 
-    An error removed that registration during the registration.
-    """
     x = tensor.dvector()
     mode = theano.compile.get_mode("FAST_COMPILE").excluding("fusion")
     f = theano.function([x], [x * 2, x + x], mode=mode)
@@ -4633,14 +4613,13 @@ def test_constant_folding():
 
 
 def test_constant_get_stabilized():
-    """
-    Currently Theano enable the constant_folding optimization before stabilization optimization.
-    This cause some stabilization optimization not being implemented and thus cause inf value to appear
-    when it should not.
+    # Currently Theano enable the constant_folding optimization before stabilization optimization.
+    # This cause some stabilization optimization not being implemented and thus cause inf value to appear
+    # when it should not.
+    #
+    # .. note: we can't simply move the constant_folding optimization to specialize as this break other optimization!
+    # We will need to partially duplicate some canonicalize optimzation to specialize to fix this issue.
 
-    .. note: we can't simply move the constant_folding optimization to specialize as this break other optimization!
-    We will need to partially duplicate some canonicalize optimzation to specialize to fix this issue.
-    """
     x2 = T.scalar()
     y2 = T.log(1 + T.exp(x2))
     mode = theano.compile.get_default_mode()
@@ -4696,12 +4675,11 @@ class T_local_switch_sink(unittest.TestCase):
         self.mode.check_isfinite = False
 
     def function_remove_nan(self, *args, **kwargs):
-        """Wrapper around theano.function for this test.
+        # Wrapper around theano.function for this test.
+        # It disables checking
+        # for NaN removed by optimizations in DebugMode (it has false
+        # positives in that case).
 
-        It disables checking
-        for NaN removed by optimizations in DebugMode (it has false
-        positives in that case).
-        """
         f = theano.function(*args, **kwargs)
 
         def wrapped_f(*args, **kwargs):
@@ -4868,8 +4846,8 @@ class T_local_erfc(unittest.TestCase):
             raise SkipTest("erfc need a c++ compiler or scipy")
 
     def test_local_one_minus_erfc(self):
-        """ test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
-        """
+        # test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
+
         val = np.asarray([-30, -3, -2, -1, 0, 1, 2, 3, 30],
                          dtype=config.floatX)
         x = T.vector('x')
@@ -4894,7 +4872,8 @@ class T_local_erfc(unittest.TestCase):
         print(f(val))
 
     def test_local_erf_neg_minus_one(self):
-        """ test opt: (-1)+erfc(-x)=>erf(x)"""
+        # test opt: (-1)+erfc(-x)=>erf(x)
+
         val = np.asarray([-30, -3, -2, -1, 0, 1, 2, 3, 30],
                          dtype=config.floatX)
         x = T.vector('x')
@@ -5221,9 +5200,8 @@ class test_local_merge_switch_same_cond(unittest.TestCase):
 
 
 class T_local_sum_prod(unittest.TestCase):
-    """
-    Test sum/prod opts in opt.py
-    """
+    # Test sum/prod opts in opt.py
+
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize',
                                                                 'specialize')
@@ -5522,12 +5500,11 @@ class T_local_sum_prod(unittest.TestCase):
                 config.warn.sum_sum_bug = backup
 
     def test_local_sum_sum_int8(self):
-        """
-        Test that local_sum_sum works when combining two sums on an int8 array.
+        # Test that local_sum_sum works when combining two sums on an int8 array.
+        # This is a regression test for ticket gh-356.
 
-        This is a regression test for ticket gh-356.
-        """
         x = tensor.tensor3(dtype='int8')
+
         y = x.sum(axis=0).sum(axis=1)
         backup = config.on_opt_error
         config.on_opt_error = 'raise'
@@ -5538,9 +5515,8 @@ class T_local_sum_prod(unittest.TestCase):
             config.on_opt_error = backup
 
     def test_local_sum_sum_dtype(self):
-        """
-        Test that local_sum_sum works when specifying dtypes manually.
-        """
+        # Test that local_sum_sum works when specifying dtypes manually.
+
         x = tensor.tensor3(dtype='int8')
         y = x.sum(axis=0, dtype='int32').sum(axis=1, dtype='int64')
         backup = config.on_opt_error
@@ -6552,8 +6528,9 @@ class TestIntDivByOne(unittest.TestCase):
         self.mode = self.mode.including('local_intdiv_by_one')
 
     def test1(self):
-        """Tests removing the extra floor_div by 1 introduced by
-        local_subtensor_merge optimization"""
+        # Tests removing the extra floor_div by 1 introduced by
+        # local_subtensor_merge optimization
+        
         y = T.tensor4('y')
         self.mode = self.mode.excluding('fusion')
         f = theano.function([y], y[::-1][::-1], mode=self.mode)
@@ -6565,7 +6542,7 @@ class TestIntDivByOne(unittest.TestCase):
         assert len(divs) == 0
 
     def test2(self):
-        """Simple test case for removing dividing by 1"""
+        # Simple test case for removing dividing by 1
         y = T.tensor4('y')
         z = y // 1
         f = theano.function([y], z, mode=self.mode)
@@ -6576,7 +6553,7 @@ class TestIntDivByOne(unittest.TestCase):
         assert len(divs) == 0
 
     def test3(self):
-        """Simple test case for removing dividing by a tensor of ones"""
+        # Simple test case for removing dividing by a tensor of ones
         y = T.tensor4('y')
         z = y // np.ones((2, 2, 2, 2))
         f = theano.function([y], z, mode=self.mode)
@@ -6588,7 +6565,8 @@ class TestIntDivByOne(unittest.TestCase):
 
 
 def test_local_zero_div():
-    """Tests 0/x -> 0"""
+    # Tests 0/x -> 0
+
     for t in (T.scalar, T.ivector, T.ftensor4):
         x = t('x')
         for op in (T.int_div, T.true_div):

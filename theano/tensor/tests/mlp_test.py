@@ -23,6 +23,7 @@ def gen_data():
                np.asarray(np.random.rand(10000)*10, dtype='int64'))
     test_set = (np.asarray(np.random.rand(10000, 784), dtype='float32'),
                np.asarray(np.random.rand(10000)*10, dtype='int64'))
+
     def shared_dataset(data_xy):
         """ Function that loads the dataset into shared variables
 

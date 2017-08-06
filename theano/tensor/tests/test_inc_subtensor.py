@@ -7,27 +7,26 @@ import theano.tensor as tt
 
 
 class Test_inc_subtensor(unittest.TestCase):
-    """Partial testing.
+    # Partial testing.
+    #
+    # What could be tested:
+    # - increment vs set
+    # - thing incremented: scalar, vector, matrix,
+    # - increment/set: constant, scalar, vector, matrix
+    # - indices: scalar vs slice, constant vs variable, out of bound, ...
+    # - inplace
+    #
+    # NOTE: these are the same tests as test_incsubtensor.py, but using
+    # the new (read: not deprecated) inc_subtensor, set_subtensor
+    # functions.
 
-    What could be tested:
-    - increment vs set
-    - thing incremented: scalar, vector, matrix,
-    - increment/set: constant, scalar, vector, matrix
-    - indices: scalar vs slice, constant vs variable, out of bound, ...
-    - inplace
-
-    NOTE: these are the same tests as test_incsubtensor.py, but using
-    the new (read: not deprecated) inc_subtensor, set_subtensor
-    functions.
-
-    """
     def setUp(self):
         utt.seed_rng()
 
     def test_simple_2d(self):
-        """Increments or sets part of a tensor by a scalar using full slice and
-        a partial slice depending on a scalar.
-        """
+        # Increments or sets part of a tensor by a scalar using full slice and
+        # a partial slice depending on a scalar.
+
         a = tt.dmatrix()
         increment = tt.dscalar()
         sl1 = slice(None)
@@ -91,9 +90,9 @@ class Test_inc_subtensor(unittest.TestCase):
                                   f, rng_randX(3, 1), rng_randX(0))
 
     def test_simple_3d(self):
-        """Increments or sets part of a tensor by a scalar using full slice and
-        a partial slice depending on a scalar.
-        """
+        # Increments or sets part of a tensor by a scalar using full slice and
+        # a partial slice depending on a scalar.
+
         a = tt.dtensor3()
         increment = tt.dscalar()
         sl1 = slice(None)

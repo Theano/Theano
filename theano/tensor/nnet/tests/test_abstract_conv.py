@@ -1097,24 +1097,23 @@ class TestBilinearUpsampling(unittest.TestCase):
         compile_mode = compile_mode.excluding('AbstractConvCheck')
 
     def numerical_kernel_1D(self, ratio):
-        """Gets numerical 1D kernel for bilinear upsampling"""
+        # Gets numerical 1D kernel for bilinear upsampling
         return np.array(list(range(1, ratio + 1)) +
                         list(range(ratio - 1, 0, -1)))
 
     def numerical_kernel_2D(self, ratio):
-        """Gets numerical 2D kernel for bilinear upsampling"""
+        # Gets numerical 2D kernel for bilinear upsampling
         return np.array([i * j for i in self.numerical_kernel_1D(ratio) for j
                          in self.numerical_kernel_1D(ratio)]).\
             reshape(2 * ratio - 1, 2 * ratio - 1)
 
     def test_bilinear_kernel_2D(self):
-        """Test 2D kernels used in bilinear upsampling
+        # Test 2D kernels used in bilinear upsampling
+        #
+        # This method tests the correctness of the
+        # 2D kernel values used in bilinear upsampling
+        # for some upsampling ratios.
 
-        This method tests the correctness of the
-        2D kernel values used in bilinear upsampling
-        for some upsampling ratios.
-
-        """
         for ratio in [2, 3, 4, 5, 6, 7, 8, 9]:
             # getting the un-normalized kernel
             kernel = bilinear_kernel_2D(ratio=ratio, normalize=False)
@@ -1129,13 +1128,12 @@ class TestBilinearUpsampling(unittest.TestCase):
             utt.assert_allclose(kernel_2D, f())
 
     def test_bilinear_kernel_1D(self):
-        """Test 1D kernels used in bilinear upsampling
+        # Test 1D kernels used in bilinear upsampling
+        #
+        # This method tests the correctness of the
+        # 1D kernel values used in bilinear upsampling
+        # for some upsampling ratios.
 
-        This method tests the correctness of the
-        1D kernel values used in bilinear upsampling
-        for some upsampling ratios.
-
-        """
         rat = tensor.iscalar()
         kernel_ten = bilinear_kernel_1D(ratio=rat, normalize=False)
         f_ten = theano.function([rat], kernel_ten)
@@ -1159,52 +1157,50 @@ class TestBilinearUpsampling(unittest.TestCase):
             utt.assert_allclose(kernel_1D, f_ten_norm(ratio))
 
     def numerical_upsampling_multiplier(self, ratio):
-        """Compute upsampling multiplier
+        # Compute upsampling multiplier
+        #
+        # This method computes the multipliers of an array
+        # that will be upsampled using bilinear interpolation.
+        #
+        # Parameters
+        # ----------
+        # ratio: int
+        #     the ratio by which the array will be upsampled.
+        #
+        # Returns
+        # -------
+        # 1D numpy array
+        #     The multiplers that can be used in bilinear interpolation
+        #     to upsample an array.
+        #
+        # int
+        #     The size of the multipliers array
 
-        This method computes the multipliers of an array
-        that will be upsampled using bilinear interpolation.
-
-        Parameters
-        ----------
-        ratio: int
-            the ratio by which the array will be upsampled.
-
-        Returns
-        -------
-        1D numpy array
-            The multiplers that can be used in bilinear interpolation
-            to upsample an array.
-
-        int
-            The size of the multipliers array
-
-        """
         kern = np.arange(ratio + 1)
         return kern, kern.shape[0]
 
     def get_upsampled_twobytwo_mat(self, two_by_two, ratio):
-        """Upsample 4D array with two rows and two columns
+        # Upsample 4D array with two rows and two columns
+        #
+        # This method gets a 4D numpy array with two rows and two columns
+        # and computes its upsampled array by using bilinear interpolation
+        #
+        # Parameters
+        # ----------
+        # two_by_two: numpy 4D array
+        #     The array that will be upsampled by bilinear interpolation.
+        #     Array is of shape (batch size, num channels, 2, 2)
+        #
+        # ratio: int
+        #     The ratio by which two_by_two's last
+        #     two dimensions (row and col) will be upsampled.
+        #
+        # Returns
+        # -------
+        # 4D numpy array
+        #     The array upsampled by using bilinear interpolation. Array
+        #     is of shape (batch size, num channels, 2*ratio, 2*ratio).
 
-        This method gets a 4D numpy array with two rows and two columns
-        and computes its upsampled array by using bilinear interpolation
-
-        Parameters
-        ----------
-        two_by_two: numpy 4D array
-            The array that will be upsampled by bilinear interpolation.
-            Array is of shape (batch size, num channels, 2, 2)
-
-        ratio: int
-            The ratio by which two_by_two's last
-            two dimensions (row and col) will be upsampled.
-
-        Returns
-        -------
-        4D numpy array
-            The array upsampled by using bilinear interpolation. Array
-            is of shape (batch size, num channels, 2*ratio, 2*ratio).
-
-        """
         kern, shp = self.numerical_upsampling_multiplier(ratio)
         up_1D = two_by_two[:, :, :, :1] * kern[::-1] + \
             two_by_two[:, :, :, 1:] * kern
@@ -1222,12 +1218,11 @@ class TestBilinearUpsampling(unittest.TestCase):
         return up_2D / float(ratio)**2
 
     def test_bilinear_upsampling_1D(self):
-        """Test bilinear upsampling using 1D kernels
+        # Test bilinear upsampling using 1D kernels
+        #
+        # This method tests the bilinear_upsampling method
+        # when using 1D kernels for some upsampling ratios.
 
-        This method tests the bilinear_upsampling method
-        when using 1D kernels for some upsampling ratios.
-
-        """
         # upsampling for a ratio of two
         input_x = np.array([[[[1, 2], [3, 4]]]], dtype=theano.config.floatX)
 
@@ -1241,8 +1236,10 @@ class TestBilinearUpsampling(unittest.TestCase):
 
     def test_bilinear_upsampling_reshaping(self):
         # Test bilinear upsampling without giving shape information
+        #
         # This method tests the bilinear_upsampling method
         # without giving batch_size and num_input_channels
+
         # upsampling for a ratio of two
         input_x = np.array([[[[1, 2], [3, 4]]]], dtype=theano.config.floatX)
 
@@ -1257,12 +1254,11 @@ class TestBilinearUpsampling(unittest.TestCase):
                 utt.assert_allclose(f(), up_mat_2d, rtol=1e-06)
 
     def test_compare_1D_and_2D_upsampling_values(self):
-        """Compare 1D and 2D upsampling
+        # Compare 1D and 2D upsampling
+        #
+        # This method verifies the bilinear upsampling done by using
+        # 1D and 2D kernels will generate the same result.
 
-        This method verifies the bilinear upsampling done by using
-        1D and 2D kernels will generate the same result.
-
-        """
         # checking upsampling with ratio 5
         input_x = np.random.rand(5, 4, 6, 7).astype(theano.config.floatX)
         mat_1D = bilinear_upsampling(input=input_x, ratio=5,
@@ -1292,13 +1288,12 @@ class TestConv2dTranspose(unittest.TestCase):
     mode = None
 
     def test_interface(self):
-        """Test conv2d_transpose wrapper.
+        # Test conv2d_transpose wrapper.
+        #
+        # This method tests that the order of the filter's
+        # axes expected by the function produces the correct
+        # output shape.
 
-        This method tests that the order of the filter's
-        axes expected by the function produces the correct
-        output shape.
-
-        """
         mode = self.mode
         if theano.config.mode == "FAST_COMPILE":
             mode = theano.compile.get_mode(
@@ -1349,11 +1344,10 @@ class TestConv2dGrads(unittest.TestCase):
         self.w = theano.tensor.tensor4('w', theano.config.floatX)  # filter weights
 
     def test_conv2d_grad_wrt_inputs(self):
-        """Compares calculated abstract grads wrt inputs with the fwd grads
-        This method checks the outputs of conv2_grad_wrt_inputs against
-        the outputs of T.nnet.conv forward grads to make sure the
-        results are the same.
-        """
+        # Compares calculated abstract grads wrt inputs with the fwd grads
+        # This method checks the outputs of conv2_grad_wrt_inputs against
+        # the outputs of T.nnet.conv forward grads to make sure the
+        # results are the same.
 
         for (in_shape, fltr_shape) in zip(self.inputs_shapes, self.filters_shapes):
             for bm in self.border_modes:
@@ -1391,11 +1385,10 @@ class TestConv2dGrads(unittest.TestCase):
                         utt.assert_allclose(f_new(filter_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))
 
     def test_conv2d_grad_wrt_weights(self):
-        """Compares calculated abstract grads wrt weights with the fwd grads
-        This method checks the outputs of conv2_grad_wrt_weights against
-        the outputs of T.nnet.conv forward grads to make sure the
-        results are the same.
-        """
+        # Compares calculated abstract grads wrt weights with the fwd grads
+        # This method checks the outputs of conv2_grad_wrt_weights against
+        # the outputs of T.nnet.conv forward grads to make sure the
+        # results are the same.
 
         for (in_shape, fltr_shape) in zip(self.inputs_shapes, self.filters_shapes):
             for bm in self.border_modes:

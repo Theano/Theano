@@ -21,10 +21,9 @@ one = theano.tensor.as_tensor_variable(1.)
 
 
 def grad_sources_inputs(sources, inputs):
-    """
-    This implements the old grad_sources_inputs function in terms of
-    the new interface so the tests don't need to be rewritten.
-    """
+    # This implements the old grad_sources_inputs function in terms of
+    # the new interface so the tests don't need to be rewritten.
+
     if inputs is None:
         inputs = theano.gof.graph.inputs([source[0] for source in sources])
     return dict(izip(inputs, theano.gradient.grad(cost=None, known_grads=dict(sources),
@@ -34,7 +33,7 @@ def grad_sources_inputs(sources, inputs):
 class testgrad_sources_inputs(unittest.TestCase):
 
     def test_retNone1(self):
-        """Test that it is not ok to return None from op.grad()"""
+        # Test that it is not ok to return None from op.grad()
         class retNone(gof.op.Op):
             __props__ = ()
 
@@ -51,8 +50,8 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertRaises(TypeError, grad_sources_inputs, [(a.out, one)], None)
 
     def test_wrong_rval_len1(self):
-        """Test that it is not ok to return the wrong number of gradient terms
-        """
+        # Test that it is not ok to return the wrong number of gradient terms
+
         class retOne(gof.op.Op):
             __props__ = ()
 
@@ -71,7 +70,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertRaises(ValueError, grad_sources_inputs, [(a2.out, one)], None)
 
     def test_1in_1out(self):
-        """Test grad is called correctly for a 1-to-1 op"""
+        # Test grad is called correctly for a 1-to-1 op
         gval = theano.tensor.matrix()
 
         class O(gof.op.Op):
@@ -89,7 +88,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[0]] is gval)
 
     def test_1in_Nout(self):
-        """Test grad is called correctly for a 1-to-many op"""
+        # Test grad is called correctly for a 1-to-many op
         gval = theano.tensor.matrix()
 
         class O(gof.op.Op):
@@ -109,7 +108,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[0]] is gval)
 
     def test_Nin_1out(self):
-        """Test grad is called correctly for a many-to-1 op"""
+        # Test grad is called correctly for a many-to-1 op
         gval0 = theano.tensor.scalar()
         gval1 = theano.tensor.scalar()
 
@@ -131,7 +130,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[1]] is gval1)
 
     def test_Nin_Nout(self):
-        """Test grad is called correctly for a many-to-many op"""
+        # Test grad is called correctly for a many-to-many op
         gval0 = theano.tensor.matrix()
         gval1 = theano.tensor.matrix()
 
@@ -156,6 +155,7 @@ class test_grad(unittest.TestCase):
     def test_unimplemented_grad_func(self):
         # tests that function compilation catches unimplemented grads
         # in the graph
+
         a = theano.tensor.vector()
         b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
         self.assertRaises(TypeError, theano.function, [a], b, on_unused_input='ignore')
@@ -209,7 +209,6 @@ class test_grad(unittest.TestCase):
         assert g.name == '(df/dx)'
 
     def test_grad_duplicate_input(self):
-
         # test that the grad works when a variable
         # appears in more than one place in a node's input list
 
@@ -223,7 +222,6 @@ class test_grad(unittest.TestCase):
         theano.tests.unittest_tools.verify_grad(output, [vx])
 
     def test_grad_quadratic(self):
-
         # test the gradient on a tiny graph
 
         def cost(x, A):
@@ -237,7 +235,6 @@ class test_grad(unittest.TestCase):
         theano.tests.unittest_tools.verify_grad(cost, [vx, vA])
 
     def test_grad_quadratic_vector(self):
-
         # test the gradient on a small graph
 
         def output(x, A):
@@ -251,7 +248,6 @@ class test_grad(unittest.TestCase):
         theano.tests.unittest_tools.verify_grad(output, [vx, vA])
 
     def test_grad_cubic(self):
-
         # test the gradient on a bigger graph
 
         def cost(x, A):
@@ -265,7 +261,6 @@ class test_grad(unittest.TestCase):
         theano.tests.unittest_tools.verify_grad(cost, [vx, vA])
 
     def test_grad_grad_quadratic(self):
-
         # test the gradient on a graph constructed using the gradient
 
         def output(x, A):
@@ -280,7 +275,6 @@ class test_grad(unittest.TestCase):
         theano.tests.unittest_tools.verify_grad(output, [vx, vA])
 
     def test_grad_grad_cubic(self):
-
         # test the gradient on a bigger graph constructed using the gradient
 
         def output(x, A):
@@ -295,7 +289,6 @@ class test_grad(unittest.TestCase):
         theano.tests.unittest_tools.verify_grad(output, [vx, vA])
 
     def test_grad_int(self):
-
         # tests that the gradient with respect to an integer
         # is the same as the gradient with respect to a float
 
@@ -333,7 +326,6 @@ class test_grad(unittest.TestCase):
         assert np.allclose(int_result, float_result), (int_result, float_result)
 
     def test_grad_disconnected(self):
-
         # tests corner cases of gradient for shape and alloc
 
         x = theano.tensor.vector(name='x')
@@ -356,7 +348,6 @@ class test_grad(unittest.TestCase):
         assert np.allclose(g, np.ones(x.shape, dtype=x.dtype))
 
     def test_disconnected_nan(self):
-
         # test that connection_pattern can prevent getting NaN
 
         # Op1 has two outputs, f and g
@@ -419,7 +410,6 @@ class test_grad(unittest.TestCase):
         assert dc_dx.dtype == 'float32'
 
     def test_grad_constant(self):
-
         # Test that the gradient handles Constants and consider_constant variables
         # consistently
 
@@ -442,7 +432,6 @@ class test_grad(unittest.TestCase):
 
 
 def test_known_grads():
-
     # Tests that the grad method with no known_grads
     # matches what happens if you put its own known_grads
     # in for each variable
@@ -494,7 +483,6 @@ def test_known_grads():
 
 
 def test_dxdx():
-
     # Tests that the gradient of a scalar with respect to itself is 1
     # I use an integer in this case because people keep changing this
     # gradient to be 0 on integers but according to our interpretation
@@ -512,7 +500,6 @@ def test_dxdx():
 
 
 def test_known_grads_integers():
-
     # Tests that known_grads works on integers
 
     x = theano.tensor.iscalar()
@@ -531,45 +518,42 @@ def test_known_grads_integers():
 
 
 def test_undefined_cost_grad():
+    # Tests that if we say the cost is not differentiable via the
+    # known_grads mechanism, it is treated as such by the rest of the
+    # system.
+    # This is so that Ops that are built around minigraphs like OpFromGraph
+    # and scan can implement Op.grad by passing ograds to known_grads
 
-        # Tests that if we say the cost is not differentiable via the
-        # known_grads mechanism, it is treated as such by the rest of the
-        # system.
-        # This is so that Ops that are built around minigraphs like OpFromGraph
-        # and scan can implement Op.grad by passing ograds to known_grads
-
-        x = theano.tensor.iscalar()
-        y = theano.tensor.iscalar()
-        cost = x + y
-        assert cost.dtype in theano.tensor.discrete_dtypes
-        try:
-            theano.tensor.grad(cost, [x, y], known_grads={cost: NullType()()})
-        except theano.gradient.NullTypeGradError:
-            return
-        raise AssertionError("An undefined gradient has been ignored.")
+    x = theano.tensor.iscalar()
+    y = theano.tensor.iscalar()
+    cost = x + y
+    assert cost.dtype in theano.tensor.discrete_dtypes
+    try:
+        theano.tensor.grad(cost, [x, y], known_grads={cost: NullType()()})
+    except theano.gradient.NullTypeGradError:
+        return
+    raise AssertionError("An undefined gradient has been ignored.")
 
 
 def test_disconnected_cost_grad():
+    # Tests that if we say the cost is disconnected via the
+    # known_grads mechanism, it is treated as such by the rest of the
+    # system.
+    # This is so that Ops that are built around minigraphs like OpFromGraph
+    # and scan can implement Op.grad by passing ograds to known_grads
 
-        # Tests that if we say the cost is disconnected via the
-        # known_grads mechanism, it is treated as such by the rest of the
-        # system.
-        # This is so that Ops that are built around minigraphs like OpFromGraph
-        # and scan can implement Op.grad by passing ograds to known_grads
-
-        x = theano.tensor.iscalar()
-        y = theano.tensor.iscalar()
-        cost = x + y
-        assert cost.dtype in theano.tensor.discrete_dtypes
-        try:
-            theano.tensor.grad(cost, [x, y], known_grads={cost: gradient.DisconnectedType()()}, disconnected_inputs='raise')
-        except theano.gradient.DisconnectedInputError:
-            return
-        raise AssertionError("A disconnected gradient has been ignored.")
+    x = theano.tensor.iscalar()
+    y = theano.tensor.iscalar()
+    cost = x + y
+    assert cost.dtype in theano.tensor.discrete_dtypes
+    try:
+        theano.tensor.grad(cost, [x, y], known_grads={cost: gradient.DisconnectedType()()}, disconnected_inputs='raise')
+    except theano.gradient.DisconnectedInputError:
+        return
+    raise AssertionError("A disconnected gradient has been ignored.")
 
 
 def test_subgraph_grad():
-
     # Tests that the grad method with no known_grads
     # matches what happens if you use successive subgraph_grads
 

@@ -46,10 +46,9 @@ def sharedX(x, name):
 
 
 class t_gemm(TestCase):
-    """This test suite is supposed to establish that gemm works as it
-    is supposed to.
+    # This test suite is supposed to establish that gemm works as it
+    # is supposed to.
 
-    """
     def setUp(self):
         unittest_tools.seed_rng()
         Gemm.debug = False
@@ -438,13 +437,9 @@ def fail(msg):
     assert False
 
 
-"""This test suite ensures that Gemm is inserted where it belongs, and
-that the resulting functions compute the same things as the
-originals.
-
-"""
-
-
+# This test suite ensures that Gemm is inserted where it belongs, and
+# that the resulting functions compute the same things as the
+# originals.
 def XYZab():
     return T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
 

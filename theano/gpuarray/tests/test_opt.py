@@ -288,7 +288,7 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
 
 
 def test_print_op():
-    """ Test that print ops don't block gpu optimization"""
+    # Test that print ops don't block gpu optimization
     b = tensor.fmatrix()
     f = theano.function([b], theano.printing.Print()(b) * 2,
                         mode=mode_with_gpu)
@@ -301,7 +301,7 @@ def test_print_op():
 
 
 def test_pdbbreakpoint_op():
-    """ Test that PdbBreakpoint ops don't block gpu optimization"""
+    # Test that PdbBreakpoint ops don't block gpu optimization
     b = tensor.fmatrix()
 
     # Create a function composed of a breakpoint followed by
@@ -399,9 +399,8 @@ def test_local_gpu_subtensor():
 
 
 def test_local_gpu_elemwise():
-    """
-    Test local_gpu_elemwise when there is a dtype upcastable to float32
-    """
+    # Test local_gpu_elemwise when there is a dtype upcastable to float32
+
     a = tensor.bmatrix()
     b = tensor.fmatrix()
     c = tensor.fmatrix()

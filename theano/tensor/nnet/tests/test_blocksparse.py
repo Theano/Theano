@@ -87,9 +87,8 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
 
     @staticmethod
     def gemv_numpy2(o, W, h, iIdx, oIdx):
-        """
-        Other implementation
-        """
+        # Other implementation
+
         from numpy import ix_
         for b in range(o.shape[0]):
             w = W[ix_(iIdx[b], oIdx[b])].swapaxes(1, 2)
@@ -99,9 +98,8 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
 
     @staticmethod
     def gemv_numpy3(o, W, h, iIdx, oIdx):
-        """
-        Other implementation
-        """
+        # Other implementation
+
         from numpy import ix_
         for b in range(o.shape[0]):
             w = W[ix_(iIdx[b], oIdx[b])]
@@ -122,9 +120,8 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         return o
 
     def test_sparseblockdot(self):
-        """
-        Compares the numpy version of sparseblockgemv to sparse_block_dot.
-        """
+        # Compares the numpy version of sparseblockgemv to sparse_block_dot.
+
         b = tensor.fmatrix()
         W = tensor.ftensor4()
         h = tensor.ftensor3()
@@ -146,9 +143,8 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         utt.assert_allclose(ref_out, th_out)
 
     def test_sparseblockgemv(self):
-        """
-        Compares the numpy and theano versions of sparseblockgemv.
-        """
+        # Compares the numpy and theano versions of sparseblockgemv.
+
         b = tensor.fmatrix()
         W = tensor.ftensor4()
         h = tensor.ftensor3()
@@ -169,10 +165,9 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         utt.assert_allclose(ref_out, th_out)
 
     def test_sparseblockgemvF(self):
-        """
-            Test the fortan order for W (which can happen in the grad for some
-            graphs).
-        """
+        # Test the fortan order for W (which can happen in the grad for some
+        # graphs).
+
         b = tensor.fmatrix()
         W = tensor.ftensor4()
         h = tensor.ftensor3()

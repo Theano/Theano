@@ -679,10 +679,9 @@ class test_Unique(utt.InferShapeTester):
                     Unique(True, True, True)]
 
     def test_basic_vector(self):
-        """
-        Basic test for a vector.
-        Done by using the op and checking that it returns the right answer.
-        """
+        # Basic test for a vector.
+        # Done by using the op and checking that it returns the right answer.
+
         x = theano.tensor.vector()
         inp = np.asarray([2, 1, 3, 2], dtype=config.floatX)
         list_outs_expected = [[np.unique(inp)],
@@ -701,9 +700,9 @@ class test_Unique(utt.InferShapeTester):
                 utt.assert_allclose(out, out_exp)
 
     def test_basic_matrix(self):
-        """ Basic test for a matrix.
-        Done by using the op and checking that it returns the right answer.
-        """
+        # Basic test for a matrix.
+        # Done by using the op and checking that it returns the right answer.
+
         x = theano.tensor.matrix()
         inp = np.asarray([[2, 1], [3, 2], [2, 3]], dtype=config.floatX)
         list_outs_expected = [[np.unique(inp)],
@@ -722,9 +721,8 @@ class test_Unique(utt.InferShapeTester):
                 utt.assert_allclose(out, out_exp)
 
     def test_infer_shape_vector(self):
-        """
-        Testing the infer_shape with a vector.
-        """
+        # Testing the infer_shape with a vector.
+
         x = theano.tensor.vector()
 
         for op in self.ops:
@@ -741,9 +739,8 @@ class test_Unique(utt.InferShapeTester):
                                     self.op_class)
 
     def test_infer_shape_matrix(self):
-        """
-        Testing the infer_shape with a matrix.
-        """
+        # Testing the infer_shape with a matrix.
+
         x = theano.tensor.matrix()
 
         for op in self.ops:

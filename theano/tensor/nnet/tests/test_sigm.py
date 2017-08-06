@@ -87,15 +87,14 @@ class T_softplus(unittest.TestCase):
 class T_sigmoid_opts(unittest.TestCase):
 
     def get_mode(self, excluding=None):
-        """
-        Return appropriate mode for the tests.
+        # Return appropriate mode for the tests.
+        #
+        # :param excluding: List of optimizations to exclude.
+        #
+        # :return: The current default mode unless the `config.mode` option is
+        # set to 'FAST_COMPILE' (in which case it is replaced by the 'FAST_RUN'
+        # mode), without the optimizations specified in `excluding`.
 
-        :param excluding: List of optimizations to exclude.
-
-        :return: The current default mode unless the `config.mode` option is
-        set to 'FAST_COMPILE' (in which case it is replaced by the 'FAST_RUN'
-        mode), without the optimizations specified in `excluding`.
-        """
         if excluding is None:
             excluding = []
         m = theano.config.mode
@@ -229,11 +228,10 @@ class T_sigmoid_opts(unittest.TestCase):
                 sigmoid_inplace])
 
     def test_local_sigm_times_exp(self):
-        """
-        Test the `local_sigm_times_exp` optimization.
-        exp(x) * sigm(-x) -> sigm(x)
-        exp(-x) * sigm(x) -> sigm(-x)
-        """
+        # Test the `local_sigm_times_exp` optimization.
+        # exp(x) * sigm(-x) -> sigm(x)
+        # exp(-x) * sigm(x) -> sigm(-x)
+
         def match(func, ops):
             # print [node.op.scalar_op for node in func.maker.fgraph.toposort()]
             assert [node.op for node in func.maker.fgraph.toposort()] == ops
@@ -264,12 +262,11 @@ class T_sigmoid_opts(unittest.TestCase):
         #                                           tensor.exp])
 
     def test_perform_sigm_times_exp(self):
-        """
-        Test the core function doing the `sigm_times_exp` optimization.
+        # Test the core function doing the `sigm_times_exp` optimization.
+        #
+        # It is easier to test different graph scenarios this way than by
+        # compiling a theano function.
 
-        It is easier to test different graph scenarios this way than by
-        compiling a theano function.
-        """
         x, y, z, t = tensor.vectors('x', 'y', 'z', 't')
         exp = tensor.exp
 
@@ -450,10 +447,7 @@ class T_softplus_opts(unittest.TestCase):
 
 
 class T_sigmoid_utils(unittest.TestCase):
-
-    """
-    Test utility functions found in 'sigm.py'.
-    """
+    # Test utility functions found in 'sigm.py'.
 
     def test_compute_mul(self):
         x, y, z = tensor.vectors('x', 'y', 'z')

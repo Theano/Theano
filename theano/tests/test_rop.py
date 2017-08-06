@@ -32,9 +32,7 @@ differentiable in the computational graph
 
 
 class BreakRop(Op):
-    """
-    @note: Non-differentiable.
-    """
+    # @note: Non-differentiable.
     __props__ = ()
 
     def make_node(self, x):
@@ -55,8 +53,8 @@ break_op = BreakRop()
 
 
 class RopLop_checker(unittest.TestCase):
-    """ Don't peform any test, but provide the function to test the
-    Rop to class that inherit from it."""
+    # Don't peform any test, but provide the function to test the
+    # Rop to class that inherit from it.
 
     def setUp(self):
         utt.seed_rng()
@@ -72,8 +70,8 @@ class RopLop_checker(unittest.TestCase):
                              5 + self.rng.randint(3))
 
     def check_nondiff_rop(self, y):
-        """ If your op is not differentiable(so you can't define Rop)
-        test that an error is raised."""
+        # If your op is not differentiable(so you can't define Rop)
+        # test that an error is raised.
         raised = False
         try:
             tensor.Rop(y, self.x, self.v)
@@ -85,24 +83,24 @@ class RopLop_checker(unittest.TestCase):
                 ' is not differentiable'))
 
     def check_mat_rop_lop(self, y, out_shape):
-        """ Test the Rop/Lop when input is a matrix and the output is a vector
+        # Test the Rop/Lop when input is a matrix and the output is a vector
+        #
+        # :param y: the output variable of the op applied to self.mx
+        # :param out_shape: Used to generate a random tensor
+        #                   corresponding to the evaluation point of the Rop
+        #                   (i.e. the tensor with which you multiply the
+        #                   Jacobian). It should be a tuple of ints.
+        #
+        # If the Op has more than 1 input, one of them must be mx, while
+        # others must be shared variables / constants. We will test only
+        # against the input self.mx, so you must call
+        # check_mat_rop_lop/check_rop_lop for the other inputs.
+        #
+        # We expect all inputs/outputs have dtype floatX.
+        #
+        # If you want to test an Op with an output matrix, add a sum
+        # after the Op you want to test.
 
-        :param y: the output variable of the op applied to self.mx
-        :param out_shape: Used to generate a random tensor
-                          corresponding to the evaluation point of the Rop
-                          (i.e. the tensor with which you multiply the
-                          Jacobian). It should be a tuple of ints.
-
-        If the Op has more than 1 input, one of them must be mx, while
-        others must be shared variables / constants. We will test only
-        against the input self.mx, so you must call
-        check_mat_rop_lop/check_rop_lop for the other inputs.
-
-        We expect all inputs/outputs have dtype floatX.
-
-        If you want to test an Op with an output matrix, add a sum
-        after the Op you want to test.
-        """
         vx = np.asarray(self.rng.uniform(size=self.mat_in_shape),
                         theano.config.floatX)
         vv = np.asarray(self.rng.uniform(size=self.mat_in_shape),
@@ -134,11 +132,9 @@ class RopLop_checker(unittest.TestCase):
         assert np.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
     def check_rop_lop(self, y, out_shape):
-        """
-        As check_mat_rop_lop, except the input is self.x which is a
-        vector. The output is still a vector.
+        # As check_mat_rop_lop, except the input is self.x which is a
+        # vector. The output is still a vector.
 
-        """
         # TEST ROP
         vx = np.asarray(self.rng.uniform(size=self.in_shape),
                         theano.config.floatX)

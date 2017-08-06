@@ -96,13 +96,12 @@ off_by_half = BROKEN_ON_PURPOSE_Add(True)
 
 
 class WeirdBrokenOp(gof.Op):
-    """
-    This op can be inplace if behaviour is 'times1_inplace'
-    This op can be destructive if behaviour is 'times2_inplace'
+    # This op can be inplace if behaviour is 'times1_inplace'
+    # This op can be destructive if behaviour is 'times2_inplace'
+    #
+    # In both cases, it does not set the destroy_map or view_map correctly so
+    # it should raise an error in DebugMode.
 
-    In both cases, it does not set the destroy_map or view_map correctly so
-    it should raise an error in DebugMode.
-    """
     __props__ = ("behaviour", )
 
     def __init__(self, behaviour):
@@ -717,12 +716,11 @@ class BrokenCImplementationAdd(gof.Op):
 
 
 class VecAsRowAndCol(gof.Op):
-    """
-    Transforms a vector into a row and a column.
+    # Transforms a vector into a row and a column.
+    #
+    # This Op exists to check everything is correct when an Op has
+    # two outputs with different broadcasting patterns.
 
-    This Op exists to check everything is correct when an Op has
-    two outputs with different broadcasting patterns.
-    """
     __props__ = ()
 
     def make_node(self, v):

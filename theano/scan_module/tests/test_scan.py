@@ -55,17 +55,16 @@ type_eps = {'float64': 1e-7,
 
 
 class multiple_outputs_numeric_grad:
-    """WRITEME"""
+    # WRITEME
     def __init__(self, f, pt, ndarray_mask=None, eps=None):
-        """Return the gradient of f at pt.
-
-        This function computes the gradient by a one-sided finite differences
-        of a fixed step size (eps).
-
-        It is assumed that f(...) will return a scalar.
-        :param eps: the stepsize for the finite differencing. None means
-        input dtype-dependent. See `type_eps`.
-        """
+        # Return the gradient of f at pt.
+        #
+        # This function computes the gradient by a one-sided finite differences
+        # of a fixed step size (eps).
+        #
+        # It is assumed that f(...) will return a scalar.
+        # :param eps: the stepsize for the finite differencing. None means
+        # input dtype-dependent. See `type_eps`.
 
         def prod(inputs):
             rval = 1
@@ -124,12 +123,12 @@ class multiple_outputs_numeric_grad:
 
     @staticmethod
     def abs_rel_err(a, b, eps=1.0e-10):
-        """Return a small number when a and b are close, relative to how big
-        they are"""
+        # Return a small number when a and b are close, relative to how big
+        # they are
         return abs(a - b) / (abs(a) + abs(b) + eps)
 
     def max_err(self, _g_pt):
-        """Return the biggest relative error between g_pt and self.gx"""
+        # Return the biggest relative error between g_pt and self.gx
 
         g_pt = []
         for i in xrange(len(_g_pt)):
@@ -638,12 +637,12 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(output, expected_output)
 
     def test_connection_pattern(self):
-        """Test connection_pattern() in the presence of recurrent outputs
-        with multiple taps.
+        # Test connection_pattern() in the presence of recurrent outputs
+        # with multiple taps.
+        #
+        # This test refers to a bug signaled on the theano-users mailing list
+        # on March 10 2015 by David Schneider-Joseph.
 
-        This test refers to a bug signaled on the theano-users mailing list
-        on March 10 2015 by David Schneider-Joseph.
-        """
         def fn(a_m2, a_m1, b_m2, b_m1):
             return a_m1, b_m1
 
@@ -1986,17 +1985,16 @@ class T_Scan(unittest.TestCase):
         assert x.get_value() != y.get_value()
 
     def test_scan_output_padding(self):
-        """
-        Scan outputs are usually lists, whose entries correspond to the
-        intermediate result. When n_steps=1, some extra machinery is
-        required in order to mimic this interface. Scan thus calls
-        tensor.shape_padleft on the inner function outputs.
+        # Scan outputs are usually lists, whose entries correspond to the
+        # intermediate result. When n_steps=1, some extra machinery is
+        # required in order to mimic this interface. Scan thus calls
+        # tensor.shape_padleft on the inner function outputs.
+        #
+        # However, this is not the proper behavior for shared variables,
+        # they should not be padded in any way
+        #
+        # This unit test addresses the bug fix of changeset ba7157e95cb1.
 
-        However, this is not the proper behavior for shared variables,
-        they should not be padded in any way
-
-        This unit test addresses the bug fix of changeset ba7157e95cb1.
-        """
         a = theano.tensor.vector()
         init_a = theano.tensor.vector()
         b = theano.shared(np.random.rand(5, 4))
@@ -2221,9 +2219,8 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(theano_y, v_y)
 
     def test_scan_as_tensor_on_gradients(self):
-        """
-        Bug reported by cityhall on scan when computing the gradients
-        """
+        # Bug reported by cityhall on scan when computing the gradients
+
         to_scan = theano.tensor.dvector('to_scan')
         seq = theano.tensor.dmatrix('seq')
         f1 = theano.tensor.dscalar('f1')
@@ -3792,12 +3789,11 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(theano_y, v_y[-4:])
 
     def test_opt_order(self):
-        """
-        Verify that scan optimizations are applied before blas
-        optimizations.
-        This is needed as otherwise, the dot won't become a dot22
-        so it will be slower and won't get transferred to the gpu.
-        """
+        # Verify that scan optimizations are applied before blas
+        # optimizations.
+        # This is needed as otherwise, the dot won't become a dot22
+        # so it will be slower and won't get transferred to the gpu.
+
         x = theano.tensor.matrix('x')
         A = theano.tensor.matrix('A')
 
@@ -4531,17 +4527,16 @@ class T_Scan(unittest.TestCase):
 
 
 class ScanGpuTests:
-    """ This class defines a number of tests for Scan on GPU as well as a few
-    helper functions for these tests. The GPU tests defined in this class are
-    independant of the GPU backend used. Because of this, a class inheriting
-    from ScanGpuTests should define the following attributes and methods to
-    make the tests run on a specific backend :
-    - self.gpu_backend : Reference to the backend module
-    - self.mode_with_opt : Compilation mode to force usage of the gpu backend
-    - self.is_scan_on_gpu(node) : Method to determine is a scan node has been
-                                  moved to run on a gpu under the specific
-                                  backend. Returns a boolean.
-    """
+    # This class defines a number of tests for Scan on GPU as well as a few
+    # helper functions for these tests. The GPU tests defined in this class are
+    # independant of the GPU backend used. Because of this, a class inheriting
+    # from ScanGpuTests should define the following attributes and methods to
+    # make the tests run on a specific backend :
+    # - self.gpu_backend : Reference to the backend module
+    # - self.mode_with_opt : Compilation mode to force usage of the gpu backend
+    # - self.is_scan_on_gpu(node) : Method to determine is a scan node has been
+    #                               moved to run on a gpu under the specific
+    #                               backend. Returns a boolean.
 
     # as test_one_sequence_one_output_weights, but on the gpu
     # This first version test the first case in the optimizer to the gpu.
@@ -4874,9 +4869,8 @@ class ScanGpuTests:
 
 
 class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
-    """This class takes the gpu tests for scan that are defined in
-    class ScanGpuTests and runs them using the gpuarray backend.
-    """
+    # This class takes the gpu tests for scan that are defined in
+    # class ScanGpuTests and runs them using the gpuarray backend.
 
     def __init__(self, *args, **kwargs):
         from theano import gpuarray
@@ -5399,7 +5393,7 @@ def test_constant_folding_n_steps():
 
 
 def test_outputs_taps_check():
-    """Checks that errors are raised with bad output_info taps."""
+    # Checks that errors are raised with bad output_info taps.
     x = tensor.fvector('x')
     y = tensor.fvector('y')
     f = lambda x, y: [x]

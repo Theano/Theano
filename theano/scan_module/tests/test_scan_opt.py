@@ -12,11 +12,9 @@ mode = theano.compile.mode.get_mode(config.mode)
 
 
 class TestGaussNewton(unittest.TestCase):
-    """
-    Regression test for code exhibiting various optimization errors.
+    # Regression test for code exhibiting various optimization errors.
+    # This test case is based on code by Sigurd Spieckermann.
 
-    This test case is based on code by Sigurd Spieckermann.
-    """
     def setUp(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
@@ -136,18 +134,14 @@ class GaussNewtonMatrix(object):
 
 
 class TestPushOutScanOutputDot(object):
-    """
-    Test class for the PushOutScanOutput optimizer in the case where the inner
-    function of a scan op has an output which is the result of a Dot product
-    on a non-sequence matrix input to scan and a vector that is the result of
-    computation in the inner function.
-    """
+    # Test class for the PushOutScanOutput optimizer in the case where the inner
+    # function of a scan op has an output which is the result of a Dot product
+    # on a non-sequence matrix input to scan and a vector that is the result of
+    # computation in the inner function.
 
     def test_dot_not_output(self):
-        """
-        Test the case where the vector input to the dot is not already an
-        output of the inner function.
-        """
+        # Test the case where the vector input to the dot is not already an
+        # output of the inner function.
 
         v = T.vector()
         m = T.matrix()
@@ -180,10 +174,8 @@ class TestPushOutScanOutputDot(object):
         utt.assert_allclose(output_opt, output_no_opt)
 
     def test_dot_nitsot_output(self):
-        """
-        Test the case where the vector input to the dot is already a nitsot
-        output of the inner function.
-        """
+        # Test the case where the vector input to the dot is already a nitsot
+        # output of the inner function.
 
         a = T.matrix()
         b = T.matrix()
@@ -227,10 +219,8 @@ class TestPushOutScanOutputDot(object):
         utt.assert_allclose(output_opt[1], output_no_opt[1])
 
     def test_dot_sitsot_output(self):
-        """
-        Test the case where the vector input to the dot is not already a
-        non-nitsot (in this case a sitsot) output of the inner function.
-        """
+        # Test the case where the vector input to the dot is not already a
+        # non-nitsot (in this case a sitsot) output of the inner function.
 
         a = T.matrix()
         b = T.matrix()
@@ -274,20 +264,16 @@ class TestPushOutScanOutputDot(object):
 
 
 class TestPushOutSumOfDot():
-    """
-    Test case for the PushOutScanOutput optimizer in the case where the scan
-    is used to compute the sum over the dot products between the corresponding
-    elements of two list of matrices.
-    """
+    # Test case for the PushOutScanOutput optimizer in the case where the scan
+    # is used to compute the sum over the dot products between the corresponding
+    # elements of two list of matrices.
 
     def test_machine_translation(self):
-        """
-        This test case comes from https://github.com/rizar/scan-grad-speed and
-        is an example of actual computation done with scan in the context of
-        machine translation
-
-        'dim' has been reduced from 1000 to 5 to make the test run faster
-        """
+        # This test case comes from https://github.com/rizar/scan-grad-speed and
+        # is an example of actual computation done with scan in the context of
+        # machine translation
+        #
+        # 'dim' has been reduced from 1000 to 5 to make the test run faster
 
         # Parameters from an actual machine tranlation run
         batch_size = 80
@@ -366,10 +352,7 @@ class TestPushOutSumOfDot():
         utt.assert_allclose(f_opt_output, f_no_opt_output)
 
     def test_non_zero_init(self):
-        """
-        Test the case where the initial value for the nitsot output is
-        non-zero
-        """
+        # Test the case where the initial value for the nitsot output is non-zero
 
         input1 = T.tensor3()
         input2 = T.tensor3()

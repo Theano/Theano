@@ -1,4 +1,4 @@
-"""
+'''
 These routines are not well-tested. They are also old.
 OB says that it is not important to test them well because Scalar Ops
 are rarely used by themselves, instead they are the basis for Tensor Ops
@@ -7,7 +7,7 @@ to use numpy's scalar routines.
 If you do want to rewrite these tests, bear in mind:
   * You don't need to use Composite.
   * FunctionGraph and DualLinker are old, use compile.function instead.
-"""
+'''
 
 
 from __future__ import absolute_import, print_function, division
@@ -53,11 +53,10 @@ class test_ScalarOps(unittest.TestCase):
     # so this is not a silent bug.
     # --> This is why it is purposedly named 'tes_mod' instead of 'test_mod'.
     def tes_mod(self):
-        """
-        We add this test as not all language and C implementation give the same
-        signe to the result. This check that the c_code of `Mod` is implemented
-        as Python. That is what we want.
-        """
+        # We add this test as not all language and C implementation give the same
+        # sign to the result. This check that the c_code of `Mod` is implemented
+        # as Python. That is what we want.
+
         x, y = ints('xy')
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x % y])).make_function()
         for a, b in ((0, 1), (1, 1), (0, -1), (1, -1), (-1, -1),
@@ -384,7 +383,7 @@ class test_upgrade_to_float(object):
 
 
 class test_complex_mod(unittest.TestCase):
-    """Make sure % fails on complex numbers."""
+    # Make sure % fails on complex numbers.
 
     def test_fail(self):
         x = complex64()

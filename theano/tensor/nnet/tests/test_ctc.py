@@ -77,12 +77,9 @@ def setup_grad_case():
 
 
 class TestCTC(unittest.TestCase):
-    """
-    Test Baidu CTC wrapper implementation.
-
-    Expected values for costs and gradients are obtained through an external
-    C implementation, that uses the library directly.
-    """
+    # Test Baidu CTC wrapper implementation.
+    # Expected values for costs and gradients are obtained through an external
+    # C implementation, that uses the library directly.
 
     def setUp(self):
         if theano.config.mode == "FAST_COMPILE" or theano.config.cxx == "":
@@ -111,9 +108,8 @@ class TestCTC(unittest.TestCase):
         self.check_grads_disabled(t_activations, t_labels, t_activation_times)
 
     def check_grads_disabled(self, activations, labels, input_length):
-        """
-        Check if optimization to disable gradients is working
-        """
+        # Check if optimization to disable gradients is working
+
         ctc_cost = ctc(activations, labels, input_length)
         ctc_function = theano.function([], [ctc_cost])
         for node in ctc_function.maker.fgraph.apply_nodes:
