@@ -6530,7 +6530,7 @@ class TestIntDivByOne(unittest.TestCase):
     def test1(self):
         # Tests removing the extra floor_div by 1 introduced by
         # local_subtensor_merge optimization
-        
+
         y = T.tensor4('y')
         self.mode = self.mode.excluding('fusion')
         f = theano.function([y], y[::-1][::-1], mode=self.mode)
