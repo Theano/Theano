@@ -1859,8 +1859,12 @@ class Grouped_conv_noOptim(unittest.TestCase):
                                                   filter_dilation=self.filter_dilation,
                                                   num_groups=groups)
             if self.flip_filter:
-                grouped_conv_output = grouped_convgrad_op(kern_sym[:, :, ::-1, ::-1], top_sym,
-                                                          tensor.as_tensor_variable(imshp[-self.convdim:]))
+                if self.convdim == 2:
+                    grouped_conv_output = grouped_convgrad_op(kern_sym[:, :, ::-1, ::-1], top_sym,
+                                                              tensor.as_tensor_variable(imshp[-self.convdim:]))
+                else:
+                    grouped_conv_output = grouped_convgrad_op(kern_sym[:, :, ::-1, ::-1, ::-1], top_sym,
+                                                              tensor.as_tensor_variable(imshp[-self.convdim:]))
             else:
                 grouped_conv_output = grouped_convgrad_op(kern_sym,
                                                           top_sym,
