@@ -20,8 +20,8 @@ def hash_from_ndarray(data):
     # uint32 and int32 of zeros with the same shape and strides.
 
     # python hash are not strong, so use sha256 (md5 is not
-    # FIPS compatible). To not have too long of hash, I call it again on 
-	# the concatenation of all parts.
+    # FIPS compatible). To not have too long of hash, I call it again on
+    # the concatenation of all parts.
     if not data.flags["C_CONTIGUOUS"]:
         # hash_from_code needs a C-contiguous array.
         data = np.ascontiguousarray(data)

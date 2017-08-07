@@ -416,10 +416,10 @@ def get_module_hash(src_code, key):
             to_hash += list(key_element)
         elif isinstance(key_element, string_types):
             if key_element.startswith('md5:'):
-                # This is actually a sha256 hash of the config options. 
-				# Ref PR#5916. String and function names will be updated in 
-				# future release.
-				# We can stop here.
+                # This is actually a sha256 hash of the config options.
+                # Ref PR#5916. String and function names will be updated in
+                # future release.
+                # We can stop here.
                 break
             elif (key_element.startswith('NPY_ABI_VERSION=0x') or
                   key_element.startswith('c_compiler_str=')):
@@ -449,7 +449,7 @@ def get_safe_part(key):
     assert version
 
     # Find the hash part, which is using sha256, not md5.
-	# Instances of md5 will be replaced in future release.
+    # Instances of md5 will be replaced in future release.
     c_link_key = key[1]
     # In case in the future, we don't have an md5 part and we have
     # such stuff in the cache.  In that case, we can set None, and the

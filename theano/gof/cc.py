@@ -1229,16 +1229,16 @@ class CLinker(link.Linker):
         The signature has the following form:
         {{{
             'CLinker.cmodule_key', compilation args, libraries,
-            header_dirs, numpy ABI version, config md5,
+            header_dirs, numpy ABI version, config hash,
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
             (opK, input_signatureK, output_signatureK),
         }}}
 
-	Note that config md5 uses sha256, and not md5. Function names will
-	updated in a future release to reflect the use of hashlib.sha256. 
-		
+        Note that config hash now uses sha256, and not md5. Function names will
+        updated in a future release to reflect the use of hashlib.sha256.
+
         The signature is a tuple, some elements of which are sub-tuples.
 
         The outer tuple has a brief header, containing the compilation options
@@ -1350,7 +1350,7 @@ class CLinker(link.Linker):
         constant_ids = dict()
         op_pos = {}  # Apply -> topological position
 
-        # First we put the header, compile_args, library names and config md5
+        # First we put the header, compile_args, library names and config hash
         # into the signature.
         sig = ['CLinker.cmodule_key']  # will be cast to tuple on return
         if compile_args is not None:
