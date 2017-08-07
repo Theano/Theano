@@ -15,14 +15,14 @@ from theano.compile import config
 
 
 def data_of(s):
-    """Return the raw value of a shared variable"""
+    # Return the raw value of a shared variable
     return s.container.storage[0]
 
 
 class Test_pfunc(unittest.TestCase):
 
     def test_doc(self):
-        """Ensure the code given in pfunc.txt works as expected"""
+        # Ensure the code given in pfunc.txt works as expected
 
         # Example #1.
         a = lscalar()
@@ -74,7 +74,7 @@ class Test_pfunc(unittest.TestCase):
         assert np.all(f1(xval) == xval + w.get_value(borrow=True))
 
     def test_no_shared_as_input(self):
-        """Test that shared variables cannot be used as function inputs."""
+        # Test that shared variables cannot be used as function inputs.
         w_init = np.random.rand(2, 2)
         w = shared(w_init.copy(), 'w')
         try:
@@ -317,7 +317,7 @@ class Test_pfunc(unittest.TestCase):
             self.assertRaises(TypeError, h, 0.1, [0])
 
     def test_update(self):
-        """Test update mechanism in different settings."""
+        # Test update mechanism in different settings.
 
         # Simple value assignment.
         x = shared(0)
@@ -666,28 +666,26 @@ class Test_pfunc(unittest.TestCase):
 
 
 class Test_aliasing_rules(unittest.TestCase):
-    """
-    1. Theano manages its own memory space, which typically does not overlap
-    with the memory of normal python variables that the user uses.
+    # 1. Theano manages its own memory space, which typically does not overlap
+    # with the memory of normal python variables that the user uses.
 
-    2. shared variables are allocated in this memory space, as are the
-    temporaries used for Function evalution.
+    # 2. shared variables are allocated in this memory space, as are the
+    # temporaries used for Function evalution.
 
-    3. Physically, this managed memory space may be spread across the host,
-    on a GPU device(s), or even on a remote machine.
+    # 3. Physically, this managed memory space may be spread across the host,
+    # on a GPU device(s), or even on a remote machine.
 
-    4. Theano assumes that shared variables are never aliased to one another,
-    and tries to make it impossible to accidentally alias them.
+    # 4. Theano assumes that shared variables are never aliased to one another,
+    # and tries to make it impossible to accidentally alias them.
 
-    5. Theano's managed data is constant while Theano Functions are not running
-    and theano library code is not running.
+    # 5. Theano's managed data is constant while Theano Functions are not running
+    # and theano library code is not running.
 
-    6. The default behaviour of Function is to return user-space values for
-    outputs, but this can be overridden (borrow=True) for better performance,
-    in which case the returned value may be aliased to managed memory, and
-    potentially invalidated by the next Theano Function call or call to theano
-    library code.
-    """
+    # 6. The default behaviour of Function is to return user-space values for
+    # outputs, but this can be overridden (borrow=True) for better performance,
+    # in which case the returned value may be aliased to managed memory, and
+    # potentially invalidated by the next Theano Function call or call to theano
+    # library code.
 
     def shared(self, x):
         return tensor._shared(x)
