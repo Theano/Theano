@@ -415,11 +415,13 @@ def get_module_hash(src_code, key):
             # libraries to link against.
             to_hash += list(key_element)
         elif isinstance(key_element, string_types):
-            if key_element.startswith('md5:'):
+            if (key_element.startswith('md5:') or
+                    key_element.startswith('sha256:') or
+                    key_element.startswith('hash:')):
                 # This is actually a sha256 hash of the config options.
-                # Ref PR#5916. String and function names will be updated in
-                # future release.
-                # We can stop here.
+                # Currently, we still keep md5 to don't break old Theano.
+                # We add 'sha256:' and 'hash:' so that when we change it in
+                # the futur, it won't break this version of Theano.
                 break
             elif (key_element.startswith('NPY_ABI_VERSION=0x') or
                   key_element.startswith('c_compiler_str=')):
@@ -448,20 +450,28 @@ def get_safe_part(key):
     # This function should only be called on versioned keys.
     assert version
 
-    # Find the hash part, which is using sha256, not md5.
-    # Instances of md5 will be replaced in future release.
+    # Find the hash part. This is actually a sha256 hash of the config
+    # options.  Currently, we still keep md5 to don't break old
+    # Theano.  We add 'sha256:' and 'hash:' so that when we change it
+    # in the futur, it won't break this version of Theano.
     c_link_key = key[1]
     # In case in the future, we don't have an md5 part and we have
     # such stuff in the cache.  In that case, we can set None, and the
     # rest of the cache mechanism will just skip that key.
-    md5 = None
+    hash = None
     for key_element in c_link_key[1:]:
-        if (isinstance(key_element, string_types) and
-                key_element.startswith('md5:')):
-            md5 = key_element[4:]
-            break
+        if isinstance(key_element, string_types):
+            if key_element.startswith('md5:'):
+                hash = key_element[4:]
+                break
+            elif key_element.startswith('sha256:'):
+                hash = key_element[7:]
+                break
+            elif key_element.startswith('hash:'):
+                hash = key_element[5:]
+                break
 
-    return key[0] + (md5, )
+    return key[0] + (hash, )
 
 
 class KeyData(object):
