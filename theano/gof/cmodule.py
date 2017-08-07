@@ -377,7 +377,7 @@ def is_same_entry(entry_1, entry_2):
 
 def get_module_hash(src_code, key):
     """
-    Return a SHA256 (for FIPS compatibility) hash that uniquely identifies a module.
+    Return a SHA256 hash that uniquely identifies a module.
 
     This hash takes into account:
         1. The C source code of the module (`src_code`).
@@ -416,11 +416,10 @@ def get_module_hash(src_code, key):
             to_hash += list(key_element)
         elif isinstance(key_element, string_types):
             if (key_element.startswith('md5:') or
-                    key_element.startswith('sha256:') or
                     key_element.startswith('hash:')):
                 # This is actually a sha256 hash of the config options.
                 # Currently, we still keep md5 to don't break old Theano.
-                # We add 'sha256:' and 'hash:' so that when we change it in
+                # We add 'hash:' so that when we change it in
                 # the futur, it won't break this version of Theano.
                 break
             elif (key_element.startswith('NPY_ABI_VERSION=0x') or
@@ -452,7 +451,7 @@ def get_safe_part(key):
 
     # Find the hash part. This is actually a sha256 hash of the config
     # options.  Currently, we still keep md5 to don't break old
-    # Theano.  We add 'sha256:' and 'hash:' so that when we change it
+    # Theano.  We add 'hash:' so that when we change it
     # in the futur, it won't break this version of Theano.
     c_link_key = key[1]
     # In case in the future, we don't have an md5 part and we have
@@ -463,9 +462,6 @@ def get_safe_part(key):
         if isinstance(key_element, string_types):
             if key_element.startswith('md5:'):
                 hash = key_element[4:]
-                break
-            elif key_element.startswith('sha256:'):
-                hash = key_element[7:]
                 break
             elif key_element.startswith('hash:'):
                 hash = key_element[5:]
