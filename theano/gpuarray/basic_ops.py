@@ -993,11 +993,11 @@ class GpuAllocEmpty(HideC, AllocEmpty):
         self.perform(node, inputs, out_, ctx)
         out_[0][0][:] = -123456789
 
-    def perform(self, node, inputs, out_, ctx):
+    def perform(self, node, inputs, out_, params):
         out = out_[0]
         sh = [int(i) for i in inputs]
         if out[0] is None or out[0].shape != sh:
-            out[0] = pygpu.empty(sh, dtype=self.dtype, context=ctx)
+            out[0] = pygpu.empty(sh, dtype=self.dtype, context=params.context)
         # if out[0] is the right shape, we just return it
 
     def c_headers(self):

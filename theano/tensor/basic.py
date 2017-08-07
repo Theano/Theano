@@ -6667,7 +6667,7 @@ class AllocEmpty(gof.Op):
         self.perform(node, inputs, out_)
         out_[0][0].fill(-123456789)
 
-    def perform(self, node, inputs, out_):
+    def perform(self, node, inputs, out_, params):
         out, = out_
         sh = tuple([int(i) for i in inputs])
         if out[0] is None or out[0].shape != sh:
