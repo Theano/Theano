@@ -1252,7 +1252,7 @@ class ModuleCache(object):
                 "Ops. The file is: %s. The key is: %s" % (msg, key_pkl, key))
         # Also verify that there exists no other loaded key that would be equal
         # to this key. In order to speed things up, we only compare to keys
-        # with the same version part and config md5, since we can assume this
+        # with the same version part and config hash, since we can assume this
         # part of the key is not broken.
         for other in self.similar_keys.get(get_safe_part(key), []):
             if other is not key and other == key and hash(other) != hash(key):
