@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 import logging
-import os
 
 import numpy as np
 from theano import Apply, tensor
@@ -11,7 +10,7 @@ from theano.scalar import bool as bool_t
 from theano.gradient import grad_undefined
 
 from .type import gpu_context_type
-from .basic_ops import as_gpuarray_variable, infer_context_name
+from .basic_ops import as_gpuarray_variable, infer_context_name, gpuarray_helper_inc_dir
 
 _logger = logging.getLogger('theano.gpuarray.blocksparse')
 
@@ -30,7 +29,7 @@ class GpuSparseBlockGemv(COp):
     # NB: DTYPE_INPUT_* is used in C code, so I think we should not set check_input to False.
 
     def __init__(self, inplace=False):
-        COp.__init__(self, "blockgemv.c", "APPLY_SPECIFIC(blockgemv)")
+        COp.__init__(self, "c_code/blockgemv.c", "APPLY_SPECIFIC(blockgemv)")
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
@@ -39,7 +38,7 @@ class GpuSparseBlockGemv(COp):
         return self.params_type.get_params(self, context=node.inputs[0].type.context)
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_headers(self):
         return ['<gpuarray/buffer_blas.h>', '<gpuarray/buffer.h>',
@@ -101,7 +100,7 @@ class GpuSparseBlockOuter(COp):
     params_type = ParamsType(inplace=bool_t, context=gpu_context_type)
 
     def __init__(self, inplace=False):
-        COp.__init__(self, ["blockger.c"], "APPLY_SPECIFIC(blockger)")
+        COp.__init__(self, ["c_code/blockger.c"], "APPLY_SPECIFIC(blockger)")
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
@@ -126,7 +125,7 @@ class GpuSparseBlockOuter(COp):
         return [input_shapes[0]]
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_headers(self):
         return ['<gpuarray/buffer_blas.h>', '<gpuarray/buffer.h>',

@@ -1,7 +1,5 @@
 from __future__ import absolute_import, print_function, division
 
-import os
-
 import numpy as np
 from six import integer_types
 from six.moves import StringIO
@@ -20,7 +18,7 @@ except ImportError:
     pass
 
 from .type import GpuArrayType, gpu_context_type
-from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
+from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel, gpuarray_helper_inc_dir,
                         infer_context_name, gpu_contiguous)
 
 iadd_reg = {}
@@ -843,7 +841,7 @@ class GpuAdvancedIncSubtensor1(Op):
                 '<gpuarray/elemwise.h>', 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_support_code_struct(self, node, nodename):
         return "\nGpuElemwise *iadd;\n"
@@ -1014,7 +1012,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
                 '<gpuarray/types.h>']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_code(self, node, name, inputs, outputs, sub):
         ctx = self.get_params(node).context

@@ -221,7 +221,7 @@ class BaseCorrMM(gof.OpenMPOp):
             sub['blas_set_num_threads'] = ''
             sub['blas_get_num_threads'] = '0'
 
-        files = ['corr_gemm.c']
+        files = [os.path.join('c_code', 'corr_gemm.c')]
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
                  for f in files]
         final_code = ''

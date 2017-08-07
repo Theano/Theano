@@ -1,6 +1,5 @@
 from __future__ import (division, absolute_import, print_function)
 import os
-import os.path
 import theano.tensor as T
 from theano import config
 from theano import gof
@@ -105,7 +104,7 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
     _cop_num_inputs = 3
     _cop_num_outputs = 2
 
-    func_file = "./ctc_wrapper.c"
+    func_file = os.path.join('c_code', 'ctc_wrapper.c')
     func_name = "APPLY_SPECIFIC(ctc_cost_cpu)"
 
     def __init__(self, compute_grad=True, openmp=None):
