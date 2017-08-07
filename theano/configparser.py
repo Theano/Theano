@@ -183,11 +183,10 @@ def _config_print(thing, buf, print_doc=True):
         print("", file=buf)
 
 
-def get_config_md5():
+def get_config_hash():
     """
-    Return a string sha256 of the current config options. hash_from_code uses
-    sha256, and not md5. Updated in PR#5916. Function names will be properly
-    updated in future release.
+    Return a string sha256 of the current config options. In the past,
+    it was md5.
 
     The string should be such that we can safely assume that two different
     config setups will lead to two different strings.

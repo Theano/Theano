@@ -1388,7 +1388,7 @@ class CLinker(link.Linker):
         # names and string instances of md5 will be updated at a later release.
         # See PR#5916 for details.
         if insert_config_hash:
-            sig.append('md5:' + theano.configparser.get_config_md5())
+            sig.append('md5:' + theano.configparser.get_config_hash())
         else:
             sig.append('md5: <omitted>')
 
