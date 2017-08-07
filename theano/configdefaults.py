@@ -193,11 +193,14 @@ AddConfigVar(
     in_c_key=False)
 
 
+def deprecated_gpuarray_sync(val):
+    if val:
+        raise RuntimeError("Flag gpuarray.sync is deprecated and will be removed in next Theano release.")
+    return False
+
 AddConfigVar('gpuarray.sync',
-             """If True, every op will make sure its work is done before
-                returning.  Setting this to True will slow down execution,
-                but give much more accurate results in profiling.""",
-             BoolParam(False),
+             """This flag is deprecated and will be removed in next Theano release.""",
+             ConfigParam(False, allow_override=False, filter=deprecated_gpuarray_sync),
              in_c_key=True)
 
 AddConfigVar('gpuarray.preallocate',

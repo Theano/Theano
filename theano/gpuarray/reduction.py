@@ -1,6 +1,5 @@
 from __future__ import print_function, absolute_import, division
 import os
-import theano
 from theano.gof import Op, Apply
 from theano.gof.type import Generic
 
@@ -125,11 +124,6 @@ class GpuMaxAndArgmax(Op):
             %(fail)s
         }
         """
-        if theano.config.gpuarray.sync:
-            ret += """
-            GpuArray_sync(&%(max)s->ga);
-            GpuArray_sync(&%(argmax)s->ga);
-            """
         return ret % {'X': input_names[0], 'axes': sub['params'], 'max': output_names[0], 'argmax': output_names[1],
                       'max_typecode': max_typecode, 'argmax_typecode': argmax_typecode,
                       'name': name, 'fail': sub['fail']}
@@ -141,4 +135,4 @@ class GpuMaxAndArgmax(Op):
         """ % {'name': name, 'X': inputs[0]}
 
     def c_code_cache_version(self):
-        return (1, 1)
+        return (2,)
