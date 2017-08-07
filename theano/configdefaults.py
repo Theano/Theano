@@ -192,6 +192,17 @@ AddConfigVar(
     BoolParam(True, allow_override=False),
     in_c_key=False)
 
+
+def deprecated_gpuarray_sync(val):
+    if val:
+        raise RuntimeError("Flag gpuarray.sync is deprecated and will be removed in next Theano release.")
+    return False
+
+AddConfigVar('gpuarray.sync',
+             """This flag is deprecated and will be removed in next Theano release.""",
+             ConfigParam(False, allow_override=False, filter=deprecated_gpuarray_sync),
+             in_c_key=True)
+
 AddConfigVar('gpuarray.preallocate',
              """If negative it disables the allocation cache. If
              between 0 and 1 it enables the allocation cache and
