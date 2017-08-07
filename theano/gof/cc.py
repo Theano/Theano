@@ -1301,7 +1301,7 @@ class CLinker(link.Linker):
 
     def cmodule_key_variables(self, inputs, outputs, no_recycling,
                               compile_args=None, libraries=None,
-                              header_dirs=None, insert_config_md5=True,
+                              header_dirs=None, insert_config_hash=True,
                               c_compiler=None):
 
         # Assemble a dummy fgraph using the provided inputs and outputs. It is
@@ -1324,11 +1324,11 @@ class CLinker(link.Linker):
 
         fgraph = FakeFunctionGraph(inputs, outputs)
         return self.cmodule_key_(fgraph, no_recycling, compile_args,
-                                 libraries, header_dirs, insert_config_md5,
+                                 libraries, header_dirs, insert_config_hash,
                                  c_compiler)
 
     def cmodule_key_(self, fgraph, no_recycling, compile_args=None,
-                     libraries=None, header_dirs=None, insert_config_md5=True,
+                     libraries=None, header_dirs=None, insert_config_hash=True,
                      c_compiler=None):
         """
         Do the actual computation of cmodule_key in a static method
@@ -1383,11 +1383,11 @@ class CLinker(link.Linker):
         # parameters from the rest of the key. If you want to add more key
         # elements, they should be before this md5 hash if and only if they
         # can lead to a different compiled file with the same source code.
-		
-	# NOTE: config md5 is not using md5 hash, but sha256 instead. Function
-	# names and string instances of md5 will be updated at a later release. 
-	# See PR#5916 for details.
-        if insert_config_md5:
+
+        # NOTE: config md5 is not using md5 hash, but sha256 instead. Function
+        # names and string instances of md5 will be updated at a later release.
+        # See PR#5916 for details.
+        if insert_config_hash:
             sig.append('md5:' + theano.configparser.get_config_md5())
         else:
             sig.append('md5: <omitted>')
