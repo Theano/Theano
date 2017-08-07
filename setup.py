@@ -53,7 +53,7 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 10
 MICRO               = 0
-SUFFIX              = "dev1"  # Should be blank except for rc's, betas, etc.
+SUFFIX              = "beta1"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
