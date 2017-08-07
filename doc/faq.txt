@@ -43,6 +43,8 @@ CPUs. In fact, Theano asks g++ what are the equivalent flags it uses, and re-use
 them directly.
 
 
+.. _faster-theano-function-compilation:
+
 Faster Theano Function Compilation
 ----------------------------------
 
