@@ -714,6 +714,8 @@ class Conv_opt_test(unittest.TestCase):
         if(direction == 0):
             conv_op = abstract_conv.conv2d(inp1,
                                            inp2,
+                                           input_shapes[0],
+                                           input_shapes[1],
                                            border_mode=border_mode,
                                            subsample=subsample,
                                            filter_dilation=filter_dilation)
@@ -738,9 +740,9 @@ class Conv_opt_test(unittest.TestCase):
 
         theano.config.metaopt.optimizer_including = include_tags
         theano.config.metaopt.optimizer_excluding = exclude_tags
-        mode = theano.Mode().including('conv_meta')
+        mode = mode_with_gpu.including('conv_meta')
 
-        ref_func = theano.function([], conv_op)
+        ref_func = theano.function([], conv_op, mode=mode_with_gpu)
         conv_func = theano.function([], conv_op, mode=mode)
         assert any([isinstance(node.op, op)
                     for node in conv_func.maker.fgraph.toposort()])
@@ -780,9 +782,9 @@ class Conv_opt_test(unittest.TestCase):
 
         theano.config.metaopt.optimizer_including = include_tags
         theano.config.metaopt.optimizer_excluding = exclude_tags
-        mode = theano.Mode().including('conv_meta')
+        mode = mode_with_gpu.including('conv_meta')
 
-        ref_func = theano.function([], conv_op)
+        ref_func = theano.function([], conv_op, mode=mode_with_gpu)
         conv_func = theano.function([], conv_op, mode=mode)
         if op is not None:
             assert any([isinstance(node.op, op)
