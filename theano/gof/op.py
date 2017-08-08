@@ -442,7 +442,7 @@ class CLinkerOp(CLinkerObject):
             The subclass does not override this method.
 
         """
-        raise utils.MethodNotDefined("c_init_code_apply", type(self),
+        raise utils.MethodNotDefined("c_init_code_struct", type(self),
                                      self.__class__.__name__)
 
     def c_support_code_struct(self, node, name):

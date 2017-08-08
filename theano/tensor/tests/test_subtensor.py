@@ -34,6 +34,7 @@ from theano.tensor.subtensor import (AdvancedIncSubtensor,
 from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
+from theano.configparser import change_flags
 
 if PY3:
     def L(i):
@@ -126,14 +127,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             return
         self.fail()
 
+    @change_flags(compute_test_value='off')
     def test1_err_bounds(self):
         n = self.shared(np.ones(3, dtype=self.dtype))
-        ctv_backup = config.compute_test_value
-        config.compute_test_value = 'off'
-        try:
-            t = n[7]
-        finally:
-            config.compute_test_value = ctv_backup
+        t = n[7]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         # Silence expected error messages
         _logger = logging.getLogger('theano.gof.opt')
@@ -223,26 +220,23 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval.shape == (2,))
         self.assertTrue((tval == [0.0, 2.0]).all())
 
+    @change_flags(compute_test_value='off')
     def test2_err_bounds0(self):
         n = self.shared(np.ones((2, 3), dtype=self.dtype) * 5)
-        ctv_backup = config.compute_test_value
-        config.compute_test_value = 'off'
-        try:
-            for idx in [(0, 4), (0, -4)]:
-                t = n[idx]
-                self.assertTrue(isinstance(t.owner.op, Subtensor))
-                # Silence expected warnings
-                _logger = logging.getLogger('theano.gof.opt')
-                oldlevel = _logger.level
-                _logger.setLevel(logging.CRITICAL)
-                try:
-                    self.assertRaises(IndexError,
-                                      self.eval_output_and_check, [t])
-                finally:
-                    _logger.setLevel(oldlevel)
-        finally:
-            config.compute_test_value = ctv_backup
+        for idx in [(0, 4), (0, -4)]:
+            t = n[idx]
+            self.assertTrue(isinstance(t.owner.op, Subtensor))
+            # Silence expected warnings
+            _logger = logging.getLogger('theano.gof.opt')
+            oldlevel = _logger.level
+            _logger.setLevel(logging.CRITICAL)
+            try:
+                self.assertRaises(IndexError,
+                                  self.eval_output_and_check, [t])
+            finally:
+                _logger.setLevel(oldlevel)
 
+    @change_flags(compute_test_value='off')
     def test2_err_bounds1(self):
         n = self.shared((np.ones((2, 3), dtype=self.dtype) * 5))
         t = n[4:5, 3]
@@ -1546,7 +1540,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
         typ = tensor.TensorType(self.m.type.dtype, self.ix2.type.broadcastable)
         assert a.type == typ, (a.type, typ)
         f = theano.function([self.m, self.ix1, self.ix12], a,
-                            allow_input_downcast=True)
+                            allow_input_downcast=True,
+                            mode=self.mode)
         aval = f([[.4, .9, .1],
                   [5, 6, 7],
                   [.5, .3, .15]],
@@ -1564,7 +1559,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
         assert a.type == self.m.type, (a.type, self.m.type)
         f = theano.function([self.m, self.ix1, self.ix12, inc], [a, g_inc],
-                            allow_input_downcast=True)
+                            allow_input_downcast=True,
+                            mode=self.mode)
         aval, gval = f([[.4, .9, .1],
                         [5, 6, 7],
                         [.5, .3, .15]],
@@ -1584,7 +1580,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
         assert a.type == self.m.type, (a.type, self.m.type)
         f = theano.function([self.m, self.ix1, inc], [a, g_inc],
-                            allow_input_downcast=True)
+                            allow_input_downcast=True,
+                            mode=self.mode)
         aval, gval = f([[.4, .9, .1],
                         [5, 6, 7],
                         [.5, .3, .15]],
@@ -1601,7 +1598,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
         assert a.type == self.m.type, (a.type, self.m.type)
         f = theano.function([self.m, self.ix1, self.ix2], a,
-                            allow_input_downcast=True)
+                            allow_input_downcast=True,
+                            mode=self.mode)
         aval = f([[.4, .9, .1],
                   [5, 6, 7],
                   [.5, .3, .15]],
@@ -1615,13 +1613,13 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
     def test_advanced_indexing(self):
         # tests advanced indexing in Theano for 2D and 3D tensors
-        rng = np.random.RandomState(utt.seed_rng())
+        rng = np.random.RandomState(utt.fetch_seed())
         a = rng.uniform(size=(3, 3))
         b = theano.shared(a)
         i = tensor.iscalar()
         j = tensor.iscalar()
         z = b[[i, j], :]
-        f1 = theano.function([i, j], z)
+        f1 = theano.function([i, j], z, mode=self.mode)
         cmd = f1(0, 1) == a[[0, 1], :]
         self.assertTrue(cmd.all())
 
@@ -1629,7 +1627,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         bb = theano.shared(aa)
         k = tensor.iscalar()
         z = bb[[i, j, k], :, i:k]
-        f2 = theano.function([i, j, k], z)
+        f2 = theano.function([i, j, k], z, mode=self.mode)
         cmd = f2(0, 1, 2) == aa[[0, 1, 2], :, 0:2]
         self.assertTrue(cmd.all())
 
@@ -1650,16 +1648,33 @@ class TestAdvancedSubtensor(unittest.TestCase):
         r_idx = np.arange(xx.shape[1])[:, np.newaxis]
         c_idx = np.arange(xx.shape[2])[np.newaxis, :]
 
-        out = X[b_idx, r_idx, c_idx].eval({X: xx})
+        f = theano.function([X], X[b_idx, r_idx, c_idx], mode=self.mode)
+        out = f(xx)
         utt.assert_allclose(out, xx[b_idx, r_idx, c_idx])
 
     def test_adv_sub_slice(self):
         # Reported in https://github.com/Theano/Theano/issues/5898
         var = self.shared(np.zeros([3, 3], dtype=config.floatX))
         slc = tensor.slicetype()
-        f = theano.function([slc], var[slc])
+        f = theano.function([slc], var[slc], mode=self.mode)
         s = slice(1, 3)
         f(s)
+
+    def test_adv_grouped(self):
+        # Reported in https://github.com/Theano/Theano/issues/6152
+        rng = np.random.RandomState(utt.fetch_seed())
+        var_v = rng.rand(3, 63, 4).astype(config.floatX)
+        var = self.shared(var_v)
+        idx1_v = rng.randint(0, 61, size=(5, 4)).astype('int32')
+        idx1 = self.shared(idx1_v)
+        idx2 = tensor.arange(4)
+        out = var[:, idx1, idx2]
+        f = theano.function([], out, mode=self.mode)
+        out_v = f()
+        assert out_v.shape == (3, 5, 4)
+
+        out_np = var_v[:, idx1_v, np.arange(4)]
+        utt.assert_allclose(out_v, out_np)
 
     def test_grad(self):
         ones = np.ones((1, 3), dtype=self.dtype)

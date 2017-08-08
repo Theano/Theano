@@ -255,6 +255,21 @@ import theano and print the config variable, as in:
     not predictable, so if you are close to the peak memory usage, trying both
     could give you a small gain.
 
+.. attribute:: check_stack_trace
+
+    String value, either ``off``, ``log``, ``warn``, ``raise``
+
+    Default: ``off``
+
+    This is a flag for checking the stack trace during the optimization process.
+    If :attr:`check_stack_trace` is set to ``off``, no check is performed on the
+    stack trace. If :attr:`check_stack_trace` is set to ``log`` or ``warn``, a
+    dummy stack trace is inserted that indicates which optimization inserted the
+    variable that had an empty stack trace but, in ``warn`` a warning is also
+    printed.
+    If :attr:`check_stack_trace` is set to ``raise``, an exception is raised if a
+    stack trace is missing.
+
 .. attribute:: openmp
 
     Bool value: either ``True`` or ``False``

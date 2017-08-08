@@ -8,9 +8,11 @@ if theano.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
 
 if (not theano.gpuarray.pygpu_activated and
-        not theano.config.init_gpu_device.startswith('gpu') and
         not theano.config.force_device):
-    theano.gpuarray.init_dev('cuda')
+    try:
+        theano.gpuarray.init_dev('cuda')
+    except Exception:
+        pass
 
 if not theano.gpuarray.pygpu_activated:
     raise SkipTest("pygpu disabled")

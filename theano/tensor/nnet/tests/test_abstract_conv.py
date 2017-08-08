@@ -23,6 +23,7 @@ from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
 from theano.tensor.nnet.abstract_conv import bilinear_upsampling
+from theano.tensor.nnet.abstract_conv import separable_conv2d
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
@@ -770,6 +771,10 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
                            mode=mode)
 
     def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
+
         mode = theano.Mode(optimizer=None)
         if not expect_error:
             self.run_gradinput(inputs_shape=i, filters_shape=f,
@@ -904,6 +909,9 @@ class TestCpuConv2d(BaseTestConv2d):
                           filter_dilation=fd)
 
     def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
+
         if fd != (1, 1):
             raise SkipTest("No dilation implementation for basic cpu ConvOp.")
         mode = self.mode
@@ -1699,3 +1707,227 @@ class TestConv2dGrads(unittest.TestCase):
                                                                                                   )
                         f_new = theano.function([self.x, self.output_grad_wrt], conv_wrt_w_out)
                         utt.assert_allclose(f_new(input_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))
+
+
+class Grouped_conv_noOptim(unittest.TestCase):
+    conv2d = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+    conv2d_op = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+    mode = theano.Mode(optimizer=None)
+    flip_filter = False
+    is_dnn = False
+
+    def setUp(self):
+        self.num_groups = [3, 2, 4, 4]
+        self.border_mode = 'valid'
+        self.subsample = (1, 1)
+        self.img_shape = [(5, 6, 5, 5), (4, 4, 7, 5), (3, 8, 5, 3), (2, 4, 7, 7)]
+        self.kern_shape = [(6, 2, 3, 3), (6, 2, 5, 3), (4, 2, 3, 3), (4, 1, 3, 5)]
+        self.top_shape = [(5, 6, 3, 3), (4, 6, 3, 3), (3, 4, 3, 1), (2, 4, 5, 3)]
+        self.filter_dilation = (1, 1)
+        self.ref_mode = 'FAST_RUN'
+        if theano.config.cxx == "":
+            raise SkipTest("CorrMM needs cxx")
+
+    def test_fwd(self):
+        img_sym = theano.tensor.tensor4('img')
+        kern_sym = theano.tensor.tensor4('kern')
+        for imshp, kshp, groups in zip(self.img_shape, self.kern_shape, self.num_groups):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+            split_imgs = np.split(img, groups, axis=1)
+            split_kern = np.split(kern, groups, axis=0)
+
+            grouped_conv_op = self.conv2d(border_mode=self.border_mode,
+                                          subsample=self.subsample,
+                                          filter_dilation=self.filter_dilation,
+                                          num_groups=groups)
+            if self.flip_filter:
+                grouped_conv_output = grouped_conv_op(img_sym, kern_sym[:, :, ::-1, ::-1])
+            else:
+                grouped_conv_output = grouped_conv_op(img_sym, kern_sym)
+            grouped_func = theano.function([img_sym, kern_sym], grouped_conv_output, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_op)
+                       for node in grouped_func.maker.fgraph.toposort()])
+            grouped_output = grouped_func(img, kern)
+
+            ref_conv_op = conv2d_corr(img_sym,
+                                      kern_sym,
+                                      border_mode=self.border_mode,
+                                      subsample=self.subsample,
+                                      filter_dilation=self.filter_dilation)
+            ref_func = theano.function([img_sym, kern_sym], ref_conv_op,
+                                       mode=self.ref_mode)
+            ref_concat_output = [ref_func(img_arr, kern_arr)
+                                 for img_arr, kern_arr in zip(split_imgs, split_kern)]
+            ref_concat_output = np.concatenate(ref_concat_output, axis=1)
+
+            utt.assert_allclose(grouped_output, ref_concat_output)
+
+            utt.verify_grad(grouped_conv_op,
+                            [img, kern],
+                            mode=self.mode,
+                            eps=1)
+
+    def test_gradweights(self):
+        img_sym = theano.tensor.tensor4('img')
+        top_sym = theano.tensor.tensor4('top')
+        for imshp, kshp, tshp, groups in zip(self.img_shape, self.kern_shape, self.top_shape, self.num_groups):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            top = np.random.random(tshp).astype(theano.config.floatX)
+            split_imgs = np.split(img, groups, axis=1)
+            split_top = np.split(top, groups, axis=1)
+
+            grouped_convgrad_op = self.conv2d_gradw(border_mode=self.border_mode,
+                                                    subsample=self.subsample,
+                                                    filter_dilation=self.filter_dilation,
+                                                    num_groups=groups)
+            grouped_conv_output = grouped_convgrad_op(img_sym,
+                                                      top_sym,
+                                                      tensor.as_tensor_variable(kshp if self.is_dnn else kshp[-2:]))
+            if self.flip_filter:
+                grouped_conv_output = grouped_conv_output[:, :, ::-1, ::-1]
+            grouped_func = theano.function([img_sym, top_sym], grouped_conv_output, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_gradw_op)
+                       for node in grouped_func.maker.fgraph.toposort()])
+            grouped_output = grouped_func(img, top)
+
+            ref_conv_op = conv2d_corr_gw(img_sym,
+                                         top_sym,
+                                         kshp,
+                                         border_mode=self.border_mode,
+                                         subsample=self.subsample,
+                                         filter_dilation=self.filter_dilation)
+            ref_func = theano.function([img_sym, top_sym], ref_conv_op,
+                                       mode=self.ref_mode)
+            ref_concat_output = [ref_func(img_arr, top_arr)
+                                 for img_arr, top_arr in zip(split_imgs, split_top)]
+            ref_concat_output = np.concatenate(ref_concat_output, axis=0)
+
+            utt.assert_allclose(grouped_output, ref_concat_output)
+
+            def conv_gradweight(inputs_val, output_val):
+                return grouped_convgrad_op(inputs_val, output_val,
+                                           tensor.as_tensor_variable(kshp if self.is_dnn else kshp[-2:]))
+
+            utt.verify_grad(conv_gradweight,
+                            [img, top],
+                            mode=self.mode, eps=1)
+
+    def test_gradinputs(self):
+        kern_sym = theano.tensor.tensor4('kern')
+        top_sym = theano.tensor.tensor4('top')
+        for imshp, kshp, tshp, groups in zip(self.img_shape, self.kern_shape, self.top_shape, self.num_groups):
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+            top = np.random.random(tshp).astype(theano.config.floatX)
+            split_kerns = np.split(kern, groups, axis=0)
+            split_top = np.split(top, groups, axis=1)
+
+            grouped_convgrad_op = self.conv2d_gradi(border_mode=self.border_mode,
+                                                    subsample=self.subsample,
+                                                    filter_dilation=self.filter_dilation,
+                                                    num_groups=groups)
+            if self.flip_filter:
+                grouped_conv_output = grouped_convgrad_op(kern_sym[:, :, ::-1, ::-1], top_sym, tensor.as_tensor_variable(imshp[-2:]))
+            else:
+                grouped_conv_output = grouped_convgrad_op(kern_sym,
+                                                          top_sym,
+                                                          tensor.as_tensor_variable(imshp if self.is_dnn else imshp[-2:]))
+            grouped_func = theano.function([kern_sym, top_sym], grouped_conv_output, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_gradi_op)
+                       for node in grouped_func.maker.fgraph.toposort()])
+            grouped_output = grouped_func(kern, top)
+
+            ref_conv_op = conv2d_corr_gi(kern_sym,
+                                         top_sym,
+                                         imshp,
+                                         border_mode=self.border_mode,
+                                         subsample=self.subsample,
+                                         filter_dilation=self.filter_dilation)
+            ref_func = theano.function([kern_sym, top_sym], ref_conv_op,
+                                       mode=self.ref_mode)
+            ref_concat_output = [ref_func(kern_arr, top_arr)
+                                 for kern_arr, top_arr in zip(split_kerns, split_top)]
+            ref_concat_output = np.concatenate(ref_concat_output, axis=1)
+
+            utt.assert_allclose(grouped_output, ref_concat_output)
+
+            def conv_gradinputs(filters_val, output_val):
+                return grouped_convgrad_op(filters_val, output_val,
+                                           tensor.as_tensor_variable(imshp if self.is_dnn else imshp[-2:]))
+
+            utt.verify_grad(conv_gradinputs,
+                            [kern, top],
+                            mode=self.mode, eps=1)
+
+
+class Separable_conv(unittest.TestCase):
+
+    def test_interface(self):
+        x = np.array([[[[1, 2, 3, 4, 5], [3, 2, 1, 4, 5], [3, 3, 1, 3, 6], [5, 3, 2, 1, 1], [4, 7, 1, 2, 1]],
+                       [[3, 3, 1, 2, 6], [6, 5, 4, 3, 1], [3, 4, 5, 2, 3], [6, 4, 1, 3, 4], [2, 3, 4, 2, 5]]]]).astype(theano.config.floatX)
+
+        depthwise_filter = np.array([[[[3, 2, 1], [5, 3, 2], [6, 4, 2]]], [[[5, 5, 2], [3, 7, 4], [3, 5, 4]]],
+                                     [[[7, 4, 7], [5, 3, 3], [1, 3, 1]]], [[[4, 4, 4], [2, 4, 6], [0, 0, 7]]]]).astype(theano.config.floatX)
+
+        pointwise_filter = np.array([[[[4]], [[1]], [[3]], [[5]]], [[[2]], [[1]], [[2]], [[8]]]]).astype(theano.config.floatX)
+        precomp_output = np.array([[[[1385, 1333, 1339], [1382, 1243, 1291], [1303, 1120, 1228]],
+                                  [[1532, 1410, 1259], [1522, 1346, 1314], [1379, 1192, 1286]]]]).astype(theano.config.floatX)
+
+        x_sym = theano.tensor.tensor4('x')
+        dfilter_sym = theano.tensor.tensor4('d')
+        pfilter_sym = theano.tensor.tensor4('p')
+
+        sep_op = separable_conv2d(x_sym, dfilter_sym, pfilter_sym, x.shape[1])
+        fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
+
+        # test for square matrix
+        top = fun(x, depthwise_filter, pointwise_filter)
+        utt.assert_allclose(top, precomp_output)
+
+        # test for non-square matrix
+        top = fun(x[:, :, :3, :], depthwise_filter, pointwise_filter)
+        utt.assert_allclose(top, precomp_output[:, :, :1, :])
+
+        # test if it infers shape
+        sep_op = separable_conv2d(x_sym,
+                                  dfilter_sym,
+                                  pfilter_sym,
+                                  x.shape[1],
+                                  input_shape=x.shape,
+                                  depthwise_filter_shape=depthwise_filter.shape,
+                                  pointwise_filter_shape=pointwise_filter.shape)
+        fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
+        top = fun(x, depthwise_filter, pointwise_filter)
+        utt.assert_allclose(top, precomp_output)
+
+        # test non-default subsample
+        sep_op = separable_conv2d(x_sym,
+                                  dfilter_sym,
+                                  pfilter_sym,
+                                  x.shape[1],
+                                  subsample=(2, 2))
+        fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
+        top = fun(x, depthwise_filter, pointwise_filter)
+        utt.assert_allclose(top, np.delete(np.delete(precomp_output, 1, axis=3), 1, axis=2))
+
+        # test non-default border_mode
+        precomp_output = np.array([[[[140, 266, 343, 206, 59],
+                                     [395, 697, 979, 585, 245],
+                                     [429, 863, 1385, 919, 453],
+                                     [243, 499, 864, 627, 371],
+                                     [90, 183, 291, 254, 202]],
+
+                                    [[149, 289, 359, 213, 58],
+                                     [400, 750, 1076, 662, 266],
+                                     [387, 854, 1532, 1091, 540],
+                                     [174, 411, 971, 786, 518],
+                                     [51, 110, 286, 299, 298]]]]).astype(theano.config.floatX)
+
+        sep_op = separable_conv2d(x_sym, dfilter_sym, pfilter_sym, x.shape[1], border_mode='full')
+        fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
+        top = fun(x[:, :, :3, :3], depthwise_filter, pointwise_filter)
+        utt.assert_allclose(top, precomp_output)

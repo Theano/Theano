@@ -8,7 +8,7 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
                               PyGpuArrayObject **S,
                               PyGpuArrayObject **U, // may be NULL
                               PyGpuArrayObject **VT, // may be NULL
-                              PARAMS_TYPE* params) {
+                              PARAMS_TYPE *params) {
   bool compute_uv = (U != NULL);
   magma_int_t *iwork = NULL, iunused[1];
   magma_int_t M, N, K, ldu, ldv, M_U, N_VT, info;
@@ -21,22 +21,21 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
 
   if (A->ga.typecode != GA_FLOAT) {
     PyErr_SetString(PyExc_TypeError,
-                    "GpuMagmaMatrixInverse: Unsupported data type");
+                    "GpuMagmaSVD: Unsupported data type");
     return -1;
   }
 
   // This is early to match the exit() in the fail label.
   cuda_enter(params->context->ctx);
-  magma_init();
 
   if (!GpuArray_IS_C_CONTIGUOUS(&A->ga)) {
     PyErr_SetString(PyExc_ValueError,
-                    "GpuMagmaMatrixInverse: requires data to be C-contiguous");
-    return 1;
+                    "GpuMagmaSVD: requires data to be C-contiguous");
+    goto fail;
   }
   if (PyGpuArray_NDIM(A) != 2) {
     PyErr_SetString(PyExc_ValueError,
-                    "GpuMagmaMatrixInverse: matrix rank error");
+                    "GpuMagmaSVD: matrix rank error");
     goto fail;
   }
 
@@ -44,7 +43,7 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A,
   // reverse dimensions because MAGMA expects column-major matrices:
   M = PyGpuArray_DIM(A, 1);
   N = PyGpuArray_DIM(A, 0);
-  K = std::min(M, N);
+  K = M < N ? M : N;
 
   if (MAGMA_SUCCESS !=  magma_smalloc_pinned(&a_data, M * N)) {
     PyErr_SetString(PyExc_RuntimeError,
@@ -166,7 +165,6 @@ fail:
     magma_free_pinned(work);
   if (iwork != NULL)
     magma_free_cpu(iwork);
-  magma_finalize();
   cuda_exit(params->context->ctx);
   return res;
 }

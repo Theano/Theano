@@ -762,14 +762,13 @@ class _tensor_py_operators(object):
         """Fill inputted tensor with the assigned value."""
         return theano.tensor.basic.fill(self, value)
 
-    def choose(self, a, choices, out=None, mode='raise'):
+    def choose(self, choices, out=None, mode='raise'):
         """
         Construct an array from an index array and a set of arrays to choose
         from.
 
         """
-        return theano.tensor.basic.choose(self, a, choices, out=None,
-                                          mode='raise')
+        return theano.tensor.basic.choose(self, choices, out=None, mode='raise')
 
     def squeeze(self):
         """
@@ -863,6 +862,9 @@ class TensorConstantSignature(tuple):
             # False, which is why we do not bother with testing `other.has_nan`
             # here).
             return (self.sum == other.sum) and np.all(d0 == d1)
+
+    def __ne__(self, other):
+        return not self == other
 
     def __hash__(self):
         t, d = self

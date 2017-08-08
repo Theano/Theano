@@ -4078,6 +4078,8 @@ class Compositef32(object):
         for i in fgraph.inputs:
             if i.dtype == 'float16':
                 mapping[i] = get_scalar_type('float32')()
+                if hasattr(i.tag, 'test_value'):
+                    mapping[i].tag.test_value = i.tag.test_value
             else:
                 mapping[i] = i
         for node in topo:

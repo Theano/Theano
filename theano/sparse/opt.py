@@ -1350,7 +1350,7 @@ def local_mul_s_d(node):
             CSx = sparse.CSR
             mul_s_d_csx = mul_s_d_csr
         else:
-            raise NotImplemented()
+            raise NotImplementedError
         if x.dtype != y.dtype:
             # mul_s_d_csx don't support that case
             return

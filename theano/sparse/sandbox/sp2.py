@@ -194,7 +194,7 @@ class Multinomial(gof.op.Op):
         assert _is_sparse(p)
 
         if p.format != 'csr':
-            raise NotImplemented()
+            raise NotImplementedError
 
         out[0] = p.copy()
 

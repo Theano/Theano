@@ -1256,7 +1256,8 @@ class test_structureddot(unittest.TestCase):
             overhead_tol = 0.003  # seconds overall
             overhead_rtol = 1.2  # times as long
             utt.assert_allclose(scipy_result, theano_result)
-            if not theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+            if (theano.config.mode == "FAST_RUN" and
+                theano.config.cxx):
                 self.assertFalse(theano_time > overhead_rtol * scipy_time +
                                  overhead_tol)
 
@@ -1292,7 +1293,7 @@ class test_structureddot(unittest.TestCase):
             overhead_tol = 0.002  # seconds
             overhead_rtol = 1.1  # times as long
             utt.assert_allclose(scipy_result, theano_result)
-            if (not theano.config.mode in ["DebugMode", "DEBUG_MODE"] and
+            if (theano.config.mode == "FAST_RUN" and
                 theano.config.cxx):
                     self.assertFalse(
                         theano_time > overhead_rtol * scipy_time + overhead_tol,

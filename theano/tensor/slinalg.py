@@ -80,22 +80,21 @@ class Cholesky(Op):
             else:
                 z[0] = (np.zeros(x.shape) * np.nan).astype(x.dtype)
 
-    def grad(self, inputs, gradients):
+    def L_op(self, inputs, outputs, gradients):
         """
         Cholesky decomposition reverse-mode gradient update.
 
-        Symbolic expression for reverse-mode Cholesky gradient taken from [0]_
+        Symbolic expression for reverse-mode Cholesky gradient taken from [#]_
 
         References
         ----------
-        .. [0] I. Murray, "Differentiation of the Cholesky decomposition",
+        .. [#] I. Murray, "Differentiation of the Cholesky decomposition",
            http://arxiv.org/abs/1602.07527
 
         """
 
-        x = inputs[0]
         dz = gradients[0]
-        chol_x = self(x)
+        chol_x = outputs[0]
 
         # Replace the cholesky decomposition with 1 if there are nans
         # or solve_upper_triangular will throw a ValueError.
@@ -158,12 +157,12 @@ class CholeskyGrad(Op):
 
     def perform(self, node, inputs, outputs):
         """
-        Implements the "reverse-mode" gradient [1]_ for the
+        Implements the "reverse-mode" gradient [#]_ for the
         Cholesky factorization of a positive-definite matrix.
 
         References
         ----------
-        .. [1] S. P. Smith. "Differentiation of the Cholesky Algorithm".
+        .. [#] S. P. Smith. "Differentiation of the Cholesky Algorithm".
            Journal of Computational and Graphical Statistics,
            Vol. 4, No. 2 (Jun.,1995), pp. 134-147
            http://www.jstor.org/stable/1390762
@@ -266,21 +265,21 @@ class Solve(Op):
             cols = Bshape[1]  # b is a Matrix
             return [(rows, cols)]
 
-    def grad(self, inputs, output_gradients):
+    def L_op(self, inputs, outputs, output_gradients):
         """
-        Reverse-mode gradient updates for matrix solve operation c = A \ b.
+        Reverse-mode gradient updates for matrix solve operation c = A \\\ b.
 
-        Symbolic expression for updates taken from [1]_.
+        Symbolic expression for updates taken from [#]_.
 
         References
         ----------
-        ..[1] M. B. Giles, "An extended collection of matrix derivative results
+        .. [#] M. B. Giles, "An extended collection of matrix derivative results
           for forward and reverse mode automatic differentiation",
           http://eprints.maths.ox.ac.uk/1079/
 
         """
         A, b = inputs
-        c = self(A, b)
+        c = outputs[0]
         c_bar = output_gradients[0]
         trans_map = {
             'lower_triangular': 'upper_triangular',
@@ -325,6 +324,9 @@ solve_lower_triangular = Solve(A_structure='lower_triangular', lower=True)
 """Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is lower triangular."""
 solve_upper_triangular = Solve(A_structure='upper_triangular', lower=False)
 """Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is upper triangular."""
+# symmetric solves
+solve_symmetric = Solve(A_structure='symmetric')
+"""Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is symmetric."""
 
 # TODO: Optimizations to replace multiplication by matrix inverse
 #      with solve() Op (still unwritten)

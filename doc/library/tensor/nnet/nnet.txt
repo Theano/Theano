@@ -20,6 +20,8 @@
    - :func:`softmax`
    - :func:`softsign`
    - :func:`relu() <theano.tensor.nnet.relu>`
+   - :func:`elu() <theano.tensor.nnet.elu>`
+   - :func:`selu() <theano.tensor.nnet.selu>`
    - :func:`binary_crossentropy`
    - :func:`sigmoid_binary_crossentropy`
    - :func:`.categorical_crossentropy`
@@ -146,6 +148,10 @@
        y = T.nnet.softmax(T.dot(W,x) + b)
 
 .. autofunction:: theano.tensor.nnet.relu
+
+.. autofunction:: theano.tensor.nnet.elu
+
+.. autofunction:: theano.tensor.nnet.selu
 
 .. function:: binary_crossentropy(output,target)
 
