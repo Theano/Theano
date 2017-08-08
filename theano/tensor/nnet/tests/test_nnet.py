@@ -89,7 +89,7 @@ class T_Softmax(utt.InferShapeTester):
         self._compile_and_check([admat], [Softmax()(admat)],
                                 [admat_val], Softmax)
 
-    def test_multi_axes(self):
+    def test_values_multiples_dim(self):
         dims = 4
         shape = (5,) * dims
         xv = np.random.randn(*shape).astype(config.floatX)
@@ -112,10 +112,22 @@ class T_Softmax(utt.InferShapeTester):
             t_val = f(test_val)
             assert(np.allclose(gt_val, t_val))
 
-    def test_vector_grad(self):
+    # Test gradients values of softmax(x) for arbitraty dimensions
+    def test_grad_multiples_dim(self):
+        dims = 4
+        shape = (5,) * dims
+        xv = np.random.randn(*shape).astype(config.floatX)
+
         def f(a):
-            return softmax_op(a)
-        utt.verify_grad(f, [np.random.rand(4)])
+            return T.nnet.softmax(a)
+
+        for d in xrange(1, dims + 1):
+            # Make a slice of the test data that has the
+            # dimensions we need by doing xv[0,...,0]
+            # For example, for an array of shape (5,), we
+            # need to do xv[0, 0, 0, 0].
+            test_val = xv[((0,) * (dims - d))]
+            utt.verify_grad(f, [test_val])
 
 
 class T_SoftmaxWithBias(utt.InferShapeTester):
@@ -180,38 +192,6 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
         self._compile_and_check([admat, advec],
                                 [SoftmaxWithBias()(admat, advec)],
                                 [admat_val, advec_val], SoftmaxWithBias)
-
-
-def test_multiple_axes():
-    def test_vals(in_val):
-        x = T.TensorType(
-            dtype=config.floatX,
-            broadcastable=(False,) * in_val.ndim
-        )('x')
-
-        f = theano.function(
-            inputs=[x],
-            outputs=T.log(T.nnet.softmax(x))
-        )
-        ops = [node.op for node in f.maker.fgraph.toposort()]
-        assert logsoftmax_op in ops
-        assert np.allclose(
-            f(in_val),
-            np.log(np.exp(in_val) / np.exp(in_val).sum(axis=-1, keepdims=True))
-        )
-
-    def test_grad(in_val):
-        def f(x):
-            idx = (in_val.ndim - 1) * (0,) + (1,)
-            return T.log(T.nnet.softmax(x))[idx]
-
-        utt.verify_grad(f, [in_val])
-
-    for axes in xrange(1, 5 + 1):
-        dimensions = (5,) * axes
-        in_val = 10 * np.random.randn(*dimensions).astype(config.floatX)
-        yield test_vals, in_val
-        yield test_grad, in_val
 
 
 class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
