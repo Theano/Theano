@@ -590,8 +590,8 @@ class T_picklefunction(unittest.TestCase):
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'),
-                      In(s, value=0.0, update=s + a * x, mutable=True)], s + a * x)
-
+                      In(s, value=0.0, update=s + a * x, mutable=True)],
+                     s + a * x)
         try:
             g = copy.deepcopy(f)
         except NotImplementedError as e:
@@ -627,6 +627,27 @@ class T_picklefunction(unittest.TestCase):
         self.assertFalse(f(1, 2) == g(1, 2))  # they should not be equal anymore.
         g(1, 2)  # put them back in sync
         self.assertTrue(f(3) == g(3))  # They should be in sync again.
+
+    def test_deepcopy_trust_input(self):
+        a = T.dscalar()  # the a is for 'anonymous' (un-named).
+        x, s = T.dscalars('xs')
+
+        f = function([x, In(a, value=1.0, name='a'),
+                      In(s, value=0.0, update=s + a * x, mutable=True)],
+                     s + a * x)
+        f.trust_input = True
+        try:
+            g = copy.deepcopy(f)
+        except NotImplementedError as e:
+            if e[0].startswith('DebugMode is not picklable'):
+                return
+            else:
+                raise
+        self.assertTrue(f.trust_input is g.trust_input)
+        f(np.asarray(2.))
+        self.assertRaises((ValueError, AttributeError), f, 2.)
+        g(np.asarray(2.))
+        self.assertRaises((ValueError, AttributeError), g, 2.)
 
     def test_deepcopy_shared_container(self):
         # Ensure that shared containers remain shared after a deep copy.

@@ -1057,19 +1057,21 @@ def _pickle_Function(f):
                                             (str(d_i), str(d_j)))
                         else:
                             raise AliasedMemoryError(d_i, d_j)
-    rval = (_constructor_Function, (f.maker, input_storage, inputs_data))
+    rval = (_constructor_Function, (f.maker, input_storage, inputs_data, f.trust_input))
     return rval
 
 
-def _constructor_Function(maker, input_storage, inputs_data):
+def _constructor_Function(maker, input_storage, inputs_data, trust_input=False):
     if not theano.config.unpickle_function:
         return None
+
     f = maker.create(input_storage, trustme=True)
     assert len(f.input_storage) == len(inputs_data)
     for container, x in zip(f.input_storage, inputs_data):
         assert (container.data is x) or \
             (isinstance(x, np.ndarray) and (container.data == x).all()) or \
             (container.data == x)
+    f.trust_input = trust_input
     return f
 
 copyreg.pickle(Function, _pickle_Function)
