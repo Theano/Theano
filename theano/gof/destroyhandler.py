@@ -395,6 +395,16 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         fgraph.destroyers = get_destroyers_of
 
         def has_destroyers(protected_list):
+            if not self.stale_droot:
+                droot, _, root_destroyer = self.refresh_droot_impact()
+                for protected_var in protected_list:
+                    try:
+                        root_destroyer[droot[protected_var]]
+                    except AttributeError:
+                        pass
+                    else:
+                        return True
+                return False
 
             def recursive_destroys_finder(protected_var):
                 # protected_var is the idx'th input of app.
