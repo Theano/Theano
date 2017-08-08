@@ -377,7 +377,7 @@ def is_same_entry(entry_1, entry_2):
 
 def get_module_hash(src_code, key):
     """
-    Return an MD5 hash that uniquely identifies a module.
+    Return a SHA256 hash that uniquely identifies a module.
 
     This hash takes into account:
         1. The C source code of the module (`src_code`).
@@ -415,9 +415,12 @@ def get_module_hash(src_code, key):
             # libraries to link against.
             to_hash += list(key_element)
         elif isinstance(key_element, string_types):
-            if key_element.startswith('md5:'):
-                # This is the md5 hash of the config options. We can stop
-                # here.
+            if (key_element.startswith('md5:') or
+                    key_element.startswith('hash:')):
+                # This is actually a sha256 hash of the config options.
+                # Currently, we still keep md5 to don't break old Theano.
+                # We add 'hash:' so that when we change it in
+                # the futur, it won't break this version of Theano.
                 break
             elif (key_element.startswith('NPY_ABI_VERSION=0x') or
                   key_element.startswith('c_compiler_str=')):
@@ -435,29 +438,36 @@ def get_safe_part(key):
 
     This tuple should only contain objects whose __eq__ and __hash__ methods
     can be trusted (currently: the version part of the key, as well as the
-    md5 hash of the config options).
+    SHA256 hash of the config options).
     It is used to reduce the amount of key comparisons one has to go through
     in order to find broken keys (i.e. keys with bad implementations of __eq__
     or __hash__).
+
 
     """
     version = key[0]
     # This function should only be called on versioned keys.
     assert version
 
-    # Find the md5 hash part.
+    # Find the hash part. This is actually a sha256 hash of the config
+    # options.  Currently, we still keep md5 to don't break old
+    # Theano.  We add 'hash:' so that when we change it
+    # in the futur, it won't break this version of Theano.
     c_link_key = key[1]
     # In case in the future, we don't have an md5 part and we have
     # such stuff in the cache.  In that case, we can set None, and the
     # rest of the cache mechanism will just skip that key.
-    md5 = None
+    hash = None
     for key_element in c_link_key[1:]:
-        if (isinstance(key_element, string_types) and
-                key_element.startswith('md5:')):
-            md5 = key_element[4:]
-            break
+        if isinstance(key_element, string_types):
+            if key_element.startswith('md5:'):
+                hash = key_element[4:]
+                break
+            elif key_element.startswith('hash:'):
+                hash = key_element[5:]
+                break
 
-    return key[0] + (md5, )
+    return key[0] + (hash, )
 
 
 class KeyData(object):
@@ -1238,7 +1248,7 @@ class ModuleCache(object):
                 "Ops. The file is: %s. The key is: %s" % (msg, key_pkl, key))
         # Also verify that there exists no other loaded key that would be equal
         # to this key. In order to speed things up, we only compare to keys
-        # with the same version part and config md5, since we can assume this
+        # with the same version part and config hash, since we can assume this
         # part of the key is not broken.
         for other in self.similar_keys.get(get_safe_part(key), []):
             if other is not key and other == key and hash(other) != hash(key):
