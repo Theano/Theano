@@ -485,6 +485,11 @@ PyGpuArrayObject* corr3dMM(PyGpuArrayObject *const bottom,
                 "GpuCorr3dMM images and kernel must have the same stack size\n");
         return NULL;
     }
+    if ((nFilters % numgroups) != 0) {
+        PyErr_SetString(PyExc_ValueError,
+                "CorrMM the number of filters must be divisible by the number of groups\n");
+        return NULL;
+    }
     // implicit dilated filter
     const size_t dil_kH = (kH - 1) * dilH + 1;
     const size_t dil_kW = (kW - 1) * dilW + 1;
