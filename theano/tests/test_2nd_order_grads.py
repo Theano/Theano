@@ -1,4 +1,3 @@
-
 # Test for jacobian/hessian functions in Theano
 
 from __future__ import absolute_import, print_function, division
@@ -145,7 +144,6 @@ def test004_hessian():
 
 
 def test_jacobian_disconnected_inputs():
-
     # Test that disconnected inputs are properly handled by jacobian.
     
     v1 = tensor.vector()
