@@ -537,6 +537,10 @@ AddConfigVar('cxx',
              in_c_key=False)
 del param
 
+if not config.cxx:
+    warnings.warn("DeprecationWarning: there is no c++ compiler."
+                  "This is deprecated and with Theano 0.11 a c++ compiler will be mandatory")
+
 if rc == 0 and config.cxx != "":
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
