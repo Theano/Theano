@@ -1076,6 +1076,13 @@ def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
 
 
 @register_opt('fast_compile')
+@op_lifter([tensor.AdvancedBooleanSubtensor])
+@register_opt2([tensor.AdvancedBooleanSubtensor], 'fast_compile')
+def local_gpua_advanced_boolean_subtensor(op, context_name, inputs, outputs):
+    return GpuAdvancedSubtensor()
+
+
+@register_opt('fast_compile')
 @op_lifter([tensor.AdvancedIncSubtensor1])
 @register_opt2([tensor.AdvancedIncSubtensor1], 'fast_compile')
 def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
@@ -1113,6 +1120,20 @@ def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
 # @register_opt2([tensor.AdvancedIncSubtensor], 'fast_compile')
 def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
     if not op.set_instead_of_inc:
+        return GpuAdvancedIncSubtensor()
+    else:
+        return False
+
+
+# Do not register this optimization for now, as it slows down the
+# execution by a lot in important cases.
+# @register_opt('fast_compile')
+# @op_lifter([tensor.AdvancedBooleanIncSubtensor])
+# @register_opt2([tensor.AdvancedBooleanIncSubtensor], 'fast_compile')
+def local_gpua_advanced_boolean_incsubtensor(op, context_name, inputs, outputs):
+    # GpuAdvancedIncSubtensor only works with a single boolean mask,
+    # but not with fancy combinations.
+    if not op.set_instead_of_inc and len(inputs) == 3:
         return GpuAdvancedIncSubtensor()
     else:
         return False

@@ -55,6 +55,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                  adv_sub1=tensor.AdvancedSubtensor1,
                  adv_incsub1=tensor.AdvancedIncSubtensor1,
                  adv_sub=tensor.AdvancedSubtensor,
+                 adv_bool_sub=tensor.AdvancedBooleanSubtensor,
+                 adv_bool_inc_sub=tensor.AdvancedBooleanIncSubtensor,
                  mode=None,
                  dtype=theano.config.floatX,
                  type=tensor.TensorType,
@@ -66,6 +68,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.adv_sub1 = adv_sub1
         self.adv_incsub1 = adv_incsub1
         self.adv_sub = adv_sub
+        self.adv_bool_sub = adv_bool_sub
+        self.adv_bool_inc_sub = adv_bool_inc_sub
         self.dimshuffle = dimshuffle
         if mode is None:
             mode = theano.compile.mode.get_default_mode()
@@ -75,7 +79,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.type = type
         self.ignore_topo = ignore_topo
         self.fast_compile = theano.config.mode == 'FAST_COMPILE'
-        self.ops = (sub, inc_sub, adv_sub1, adv_incsub1)
+        self.ops = (sub, inc_sub, adv_sub1, adv_incsub1,
+                    adv_bool_sub, adv_bool_inc_sub)
         return super(T_subtensor, self).__init__(name)
 
     def function(self, inputs, outputs, accept_inplace=False,
@@ -361,18 +366,24 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         numpy_n = np.arange(6, dtype=self.dtype).reshape((2, 3))
         n = self.shared(numpy_n)
 
+        # indexing with a mask for some dimensions
+        mask = np.array([True, False])
+        val = self.eval_output_and_check(n[mask], op_type=self.adv_bool_sub)
+        assert_array_equal(numpy_n[mask], val)
+        val = self.eval_output_and_check(inc_subtensor(n[mask], 1),
+                                         op_type=self.adv_bool_inc_sub)
+        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, 1), val)
+        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, numpy_n[mask]),
+                           inc_subtensor(n[mask], n[mask]).eval())
+
+        # test gradient
+        utt.verify_grad(lambda m: m[mask], [numpy_n])
+        utt.verify_grad(lambda m: inc_subtensor(m[mask], 1), [numpy_n])
+
         # indexing with a comparison (should translate to a boolean mask)
         assert_array_equal(numpy_n[numpy_n > 2], n[n > 2].eval())
         assert_array_equal(numpy_n[[0], numpy_n[0] > 2], n[[0], n[0] > 2].eval())
         assert_array_equal(numpy_n[[1], numpy_n[0] > 2], n[[1], n[0] > 2].eval())
-
-        # indexing with a mask for some dimensions
-        mask = np.array([True, False])
-        assert_array_equal(numpy_n[mask], n[mask].eval())
-        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, 1),
-                           inc_subtensor(n[mask], 1).eval())
-        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, numpy_n[mask]),
-                           inc_subtensor(n[mask], n[mask]).eval())
 
         # indexing with a mask for the second dimension
         mask = np.array([True, False, True])
@@ -383,6 +394,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert_array_equal(numpy_n[:1, mask], n[:1, mask].eval())
         assert_array_equal(numpy_n[1:, mask, np.newaxis], n[1:, mask, np.newaxis].eval())
         assert_array_equal(numpy_n[np.newaxis, 1:, mask], n[np.newaxis, 1:, mask].eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, [0, mask], 1),
+                           inc_subtensor(n[(0,) + mask.nonzero()], 1).eval())
         assert_array_equal(numpy_inc_subtensor(numpy_n, [0, mask], 1),
                            inc_subtensor(n[0, mask], 1).eval())
         assert_array_equal(numpy_inc_subtensor(numpy_n, [slice(None), mask], 1),

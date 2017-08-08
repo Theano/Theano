@@ -529,8 +529,10 @@ class _tensor_py_operators(object):
         # Determine if advanced indexing is needed or not
         # The logic is already in Subtensor.convert: if it succeeds,
         # standard indexing is used; if it fails with
-        # AdvancedIndexingError, advanced indexing
+        # AdvancedIndexingError, advanced indexing, or
+        # AdvancedBooleanIndexingError, advanced indexing with boolean masks
         advanced = False
+        advanced_boolean = False
         axis = None
         for i, arg in enumerate(args):
             try:
@@ -543,8 +545,14 @@ class _tensor_py_operators(object):
                 else:
                     advanced = True
                     axis = i
+            except theano.tensor.subtensor.AdvancedBooleanIndexingError:
+                advanced = False
+                advanced_boolean = True
+                break
 
-        if advanced:
+        if advanced_boolean:
+            return theano.tensor.subtensor.advanced_boolean_subtensor(self, *args)
+        elif advanced:
             if (axis is not None and
                 all(isinstance(a, slice) and
                     equal_slices(a, slice(None)) for a in args[:axis]) and
