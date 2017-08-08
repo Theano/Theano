@@ -1,7 +1,8 @@
 #section kernels
 
 #kernel dilated_im3d2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size :
-// TODO check kernel flags
+#include "cluda.h"
+
 // This uses a lot of code from Caffe (http://caffe.berkeleyvision.org/);
 // sources are clearly marked. Below we reproduce the original license of
 // the Caffe software.
@@ -87,6 +88,8 @@ KERNEL void dilated_im3d2col_kernel(const ga_size n,
 }
 
 #kernel im3d2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size :
+#include "cluda.h"
+
 KERNEL void im3d2col_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_INPUT_0 * data_im,
     const ga_size offset_im,
@@ -139,6 +142,8 @@ KERNEL void im3d2col_kernel(const ga_size n,
 
 // GPU kernel for the case of dilation
 #kernel dilated_col2im3d_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size, size :
+#include "cluda.h"
+
 KERNEL void dilated_col2im3d_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_INPUT_0 * data_col,
     const ga_size offset_col,
@@ -207,6 +212,7 @@ KERNEL void dilated_col2im3d_kernel(const ga_size n,
 }
 
 #kernel col2im3d_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size, size :
+#include "cluda.h"
 
 KERNEL void col2im3d_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_INPUT_0 * data_col,

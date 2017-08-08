@@ -61,7 +61,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         kernels = []
         kname = "k_multi_warp_less"
         k_var = "k_multi_warp_less_" + nodename
-        code = """
+        code = """#include "cluda.h"
+
         // a version that uses less registers but doesn't work in all cases.
         %(mode_constants)s
         KERNEL void %(kname)s(
@@ -163,7 +164,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
 
         kname = "k_multi_warp"
         k_var = "k_multi_warp_" + nodename
-        code = """
+        code = """#include "cluda.h"
+
         %(mode_constants)s
         KERNEL void %(kname)s(
             const ga_int mode,

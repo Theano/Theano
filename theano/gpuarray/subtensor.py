@@ -1121,7 +1121,7 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
         flags = Kernel.get_flags(dtype_x, dtype_y, dtype_ind)
         kname = "k_vector_add_fast"
         k_var = "k_vector_add_fast_" + nodename
-        code = """#include <cluda.h>
+        code = """#include "cluda.h"
         KERNEL void k_vector_add_fast(const ga_size numRowsX,
                                       const ga_size numColsX,
                                       const ga_ssize stridesX0,
@@ -1211,7 +1211,7 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
         PyGpuArray_DIMS(py_other)[0],
         PyGpuArray_DIMS(py_other)[1],
         PyGpuArray_DIMS(py_other)[0] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[0] / itemsize_y,
-        PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / itemsize_y
+        PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / itemsize_y,
         py_other->ga.data,
         py_other->ga.offset,
         PyGpuArray_DIMS(indices_arr)[0],

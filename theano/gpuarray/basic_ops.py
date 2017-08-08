@@ -158,7 +158,7 @@ class Kernel(object):
             the `params` list consists of C typecodes
 
     It can also have the key `cflags` which is a string of C flag
-    values like this `"GA_USE_DOUBLE|GA_USE_CLUDA"`.
+    values like this `"GA_USE_DOUBLE|GA_USE_SMALL"`.
 
     Parameters
     ----------
@@ -216,7 +216,7 @@ class Kernel(object):
             else:
                 raise TypeError("can't get a dtype from %s" % (type(t),))
         dtypes = [get_dtype(t) for t in types]
-        flags = dict(cluda=True)
+        flags = dict()
         if any(d == np.float64 for d in dtypes):
             flags['have_double'] = True
         if any(d.itemsize < 4 for d in dtypes):
@@ -231,8 +231,6 @@ class Kernel(object):
         res = []
         if self.flags.get('cflags', '') != '':
             res.append(self.flags['cflags'])
-        if self.flags.get('cluda', False):
-            res.append('GA_USE_CLUDA')
         if self.flags.get('have_double', False):
             res.append('GA_USE_DOUBLE')
         if self.flags.get('have_small', False):
@@ -241,15 +239,16 @@ class Kernel(object):
             res.append('GA_USE_COMPLEX')
         if self.flags.get('have_half', False):
             res.append('GA_USE_HALF')
-        return '|'.join(res)
+        res = '|'.join(res)
+        if not res:
+            return '0'
+        return res
 
     def _get_py_flags(self):
         res = dict(self.flags)
         cflags = res.pop('cflags', '')
         for fl in cflags.split('|'):
             fl = fl.strip()
-            if fl == 'GA_USE_CLUDA':
-                res['cluda'] = True
             if fl == 'GA_USE_DOUBLE':
                 res['have_double'] = True
             if fl == 'GA_USE_SMALL':
@@ -555,7 +554,7 @@ class CGpuKernelBase(COp, GpuKernelBase):
                 kflags = splt2[2].strip()
                 kcode = def_macros + '\n' + kcode + '\n' + undef_macros
                 res.append(Kernel(kcode, ktypes, kname,
-                                  flags=dict(cluda=True, cflags=kflags)))
+                                  flags=dict(cflags=kflags)))
                 n += 2
             self._cached_kernels = res
             return res
@@ -1619,7 +1618,8 @@ class GpuEye(GpuKernelBase, Op):
                 for i in xrange(3)]
 
     def gpu_kernels(self, node, name):
-        code = """
+        code = """#include "cluda.h"
+
 KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size a_off,
                 ga_size n, ga_size m, ga_ssize k) {
     a = (GLOBAL_MEM %(ctype)s *)(((GLOBAL_MEM char *)a) + a_off);

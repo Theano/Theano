@@ -75,7 +75,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
             gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE
         ]
         sio = StringIO()
-        print("""
+        print("""#include "cluda.h"
+
         KERNEL void %(kname)s(const ga_size M, const ga_size N,
             GLOBAL_MEM const %(type_x)s* x_data, const ga_size offset_x, const ga_ssize xs0, const ga_ssize xs1,
             GLOBAL_MEM const %(type_b)s* b, const ga_size offset_b, const ga_ssize bs0,
@@ -393,7 +394,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
             gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SSIZE, gpuarray.SSIZE,
         ]
         sio = StringIO()
-        print("""
+        print("""#include "cluda.h"
+
         KERNEL void %(kname)s(
            const ga_size N, const ga_size K,
            GLOBAL_MEM const %(type_dnll)s* dnll, const ga_size offset_dnll, const ga_ssize dnll_s0,
@@ -557,7 +559,8 @@ class GpuSoftmax(GpuKernelBase, Op):
         kernels = []
         kname = "kSoftmax"
         k_var = "kSoftmax_" + nodename
-        code = """
+        code = """#include "cluda.h"
+
         KERNEL void %(kname)s (const ga_size M, const ga_size N,
                                GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1,
                                GLOBAL_MEM %(type_sm)s * sm, const ga_size offset_sm, const ga_ssize sm_s0, const ga_ssize sm_s1 GA_DECL_SHARED_PARAM(%(type_acc)s, buf))
@@ -630,7 +633,8 @@ class GpuSoftmax(GpuKernelBase, Op):
                               flags=flags, objvar=k_var))
         kname = "kSoftmax_fixed_shared"
         k_var = "kSoftmax_fixed_shared" + nodename
-        code = """
+        code = """#include "cluda.h"
+
         KERNEL void %(kname)s (const ga_size M, const ga_size N,
                                GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1,
                                GLOBAL_MEM %(type_sm)s * sm, const ga_size offset_sm, const ga_ssize sm_s0, const ga_ssize sm_s1 GA_DECL_SHARED_PARAM(%(type_acc)s, buf))
@@ -854,7 +858,8 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
         kernels = []
         kname = "kSoftmaxWithBias"
         k_var = "kSoftmaxWithBias_" + nodename
-        code = """
+        code = """#include "cluda.h"
+
         KERNEL void %(kname)s (const ga_size M, const ga_size N,
                        GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1,
                        GLOBAL_MEM const %(type_b)s * b, const ga_size offset_b, const ga_ssize sb0,
@@ -930,7 +935,8 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
                               flags=flags, objvar=k_var))
         kname = "kSoftmaxWithBias_fixed_shared"
         k_var = "kSoftmaxWithBias_fixed_shared" + nodename
-        code = """
+        code = """#include "cluda.h"
+
         KERNEL void %(kname)s (const ga_size M, const ga_size N,
                        GLOBAL_MEM const %(type_x)s * x, const ga_size offset_x, const ga_ssize sx0, const ga_ssize sx1,
                        GLOBAL_MEM const %(type_b)s * b, const ga_size offset_b, const ga_ssize sb0,

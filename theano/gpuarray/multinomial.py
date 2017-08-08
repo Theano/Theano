@@ -66,7 +66,8 @@ class GPUAMultinomialFromUniform(GpuKernelBase, Op):
         work_ctype = pygpu.gpuarray.dtype_to_ctype(work_dtype(node.inputs[0].dtype))
         write_out_ctype = write_w(node.outputs[0].dtype)
         load_in_ctype = load_w(node.inputs[0].dtype)
-        code = """
+        code = """#include "cluda.h"
+
 KERNEL void k_multi_warp_multinomial(
     const ga_size nb_multi,
     const ga_size nb_outcomes,
@@ -276,7 +277,8 @@ class GPUAChoiceFromUniform(GpuKernelBase, Op):
 
     def gpu_kernels(self, node, name):
         replace = int(self.replace)
-        code = """
+        code = """#include "cluda.h"
+
 KERNEL void k_multi_warp_multinomial_wor(
     const ga_size nb_multi,
     const ga_size nb_outcomes,
