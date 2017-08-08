@@ -654,6 +654,9 @@ def guess_n_streams(size, warn=False):
         return 60 * 256
 
 
+target_notset = object()
+
+
 class MRG_RandomStreams(object):
     """
     Module component with similar interface to numpy.random
@@ -805,7 +808,7 @@ class MRG_RandomStreams(object):
         return sample
 
     def uniform(self, size, low=0.0, high=1.0, ndim=None, dtype=None,
-                nstreams=None):
+                nstreams=None, target=target_notset):
         # TODO : need description for parameter 'size', 'ndim', 'nstreams'
         """
         Sample a tensor of given size whose element from a uniform
@@ -864,8 +867,10 @@ class MRG_RandomStreams(object):
         if nstreams is None:
             nstreams = self.n_streams(size)
         rstates = self.get_substream_rstates(nstreams, dtype)
-
-        node_rstate = shared(rstates)
+        d = {}
+        if target is not target_notset:
+            d = dict(target=target)
+        node_rstate = shared(rstates, **d)
         u = self.pretty_return(node_rstate,
                                *mrg_uniform.new(node_rstate,
                                                 ndim, dtype, size),
@@ -893,7 +898,7 @@ class MRG_RandomStreams(object):
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
 
     def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
-                    nstreams=None):
+                    nstreams=None, target=target_notset):
         # TODO : need description for parameter and return
         """
         Sample `n` (`n` needs to be >= 1, default 1) times from a multinomial
@@ -935,7 +940,8 @@ class MRG_RandomStreams(object):
                 "which does not use the ndim argument.")
         if pvals.ndim == 2:
             size = pvals[:, 0].shape * n
-            unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
+            unis = self.uniform(size=size, ndim=1, nstreams=nstreams,
+                                target=target)
             op = multinomial.MultinomialFromUniform(dtype)
             n_samples = as_tensor_variable(n)
             return op(pvals, unis, n_samples)
