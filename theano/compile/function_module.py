@@ -1730,7 +1730,7 @@ class FunctionMaker(object):
 
 def _constructor_FunctionMaker(kwargs):
     # Needed for old pickle
-    # Old pickle have at least the problem that output_keys where not safed.
+    # Old pickle have at least the problem that output_keys where not saved.
     if theano.config.unpickle_function:
         if theano.config.reoptimize_unpickled_function:
             del kwargs['fgraph']
