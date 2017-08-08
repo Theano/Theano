@@ -21,7 +21,6 @@ one = theano.tensor.as_tensor_variable(1.)
 
 
 def grad_sources_inputs(sources, inputs):
-
     # This implements the old grad_sources_inputs function in terms of
     # the new interface so the tests don't need to be rewritten.
 
