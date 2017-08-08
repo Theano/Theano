@@ -1714,28 +1714,15 @@ class FunctionMaker(object):
         return fn
 
 
-def _pickle_FunctionMaker(self):
-    kwargs = dict(
-        inputs=self.inputs,
-        outputs=self.orig_outputs,
-        fgraph=self.fgraph,
-        mode=self.mode,
-        accept_inplace=self.accept_inplace,
-        function_builder=self.function_builder,
-        profile=self.profile,
-        on_unused_input=self.on_unused_input)
-    return (_constructor_FunctionMaker, (kwargs,))
-
-
 def _constructor_FunctionMaker(kwargs):
+    # Needed for old pickle
+    # Old pickle have at least the problem that output_keys where not safed.
     if theano.config.unpickle_function:
         if theano.config.reoptimize_unpickled_function:
             del kwargs['fgraph']
         return FunctionMaker(**kwargs)
     else:
         return None
-
-copyreg.pickle(FunctionMaker, _pickle_FunctionMaker)
 
 __checkers = []
 

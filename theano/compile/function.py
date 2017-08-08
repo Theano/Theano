@@ -10,7 +10,6 @@ import traceback as tb
 import re
 
 from six import string_types
-from theano.compile.io import In
 from theano.compile.function_module import orig_function
 from theano.compile.pfunc import pfunc
 import warnings
