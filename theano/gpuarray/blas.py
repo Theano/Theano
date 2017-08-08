@@ -1074,7 +1074,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
     _f16_ok = True
 
     def __init__(self, border_mode="valid", subsample=(1, 1, 1),
-                 filter_dilation=(1, 1, 1)):
+                 filter_dilation=(1, 1, 1), num_groups=1):
         if isinstance(border_mode, integer_types):
             border_mode = (border_mode, border_mode, border_mode)
         if isinstance(border_mode, tuple):
@@ -1093,6 +1093,9 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
             raise ValueError("filter_dilation must have three elements")
         self.subsample = tuple(subsample)
         self.filter_dilation = tuple(filter_dilation)
+        if num_groups < 1:
+            raise ValueError("Number of groups should be greater than 0")
+        self.num_groups = num_groups
         CGpuKernelBase.__init__(self, ['c_code/corr3d_gemm.c'])
 
     @property
@@ -1102,11 +1105,12 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         return (0, 0, 0)
 
     def __str__(self):
-        return '%s{%s, %s, %s}' % (
+        return '%s{%s, %s, %s, %s}' % (
             self.__class__.__name__,
             self.border_mode,
             str(self.subsample),
-            str(self.filter_dilation))
+            str(self.filter_dilation),
+            str(self.num_groups))
 
     def flops(self, inp, outp):
         """
@@ -1189,6 +1193,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         """
         dH, dW, dD = self.subsample
         dilH, dilW, dilD = self.filter_dilation
+        numgroups = self.num_groups
         if self.border_mode == "half":
             padH = padW = padD = -1
         elif self.border_mode == "full":
@@ -1249,6 +1254,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
     int padH = %(padH)s;
     int padW = %(padW)s;
     int padD = %(padD)s;
+    int numgroups = %(numgroups)s;
 
     PyGpuArrayObject * bottom = %(bottom)s;
     PyGpuArrayObject * weights = %(weights)s;
@@ -1372,7 +1378,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         // output is weights: (num_filters, num_channels, height, width, depth)
         // height, width and depth: weights = (bottom + 2*pad - (top - 1) * sample - 1) / dil + 1
         out_dim[0] = PyGpuArray_DIMS(top)[1];
-        out_dim[1] = PyGpuArray_DIMS(bottom)[1];
+        out_dim[1] = PyGpuArray_DIMS(bottom)[1] / numgroups;
         out_dim[2] = kH;  // already inferred further above
         out_dim[3] = kW;  // how convenient
         out_dim[4] = kD;
@@ -1399,7 +1405,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         // output is bottom: (batchsize, num_channels, height, width, depth)
         // height, width and depth: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = PyGpuArray_DIMS(top)[0];
-        out_dim[1] = PyGpuArray_DIMS(weights)[1];
+        out_dim[1] = PyGpuArray_DIMS(weights)[1] * numgroups;
         out_dim[2] = (%(height)s != -1) ? %(height)s : (PyGpuArray_DIMS(top)[2] - 1) * dH + (PyGpuArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
         out_dim[3] = (%(width)s != -1) ? %(width)s : (PyGpuArray_DIMS(top)[3] - 1) * dW + (PyGpuArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
         out_dim[4] = (%(depth)s != -1) ? %(depth)s : (PyGpuArray_DIMS(top)[4] - 1) * dD + (PyGpuArray_DIMS(weights)[4]-1)*dilD + 1 - 2*padD;
@@ -1448,7 +1454,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
 
     // Call GPU code
     out2 = corr3dMM(%(bottom)s, %(weights)s, %(top)s, direction,
-                    dH, dW, dD, dilH, dilW, dilD, padH, padW, padD);
+                    dH, dW, dD, dilH, dilW, dilD, padH, padW, padD, numgroups);
     if (out2==NULL){
        %(fail)s
     }
@@ -1503,9 +1509,10 @@ class GpuCorr3dMM(BaseGpuCorr3dMM):
     """
     def __init__(self, border_mode="valid",
                  subsample=(1, 1, 1),
-                 filter_dilation=(1, 1, 1)):
+                 filter_dilation=(1, 1, 1),
+                 num_groups=1):
         super(GpuCorr3dMM, self).__init__(border_mode, subsample,
-                                          filter_dilation)
+                                          filter_dilation, num_groups)
 
     def make_node(self, img, kern):
         ctx_name = infer_context_name(img, kern)
@@ -1534,11 +1541,13 @@ class GpuCorr3dMM(BaseGpuCorr3dMM):
         top = gpu_contiguous(top)
         d_bottom = GpuCorr3dMM_gradInputs(self.border_mode,
                                           self.subsample,
-                                          self.filter_dilation)(
+                                          self.filter_dilation,
+                                          self.num_groups)(
             weights, top, bottom.shape[-3:])
         d_weights = GpuCorr3dMM_gradWeights(self.border_mode,
                                             self.subsample,
-                                            self.filter_dilation)(
+                                            self.filter_dilation,
+                                            self.num_groups)(
             bottom, top, weights.shape[-3:])
         return d_bottom, d_weights
 
@@ -1556,10 +1565,12 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
 
     def __init__(self, border_mode="valid",
                  subsample=(1, 1, 1),
-                 filter_dilation=(1, 1, 1)):
+                 filter_dilation=(1, 1, 1),
+                 num_groups=1):
         super(GpuCorr3dMM_gradWeights, self).__init__(border_mode,
                                                       subsample,
-                                                      filter_dilation)
+                                                      filter_dilation,
+                                                      num_groups)
 
     def make_node(self, img, topgrad, shape=None):
         ctx_name = infer_context_name(img, topgrad)
@@ -1600,11 +1611,13 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
         weights = gpu_contiguous(weights)
         d_bottom = GpuCorr3dMM_gradInputs(self.border_mode,
                                           self.subsample,
-                                          self.filter_dilation)(weights,
-                                                                top,
-                                                                bottom.shape[-3:])
+                                          self.filter_dilation,
+                                          self.num_groups)(weights,
+                                                           top,
+                                                           bottom.shape[-3:])
         d_top = GpuCorr3dMM(
-            self.border_mode, self.subsample, self.filter_dilation)(bottom, weights)
+            self.border_mode, self.subsample, self.filter_dilation,
+            self.num_groups)(bottom, weights)
         d_height_width_depth = (theano.gradient.DisconnectedType()(),)\
             * 3 if len(inp) == 5 else ()
         return (d_bottom, d_top) + d_height_width_depth
@@ -1629,9 +1642,10 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
 
     def __init__(self, border_mode="valid",
                  subsample=(1, 1, 1),
-                 filter_dilation=(1, 1, 1)):
+                 filter_dilation=(1, 1, 1),
+                 num_groups=1):
         super(GpuCorr3dMM_gradInputs, self).__init__(border_mode, subsample,
-                                                     filter_dilation)
+                                                     filter_dilation, num_groups)
 
     def make_node(self, kern, topgrad, shape=None):
         ctx_name = infer_context_name(kern, topgrad)
@@ -1651,8 +1665,12 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
             assert shape[1].ndim == 0
             assert shape[2].ndim == 0
 
-        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
-                         False, False, False]
+        if self.num_groups > 1:
+            broadcastable = [topgrad.type.broadcastable[0], False,
+                             False, False, False]
+        else:
+            broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+                             False, False, False]
         return Apply(self, [kern, topgrad] + height_width_depth,
                      [GpuArrayType(dtype=topgrad.dtype,
                                    context_name=ctx_name,
@@ -1671,12 +1689,14 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
         bottom = gpu_contiguous(bottom)
         d_weights = GpuCorr3dMM_gradWeights(self.border_mode,
                                             self.subsample,
-                                            self.filter_dilation)(bottom,
-                                                                  top,
-                                                                  weights.shape[-3:])
+                                            self.filter_dilation,
+                                            self.num_groups)(bottom,
+                                                             top,
+                                                             weights.shape[-3:])
         d_top = GpuCorr3dMM(self.border_mode,
                             self.subsample,
-                            self.filter_dilation)(bottom, weights)
+                            self.filter_dilation,
+                            self.num_groups)(bottom, weights)
         d_height_width_depth = (theano.gradient.DisconnectedType()(),)\
             * 3 if len(inp) == 5 else ()
         return (d_weights, d_top) + d_height_width_depth
