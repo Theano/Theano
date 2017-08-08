@@ -70,7 +70,7 @@ GPU:
 
  - Better cuDNN support
 
-   - Official support for versions >= ``v5.1``
+   - Official support for versions >= ``v5``
    - Better support and loading on Windows and Mac
    - Support cuDNN v6 dilated convolutions
    - Support cuDNN v6 reductions
