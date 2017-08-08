@@ -6,14 +6,14 @@ Release Notes
 Theano 0.10.0beta1 (9th of August, 2017)
 ========================================
 
-This release contains a lot of bug fixes and improvements + new features, to prepare the upcoming release candidate.
+This release contains a lot of bug fixes, improvements and new features to prepare the upcoming release candidate.
 
 We recommend that every developer updates to this version.
 
 Highlights:
  - Moved Python 3.* minimum supported version from 3.3 to 3.4
  - Replaced deprecated package ``nose-parameterized`` with up-to-date package ``parameterized`` for Theano requirements
- - Make theano more FIPS compliant by using ``sha256`` instead of ``md5`` where needed
+ - Theano now internally uses ``sha256`` instead of ``md5`` to work on systems that forbide ``md5`` for security reason
  - Removed old GPU backend ``theano.sandbox.cuda``. New backend ``theano.gpuarray`` is now the official GPU backend
  - Support more debuggers for ``PdbBreakpoint``
 
@@ -23,7 +23,7 @@ Highlights:
    - Added meaningful message when missing inputs to scan
 
  - Speed up graph toposort algorithm
- - Faster compilation step by massively using a new interface for op params
+ - Faster C compilation by massively using a new interface for op params
  - Faster optimization step
  - Documentation updated and more complete
  - Many bug fixes, crash fixes and warning improvements
@@ -31,10 +31,9 @@ Highlights:
 A total of 65 people contributed to this release since 0.9.0, see list below.
 
 Interface changes:
- - Changed ``grad()`` method to ``L_op()`` in ops that need the outputs to compute gradient
  - Merged duplicated diagonal functions into two ops: ``ExtractDiag`` (extract a diagonal to a vector),
    and ``AllocDiag`` (set a vector as a diagonal of an empty array)
- - Replaced ``MultinomialWOReplacementFromUniform`` with ``ChoiceFromUniform``
+ - Renamed ``MultinomialWOReplacementFromUniform`` to ``ChoiceFromUniform``
 
  - Removed or deprecated Theano flags:
 
@@ -46,6 +45,8 @@ Interface changes:
    - ``lib.cnmem``
    - ``nvcc.*`` flags
    - ``pycuda.init``
+
+ - Changed ``grad()`` method to ``L_op()`` in ops that need the outputs to compute gradient
 
 Convolution updates:
  - Extended Theano flag ``dnn.enabled`` with new option ``no_check`` to help speed up cuDNN importation
@@ -60,32 +61,31 @@ GPU:
  - Added Cholesky op based on ``cusolver`` backend
  - Added GPU ops based on `magma library <http://icl.cs.utk.edu/magma/software/>`_:
    SVD, matrix inverse, QR, cholesky and eigh
- - Added ``GpuAdvancedIncSubtensor``
  - Added ``GpuCublasTriangularSolve``
  - Added atomic addition and exchange for ``long long`` values in ``GpuAdvancedIncSubtensor1_dev20``
- - Fixed C code for log gamma function, now supporting all types except complex types.
+ - Support log gamma function for all non-complex types
  - Support GPU SoftMax in both OpenCL and CUDA
  - Support offset parameter ``k`` for ``GpuEye``
  - ``CrossentropyCategorical1Hot`` and its gradient are now lifted to GPU
 
  - Better cuDNN support
 
-   - Official support for versions >= ``v5``
+   - Official support for ``v5.*`` and ``v6.*``
    - Better support and loading on Windows and Mac
    - Support cuDNN v6 dilated convolutions
    - Support cuDNN v6 reductions
-   - Added new theano flags ``cuda.include_path``, ``dnn.base_path`` and ``dnn.bin_path``
+   - Added new Theano flags ``cuda.include_path``, ``dnn.base_path`` and ``dnn.bin_path``
      to help configure Theano when CUDA and cuDNN can not be found automatically.
 
  - Updated ``float16`` support
 
    - Added documentation for GPU float16 ops
    - Support ``float16`` for ``GpuGemmBatch``
-   - Started to avoid lifting ``float16`` computations that are not supported on GPU
+   - Started to use ``float32`` precision for computations that don't support ``float16`` on GPU
 
 New features:
  - Added a wrapper for `Baidu's CTC <https://github.com/baidu-research/warp-ctc>`_ cost and gradient functions
- - Added scalar and elemwise ops for modified Bessel function of order 0 and 1 from ``scipy.special``
+ - Added scalar and elemwise CPU ops for modified Bessel function of order 0 and 1 from ``scipy.special``.
  - Added Scaled Exponential Linear Unit (SELU) activation
  - Added sigmoid_binary_crossentropy function
  - Added tri-gamma function
@@ -94,11 +94,11 @@ New features:
  - Implemented gradient for matrix pseudoinverse op
  - Added new prop `replace` for ``ChoiceFromUniform`` op
  - Added new prop ``on_error`` for CPU ``Cholesky`` op
- - Added new theano flag ``deterministic`` to help control how Theano optimize certain ops that have deterministic versions.
+ - Added new Theano flag ``deterministic`` to help control how Theano optimize certain ops that have deterministic versions.
    Currently used for subtensor Ops only.
- - Added new theano flag ``cycle_detection`` to speed-up optimization step by reducing time spending in inplace insertions
- - Added new theano flag ``check_stack_trace`` to help check the stack trace during optimization process
- - Added new theano flag ``cmodule.debug`` to allow a debug mode for theano C code. Currently used for cuDNN convolutions only.
+ - Added new Theano flag ``cycle_detection`` to speed-up optimization step by reducing time spending in inplace optimizations
+ - Added new Theano flag ``check_stack_trace`` to help check the stack trace during optimization process
+ - Added new Theano flag ``cmodule.debug`` to allow a debug mode for Theano C code. Currently used for cuDNN convolutions only.
 
 Others:
  - Added deprecation warning for the softmax and logsoftmax vector case
@@ -108,14 +108,16 @@ Other more detailed changes:
  - Removed useless warning when profile is manually disabled
  - Added tests for abstract conv
  - Added options for `disconnected_outputs` to Rop
- - Insertion of an OutputGuard is now considered as an error
  - Removed ``theano/compat/six.py``
  - Removed ``COp.get_op_params()``
  - Support of list of strings for ``Op.c_support_code()``, to help not duplicate support codes
  - Macro names provided for array properties are now standardized in both CPU and GPU C codes
  - Started to move C code files into separate folder ``c_code`` in every Theano module
  - Many improvements for TRAVIS CI tests (with better splitting for faster testing)
- - Many improvements for Jenkins CI tests: support for Mac and Windows testings, usage of Docker for better tests isolation
+ - Many improvements for Jenkins CI tests:
+
+   - Daily testings on Linux, Mac and Windows
+   - Using Docker for better tests isolation
 
 Commiters since 0.9.0:
  - Frederic Bastien
