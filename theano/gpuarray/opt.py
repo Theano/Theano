@@ -1684,7 +1684,8 @@ def local_abstractconv3d_gemm(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
-    if ((border_mode == 'full') and (subsample == (1, 1, 1))):
+    num_groups = node.op.num_groups
+    if ((border_mode == 'full') and (subsample == (1, 1, 1)) and num_groups == 1):
         if not node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1, ::-1]
         # need to dimshuffle the kernel for full convolution
@@ -1701,8 +1702,9 @@ def local_abstractconv3d_gemm(node):
         # By default use GpuCorr3dMM
         rval = GpuCorr3dMM(border_mode,
                            subsample,
-                           filter_dilation)(gpu_contiguous(img),
-                                            gpu_contiguous(kern))
+                           filter_dilation,
+                           num_groups)(gpu_contiguous(img),
+                                       gpu_contiguous(kern))
 
         # call GpuCorr3dMM_gradWeights if good
         # (the latter is faster if batchsize * kernelHeight * kernelWidth * kernelDepth
@@ -1714,7 +1716,8 @@ def local_abstractconv3d_gemm(node):
                 (None not in node.op.imshp[-3:]) and
                 (node.op.kshp is not None) and
                 (None not in node.op.kshp) and
-                border_mode != "half"):
+                border_mode != "half" and
+                num_groups == 1):
             # we know the kernel and output size
             prod1 = node.op.kshp[0] * node.op.kshp[1] * node.op.kshp[2]
             prod2 = ((node.op.imshp[-3] - node.op.kshp[0] + 1) *
@@ -1906,7 +1909,8 @@ def local_abstractconv3d_gradweights_gemm(node):
 
     rval = GpuCorr3dMM_gradWeights(border_mode=node.op.border_mode,
                                    subsample=node.op.subsample,
-                                   filter_dilation=node.op.filter_dilation)(
+                                   filter_dilation=node.op.filter_dilation,
+                                   num_groups=node.op.num_groups)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
     if node.op.filter_flip:
         rval = rval[:, :, ::-1, ::-1, ::-1]
@@ -1976,7 +1980,8 @@ def local_abstractconv3d_gradinputs_gemm(node):
 
     rval = GpuCorr3dMM_gradInputs(border_mode=node.op.border_mode,
                                   subsample=node.op.subsample,
-                                  filter_dilation=node.op.filter_dilation)(
+                                  filter_dilation=node.op.filter_dilation,
+                                  num_groups=node.op.num_groups)(
         gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
     return [rval]
 
