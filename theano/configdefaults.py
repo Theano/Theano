@@ -201,7 +201,7 @@ def deprecated_gpuarray_sync(val):
 AddConfigVar('gpuarray.sync',
              """This flag is deprecated and will be removed in next Theano release.""",
              ConfigParam(False, allow_override=False, filter=deprecated_gpuarray_sync),
-             in_c_key=True)
+             in_c_key=False)
 
 AddConfigVar('gpuarray.preallocate',
              """If negative it disables the allocation cache. If
