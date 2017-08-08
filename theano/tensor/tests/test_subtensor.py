@@ -1991,3 +1991,17 @@ class TestInferShape(utt.InferShapeTester):
                                 [admat[1:3, aivec]],
                                 [admat_val, aivec_val], AdvancedSubtensor,
                                 check_topo=False)
+
+    def test_boolean(self):
+        n = dmatrix()
+        n_val = np.arange(6).reshape((2, 3))
+
+        # infer_shape is not implemented, but it should not crash
+        self._compile_and_check([n],
+                                [n[n[:, 0] > 2, n[0, :] > 2]],
+                                [n_val], tensor.AdvancedBooleanSubtensor,
+                                check_topo=False)
+        self._compile_and_check([n],
+                                [n[n[:, 0] > 2]],
+                                [n_val], tensor.AdvancedBooleanSubtensor,
+                                check_topo=False)
