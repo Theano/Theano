@@ -359,25 +359,25 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         # Checks that the gradient of an expression similar to a log(softmax)
         # but with a different elemwise operation than true_div is not
         # optimized.
+        dims = 4
+        for d in xrange(1, dims + 1):
+            x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+            y = T.log(T.nnet.softmax(x))
+            g = T.grad(y.sum(), x)
 
-        x = T.matrix('x')
-        y = T.log(T.nnet.softmax(x))
-        g = T.grad(y.sum(), x)
+            softmax_grad_node = g.owner
+            assert softmax_grad_node.op == softmax_grad
+            true_div_node = softmax_grad_node.inputs[0].owner
+            assert true_div_node.op == tensor.true_div
 
-        softmax_grad_node = g.owner
-        assert softmax_grad_node.op == softmax_grad
-        true_div_node = softmax_grad_node.inputs[0].owner
-        assert true_div_node.op == tensor.true_div
+            # We replace the elemwise true_div op by an elemwise add.
+            new_g = softmax_grad(tensor.add(*true_div_node.inputs), softmax_grad_node.inputs[1])
 
-        # We replace the elemwise true_div op by an elemwise add.
-        new_g = softmax_grad(tensor.add(*true_div_node.inputs),
-                             softmax_grad_node.inputs[1])
+            fgraph = gof.FunctionGraph([x], [new_g])
+            theano.compile.mode.optdb.query(
+                theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
 
-        fgraph = gof.FunctionGraph([x], [new_g])
-        theano.compile.mode.optdb.query(
-            theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-
-        assert softmax_grad in [n.op for n in fgraph.toposort()]
+            assert softmax_grad in [n.op for n in fgraph.toposort()]
 
 
 class T_SoftmaxGrad(utt.InferShapeTester):
