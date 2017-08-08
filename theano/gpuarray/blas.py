@@ -1067,6 +1067,9 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         Perform subsampling of the output (default: (1, 1, 1)).
     filter_dilation
         Perform subsampling of the input, also known as dilation (default: (1, 1, 1)).
+    num_groups :
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately (default : 1).
 
     """
     check_broadcast = False
@@ -1495,6 +1498,11 @@ class GpuCorr3dMM(BaseGpuCorr3dMM):
         The filter dilation operation applied to each input image.
         Should be a tuple with 3 elements.
         Set to `(1, 1, 1)` to disable filter dilation.
+    num_groups
+        The number of distinct groups the image and kernel must be
+        divided into.
+        should be an int
+        set to 1 to disable grouped convolution
 
     Notes
     -----
