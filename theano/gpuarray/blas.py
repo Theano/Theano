@@ -1112,6 +1112,11 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
             str(self.filter_dilation),
             str(self.num_groups))
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'num_groups'):
+            self.num_groups = 1
+
     def flops(self, inp, outp):
         """
         Useful with the hack in profilemode to print the MFlops.
