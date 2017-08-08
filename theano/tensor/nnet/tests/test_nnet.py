@@ -316,14 +316,15 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         Check that Log(Softmax(x)) is substituted with Logsoftmax(x). Note that
         only the forward pass is checked (i.e., doesn't check the gradient)
         """
-        x, y = tensor.matrices('xy')
-        sm = tensor.nnet.softmax(x)
-        logsm = tensor.log(sm)
-        f = theano.function([x], logsm)
-        assert isinstance(f.maker.fgraph.outputs[0].owner.op,
-                          theano.tensor.nnet.nnet.LogSoftmax)
-        assert check_stack_trace(
-            f, ops_to_check=theano.tensor.nnet.nnet.LogSoftmax)
+        dims = 4
+        for d in xrange(1, dims + 1):
+            x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+            sm = tensor.nnet.softmax(x)
+            logsm = tensor.log(sm)
+            f = theano.function([x], logsm)
+            assert isinstance(f.maker.fgraph.outputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+            assert check_stack_trace(
+                f, ops_to_check=theano.tensor.nnet.nnet.LogSoftmax)
 
     def test_local_softmax_grad_optimization_and_big_input(self):
         """Test the Logsoftmax's grad substitution.
@@ -337,18 +338,22 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         m.check_isfinite = False
         # some inputs that are large to make the gradient explode in the non
         # optimized case
-        a = np.exp(
-            10 * np.random.rand(5, 10).astype(theano.config.floatX))
+        dims = 2
+        shape = (5,) * dims
+        x_big = np.exp(10 * np.random.randn(*shape).astype(config.floatX))
 
         def myfunc(x):
             sm = tensor.nnet.softmax(x)
             logsm = tensor.log(sm)
             return logsm
-        # We set step to 0.1 because for big values we need a big epsilon
-        utt.verify_grad(myfunc, [a], eps=0.1, mode=m)
-        sa = theano.shared(a)
-        f = theano.function([], myfunc(sa))
-        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+
+        for d in xrange(1, dims + 1):
+            test_val_x_big = x_big[((0,) * (dims - d))]
+            # We set step to 0.1 because for big values we need a big epsilon
+            utt.verify_grad(myfunc, [test_val_x_big], eps=0.1, mode=m)
+            sa = theano.shared(test_val_x_big)
+            f = theano.function([], myfunc(sa))
+            self.assertTrue(check_stack_trace(f, ops_to_check='all'))
 
     def test_logsoftmax_grad_true_div_elemwise(self):
         # Checks that the gradient of an expression similar to a log(softmax)
