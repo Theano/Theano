@@ -1420,6 +1420,11 @@ class FunctionMaker(object):
                  mode=None, accept_inplace=False, function_builder=Function,
                  profile=None, on_unused_input=None, fgraph=None,
                  output_keys=None, name=None):
+        # Save the provided mode, not the instanciated mode.
+        # The instanciated mode don't pickle and if we unpickle a Theano
+        # function and it get re-compiled, we want the current optimizer to be
+        # used, not the optimizer when it was saved.
+        self.mode = mode
         mode = theano.compile.mode.get_mode(mode)
 
         # Assert old way of working isn't used
@@ -1565,7 +1570,6 @@ class FunctionMaker(object):
         self.outputs = outputs
         self.unpack_single = unpack_single
         self.return_none = return_none
-        self.mode = mode
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
         self.on_unused_input = on_unused_input  # Used for the pickling/copy
