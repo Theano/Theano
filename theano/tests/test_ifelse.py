@@ -1,4 +1,3 @@
-
 # Tests fof the lazy conditiona
 
 
@@ -480,7 +479,6 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
                            vx2 + vy2 + vw2)
 
     def test_grad_test_values(self):
-        
         # Regression test for test values of `ifelse` gradient.
 
         backup = theano.config.compute_test_value
