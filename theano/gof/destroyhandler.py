@@ -400,7 +400,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                 for protected_var in protected_list:
                     try:
                         root_destroyer[droot[protected_var]]
-                    except AttributeError:
+                    except KeyError:
                         pass
                     else:
                         return True
