@@ -8,6 +8,8 @@ import theano
 from theano import Op, Apply, Type, Variable
 from theano import tensor, config
 from theano.gradient import grad_undefined
+from theano.scalar import (bool as bool_t,
+                           int32 as int32_t)
 from theano.tensor.basic import (
     Alloc, AllocEmpty, alloc_validate_shape, Join, Split)
 
@@ -808,14 +810,15 @@ class GpuAlloc(HideC, Alloc):
 
     __props__ = ('memset_0', 'context_name')
     _f16_ok = True
-    params_type = gpu_context_type
+    params_type = ParamsType(context=gpu_context_type, memset_0=bool_t)
 
     def __init__(self, context_name, memset_0=False):
         self.context_name = context_name
         self.memset_0 = memset_0
 
     def get_params(self, node):
-        return get_context(self.context_name)
+        return self.params_type.get_params(context=get_context(self.context_name),
+                                           memset_0=self.memset_0)
 
     def __str__(self):
         # Hide the memset parameter when not used to prevent confusion.
@@ -837,15 +840,15 @@ class GpuAlloc(HideC, Alloc):
     def c_headers(self):
         return ['<numpy_compat.h>']
 
-    def perform(self, node, inputs, outs, ctx):
+    def perform(self, node, inputs, outs, params):
         out, = outs
         v = inputs[0]
         sh = tuple(map(int, inputs[1:]))
         if out[0] is None or out[0].shape != sh:
             if self.memset_0:
-                out[0] = gpuarray.zeros(sh, dtype=v.dtype, context=ctx)
+                out[0] = gpuarray.zeros(sh, dtype=v.dtype, context=params.context)
             else:
-                out[0] = gpuarray.empty(sh, dtype=v.dtype, context=ctx)
+                out[0] = gpuarray.empty(sh, dtype=v.dtype, context=params.context)
                 out[0][...] = v
         else:
             out[0][...] = v
@@ -855,7 +858,6 @@ class GpuAlloc(HideC, Alloc):
         ndim = len(inp[1:])
         zz, = out
 
-        memset_0 = int(self.memset_0)
         code = """
         int i;
         size_t %(name)s_shape[%(ndim)s];
@@ -873,12 +875,12 @@ class GpuAlloc(HideC, Alloc):
             for (i = 0; i < %(ndim)s; i++)
                 need_new_out |= %(zz)s->ga.dimensions[i] != %(name)s_shape[i];
 
-        if (need_new_out && (%(memset_0)s)) {
+        if (need_new_out && (%(params)s->memset_0)) {
             //pygpu_zeros can be faster then empty followed by memset.
             Py_XDECREF(%(zz)s);
             %(zz)s = pygpu_zeros(%(ndim)s, %(name)s_shape,
                                  %(vv)s->ga.typecode, GA_C_ORDER,
-                                 %(ctx)s, Py_None);
+                                 %(params)s->context, Py_None);
             if (!%(zz)s) {
                 %(fail)s
             }
@@ -887,12 +889,12 @@ class GpuAlloc(HideC, Alloc):
                 Py_XDECREF(%(zz)s);
                 %(zz)s = pygpu_empty(%(ndim)s, %(name)s_shape,
                                      %(vv)s->ga.typecode, GA_C_ORDER,
-                                     %(ctx)s, Py_None);
+                                     %(params)s->context, Py_None);
                 if (!%(zz)s) {
                     %(fail)s
                 }
             }
-            if (%(memset_0)s && GpuArray_ISONESEGMENT(&%(zz)s->ga))
+            if (%(params)s->memset_0 && GpuArray_ISONESEGMENT(&%(zz)s->ga))
             {
                 int err = GpuArray_memset(&%(zz)s->ga, 0);
                 if (err != GA_NO_ERROR)
@@ -910,8 +912,8 @@ class GpuAlloc(HideC, Alloc):
                 %(fail)s
             }
         }
-        """ % dict(name=name, ndim=ndim, zz=zz, vv=vv, ctx=sub['params'],
-                   fail=sub['fail'], memset_0=memset_0)
+        """ % dict(name=name, ndim=ndim, zz=zz, vv=vv, params=sub['params'],
+                   fail=sub['fail'])
 
         return code
 
@@ -957,14 +959,20 @@ class GpuAllocEmpty(HideC, AllocEmpty):
     """
     __props__ = ('dtype', 'context_name')
     _f16_ok = True
-    params_type = gpu_context_type
+    params_type = ParamsType(context=gpu_context_type,
+                             typecode=int32_t)
 
     def __init__(self, dtype, context_name):
         self.dtype = dtype
         self.context_name = context_name
 
+    @property
+    def typecode(self):
+        return gpuarray.dtype_to_typecode(self.dtype)
+
     def get_params(self, node):
-        return get_context(self.context_name)
+        return self.params_type.get_params(context=get_context(self.context_name),
+                                           typecode=self.typecode)
 
     def make_node(self, *shape):
         sh, bcast = alloc_validate_shape(shape)
@@ -980,11 +988,11 @@ class GpuAllocEmpty(HideC, AllocEmpty):
         self.perform(node, inputs, out_, ctx)
         out_[0][0][:] = -123456789
 
-    def perform(self, node, inputs, out_, ctx):
+    def perform(self, node, inputs, out_, params):
         out = out_[0]
         sh = [int(i) for i in inputs]
         if out[0] is None or out[0].shape != sh:
-            out[0] = pygpu.empty(sh, dtype=self.dtype, context=ctx)
+            out[0] = pygpu.empty(sh, dtype=self.dtype, context=params.context)
         # if out[0] is the right shape, we just return it
 
     def c_headers(self):
@@ -1009,17 +1017,16 @@ shape[%(i)s] = ((dtype_%(shp_i)s *)PyArray_DATA(%(shp_i)s))[0];
 """ % dict(i=i, shp_i=shp_i))
 
         code.append("""
-if (theano_prep_output(&%(zz)s, %(ndim)s, shape, %(type)s, GA_C_ORDER,
-                       %(ctx)s)) {
+if (theano_prep_output(&%(zz)s, %(ndim)s, shape, %(params)s->typecode, GA_C_ORDER,
+                       %(params)s->context)) {
   %(fail)s
 }
-""" % dict(zz=zz, ndim=ndim, type=gpuarray.dtype_to_typecode(self.dtype),
-           fail=fail, ctx=sub['params']))
+""" % dict(zz=zz, ndim=ndim, fail=fail, params=sub['params']))
 
         return ''.join(code)
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def do_constant_folding(self, node):
         return False
