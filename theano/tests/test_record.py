@@ -6,7 +6,6 @@ from theano.tensor import iscalar
 
 
 def test_record_good():
-
     # Tests that when we record a sequence of events, then
     # repeat it exactly, the Record class:
     #    1) Records it correctly
@@ -39,7 +38,6 @@ def test_record_good():
 
 
 def test_record_bad():
-
     # Tests that when we record a sequence of events, then
     # do something different on playback, the Record class catches it.
 
@@ -74,7 +72,6 @@ def test_record_bad():
 
 
 def test_record_mode_good():
-
     # Like test_record_good, but some events are recorded by the
     # theano RecordMode. We don't attempt to check the
     # exact string value of the record in this case.
@@ -114,7 +111,6 @@ def test_record_mode_good():
 
 
 def test_record_mode_bad():
-    
     # Like test_record_bad, but some events are recorded by the
     # theano RecordMode, as is the event that triggers the mismatch
     # error.
