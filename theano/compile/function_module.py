@@ -1057,7 +1057,11 @@ def _pickle_Function(f):
                                             (str(d_i), str(d_j)))
                         else:
                             raise AliasedMemoryError(d_i, d_j)
-    rval = (_constructor_Function, (f.maker, input_storage, inputs_data, f.trust_input))
+    # The user can override trust_input. Our doc tell that.  We should
+    # not do that anymore and make sure the Maker have all the
+    # information needed.
+    rval = (_constructor_Function,
+            (f.maker, input_storage, inputs_data, f.trust_input))
     return rval
 
 
