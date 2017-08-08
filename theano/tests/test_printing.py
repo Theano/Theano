@@ -1,4 +1,3 @@
-
 # Tests of printing functionality
 
 from __future__ import absolute_import, print_function, division
@@ -18,9 +17,7 @@ from theano.printing import min_informative_str, debugprint
 def test_pydotprint_cond_highlight():
 
     # This is a REALLY PARTIAL TEST.
-
     # I did them to help debug stuff.
-
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
@@ -60,7 +57,6 @@ def test_pydotprint_return_image():
 
 def test_pydotprint_long_name():
     #This is a REALLY PARTIAL TEST.
-
     # It prints a graph where there are variable and apply nodes whose long
     # names are different, but not the shortened names.
     # We should not merge those nodes in the dot graph.
