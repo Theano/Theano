@@ -1070,7 +1070,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
 
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample', 'filter_dilation')
+    __props__ = ('border_mode', 'subsample', 'filter_dilation', 'num_groups')
     _f16_ok = True
 
     def __init__(self, border_mode="valid", subsample=(1, 1, 1),
