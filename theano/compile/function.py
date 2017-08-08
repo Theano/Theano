@@ -289,13 +289,6 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     uses_updates = bool(updates)
     uses_givens = bool(givens)
 
-    # See if we have any mutable / borrow inputs
-    check_for_aliased_inputs = False
-    for i in inputs:
-        if (isinstance(i, In) and ((hasattr(i, 'borrow') and i.borrow) or
-                                   (hasattr(i, 'mutable') and i.mutable))):
-            check_for_aliased_inputs = True
-
     if uses_tuple:
         # we must use old semantics in this case.
         if profile:
@@ -323,7 +316,4 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                    on_unused_input=on_unused_input,
                    profile=profile,
                    output_keys=output_keys)
-    # We need to add the flag check_aliased inputs if we have any mutable or
-    # borrowed used defined inputs
-    fn._check_for_aliased_inputs = check_for_aliased_inputs
     return fn

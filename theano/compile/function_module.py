@@ -375,6 +375,15 @@ class Function(object):
         self.nodes_with_inner_function = []
         self.output_keys = output_keys
 
+        # See if we have any mutable / borrow inputs
+        # TODO: this only need to be set if there is more then 1 input
+        self._check_for_aliased_inputs = False
+        for i in maker.inputs:
+            if (isinstance(i, In) and ((hasattr(i, 'borrow') and i.borrow) or
+                                       (hasattr(i, 'mutable') and i.mutable))):
+                self._check_for_aliased_inputs = True
+                break
+
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
         finder = {}
@@ -821,6 +830,7 @@ class Function(object):
                 self[k] = arg
 
         if (not self.trust_input and
+            # The getattr is only needed for old pickle
                 getattr(self, '_check_for_aliased_inputs', True)):
             # Collect aliased inputs among the storage space
             args_share_memory = []
