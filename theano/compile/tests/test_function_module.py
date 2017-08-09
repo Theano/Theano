@@ -590,8 +590,8 @@ class T_picklefunction(unittest.TestCase):
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'),
-                      In(s, value=0.0, update=s + a * x, mutable=True)], s + a * x)
-
+                      In(s, value=0.0, update=s + a * x, mutable=True)],
+                     s + a * x)
         try:
             g = copy.deepcopy(f)
         except NotImplementedError as e:
@@ -609,6 +609,9 @@ class T_picklefunction(unittest.TestCase):
         self.assertFalse(x in g.container)
         self.assertFalse(x in g.value)
         self.assertTrue(len(f.defaults) == len(g.defaults))
+        self.assertTrue(f._check_for_aliased_inputs is g._check_for_aliased_inputs)
+        self.assertTrue(f.name == g.name)
+        self.assertTrue(f.maker.fgraph.name == f.maker.fgraph.name)
         # print 'f.defaults = %s' % (f.defaults, )
         # print 'g.defaults = %s' % (g.defaults, )
         self.assertTrue(all([f_req == g_req and f_feed == g_feed and
@@ -626,6 +629,34 @@ class T_picklefunction(unittest.TestCase):
         self.assertFalse(f(1, 2) == g(1, 2))  # they should not be equal anymore.
         g(1, 2)  # put them back in sync
         self.assertTrue(f(3) == g(3))  # They should be in sync again.
+
+    def test_deepcopy_trust_input(self):
+        a = T.dscalar()  # the a is for 'anonymous' (un-named).
+        x, s = T.dscalars('xs')
+
+        f = function([x, In(a, value=1.0, name='a'),
+                      In(s, value=0.0, update=s + a * x, mutable=True)],
+                     s + a * x)
+        f.trust_input = True
+        try:
+            g = copy.deepcopy(f)
+        except NotImplementedError as e:
+            if e[0].startswith('DebugMode is not picklable'):
+                return
+            else:
+                raise
+        self.assertTrue(f.trust_input is g.trust_input)
+        f(np.asarray(2.))
+        self.assertRaises((ValueError, AttributeError), f, 2.)
+        g(np.asarray(2.))
+        self.assertRaises((ValueError, AttributeError), g, 2.)
+
+    def test_output_keys(self):
+        x = T.vector()
+        f = theano.function([x], {'vec': x**2})
+        assert isinstance(f([2, 3, 4]), dict)
+        g = copy.deepcopy(f)
+        assert isinstance(g([2, 3, 4]), dict)
 
     def test_deepcopy_shared_container(self):
         # Ensure that shared containers remain shared after a deep copy.
