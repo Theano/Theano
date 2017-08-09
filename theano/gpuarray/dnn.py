@@ -2932,7 +2932,7 @@ def local_abstractconv_cudnn_alt(node):
                         conv_mode=conv_mode,
                         num_groups=num_groups)
 
-    if isinstance(op, AbstractConv2d_gradWeights):
+    elif isinstance(op, AbstractConv2d_gradWeights):
         if(border_mode == 'valid' and subsample == (1, 1) and
            filter_dilation == (1, 1) and num_groups == 1):
             img = gpu_contiguous(inp1)
@@ -2964,7 +2964,7 @@ def local_abstractconv_cudnn_alt(node):
         else:
             return None
 
-    if isinstance(op, AbstractConv2d_gradInputs):
+    elif isinstance(op, AbstractConv2d_gradInputs):
         if border_mode == 'valid' and subsample == (1, 1) and num_groups == 1:
             kerns = gpu_contiguous(inp1.dimshuffle(1, 0, 2, 3))
             topgrad = gpu_contiguous(inp2)
@@ -3036,7 +3036,7 @@ def local_abstractconv3d_cudnn_alt(node):
                           direction_hint=direction_hint,
                           conv_mode=conv_mode)
 
-    if isinstance(op, AbstractConv3d_gradWeights):
+    elif isinstance(op, AbstractConv3d_gradWeights):
         if(border_mode == 'valid' and subsample == (1, 1, 1) and
            filter_dilation == (1, 1, 1)):
             img = gpu_contiguous(inp1)
@@ -3068,7 +3068,7 @@ def local_abstractconv3d_cudnn_alt(node):
         else:
             return None
 
-    if isinstance(op, AbstractConv3d_gradInputs):
+    elif isinstance(op, AbstractConv3d_gradInputs):
         if border_mode == 'valid' and subsample == (1, 1, 1):
             kerns = gpu_contiguous(inp1.dimshuffle(1, 0, 2, 3, 4))
             topgrad = gpu_contiguous(inp2)
