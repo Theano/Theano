@@ -180,7 +180,7 @@ class GpuSubtensor(HideC, Subtensor):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 
 class GpuIncSubtensor(IncSubtensor):
@@ -1071,7 +1071,6 @@ __device__ ga_double atomicAdd(ga_double* address, ga_double val) {
     return __longlong_as_double(old);
 }
 #endif
-
 __device__ ga_double atomicExch(ga_double *address, ga_double val) {
     return atomicExch((ga_ulong *)address,
                       __double_as_longlong(val));
@@ -1108,15 +1107,19 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
   old = *base;
   do {
     assumed = old;
-    sum = __float2half_rn(
+    ga_half old_perm;
+    __HALF_TO_US(old_perm)  = __byte_perm(old, 0,
+                     ((ga_size)addr & 2) ? 0x4432 : 0x4410);
+    sum = __float2half_as_us(
       __half2float(val) +
-      __half2float((ga_half)__byte_perm(old, 0,
-                     ((ga_size)addr & 2) ? 0x4432 : 0x4410)));
+      __half2float(old_perm));
     new_ = __byte_perm(old, sum, ((ga_size)addr & 2) ? 0x5410 : 0x3254);
     old = atomicCAS(base, assumed, new_);
   } while (assumed != old);
-  return (ga_half)__byte_perm(old, 0,
-                                  ((ga_size)addr & 2) ? 0x4432 : 0x4410);
+  ga_half ret;
+  __HALF_TO_US(ret) = __byte_perm(old, 0,
+        ((ga_size)addr & 2) ? 0x4432 : 0x4410);
+  return ret;
 }
 
 __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
@@ -1125,13 +1128,14 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
   old = *base;
   do {
     assumed = old;
-    new_ = __byte_perm(old, val, ((ga_size)addr & 2) ? 0x5410 : 0x3254);
+    new_ = __byte_perm(old, __HALF_TO_US(val), ((ga_size)addr & 2) ? 0x5410 : 0x3254);
     old = atomicCAS(base, assumed, new_);
   } while (assumed != old);
-  return (ga_half)__byte_perm(old, 0,
-                                  ((ga_size)addr & 2) ? 0x4432 : 0x4410);
+  ga_half ret; 
+  __HALF_TO_US(ret) =__byte_perm(old, 0,
+        ((ga_size)addr & 2) ? 0x4432 : 0x4410);
+  return ret;
 }
-
         KERNEL void k_vector_add_fast(const ga_size numRowsX,
                                       const ga_size numColsX,
                                       const ga_ssize stridesX0,

@@ -20,6 +20,9 @@ learning/machine learning <https://mila.umontreal.ca/en/cours/>`_ classes).
 
 News
 ====
+* 2017/03/07: Release of Theano 0.9.0rc3, with crash fixes, bug fixes and improvements.
+
+* 2017/03/20: Release of Theano 0.9.0. Everybody is encouraged to update.
 
 * Removed support for the old (device=gpu) backend.  Use the new
   backend (device=cuda) for gpu computing.  See `Converting to the new

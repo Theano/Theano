@@ -112,8 +112,9 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         return 1;
       }
 
-      // Guess 4Mb if the info is not available
-      if (free == 0) free = 4 * 1024 * 1024;
+      // Guess 1G if the info is not available
+      // TODO: use global workspace per stream
+      if (free == 0) free = 1 * 1024 * 1024 * 1024;
 
       if (params->choose_time) {
         int count;
@@ -142,6 +143,9 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
           return 1;
         }
         algo = choice.algo;
+        params->conv_algo = algo;
+        params->conv_ws_size = choice.memory;
+        params->conv_tensor_op = choice.mathType;
 
         #ifdef DEBUG
         if (count == 0) {
@@ -172,7 +176,18 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     } else {
       algo = prev_algo;
     }
-
+    
+    params->conv_algo = algo;
+    // CUDNN7: need to set math type
+    err = cudnnSetConvolutionMathType(desc, params->conv_tensor_op);
+    if (err != CUDNN_STATUS_SUCCESS) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "error setting math type for convolution : %s",
+                     cudnnGetErrorString(err));
+        cuda_exit(c->ctx);
+        return 1;
+    }
+    
     #ifdef DEBUG
     if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
         return 1;
