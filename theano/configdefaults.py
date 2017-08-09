@@ -193,12 +193,14 @@ AddConfigVar(
     in_c_key=False)
 
 
+def deprecated_gpuarray_sync(val):
+    if val:
+        raise RuntimeError("Flag gpuarray.sync is deprecated and will be removed in next Theano release.")
+    return False
 
 AddConfigVar('gpuarray.sync',
-             """If True, every op will make sure its work is done before
-                returning.  Setting this to True will slow down execution,
-                but give much more accurate results in profiling.""",
-             BoolParam(False),
+             """This flag is deprecated and will be removed in next Theano release.""",
+             ConfigParam(False, allow_override=False, filter=deprecated_gpuarray_sync),
              in_c_key=True)
 
 AddConfigVar('gpuarray.preallocate',
@@ -534,6 +536,10 @@ AddConfigVar('cxx',
              StrParam(param, is_valid=warn_cxx),
              in_c_key=False)
 del param
+
+if not config.cxx:
+    warnings.warn("DeprecationWarning: there is no c++ compiler."
+                  "This is deprecated and with Theano 0.11 a c++ compiler will be mandatory")
 
 if rc == 0 and config.cxx != "":
     # Keep the default linker the same as the one for the mode FAST_RUN
@@ -1210,9 +1216,7 @@ AddConfigVar('cmodule.age_thresh_use',
 AddConfigVar('cmodule.debug',
              "If True, define a DEBUG macro (if not exists) for any compiled C code.",
              BoolParam(False),
-             # Do not add it in the c key when we keep use the old default.
-             # To do not recompile for no good reason.
-             in_c_key=lambda: theano.config.cmodule.debug)
+             in_c_key=True)
 
 
 def default_blas_ldflags():
