@@ -726,14 +726,17 @@ class BaseTestDnnConv(object):
 
     def test_fwd(self):
         for dtype, precision in self.dtype_configs:
-            algos = (algo for algo in self.fwd_algorithms
-                     if cudnn.fwd_algo_supports_dtype_config(algo, dtype, precision, self.ndim))
+            algos = [algo for algo in self.fwd_algorithms
+                     if cudnn.fwd_algo_supports_dtype_config(algo, dtype, precision, self.ndim)]
             for algo in algos:
                 for parameters in cudnn_conv_case_generator.fwd(algo, self.ndim, dtype, precision).get_cases():
                     yield (self.run_conv_fwd, algo, dtype, precision, parameters)
-            for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
-                for parameters in self.get_cases():
-                    yield (self.run_conv_fwd, algo, dtype, precision, parameters)
+            if algos:
+                # Some algorithms support current data type configuration for current ndim.
+                # So, an algorithm can be chosen at runtime.
+                for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+                    for parameters in self.get_cases():
+                        yield (self.run_conv_fwd, algo, dtype, precision, parameters)
         for dnn_case in self.special_cases:
             if dnn_case.is_fwd():
                 if dnn_case.should_fail:
@@ -743,14 +746,17 @@ class BaseTestDnnConv(object):
 
     def test_gradinput(self):
         for dtype, precision in self.dtype_configs:
-            algos = (algo for algo in self.bwd_data_algorithms
-                     if cudnn.bwd_data_algo_supports_dtype_config(algo, dtype, precision, self.ndim))
+            algos = [algo for algo in self.bwd_data_algorithms
+                     if cudnn.bwd_data_algo_supports_dtype_config(algo, dtype, precision, self.ndim)]
             for algo in algos:
                 for parameters in cudnn_conv_case_generator.gi(algo, self.ndim, dtype, precision).get_cases():
                     yield (self.run_conv_gradinput, algo, dtype, precision, parameters)
-            for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
-                for parameters in self.get_cases():
-                    yield (self.run_conv_gradinput, algo, dtype, precision, parameters)
+            if algos:
+                # Some algorithms support current data type configuration for current ndim.
+                # So, an algorithm can be chosen at runtime.
+                for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+                    for parameters in self.get_cases():
+                        yield (self.run_conv_gradinput, algo, dtype, precision, parameters)
         for dnn_case in self.special_cases:
             if dnn_case.is_bwd_data():
                 if dnn_case.should_fail:
@@ -760,14 +766,17 @@ class BaseTestDnnConv(object):
 
     def test_gradweight(self):
         for dtype, precision in self.dtype_configs:
-            algos = (algo for algo in self.bwd_filter_algorithms
-                     if cudnn.bwd_filter_algo_supports_dtype_config(algo, dtype, precision, self.ndim))
+            algos = [algo for algo in self.bwd_filter_algorithms
+                     if cudnn.bwd_filter_algo_supports_dtype_config(algo, dtype, precision, self.ndim)]
             for algo in algos:
                 for parameters in cudnn_conv_case_generator.gw(algo, self.ndim, dtype, precision).get_cases():
                     yield (self.run_conv_gradweight, algo, dtype, precision, parameters)
-            for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
-                for parameters in self.get_cases():
-                    yield (self.run_conv_gradweight, algo, dtype, precision, parameters)
+            if algos:
+                # Some algorithms support current data type configuration for current ndim.
+                # So, an algorithm can be chosen at runtime.
+                for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+                    for parameters in self.get_cases():
+                        yield (self.run_conv_gradweight, algo, dtype, precision, parameters)
         for dnn_case in self.special_cases:
             if dnn_case.is_bwd_filter():
                 if dnn_case.should_fail:
