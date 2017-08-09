@@ -567,7 +567,7 @@ class GpuDnnConvBase(DnnBase):
     objs_created = 0 
     
     def __init__(self, algo, inplace, num_groups, src, spec):
-        DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_conv_find.c"] + src, spec)
+        DnnBase.__init__(self, ["dnn_conv_base.c"] + src, spec)
         self.inplace = bool(inplace)
         if self.inplace:
             self.destroy_map = {0: [2]}
