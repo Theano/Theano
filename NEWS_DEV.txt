@@ -118,11 +118,8 @@ Other more detailed changes:
  - Support of list of strings for ``Op.c_support_code()``, to help not duplicate support codes
  - Macro names provided for array properties are now standardized in both CPU and GPU C codes
  - Started to move C code files into separate folder ``c_code`` in every Theano module
- - Many improvements for TRAVIS CI tests (with better splitting for faster testing)
- - Many improvements for Jenkins CI tests:
-
-   - Daily testings on Linux, Mac and Windows
-   - Using Docker for better tests isolation
+ - Many improvements for Travis CI tests (with better splitting for faster testing)
+ - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
 * https://github.com/Theano/Theano/pull/6218
