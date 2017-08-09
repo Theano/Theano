@@ -1116,3 +1116,26 @@ import theano and print the config variable, as in:
     The number of user stack level to keep for variables during Theano
     compilation. If higher then 0, will make us keep Theano internal
     stack trace.
+
+.. attribute:: config.metaopt.verbose
+
+    Int value, default: 0
+
+    The verbosity level of the meta-optimizer. 0 for silent.
+    1 to only warn if we cannot meta-optimize some op.
+    2 for full output of separate timings and selected implementation
+
+
+.. attribute:: config.metaopt.optimizer_excluding
+
+    Default: ``""``
+
+    A list of optimizer tags that we don't want included in the Meta-optimizer.
+    If multiple tags, separate them by ':'.
+
+.. attribute:: config.metaopt.optimizer_including
+
+    Default: ``""``
+
+    A list of optimizer tags that we want included in the Meta-optimizer.
+    If multiple tags, separate them by ':'.
