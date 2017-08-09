@@ -36,9 +36,7 @@ class AdvancedIndexingError(TypeError):
     Raised when Subtensor is asked to perform advanced indexing.
 
     """
-
-    def __init__(self, *args):
-        TypeError.__init__(self, *args)
+    pass
 
 
 class AdvancedBooleanIndexingError(TypeError):
@@ -46,9 +44,7 @@ class AdvancedBooleanIndexingError(TypeError):
     Raised when Subtensor is asked to perform advanced indexing with boolean masks.
 
     """
-
-    def __init__(self, *args):
-        TypeError.__init__(self, *args)
+    pass
 
 
 ##########
@@ -2207,14 +2203,6 @@ class BaseAdvancedSubtensor(Op):
             rval.append([False])
 
         return rval
-
-    def grad(self, inputs, grads):
-        gz, = grads
-        x = inputs[0]
-        rest = inputs[1:]
-        return [advanced_inc_subtensor(theano.tensor.zeros_like(x), gz,
-                                       *rest)] + \
-            [DisconnectedType()()] * len(rest)
 
 
 class AdvancedSubtensor(BaseAdvancedSubtensor):
