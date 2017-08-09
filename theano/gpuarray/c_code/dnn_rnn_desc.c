@@ -30,7 +30,7 @@ int dnn_rnn_desc(int hidden_size, int num_layers,
     return -1;
   }
 
-  err = cudnnSetRNNDescriptor(handle, desc, hidden_size, num_layers, ddesc,
+  err = cudnnSetRNNDescriptor(_handle, desc, hidden_size, num_layers, ddesc,
                               (cudnnRNNInputMode_t)input_mode,
                               (cudnnDirectionMode_t)direction_mode,
                               (cudnnRNNMode_t)rnn_mode, CUDNN_RNN_ALGO_STANDARD, data_type);
