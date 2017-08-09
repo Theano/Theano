@@ -2889,7 +2889,7 @@ def local_abstractconv_cudnn(node):
 
 
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
-def local_abstractconv_cudnn_alternative(node):
+def local_abstractconv_cudnn_alt(node):
     if(not isinstance(node.op, (AbstractConv2d, AbstractConv2d_gradWeights,
        AbstractConv2d_gradInputs))):
         return
@@ -2994,7 +2994,7 @@ def local_abstractconv_cudnn_alternative(node):
 
 
 @local_optimizer([AbstractConv3d, AbstractConv3d_gradWeights, AbstractConv3d_gradInputs])
-def local_abstractconv3d_cudnn_alternative(node):
+def local_abstractconv3d_cudnn_alt(node):
     if(not isinstance(node.op, (AbstractConv3d,
                                 AbstractConv3d_gradWeights,
                                 AbstractConv3d_gradInputs))):

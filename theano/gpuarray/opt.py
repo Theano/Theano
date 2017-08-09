@@ -1629,7 +1629,7 @@ def local_abstractconv_gemm(node):
 
 
 @local_optimizer([AbstractConv2d])
-def local_abstractconv_gemm_alternative(node):
+def local_abstractconv_gemm_alt(node):
     if not isinstance(node.op, AbstractConv2d):
         return None
     img, kern = node.inputs
@@ -2667,8 +2667,8 @@ register_opt('fast_compile')(abstractconv_groupopt)
 from .dnn import (local_abstractconv_cudnn,
                   local_abstractconv_gw_cudnn,
                   local_abstractconv_gi_cudnn,     # noqa: 402
-                  local_abstractconv_cudnn_alternative,
-                  local_abstractconv3d_cudnn_alternative)
+                  local_abstractconv_cudnn_alt,
+                  local_abstractconv3d_cudnn_alt)
 
 abstractconv_groupopt.register('local_abstractconv_dnn',
                                local_abstractconv_cudnn, 20,
@@ -2727,15 +2727,15 @@ conv_metaopt.register(local_abstractconv_gradinputs_gemm,
                       ['default', 'conv_gemm'])
 conv_metaopt.register(local_abstractconv3d_gradinputs_gemm,
                       ['default', 'conv_gemm'])
-conv_metaopt.register(local_abstractconv_gemm_alternative,
+conv_metaopt.register(local_abstractconv_gemm_alt,
                       ['default', 'alternative', 'conv_gemm'])
 conv_metaopt.register(local_abstractconv_gemm_gradweights_alt,
                       ['default', 'alternative', 'conv_gemm'])
 conv_metaopt.register(local_abstractconv_gradinputs_gemm_alt,
                       ['default', 'alternative', 'conv_gemm'])
-conv_metaopt.register(local_abstractconv_cudnn_alternative,
+conv_metaopt.register(local_abstractconv_cudnn_alt,
                       ['default', 'alternative', 'cudnn', 'conv_dnn'])
-conv_metaopt.register(local_abstractconv3d_cudnn_alternative,
+conv_metaopt.register(local_abstractconv3d_cudnn_alt,
                       ['default', 'alternative', 'cudnn', 'conv_dnn'])
 conv_metaopt.register(local_abstractconv3d_alt,
                       ['default', 'alternative', 'conv_gemm'])
