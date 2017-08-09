@@ -362,13 +362,29 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
 
 class T_SoftmaxGrad(utt.InferShapeTester):
 
-    def test_infer_shape(self):
-        admat = matrix()
-        bdmat = matrix()
-        admat_val = np.random.rand(3, 4).astype(config.floatX)
-        bdmat_val = np.random.rand(3, 4).astype(config.floatX)
-        self._compile_and_check([admat, bdmat], [SoftmaxGrad()(admat, bdmat)],
-                                [admat_val, bdmat_val], SoftmaxGrad)
+    def test_infer_shapes(self):
+        dims = 4
+        shape = (5,) * dims
+        av = np.random.randn(*shape).astype(config.floatX)
+        bv = np.random.randn(*shape).astype(config.floatX)
+        for d in xrange(1, dims + 1):
+            # Make a slice of the test data that has the
+            # dimensions we need by doing xv[0,...,0]
+            # For example, for an array of shape (5,), we
+            # need to do xv[0, 0, 0, 0].
+            a_val = av[((0,) * (dims - d))]
+            b_val = bv[((0,) * (dims - d))]
+            a = T.TensorType(dtype=config.floatX,
+                             broadcastable=(False,) * d)()
+            b = T.TensorType(dtype=config.floatX,
+                             broadcastable=(False,) * d)()
+
+            self._compile_and_check(
+                [a, b],
+                [SoftmaxGrad()(a, b)],
+                [a_val, b_val],
+                SoftmaxGrad
+            )
 
 
 class T_CrossentropySoftmax1Hot(unittest.TestCase):
