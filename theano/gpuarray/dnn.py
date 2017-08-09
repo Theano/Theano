@@ -58,7 +58,7 @@ except ImportError:
     pass
 
 # Update these names when new versions of cudnn are supported.
-WIN32_CUDNN_NAMES = ['cudnn64_6.dll', 'cudnn64_5.dll']
+WIN32_CUDNN_NAMES = ['cudnn64_7.dll', 'cudnn64_6.dll', 'cudnn64_5.dll']
 
 
 def _load_lib(name):
@@ -166,11 +166,11 @@ def _dnn_check_version():
     v = version()
     if v < 5000:
         return False, "cuDNN version is too old. Update to v5* or higher, was %d." % v
-    if v >= 6100:
+    if v >= 7200:
         warnings.warn("Your cuDNN version is more recent than "
                       "Theano. If you encounter problems, try "
                       "updating Theano or downgrading cuDNN to "
-                      "a version >= v5 and <= v6.")
+                      "a version >= v5 and <= v7.")
     return True, None
 
 
