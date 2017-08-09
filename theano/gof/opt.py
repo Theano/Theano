@@ -1191,7 +1191,8 @@ class LocalMetaOptimizer(LocalOptimizer):
                 try:
                     fn = theano.function([], outputs, givens=givens,
                                          on_unused_input='ignore')
-                    timing = min(self.time_call(fn) for _ in range(3))
+                    fn.trust_input = True
+                    timing = min(self.time_call(fn) for _ in range(2))
                 except Exception as e:
                     if self.verbose > 0:
                         print("* %s: exception" % opt, e)
