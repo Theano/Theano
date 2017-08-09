@@ -400,10 +400,9 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                 for protected_var in protected_list:
                     try:
                         root_destroyer[droot[protected_var]]
+                        return True
                     except KeyError:
                         pass
-                    else:
-                        return True
                 return False
 
             def recursive_destroys_finder(protected_var):
