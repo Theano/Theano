@@ -77,9 +77,7 @@ class SortOp(SortGenOp):
 
         return code
 
-# TODO add sort dir to params
-sort_ascending = SortOp()
-sort_descending = SortOp()
+sort_gpu = SortOp()
 
 
 class ArgSortOp(SortGenOp):
@@ -125,6 +123,4 @@ class ArgSortOp(SortGenOp):
 
         return code
 
-# TODO add sort dir to params
-argsort_ascending = ArgSortOp()
-argsort_descending = ArgSortOp()
+argsort_gpu = ArgSortOp()
