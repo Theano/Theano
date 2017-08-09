@@ -306,6 +306,68 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             assert check_stack_trace(
                 f, ops_to_check=theano.tensor.nnet.nnet.LogSoftmax)
 
+    def test_local_indexing_softmax_optimization(self):
+        """Test the Logsoftmax substitution with indexing
+
+        Check that Log(Softmax(x)[y]) is substituted with Logsoftmax(x)[y]. Note that
+        only the forward pass is checked (i.e., doesn't check the gradient)
+        """
+        d = 2
+        # Case 1: Log(Subtensor(softmax(x)))
+        x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+        sm = tensor.nnet.softmax(x)[3]
+        logsm = tensor.log(sm)
+        f = theano.function([x], logsm)
+        print(f.maker.fgraph.outputs[0].owner.op)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.op, T.Subtensor)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+
+        # Case 2: Log(IncSubtensor(softmax(x)))
+        x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+        sm = T.inc_subtensor(tensor.nnet.softmax(x)[3], 1)
+        logsm = tensor.log(sm)
+        f = theano.function([x], logsm)
+        print(f.maker.fgraph.outputs[0].owner.op)
+        print(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.op, T.IncSubtensor)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+
+        # Case 3: Log(Advanced_Subtensor1(softmax(x)))
+        x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+        sm = tensor.nnet.softmax(x)[range(1, 3)]
+        logsm = tensor.log(sm)
+        f = theano.function([x], logsm)
+        print(f.maker.fgraph.outputs[0].owner.op)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.op, T.AdvancedSubtensor1)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+
+        # Case 4: Log(Advanced_IncSubtensor1(softmax(x)))
+        x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+        sm = T.inc_subtensor(tensor.nnet.softmax(x)[range(1, 3)], 1)
+        logsm = tensor.log(sm)
+        f = theano.function([x], logsm)
+        print(f.maker.fgraph.outputs[0].owner.op)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.op, T.AdvancedIncSubtensor1)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+
+        # Case 5: Log(Advanced_Subtensor(softmax(x)))
+        x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * 3)('x')
+        sm = tensor.nnet.softmax(x)[:, range(1, 3), 2]
+        logsm = tensor.log(sm)
+        f = theano.function([x], logsm)
+        print(f.maker.fgraph.outputs[0].owner.op)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.op, T.AdvancedSubtensor)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+
+        # Case 6: Log(Advanced_IncSubtensor(softmax(x)))
+        x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * 3)('x')
+        sm = T.inc_subtensor(tensor.nnet.softmax(x)[:, range(1, 3), 2], 1)
+        logsm = tensor.log(sm)
+        f = theano.function([x], logsm)
+        print(f.maker.fgraph.outputs[0].owner.op)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.op, T.AdvancedIncSubtensor)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+
     def test_local_softmax_grad_optimization_and_big_input(self):
         """Test the Logsoftmax's grad substitution.
 
@@ -318,7 +380,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         m.check_isfinite = False
         # some inputs that are large to make the gradient explode in the non
         # optimized case
-        dims = 2
+        dims = 4
         shape = (5,) * dims
         x_big = np.exp(10 * np.random.randn(*shape).astype(config.floatX))
 
@@ -330,7 +392,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         for d in xrange(1, dims + 1):
             test_val_x_big = x_big[((0,) * (dims - d))]
             # We set step to 0.1 because for big values we need a big epsilon
-            utt.verify_grad(myfunc, [test_val_x_big], eps=0.1, mode=m)
+            utt.verify_grad(myfunc, [test_val_x_big], eps=0.1, mode=m, abs_tol=0.1)
             sa = theano.shared(test_val_x_big)
             f = theano.function([], myfunc(sa))
             self.assertTrue(check_stack_trace(f, ops_to_check='all'))

@@ -904,7 +904,7 @@ def local_logsoftmax(node):
     detect Log(Softmax(x)[*idx]) and replace it with LogSoftmax(x)[*idx]
     Note: only forward pass is affected
     """
-    list_classes = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
+    list_classes = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor, IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
     if (isinstance(node.op, tensor.Elemwise) and
             isinstance(node.op.scalar_op, scalar.basic.Log) and
             node.inputs[0].owner is not None):
