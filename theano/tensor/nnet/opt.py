@@ -270,6 +270,8 @@ def local_conv3d_cpu(node):
         return None
     if node.op.filter_dilation != (1, 1, 1):
         return None
+    if node.op.num_groups > 1:
+        return None
 
     bias = theano.tensor.zeros_like(kern[:, 0, 0, 0, 0])
 
@@ -422,6 +424,8 @@ def local_conv3d_gradweight_cpu(node):
         return None
     if node.op.filter_dilation != (1, 1, 1):
         return None
+    if node.op.num_groups > 1:
+        return None
 
     # conv3D expects shape (batch, row, column, time, channel)
     img = img.dimshuffle(0, 2, 3, 4, 1)
@@ -546,6 +550,8 @@ def local_conv3d_gradinputs_cpu(node):
     if node.op.border_mode not in ['valid', (0, 0, 0)]:
         return None
     if node.op.filter_dilation != (1, 1, 1):
+        return None
+    if node.op.num_groups > 1:
         return None
 
     # need to flip the kernel if necessary (conv3D does not flip)
