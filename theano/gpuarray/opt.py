@@ -70,9 +70,11 @@ from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor,
                         GpuAdvancedSubtensor1,
+                        GpuAdvancedBooleanSubtensor,
                         GpuAdvancedIncSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20,
+                        GpuAdvancedBooleanIncSubtensor,
                         GpuAllocDiag, GpuExtractDiag)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
@@ -1079,7 +1081,7 @@ def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
 @op_lifter([tensor.AdvancedBooleanSubtensor])
 @register_opt2([tensor.AdvancedBooleanSubtensor], 'fast_compile')
 def local_gpua_advanced_boolean_subtensor(op, context_name, inputs, outputs):
-    return GpuAdvancedSubtensor()
+    return GpuAdvancedBooleanSubtensor()
 
 
 @register_opt('fast_compile')
@@ -1134,7 +1136,7 @@ def local_gpua_advanced_boolean_incsubtensor(op, context_name, inputs, outputs):
     # GpuAdvancedIncSubtensor only works with a single boolean mask,
     # but not with fancy combinations.
     if not op.set_instead_of_inc and len(inputs) == 3:
-        return GpuAdvancedIncSubtensor()
+        return GpuAdvancedBooleanIncSubtensor()
     else:
         return False
 

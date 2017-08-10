@@ -512,19 +512,7 @@ def check_and_convert_boolean_masks(input, idx_list):
     return out_idx_list
 
 
-class GpuAdvancedSubtensor(HideC, tensor.AdvancedBooleanSubtensor):
-    """
-    AdvancedBooleanSubtensor On the GPU.
-    """
-    def make_node(self, x, *inputs):
-        ctx_name = infer_context_name(x)
-        rval = tensor.AdvancedBooleanSubtensor.make_node(self, x, *inputs)
-        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
-                             broadcastable=rval.outputs[0].type.broadcastable,
-                             context_name=ctx_name)
-        x = as_gpuarray_variable(x, ctx_name)
-        return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
-
+class BaseGpuAdvancedSubtensor(object):
     def perform(self, node, inputs, out_):
         out, = out_
         x = inputs[0]
@@ -634,21 +622,35 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedBooleanSubtensor):
         out[0] = o
 
 
-class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedBooleanIncSubtensor):
+class GpuAdvancedSubtensor(HideC, BaseGpuAdvancedSubtensor, tensor.AdvancedSubtensor):
     """
-    Implement AdvancedBooleanIncSubtensor on the gpu.
-
+    AdvancedSubtensor on the GPU.
     """
-    def make_node(self, x, y, *inputs):
-        ctx_name = infer_context_name(x, y)
-        rval = tensor.AdvancedBooleanIncSubtensor.make_node(self, x, y, *inputs)
+    def make_node(self, x, *inputs):
+        ctx_name = infer_context_name(x)
+        rval = tensor.AdvancedSubtensor.make_node(self, x, *inputs)
         otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
                              broadcastable=rval.outputs[0].type.broadcastable,
                              context_name=ctx_name)
         x = as_gpuarray_variable(x, ctx_name)
-        y = as_gpuarray_variable(y, ctx_name)
-        return gof.Apply(self, [x, y] + rval.inputs[2:], [otype()])
+        return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
 
+
+class GpuAdvancedBooleanSubtensor(HideC, BaseGpuAdvancedSubtensor, tensor.AdvancedBooleanSubtensor):
+    """
+    AdvancedBooleanSubtensor on the GPU.
+    """
+    def make_node(self, x, *inputs):
+        ctx_name = infer_context_name(x)
+        rval = tensor.AdvancedBooleanSubtensor.make_node(self, x, *inputs)
+        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
+
+
+class BaseGpuAdvancedIncSubtensor(object):
     def perform(self, node, inp, out_):
         out, = out_
         x = inp[0]
@@ -762,6 +764,38 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedBooleanIncSubtensor):
                     iadd(x_flat_sub, y_flat[j % y_flat.shape[0]], broadcast=True)
         x_ = x_flat.reshape(x_.shape).transpose(*rtransp)
         out[0] = x_
+
+
+class GpuAdvancedIncSubtensor(HideC, BaseGpuAdvancedIncSubtensor, tensor.AdvancedIncSubtensor):
+    """
+    Implement AdvancedIncSubtensor on the gpu.
+
+    """
+    def make_node(self, x, y, *inputs):
+        ctx_name = infer_context_name(x, y)
+        rval = tensor.AdvancedIncSubtensor.make_node(self, x, y, *inputs)
+        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        y = as_gpuarray_variable(y, ctx_name)
+        return gof.Apply(self, [x, y] + rval.inputs[2:], [otype()])
+
+
+class GpuAdvancedBooleanIncSubtensor(HideC, BaseGpuAdvancedIncSubtensor, tensor.AdvancedBooleanIncSubtensor):
+    """
+    Implement AdvancedBooleanIncSubtensor on the gpu.
+
+    """
+    def make_node(self, x, y, *inputs):
+        ctx_name = infer_context_name(x, y)
+        rval = tensor.AdvancedBooleanIncSubtensor.make_node(self, x, y, *inputs)
+        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        y = as_gpuarray_variable(y, ctx_name)
+        return gof.Apply(self, [x, y] + rval.inputs[2:], [otype()])
 
 
 class GpuAdvancedIncSubtensor1(Op):

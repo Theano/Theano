@@ -13,6 +13,7 @@ from ..elemwise import GpuDimShuffle
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor1,
                          GpuAdvancedSubtensor,
+                         GpuAdvancedBooleanSubtensor,
                          GpuAdvancedIncSubtensor,
                          GpuAdvancedIncSubtensor1,
                          GpuAdvancedIncSubtensor1_dev20,
@@ -40,7 +41,7 @@ class G_subtensor(test_subtensor.T_subtensor):
             adv_sub1=GpuAdvancedSubtensor1,
             adv_incsub1=GpuAdvancedIncSubtensor1,
             adv_sub=GpuAdvancedSubtensor,
-            adv_bool_sub=GpuAdvancedSubtensor,
+            adv_bool_sub=GpuAdvancedBooleanSubtensor,
             dimshuffle=GpuDimShuffle,
             mode=mode_with_gpu,
             # avoid errors with limited devices
@@ -69,7 +70,7 @@ class G_subtensorF16(test_subtensor.T_subtensor):
             adv_sub1=GpuAdvancedSubtensor1,
             adv_incsub1=GpuAdvancedIncSubtensor1,
             adv_sub=GpuAdvancedSubtensor,
-            adv_bool_sub=GpuAdvancedSubtensor,
+            adv_bool_sub=GpuAdvancedBooleanSubtensor,
             dimshuffle=GpuDimShuffle,
             mode=mode_with_gpu,
             # avoid errors with limited devices
