@@ -182,6 +182,7 @@ def local_dimshuffle_subtensor(node):
             return False
         new_order = node.op.new_order
         # new order could be empty
+        # Verif that we don't change dimensions order.
         if len(new_order) > 1:
             past_dim = new_order[0]
             for dim in new_order[1:]:
