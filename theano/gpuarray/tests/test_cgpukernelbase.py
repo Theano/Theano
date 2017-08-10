@@ -15,8 +15,10 @@ from ..type import GpuArrayType, get_context, gpu_context_type
 # This is an implementation to test that CGpuKernelBase works and also
 # to use as an example in the docs.  It is not used for user graphs.
 class GpuEye(CGpuKernelBase, Op):
-    # Eye for GPU.
+    """
+    Eye for GPU.
 
+    """
     __props__ = ('dtype', 'context_name')
     params_type = ParamsType(typecode=int_t, context=gpu_context_type)
 

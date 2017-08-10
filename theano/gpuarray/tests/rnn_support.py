@@ -26,7 +26,7 @@ class Model(object):
 
 
 def uniform(stdev, size):
-    # uniform distribution with the given stdev and size
+    """uniform distribution with the given stdev and size"""
     return np.random.uniform(
         low=-stdev * np.sqrt(3),
         high=stdev * np.sqrt(3),
@@ -36,7 +36,7 @@ def uniform(stdev, size):
 
 def linear_transform_weights(input_dim, output_dim,
                              param_list=None, name=""):
-    # theano shared variable given input and output dimension
+    "theano shared variable given input and output dimension"
     weight_inialization = uniform(np.sqrt(2.0 / input_dim),
                                   (input_dim, output_dim))
     W = theano.shared(weight_inialization, name=name)
