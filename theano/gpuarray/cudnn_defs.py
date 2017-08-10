@@ -103,7 +103,7 @@ class CuDNNV6(CuDNNV51):
                                 # new in v6
                                 ('CUDNN_DATA_INT8', 'int8'),
                                 ('CUDNN_DATA_INT32', 'int32'),
-#                                ('CUDNN_DATA_INT8X4', 'int8x4'),
+                                # ('CUDNN_DATA_INT8X4', 'int8x4'),
                                 ctype='cudnnDataType_t')
 
     cudnnPoolingMode_t = CEnumType(('CUDNN_POOLING_MAX', 'max'),
@@ -133,15 +133,17 @@ class CuDNNV6(CuDNNV51):
                                       ('CUDNN_REDUCE_TENSOR_NORM2', 'norm2'),
                                       ctype='cudnnReduceTensorOp_t')
 
+
 class CuDNNV7(CuDNNV6):
     version = 7
     cudnnMathType_t = CEnumType(('CUDNN_DEFAULT_MATH', 'non_tensor_op'),
                                 ('CUDNN_TENSOR_OP_MATH', 'tensor_op'),
-                                ctype = 'cudnnMathType_t') 
+                                ctype='cudnnMathType_t')
     cudnnDeterminism_t = CEnumType(('CUDNN_NON_DETERMINISTIC', 'non_deterministic'),
                                    ('CUDNN_DETERMINISTIC', 'deterministic'),
-                                   ctype = 'cudnnDeterminism_t') 
-    
+                                   ctype='cudnnDeterminism_t')
+
+
 def get_definitions(cudnn_version=None):
     """
     Return cuDNN definitions to be used by Theano for the given cuDNN version.
@@ -151,7 +153,10 @@ def get_definitions(cudnn_version=None):
     if None, return definitions for the  most recent supported cuDNN version.
 
     """
-    if cudnn_version is not None and cudnn_version // 1000 == 6:
-        return CuDNNV6()
+    if cudnn_version is not None:
+        if cudnn_version // 1000 == 5:
+            return CuDNNV51()
+        if cudnn_version // 1000 == 6:
+            return CuDNNV6()
     # By default, we use definitions for the last supported cuDNN version.
     return CuDNNV7()

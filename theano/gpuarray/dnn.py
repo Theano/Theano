@@ -90,7 +90,7 @@ def _dnn_lib():
                     if lib_name:
                         break
             if lib_name is None:
-                raise RuntimeError('Could not find cudnn library (looked for v5* or v6*)')
+                raise RuntimeError('Could not find cudnn library (looked for v5* to v7*)')
             else:
                 dnn_handle = ctypes.cdll.LoadLibrary(lib_name)
 
