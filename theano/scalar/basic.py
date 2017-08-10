@@ -2658,6 +2658,13 @@ class Neg(UnaryScalarOp):
     nfunc_spec = ('negative', 1, 1)
 
     def impl(self, x):
+        # We have to make sure x is not a numpy.bool_, because
+        # `-numpy.bool_(True)` is `False` (we want 0), and
+        # `-numpy.bool_(False)` is `True` (we want 1).
+        # This happens for Composite, as the intermediate results are not
+        # casted in the dtype of the intermediate variable in general.
+        if isinstance(x, numpy.bool_):
+            x = numpy.int8(x)
         return -x
 
     def L_op(self, inputs, outputs, gout):

@@ -58,7 +58,7 @@ except ImportError:
     pass
 
 # Update these names when new versions of cudnn are supported.
-WIN32_CUDNN_NAMES = ['cudnn64_6.dll', 'cudnn64_5.dll']
+WIN32_CUDNN_NAMES = ['cudnn64_7.dll', 'cudnn64_6.dll', 'cudnn64_5.dll']
 
 
 def _load_lib(name):
@@ -164,13 +164,13 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 
 def _dnn_check_version():
     v = version()
-    if v < 5000:
-        return False, "cuDNN version is too old. Update to v5* or higher, was %d." % v
-    if v >= 6100:
+    if v < 6000:
+        return False, "cuDNN version is too old. Update to v6* or higher, was %d." % v
+    if v >= 7200:
         warnings.warn("Your cuDNN version is more recent than "
                       "Theano. If you encounter problems, try "
                       "updating Theano or downgrading cuDNN to "
-                      "a version >= v5 and <= v6.")
+                      "a version >= v6 and <= v7.")
     return True, None
 
 
@@ -536,10 +536,10 @@ def ensure_dt(val, default, name, dtype):
     return val
 
 
-class GpuDnnConv(DnnBase):
+class GpuDnnConvBase(DnnBase):
 
     """
-    The forward convolution.
+    Baseclass for convolutions.
 
     Parameters
     ----------
@@ -557,47 +557,44 @@ class GpuDnnConv(DnnBase):
     """
     _f16_ok = True
     __props__ = ('algo', 'inplace', 'num_groups')
-
     check_input = False
-    params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionFwdAlgo_t,
+    params_type = ParamsType(conv_tensor_op=cudnn.cudnnMathType_t, conv_ws_size=int_t,
                              choose_algo=bool_t, choose_once=bool_t, choose_time=bool_t,
                              inplace=bool_t,
                              handle=handle_type,
                              num_groups=int_t)
-
-    def __init__(self, algo=None, inplace=False, num_groups=1):
-        DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_fwd.c"],
-                         "APPLY_SPECIFIC(conv_fwd)")
-
-        if algo is None:
-            algo = config.dnn.conv.algo_fwd
-        self.algo = algo
-
+    algo_cache = {}
+    objs_created = 0 
+    
+    def __init__(self, algo, inplace, num_groups, src, spec):
+        DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_conv_find.cc"] + src, spec)
         self.inplace = bool(inplace)
         if self.inplace:
             self.destroy_map = {0: [2]}
-
-        assert cudnn.cudnnConvolutionFwdAlgo_t.has_alias(self.algo) or self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
-
-        self.conv_algo = cudnn.cudnnConvolutionFwdAlgo_t.CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
-        if self.algo not in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
-            self.conv_algo = self.algo
+        self.algo = algo
         self.choose_algo = self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
         self.choose_once = self.algo in DNN_CONV_ALGO_CHOOSE_ONCE
         self.choose_time = self.algo in DNN_CONV_ALGO_CHOOSE_TIME
         self.num_groups = num_groups
+        # findEx cache
+        self.algo_hash = ""
+        self.conv_tensor_op = 'CUDNN_DEFAULT_MATH'
+        self.conv_ws_size = 0 
+        GpuDnnConvBase.objs_created = GpuDnnConvBase.objs_created+1 
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        if not hasattr(self, 'algo'):
-            if hasattr(self, 'workmem'):
-                self.algo = self.workmem
-            else:
-                self.algo = config.dnn.conv.algo_fwd
         if not hasattr(self, 'inplace'):
             self.inplace = False
         if not hasattr(self, 'num_groups'):
             self.num_groups = 1
+        if not hasattr(self, 'conv_tensor_op'):
+            self.conv_tensor_op = 'CUDNN_DEFAULT_MATH'
+        if not hasattr(self, 'conv_ws_size'):
+            self.conv_ws_size=0
+# deprecated
+        if hasattr(self, 'workmem'):
+            self.algo = workmem
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None):
         ctx_name = infer_context_name(img, kern, output)
@@ -617,10 +614,6 @@ class GpuDnnConv(DnnBase):
             raise TypeError("The number of dimensions of "
                             "img, kern and output must match")
 
-        if img.type.ndim == 5 and self.algo not in (cudnn.conv3d_fwd_algorithms +
-                                                    SUPPORTED_DNN_CONV_ALGO_RUNTIME):
-            raise ValueError("convolution algo %s can't be used for "
-                             "3d convolutions", (self.algo,))
         if img.type.ndim == 5 and self.num_groups != 1:
             raise ValueError("Grouped convolutions not implemented for 3D convolutions")
 
@@ -630,23 +623,21 @@ class GpuDnnConv(DnnBase):
 
         alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
         beta = ensure_dt(beta, _zero, 'beta', img.dtype)
-
-        return Apply(self, [img, kern, output, desc, alpha, beta],
-                     [output.type()])
-
-    def grad(self, inp, grads):
-        img, kerns, output, desc, alpha, beta = inp
-        top, = grads
-
-        top = gpu_contiguous(top)
-
-        d_img = GpuDnnConvGradI(num_groups=self.num_groups)(kerns, top, empty_like(img), desc)
-        d_kerns = GpuDnnConvGradW(num_groups=self.num_groups)(img, top, empty_like(kerns), desc)
-        d_alpha = grad_not_implemented(self, 4, alpha)
-        d_beta = grad_not_implemented(self, 5, beta)
-
-        return [d_img * alpha, d_kerns * alpha, top * beta,
-                DisconnectedType()(), d_alpha, d_beta]
+        # prepare hash key for algo cache
+        # todo: add GPU# and alignment
+        # FIXME: now it comes out as "Shape.0 Shape.0"
+        self.algo_hash = self.algo_hash + str(theano.tensor.shape(output))+' '+ str(theano.tensor.shape(kern))
+        GpuDnnConvBase.objs_created = GpuDnnConvBase.objs_created-1
+        if GpuDnnConvBase.objs_created != 0:
+            print("Mismatch: " + self.algo_hash, file=sys.stderr)
+        if self.algo_hash in GpuDnnConvBase.algo_cache.keys():
+            (self.conv_algo, self.conv_tensor_op, self.conv_ws_size) = GpuDnnConvBase.algo_cache[self.algo_hash]
+#            print("Cache hit : "+ self.algo_hash + " --> " + self.algo, file=sys.stderr)
+        ret = Apply(self, [img, kern, output, desc, alpha, beta],
+                    [output.type()])
+#        TODO: restore after shape is fixed
+#        GpuDnnConvBase.algo_cache[self.algo_hash] = (self.conv_algo, self.conv_tensor_op, self.conv_ws_size)
+        return ret;
 
     def connection_pattern(self, node):
         # not connected to desc
@@ -678,8 +669,75 @@ class GpuDnnConv(DnnBase):
     def infer_shape(self, node, shape):
         return [shape[2]]
 
+class GpuDnnConv(GpuDnnConvBase):
 
-class GpuDnnConvGradW(DnnBase):
+    """
+    The forward convolution.
+
+    Parameters
+    ----------
+    image
+    kernel
+    descr :
+        The convolution descriptor.
+    algo : {'small', 'none', 'large', 'fft', 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+        Default is the value of :attr:`config.dnn.conv.algo_fwd`.
+    num_groups :
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
+
+    """
+
+    params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionFwdAlgo_t,
+                             conv_tensor_op=cudnn.cudnnMathType_t, conv_ws_size=int_t,
+                             choose_algo=bool_t, choose_once=bool_t, choose_time=bool_t,
+                             inplace=bool_t,
+                             handle=handle_type,
+                             num_groups=int_t)
+
+    def __init__(self, algo=None, inplace=False, num_groups=1):
+        if algo is None:
+            algo = config.dnn.conv.algo_fwd
+        self.algo = algo
+        assert cudnn.cudnnConvolutionFwdAlgo_t.has_alias(self.algo) or self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
+
+        self.conv_algo = cudnn.cudnnConvolutionFwdAlgo_t.CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM
+        if self.algo not in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+            self.conv_algo = self.algo
+
+        GpuDnnConvBase.__init__(self, algo, inplace, num_groups, ["dnn_fwd.c"],
+                                "APPLY_SPECIFIC(conv_fwd)")
+
+    def __setstate__(self, d):
+        GpuDnnConvBase.__setstate__(self,d)
+        if not hasattr(self, 'algo'):
+            self.algo = config.dnn.conv.algo_fwd
+        
+    def make_node(self, img, kern, output, desc, alpha=None, beta=None):
+        if img.type.ndim == 5 and self.algo not in (cudnn.conv3d_fwd_algorithms +
+                                                    SUPPORTED_DNN_CONV_ALGO_RUNTIME):
+            raise ValueError("convolution algo %s can't be used for "
+                             "3d convolutions", (self.algo,))
+        return GpuDnnConvBase.make_node(self, img, kern, output, desc, alpha, beta)
+    
+    def grad(self, inp, grads):
+        img, kerns, output, desc, alpha, beta = inp
+        top, = grads
+
+        top = gpu_contiguous(top)
+
+        d_img = GpuDnnConvGradI(num_groups=self.num_groups)(kerns, top, empty_like(img), desc)
+        d_kerns = GpuDnnConvGradW(num_groups=self.num_groups)(img, top, empty_like(kerns), desc)
+        d_alpha = grad_not_implemented(self, 4, alpha)
+        d_beta = grad_not_implemented(self, 5, beta)
+
+        return [d_img * alpha, d_kerns * alpha, top * beta,
+                DisconnectedType()(), d_alpha, d_beta]
+
+
+
+class GpuDnnConvGradW(GpuDnnConvBase):
 
     """
     The convolution gradient with respect to the weights.
@@ -698,40 +756,24 @@ class GpuDnnConvGradW(DnnBase):
         separate groups. Each which carry out convolutions separately
 
     """
-    _f16_ok = True
-    __props__ = ('algo', 'inplace', 'num_groups')
 
-    check_input = False
     params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionBwdFilterAlgo_t,
+                             conv_tensor_op=cudnn.cudnnMathType_t, conv_ws_size=int_t,
                              choose_algo=bool_t, choose_once=bool_t, choose_time=bool_t,
                              inplace=bool_t,
                              handle=handle_type,
                              num_groups=int_t)
 
     def __init__(self, inplace=False, algo=None, num_groups=1):
-        DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_gw.c"],
-                         "APPLY_SPECIFIC(conv_gw)")
-        self.inplace = bool(inplace)
-        if self.inplace:
-            self.destroy_map = {0: [2]}
+        self.conv_algo = cudnn.cudnnConvolutionBwdFilterAlgo_t.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0
         if algo is None:
             algo = config.dnn.conv.algo_bwd_filter
-        self.algo = algo
-
+        GpuDnnConvBase.__init__(self, algo, inplace, num_groups, ["dnn_gw.c"],
+                                "APPLY_SPECIFIC(conv_gw)")
         assert cudnn.cudnnConvolutionBwdFilterAlgo_t.has_alias(self.algo) or self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
-
-        self.conv_algo = cudnn.cudnnConvolutionBwdFilterAlgo_t.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0
-        if self.algo not in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
-            self.conv_algo = self.algo
-        self.choose_algo = self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
-        self.choose_once = self.algo in DNN_CONV_ALGO_CHOOSE_ONCE
-        self.choose_time = self.algo in DNN_CONV_ALGO_CHOOSE_TIME
-        self.num_groups = num_groups
-
+        
     def __setstate__(self, d):
-        self.__dict__.update(d)
-        if not hasattr(self, 'inplace'):
-            self.inplace = False
+        GpuDnnConvBase.__setstate__(self, d)
         if not hasattr(self, 'algo'):
             self.algo = config.dnn.conv.algo_bwd_filter
         if not hasattr(self, 'num_groups'):
@@ -751,10 +793,6 @@ class GpuDnnConvGradW(DnnBase):
         return (d_img * alpha, d_top * alpha, kerns * beta,
                 DisconnectedType()(), d_alpha, d_beta)
 
-    def connection_pattern(self, node):
-        # not connected to desc
-        return [[1], [1], [1], [0], [1], [1]]
-
     def op_may_fail_with_subsample(self, img, desc):
         return (version() < 6000 and
                 img.type.dtype == 'float32' and
@@ -769,7 +807,7 @@ class GpuDnnConvGradW(DnnBase):
                 beta is not None and
                 theano.tensor.extract_constant(beta) != 1)
 
-    def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
+    def make_node(self, img, kern, output, desc, alpha=None, beta=None):
         if self.op_may_fail_with_subsample(img, desc):
             warnings.warn('cuDNN backward filter operation for 3D convolutions may produce bad results '
                           'with certain cuDNN algorithms depending on the compute capability of your GPU '
@@ -781,42 +819,15 @@ class GpuDnnConvGradW(DnnBase):
                           'if beta != 1. If you encounter problems, consider '
                           'setting the theano flag "dnn.conv.algo_bwd_filter" to '
                           '"none", "deterministic", "fft", or "small".')
-        ctx_name = infer_context_name(img, topgrad, output)
-        img = as_gpuarray_variable(img, ctx_name)
-        topgrad = as_gpuarray_variable(topgrad, ctx_name)
-        output = as_gpuarray_variable(output, ctx_name)
-        if img.type.ndim not in (4, 5):
-            raise TypeError('img must be 4D or 5D tensor')
-        if topgrad.type.ndim not in (4, 5):
-            raise TypeError('topgrad must be 4D or 5D tensor')
-        if output.type.ndim not in (4, 5):
-            raise TypeError('output must be 4D or 5D tensor')
-
-        if (img.type.ndim != topgrad.type.ndim or
-                img.type.ndim != output.type.ndim):
-            raise TypeError("The number of dimensions of "
-                            "img, topgrad and output must match")
 
         if img.type.ndim == 5 and self.algo not in (cudnn.conv3d_bwd_filter_algorithms +
                                                     SUPPORTED_DNN_CONV_ALGO_RUNTIME):
             raise ValueError("convolution algo %s can't be used for "
                              "3d convolutions", (self.algo,))
 
-        if (not isinstance(desc.type, CDataType) or
-                desc.type.ctype != 'cudnnConvolutionDescriptor_t'):
-            raise TypeError('desc must be cudnnConvolutionDescriptor_t')
-
-        alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
-        beta = ensure_dt(beta, _zero, 'beta', img.dtype)
-
-        return Apply(self, [img, topgrad, output, desc, alpha, beta],
-                     [output.type()])
-
-    def infer_shape(self, node, shape):
-        return [shape[2]]
-
-
-class GpuDnnConvGradI(DnnBase):
+        return GpuDnnConvBase.make_node(self, img, kern, output, desc, alpha, beta)
+        
+class GpuDnnConvGradI(GpuDnnConvBase):
     """
     The convolution gradient with respect to the inputs.
 
@@ -834,44 +845,26 @@ class GpuDnnConvGradI(DnnBase):
         separate groups. Each which carry out convolutions separately
 
     """
-    _f16_ok = True
-    __props__ = ('algo', 'inplace', 'num_groups')
 
-    check_input = False
     params_type = ParamsType(conv_algo=cudnn.cudnnConvolutionBwdDataAlgo_t,
+                             conv_tensor_op=cudnn.cudnnMathType_t, conv_ws_size=int_t,
                              choose_algo=bool_t, choose_once=bool_t, choose_time=bool_t,
                              inplace=bool_t,
                              handle=handle_type,
                              num_groups=int_t)
 
     def __init__(self, inplace=False, algo=None, num_groups=1):
-        DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_gi.c"],
-                         "APPLY_SPECIFIC(conv_gi)")
-        self.inplace = bool(inplace)
-        if self.inplace:
-            self.destroy_map = {0: [2]}
         if algo is None:
             algo = config.dnn.conv.algo_bwd_data
-        self.algo = algo
-
-        assert cudnn.cudnnConvolutionBwdDataAlgo_t.has_alias(self.algo) or self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
-
         self.conv_algo = cudnn.cudnnConvolutionBwdDataAlgo_t.CUDNN_CONVOLUTION_BWD_DATA_ALGO_0
-        if self.algo not in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
-            self.conv_algo = self.algo
-        self.choose_algo = self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
-        self.choose_once = self.algo in DNN_CONV_ALGO_CHOOSE_ONCE
-        self.choose_time = self.algo in DNN_CONV_ALGO_CHOOSE_TIME
-        self.num_groups = num_groups
-
+        GpuDnnConvBase.__init__(self, algo, inplace, num_groups, ["dnn_gi.c"],
+                                "APPLY_SPECIFIC(conv_gi)")
+        assert cudnn.cudnnConvolutionBwdDataAlgo_t.has_alias(self.algo) or self.algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME
+        
     def __setstate__(self, d):
-        self.__dict__.update(d)
+        GpuDnnConvBase.__setstate__(self, d)
         if not hasattr(self, 'algo'):
             self.algo = config.dnn.conv.algo_bwd_data
-        if not hasattr(self, 'inplace'):
-            self.inplace = False
-        if not hasattr(self, 'num_groups'):
-            self.num_groups = 1
 
     def grad(self, inp, grads):
         kerns, top, output, desc, alpha, beta = inp
@@ -887,45 +880,12 @@ class GpuDnnConvGradI(DnnBase):
         return (d_kerns * alpha, d_top * alpha, img * beta,
                 DisconnectedType()(), d_alpha, d_beta)
 
-    def connection_pattern(self, node):
-        # not connected to desc
-        return [[1], [1], [1], [0], [1], [1]]
-
     def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None):
-        ctx_name = infer_context_name(kern, topgrad, output)
-        kern = as_gpuarray_variable(kern, ctx_name)
-        topgrad = as_gpuarray_variable(topgrad, ctx_name)
-        output = as_gpuarray_variable(output, ctx_name)
-        if kern.type.ndim not in (4, 5):
-            raise TypeError('kern must be 4D or 5D tensor')
-        if topgrad.type.ndim not in (4, 5):
-            raise TypeError('topgrad must be 4D or 5D tensor')
-        if output.type.ndim not in (4, 5):
-            raise TypeError('output must be 4D or 5D tensor')
-
-        if (kern.type.ndim != topgrad.type.ndim or
-                kern.type.ndim != output.type.ndim):
-            raise TypeError("The number of dimensions of "
-                            "kern, topgrad and output must match")
-
         if kern.type.ndim == 5 and self.algo not in (cudnn.conv3d_bwd_data_algorithms +
                                                      SUPPORTED_DNN_CONV_ALGO_RUNTIME):
             raise ValueError("convolution algo %s can't be used for "
                              "3d convolutions", (self.algo,))
-
-        if (not isinstance(desc.type, CDataType) or
-                desc.type.ctype != 'cudnnConvolutionDescriptor_t'):
-            raise TypeError('desc must be cudnnConvolutionDescriptor_t')
-
-        alpha = ensure_dt(alpha, _one, 'alpha', kern.dtype)
-        beta = ensure_dt(beta, _zero, 'beta', kern.dtype)
-
-        return Apply(self, [kern, topgrad, output, desc, alpha, beta],
-                     [output.type()])
-
-    def infer_shape(self, node, shape):
-        return [shape[2]]
-
+        return GpuDnnConvBase.make_node(self, kern, topgrad, output, desc, alpha, beta)
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
              conv_mode='conv', direction_hint=None, workmem=None,

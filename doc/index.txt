@@ -20,6 +20,9 @@ learning/machine learning <https://mila.umontreal.ca/en/cours/>`_ classes).
 
 News
 ====
+* 2017/03/07: Release of Theano 0.9.0rc3, with crash fixes, bug fixes and improvements.
+
+* 2017/03/20: Release of Theano 0.9.0. Everybody is encouraged to update.
 
 * 2017/08/09: Release of Theano 0.10.0beta1, many improvements and bugfixes, release candidate to coming.
 

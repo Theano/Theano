@@ -6,6 +6,7 @@ memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
 memset(prev_top_dims, 0, sizeof(prev_top_dims));
 
 #section support_code_struct
+#include "dnn_conv_find.h"
 
 int reuse_algo;
 cudnnConvolutionBwdDataAlgo_t prev_algo;
@@ -182,6 +183,9 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       }
 
       algo = choice.algo;
+      params->conv_algo = algo;
+      params->conv_ws_size = choice.memory;
+      params->conv_tensor_op = choice.mathType;
 
       #ifdef DEBUG
       if (count == 0) {
@@ -212,6 +216,17 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       algo = prev_algo;
     }
 
+    params->conv_algo = algo;
+    // CUDNN7: need to set math type
+    err = cudnnSetConvolutionMathType(desc, params->conv_tensor_op);
+    if (err != CUDNN_STATUS_SUCCESS) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "error setting math type for convolution : %s",
+                     cudnnGetErrorString(err));
+        cuda_exit(c->ctx);
+        return 1;
+    }
+    
     #ifdef DEBUG
     char algorithm_name[128];
     if (0 != theano_enum_to_string_cudnnConvolutionBwdDataAlgo_t(algo, algorithm_name))

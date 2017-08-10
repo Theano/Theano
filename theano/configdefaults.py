@@ -1580,7 +1580,7 @@ AddConfigVar('check_stack_trace',
 
 
 def _timeout_default():
-    return theano.config.compile.wait * 24
+    return theano.config.compile.wait * 48
 
 AddConfigVar('compile.timeout',
              """In seconds, time that a process will wait before deciding to
