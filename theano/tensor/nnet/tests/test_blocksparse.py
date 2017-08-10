@@ -87,8 +87,9 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
 
     @staticmethod
     def gemv_numpy2(o, W, h, iIdx, oIdx):
-        # Other implementation
-
+        """
+        Other implementation
+        """
         from numpy import ix_
         for b in range(o.shape[0]):
             w = W[ix_(iIdx[b], oIdx[b])].swapaxes(1, 2)
@@ -98,8 +99,9 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
 
     @staticmethod
     def gemv_numpy3(o, W, h, iIdx, oIdx):
-        # Other implementation
-
+        """
+        Other implementation
+        """
         from numpy import ix_
         for b in range(o.shape[0]):
             w = W[ix_(iIdx[b], oIdx[b])]

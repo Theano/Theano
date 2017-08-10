@@ -34,9 +34,10 @@ class TestCorr2D(utt.InferShapeTester):
                  border_mode='valid', subsample=(1, 1),
                  input=None, filters=None, verify_grad=True,
                  non_contiguous=False, filter_dilation=(1, 1)):
-        # :param image_shape: The constant shape info passed to corrMM.
-        # :param filter_shape: The constant shape info passed to corrMM.
-
+        """
+        :param image_shape: The constant shape info passed to corrMM.
+        :param filter_shape: The constant shape info passed to corrMM.
+        """
         if not theano.config.cxx:
             raise SkipTest("Need cxx to test conv2d")
         N_image_shape = [T.get_scalar_constant_value(T.as_tensor_variable(x))

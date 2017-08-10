@@ -36,9 +36,10 @@ class TestCorr3D(utt.InferShapeTester):
                  border_mode='valid', subsample=(1, 1, 1),
                  input=None, filters=None, verify_grad=True,
                  non_contiguous=False, filter_dilation=(1, 1, 1)):
-        # :param image_shape: The constant shape info passed to corr3dMM.
-        # :param filter_shape: The constant shape info passed to corr3dMM.
-
+        """
+        :param image_shape: The constant shape info passed to corr3dMM.
+        :param filter_shape: The constant shape info passed to corr3dMM.
+        """
         if not theano.config.cxx:
             raise SkipTest("Need cxx for this test")
 

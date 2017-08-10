@@ -87,14 +87,15 @@ class T_softplus(unittest.TestCase):
 class T_sigmoid_opts(unittest.TestCase):
 
     def get_mode(self, excluding=None):
-        # Return appropriate mode for the tests.
-        #
-        # :param excluding: List of optimizations to exclude.
-        #
-        # :return: The current default mode unless the `config.mode` option is
-        # set to 'FAST_COMPILE' (in which case it is replaced by the 'FAST_RUN'
-        # mode), without the optimizations specified in `excluding`.
+        """
+        Return appropriate mode for the tests.
 
+        :param excluding: List of optimizations to exclude.
+
+        :return: The current default mode unless the `config.mode` option is
+        set to 'FAST_COMPILE' (in which case it is replaced by the 'FAST_RUN'
+        mode), without the optimizations specified in `excluding`.
+        """
         if excluding is None:
             excluding = []
         m = theano.config.mode
@@ -447,7 +448,9 @@ class T_softplus_opts(unittest.TestCase):
 
 
 class T_sigmoid_utils(unittest.TestCase):
-    # Test utility functions found in 'sigm.py'.
+    """
+    Test utility functions found in 'sigm.py'.
+    """
 
     def test_compute_mul(self):
         x, y, z = tensor.vectors('x', 'y', 'z')

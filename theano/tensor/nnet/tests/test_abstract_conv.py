@@ -1097,12 +1097,16 @@ class TestBilinearUpsampling(unittest.TestCase):
         compile_mode = compile_mode.excluding('AbstractConvCheck')
 
     def numerical_kernel_1D(self, ratio):
-        # Gets numerical 1D kernel for bilinear upsampling
+        """
+        Gets numerical 1D kernel for bilinear upsampling
+        """
         return np.array(list(range(1, ratio + 1)) +
                         list(range(ratio - 1, 0, -1)))
 
     def numerical_kernel_2D(self, ratio):
-        # Gets numerical 2D kernel for bilinear upsampling
+        """
+        Gets numerical 2D kernel for bilinear upsampling
+        """
         return np.array([i * j for i in self.numerical_kernel_1D(ratio) for j
                          in self.numerical_kernel_1D(ratio)]).\
             reshape(2 * ratio - 1, 2 * ratio - 1)
@@ -1157,50 +1161,52 @@ class TestBilinearUpsampling(unittest.TestCase):
             utt.assert_allclose(kernel_1D, f_ten_norm(ratio))
 
     def numerical_upsampling_multiplier(self, ratio):
-        # Compute upsampling multiplier
-        #
-        # This method computes the multipliers of an array
-        # that will be upsampled using bilinear interpolation.
-        #
-        # Parameters
-        # ----------
-        # ratio: int
-        #     the ratio by which the array will be upsampled.
-        #
-        # Returns
-        # -------
-        # 1D numpy array
-        #     The multiplers that can be used in bilinear interpolation
-        #     to upsample an array.
-        #
-        # int
-        #     The size of the multipliers array
+        """
+        Compute upsampling multiplier
 
+        This method computes the multipliers of an array
+        that will be upsampled using bilinear interpolation.
+
+        Parameters
+        ----------
+        ratio: int
+            the ratio by which the array will be upsampled.
+
+        Returns
+        -------
+        1D numpy array
+            The multiplers that can be used in bilinear interpolation
+            to upsample an array.
+
+        int
+            The size of the multipliers array
+        """
         kern = np.arange(ratio + 1)
         return kern, kern.shape[0]
 
     def get_upsampled_twobytwo_mat(self, two_by_two, ratio):
-        # Upsample 4D array with two rows and two columns
-        #
-        # This method gets a 4D numpy array with two rows and two columns
-        # and computes its upsampled array by using bilinear interpolation
-        #
-        # Parameters
-        # ----------
-        # two_by_two: numpy 4D array
-        #     The array that will be upsampled by bilinear interpolation.
-        #     Array is of shape (batch size, num channels, 2, 2)
-        #
-        # ratio: int
-        #     The ratio by which two_by_two's last
-        #     two dimensions (row and col) will be upsampled.
-        #
-        # Returns
-        # -------
-        # 4D numpy array
-        #     The array upsampled by using bilinear interpolation. Array
-        #     is of shape (batch size, num channels, 2*ratio, 2*ratio).
+        """
+        Upsample 4D array with two rows and two columns
 
+        This method gets a 4D numpy array with two rows and two columns
+        and computes its upsampled array by using bilinear interpolation
+
+        Parameters
+        ----------
+        two_by_two: numpy 4D array
+            The array that will be upsampled by bilinear interpolation.
+            Array is of shape (batch size, num channels, 2, 2)
+
+        ratio: int
+            The ratio by which two_by_two's last
+            two dimensions (row and col) will be upsampled.
+
+        Returns
+        -------
+        4D numpy array
+            The array upsampled by using bilinear interpolation. Array
+            is of shape (batch size, num channels, 2*ratio, 2*ratio).
+        """
         kern, shp = self.numerical_upsampling_multiplier(ratio)
         up_1D = two_by_two[:, :, :, :1] * kern[::-1] + \
             two_by_two[:, :, :, 1:] * kern
