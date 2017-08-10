@@ -1,4 +1,6 @@
-# Tests for the Op decorator
+"""
+ Tests for the Op decorator
+"""
 from __future__ import absolute_import, print_function, division
 
 import numpy as np
