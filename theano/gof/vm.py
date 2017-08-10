@@ -338,7 +338,6 @@ class Stack(VM):
 
         self.allow_gc = allow_gc
         self.message = ""
-        self.base_apply_stack = [o.owner for o in fgraph.outputs if o.owner]
         self.outputs = fgraph.outputs
         self.storage_map = storage_map
         self.variable_shape = {}  # Variable -> shape
@@ -349,6 +348,19 @@ class Stack(VM):
         self.callback = callback
         self.callback_input = callback_input
         self.n_updates = n_updates
+
+        # We want to compute first the output that are on CPU.  This
+        # will make the call return more frequently before the GPU
+        # computation is done. This allow more CPU/GPU overlap and
+        # could allow more GPU transfer/GPU computation with the
+        # Theano flag: gpuarray.single_stream=False.
+
+        # inplace node can still force a different execution order.
+        out_ordered = sorted(fgraph.outputs,
+                             key=lambda a: not isinstance(a, theano.tensor.TensorVariable))
+        # [::-1] is to have the same execution order as the CVM.
+        # The output that are computed first are the last in the final list.
+        self.base_apply_stack = [(o.owner) for o in out_ordered if o.owner][::-1]
 
         ords = fgraph.orderings()
 
@@ -955,6 +967,11 @@ class VM_Linker(link.LocalLinker):
 
             is_lazy_list = [int(th.lazy) for th in thunks]
             output_vars = [vars_idx[v] for v in self.fgraph.outputs]
+            # Prefer the CPU output to be computed first.
+            # The first in the list is the first executed.
+            output_order = sorted(self.fgraph.outputs,
+                                  key=lambda a: not isinstance(a, theano.tensor.TensorVariable))
+            output_order = [vars_idx[v] for v in output_order]
 
             # builds the list of prereqs induced by e.g. destroy_handler
             ords = self.fgraph.orderings()
@@ -1001,6 +1018,7 @@ class VM_Linker(link.LocalLinker):
                 var_owner=var_owner,
                 is_lazy_list=is_lazy_list,
                 output_vars=output_vars,
+                output_order=output_order,
                 node_prereqs=node_prereqs,
                 node_output_size=node_output_size,
                 update_storage=update_storage,

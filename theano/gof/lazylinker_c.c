@@ -90,6 +90,7 @@ typedef struct {
 
     Py_ssize_t n_output_vars;
     Py_ssize_t * output_vars; // variables that *must* be evaluated by call
+    Py_ssize_t * output_order; // The order in which we should evaluate the outputs
 
     int * is_lazy; // 1 or 0 for every thunk
 
@@ -167,6 +168,7 @@ CLazyLinker_dealloc(PyObject* _self)
   free(self->var_computed_cells);
   free(self->var_value_cells);
   free(self->output_vars);
+  free(self->output_order);
 
   Py_XDECREF(self->nodes);
   Py_XDECREF(self->thunks);
@@ -197,6 +199,7 @@ CLazyLinker_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
       self->n_output_vars = 0;
       self->output_vars = NULL;
+      self->output_order = NULL;
 
       self->is_lazy = NULL;
 
@@ -246,6 +249,7 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
       (char*)"var_owner",
       (char*)"is_lazy_list",
       (char*)"output_vars",
+      (char*)"output_order",
       (char*)"node_prereqs",
       (char*)"node_output_size",
       (char*)"update_storage",
@@ -262,13 +266,14 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
              *var_owner=NULL,
              *is_lazy=NULL,
              *output_vars=NULL,
+             *output_order=NULL,
              *node_prereqs=NULL,
              *node_output_size=NULL,
              *update_storage=NULL,
              *dependencies=NULL;
 
     assert(!self->nodes);
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOiOOOOOOOOOOOOOOOO", kwlist,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOiOOOOOOOOOOOOOOOOO", kwlist,
                                       &self->nodes,
                                       &self->thunks,
                                       &self->pre_call_clear,
@@ -285,6 +290,7 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
                                       &var_owner,
                                       &is_lazy,
                                       &output_vars,
+                                      &output_order,
                                       &node_prereqs,
                                       &node_output_size,
                                       &update_storage,
@@ -464,6 +470,13 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
     for (int i = 0; i < self->n_output_vars; ++i)
       {
         assert(self->output_vars[i] < self->n_vars);
+      }
+    if (unpack_list_of_ssize_t(output_order, &self->output_order, &self->n_output_vars,
+                               "output_order"))
+      return -1;
+    for (int i = 0; i < self->n_output_vars; ++i)
+      {
+        assert(self->output_order[i] < self->n_vars);
       }
     if (unpack_list_of_ssize_t(update_storage, &self->update_storage, &self->n_updates,
                                "updates_storage"))
@@ -870,7 +883,7 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
         {
           if (i >= first_updated || output_subset == NULL || output_subset[i] == 1)
             {
-              err = lazy_rec_eval(self, self->output_vars[i], one, zero);
+              err = lazy_rec_eval(self, self->output_order[i], one, zero);
             }
         }
 
