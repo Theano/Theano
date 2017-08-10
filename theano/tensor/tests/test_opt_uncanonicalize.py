@@ -207,3 +207,9 @@ def test_local_dimshuffle_subtensor():
     topo = f.maker.fgraph.toposort()
     assert any([not isinstance(x, DimShuffle) for x in topo])
     assert f(np.random.rand(5, 1, 4, 1), 2).shape == (4,)
+
+    # Test a corner case that had Theano return a bug.
+    x = tensor.dtensor4('x')
+    x = tensor.patternbroadcast(x, (False, True, False, False))
+
+    assert x[:,:, 0:3, ::-1].dimshuffle(0,2,3).eval({x: np.ones((5, 1, 6, 7))}).shape == (5, 3, 7)

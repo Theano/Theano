@@ -6663,8 +6663,8 @@ class AllocEmpty(gof.Op):
         output.tag.nan_guard_mode_check = False
         return Apply(self, shape, [output])
 
-    def debug_perform(self, node, inputs, out_):
-        self.perform(node, inputs, out_)
+    def debug_perform(self, node, inputs, out_, params):
+        self.perform(node, inputs, out_, params)
         out_[0][0].fill(-123456789)
 
     def perform(self, node, inputs, out_, params):
