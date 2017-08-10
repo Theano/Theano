@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function, division
 import theano
 from theano import (config, gof)
 import theano.tensor as T
-from .basic_ops import (gpu_contiguous, as_gpuarray_variable, infer_context_name)
+from .basic_ops import (gpu_contiguous, as_gpuarray_variable, infer_context_name, gpuarray_helper_inc_dir)
 import theano.tensor.nnet.ctc
 from .type import (GpuArrayType, gpu_context_type)
 from .elemwise import GpuDimShuffle
@@ -58,7 +58,7 @@ class GpuConnectionistTemporalClassification(gof.COp):
         return ["warpctc", "gpuarray"]
 
     def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include()]
         if config.ctc.root != '':
             dirs.append(os.path.join(config.ctc.root, "include"))
         return dirs

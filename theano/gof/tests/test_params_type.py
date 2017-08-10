@@ -98,7 +98,7 @@ class QuadraticCOpFunc(COp):
                              c=generic_type)
 
     def __init__(self, a, b, c):
-        super(QuadraticCOpFunc, self).__init__('test_quadratic_function.c',
+        super(QuadraticCOpFunc, self).__init__('c_code/test_quadratic_function.c',
                                                'APPLY_SPECIFIC(compute_quadratic)')
         self.a = a
         self.b = b

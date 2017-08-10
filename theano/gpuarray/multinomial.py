@@ -1,6 +1,5 @@
 # TODO test dtype != float32
 from __future__ import absolute_import, print_function, division
-import os
 import warnings
 
 try:
@@ -14,7 +13,7 @@ from theano import Apply
 from theano.gof import Op
 
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
-from .basic_ops import as_gpuarray_variable, infer_context_name, GpuKernelBase, Kernel
+from .basic_ops import as_gpuarray_variable, infer_context_name, GpuKernelBase, Kernel, gpuarray_helper_inc_dir
 from .opt import register_opt, op_lifter, register_opt2
 from .type import GpuArrayType
 from .elemwise import GpuDimShuffle
@@ -37,7 +36,7 @@ class GPUAMultinomialFromUniform(GpuKernelBase, Op):
         return ['<numpy_compat.h>', 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def make_node(self, pvals, unis):
         assert unis.dtype == pvals.dtype
@@ -249,7 +248,7 @@ class GPUAChoiceFromUniform(GpuKernelBase, Op):
         return ['<numpy_compat.h>', 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def make_node(self, pvals, unis, n):
         assert pvals.dtype == 'float32'

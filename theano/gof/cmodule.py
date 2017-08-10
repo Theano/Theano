@@ -1609,7 +1609,7 @@ def std_include_dirs():
     py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
     python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
                        else [py_inc, py_plat_spec_inc])
-    gof_inc_dir = os.path.abspath(os.path.dirname(__file__))
+    gof_inc_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'c_code')
     return numpy_inc_dirs + python_inc_dirs + [gof_inc_dir]
 
 

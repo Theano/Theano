@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import os
 from theano import Apply, Op
 from theano.tensor.extra_ops import CumOp
 
@@ -8,7 +7,7 @@ try:
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape, infer_context_name)
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape, infer_context_name, gpuarray_helper_inc_dir)
 from .opt import register_opt, op_lifter, register_opt2
 from .type import gpu_context_type
 from theano.gof import ParamsType
@@ -47,7 +46,7 @@ class GpuCumOp(GpuKernelBase, Op):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', '<gpuarray_helper.h>']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def get_params(self, node):
         return self.params_type.get_params(self, context=node.inputs[0].type.context)

@@ -27,7 +27,7 @@ class GpuEye(CGpuKernelBase, Op):
             dtype = config.floatX
         self.dtype = dtype
         self.context_name = context_name
-        CGpuKernelBase.__init__(self, ['tstgpueye.c'],
+        CGpuKernelBase.__init__(self, ['c_code/tstgpueye.c'],
                                 'APPLY_SPECIFIC(tstgpueye)')
 
     def get_params(self, node):

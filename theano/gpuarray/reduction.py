@@ -1,9 +1,8 @@
 from __future__ import print_function, absolute_import, division
-import os
 from theano.gof import Op, Apply
 from theano.gof.type import Generic
 
-from .basic_ops import (infer_context_name, as_gpuarray_variable)
+from .basic_ops import (infer_context_name, as_gpuarray_variable, gpuarray_helper_inc_dir)
 from .type import GpuArrayType
 
 try:
@@ -44,7 +43,7 @@ class GpuMaxAndArgmax(Op):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>']
 
     def c_header_dirs(self):
-        return [pygpu.get_include(), os.path.dirname(__file__)]
+        return [pygpu.get_include(), gpuarray_helper_inc_dir()]
 
     def c_code(self, node, name, input_names, output_names, sub):
         # Recall: X = input_names[0]

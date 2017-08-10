@@ -126,6 +126,10 @@ def infer_context_name(*vars):
         raise ValueError("Could not infer context from inputs")
 
 
+def gpuarray_helper_inc_dir():
+    return os.path.join(os.path.dirname(__file__), 'c_code')
+
+
 class Kernel(object):
     """
     This class groups together all the attributes of a gpu kernel.
@@ -688,7 +692,7 @@ class GpuFromHost(Op):
         return ["gpuarray_helper.h"]
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
@@ -999,7 +1003,7 @@ class GpuAllocEmpty(HideC, AllocEmpty):
         return ['<gpuarray_helper.h>']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_code(self, node, name, inp, out, sub):
         ndim = len(inp)
@@ -1068,7 +1072,7 @@ class GpuContiguous(Op):
         return Apply(self, [input], [input.type()])
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_headers(self):
         return ['<gpuarray_helper.h>']
@@ -1390,7 +1394,7 @@ class GpuSplit(HideC, Split):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>']
 
     def c_header_dirs(self):
-        return [pygpu.get_include(), os.path.dirname(__file__)]
+        return [pygpu.get_include(), gpuarray_helper_inc_dir()]
 
     def c_code(self, node, name, inputs, outputs, sub):
         if self.len_splits == 0:

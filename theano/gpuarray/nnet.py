@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import os
 import numpy as np
 
 from theano import Op, Apply
@@ -11,7 +10,7 @@ try:
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, gpuarray_helper_inc_dir,
                         infer_context_name)
 from .type import GpuArrayType
 from .fp16_help import work_dtype, load_w, write_w
@@ -43,7 +42,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def gpu_kernels(self, node, nodename):
         dtype_x = node.inputs[0].dtype
