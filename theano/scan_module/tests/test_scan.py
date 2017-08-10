@@ -55,16 +55,18 @@ type_eps = {'float64': 1e-7,
 
 
 class multiple_outputs_numeric_grad:
-    # WRITEME
+    """WRITEME"""
     def __init__(self, f, pt, ndarray_mask=None, eps=None):
-        # Return the gradient of f at pt.
-        #
-        # This function computes the gradient by a one-sided finite differences
-        # of a fixed step size (eps).
-        #
-        # It is assumed that f(...) will return a scalar.
-        # :param eps: the stepsize for the finite differencing. None means
-        # input dtype-dependent. See `type_eps`.
+        """
+        Return the gradient of f at pt.
+
+        This function computes the gradient by a one-sided finite differences
+        of a fixed step size (eps).
+
+        It is assumed that f(...) will return a scalar.
+        :param eps: the stepsize for the finite differencing. None means
+        input dtype-dependent. See `type_eps`.
+        """
 
         def prod(inputs):
             rval = 1
@@ -123,13 +125,15 @@ class multiple_outputs_numeric_grad:
 
     @staticmethod
     def abs_rel_err(a, b, eps=1.0e-10):
-        # Return a small number when a and b are close, relative to how big
-        # they are
+        """
+        Return a small number when a and b are close, relative to how big they are
+        """
         return abs(a - b) / (abs(a) + abs(b) + eps)
 
     def max_err(self, _g_pt):
-        # Return the biggest relative error between g_pt and self.gx
-
+        """
+        Return the biggest relative error between g_pt and self.gx
+        """
         g_pt = []
         for i in xrange(len(_g_pt)):
             if self.ndarray_mask[i]:
@@ -4527,19 +4531,18 @@ class T_Scan(unittest.TestCase):
 
 
 class ScanGpuTests:
-    # This class defines a number of tests for Scan on GPU as well as a few
-    # helper functions for these tests. The GPU tests defined in this class are
-    # independant of the GPU backend used. Because of this, a class inheriting
-    # from ScanGpuTests should define the following attributes and methods to
-    # make the tests run on a specific backend :
-    # - self.gpu_backend : Reference to the backend module
-    # - self.mode_with_opt : Compilation mode to force usage of the gpu backend
-    # - self.is_scan_on_gpu(node) : Method to determine is a scan node has been
-    #                               moved to run on a gpu under the specific
-    #                               backend. Returns a boolean.
-
-    # as test_one_sequence_one_output_weights, but on the gpu
-    # This first version test the first case in the optimizer to the gpu.
+    """
+    This class defines a number of tests for Scan on GPU as well as a few
+    helper functions for these tests. The GPU tests defined in this class are
+    independant of the GPU backend used. Because of this, a class inheriting
+    from ScanGpuTests should define the following attributes and methods to
+    make the tests run on a specific backend :
+    - self.gpu_backend : Reference to the backend module
+    - self.mode_with_opt : Compilation mode to force usage of the gpu backend
+    - self.is_scan_on_gpu(node) : Method to determine is a scan node has been
+                                  moved to run on a gpu under the specific
+                                  backend. Returns a boolean.
+    """
     def test_one_sequence_one_output_weights_gpu1(self):
 
         def f_rnn(u_t, x_tm1, W_in, W):
@@ -4869,8 +4872,10 @@ class ScanGpuTests:
 
 
 class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
-    # This class takes the gpu tests for scan that are defined in
-    # class ScanGpuTests and runs them using the gpuarray backend.
+    """
+    This class takes the gpu tests for scan that are defined in
+    class ScanGpuTests and runs them using the gpuarray backend.
+    """
 
     def __init__(self, *args, **kwargs):
         from theano import gpuarray

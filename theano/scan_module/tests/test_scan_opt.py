@@ -12,9 +12,11 @@ mode = theano.compile.mode.get_mode(config.mode)
 
 
 class TestGaussNewton(unittest.TestCase):
-    # Regression test for code exhibiting various optimization errors.
-    # This test case is based on code by Sigurd Spieckermann.
+    """
+    Regression test for code exhibiting various optimization errors.
 
+    This test case is based on code by Sigurd Spieckermann.
+    """
     def setUp(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
@@ -134,10 +136,12 @@ class GaussNewtonMatrix(object):
 
 
 class TestPushOutScanOutputDot(object):
-    # Test class for the PushOutScanOutput optimizer in the case where the inner
-    # function of a scan op has an output which is the result of a Dot product
-    # on a non-sequence matrix input to scan and a vector that is the result of
-    # computation in the inner function.
+    """
+    Test class for the PushOutScanOutput optimizer in the case where the inner
+    function of a scan op has an output which is the result of a Dot product
+    on a non-sequence matrix input to scan and a vector that is the result of
+    computation in the inner function.
+    """
 
     def test_dot_not_output(self):
         # Test the case where the vector input to the dot is not already an
@@ -264,9 +268,11 @@ class TestPushOutScanOutputDot(object):
 
 
 class TestPushOutSumOfDot():
-    # Test case for the PushOutScanOutput optimizer in the case where the scan
-    # is used to compute the sum over the dot products between the corresponding
-    # elements of two list of matrices.
+    """
+    Test case for the PushOutScanOutput optimizer in the case where the scan
+    is used to compute the sum over the dot products between the corresponding
+    elements of two list of matrices.
+    """
 
     def test_machine_translation(self):
         # This test case comes from https://github.com/rizar/scan-grad-speed and
