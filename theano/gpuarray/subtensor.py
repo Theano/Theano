@@ -1037,8 +1037,7 @@ class GpuAdvancedIncSubtensor1(Op):
 class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
                                      GpuAdvancedIncSubtensor1):
     """
-    Implement AdvancedIncSubtensor1 on the gpu, but use function
-    only avail on compute capability 2.0 and more recent.
+    Implement AdvancedIncSubtensor1 on the gpu with atomics
 
     """
     _f16_ok = True
@@ -1090,11 +1089,8 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
 
     def c_code(self, node, name, inputs, outputs, sub):
         ctx = self.get_params(node).context
-        if ctx.kind != b'cuda':
-            raise NotImplementedError("cuda only")
         if (node.inputs[0].ndim != node.inputs[1].ndim or
-                node.inputs[0].ndim != 2 or
-                int(ctx.bin_id[-2]) < 2):
+                node.inputs[0].ndim != 2):
             raise NotImplementedError("This case does not have C code yet.")
 
         return """
@@ -1125,85 +1121,7 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
         flags = Kernel.get_flags(dtype_x, dtype_y, dtype_ind)
         kname = "k_vector_add_fast"
         k_var = "k_vector_add_fast_" + nodename
-        code = """
-/*
- * This is an atomicAdd that works for doubles since that is not provided
- * natively by cuda before arch 6.0.
- */
-#if __CUDA_ARCH__ < 600
-__device__ ga_double atomicAdd(ga_double* address, ga_double val) {
-    ga_ulong *address_as_ull = (ga_ulong *)address;
-    ga_ulong old = *address_as_ull, assumed;
-    do {
-        assumed = old;
-        old = atomicCAS(address_as_ull, assumed,
-                        __double_as_longlong(val +
-                        __longlong_as_double(assumed)));
-    } while (assumed != old);
-    return __longlong_as_double(old);
-}
-#endif
-
-__device__ ga_double atomicExch(ga_double *address, ga_double val) {
-    return atomicExch((ga_ulong *)address,
-                      __double_as_longlong(val));
-}
-
-/* GA_LONG */
-
-__device__ ga_long atomicAdd(ga_long* address, ga_long val) {
-    ga_ulong *address_as_ull = (ga_ulong *)address;
-    ga_ulong old = *address_as_ull, assumed;
-    do {
-        assumed = old;
-        old = atomicCAS(address_as_ull, assumed,
-                        (ga_ulong)(val + (ga_long)assumed));
-    } while (assumed != old);
-    return (ga_long)old;
-}
-
-__device__ ga_long atomicExch(ga_long *address, ga_long val) {
-    return (ga_long)atomicExch((ga_ulong *)address, (ga_ulong)val);
-}
-
-
-/* GA_HALF */
-
-/*
- * This may read and write 2 bytes more than the size of the array
- * if the array has an uneven number of elements.  The actual value
- * at that spot will not be modified.
- */
-__device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
-  ga_uint *base = (ga_uint *)((ga_size)addr & ~2);
-  ga_uint old, assumed, sum, new_;
-  old = *base;
-  do {
-    assumed = old;
-    sum = __float2half_rn(
-      __half2float(val) +
-      __half2float((ga_half)__byte_perm(old, 0,
-                     ((ga_size)addr & 2) ? 0x4432 : 0x4410)));
-    new_ = __byte_perm(old, sum, ((ga_size)addr & 2) ? 0x5410 : 0x3254);
-    old = atomicCAS(base, assumed, new_);
-  } while (assumed != old);
-  return (ga_half)__byte_perm(old, 0,
-                                  ((ga_size)addr & 2) ? 0x4432 : 0x4410);
-}
-
-__device__ ga_half atomicExch(ga_half *addr, ga_half val) {
-  ga_uint *base = (ga_uint *)((ga_size)addr & ~2);
-  ga_uint old, assumed, new_;
-  old = *base;
-  do {
-    assumed = old;
-    new_ = __byte_perm(old, val, ((ga_size)addr & 2) ? 0x5410 : 0x3254);
-    old = atomicCAS(base, assumed, new_);
-  } while (assumed != old);
-  return (ga_half)__byte_perm(old, 0,
-                                  ((ga_size)addr & 2) ? 0x4432 : 0x4410);
-}
-
+        code = """#include <cluda.h>
         KERNEL void k_vector_add_fast(const ga_size numRowsX,
                                       const ga_size numColsX,
                                       const ga_ssize stridesX0,
@@ -1236,10 +1154,10 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
                       ga_ssize y_row = i;
                       if (x_row < numRowsX && x_row >= 0) {
                         if (set_instead_of_inc) {
-                          atomicExch(&X[(x_row * stridesX0) + (j * stridesX1)],
+                          atom_xchg_%(tc)sg(&X[(x_row * stridesX0) + (j * stridesX1)],
                                    Y[(y_row * stridesY0) + (j * stridesY1)]);
                         } else {
-                          atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)],
+                          atom_add_%(tc)sg(&X[(x_row * stridesX0) + (j * stridesX1)],
                                     Y[(y_row * stridesY0) + (j * stridesY1)]);
                         }
                       } else {
@@ -1249,7 +1167,8 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
              }
              return;
         }
-        """ % dict(type_x=type_x, type_y=type_y, type_ind=type_ind)
+        """ % dict(type_x=type_x, type_y=type_y, type_ind=type_ind,
+                   tc=numpy.dtype(dtype_x).char)
         params = [
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
@@ -1265,15 +1184,15 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
                                      PyGpuArrayObject* indices_arr,
                                      const int set_instead_of_inc)
         {
-            size_t threads_per_block[3] = {std::min(PyGpuArray_DIMS(py_self)[1], (size_t)256), 1, 1};
-            size_t n_blocks[3] = {std::min(PyGpuArray_SIZE(indices_arr), (size_t)4096), 1, 1};
+            size_t threads_per_block = std::min(PyGpuArray_DIMS(py_self)[1], (size_t)256);
+            size_t n_blocks = std::min(PyGpuArray_SIZE(indices_arr), (size_t)4096);
             gpudata *errbuf;
             int err, kerr = 0;
             size_t itemsize_x = GpuArray_ITEMSIZE(&py_self->ga);
             size_t itemsize_y = GpuArray_ITEMSIZE(&py_other->ga);
             size_t itemsize_ind = GpuArray_ITEMSIZE(&indices_arr->ga);
 
-            if (threads_per_block[0] > 0 && n_blocks[0] > 0) {
+            if (threads_per_block > 0 && n_blocks > 0) {
               err = gpudata_property(py_self->ga.data,
                                      GA_CTX_PROP_ERRBUF, &errbuf);
               if (err != GA_NO_ERROR) {
@@ -1281,30 +1200,27 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
                 return 1;
               }
 
-              ssize_t stride_X0 = PyGpuArray_STRIDES(py_self)[0] / itemsize_x;
-              ssize_t stride_X1 = PyGpuArray_STRIDES(py_self)[1] / itemsize_x;
-              ssize_t stride_Y0 = PyGpuArray_DIMS(py_other)[0] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[0] / itemsize_y;
-              ssize_t stride_Y1 = PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / itemsize_y;
-              ssize_t stride_ind = PyGpuArray_STRIDES(indices_arr)[0] / itemsize_ind;
-              void *kernel_params[] = {(void *)&PyGpuArray_DIMS(py_self)[0],
-                                       (void *)&PyGpuArray_DIMS(py_self)[1],
-                                       (void *)&stride_X0,
-                                       (void *)&stride_X1,
-                                       (void *)py_self->ga.data,
-                                       (void *)&py_self->ga.offset,
-                                       (void *)&PyGpuArray_DIMS(py_other)[0],
-                                       (void *)&PyGpuArray_DIMS(py_other)[1],
-                                       (void *)&stride_Y0,
-                                       (void *)&stride_Y1,
-                                       (void *)py_other->ga.data,
-                                       (void *)&py_other->ga.offset,
-                                       (void *)&PyGpuArray_DIMS(indices_arr)[0],
-                                       (void *)&stride_ind,
-                                       (void *)indices_arr->ga.data,
-                                       (void *)&indices_arr->ga.offset,
-                                       (void *)&set_instead_of_inc,
-                                       (void *)errbuf};
-              err = GpuKernel_call(&%(k_var)s, 3, n_blocks, threads_per_block, 0, kernel_params);
+              err = k_vector_add_fast_call(
+        1, &n_blocks, &threads_per_block, 0,
+        PyGpuArray_DIMS(py_self)[0],
+        PyGpuArray_DIMS(py_self)[1],
+        PyGpuArray_STRIDES(py_self)[0] / itemsize_x,
+        PyGpuArray_STRIDES(py_self)[1] / itemsize_x,
+        py_self->ga.data,
+        py_self->ga.offset,
+        PyGpuArray_DIMS(py_other)[0],
+        PyGpuArray_DIMS(py_other)[1],
+        PyGpuArray_DIMS(py_other)[0] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[0] / itemsize_y,
+        PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / itemsize_y
+        py_other->ga.data,
+        py_other->ga.offset,
+        PyGpuArray_DIMS(indices_arr)[0],
+        PyGpuArray_STRIDES(indices_arr)[0] / itemsize_ind,
+        indices_arr->ga.data,
+        indices_arr->ga.offset,
+        set_instead_of_inc,
+        errbuf);
+
               if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
                              "gpuarray error: %(k_var)s: %%s.",
