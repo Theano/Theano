@@ -6314,11 +6314,6 @@ def local_log_sum_exp(node):
     return [ret]
 
 
-compile.optdb.register('local_log_sum_exp',
-                       in2out(local_log_sum_exp, ignore_newtrees=True),
-                       1.6, 'fast_run')
-
-
 def add_calculate(num, denum, aslist=False, out_type=None):
     # TODO: make sure that this function and mul_calculate are similar
     if out_type is None:
@@ -6345,6 +6340,45 @@ add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer,
 register_canonicalize(local_add_canonizer, name='local_add_canonizer')
 
 
+@gof.local_optimizer([T.mul])
+def local_mul_exp(node):
+    if not node.op == T.mul:
+        return False
+    pow_base_dict = defaultdict(list)
+    unchanged_inputs = []
+    pow_nodes_cnt = 0
+    for i in node.inputs:
+        if i.owner is not None and isinstance(i.owner.op, T.Elemwise) and\
+           i.owner.op.scalar_op == theano.scalar.basic.pow:
+            base = i.owner.inputs[0]
+            pow_base_dict[base].append(i.owner.inputs[1])
+            pow_nodes_cnt += 1
+        else:
+            unchanged_inputs.append(i)
+    if pow_nodes_cnt > 1 and len(pow_base_dict) < pow_nodes_cnt:
+        mul_list = unchanged_inputs
+        for base, exp in iteritems(pow_base_dict):
+            if len(exp) > 1:
+                tmp = T.add(*exp)
+            else:
+                tmp = exp[0]
+            mul_list.append(T.pow(base, tmp))
+        if len(mul_list) > 1:
+            rval = T.mul(*mul_list)
+        else:
+            rval = mul_list[0]
+        return [broadcast_like(rval, node.outputs[0], node.fgraph)]
+    else:
+        return False
+
+compile.optdb.register('local_log_sum_exp',
+                       in2out(local_log_sum_exp,
+                              local_mul_exp,
+                              ignore_newtrees=True),
+                       # between stabilize at 1.5 and specialize at 2
+                       # local_mul_exp should be after local_greedy_distributor
+                       # and before local_pow_specialize
+                       1.6, 'fast_run')
 ##################
 # Distributivity #
 ##################
