@@ -4685,7 +4685,7 @@ class T_local_switch_sink(unittest.TestCase):
         """
         Wrapper around theano.function for this test.
 
-        It disables checking for NaN removed by optimizations in DebugMode 
+        It disables checking for NaN removed by optimizations in DebugMode
         (it has false positives in that case).
         """
         f = theano.function(*args, **kwargs)
