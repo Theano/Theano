@@ -1,4 +1,4 @@
-'''
+"""
 These routines are not well-tested. They are also old.
 OB says that it is not important to test them well because Scalar Ops
 are rarely used by themselves, instead they are the basis for Tensor Ops
@@ -7,9 +7,7 @@ to use numpy's scalar routines.
 If you do want to rewrite these tests, bear in mind:
   * You don't need to use Composite.
   * FunctionGraph and DualLinker are old, use compile.function instead.
-'''
-
-
+"""
 from __future__ import absolute_import, print_function, division
 
 import unittest
