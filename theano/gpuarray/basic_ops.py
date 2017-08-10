@@ -984,8 +984,8 @@ class GpuAllocEmpty(HideC, AllocEmpty):
         output.tag.nan_guard_mode_check = False
         return Apply(self, sh, [output])
 
-    def debug_perform(self, node, inputs, out_, ctx):
-        self.perform(node, inputs, out_, ctx)
+    def debug_perform(self, node, inputs, out_, params):
+        self.perform(node, inputs, out_, params)
         out_[0][0][:] = -123456789
 
     def perform(self, node, inputs, out_, params):
