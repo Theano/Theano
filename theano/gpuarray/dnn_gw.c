@@ -6,6 +6,7 @@ memset(prev_img_dims, 0, sizeof(prev_img_dims));
 memset(prev_top_dims, 0, sizeof(prev_top_dims));
 
 #section support_code_struct
+#include "dnn_conv_find.h"
 
 int reuse_algo;
 cudnnConvolutionBwdFilterAlgo_t prev_algo;

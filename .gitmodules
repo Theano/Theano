@@ -1,0 +1,18 @@
+[submodule "third_party/convnet-benchmarks"]
+	path = qa/third_party/convnet-benchmarks
+	url = https://github.com/soumith/convnet-benchmarks
+	branch = master
+[submodule "libgpuarray"]
+	path = libgpuarray
+	url = https://github.com/borisfom/libgpuarray.git
+	branch = fp16-fix
+[submodule "third_party/scikit-cuda"]
+	path = third_party/scikit-cuda
+	url = https://github.com/lebedov/scikit-cuda.git
+	branch = master
+[submodule "third_party/pycuda"]
+	path = third_party/pycuda
+	url = https://github.com/inducer/pycuda
+[submodule "third_party/Lasagne"]
+	path = third_party/Lasagne
+	url = https://github.com/lasagne/Lasagne.git

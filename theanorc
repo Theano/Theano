@@ -1,0 +1,31 @@
+[global]
+base_compiledir=/tmp/theano
+floatX=float32
+mode=FAST_RUN
+
+#### Default device selection
+## 'device=cuda' corresponds to the new 'gpuarray' backend (config.gpuarray or [gpuarray] below)
+device=cuda
+
+[blas]
+ldflags=
+
+[dnn]
+enabled=True
+# Uncomment below to enable cudnnFindEx
+conv.algo_fwd=time_once
+conv.algo_bwd_filter=time_once
+conv.algo_bwd_data=time_once
+
+
+#### Configure the new 'gpuarray' backend
+[gpuarray]
+## Cache will grow automatically as needed
+preallocate=0.45
+
+
+[nvcc]
+flags=-D_FORCE_INLINES
+
+[magma]
+magma.enabled=True
