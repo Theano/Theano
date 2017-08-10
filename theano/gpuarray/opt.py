@@ -2134,7 +2134,7 @@ def local_gpua_abstractconv(op, context_name, inputs, outputs):
                 AbstractConv2d_gradInputs,
                 AbstractConv3d,
                 AbstractConv3d_gradWeights,
-                AbstractConv3d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
+                AbstractConv3d_gradInputs], 'fast_compile')
 def local_gpua_lift_abstractconv_graph(op, context_name, inputs, outputs):
     inps = list(inputs)
     inps[0] = as_gpuarray_variable(inputs[0],
