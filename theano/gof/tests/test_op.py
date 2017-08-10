@@ -71,8 +71,7 @@ MyOp = MyOp()
 
 
 class NoInputOp(Op):
-
-    # An Op to test the corner-case of an Op with no input.
+    """An Op to test the corner-case of an Op with no input."""
     __props__ = ()
 
     def make_node(self):
@@ -160,7 +159,7 @@ class TestMakeThunk(unittest.TestCase):
 
     def test_no_c_code(self):
         class IncOnePython(Op):
-            # An Op with only a Python (perform) implementation
+            """An Op with only a Python (perform) implementation"""
             __props__ = ()
 
             def make_node(self, input):
@@ -197,7 +196,7 @@ class TestMakeThunk(unittest.TestCase):
 
     def test_no_perform(self):
         class IncOneC(Op):
-            # An Op with only a C (c_code) implementation
+            """An Op with only a C (c_code) implementation"""
             __props__ = ()
 
             def make_node(self, input):
@@ -237,8 +236,7 @@ class TestMakeThunk(unittest.TestCase):
 
     def test_no_make_node(self):
         class DoubleOp(Op):
-            # An Op without make_node
-
+            """An Op without make_node"""
             __props__ = ()
 
             itypes = [T.dmatrix]

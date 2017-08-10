@@ -1,7 +1,9 @@
-# We don't have real tests for the cache, but it would be great to make them!
-#
-# But this one tests a current behavior that isn't good: the c_code isn't
-# deterministic based on the input type and the op.
+"""
+We don't have real tests for the cache, but it would be great to make them!
+
+But this one tests a current behavior that isn't good: the c_code isn't
+deterministic based on the input type and the op.
+"""
 from __future__ import absolute_import, print_function, division
 
 import numpy as np

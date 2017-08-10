@@ -256,20 +256,21 @@ class TestToposort:
 class TestIsSameGraph(unittest.TestCase):
 
     def check(self, expected, debug=True):
-        # Core function to perform comparison.
-        #
-        # :param expected: A list of tuples (v1, v2, ((g1, o1), ..., (gN, oN)))
-        # with:
-        #     - `v1` and `v2` two Variables (the graphs to be compared)
-        #     - `gj` a `givens` dictionary to give as input to `is_same_graph`
-        #     - `oj` the expected output of `is_same_graph(v1, v2, givens=gj)`
-        #
-        # :param debug: If True, then we make sure we are testing both
-        # implementations of `is_same_graph`.
-        #
-        # This function also tries to call `is_same_graph` by inverting `v1` and
-        # `v2`, and ensures the output remains the same.
+        """
+        Core function to perform comparison.
 
+        :param expected: A list of tuples (v1, v2, ((g1, o1), ..., (gN, oN)))
+        with:
+            - `v1` and `v2` two Variables (the graphs to be compared)
+            - `gj` a `givens` dictionary to give as input to `is_same_graph`
+            - `oj` the expected output of `is_same_graph(v1, v2, givens=gj)`
+
+        :param debug: If True, then we make sure we are testing both
+        implementations of `is_same_graph`.
+
+        This function also tries to call `is_same_graph` by inverting `v1` and
+        `v2`, and ensures the output remains the same.
+        """
         for v1, v2, go in expected:
             for gj, oj in go:
                 r1 = is_same_graph(v1, v2, givens=gj, debug=debug)
