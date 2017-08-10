@@ -58,7 +58,8 @@ class GpuConnectionistTemporalClassification(gof.COp):
         return ["warpctc", "gpuarray"]
 
     def c_header_dirs(self):
-        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include()]
+        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include(),
+                config.cuda.include_path]
         if config.ctc.root != '':
             dirs.append(os.path.join(config.ctc.root, "include"))
         return dirs
