@@ -45,9 +45,9 @@ else:
 
 
 class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
-    # This is build in a way that allow to reuse it to test the
-    # equivalent gpu op.
-
+    """
+    This is build in a way that allow to reuse it to test the equivalent gpu op.
+    """
     def __init__(self, name, shared=tensor._shared,
                  sub=tensor.Subtensor,
                  inc_sub=tensor.IncSubtensor,
@@ -84,12 +84,13 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def function(self, inputs, outputs, accept_inplace=False,
                  op=None, mode=None, N=1, N_fast=None):
-        # wrapper around theano.function that also check the output
-        #
-        # :param N: the number of op expected in the toposort
-        #           if tuple of length 2, (expected if fast_compile,
-        #                                  if not fast_compile)
+        """
+        wrapper around theano.function that also check the output
 
+        :param N: the number of op expected in the toposort
+                  if tuple of length 2, (expected if fast_compile,
+                                         if not fast_compile)
+        """
         if self.fast_compile and N_fast is not None:
             N = N_fast
         if mode is None:

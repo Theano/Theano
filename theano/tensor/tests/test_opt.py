@@ -904,10 +904,11 @@ class test_fusion(unittest.TestCase):
     topo_exclude = ()
 
     def do(self, mode, shared_fn, shp, nb_repeat=1, assert_len_topo=True, slice=None):
-        # param shared_fn: if None, will use compile.function
-        # verify that the elemwise fusion work
-        # Test with and without DimShuffle
-
+        """
+        param shared_fn: if None, will use compile.function
+        verify that the elemwise fusion work
+        Test with and without DimShuffle
+        """
         # TODO: disable the canonizer?
         def my_init(shp, dtype='float64', num=0):
             ret = np.zeros(shp, dtype=dtype) + num
@@ -1217,8 +1218,10 @@ class test_fusion(unittest.TestCase):
         dlogp(2, np.random.rand(n))
 
     def speed_fusion(self, s=None):
-        # param type s: a slice object
-        # param s: a slice to apply to the case to execute. If None, exec all case.
+        """
+        param type s: a slice object
+        param s: a slice to apply to the case to execute. If None, exec all case.
+        """
 
         shp = (3000, 3000)
         shp = (1000, 1000)
@@ -1274,10 +1277,12 @@ class test_fusion(unittest.TestCase):
 
 
 class TimesN(theano.scalar.basic.UnaryScalarOp):
-    # Used in test TestCompositeCodegen
-    # Must be outside of the class, otherwise, the c cache code can't
-    # pickle this class and this cause stuff printing during test.
+    """
+    Used in test TestCompositeCodegen
 
+    Must be outside of the class, otherwise, the c cache code can't
+    pickle this class and this cause stuff printing during test.
+    """
     def __eq__(self, other):
         return super(TimesN, self).__eq__(other) and self.n == other.n
 
@@ -1304,9 +1309,10 @@ class TimesN(theano.scalar.basic.UnaryScalarOp):
 
 
 class TestCompositeCodegen(unittest.TestCase):
-    # Test The Composite Ops code generation in a case where there is multiple
-    # scalar ops with support code.
-
+    """
+    Test The Composite Ops code generation in a case where there is multiple
+    scalar ops with support code.
+    """
     def setUp(self):
         upgrade_to_float = theano.scalar.basic.upgrade_to_float
 
@@ -3911,12 +3917,13 @@ class test_shapeoptimizer(unittest.TestCase):
 
     @staticmethod
     def max_pool_c01b(c01b, pool_shp, pool_stride, img_shp):
-        # Like max_pool but with input using axes ('c', 0, 1, 'b')
-        #   (Alex Krizhevsky format)
-        #
-        # pool_shp, pool_stride and img_shp are int that represent
-        # the same shp in x and y.
+        """
+        Like max_pool but with input using axes ('c', 0, 1, 'b')
+          (Alex Krizhevsky format)
 
+        pool_shp, pool_stride and img_shp are int that represent
+        the same shp in x and y.
+        """
         mx = None
 
         # Compute index in pooled space of last needed pool
@@ -4675,11 +4682,12 @@ class T_local_switch_sink(unittest.TestCase):
         self.mode.check_isfinite = False
 
     def function_remove_nan(self, *args, **kwargs):
-        # Wrapper around theano.function for this test.
-        # It disables checking
-        # for NaN removed by optimizations in DebugMode (it has false
-        # positives in that case).
+        """
+        Wrapper around theano.function for this test.
 
+        It disables checking for NaN removed by optimizations in DebugMode 
+        (it has false positives in that case).
+        """
         f = theano.function(*args, **kwargs)
 
         def wrapped_f(*args, **kwargs):
@@ -5200,8 +5208,9 @@ class test_local_merge_switch_same_cond(unittest.TestCase):
 
 
 class T_local_sum_prod(unittest.TestCase):
-    # Test sum/prod opts in opt.py
-
+    """
+    Test sum/prod opts in opt.py
+    """
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize',
                                                                 'specialize')

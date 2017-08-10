@@ -7,19 +7,20 @@ import theano.tensor as tt
 
 
 class Test_inc_subtensor(unittest.TestCase):
-    # Partial testing.
-    #
-    # What could be tested:
-    # - increment vs set
-    # - thing incremented: scalar, vector, matrix,
-    # - increment/set: constant, scalar, vector, matrix
-    # - indices: scalar vs slice, constant vs variable, out of bound, ...
-    # - inplace
-    #
-    # NOTE: these are the same tests as test_incsubtensor.py, but using
-    # the new (read: not deprecated) inc_subtensor, set_subtensor
-    # functions.
+    """
+    Partial testing.
 
+    What could be tested:
+    - increment vs set
+    - thing incremented: scalar, vector, matrix,
+    - increment/set: constant, scalar, vector, matrix
+    - indices: scalar vs slice, constant vs variable, out of bound, ...
+    - inplace
+
+    NOTE: these are the same tests as test_incsubtensor.py, but using
+    the new (read: not deprecated) inc_subtensor, set_subtensor
+    functions.
+    """
     def setUp(self):
         utt.seed_rng()
 

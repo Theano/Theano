@@ -29,35 +29,36 @@ def makeSharedTester(shared_constructor_,
                      cast_value_=np.asarray,
                      expect_fail_fast_shape_inplace=True,
                      ):
-    # This is a generic fct to allow reusing the same test function
-    # for many shared variable of many types.
-    #
-    # :param shared_constructor_: The shared variable constructor to use
-    # :param dtype_: The dtype of the data to test
-    # :param get_value_borrow_true_alias_: Should a get_value(borrow=True) return the internal object
-    # :param shared_borrow_true_alias_: Should shared(val,borrow=True) reuse the val memory space
-    # :param set_value_borrow_true_alias_: Should set_value(val,borrow=True) reuse the val memory space
-    # :param set_value_inplace_: Should this shared variable overwrite the current
-    #                            memory when the new value is an ndarray
-    # :param set_cast_value_inplace_: Should this shared variable overwrite the
-    #                            current memory when the new value is of the same
-    #                            type as the internal type.
-    # :param shared_constructor_accept_ndarray_: Do the shared_constructor accept an ndarray as input?
-    # :param internal_type_: The internal type used.
-    # :param test_internal_type_: A function that tell if its input is of the same
-    #                             type as this shared variable internal type.
-    # :param theano_fct_: A theano op that will be used to do some computation on the shared variable
-    # :param ref_fct_: A reference function that should return the same value as the theano_fct_
-    # :param cast_value_: A callable that cast an ndarray into the internal shared variable representation
-    # :param name: This string is used to set the returned class' __name__
-    #              attribute. This is needed for nosetests to properly tag the
-    #              test with its correct name, rather than use the generic
-    #              SharedTester name. This parameter is mandatory (keeping the
-    #              default None value will raise an error), and must be set to
-    #              the name of the variable that will hold the returned class.
-    # :note:
-    #     We must use /= as sparse type don't support other inplace operation.
+    """
+    This is a generic fct to allow reusing the same test function
+    for many shared variable of many types.
 
+    :param shared_constructor_: The shared variable constructor to use
+    :param dtype_: The dtype of the data to test
+    :param get_value_borrow_true_alias_: Should a get_value(borrow=True) return the internal object
+    :param shared_borrow_true_alias_: Should shared(val,borrow=True) reuse the val memory space
+    :param set_value_borrow_true_alias_: Should set_value(val,borrow=True) reuse the val memory space
+    :param set_value_inplace_: Should this shared variable overwrite the current
+                               memory when the new value is an ndarray
+    :param set_cast_value_inplace_: Should this shared variable overwrite the
+                               current memory when the new value is of the same
+                               type as the internal type.
+    :param shared_constructor_accept_ndarray_: Do the shared_constructor accept an ndarray as input?
+    :param internal_type_: The internal type used.
+    :param test_internal_type_: A function that tell if its input is of the same
+                                type as this shared variable internal type.
+    :param theano_fct_: A theano op that will be used to do some computation on the shared variable
+    :param ref_fct_: A reference function that should return the same value as the theano_fct_
+    :param cast_value_: A callable that cast an ndarray into the internal shared variable representation
+    :param name: This string is used to set the returned class' __name__
+                 attribute. This is needed for nosetests to properly tag the
+                 test with its correct name, rather than use the generic
+                 SharedTester name. This parameter is mandatory (keeping the
+                 default None value will raise an error), and must be set to
+                 the name of the variable that will hold the returned class.
+    :note:
+        We must use /= as sparse type don't support other inplace operation.
+    """
     class m(type):
         pass
 
