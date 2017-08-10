@@ -1168,7 +1168,7 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
              return;
         }
         """ % dict(type_x=type_x, type_y=type_y, type_ind=type_ind,
-                   tc=numpy.dtype(dtype_x).char)
+                   tc=np.dtype(dtype_x).char)
         params = [
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',

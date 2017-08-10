@@ -1110,17 +1110,11 @@ def local_gpua_advanced_boolean_subtensor(op, context_name, inputs, outputs):
 @op_lifter([tensor.AdvancedIncSubtensor1])
 @register_opt2([tensor.AdvancedIncSubtensor1], 'fast_compile')
 def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
-    context = get_context(context_name)
-    # This is disabled on non-cuda contexts
-    if context.kind != b'cuda':
-        return None
-
     x, y, ilist = inputs
 
     set_instead_of_inc = op.set_instead_of_inc
 
-    compute_capability = int(context.bin_id[-2])
-    if (compute_capability >= 2 and x.ndim == 1 and y.ndim == 0 and
+    if (x.ndim == 1 and y.ndim == 0 and
             config.deterministic == 'default'):
         x = x.dimshuffle(0, 'x')
         y = y.dimshuffle('x', 'x')
@@ -1128,7 +1122,7 @@ def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
             set_instead_of_inc=set_instead_of_inc)(x, y, ilist)
         ret = GpuDimShuffle(ret.type.broadcastable, [0])(ret)
         return ret
-    elif (compute_capability < 2 or x.ndim != 2 or y.ndim != 2 or
+    elif (x.ndim != 2 or y.ndim != 2 or
             config.deterministic == 'more'):
         return GpuAdvancedIncSubtensor1(
             set_instead_of_inc=set_instead_of_inc)
