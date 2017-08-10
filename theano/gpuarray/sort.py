@@ -80,16 +80,21 @@ class SortOp(SortGenOp):
 sort_gpu = SortOp()
 
 
+#Apply(self, [x], [GpuArrayType(dtype='uint64', context_name=ctx_name, broadcastable=brcast)()])
+
+
 class ArgSortOp(SortGenOp):
 
     def make_node(self, x):
         ctx_name = infer_context_name(x)
         x = as_gpuarray_variable(x, ctx_name)
+        bcast = x.type.broadcastable
 
         assert x.ndim == 1
         assert SortGenOp.valid_input_type(self, x.dtype) == True
 
-        return Apply(self, [x], [x.type()])
+        return Apply(self, [x], [GpuArrayType(dtype='uint64', context_name=ctx_name, 
+                                              broadcastable=bcast)()])
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], inp=inp[0], fail=sub['fail'], name=name)
