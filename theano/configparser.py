@@ -183,24 +183,17 @@ def _config_print(thing, buf, print_doc=True):
         print("", file=buf)
 
 
-def get_config_md5():
+def get_config_hash():
     """
-    Return a string md5 of the current config options. It should be such that
-    we can safely assume that two different config setups will lead to two
-    different strings.
+    Return a string sha256 of the current config options. In the past,
+    it was md5.
+
+    The string should be such that we can safely assume that two different
+    config setups will lead to two different strings.
 
     We only take into account config options for which `in_c_key` is True.
     """
-    all_opts = []
-    for c in _config_var_list:
-        if callable(c.in_c_key):
-            i = c.in_c_key()
-        else:
-            i = c.in_c_key
-        if i:
-            all_opts.append(c)
-
-    all_opts = sorted(all_opts,
+    all_opts = sorted([c for c in _config_var_list if c.in_c_key],
                       key=lambda cv: cv.fullname)
     return theano.gof.utils.hash_from_code('\n'.join(
         ['%s = %s' % (cv.fullname, cv.__get__(True, None)) for cv in all_opts]))

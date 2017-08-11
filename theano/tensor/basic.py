@@ -17,6 +17,7 @@ from theano import gof
 from theano.gof import Apply, Constant, Op, Variable, ParamsType
 from theano.gof.type import Generic
 
+from theano.scalar import int32 as int32_t
 from theano.tensor import elemwise
 from theano.tensor.var import (AsTensorError, TensorVariable,
                                TensorConstant, TensorConstantSignature,
@@ -6632,12 +6633,17 @@ class Choose(Op):
 class AllocEmpty(gof.Op):
     """Implement Alloc on the cpu, but without initializing memory."""
 
-    __props__ = ("dtype",)
+    __props__ = ("dtype", )
+    params_type = ParamsType(typecode=int32_t)
 
     # specify the type of the data
     def __init__(self, dtype):
         assert isinstance(dtype, str), dtype
         self.dtype = dtype.lower()
+
+    @property
+    def typecode(self):
+        return np.dtype(self.dtype).num
 
     def make_node(self, *shape):
         shape, bcast = alloc_validate_shape(shape)
@@ -6657,22 +6663,22 @@ class AllocEmpty(gof.Op):
         output.tag.nan_guard_mode_check = False
         return Apply(self, shape, [output])
 
-    def debug_perform(self, node, inputs, out_):
-        self.perform(node, inputs, out_)
+    def debug_perform(self, node, inputs, out_, params):
+        self.perform(node, inputs, out_, params)
         out_[0][0].fill(-123456789)
 
-    def perform(self, node, inputs, out_):
+    def perform(self, node, inputs, out_, params):
         out, = out_
         sh = tuple([int(i) for i in inputs])
         if out[0] is None or out[0].shape != sh:
             out[0] = np.empty(sh, dtype=self.dtype)
 
     def c_code(self, node, name, inputs, out_, sub):
-        dtype = "NPY_" + self.dtype.upper()
         out, = out_
         fail = sub['fail']
         shps = inputs
         nd = len(shps)
+        params = sub['params']
         str = "npy_intp dims[%(nd)s];\n" % locals()
         for idx, sh in enumerate(shps):
             str += "dims[%(idx)s] =" \
@@ -6691,7 +6697,7 @@ class AllocEmpty(gof.Op):
             Py_XDECREF(%(out)s);
             %(out)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s,
                                                     dims,
-                                                    %(dtype)s,
+                                                    %(params)s->typecode,
                                                     0);
             if (!%(out)s)
             {
@@ -6706,7 +6712,7 @@ class AllocEmpty(gof.Op):
         return [node.inputs]
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def do_constant_folding(self, node):
         return False

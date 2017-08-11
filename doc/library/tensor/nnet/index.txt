@@ -21,3 +21,4 @@ and ops which are particular to neural networks and deep learning.
     neighbours
     bn
     blocksparse
+    ctc

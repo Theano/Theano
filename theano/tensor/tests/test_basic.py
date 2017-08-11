@@ -1729,6 +1729,7 @@ else:
     expected_gamma = []
     expected_gammaln = []
     expected_psi = []
+    expected_tri_gamma = []
     expected_chi2sf = []
     expected_j0 = []
     expected_j1 = []

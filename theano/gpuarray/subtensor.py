@@ -1,7 +1,5 @@
 from __future__ import absolute_import, print_function, division
 
-import os
-
 import numpy as np
 from six import integer_types
 from six.moves import StringIO
@@ -20,7 +18,7 @@ except ImportError:
     pass
 
 from .type import GpuArrayType, gpu_context_type
-from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
+from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel, gpuarray_helper_inc_dir,
                         infer_context_name, gpu_contiguous)
 
 iadd_reg = {}
@@ -621,6 +619,10 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
         y = inp[1]
         idx = inp[2:]
         x = x.copy()
+        # Get a handle to the GpuElemwise object that will be called.
+        # It is not necessary to have the right number of dimensions,
+        # so we just pass symbolic x and y.
+        iadd = get_iadd(node.inputs[0], node.inputs[1])
 
         # convert all indices to np.array
         for i in range(len(idx)):
@@ -699,15 +701,10 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                 else:
                     val = y_flat[j]
 
-                tmp = pygpu.elemwise.elemwise2(
-                    x_flat[i], '+', val, x_flat[i],
-                    broadcast=True,
-                    convert_f16=True
-                )
-                x_flat.__setitem__(i, tmp)
+                iadd(x_flat[i], val, broadcast=True)
         else:
-            k = get_iadd(node.inputs[0], node.inputs[1])
-            if x_flat.shape[-len(y_flat.shape):] == y_flat.shape or y_flat.shape == ():
+            if (x_flat.shape[-len(y_flat.shape):] == y_flat.shape or
+                    y_flat.shape == ()):
                 # y_flat has to be broadcast over axes of x_flat[i]
 
                 for i in take_idx.flatten():
@@ -715,13 +712,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                         x_flat_sub = x_flat[i].__getitem__(index)
                     else:
                         x_flat_sub = x_flat[i]
-                    tmp = pygpu.elemwise.elemwise2(
-                        x_flat_sub, '+', y_flat, x_flat_sub,
-                        broadcast=True,
-                        convert_f16=True
-                    )
-                    x_flat[i].__setitem__(index, tmp)
-
+                    iadd(x_flat_sub, y_flat, broadcast=True)
             else:
                 # y_flat's first axis corresponds to first exist of x_flat
                 for j, i in enumerate(take_idx.flatten()):
@@ -729,7 +720,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                         x_flat_sub = x_flat[i].__getitem__(index)
                     else:
                         x_flat_sub = x_flat[i]
-                    k(x_flat_sub, y_flat[j % y_flat.shape[0]], broadcast=True)
+                    iadd(x_flat_sub, y_flat[j % y_flat.shape[0]], broadcast=True)
         x_ = x_flat.reshape(x_.shape).transpose(*rtransp)
         out[0] = x_
 
@@ -850,7 +841,7 @@ class GpuAdvancedIncSubtensor1(Op):
                 '<gpuarray/elemwise.h>', 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_support_code_struct(self, node, nodename):
         return "\nGpuElemwise *iadd;\n"
@@ -1021,7 +1012,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
                 '<gpuarray/types.h>']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_code(self, node, name, inputs, outputs, sub):
         ctx = self.get_params(node).context

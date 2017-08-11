@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import os
 import warnings
 
 import pkg_resources
@@ -13,7 +12,7 @@ from theano.scalar import bool as bool_t
 from theano.gof import COp, ParamsType
 from theano.gpuarray import GpuArrayType
 
-from .basic_ops import (CGpuKernelBase, as_gpuarray_variable, gpu_contiguous,
+from .basic_ops import (CGpuKernelBase, as_gpuarray_variable, gpu_contiguous, gpuarray_helper_inc_dir,
                         infer_context_name)
 from .type import gpu_context_type
 
@@ -499,7 +498,7 @@ class GpuMagmaBase(COp):
                 'gpuarray_helper.h', 'magma.h']
 
     def c_header_dirs(self):
-        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include()]
         if config.magma.include_path:
             dirs.append(config.magma.include_path)
         return dirs
@@ -540,7 +539,7 @@ class GpuMagmaSVD(GpuMagmaBase):
     def __init__(self, full_matrices=True, compute_uv=True):
         self.full_matrices = full_matrices
         self.compute_uv = compute_uv
-        COp.__init__(self, ['magma_svd.c'], 'APPLY_SPECIFIC(magma_svd)')
+        COp.__init__(self, ['c_code/magma_svd.c'], 'APPLY_SPECIFIC(magma_svd)')
 
     def make_node(self, A):
         ctx_name = infer_context_name(A)
@@ -624,7 +623,7 @@ class GpuMagmaMatrixInverse(GpuMagmaBase):
     params_type = ParamsType(inplace=bool_t, context=gpu_context_type)
 
     def __init__(self, inplace=False):
-        COp.__init__(self, ['magma_inv.c'], 'APPLY_SPECIFIC(magma_inv)')
+        COp.__init__(self, ['c_code/magma_inv.c'], 'APPLY_SPECIFIC(magma_inv)')
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
@@ -672,7 +671,7 @@ class GpuMagmaCholesky(GpuMagmaBase, CGpuKernelBase):
 
     def __init__(self, lower=True, inplace=False):
         self.lower = lower
-        COp.__init__(self, ['magma_cholesky.c'], 'APPLY_SPECIFIC(magma_cholesky)')
+        COp.__init__(self, ['c_code/magma_cholesky.c'], 'APPLY_SPECIFIC(magma_cholesky)')
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
@@ -719,7 +718,7 @@ class GpuMagmaQR(GpuMagmaBase, CGpuKernelBase):
 
     def __init__(self, complete=True):
         self.complete = complete
-        COp.__init__(self, ['magma_qr.c'], 'APPLY_SPECIFIC(magma_qr)')
+        COp.__init__(self, ['c_code/magma_qr.c'], 'APPLY_SPECIFIC(magma_qr)')
 
     def make_node(self, A):
         ctx_name = infer_context_name(A)
@@ -785,7 +784,7 @@ class GpuMagmaEigh(GpuMagmaBase):
         assert UPLO in ['L', 'U']
         self.lower = UPLO == 'L'
         self.compute_v = compute_v
-        COp.__init__(self, ['magma_eigh.c'], 'APPLY_SPECIFIC(magma_eigh)')
+        COp.__init__(self, ['c_code/magma_eigh.c'], 'APPLY_SPECIFIC(magma_eigh)')
 
     def make_node(self, A):
         ctx_name = infer_context_name(A)
