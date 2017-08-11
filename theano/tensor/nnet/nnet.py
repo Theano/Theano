@@ -958,7 +958,6 @@ def local_logsoftmax_grad(node):
               *idx)
     which arises from the gradient of log(softmax(x)[*idx])
     """
-
     list_classes_IncSubtensor = ((IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
     list_classes_Subtensor = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
     if (isinstance(node.op, SoftmaxGrad) and
@@ -982,6 +981,23 @@ def local_logsoftmax_grad(node):
             grads = node.inputs[0].owner.inputs[0]
             if grads.broadcastable[axis] and not sm.broadcastable[axis]:
                 grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
+            ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
+            ret.tag.values_eq_approx = values_eq_approx_remove_nan
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
+
+        # Case where d_sm = (grads / IncSubtensor(softmax(x))
+        if (node.inputs[0].owner.op == tensor.true_div and
+                isinstance(node.inputs[0].owner.inputs[1].owner.op, list_classes_IncSubtensor) and
+                isinstance(node.inputs[0].owner.inputs[1].owner.inputs[0].owner.op, Softmax) and
+                node.inputs[1] == node.inputs[0].owner.inputs[1].owner.inputs[0] and
+                # skip if it will be optimized by
+                # local_advanced_indexing_crossentropy_onehot_grad
+                not (node.inputs[0].owner.inputs[0].owner is not None and isinstance(node.inputs[0].owner.inputs[0].owner.op, AdvancedIncSubtensor))):
+            # get parameters from unoptimized op
+            sm = node.inputs[0].owner.inputs[1].owner.inputs[0]
+            axis = sm.owner.op.axis
+            grads = node.inputs[0].owner.inputs[0]
             ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
             ret.tag.values_eq_approx = values_eq_approx_remove_nan
             copy_stack_trace(node.outputs[0], ret)
