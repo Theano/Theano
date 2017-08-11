@@ -113,6 +113,8 @@ not need to read it. Theano will select it for you.
       If cuDNN is available, by default, Theano will replace all nnet.conv3d
       operations with dnn_conv.
 
+    - :func:`dnn_conv3d <theano.gpuarray.dnn.dnn_conv3d>` as dnn_conv() but for 3d.
+
     - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
       Another conv3d implementation that uses the conv2d with data reshaping.
       It is faster in some corner cases than conv3d. It flips the kernel.
