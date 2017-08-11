@@ -1048,11 +1048,12 @@ def local_logsoftmax_grad(node):
                 # And we verify that the subtensor_op(softmax(x), *idx)
                 # that is inside the denominator match the subtensor_op(softmax(x), *idx)
                 # that is the second argument of the SoftmaxGrad
+                print(subtensor_idx)
                 if (subtensor_op is not None and
                         len(subtensor_op.owner.inputs) >= 2 and
                         subtensor_op.owner.inputs[0] is sm and
                         subtensor_op.owner.inputs[1:] == subtensor_idx):
-                    ret = out_grad - tensor.sum(out_grad, axis=-1, keepdims=True) * subtensor_op
+                    ret = out_grad - tensor.sum(out_grad, axis=-1, keepdims=True) * denom
                     ret = d_sm.owner.op(tensor.zeros_like(sm), -ret, *subtensor_idx)
                     ret.tag.values_eq_approx = values_eq_approx_remove_nan
                     copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
