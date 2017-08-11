@@ -42,16 +42,17 @@ Either cuDNN and the gemm version can be disabled using the Theano flags
 respectively. If both are disabled, it will raise an error.
 
 
-For the cuDNN version, there is different algorythm with different
-memory/speed trade-off. Manual selection of the right one is very
-difficult as it depend of the shapes and hardware. So it can change
-for each layer. An auto-tuning mode exist and can be activated by
-those flag: ``dnn.conv.algo_fwd=time_once``,
+For the cuDNN version, there are different algorythms with different
+memory/speed trade-offs. Manual selection of the right one is very
+difficult as it depends on the shapes and hardware. So it can change
+for each layer. An auto-tuning mode exists and can be activated by
+those flags: ``dnn.conv.algo_fwd=time_once``,
 ``dnn.conv.algo_bwd_data=time_once`` and
-``dnn.conv.algo_bwd_filter=time_once``.
+``dnn.conv.algo_bwd_filter=time_once``. Note, they are good mostly
+when the shape do not change.
 
-This auto-tuning have the inconvenience that the first call is much
-slower as it try and time each implementation it have. So if you
+This auto-tuning has the inconvenience that the first call is much
+slower as it tries and times each implementation it has. So if you
 benchmark, it is important that you remove the first call from your
 timing.
 
@@ -59,7 +60,7 @@ timing.
 .. note::
 
     Theano had older user interface like
-    theano.tensor.nnet.conv.conv2d. Do not user them anymore. They
+    theano.tensor.nnet.conv.conv2d. Do not use them anymore. They
     will give you slower code and won't allow easy switch between CPU
     and GPU computation. They also support less type of convolution.
 
@@ -67,7 +68,7 @@ timing.
 Implementation Details
 ======================
 
-This section give more implementation detail. Most of the time you do
+This section gives more implementation detail. Most of the time you do
 not need to read it. Theano will select it for you.
 
 
