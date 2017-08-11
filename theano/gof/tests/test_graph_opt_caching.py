@@ -9,7 +9,8 @@ floatX = 'float32'
 
 def test_graph_opt_caching():
     opt_db_file = os.path.join(theano.config.compiledir, 'optimized_graphs.pkl')
-    os.remove(opt_db_file)
+    if os.path.exists(opt_db_file):
+        os.remove(opt_db_file)
 
     mode = theano.config.mode
     if mode in ["DEBUG_MODE", "DebugMode"]:
