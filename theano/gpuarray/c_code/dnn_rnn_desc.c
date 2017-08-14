@@ -29,11 +29,17 @@ int dnn_rnn_desc(int hidden_size, int num_layers,
     PyErr_SetString(PyExc_RuntimeError, "Can't create RNN descriptor");
     return -1;
   }
-
+  #if CUDNN_MAJOR < 7
   err = cudnnSetRNNDescriptor(desc, hidden_size, num_layers, ddesc,
                               (cudnnRNNInputMode_t)input_mode,
                               (cudnnDirectionMode_t)direction_mode,
                               (cudnnRNNMode_t)rnn_mode, data_type);
+  #else
+  err = cudnnSetRNNDescriptor(_handle, desc, hidden_size, num_layers, ddesc,
+                              (cudnnRNNInputMode_t)input_mode,
+                              (cudnnDirectionMode_t)direction_mode,
+                              (cudnnRNNMode_t)rnn_mode, CUDNN_RNN_ALGO_STANDARD, data_type);
+  #endif
   if (err != CUDNN_STATUS_SUCCESS) {
     cudnnDestroyRNNDescriptor(desc);
     PyErr_SetString(PyExc_RuntimeError, "Can't set RNN descriptor");

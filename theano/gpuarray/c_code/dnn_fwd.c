@@ -209,7 +209,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
   // Algo `small` does not work for a batch size > 2^16, with cuDNN >= V5.1.
   // Issue should be resolved for cuDNN > V6.0.
-  if (cudnnGetVersion() < 6100 &&
+  // NB: In cuDNN V7, issue is resolved for 2D convolutionss only.
+  if ((cudnnGetVersion() < 6100 || PyGpuArray_NDIM(input) == 5) &&
       algo == CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM &&
       PyGpuArray_DIM(input, 0) > 65536)
   {
