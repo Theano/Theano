@@ -57,7 +57,7 @@ from theano.tensor import (
 
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
-from theano.configparser import change_flags
+from theano import change_flags
 
 imported_scipy_special = False
 mode_no_scipy = get_default_mode()

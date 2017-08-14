@@ -283,7 +283,7 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
         z = tensor.constant(2.)
 
         a = theano.ifelse.ifelse(x, y, z)
-        with theano.configparser.change_flags(on_opt_error='raise'):
+        with theano.change_flags(on_opt_error='raise'):
             theano.function([x], [a], mode=mode_with_gpu)
 
 
@@ -516,7 +516,7 @@ def test_not_useless_scalar_gpuelemwise():
     # We don't want to move elemwise on scalar on the GPU when the
     # result will not be used on the GPU!
 
-    with theano.configparser.change_flags(warn_float64='ignore'):
+    with theano.change_flags(warn_float64='ignore'):
         X = tensor.fmatrix()
         x = np.random.randn(32, 32).astype(np.float32)
         m1 = theano.shared(np.random.randn(32, 32).astype(np.float32))

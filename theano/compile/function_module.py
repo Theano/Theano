@@ -1829,7 +1829,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   on_unused_input=on_unused_input,
                   output_keys=output_keys,
                   name=name)
-        with theano.configparser.change_flags(compute_test_value="off"):
+        with theano.change_flags(compute_test_value="off"):
             fn = m.create(defaults)
     finally:
         t2 = time.time()

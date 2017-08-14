@@ -34,7 +34,7 @@ from theano.tensor.subtensor import (AdvancedIncSubtensor,
 from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
-from theano.configparser import change_flags
+from theano import change_flags
 
 if PY3:
     def L(i):

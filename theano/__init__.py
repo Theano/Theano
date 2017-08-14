@@ -65,6 +65,7 @@ def disable_log_handler(logger=theano_logger, handler=logging_default_handler):
 from theano.version import version as __version__
 
 from theano.configdefaults import config
+from theano.configparser import change_flags
 
 # This is the api version for ops that generate C code.  External ops
 # might need manual changes if this number goes up.  An undefined

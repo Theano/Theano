@@ -12,7 +12,7 @@ from theano.gof import destroyhandler
 from theano.gof.fg import FunctionGraph, InconsistencyError
 from theano.gof.toolbox import ReplaceValidate
 
-from theano.configparser import change_flags
+from theano import change_flags
 
 from copy import copy
 
