@@ -58,7 +58,8 @@ class GpuConnectionistTemporalClassification(gof.COp):
         return ["warpctc", "gpuarray"]
 
     def c_header_dirs(self):
-        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include()]
+        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include(),
+                config.cuda.include_path]
         if config.ctc.root != '':
             dirs.append(os.path.join(config.ctc.root, "include"))
         return dirs
@@ -163,7 +164,7 @@ def gpu_ctc(activations, labels, input_lengths):
 
 
 # Disable gradient computation if not needed
-@register_canonicalize
+@register_canonicalize("fast_compile")
 @local_optimizer([GpuConnectionistTemporalClassification])
 def local_gpu_ctc_no_grad(node):
     if isinstance(node.op, GpuConnectionistTemporalClassification):
