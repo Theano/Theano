@@ -13,7 +13,7 @@ from theano.tensor.opt import register_canonicalize
 from theano.tensor.nnet.ctc import ctc_available
 
 import os
-import os.path
+import sys
 from . import pygpu
 
 
@@ -53,6 +53,14 @@ class GpuConnectionistTemporalClassification(gof.COp):
         if ctc_available.path is not None:
             lib_dirs += [ctc_available.path]
         return lib_dirs
+
+    def c_compile_args(self):
+        if ctc_available.path is not None:
+            if sys.platform == 'darwin':
+                return ['-Wl,-rpath,' + ctc_available.path]
+            else:
+                return ['-Wl,-rpath,"' + ctc_available.path + '"']
+        return []
 
     def c_libraries(self):
         return ["warpctc", "gpuarray"]
