@@ -57,6 +57,7 @@ theano_logger.setLevel(logging.WARNING)
 if has_handlers(theano_logger) is False:
     theano_logger.addHandler(logging_default_handler)
 
+
 # Disable default log handler added to theano_logger when the module
 # is imported.
 def disable_log_handler(logger=theano_logger, handler=logging_default_handler):
