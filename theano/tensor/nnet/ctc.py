@@ -129,10 +129,10 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
 
     def c_compile_args(self):
         if ctc_available.path is not None:
-            if sys.platform == 'darwin':
-                return ['-Wl,-rpath,' + ctc_available.path]
-            else:
+            if sys.platform != 'darwin' and ' ' in ctc_available.path:
                 return ['-Wl,-rpath,"' + ctc_available.path + '"']
+            else:
+                return ['-Wl,-rpath,' + ctc_available.path]
         return []
 
     def c_libraries(self):
