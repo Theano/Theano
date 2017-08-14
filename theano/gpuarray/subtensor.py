@@ -628,6 +628,9 @@ class GpuAdvancedSubtensor(HideC, BaseGpuAdvancedSubtensor, tensor.AdvancedSubte
     """
     def make_node(self, x, *inputs):
         ctx_name = infer_context_name(x)
+        # This method relies on AdvancedSubtensor.make_node to
+        # call tensor.subtensor.check_and_reject_bool(inputs),
+        # which raises an IndexError if there are any boolean indices.
         rval = tensor.AdvancedSubtensor.make_node(self, x, *inputs)
         otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
                              broadcastable=rval.outputs[0].type.broadcastable,
