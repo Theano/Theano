@@ -175,6 +175,7 @@ class TestGpuCholesky(unittest.TestCase):
             GpuCholesky(lower=True, inplace=False)(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
+    @utt.assertFailure_fast
     def test_diag_chol(self):
         # Diagonal matrix input Cholesky test.
         for lower in [True, False]:
@@ -183,6 +184,7 @@ class TestGpuCholesky(unittest.TestCase):
                 A_val = np.diag(np.random.uniform(size=5).astype("float32") + 1)
                 self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
 
+    @utt.assertFailure_fast
     def test_dense_chol_lower(self):
         # Dense matrix input lower-triangular Cholesky test.
         for lower in [True, False]:
@@ -243,6 +245,7 @@ class TestMagma(unittest.TestCase):
         A_val_inv = fn(A_val)
         utt.assert_allclose(np.eye(N), np.dot(A_val_inv, A_val), atol=1e-2)
 
+    @utt.assertFailure_fast
     def test_gpu_matrix_inverse_inplace(self):
         N = 1000
         test_rng = np.random.RandomState(seed=1)
@@ -258,6 +261,7 @@ class TestMagma(unittest.TestCase):
         fn()
         utt.assert_allclose(np.eye(N), np.dot(A_val_gpu.get_value(), A_val_copy), atol=5e-3)
 
+    @utt.assertFailure_fast
     def test_gpu_matrix_inverse_inplace_opt(self):
         A = theano.tensor.fmatrix("A")
         fn = theano.function([A], matrix_inverse(A), mode=mode_with_gpu)
@@ -360,6 +364,7 @@ class TestMagma(unittest.TestCase):
         assert any([isinstance(node.op, GpuMagmaCholesky)
                     for node in fn.maker.fgraph.toposort()])
 
+    @utt.assertFailure_fast
     def test_gpu_cholesky_inplace(self):
         A = self.rand_symmetric(1000)
         A_gpu = gpuarray_shared_constructor(A)
@@ -375,6 +380,7 @@ class TestMagma(unittest.TestCase):
         L = A_gpu.get_value()
         utt.assert_allclose(np.dot(L, L.T), A_copy, atol=1e-3)
 
+    @utt.assertFailure_fast
     def test_gpu_cholesky_inplace_opt(self):
         A = theano.tensor.fmatrix("A")
         fn = theano.function([A], GpuMagmaCholesky()(A), mode=mode_with_gpu)

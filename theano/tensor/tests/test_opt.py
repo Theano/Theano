@@ -1367,6 +1367,7 @@ class TestCompositeCodegen(unittest.TestCase):
         utt.assert_allclose(f([[1.]]), [[0.]])
 
 
+@utt.assertFailure_fast
 def test_log1p():
     m = theano.config.mode
     if m == 'FAST_COMPILE':
@@ -1989,6 +1990,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert len(prog) == 3
         f([4, 5])  # let debugmode test something
 
+    @utt.assertFailure_fast
     def test4(self):
         # basic test that the optimization doesn't work with broadcasting
         # ... It *could* be extended to,
