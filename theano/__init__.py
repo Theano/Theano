@@ -28,8 +28,10 @@ __docformat__ = "restructuredtext en"
 # Set a default logger. It is important to do this before importing some other
 # theano code, since this code may want to log some messages.
 import logging
-
+import os
 import sys
+import warnings
+
 
 def has_handlers(logger):
     # copied from Logger.hasHandlers() (introduced in Python 3.2)
@@ -63,6 +65,24 @@ def disable_log_handler(logger=theano_logger, handler=logging_default_handler):
 
 # Version information.
 from theano.version import version as __version__
+
+# Raise a meaning full warning/error if the theano directory is in the
+# Python path.
+from six import PY3
+rpath = os.path.realpath(__path__[0])
+for p in sys.path:
+    if os.path.realpath(p) != rpath:
+        continue
+    if PY3:
+        raise RuntimeError(
+            "You have the theano directory in your Python path."
+            " This do not work in Python 3.")
+    else:
+        warnings.warn(
+            "You have the theano directory in your Python path."
+            " This is will not work in Python 3.")
+    break
+
 
 from theano.configdefaults import config
 from theano.configparser import change_flags
