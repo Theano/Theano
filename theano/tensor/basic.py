@@ -12,7 +12,7 @@ import numbers
 
 import theano
 from theano.compat import izip
-from theano.configparser import config
+from theano import config
 from theano import gof
 from theano.gof import Apply, Constant, Op, Variable, ParamsType
 from theano.gof.type import Generic

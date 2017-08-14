@@ -15,7 +15,7 @@ from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
 from theano.tensor.utils import hash_from_ndarray
 from theano.tensor.type import TensorType
-from theano.configparser import config
+from theano import config
 
 
 def equal_slices(s1, s2):

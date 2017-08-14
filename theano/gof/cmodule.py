@@ -27,7 +27,7 @@ from theano.compat import PY3, decode, decode_iter
 from six import b, BytesIO, StringIO, string_types, iteritems
 from six.moves import xrange
 from theano.gof.utils import flatten
-from theano.configparser import config
+from theano import config
 from theano.gof.utils import hash_from_code
 from theano.misc.windows import (subprocess_Popen,
                                  output_subprocess_Popen)

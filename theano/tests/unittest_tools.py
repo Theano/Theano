@@ -21,7 +21,7 @@ import numpy as np
 
 import theano
 import theano.tensor as T
-from theano.configparser import config
+from theano import config
 try:
     from nose.plugins.skip import SkipTest
 except ImportError:

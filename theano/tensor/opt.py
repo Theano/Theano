@@ -25,7 +25,7 @@ from theano.gof import Variable, Constant
 from theano.gof.opt import copy_stack_trace, in2out
 from theano.gof.utils import MethodNotDefined
 from theano.gradient import DisconnectedType
-from theano.configparser import config
+from theano import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
                                      Subtensor, IncSubtensor, make_constant,
