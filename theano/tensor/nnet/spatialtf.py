@@ -15,11 +15,9 @@ class AbstractSpatialTransformerOp(Op):
     def __init__(self, border_mode):
         self.border_mode = border_mode
 
-    def make_node(self, inp, theta, scale_height, scale_width):
+    def make_node(self, inp, theta, out_height, out_width):
         _inp = as_tensor_variable(inp)
         _theta = as_tensor_variable(theta)
-        _scale_height = T.cast(scale_height, theano.config.floatX)
-        _scale_width = T.cast(scale_width, theano.config.floatX)
 
         if _inp.ndim != 4:
             raise TypeError('SpatialTransformerOp (make_node) requires input to '
@@ -38,24 +36,31 @@ class AbstractSpatialTransformerOp(Op):
         out = theano.tensor.tensor(dtype=_inp.type.dtype,
                                    broadcastable=_inp.broadcastable)
 
-        return Apply(self, [_inp, _theta, _scale_height, _scale_width], [out])
+        return Apply(self, [_inp, _theta, out_height, out_width], [out])
 
     def grad(self, inputs, grads):
         pass
 
 
 def spatialtf(inp, theta, scale_height=1, scale_width=1, border_mode='nearest'):
-    return AbstractSpatialTransformerOp(border_mode)(inp, theta, scale_height, scale_width)
+    inp = as_tensor_variable(inp)
+    assert inp.ndim == 4
+
+    height, width = inp.shape[2:]
+    out_height = T.cast(scale_height * height, 'int64')
+    out_width = T.cast(scale_width * width, 'int64')
+
+    return AbstractSpatialTransformerOp(border_mode)(inp, theta, out_height, out_width)
 
 
-def spatialtf_cpu(inp, theta, scale_height, scale_width, border_mode='nearest'):
+def spatialtf_cpu(inp, theta, out_height, out_width, border_mode='nearest'):
     # Assumes tensor is in NCHW format
     num_batch, num_channels, height, width = inp.shape
     theta = T.reshape(theta, (-1, 2, 3))
 
     # grid of (x_t, y_t, 1), eq (1) in ref [1]
-    out_height = T.cast(scale_height * height, 'int64')
-    out_width = T.cast(scale_width * width, 'int64')
+    out_height = T.cast(out_height, 'int64')
+    out_width = T.cast(out_width, 'int64')
     grid = _meshgrid(out_height, out_width)
     # transform a x (x_t, y_t, 1)^t -> (x_s, y_s)
     t_g = T.dot(theta, grid)
