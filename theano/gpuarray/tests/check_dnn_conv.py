@@ -7,7 +7,7 @@
 # supported algorithms and data type configurations for current GPU and cuDNN version.
 # python check_dnn_conv.py infos
 
-# If there is only one arg `list`, this script prints all tests without running them.
+# If there is only one arg `list`, this script prints all test cases without running them.
 # python check_dnn_conv.py list
 
 # Else, any arg will be directly passed to nosetests.
@@ -110,7 +110,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, alpha=1, beta=0, out=None, border_mod
 def check_dtype_config_support(dtype, precision):
     # We use FWD 2D to check it.
     # Based on documentation, algo small (CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM)
-    # should support all configurations, for both v5.1 and v6.
+    # should support all configurations, for both v5.1, v6 and v7.
     inputs = theano.shared(np.zeros((1, 1, 2, 2), dtype=dtype))
     filters = theano.shared(np.zeros((1, 1, 2, 2), dtype=dtype))
     conv = dnn_conv(inputs, filters, precision=precision, algo='small')
@@ -128,7 +128,7 @@ cudnn = cudnn_defs.get_definitions(version(raises=False))
 
 class ConvCase:
     """
-    Help class to describe a special test case quickly.
+    Helper class to describe a special test case quickly.
     This handles only 2D and 3D cases.
     """
 
@@ -228,12 +228,12 @@ class ConvCaseGenerator:
         assert self.input_channels > 0
         assert self.output_channels > 0
 
-        # NB: it is a bit arbitrary to choose default values for inputs sizes and filters sizes.
+        # NB: it is quite arbitrary to choose default values for inputs sizes and filters sizes.
         # Here, we just put some values that may generate errors in some cases, but that should be OK for other cases.
         # For instance, input size 300 is > 256, that is a limit for certain algorithms (cf. documentation).
         # Filter size 40 is > 32 and > 16, that are limits for certain algorithms (cf. documentation).
         # We should either manually specify sizes, or give an appropriate filter to this generator
-        # (see `self.get_cases()`) before testing values.
+        # before testing values (see `self.get_cases()`).
 
         if inputs_sizes is None:
             inputs_sizes = ((5,) * self.ndim,
@@ -318,7 +318,7 @@ class ConvCaseGenerator:
 
 class ConvCaseGeneratorChain:
     """
-    Help class to concatenate many conv case generators.
+    Helper class to concatenate many conv case generators.
     """
 
     def __init__(self, *conv_case_generators):
@@ -333,7 +333,7 @@ class CuDNNV51ConvCaseGenerator(object):
     """
     Helper class to generate specific test cases for every algorithm supported by cuDNN V5.1.
     Same class exists for cuDNN V6.0 (see below).
-    This should help avoid test cases that are intended to fail according to cuDNN documentations.
+    This should help avoid test cases that are intended to fail according to cuDNN documentation.
     """
     NONE = 'none'
     FFT = 'fft'
@@ -376,9 +376,9 @@ class CuDNNV51ConvCaseGenerator(object):
                                  subsamples=subsamples,
                                  dilations=self._dilations(ndim))
 
-    def _fwd_winograd_non_fused(self, ndim):
+    def _fwd_winograd_non_fused(self, ndim, dtype, precision):
         filters_sizes = [(3,) * ndim]
-        if not check_dtype_config_support('float16', 'float16'):
+        if not (dtype == precision == 'float16'):
             filters_sizes += [(5,) * ndim]
         subsamples = [(1,) * ndim]
         return ConvCaseGenerator(ndim=ndim,
@@ -389,8 +389,8 @@ class CuDNNV51ConvCaseGenerator(object):
     def _gw_fft(self, ndim):
         return self._fwd_fft(ndim)
 
-    def _gw_winograd_non_fused(self, ndim):
-        return self._fwd_winograd_non_fused(ndim)
+    def _gw_winograd_non_fused(self, ndim, dtype, precision):
+        return self._fwd_winograd_non_fused(ndim, dtype, precision)
 
     def _gi_fft(self, ndim):
         return self._fwd_fft(ndim)
@@ -401,8 +401,17 @@ class CuDNNV51ConvCaseGenerator(object):
     def _gi_winograd(self, ndim):
         return self._fwd_winograd(ndim)
 
-    def _gi_winograd_non_fused(self, ndim):
-        return self._fwd_winograd_non_fused(ndim)
+    def _gi_winograd_non_fused(self, ndim, dtype, precision):
+        return self._fwd_winograd_non_fused(ndim, dtype, precision)
+
+    def _fwd_runtime(self, ndim, dtype, precision):
+        return ConvCaseGenerator(ndim=ndim, dilations=self._dilations(ndim))
+
+    def _gw_runtime(self, ndim, dtype, precision):
+        return self._fwd_runtime(ndim, dtype, precision)
+
+    def _gi_runtime(self, ndim, dtype, precision):
+        return self._fwd_runtime(ndim, dtype, precision)
 
     # Public interface.
 
@@ -414,14 +423,18 @@ class CuDNNV51ConvCaseGenerator(object):
         if algo == self.WINOGRAD:
             return self._fwd_winograd(ndim)
         if algo == self.WINOGRAD_NON_FUSED:
-            return self._fwd_winograd_non_fused(ndim)
+            return self._fwd_winograd_non_fused(ndim, dtype, precision)
+        if algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+            return self._fwd_runtime(ndim, dtype, precision)
         return ConvCaseGenerator(ndim=ndim, dilations=self._dilations(ndim))
 
     def gw(self, algo, ndim, dtype, precision):
         if algo == self.FFT:
             return self._gw_fft(ndim)
         if algo == self.WINOGRAD_NON_FUSED:
-            return self._gw_winograd_non_fused(ndim)
+            return self._gw_winograd_non_fused(ndim, dtype, precision)
+        if algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+            return self._gw_runtime(ndim, dtype, precision)
         return ConvCaseGenerator(ndim=ndim, dilations=self._dilations(ndim))
 
     def gi(self, algo, ndim, dtype, precision):
@@ -432,7 +445,9 @@ class CuDNNV51ConvCaseGenerator(object):
         if algo == self.WINOGRAD:
             return self._gi_winograd(ndim)
         if algo == self.WINOGRAD_NON_FUSED:
-            return self._gi_winograd_non_fused(ndim)
+            return self._gi_winograd_non_fused(ndim, dtype, precision)
+        if algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+            return self._gi_runtime(ndim, dtype, precision)
         return ConvCaseGenerator(ndim=ndim, dilations=self._dilations(ndim))
 
 
@@ -478,6 +493,21 @@ class CuDNNV6ConvCaseGenerator(CuDNNV51ConvCaseGenerator):
 
     def _gi_none(self, ndim):
         return self._fwd_none(ndim)
+
+    def _fwd_runtime(self, ndim, dtype, precision):
+        if ndim == 2 and dtype == precision == 'float16':
+            return ConvCaseGenerator(ndim=ndim, dilations=self._dilations(ndim))
+        return super(CuDNNV6ConvCaseGenerator, self)._fwd_runtime(ndim, dtype, precision)
+
+    def _gw_runtime(self, ndim, dtype, precision):
+        if ndim == 2 and dtype == precision == 'float16':
+            return ConvCaseGenerator(ndim=ndim, dilations=self._dilations(ndim))
+        return super(CuDNNV6ConvCaseGenerator, self)._gw_runtime(ndim, dtype, precision)
+
+    def _gi_runtime(self, ndim, dtype, precision):
+        if ndim == 2 and dtype == precision == 'float16':
+            return ConvCaseGenerator(ndim=ndim, dilations=self._dilations(ndim))
+        return super(CuDNNV6ConvCaseGenerator, self)._gi_runtime(ndim, dtype, precision)
 
     def fwd(self, algo, ndim, dtype, precision):
         if algo == self.NONE:
@@ -525,11 +555,6 @@ class BaseTestDnnConv(object):
     def __init__(self):
         utt.seed_rng(1234)
         self.dtype_configs = cudnn.get_supported_dtype_configs(check_dtype_config_support)
-
-    def get_cases(self, filter=None):
-        # Return an iterable of test cases. Each test case is a tuple (or list) with following syntax:
-        # (input shape, filter shape, subsample, dilation, border mode, convolution mode, alpha, beta)
-        return ConvCaseGenerator(ndim=self.ndim).get_cases(filter)
 
     def array_like_conv_output(self, inputs_shape, filters_shape, border_mode, subsample, dilation, dtype):
         # Return a random array with inferred convolution output shape.
@@ -733,9 +758,9 @@ class BaseTestDnnConv(object):
                     yield (self.run_conv_fwd, algo, dtype, precision, parameters)
             if algos:
                 # Some algorithms support current data type configuration for current ndim.
-                # So, an algorithm can be chosen at runtime.
+                # So, an algorithm could be chosen at runtime.
                 for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
-                    for parameters in self.get_cases():
+                    for parameters in cudnn_conv_case_generator.fwd(algo, self.ndim, dtype, precision).get_cases():
                         yield (self.run_conv_fwd, algo, dtype, precision, parameters)
         for dnn_case in self.special_cases:
             if dnn_case.is_fwd():
@@ -753,9 +778,9 @@ class BaseTestDnnConv(object):
                     yield (self.run_conv_gradinput, algo, dtype, precision, parameters)
             if algos:
                 # Some algorithms support current data type configuration for current ndim.
-                # So, an algorithm can be chosen at runtime.
+                # So, an algorithm could be chosen at runtime.
                 for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
-                    for parameters in self.get_cases():
+                    for parameters in cudnn_conv_case_generator.gi(algo, self.ndim, dtype, precision).get_cases():
                         yield (self.run_conv_gradinput, algo, dtype, precision, parameters)
         for dnn_case in self.special_cases:
             if dnn_case.is_bwd_data():
@@ -773,9 +798,9 @@ class BaseTestDnnConv(object):
                     yield (self.run_conv_gradweight, algo, dtype, precision, parameters)
             if algos:
                 # Some algorithms support current data type configuration for current ndim.
-                # So, an algorithm can be chosen at runtime.
+                # So, an algorithm could be chosen at runtime.
                 for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
-                    for parameters in self.get_cases():
+                    for parameters in cudnn_conv_case_generator.gw(algo, self.ndim, dtype, precision).get_cases():
                         yield (self.run_conv_gradweight, algo, dtype, precision, parameters)
         for dnn_case in self.special_cases:
             if dnn_case.is_bwd_filter():
@@ -883,11 +908,11 @@ class CheckDnn:
         # Print test cases without running them.
         for test in (TestDnnConv2D(), TestDnnConv3D()):
             for tcase in test.test_fwd():
-                print(*(x.__name__ if callable(x) else x for x in tcase))
+                print(tcase[0].__name__, *tcase[1:])
             for tcase in test.test_gradinput():
-                print(*(x.__name__ if callable(x) else x for x in tcase))
+                print(tcase[0].__name__, *tcase[1:])
             for tcase in test.test_gradweight():
-                print(*(x.__name__ if callable(x) else x for x in tcase))
+                print(tcase[0].__name__, *tcase[1:])
 
 
 if __name__ == '__main__':

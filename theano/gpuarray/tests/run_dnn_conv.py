@@ -9,10 +9,10 @@ import sys
 
 import theano
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_RUNTIME
-from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.gpuarray.cudnn_defs import (HALF, FLOAT, DOUBLE,
                                         TRUE_HALF_CONFIG, PSEUDO_HALF_CONFIG, FLOAT_CONFIG, DOUBLE_CONFIG)
 from theano.gpuarray.tests.check_dnn_conv import (cudnn, TestDnnConv2D, TestDnnConv3D, CheckDnn)
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 
 
 class TupleAction(argparse.Action):
@@ -32,7 +32,7 @@ class BorderAction(TupleAction):
 
 
 if __name__ != '__main__':
-    raise ImportError('This script cannot be imported.')
+    raise ImportError('This script must not be imported.')
 
 args = sys.argv[1:]
 computations = FWD, BWD_FILTER, BWD_DATA = ('fwd', 'gradweight', 'gradinput')
