@@ -80,8 +80,17 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   if (c_set_tensorNd(*output, APPLY_SPECIFIC(output)) == -1)
     return 1;
   // set number of groups for grouped convolutions
-  if(cudnnSetConvolutionGroupCount(desc, params->num_groups) == CUDNN_STATUS_BAD_PARAM)
-   return 1;
+  if (params->num_groups > 1) {
+    if (cudnnGetVersion() >= 7000) {
+      if(cudnnSetConvolutionGroupCount(desc, params->num_groups) == CUDNN_STATUS_BAD_PARAM)
+        return 1;
+    }
+    else {
+      PyErr_SetString(PyExc_RuntimeError,
+              "grouped convolutions not supported for cudnn version < 7");
+      return 1;
+    }
+  }
 
   cudnnConvolutionFwdAlgo_t algo = params->conv_algo;
   #ifdef DEBUG
