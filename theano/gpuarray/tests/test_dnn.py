@@ -26,6 +26,7 @@ from .rnn_support import Model, GRU, LSTM, WrapperLayer
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
 from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv3d_noOptim
 
 try:
     import pygpu
@@ -2264,7 +2265,7 @@ def test_dnn_rnn_lstm_grad_c():
             utt.assert_allclose(ref_grads_layer[j], g)
 
 
-def dconv2d(border_mode, subsample, filter_dilation, num_groups):
+def dconvfwd(border_mode, subsample, filter_dilation, num_groups):
     def dconv(img, kern):
         return dnn.dnn_conv(img, kern, border_mode=border_mode, subsample=subsample, dilation=filter_dilation,
                             conv_mode='conv', direction_hint='forward', workmem=None,
@@ -2272,14 +2273,14 @@ def dconv2d(border_mode, subsample, filter_dilation, num_groups):
     return dconv
 
 
-def dconv2dw(border_mode, subsample, filter_dilation, num_groups):
+def dconvgw(border_mode, subsample, filter_dilation, num_groups):
     def dconvw(img, topgrad, kshp):
         return dnn.dnn_gradweight(img, topgrad, kshp, border_mode=border_mode, subsample=subsample, dilation=filter_dilation,
                                   conv_mode='conv', precision=None, algo=None, num_groups=num_groups)
     return dconvw
 
 
-def dconv2di(border_mode, subsample, filter_dilation, num_groups):
+def dconvgi(border_mode, subsample, filter_dilation, num_groups):
     def dconvi(kern, topgrad, imshp):
         return dnn.dnn_gradinput(kern, topgrad, imshp, border_mode=border_mode, subsample=subsample, dilation=filter_dilation,
                                  conv_mode='conv', precision=None, algo=None, num_groups=num_groups)
@@ -2288,9 +2289,20 @@ def dconv2di(border_mode, subsample, filter_dilation, num_groups):
 
 class Cudnn_grouped_conv(Grouped_conv_noOptim):
     mode = mode_with_gpu
-    conv = staticmethod(dconv2d)
-    conv_gradw = staticmethod(dconv2dw)
-    conv_gradi = staticmethod(dconv2di)
+    conv = staticmethod(dconvfwd)
+    conv_gradw = staticmethod(dconvgw)
+    conv_gradi = staticmethod(dconvgi)
+    conv_op = dnn.GpuDnnConv
+    conv_gradw_op = dnn.GpuDnnConvGradW
+    conv_gradi_op = dnn.GpuDnnConvGradI
+    flip_filter = False
+    is_dnn = True
+
+class Cudnn_grouped_conv3d(Grouped_conv3d_noOptim):
+    mode = mode_with_gpu
+    conv = staticmethod(dconvfwd)
+    conv_gradw = staticmethod(dconvgw)
+    conv_gradi = staticmethod(dconvgi)
     conv_op = dnn.GpuDnnConv
     conv_gradw_op = dnn.GpuDnnConvGradW
     conv_gradi_op = dnn.GpuDnnConvGradI
