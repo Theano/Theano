@@ -2790,6 +2790,8 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
 
     if version(raises=False) < 6000 and op.filter_dilation != (1, 1):
         return None
+    if op.num_groups > 1:
+        return None
 
     inp1 = inputs[0]
     inp2 = inputs[1]
@@ -2838,6 +2840,8 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
         return
 
     if version(raises=False) < 6000 and op.filter_dilation != (1, 1, 1):
+        return None
+    if op.num_groups > 1:
         return None
 
     inp1 = inputs[0]

@@ -2292,11 +2292,11 @@ def dconv2di(border_mode, subsample, filter_dilation, num_groups):
 
 class Cudnn_grouped_conv(Grouped_conv_noOptim):
     mode = mode_with_gpu
-    conv2d = staticmethod(dconv2d)
-    conv2d_gradw = staticmethod(dconv2dw)
-    conv2d_gradi = staticmethod(dconv2di)
-    conv2d_op = dnn.GpuDnnConv
-    conv2d_gradw_op = dnn.GpuDnnConvGradW
-    conv2d_gradi_op = dnn.GpuDnnConvGradI
+    conv = staticmethod(dconv2d)
+    conv_gradw = staticmethod(dconv2dw)
+    conv_gradi = staticmethod(dconv2di)
+    conv_op = dnn.GpuDnnConv
+    conv_gradw_op = dnn.GpuDnnConvGradW
+    conv_gradi_op = dnn.GpuDnnConvGradI
     flip_filter = False
     is_dnn = True

@@ -224,11 +224,11 @@ class TestCorrMM(unittest.TestCase):
 
 class TestGroupGpuCorr2d(Grouped_conv_noOptim):
     mode = theano.compile.get_mode("FAST_RUN")
-    conv2d = GpuCorrMM
-    conv2d_gradw = GpuCorrMM_gradWeights
-    conv2d_gradi = GpuCorrMM_gradInputs
-    conv2d_op = GpuCorrMM
-    conv2d_gradw_op = GpuCorrMM_gradWeights
-    conv2d_gradi_op = GpuCorrMM_gradInputs
+    conv = GpuCorrMM
+    conv_gradw = GpuCorrMM_gradWeights
+    conv_gradi = GpuCorrMM_gradInputs
+    conv_op = GpuCorrMM
+    conv_gradw_op = GpuCorrMM_gradWeights
+    conv_gradi_op = GpuCorrMM_gradInputs
     flip_filter = True
     is_dnn = False

@@ -114,7 +114,8 @@ def local_abstractconv3d_gemm(node):
         kern = kern[:, :, ::-1, ::-1, ::-1]
     rval = Corr3dMM(border_mode=node.op.border_mode,
                     subsample=node.op.subsample,
-                    filter_dilation=node.op.filter_dilation)(img, kern)
+                    filter_dilation=node.op.filter_dilation,
+                    num_groups=node.op.num_groups)(img, kern)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -163,7 +164,8 @@ def local_abstractconv3d_gradweight_gemm(node):
 
     rval = Corr3dMM_gradWeights(border_mode=node.op.border_mode,
                                 subsample=node.op.subsample,
-                                filter_dilation=node.op.filter_dilation)(img, topgrad, shape)
+                                filter_dilation=node.op.filter_dilation,
+                                num_groups=node.op.num_groups)(img, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     # need to flip the kernel if necessary
@@ -219,8 +221,9 @@ def local_abstractconv3d_gradinputs_gemm(node):
         kern = kern[:, :, ::-1, ::-1, ::-1]
     rval = Corr3dMM_gradInputs(border_mode=node.op.border_mode,
                                subsample=node.op.subsample,
-                               filter_dilation=node.op.filter_dilation)(kern, topgrad,
-                                                                        shape)
+                               filter_dilation=node.op.filter_dilation,
+                               num_groups=node.op.num_groups)(kern, topgrad,
+                                                              shape)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -266,6 +269,8 @@ def local_conv3d_cpu(node):
     if node.op.border_mode not in ['valid', (0, 0, 0)]:
         return None
     if node.op.filter_dilation != (1, 1, 1):
+        return None
+    if node.op.num_groups > 1:
         return None
 
     bias = theano.tensor.zeros_like(kern[:, 0, 0, 0, 0])
@@ -419,6 +424,8 @@ def local_conv3d_gradweight_cpu(node):
         return None
     if node.op.filter_dilation != (1, 1, 1):
         return None
+    if node.op.num_groups > 1:
+        return None
 
     # conv3D expects shape (batch, row, column, time, channel)
     img = img.dimshuffle(0, 2, 3, 4, 1)
@@ -543,6 +550,8 @@ def local_conv3d_gradinputs_cpu(node):
     if node.op.border_mode not in ['valid', (0, 0, 0)]:
         return None
     if node.op.filter_dilation != (1, 1, 1):
+        return None
+    if node.op.num_groups > 1:
         return None
 
     # need to flip the kernel if necessary (conv3D does not flip)
