@@ -30,6 +30,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv3d_gradInputs,
                                               get_conv_output_shape,
                                               assert_conv_shape)
+from theano.tensor.nnet.spatialtf import AbstractSpatialTransformerOp
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
 from . import pygpu, cudnn_defs
@@ -3799,6 +3800,29 @@ def local_dnn_argmax(op, ctx_name, inputs, outputs):
                                inputs[0].dtype, True)(*inputs)
 
     return [as_gpuarray_variable(arg.astype('int64'), ctx_name)]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([AbstractSpatialTransformerOp])
+@register_opt2([AbstractSpatialTransformerOp], 'fast_compile', 'cudnn')
+def local_dnn_spatialtf(op, ctx_name, inputs, outputs):
+    if not dnn_available(ctx_name):
+        return
+
+    inp, theta, out_height, out_width = inputs
+
+    if inp.ndim != 4:
+        return
+
+    if theta.ndim != 3:
+        return
+
+    out_dims = (inp.shape[0], inp.shape[1], out_height, out_width)
+
+    grid = GpuDnnTransformerGrid()(theta, out_dims)
+    sampler = GpuDnnTransformerSampler()(inp, grid)
+
+    return [sampler]
 
 
 class NoCuDNNRaise(Optimizer):
