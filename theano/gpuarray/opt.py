@@ -73,9 +73,11 @@ from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor,
                         GpuAdvancedSubtensor1,
+                        GpuAdvancedBooleanSubtensor,
                         GpuAdvancedIncSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20,
+                        GpuAdvancedBooleanIncSubtensor,
                         GpuAllocDiag, GpuExtractDiag)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
@@ -1079,6 +1081,13 @@ def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
 
 
 @register_opt('fast_compile')
+@op_lifter([tensor.AdvancedBooleanSubtensor])
+@register_opt2([tensor.AdvancedBooleanSubtensor], 'fast_compile')
+def local_gpua_advanced_boolean_subtensor(op, context_name, inputs, outputs):
+    return GpuAdvancedBooleanSubtensor()
+
+
+@register_opt('fast_compile')
 @op_lifter([tensor.AdvancedIncSubtensor1])
 @register_opt2([tensor.AdvancedIncSubtensor1], 'fast_compile')
 def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
@@ -1117,6 +1126,20 @@ def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
 def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
     if not op.set_instead_of_inc:
         return GpuAdvancedIncSubtensor()
+    else:
+        return False
+
+
+# Do not register this optimization for now, as it slows down the
+# execution by a lot in important cases.
+# @register_opt('fast_compile')
+# @op_lifter([tensor.AdvancedBooleanIncSubtensor])
+# @register_opt2([tensor.AdvancedBooleanIncSubtensor], 'fast_compile')
+def local_gpua_advanced_boolean_incsubtensor(op, context_name, inputs, outputs):
+    # GpuAdvancedIncSubtensor only works with a single boolean mask,
+    # but not with fancy combinations.
+    if not op.set_instead_of_inc and len(inputs) == 3:
+        return GpuAdvancedBooleanIncSubtensor()
     else:
         return False
 
