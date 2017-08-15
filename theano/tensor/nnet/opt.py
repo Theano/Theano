@@ -31,6 +31,15 @@ from theano.tensor import opt
 # Cpu implementation
 from theano.tensor.nnet.conv import conv2d, ConvOp
 
+# Abstract spatial transformer
+from theano.tensor.nnet.spatialtf import (AbstractSpatialTransformerOp,
+                                          AbstractSpatialTransformerGradIOp,
+                                          AbstractSpatialTransformerGradTOp)
+# CPU implementation of the spatial transformer
+from theano.tensor.nnet.spatialtf import (spatialtf_cpu,
+                                          spatialtf_gradi_cpu,
+                                          spatialtf_gradt_cpu)
+
 
 @gof.local_optimizer([SparseBlockGemv], inplace=True)
 def local_inplace_sparse_block_gemv(node):
@@ -502,3 +511,27 @@ def local_abstractconv_check(node):
 optdb.register('AbstractConvCheck',
                opt.in2out(local_abstractconv_check, name="AbstractConvCheck"),
                48.7, 'fast_compile', 'fast_run')
+
+
+@local_optimizer([AbstractSpatialTransformerOp])
+def local_spatialtf_cpu(node):
+    if not isinstance(node.op, AbstractSpatialTransformerOp):
+        return
+
+    return [spatialtf_cpu(*node.inputs)]
+
+
+@local_optimizer([AbstractSpatialTransformerGradIOp])
+def local_spatialtf_gradi_cpu(node):
+    if not isinstance(node.op, AbstractSpatialTransformerGradIOp):
+        return
+
+    return [spatialtf_gradi_cpu(*node.inputs)]
+
+
+@local_optimizer([AbstractSpatialTransformerGradTOp])
+def local_spatialtf_gradt_cpu(node):
+    if not isinstance(node.op, AbstractSpatialTransformerGradTOp):
+        return
+
+    return [spatialtf_gradt_cpu(*node.inputs)]
