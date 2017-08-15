@@ -32,9 +32,9 @@ from theano.tensor import opt
 from theano.tensor.nnet.conv import conv2d, ConvOp
 
 # Abstract spatial transformer
-from theano.tensor.nnet.spatialtf import (AbstractSpatialTransformerOp,
-                                          AbstractSpatialTransformerGradIOp,
-                                          AbstractSpatialTransformerGradTOp)
+from theano.tensor.nnet.abstract_spatialtf import (AbstractSpatialTransformerOp,
+                                                   AbstractSpatialTransformerGradIOp,
+                                                   AbstractSpatialTransformerGradTOp)
 # CPU implementation of the spatial transformer
 from theano.tensor.nnet.spatialtf import (spatialtf_cpu,
                                           spatialtf_gradi_cpu,
@@ -535,3 +535,16 @@ def local_spatialtf_gradt_cpu(node):
         return
 
     return [spatialtf_gradt_cpu(*node.inputs)]
+
+# Register CPU optimizations for the spatial transformer
+spatialtf_groupopt = theano.gof.optdb.LocalGroupDB()
+spatialtf_groupopt.__name__ = "spatialtf_opts"
+register_specialize_device(spatialtf_groupopt, 'fast_compile', 'fast_run')
+spatialtf_groupopt.register('local_spatialtf_cpu', local_spatialtf_cpu, 30,
+                            'fast_compile', 'fast_run')
+spatialtf_groupopt.register('local_spatialtf_gradi_cpu',
+                            local_spatialtf_gradi_cpu, 30,
+                            'fast_compile', 'fast_run')
+spatialtf_groupopt.register('local_spatialtf_gradt_cpu',
+                            local_spatialtf_gradt_cpu, 30,
+                            'fast_compile', 'fast_run')
