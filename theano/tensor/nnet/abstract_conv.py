@@ -569,7 +569,7 @@ def separable_conv2d(input,
         Set of filters used depthwise convolution layer of shape
         (depthwise output channels, 1, filter rows, filter columns).
 
-    depthwise_filters: symbolic 4D tensor
+    pointwise_filters: symbolic 4D tensor
         Set of filters used pointwise convolution layer of shape
         (output channels, depthwise output channels, 1, 1).
 
