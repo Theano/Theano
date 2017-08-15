@@ -13,7 +13,7 @@ typedef std::unordered_map<std::string, AlgoRec> AlgoCache;
 #endif
 #include "pthread.h"
 
-#line 10 "dnn_conv_find.cc"
+#line 10 "dnn_conv_find.c"
 
 using std::vector;
 using std::string;
@@ -96,26 +96,64 @@ static bool all_aligned(cudnnDataType_t type, void* in, void* out, void* filter)
         return true;
 }
 
-std::string dnn_conv_shape(cudnnTensorDescriptor_t input, void* in,
-                           cudnnFilterDescriptor_t filterDesc, void* filter,
-                           cudnnConvolutionDescriptor_t convDesc,
-                           void* out)
+static std::string dnn_conv_shape(cudnnTensorDescriptor_t inputDesc, PyGpuArrayObject* input,
+				  cudnnFilterDescriptor_t filterDesc, PyGpuArrayObject* filter,
+				  cudnnConvolutionDescriptor_t convDesc,
+				  PyGpuArrayObject* output, int groups)
 {
     cudnnDataType_t  dType;
-     
     std::stringstream s;
-
-    s << " -dimA" << shape(input) << " -filtA" << shape(filterDesc, &dType) << shape(convDesc);    
+    int expected_output_dims[5] = {0};
+    cudnnStatus_t err = cudnnGetConvolutionNdForwardOutputDim(convDesc, inputDesc, filterDesc,
+							      PyGpuArray_NDIM(filter), expected_output_dims);
+    if (err != CUDNN_STATUS_SUCCESS) {
+      PyErr_Format(PyExc_RuntimeError, "error computing convolution output dim: %s",
+                   cudnnGetErrorString(err));
+      return "";
+    }
+    if (PyGpuArray_NDIM(filter) == 4) {
+      if ((PyGpuArray_DIMS(output)[0] != expected_output_dims[0]) ||
+          (PyGpuArray_DIMS(output)[1] / groups  != expected_output_dims[1]) ||
+          (PyGpuArray_DIMS(output)[2] != expected_output_dims[2]) ||
+          (PyGpuArray_DIMS(output)[3] != expected_output_dims[3])) {
+        PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ld"
+                     " but received gradient with shape %dx%dx% dx%d",
+                     expected_output_dims[0], expected_output_dims[1] / groups,
+                     expected_output_dims[2], expected_output_dims[3],
+                     PyGpuArray_DIMS(output)[0], PyGpuArray_DIMS(output)[1],
+                     PyGpuArray_DIMS(output)[2], PyGpuArray_DIMS(output)[3]);
+        return "";
+      }
+    } else if (PyGpuArray_NDIM(filter) == 5) {
+      if ((PyGpuArray_DIMS(output)[0] != expected_output_dims[0]) ||
+          (PyGpuArray_DIMS(output)[1] != expected_output_dims[1]) ||
+          (PyGpuArray_DIMS(output)[2] != expected_output_dims[2]) ||
+          (PyGpuArray_DIMS(output)[3] != expected_output_dims[3]) ||
+          (PyGpuArray_DIMS(output)[4] != expected_output_dims[4])) {
+        PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ldx%ld"
+                     " but received gradient with shape %ldx%ldx%ldx%ldx%ld",
+                     expected_output_dims[0], expected_output_dims[1],
+                     expected_output_dims[2], expected_output_dims[3],
+                     expected_output_dims[4],
+                     PyGpuArray_DIMS(output)[0], PyGpuArray_DIMS(output)[1],
+                     PyGpuArray_DIMS(output)[2], PyGpuArray_DIMS(output)[3],
+                     PyGpuArray_DIMS(output)[4]);
+        return "";
+      }
+    }
+    
+    s << "-g" << groups << " -dimA" << shape(inputDesc) << " -filtA" <<
+      shape(filterDesc, &dType) << shape(convDesc);    
     
 // there have to be entries for both aligned and not
-    if (!all_aligned(dType, in, out, filter))
+    if (!all_aligned(dType, PyGpuArray_DEV_DATA(input), PyGpuArray_DEV_DATA(output), PyGpuArray_DEV_DATA(filter)))
     {
-        s << " [unaligned] ";
+      s << " [unaligned] ";
     }
     return std::string(s.str().c_str());
 }
 
-void dnn_conv_update_cache(const std::string& hash, const AlgoRec& rec)
+static void dnn_conv_update_cache(const std::string& hash, const AlgoRec& rec)
 {
   pthread_mutex_lock(&algoMutex);    
   algoCache[hash] = rec;
@@ -123,7 +161,7 @@ void dnn_conv_update_cache(const std::string& hash, const AlgoRec& rec)
 }
 
 
-const AlgoRec* dnn_conv_check_cache(const std::string& hash)
+static const AlgoRec* dnn_conv_check_cache(const std::string& hash)
 {
   pthread_mutex_lock(&algoMutex);    
   bool cacheHit = false;

@@ -75,15 +75,19 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     return 0;
   }
 
-  if (c_set_tensor_for_conv(output, APPLY_SPECIFIC(output), params->num_groups) == -1)
+  
+  int groups = c_set_groups_for_conv(desc, params->num_groups);
+  if (groups == -1)
     return 1;
-  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns), params->num_groups) == -1)
+  if (c_set_tensor_for_conv(output, APPLY_SPECIFIC(output), groups) == -1)
     return 1;
-  if (c_set_tensor_for_conv(*input, APPLY_SPECIFIC(input), params->num_groups) == -1)
+  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns), groups) == -1)
     return 1;
-  size_t input_offset = PyGpuArray_STRIDE(*input, 0) / params->num_groups;
-  size_t kern_offset = PyGpuArray_STRIDE(kerns, 0) * PyGpuArray_DIM(kerns, 0) / params->num_groups;
-  size_t output_offset = PyGpuArray_STRIDE(output, 0) / params->num_groups;
+  if (c_set_tensor_for_conv(*input, APPLY_SPECIFIC(input), groups) == -1)
+    return 1;
+  size_t input_offset = PyGpuArray_STRIDE(*input, 0) / groups;
+  size_t kern_offset = PyGpuArray_STRIDE(kerns, 0) * PyGpuArray_DIM(kerns, 0) / groups;
+  size_t output_offset = PyGpuArray_STRIDE(output, 0) / groups;
 
   cudnnConvolutionBwdDataAlgo_t algo = params->conv_algo;
   #ifdef DEBUG
@@ -91,53 +95,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   #endif
   size_t   worksize  = 0;
   cudnnMathType_t mathtype = CUDNN_DEFAULT_MATH;
-
-  cuda_enter(c->ctx);
-
-  int expected_output_dims[5] = {0};
-  err = cudnnGetConvolutionNdForwardOutputDim(desc, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
-                                              PyGpuArray_NDIM(im), expected_output_dims);
-  if (err != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError, "error computing convolution output dim: %s",
-                 cudnnGetErrorString(err));
-    cuda_exit(c->ctx);
-    return 1;
-  }
-  if (PyGpuArray_NDIM(im) == 4) {
-    if ((PyGpuArray_DIMS(output)[0] != expected_output_dims[0]) ||
-        (PyGpuArray_DIMS(output)[1] / params->num_groups != expected_output_dims[1]) ||
-        (PyGpuArray_DIMS(output)[2] != expected_output_dims[2]) ||
-        (PyGpuArray_DIMS(output)[3] != expected_output_dims[3])) {
-      PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ld"
-                                     " but received gradient with shape %dx%dx% dx%d",
-                   expected_output_dims[0], expected_output_dims[1],
-                   expected_output_dims[2], expected_output_dims[3],
-                   PyGpuArray_DIMS(output)[0], PyGpuArray_DIMS(output)[1],
-                   PyGpuArray_DIMS(output)[2], PyGpuArray_DIMS(output)[3]);
-      cuda_exit(c->ctx);
-      return 1;
-    }
-  } else if (PyGpuArray_NDIM(im) == 5) {
-    if ((PyGpuArray_DIMS(output)[0] != expected_output_dims[0]) ||
-        (PyGpuArray_DIMS(output)[1] != expected_output_dims[1]) ||
-        (PyGpuArray_DIMS(output)[2] != expected_output_dims[2]) ||
-        (PyGpuArray_DIMS(output)[3] != expected_output_dims[3]) ||
-        (PyGpuArray_DIMS(output)[4] != expected_output_dims[4])) {
-      PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ldx%ld"
-                                     " but received gradient with shape %ldx%ldx%ldx%ldx%ld",
-                   expected_output_dims[0], expected_output_dims[1],
-                   expected_output_dims[2], expected_output_dims[3],
-                   expected_output_dims[4],
-                   PyGpuArray_DIMS(output)[0], PyGpuArray_DIMS(output)[1],
-                   PyGpuArray_DIMS(output)[2], PyGpuArray_DIMS(output)[3],
-                   PyGpuArray_DIMS(output)[4]);
-      cuda_exit(c->ctx);
-      return 1;
-    }
-  }
-
-  char pci_id[16];
-  gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);
+  
   std::string hashkey;
   
   if (params->choose_algo) {
@@ -150,19 +108,25 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
                       PyGpuArray_DIM(output, i) == prev_top_dims[i]);
       }
     }    
-     if (!reuse_algo) {
+    if (!reuse_algo) {
+      char pci_id[16];
+      gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);
+
       // check out cache
-       hashkey = std::string("GI | GPU#") + pci_id + 
-         dnn_conv_shape(APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(*input),
-                        APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
-                        desc, PyGpuArray_DEV_DATA(output)
-           );
-       const AlgoRec* cached = dnn_conv_check_cache(hashkey);
+      hashkey+=dnn_conv_shape(APPLY_SPECIFIC(input), *input, APPLY_SPECIFIC(kerns), kerns, desc, output, groups);
+      if (hashkey.empty())
+	return 1;
+      hashkey =  std::string("GI| GPU#") + pci_id + hashkey;
+
+
+      const AlgoRec* cached = dnn_conv_check_cache(hashkey);
       if (cached) {
-        prev_algo = *cached;
-        use_cached = 1;
+	prev_algo = *cached;
+	use_cached = 1;
       }
     }
+    
+    cuda_enter(c->ctx);
     
     if (!(reuse_algo || use_cached)) {
       size_t free;
@@ -358,7 +322,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   cuda_wait(output->ga.data, GPUARRAY_CUDA_WAIT_READ);
   cuda_wait((*input)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
-  for ( int g = 0; g < params->num_groups; g++)
+  for ( int g = 0; g < groups; g++)
   {
     err = cudnnConvolutionBackwardData(
       params->handle,

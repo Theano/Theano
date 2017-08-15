@@ -76,28 +76,32 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
     return 0;
   }
-
-  if (c_set_tensor_for_conv(input, APPLY_SPECIFIC(input), params->num_groups) == -1)
+  
+  int groups = c_set_groups_for_conv(desc, params->num_groups);
+  if (groups == -1)
     return 1;
-  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns), params->num_groups) == -1)
+  if (c_set_tensor_for_conv(input, APPLY_SPECIFIC(input), groups) == -1)
     return 1;
-  if (c_set_tensor_for_conv(*output, APPLY_SPECIFIC(output), params->num_groups) == -1)
+  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns), groups) == -1)
     return 1;
-  size_t input_offset = PyGpuArray_STRIDE(input, 0) / params->num_groups;
-  size_t kern_offset = PyGpuArray_STRIDE(kerns, 0) * PyGpuArray_DIM(kerns, 0) / params->num_groups;
-  size_t output_offset = PyGpuArray_STRIDE(*output, 0) / params->num_groups;
+  if (c_set_tensor_for_conv(*output, APPLY_SPECIFIC(output), groups) == -1)
+    return 1;
+  size_t input_offset = PyGpuArray_STRIDE(input, 0) / groups;
+  size_t kern_offset = PyGpuArray_STRIDE(kerns, 0) * PyGpuArray_DIM(kerns, 0) / groups;
+  size_t output_offset = PyGpuArray_STRIDE(*output, 0) / groups;
 
   cudnnConvolutionFwdAlgo_t algo = params->conv_algo;
   size_t   worksize  = 0;
   cudnnMathType_t mathtype = CUDNN_DEFAULT_MATH;
   
-  std::string hashkey = "F| GPU#";
+  std::string hashkey;
   
   #ifdef DEBUG
   char algorithm_name[128];
   #endif
 
   cuda_enter(c->ctx);
+  
   if (params->choose_algo) {
     if (!params->choose_once) {
       reuse_algo = 1;
@@ -109,15 +113,14 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       }
     }
     
-    char pci_id[16];
-    gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);
-    hashkey += pci_id;
-    
-    hashkey += dnn_conv_shape(APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
-			      APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
-			      desc, PyGpuArray_DEV_DATA(*output));
     
     if (!reuse_algo) {
+      char pci_id[16];
+      gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);
+      hashkey = dnn_conv_shape(APPLY_SPECIFIC(input), input, APPLY_SPECIFIC(kerns), kerns, desc, *output, groups);
+      if (hashkey.empty())
+	return 1;
+      hashkey =  std::string("F| GPU#") + pci_id + hashkey;
       // check out cache
       const AlgoRec* cached = dnn_conv_check_cache(hashkey);
       if (cached) {
@@ -395,7 +398,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     cuda_wait(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
     cuda_wait((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
-    for ( int g = 0; g < params->num_groups; g++) {
+    for ( int g = 0; g < groups; g++) {
     err = cudnnConvolutionForward(
       params->handle,
       alpha_p,
