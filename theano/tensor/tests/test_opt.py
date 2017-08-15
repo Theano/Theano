@@ -63,7 +63,7 @@ from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type import values_eq_approx_remove_nan
 from theano.tests import unittest_tools as utt
 from theano.gof.opt import check_stack_trace, out2in
-from theano.configparser import change_flags
+from theano import change_flags
 from nose.plugins.attrib import attr
 
 mode_opt = theano.config.mode

@@ -9,13 +9,11 @@ import numpy as np
 from six.moves import xrange
 
 import theano
-from theano import tensor, config
+from theano import change_flags, config, tensor
 from theano.sandbox import rng_mrg
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
-
-from theano.configparser import change_flags
 
 # TODO: test MRG_RandomStreams
 # Partly done in test_consistency_randomstreams

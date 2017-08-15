@@ -28,7 +28,7 @@ from theano.compile.function_module import (
     std_fgraph)
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard, _output_guard
-from theano.configparser import change_flags
+from theano import change_flags
 
 
 __docformat__ = "restructuredtext en"

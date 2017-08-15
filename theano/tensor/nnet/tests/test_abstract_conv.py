@@ -6,7 +6,7 @@ from nose.tools import assert_raises, assert_true
 
 import theano
 from theano import tensor
-from theano.configparser import change_flags
+from theano import change_flags
 from theano.gof.opt import check_stack_trace
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import (corr, corr3d, conv2d_transpose,

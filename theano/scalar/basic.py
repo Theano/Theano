@@ -27,7 +27,7 @@ from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
 from functools import partial
-from theano.configparser import config
+from theano import config
 
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_undefined

@@ -12,10 +12,9 @@ from six import string_types
 
 import re
 import theano
-from theano.gof import utils
+from theano.gof import graph, utils
 from theano.gof.utils import MethodNotDefined, object2
-from theano.gof import graph
-from theano.configparser import change_flags
+from theano import change_flags
 
 ########
 # Type #

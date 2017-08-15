@@ -2793,7 +2793,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(expected_output, scan_output)
         utt.assert_allclose(expected_output, jacobian_outputs)
 
-    @theano.configparser.change_flags(on_opt_error='raise')
+    @theano.change_flags(on_opt_error='raise')
     def test_pushout_seqs2(self):
         # This test for a bug with PushOutSeqScan that was reported on the
         # theano-user mailing list where the optimization raised an exception
@@ -2810,7 +2810,7 @@ class T_Scan(unittest.TestCase):
         # an exception being raised
         theano.function([x], outputs, updates=updates)
 
-    @theano.configparser.change_flags(on_opt_error='raise')
+    @theano.change_flags(on_opt_error='raise')
     def test_pushout_nonseq(self):
         # Test case originally reported by Daniel Renshaw. The crashed occured
         # during the optimization PushOutNonSeqScan when it attempted to

@@ -9,7 +9,7 @@ import warnings
 import theano
 from theano import gof
 import theano.gof.vm
-from theano.configparser import config
+from theano import config
 from six import string_types
 from theano.compile.function_module import Supervisor
 
