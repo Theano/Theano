@@ -31,7 +31,10 @@ from theano.gpuarray import cudnn_defs
 from theano.gpuarray.basic_ops import infer_context_name, as_gpuarray_variable, gpu_contiguous, GpuAllocEmpty
 from theano.gpuarray.dnn import GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI, version, get_precision
 from theano.gpuarray.tests.config import mode_with_gpu, ref_cast
+from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape, assert_conv_shape
+from theano.tensor.nnet.corr import CorrMM, CorrMM_gradInputs, CorrMM_gradWeights
+from theano.tensor.nnet.corr3d import Corr3dMM, Corr3dMM_gradInputs, Corr3dMM_gradWeights
 from theano.tensor.opt import Assert
 
 
@@ -550,10 +553,13 @@ class BaseTestDnnConv(object):
 
     special_cases = []  # List of special ConvCases.
 
+    runtime_shapes = []  # Tuple of tuples with format: n_times, (inputs_shape, filters_shape)
+
     # Utility methods.
 
     def __init__(self):
         utt.seed_rng(1234)
+        self.rand = MRG_RandomStreams()
         self.dtype_configs = cudnn.get_supported_dtype_configs(check_dtype_config_support)
 
     def array_like_conv_output(self, inputs_shape, filters_shape, border_mode, subsample, dilation, dtype):
@@ -745,7 +751,10 @@ class BaseTestDnnConv(object):
         """
         return (sum(1 for t in self.test_fwd()) +
                 sum(1 for t in self.test_gradweight()) +
-                sum(1 for t in self.test_gradinput()))
+                sum(1 for t in self.test_gradinput()) +
+                sum(1 for t in self.test_fwd_runtime_algorithms()) +
+                sum(1 for t in self.test_gradweight_runtime_algorithms()) +
+                sum(1 for t in self.test_gradinput_runtime_algorithms()))
 
     # Iterable test methods.
 
@@ -809,6 +818,117 @@ class BaseTestDnnConv(object):
                 else:
                     yield (self.run_conv_gradweight,) + dnn_case.get_case()
 
+    # The 3 following tests are intended to be run with theano flag `cmodule.debug=True`.
+    # The output message should then be analyzed to check if runtime algorithms are
+    # reused, reloaded from cache or updated, depending on what we expect from
+    # dnn_fwd/dnn_gi/dnn_gw current codes. I currently don't know a better way
+    # to efficiently test implemented cuDNN convolution caches.
+
+    def test_fwd_runtime_algorithms(self):
+        dtype = 'float32'
+        unit_shape = (1,) * self.ndim
+        _broadcastable = [False] * (2 + self.ndim)
+
+        def run_fwd_runtime_algorithm(algo):
+            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
+            filters = theano.tensor.TensorType(dtype, _broadcastable)()
+            inputs /= 10
+            filters /= 10
+            conv = dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
+                            subsample=unit_shape, dilation=unit_shape)
+            f = theano.function([inputs, filters], conv, mode=mode_with_gpu)
+            if self.ndim == 3:
+                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+            else:
+                flipped_filters = filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
+            f_ref = theano.function([inputs, filters], conv_ref, mode='FAST_RUN')
+            for ntimes, (inputs_shape, filters_shape) in self.runtime_shapes:
+                print('Shapes:', inputs_shape, filters_shape)
+                for i in range(ntimes):
+                    inputs_val = np.random.random(inputs_shape).astype(dtype)
+                    filters_val = np.random.random(filters_shape).astype(dtype)
+                    gpu_res = f(inputs_val, filters_val)
+                    cpu_res = f_ref(inputs_val, filters_val)
+                    utt.assert_allclose(cpu_res, gpu_res)
+
+        for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+            yield (run_fwd_runtime_algorithm, algo)
+
+    def test_gradinput_runtime_algorithms(self):
+        dtype = 'float32'
+        unit_shape = (1,) * self.ndim
+        _broadcastable = [False] * (2 + self.ndim)
+
+        def run_gradinput_runtime_algorithm(algo):
+            theano.config.dnn.conv.algo_bwd_data = algo
+            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
+            filters = theano.tensor.TensorType(dtype, _broadcastable)()
+            inputs /= 10
+            filters /= 10
+            conv = dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
+                            subsample=unit_shape, dilation=unit_shape)
+            grad_i = theano.tensor.grad(conv.sum(), [inputs])
+            f = theano.function([inputs, filters], grad_i, mode=mode_with_gpu)
+            assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, GpuDnnConvGradI)])
+            assert not any(isinstance(node.op, GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
+            assert not any(isinstance(node.op, GpuDnnConvGradW) for node in f.maker.fgraph.apply_nodes)
+            if self.ndim == 3:
+                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+            else:
+                flipped_filters = filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
+            grad_i_ref = theano.tensor.grad(conv_ref.sum(), [inputs])
+            f_ref = theano.function([inputs, filters], grad_i_ref, mode='FAST_RUN')
+            for ntimes, (inputs_shape, filters_shape) in self.runtime_shapes:
+                print('Shapes:', inputs_shape, filters_shape)
+                for i in range(ntimes):
+                    inputs_val = np.random.random(inputs_shape).astype(dtype)
+                    filters_val = np.random.random(filters_shape).astype(dtype)
+                    gpu_res = f(inputs_val, filters_val)
+                    cpu_res = f_ref(inputs_val, filters_val)
+                    utt.assert_allclose(cpu_res, gpu_res)
+
+        for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+            yield (run_gradinput_runtime_algorithm, algo)
+
+    def test_gradweight_runtime_algorithms(self):
+        dtype = 'float32'
+        unit_shape = (1,) * self.ndim
+        _broadcastable = [False] * (2 + self.ndim)
+
+        def run_gradweight_runtime_algorithm(algo):
+            theano.config.dnn.conv.algo_bwd_filter = algo
+            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
+            filters = theano.tensor.TensorType(dtype, _broadcastable)()
+            inputs /= 10
+            filters /= 10
+            conv = dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
+                            subsample=unit_shape, dilation=unit_shape)
+            grad_w = theano.tensor.grad(conv.sum(), [filters])
+            f = theano.function([inputs, filters], grad_w, mode=mode_with_gpu)
+            assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, GpuDnnConvGradW)])
+            assert not any(isinstance(node.op, GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
+            assert not any(isinstance(node.op, GpuDnnConvGradI) for node in f.maker.fgraph.apply_nodes)
+            if self.ndim == 3:
+                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+            else:
+                flipped_filters = filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
+            grad_w_ref = theano.tensor.grad(conv_ref.sum(), [filters])
+            f_ref = theano.function([inputs, filters], grad_w_ref, mode='FAST_RUN')
+            for ntimes, (inputs_shape, filters_shape) in self.runtime_shapes:
+                print('Shapes:', inputs_shape, filters_shape)
+                for i in range(ntimes):
+                    inputs_val = np.random.random(inputs_shape).astype(dtype)
+                    filters_val = np.random.random(filters_shape).astype(dtype)
+                    gpu_res = f(inputs_val, filters_val)
+                    cpu_res = f_ref(inputs_val, filters_val)
+                    utt.assert_allclose(cpu_res, gpu_res)
+
+        for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
+            yield (run_gradweight_runtime_algorithm, algo)
+
 
 class TestDnnConv2D(BaseTestDnnConv):
     ndim = 2
@@ -817,9 +937,9 @@ class TestDnnConv2D(BaseTestDnnConv):
     bwd_filter_algorithms = cudnn.cudnnConvolutionBwdFilterAlgo_t.get_aliases()
     bwd_data_algorithms = cudnn.cudnnConvolutionBwdDataAlgo_t.get_aliases()
 
-    cpu_conv_class = theano.tensor.nnet.corr.CorrMM
-    cpu_gradinput_class = theano.tensor.nnet.corr.CorrMM_gradInputs
-    cpu_gradweight_class = theano.tensor.nnet.corr.CorrMM_gradWeights
+    cpu_conv_class = CorrMM
+    cpu_gradinput_class = CorrMM_gradInputs
+    cpu_gradweight_class = CorrMM_gradWeights
 
     special_cases = [ConvCase.bwd_filter(algo='deterministic', dtype='float32', precision='float32',
                                          inputs_shape=(1, 1, 541211, 10), filters_shape=(50, 1, 3, 10),
@@ -830,6 +950,17 @@ class TestDnnConv2D(BaseTestDnnConv):
                      ConvCase.fwd(algo='small', dtype='float32', precision='float32',
                                   inputs_shape=(65537, 2, 2, 2), filters_shape=(1, 2, 2, 2))]
 
+    runtime_shapes = [
+        (3, [(2, 3, 10, 9), (5, 3, 7, 7)]),
+        (1, [(1, 1, 100, 200), (1, 1, 50, 200)]),
+        (1, [(4, 2, 20, 20), (2, 2, 20, 19)]),
+        (3, [(2, 3, 10, 9), (5, 3, 7, 7)]),  # cache should be used
+        (1, [(2, 2, 50, 50), (5, 2, 25, 31)]),
+        (1, [(1, 1, 100, 200), (1, 1, 50, 200)]),  # cache should be used
+        (1, [(4, 2, 20, 20), (2, 2, 20, 19)]),  # cache should be used
+        (1, [(1, 2, 3, 4), (6, 2, 2, 1)])
+    ]
+
 
 class TestDnnConv3D(BaseTestDnnConv):
     ndim = 3
@@ -838,15 +969,26 @@ class TestDnnConv3D(BaseTestDnnConv):
     bwd_filter_algorithms = cudnn.conv3d_bwd_filter_algorithms
     bwd_data_algorithms = cudnn.conv3d_bwd_data_algorithms
 
-    cpu_conv_class = theano.tensor.nnet.corr3d.Corr3dMM
-    cpu_gradinput_class = theano.tensor.nnet.corr3d.Corr3dMM_gradInputs
-    cpu_gradweight_class = theano.tensor.nnet.corr3d.Corr3dMM_gradWeights
+    cpu_conv_class = Corr3dMM
+    cpu_gradinput_class = Corr3dMM_gradInputs
+    cpu_gradweight_class = Corr3dMM_gradWeights
 
     special_cases = [ConvCase.fwd(algo='small', dtype='float32', precision='float32',
                                   inputs_shape=(65536, 2, 2, 2, 2), filters_shape=(1, 2, 2, 2, 2)),
                      # NB: Due to current workaround (see dnn_fwd.c), this test won't fail for cuDNN < v6100.
                      ConvCase.fwd(algo='small', dtype='float32', precision='float32',
                                   inputs_shape=(65537, 2, 2, 2, 2), filters_shape=(1, 2, 2, 2, 2))]
+
+    runtime_shapes = [
+        (3, [(2, 3, 5, 10, 9), (5, 3, 4, 7, 7)]),
+        (1, [(1, 1, 5, 100, 200), (1, 1, 4, 50, 200)]),
+        (1, [(4, 2, 20, 20, 20), (2, 2, 20, 19, 18)]),
+        (3, [(2, 3, 5, 10, 9), (5, 3, 4, 7, 7)]),  # cache should be used
+        (1, [(2, 2, 50, 50, 5), (5, 2, 25, 31, 4)]),
+        (1, [(1, 1, 5, 100, 200), (1, 1, 4, 50, 200)]),  # cache should be used
+        (1, [(4, 2, 20, 20, 20), (2, 2, 20, 19, 18)]),  # cache should be used
+        (1, [(1, 2, 3, 4, 5), (6, 2, 3, 2, 1)])
+    ]
 
 
 def test_true_half_config_support():
@@ -913,6 +1055,13 @@ class CheckDnn:
                 print(tcase[0].__name__, *tcase[1:])
             for tcase in test.test_gradweight():
                 print(tcase[0].__name__, *tcase[1:])
+            for tcase in test.test_fwd_runtime_algorithms():
+                print(tcase[0].__name__, *tcase[1:])
+            for tcase in test.test_gradinput_runtime_algorithms():
+                print(tcase[0].__name__, *tcase[1:])
+            for tcase in test.test_gradweight_runtime_algorithms():
+                print(tcase[0].__name__, *tcase[1:])
+        print(test_true_half_config_support.__name__)
 
 
 if __name__ == '__main__':
