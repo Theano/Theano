@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function, division
 
 import theano
 from theano.tensor import as_tensor_variable
-# Instantiate abstract_spatialtf here, so the user just have to import this module
+# Instantiate abstract Op, so the user just have to import this module
 from .abstract_spatialtf import AbstractSpatialTransformerOp
 
 
