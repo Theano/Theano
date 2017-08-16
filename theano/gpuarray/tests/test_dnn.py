@@ -2298,6 +2298,7 @@ class Cudnn_grouped_conv(Grouped_conv_noOptim):
     flip_filter = False
     is_dnn = True
 
+
 class Cudnn_grouped_conv3d(Grouped_conv3d_noOptim):
     mode = mode_with_gpu
     conv = staticmethod(dconvfwd)

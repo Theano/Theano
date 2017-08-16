@@ -1204,7 +1204,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
     new_ = __byte_perm(old, __HALF_TO_US(val), ((ga_size)addr & 2) ? 0x5410 : 0x3254);
     old = atomicCAS(base, assumed, new_);
   } while (assumed != old);
-  ga_half ret; 
+  ga_half ret;
   __HALF_TO_US(ret) =__byte_perm(old, 0,
         ((ga_size)addr & 2) ? 0x4432 : 0x4410);
   return ret;
