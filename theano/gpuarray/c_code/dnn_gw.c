@@ -3,11 +3,11 @@ prev_algo.algo = PARAMS->conv_algo;
 prev_algo.mathType = CUDNN_DEFAULT_MATH;
 prev_algo.dataType = CUDNN_DATA_FLOAT;
 reuse_algo = 0;
-hash_prefix = std::string("GW| GPU#");
+use_cached = 0;
+hash_prefix = std::string("GW|GPU#");
 
 #section support_code_struct
 #line 11 "dnn_gw.c"
-
 int     reuse_algo;
 bool    use_cached;
 AlgoRec prev_algo;
@@ -91,16 +91,17 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   #ifdef DEBUG
   char algorithm_name[128];
   #endif
-  size_t   worksize  = 0;
+  size_t worksize = 0;
   cudnnMathType_t mathtype = CUDNN_DEFAULT_MATH;
   std::string hashkey ;
 
   size_t free = c_get_largest_free_block_size(c);
-  
-  cuda_enter(c->ctx);  
-  
+  if (PyErr_Occurred()) return 1;
+
+  cuda_enter(c->ctx);
+
   if (params->choose_algo) {
-    
+
     if (!reuse_algo) {
       char pci_id[16];
       gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);
@@ -115,12 +116,12 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         use_cached = 1;
       }
     }
-    
+
     if (reuse_algo || use_cached) {
       algo = (cudnnConvolutionBwdFilterAlgo_t)prev_algo.algo;
       worksize = prev_algo.wsSize;
       mathtype = prev_algo.mathType;
-    } else { 
+    } else {
 
       if (params->choose_time) {
         int count;
@@ -148,15 +149,6 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
           return 1;
         }
 
-        algo = choice.algo;
-        prev_algo.algo = (int)algo;
-        prev_algo.wsSize = worksize = choice.memory;
-#if CUDNN_MAJOR >= 7        
-        prev_algo.mathType = mathtype = choice.mathType;
-#endif
-        // Add to the cache
-        dnn_conv_update_cache(hashkey, prev_algo);
-
         #ifdef DEBUG
         if (count == 0) {
             PyErr_SetString(PyExc_RuntimeError, "No best-timed conv gradweight algorithm found");
@@ -168,6 +160,15 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
             return 1;
         } // Else, count is necessarly 1 for current implementation.
         #endif
+
+        algo = choice.algo;
+        prev_algo.algo = (int)algo;
+        prev_algo.wsSize = worksize = choice.memory;
+#if CUDNN_MAJOR >= 7
+        prev_algo.mathType = mathtype = choice.mathType;
+#endif
+        // Add to the cache
+        dnn_conv_update_cache(hashkey, prev_algo);
 
       } else {
         err = cudnnGetConvolutionBackwardFilterAlgorithm(
@@ -181,73 +182,74 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
           cuda_exit(c->ctx);
           return 1;
         }
-	prev_algo.algo = algo;
-	// no tensor_op returned from Get()
-	prev_algo.mathType = mathtype = CUDNN_DEFAULT_MATH;
+	    prev_algo.algo = algo;
+	    // no tensor_op returned from Get()
+	    prev_algo.mathType = mathtype = CUDNN_DEFAULT_MATH;
       }
     }
   } /* choose_algo */
 
-  // if FindEx was used (choose_time), workspace size is set. 
+  // if FindEx was used (choose_time), workspace size is set.
   if (!(reuse_algo || use_cached || params->choose_time))
     {
 
       err = cudnnGetConvolutionBackwardFilterWorkspaceSize(
         params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output), desc,
         APPLY_SPECIFIC(kerns), algo, &worksize);
-      
+
       if (err != CUDNN_STATUS_SUCCESS) {
 #ifdef DEBUG
         if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name))
           return 1;
         fprintf(stderr, "(%s error getting worksize:%s, falling back to CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0",
                 algorithm_name, cudnnGetErrorString(err));
-#endif        
+#endif
         algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
         err = cudnnGetConvolutionBackwardFilterWorkspaceSize(
           params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output), desc,
           APPLY_SPECIFIC(kerns), algo, &worksize);
-        
+
         if (err != CUDNN_STATUS_SUCCESS) {
           PyErr_Format(PyExc_RuntimeError, "error getting worksize: %s",
                        cudnnGetErrorString(err));
-          
-          
+
+
           cuda_exit(c->ctx);
           return 1;
         }
       }
-      
+
       // save worksize for next time/cache
       prev_algo.wsSize = worksize;
-      
+
       // Add to the cache
       if (params->choose_algo)
         dnn_conv_update_cache(hashkey, prev_algo);
     }
 
-#ifdef DEBUG  
-  if (params->choose_algo) { 
+#ifdef DEBUG
+  if (params->choose_algo) {
     if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name))
       return 1;
     // NB: This is printed only when algorithm is chosen at runtime.
-    fprintf(stderr, "%s%s algo: %d %s%s ws: %ld, tensor: %d hash:%s\n",
-            params->choose_algo ? "[A]": "" ,
-            params->choose_time ? "[T]": "" ,
-            algo, // algorithm_name,
+    fprintf(stderr, "(using %s %s%s%s%s, ws:%ld, hash:%s)\n",
+            algorithm_name,
+            params->choose_time ? "(timed)": "" ,
             reuse_algo ? "(reused)" : "",
             use_cached ? "(cache)": "",
-            worksize, mathtype, hashkey.c_str()
-      );
+            mathtype == CUDNN_TENSOR_OP_MATH ? "(tensor op)" : "",
+            worksize,
+            hashkey.c_str()
+     );
   }
 #endif
-  
+
     if (params->choose_once) {
       reuse_algo = 1;
     }
 
-    gpudata *workspace = 0;  
-#if CUDNN_MAJOR >= 7    
+    gpudata *workspace = 0;
+#if CUDNN_MAJOR >= 7
     // CUDNN7: need to set math type
     err = cudnnSetConvolutionMathType(desc, mathtype);
     if (err != CUDNN_STATUS_SUCCESS) {

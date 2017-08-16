@@ -1,12 +1,13 @@
 #section init_code_struct
 reuse_algo = 0;
+use_cached = 0;
 prev_algo.algo = PARAMS->conv_algo;
 prev_algo.mathType = CUDNN_DEFAULT_MATH;
 prev_algo.dataType = CUDNN_DATA_FLOAT;
-hash_prefix = std::string("FW| GPU#");
+hash_prefix = std::string("FWD|GPU#");
 
 #section support_code_struct
-#line 12 "dnn_fwd.c"
+#line 11 "dnn_fwd.c"
 int     reuse_algo;
 bool    use_cached;
 AlgoRec prev_algo;
@@ -72,7 +73,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
     return 0;
   }
-  
+
   int groups = c_check_groups_for_conv(desc, params->num_groups);
   if (groups == -1)
     return 1;
@@ -87,28 +88,29 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   size_t output_offset = PyGpuArray_STRIDE(*output, 0) / groups;
 
   cudnnConvolutionFwdAlgo_t algo = params->conv_algo;
-  size_t   worksize  = 0;
+  size_t worksize = 0;
   cudnnMathType_t mathtype = CUDNN_DEFAULT_MATH;
-  
+
   std::string hashkey;
-  
+
   #ifdef DEBUG
   char algorithm_name[128];
   #endif
 
   size_t free = c_get_largest_free_block_size(c);
-  
+  if (PyErr_Occurred()) return 1;
+
   cuda_enter(c->ctx);
-  
+
   if (params->choose_algo) {
-    
+
     if (!reuse_algo) {
       char pci_id[16];
       gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);
       hashkey = dnn_conv_shape(APPLY_SPECIFIC(input), input, APPLY_SPECIFIC(kerns), kerns, desc, *output, groups);
       if (hashkey.empty())
-	return 1;
-      hashkey =  hash_prefix + pci_id + hashkey;
+        return 1;
+      hashkey =  hash_prefix + pci_id + " " + hashkey;
       // check out cache
       const AlgoRec* cached = dnn_conv_check_cache(hashkey);
       if (cached) {
@@ -116,17 +118,17 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         use_cached = 1;
       }
     }
-    
+
     if (reuse_algo || use_cached) {
       algo = (cudnnConvolutionFwdAlgo_t)prev_algo.algo;
       worksize = prev_algo.wsSize;
       mathtype = prev_algo.mathType;
-    }  else { 
+    }  else {
       if (params->choose_time) {
         int count;
         cudnnConvolutionFwdAlgoPerf_t choice;
         gpudata *tmpmem;
-        
+
         tmpmem = gpudata_alloc(c->ctx, free, NULL, 0, NULL);
         if (tmpmem == NULL) {
           PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
@@ -142,9 +144,6 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
           free);
         gpudata_release(tmpmem);
 
-	//	fprintf(stderr, "(cudnnFindConvolutionForwardAlgorithmEx: (err:%d), algo: %d, mem: %ld, free: %ld\n",
-	//	err, choice.algo, choice.memory, free);
-	
         if (err != CUDNN_STATUS_SUCCESS) {
           PyErr_Format(PyExc_RuntimeError,
                        "error selecting convolution algo: %s",
@@ -152,14 +151,6 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
           cuda_exit(c->ctx);
           return 1;
         }
-        algo = choice.algo;
-        prev_algo.algo = (int)algo;
-        prev_algo.wsSize = worksize = choice.memory;
-#if CUDNN_MAJOR >= 7        
-        prev_algo.mathType = mathtype = choice.mathType;
-#endif
-        // Add to the cache
-        dnn_conv_update_cache(hashkey, prev_algo);
 
         #ifdef DEBUG
         if (count == 0) {
@@ -173,27 +164,37 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         } // Else, count is necessarly 1 for current implementation.
         #endif
 
+        algo = choice.algo;
+        prev_algo.algo = (int)algo;
+        prev_algo.wsSize = worksize = choice.memory;
+#if CUDNN_MAJOR >= 7
+        prev_algo.mathType = mathtype = choice.mathType;
+#endif
+        // Add to the cache
+        dnn_conv_update_cache(hashkey, prev_algo);
+        // NB: It is added again later to cqche,
+        // so maybe this line could be removed.
+
       } else {
         err = cudnnGetConvolutionForwardAlgorithm(
           params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
           desc, APPLY_SPECIFIC(output),
           CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, free, &algo);
-          if (err != CUDNN_STATUS_SUCCESS) {
-            PyErr_Format(PyExc_RuntimeError,
-                         "error selecting convolution algo: %s",
-                         cudnnGetErrorString(err));
-            cuda_exit(c->ctx);
-            return 1;
-          }
-          prev_algo.algo = algo;
-          // no tensor_op returned from Get()
-          prev_algo.mathType = mathtype = CUDNN_DEFAULT_MATH;
-	  // fprintf(stderr, "(cudnnGetConvolutionForwardAlgorithm: (err:%d), algo: %d\n", err, algo);
+        if (err != CUDNN_STATUS_SUCCESS) {
+          PyErr_Format(PyExc_RuntimeError,
+                       "error selecting convolution algo: %s",
+                       cudnnGetErrorString(err));
+          cuda_exit(c->ctx);
+          return 1;
+        }
+        prev_algo.algo = algo;
+        // no tensor_op returned from Get()
+        prev_algo.mathType = mathtype = CUDNN_DEFAULT_MATH;
       }
-    } 
+    }
   }
-  
-  // if FindEx was used (choose_time), workspace size is set. 
+
+  // if FindEx was used (choose_time), workspace size is set.
   if (!(reuse_algo || use_cached || params->choose_time))
   {
     err = cudnnGetConvolutionForwardWorkspaceSize(params->handle,
@@ -203,7 +204,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
                                                   APPLY_SPECIFIC(output),
                                                   algo,
                                                   &worksize);
-    if (err == CUDNN_STATUS_NOT_SUPPORTED) {    
+    if (err == CUDNN_STATUS_NOT_SUPPORTED) {
         // Fallback to none algo if not supported
       #ifdef DEBUG
       if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
@@ -222,7 +223,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
                                                   algo,
                                                   &worksize);
   }
-  
+
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
                  "error getting worksize: %s",
@@ -232,33 +233,35 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   }
   // save worksize for next time/cache
   prev_algo.wsSize = worksize;
-  
-  // Add to the cache
+
+  // Add to the cache, even if this node use *_once algo
+  // (in case the user specify the algo per layer and not globally).
   if (params->choose_algo)
     dnn_conv_update_cache(hashkey, prev_algo);
-  
-#ifdef DEBUG  
-  if (params->choose_algo) {  
+
+#ifdef DEBUG
+  if (params->choose_algo) {
     if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name))
       return 1;
-    fprintf(stderr, "%s%s algo: %d %s%s ws: %ld, tensor: %d hash:%s\n",
-            params->choose_algo ? "[A]": "" ,
-            params->choose_time ? "[T]": "" ,
-            algo, // algorithm_name,
+    fprintf(stderr, "(using %s %s%s%s%s, ws:%ld, hash:%s)\n",
+            algorithm_name,
+            params->choose_time ? "(timed)": "" ,
             reuse_algo ? "(reused)" : "",
             use_cached ? "(cache)": "",
-            worksize, mathtype, hashkey.c_str()
+            mathtype == CUDNN_TENSOR_OP_MATH ? "(tensor op)" : "",
+            worksize,
+            hashkey.c_str()
       );
   }
 #endif
-  
+
   if (params->choose_once) {
     reuse_algo = 1;
   }
 
   {
-    gpudata *workspace = 0;  
-#if CUDNN_MAJOR >= 7    
+    gpudata *workspace = 0;
+#if CUDNN_MAJOR >= 7
     // CUDNN7: need to set math type
     err = cudnnSetConvolutionMathType(desc, prev_algo.mathType);
     if (err != CUDNN_STATUS_SUCCESS) {
@@ -269,7 +272,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       return 1;
     }
 #endif
-    
+
     /*
      * This is less than ideal since we need to free it after (which
      * introduces a synchronization point. But we don't have a module
@@ -284,7 +287,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         return 1;
       }
     }
-    
+
     cuda_wait(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
     cuda_wait(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
     cuda_wait((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
@@ -308,7 +311,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     cuda_record(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
     cuda_record((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
   }
-  
+
   cuda_exit(c->ctx);
 
   if (err != CUDNN_STATUS_SUCCESS) {

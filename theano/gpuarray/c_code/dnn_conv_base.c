@@ -59,7 +59,6 @@ if (APPLY_SPECIFIC(kerns) != NULL)
 
 #section support_code
 #include <sstream>
-#include <vector>
 #include <string>
 #if __cplusplus < 201103L
 #include <tr1/unordered_map>
@@ -70,20 +69,17 @@ typedef std::unordered_map<std::string, AlgoRec> AlgoCache;
 #endif
 #include "pthread.h"
 
-#line 69 "dnn_conv_base.c"
-
-using std::vector;
-using std::string;
+#line 73 "dnn_conv_base.c"
 
 pthread_mutex_t  algoMutex;
 AlgoCache        algoCache;
 
-static cudnnStatus_t checkCudnnStatus(cudnnStatus_t err)
+static cudnnStatus_t checkCudnnStatus(cudnnStatus_t err, const char* msg)
 {
     if (err != CUDNN_STATUS_SUCCESS) {
-        PyErr_Format(PyExc_RuntimeError, "CUDNN Error: %s",
-                     cudnnGetErrorString(err));
-    }    
+        PyErr_Format(PyExc_RuntimeError, "CUDNN Error: %s: %s",
+                     msg, cudnnGetErrorString(err));
+    }
     return err;
 }
 
@@ -105,64 +101,69 @@ c_get_largest_free_block_size(PyGpuContextObject *c)
 
 static std::string shape(int* res, int size)
 {
-    std::stringstream s;
-    if (size>0) {
+    std::ostringstream s;
+    if (size > 0) {
       
-      s<<res[0];
-      for (int i=1; i< size; ++i)
+      s << res[0];
+      for (int i = 1; i < size; ++i)
         s <<',' << res[i];
     }
-    return std::string(s.str().c_str());
+    return s.str();
 }
-
 
 static std::string shape(cudnnTensorDescriptor_t t)
 {
-    std::vector<int> res;
-    std::vector<int> stride;
-        
+    // cuDNN can handle up to CUDNN_DIM_MAX dimensions.
+    int res[CUDNN_DIM_MAX];
+    int stride[CUDNN_DIM_MAX];
     int nbDims;
     cudnnDataType_t type;
-    checkCudnnStatus(cudnnGetTensorNdDescriptor(t, 0, &type, &nbDims,0,0));
-    res.resize(nbDims);
-    stride.resize(nbDims);
-    checkCudnnStatus(cudnnGetTensorNdDescriptor(t, nbDims, &type, &nbDims, res.data(), stride.data()));
-    return shape(&res[0], nbDims) + shape(&stride[0], nbDims);
-    
+    checkCudnnStatus(cudnnGetTensorNdDescriptor(t, CUDNN_DIM_MAX, &type, &nbDims, res, stride),
+                     "error getting tensor description");
+    if (PyErr_Occurred()) return "";
+    return shape(res, nbDims) + "," + shape(stride, nbDims);
 };
 
 static std::string shape(cudnnFilterDescriptor_t t, cudnnDataType_t* type)
 {
     cudnnTensorFormat_t format;
-    int sizes = 8;
-    
-    std::vector<int> res(sizes);
+    int res[CUDNN_DIM_MAX];
     int outDims;
-    checkCudnnStatus(cudnnGetFilterNdDescriptor(t, sizes, type, &format, &outDims, res.data()));
-    return shape(&res[0], outDims);
+    checkCudnnStatus(cudnnGetFilterNdDescriptor(t, CUDNN_DIM_MAX, type, &format, &outDims, res),
+                     "error getting filter description");
+    if (PyErr_Occurred()) return "";
+    return shape(res, outDims);
 };
 
 static std::string shape(cudnnConvolutionDescriptor_t convDesc)
 {
-    const int maxDim = 5;
-    int nDim=0;
+    int nDim;
     cudnnConvolutionMode_t mode;
     cudnnDataType_t        computeType;
     
-    int                                 padA[maxDim];
-    int                                 strideA[maxDim];
-    int                                 dilationA[maxDim];    
+    int                                 padA[5];
+    int                                 strideA[5];
+    int                                 dilationA[5];
 
     checkCudnnStatus(
-        cudnnGetConvolutionNdDescriptor( convDesc, maxDim,
+        cudnnGetConvolutionNdDescriptor( convDesc, 5,
                                          &nDim,
                                          &padA[0],
                                          &strideA[0],
                                          &dilationA[0],
                                          &mode,
-                                         &computeType ));
+                                         &computeType ),
+        "error getting convolution description");
+    if (PyErr_Occurred()) return "";
     
-    return std::string("-mode ") + (((int)mode==0) ? "conv" : "corr") + " -padA" + shape(padA,nDim) + " -convStrideA " + shape(strideA, nDim)  + " -dilationA " + shape(dilationA, nDim);
+    return (std::string("-mode ") +
+            ((mode == CUDNN_CONVOLUTION) ? "conv" : "cross") +
+            " -pad " +
+            shape(padA, nDim) +
+            " -subsample " +
+            shape(strideA, nDim) +
+            " -dilation " +
+            shape(dilationA, nDim));
 }
 
 static bool all_aligned(cudnnDataType_t type, void* in, void* out, void* filter)
@@ -182,7 +183,7 @@ static std::string dnn_conv_shape(cudnnTensorDescriptor_t inputDesc, PyGpuArrayO
 				  PyGpuArrayObject* output, int groups)
 {
     cudnnDataType_t  dType;
-    std::stringstream s;
+    std::ostringstream s;
     int expected_output_dims[5] = {0};
     cudnnStatus_t err = cudnnGetConvolutionNdForwardOutputDim(convDesc, inputDesc, filterDesc,
 							      PyGpuArray_NDIM(filter), expected_output_dims);
@@ -221,16 +222,20 @@ static std::string dnn_conv_shape(cudnnTensorDescriptor_t inputDesc, PyGpuArrayO
         return "";
       }
     }
-    
-    s << "-g" << groups << " -dimA" << shape(inputDesc) << " -filtA" <<
-      shape(filterDesc, &dType) << shape(convDesc);    
+    std::string shapeInput = shape(inputDesc);
+    std::string shapeFilter = shape(filterDesc, &dType);
+    std::string shapeConvDesc = shape(convDesc);
+    if (shapeInput.empty() || shapeFilter.empty() || shapeConvDesc.empty())
+        return "";
+    s << "-g " << groups << " -dim " << shapeInput << " -filt " <<
+      shapeFilter << " " << shapeConvDesc;
     
 // there have to be entries for both aligned and not
     if (!all_aligned(dType, PyGpuArray_DEV_DATA(input), PyGpuArray_DEV_DATA(output), PyGpuArray_DEV_DATA(filter)))
     {
-      s << " [unaligned] ";
+      s << " [unaligned]";
     }
-    return std::string(s.str().c_str());
+    return s.str();
 }
 
 static void dnn_conv_update_cache(const std::string& hash, const AlgoRec& rec)
@@ -240,14 +245,10 @@ static void dnn_conv_update_cache(const std::string& hash, const AlgoRec& rec)
   pthread_mutex_unlock(&algoMutex);
 }
 
-
 static const AlgoRec* dnn_conv_check_cache(const std::string& hash)
 {
   pthread_mutex_lock(&algoMutex);    
-  bool cacheHit = false;
   const AlgoRec* ret = 0;
-  
-  // cout << "dnn_conv_check_cache: "<< hash << endl;
   
   AlgoCache::iterator hit = algoCache.find(hash);
   
@@ -257,4 +258,3 @@ static const AlgoRec* dnn_conv_check_cache(const std::string& hash)
   pthread_mutex_unlock(&algoMutex);
   return ret;
 }
-
