@@ -156,6 +156,26 @@ class TestClone(X):
         assert self.str(inputs(new_node.outputs), new_node.outputs) == ["MyOp(R7, R8)"]
         assert self.str(inputs(node.outputs), node.outputs) == ["MyOp(MyOp(R1, R2), R5)"]
 
+    def test_constant(self):
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
+        node = MyOp.make_node(MyOp.make_node(r1, r2).outputs[0], r5)
+        _, new = clone([r1, r2, r5], node.outputs, False)
+        new_node = new[0].owner
+        new_node.inputs = MyVariable(7), MyVariable(8)
+        c1 = tensor.constant(1.5)
+
+        i, o = clone([c1], [c1])
+        assert i[0] is not c1 and o[0] is not c1
+
+        i, o = clone([c1], [c1], False)
+        assert i[0] is c1 and o[0] is c1
+
+        i, o = clone([c1], [c1], True, False)
+        assert i[0] is not c1 and o[0] is not c1
+
+        i, o = clone([c1], [c1], False, True)
+        assert i[0] is c1 and o[0] is c1
+
 
 ############
 # toposort #

@@ -799,9 +799,8 @@ def orphans(i, o):
     return variables_and_orphans(i, o)[1]
 
 
-def clone(i, o, copy_inputs=True):
-    """
-    Copies the subgraph contained between i and o.
+def clone(i, o, copy_inputs=True, copy_orphans=None):
+    """Copies the subgraph contained between i and o.
 
     Parameters
     ----------
@@ -811,18 +810,32 @@ def clone(i, o, copy_inputs=True):
         Output Variables.
     copy_inputs : bool
         If True, the inputs will be copied (defaults to True).
+    copy_orphans:
+        When None, use the copy_inputs value,
+        When True, new orphans nodes are created.
+        When False, original orphans nodes are reused in the new graph.
 
     Returns
     -------
     object
         The inputs and outputs of that copy.
 
+    Note
+    ----
+
+    A constant, if in the ``i`` list is not an orpha. So it will be
+    copied depending of the ``copy_inputs`` parameter. Otherwise it
+    will be copied depending of the ``copy_orphans`` parameter.
+
     """
-    equiv = clone_get_equiv(i, o, copy_inputs)
+    if copy_orphans is None:
+        copy_orphans = copy_inputs
+    equiv = clone_get_equiv(i, o, copy_inputs, copy_orphans)
     return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
-def clone_get_equiv(inputs, outputs, copy_inputs=True, copy_orphans=True, memo=None):
+def clone_get_equiv(inputs, outputs, copy_inputs=True, copy_orphans=True,
+                    memo=None):
     """
     Return a dictionary that maps from Variable and Apply nodes in the
     original graph to a new node (a clone) in a new graph.
