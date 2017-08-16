@@ -502,7 +502,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             size_t threads_per_block[3] = {d, c, 1};
             //get the max threads per blocks
             size_t max_threads_dim;
-            int err = gpucontext_property(%(params)s->context->ctx, GA_CTX_PROP_MAXLSIZE, &max_threads_dim);
+            int err = gpucontext_property(%(params)s->context->ctx, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim);
             if (err != GA_NO_ERROR){
                 PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_threads_dims");
                 %(fail)s;
