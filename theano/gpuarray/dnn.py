@@ -517,6 +517,8 @@ class GpuDnnConvDesc(COp):
         self.__dict__.update(d)
         if not hasattr(self, "dilation"):
             self.dilation = (1,) * len(self.subsample)
+        if not hasattr(self, "num_groups"):
+            self.num_groups = 1
 
 
 # scalar constants
