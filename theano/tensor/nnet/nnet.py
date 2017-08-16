@@ -904,7 +904,7 @@ def local_logsoftmax(node):
     detect Log(Softmax(x)[*idx]) and replace it with LogSoftmax(x)[*idx]
     Note: only forward pass is affected
     """
-    list_classes = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor, IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
+    list_classes = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
     if (isinstance(node.op, tensor.Elemwise) and
             isinstance(node.op.scalar_op, scalar.basic.Log) and
             node.inputs[0].owner is not None):
@@ -977,27 +977,8 @@ def local_logsoftmax_grad(node):
             # get parameters from unoptimized op
             sm = node.inputs[0].owner.inputs[1]
             axis = sm.owner.op.axis
-            # sm_input = node.inputs[1].owner.inputs[0]
             grads = node.inputs[0].owner.inputs[0]
-            if grads.broadcastable[axis] and not sm.broadcastable[axis]:
-                grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
-            ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
-            ret.tag.values_eq_approx = values_eq_approx_remove_nan
-            copy_stack_trace(node.outputs[0], ret)
-            return [ret]
-
-        # Case where d_sm = (grads / IncSubtensor(softmax(x))
-        if (node.inputs[0].owner.op == tensor.true_div and
-                isinstance(node.inputs[0].owner.inputs[1].owner.op, list_classes_IncSubtensor) and
-                isinstance(node.inputs[0].owner.inputs[1].owner.inputs[0].owner.op, Softmax) and
-                node.inputs[1] == node.inputs[0].owner.inputs[1].owner.inputs[0] and
-                # skip if it will be optimized by
-                # local_advanced_indexing_crossentropy_onehot_grad
-                not (node.inputs[0].owner.inputs[0].owner is not None and isinstance(node.inputs[0].owner.inputs[0].owner.op, AdvancedIncSubtensor))):
-            # get parameters from unoptimized op
-            sm = node.inputs[0].owner.inputs[1].owner.inputs[0]
-            axis = sm.owner.op.axis
-            grads = node.inputs[0].owner.inputs[0]
+            # Compute grad
             ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
             ret.tag.values_eq_approx = values_eq_approx_remove_nan
             copy_stack_trace(node.outputs[0], ret)
@@ -1054,14 +1035,13 @@ def local_logsoftmax_grad(node):
                         len(subtensor_op.owner.inputs) >= 2 and
                         subtensor_op.owner.inputs[0] is sm and
                         subtensor_op.owner.inputs[1:] == subtensor_idx):
-                    print(out_grad)
                     if x_var.type.ndim > 1:
                         ret = out_grad - tensor.sum(out_grad, axis=-1, keepdims=True) * subtensor_op
                     else:
                         ret = out_grad - out_grad * subtensor_op
                     ret = d_sm.owner.op(tensor.zeros_like(sm), -ret, *subtensor_idx)
                     ret.tag.values_eq_approx = values_eq_approx_remove_nan
-                    copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+                    copy_stack_trace([node.outputs[0]], ret)
                     return [ret]
 
 
