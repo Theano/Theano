@@ -747,10 +747,10 @@ class LogSoftmax(gof.Op):
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axis, keepdims=True))
         output_storage[0][0] = lsm
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, = inp
-        sm = Softmax(self.axis)(x)
-        return [grads[0] - tensor.sum(grads[0], axis=self.axis, keepdims=True) * sm]
+        lsm, = outputs
+        return [grads[0] - tensor.sum(grads[0], axis=self.axis, keepdims=True) * np.exp(lsm)]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
