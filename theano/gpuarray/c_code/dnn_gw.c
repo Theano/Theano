@@ -73,7 +73,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     return 0;
   }
 
-  int groups = c_set_groups_for_conv(desc, params->num_groups);
+  int groups = c_check_groups_for_conv(desc, params->num_groups);
   if (groups == -1)
     return 1;
   if (c_set_tensor_for_conv(input, APPLY_SPECIFIC(input), groups) == -1)

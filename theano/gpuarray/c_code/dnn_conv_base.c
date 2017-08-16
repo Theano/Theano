@@ -3,14 +3,20 @@ cudnnTensorDescriptor_t APPLY_SPECIFIC(input);
 cudnnTensorDescriptor_t APPLY_SPECIFIC(output);
 cudnnFilterDescriptor_t APPLY_SPECIFIC(kerns);
 
-static int c_set_groups_for_conv(cudnnConvolutionDescriptor_t desc, int groups) {
+static int c_check_groups_for_conv(cudnnConvolutionDescriptor_t desc, int groups) {
 #if CUDNN_MAJOR >= 7
+  int desc_groups;
   if (groups > 1) {
-    cudnnStatus_t err = cudnnSetConvolutionGroupCount(desc, groups);
+    cudnnStatus_t err = cudnnGetConvolutionGroupCount(desc, &desc_groups);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
-		   "error setting groups for convolution : %s",
+		   "error getting groups for convolution : %s",
 		   cudnnGetErrorString(err));
+      return -1;
+    }
+    if (groups != desc_groups) {
+      PyErr_SetString(PyExc_MemoryError,
+              "groups specified different from convolution descriptor");
       return -1;
     }
   }
