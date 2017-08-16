@@ -567,7 +567,7 @@ class GpuDnnConv(DnnBase):
                              num_groups=int_t)
 
     def __init__(self, algo=None, inplace=False, num_groups=1):
-        DnnBase.__init__(self, ["c_code/dnn_conv_base.c", "c_code/dnn_conv_find.c", "c_code/dnn_fwd.c"],
+        DnnBase.__init__(self, ["c_code/dnn_conv_base.c", "c_code/dnn_fwd.c"],
                          "APPLY_SPECIFIC(conv_fwd)")
 
         if algo is None:
@@ -710,7 +710,7 @@ class GpuDnnConvGradW(DnnBase):
                              num_groups=int_t)
 
     def __init__(self, inplace=False, algo=None, num_groups=1):
-        DnnBase.__init__(self, ["c_code/dnn_conv_base.c", "c_code/dnn_conv_find.c", "c_code/dnn_gw.c"],
+        DnnBase.__init__(self, ["c_code/dnn_conv_base.c", "c_code/dnn_gw.c"],
                          "APPLY_SPECIFIC(conv_gw)")
         self.inplace = bool(inplace)
         if self.inplace:
@@ -846,7 +846,7 @@ class GpuDnnConvGradI(DnnBase):
                              num_groups=int_t)
 
     def __init__(self, inplace=False, algo=None, num_groups=1):
-        DnnBase.__init__(self, ["c_code/dnn_conv_base.c", "c_code/dnn_conv_find.c", "c_code/dnn_gi.c"],
+        DnnBase.__init__(self, ["c_code/dnn_conv_base.c", "c_code/dnn_gi.c"],
                          "APPLY_SPECIFIC(conv_gi)")
         self.inplace = bool(inplace)
         if self.inplace:

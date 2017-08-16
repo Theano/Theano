@@ -3,7 +3,6 @@
 #include <sstream>
 #include <vector>
 #include <string>
-#include "dnn_conv_find.h"
 #if __cplusplus < 201103L
 #include <tr1/unordered_map>
 typedef std::tr1::unordered_map<std::string, AlgoRec> AlgoCache;

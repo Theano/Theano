@@ -11,6 +11,15 @@ static inline int cudnnGetVersion() {
 }
 #endif
 
-
+#if CUDNN_MAJOR < 7
+    enum cudnnMathType_t { CUDNN_DEFAULT_MATH=0, CUDNN_TENSOR_OP_MATH = 1 };
+#endif
+/* a common struct for all 3 CUDNN enums */
+struct AlgoRec {
+        int algo;
+        cudnnDataType_t dataType;
+        size_t wsSize;
+        cudnnMathType_t mathType;
+};
 
 #endif

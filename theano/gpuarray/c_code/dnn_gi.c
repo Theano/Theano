@@ -3,18 +3,15 @@ prev_algo.algo = PARAMS->conv_algo;
 prev_algo.mathType = CUDNN_DEFAULT_MATH;
 prev_algo.dataType = CUDNN_DATA_FLOAT;
 reuse_algo = 0;
-memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
-memset(prev_top_dims, 0, sizeof(prev_top_dims));
-
+hash_prefix = std::string("GI| GPU#");
 #section support_code_struct
-#include "dnn_conv_find.h"
+
 #line 12 "dnn_gi.c"
 int     reuse_algo;
 bool    use_cached;
 AlgoRec prev_algo;
-size_t prev_kern_dims[5];
-size_t prev_top_dims[5];
-
+std::string hash_prefix;
+  
 int
 APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
                         PyGpuArrayObject *im,
@@ -97,51 +94,27 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   cudnnMathType_t mathtype = CUDNN_DEFAULT_MATH;
   
   std::string hashkey;
-  
-  if (params->choose_algo) {
-    if (!params->choose_once) {
-      reuse_algo = 1;
-      for (unsigned int i = 0; i < PyGpuArray_NDIM(kerns); i++) {
-        reuse_algo = (reuse_algo &&
-                      PyGpuArray_DIM(kerns, i) == prev_kern_dims[i]);
-        reuse_algo = (reuse_algo &&
-                      PyGpuArray_DIM(output, i) == prev_top_dims[i]);
-      }
-    }    
-    if (!reuse_algo) {
-      char pci_id[16];
-      gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);
 
-      // check out cache
-      hashkey+=dnn_conv_shape(APPLY_SPECIFIC(input), *input, APPLY_SPECIFIC(kerns), kerns, desc, output, groups);
-      if (hashkey.empty())
-	return 1;
-      hashkey =  std::string("GI| GPU#") + pci_id + hashkey;
-
-
-      const AlgoRec* cached = dnn_conv_check_cache(hashkey);
-      if (cached) {
-	prev_algo = *cached;
-	use_cached = 1;
-      }
+  if (params->choose_algo && !reuse_algo) {
+    char pci_id[16];
+    gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);    
+    // check out cache
+    hashkey=dnn_conv_shape(APPLY_SPECIFIC(input), *input, APPLY_SPECIFIC(kerns), kerns, desc, output, groups);
+    if (hashkey.empty())
+      return 1;
+    hashkey = hash_prefix + pci_id + hashkey;
+    const AlgoRec* cached = dnn_conv_check_cache(hashkey);
+    if (cached) {
+      prev_algo = *cached;
+      use_cached = 1;
     }
+  }
+
+  size_t free = c_get_largest_free_block_size(c);
     
-    cuda_enter(c->ctx);
-    
-    if (!(reuse_algo || use_cached)) {
-      size_t free;
-      int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_LARGEST_MEMBLOCK, &free);
-
-      if (err2 != GA_NO_ERROR) {
-        PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
-                     "memory information on the GPU");
-        cuda_exit(c->ctx);
-        return 1;
-      }
-
-      // Guess 4Mb if the info is not available
-      if (free == 0) free = 4 * 1024 * 1024;
-
+  cuda_enter(c->ctx);
+  
+  if (params->choose_algo && !(reuse_algo || use_cached)) {
     if (params->choose_time) {
       int count;
       cudnnConvolutionBwdDataAlgoPerf_t choice;
@@ -170,8 +143,9 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       algo = choice.algo;
         prev_algo.algo = (int)algo;
         prev_algo.wsSize = worksize = choice.memory;
+#if CUDNN_MAJOR >= 7
         prev_algo.mathType = mathtype = choice.mathType;
-
+#endif
         // Add to the cache
 	dnn_conv_update_cache(hashkey, prev_algo);
 
@@ -202,99 +176,103 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       // no tensor_op returned from Get()
       prev_algo.mathType = mathtype = CUDNN_DEFAULT_MATH;
     }
-    }
-  } else { /*choose_algo */
-
-  // The FFT implementation does not support strides, 1x1 filters or inputs
-  // with a spatial dimension larger than 1024. The tiled-FFT implementation
-  // does not support strides.
-  // If the chosen implementation is FFT or tiled-FFT, validate that it can
-  // be used on the current data and default to a safe implementation if it
-  // can't.
-  // The following code is 2d-specific but it is fine as FFT and tiled-FFT are
-  // defined only for 2d filters
-  if ((algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING ||
-       algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT) && PyGpuArray_NDIM(kerns) == 4) {
-
-    // Extract the properties of the convolution descriptor
-    int nd;
-    int pad[2];
-    int stride[2];
-    int upscale[2];
-    cudnnConvolutionMode_t mode;
-    cudnnDataType_t data_type;
-    err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
-                                             upscale, &mode, &data_type);
-    if (err != CUDNN_STATUS_SUCCESS) {
-      PyErr_Format(PyExc_RuntimeError,
-                   "error getting convolution properties: %s",
-                   cudnnGetErrorString(err));
-      cuda_exit(c->ctx);
-      return 1;
-    }
-
-    if (algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT)
-    {
-      if (stride[0] != 1 || stride[1] != 1 ||
-          PyGpuArray_DIM(*input, 2) > 1024 || PyGpuArray_DIM(*input, 3) > 1024 ||
-          (PyGpuArray_DIM(kerns, 2) == 1 && PyGpuArray_DIM(kerns, 3) == 1))
-      {
-        algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
-      }
-    }
-    else
-    {
-      // algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING
-      if (stride[0] != 1 || stride[1] != 1)
-      {
-        algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
-      }
-    }
   }
-  } /* choose_algo */
   
   // if FindEx was used (choose_time), workspace size is set. 
   if (!(reuse_algo || use_cached || params->choose_time))
-    {
-
-  err = cudnnGetConvolutionBackwardDataWorkspaceSize(
+  {
+    
+    err = cudnnGetConvolutionBackwardDataWorkspaceSize(
     params->handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output), desc,
     APPLY_SPECIFIC(input), algo, &worksize);
 
-  if (err != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError, "error getting worksize: %s",
-                 cudnnGetErrorString(err));
-    cuda_exit(c->ctx);
-    return 1;
-  }
-  // save worksize for next time/cache
-  prev_algo.wsSize = worksize;
-  
-  // Add to the cache
-  if (params->choose_algo)
-      dnn_conv_update_cache(hashkey, prev_algo);
-    }  
+    if (err != CUDNN_STATUS_SUCCESS) {
+      PyErr_Format(PyExc_RuntimeError, "error getting worksize: %s",
+                   cudnnGetErrorString(err));
 
-    #ifdef DEBUG
-    char algorithm_name[128];
+      // The FFT implementation does not support strides, 1x1 filters or inputs
+      // with a spatial dimension larger than 1024. The tiled-FFT implementation
+      // does not support strides.
+      // If the chosen implementation is FFT or tiled-FFT, validate that it can
+      // be used on the current data and default to a safe implementation if it
+      // can't.
+      // The following code is 2d-specific but it is fine as FFT and tiled-FFT are
+      // defined only for 2d filters
+      if ((algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING ||
+           algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT) && PyGpuArray_NDIM(kerns) == 4) {
+        
+        // Extract the properties of the convolution descriptor
+        int nd;
+        int pad[2];
+        int stride[2];
+        int upscale[2];
+        cudnnConvolutionMode_t mode;
+        cudnnDataType_t data_type;
+        err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
+                                              upscale, &mode, &data_type);
+        if (err != CUDNN_STATUS_SUCCESS) {
+          PyErr_Format(PyExc_RuntimeError,
+                       "error getting convolution properties: %s",
+                       cudnnGetErrorString(err));
+          cuda_exit(c->ctx);
+          return 1;
+        }
+        
+        if (algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT)
+        {
+          if (stride[0] != 1 || stride[1] != 1 ||
+              PyGpuArray_DIM(*input, 2) > 1024 || PyGpuArray_DIM(*input, 3) > 1024 ||
+              (PyGpuArray_DIM(kerns, 2) == 1 && PyGpuArray_DIM(kerns, 3) == 1))
+          {
+            algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+          }
+        }
+        else
+        {
+          // algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING
+          if (stride[0] != 1 || stride[1] != 1)
+          {
+            algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+          }
+        }
+      }
+      err = cudnnGetConvolutionBackwardDataWorkspaceSize(
+        params->handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output), desc,
+        APPLY_SPECIFIC(input), algo, &worksize);
+    }
+    
+    if (err != CUDNN_STATUS_SUCCESS) {      
+      cuda_exit(c->ctx);
+      return 1;
+    }
+    // save worksize for next time/cache
+    prev_algo.wsSize = worksize;
+    
+    // Add to the cache
+    if (params->choose_algo)
+      dnn_conv_update_cache(hashkey, prev_algo);
+  }  // !(reuse_algo || use_cached || params->choose_time)
+
+#ifdef DEBUG
+  if (params->choose_algo) { 
     if (0 != theano_enum_to_string_cudnnConvolutionBwdDataAlgo_t(algo, algorithm_name))
         return 1;
     // NB: This is printed only when algorithm is chosen at runtime.
-    if (reuse_algo)
-        fprintf(stderr, "(reused %s)\n", algorithm_name);
-    else
-        fprintf(stderr, "(using %s)\n", algorithm_name);
-    #endif
+    fprintf(stderr, "%s%s algo: %d %s%s ws: %ld, tensor: %d hash:%s\n",
+            params->choose_algo ? "[A]": "" ,
+            params->choose_time ? "[T]": "" ,
+            algo, // algorithm_name,
+            reuse_algo ? "(reused)" : "",
+            use_cached ? "(cache)": "",
+            worksize, mathtype, hashkey.c_str()
+      );
+  }
+#endif
 
     if (params->choose_once) {
       reuse_algo = 1;
-    } else {
-      for (unsigned int i = 0; i < PyGpuArray_NDIM(kerns); i++) {
-        prev_kern_dims[i] = PyGpuArray_DIM(kerns, i);
-        prev_top_dims[i] = PyGpuArray_DIM(output, i);
-      }
     }
-
+    
     gpudata *workspace = 0;  
 #if CUDNN_MAJOR >= 7    
     // CUDNN7: need to set math type
