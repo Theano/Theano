@@ -294,14 +294,16 @@ class TestConv2D(utt.InferShapeTester):
         """
         Tests convolution where subsampling != (1,1)
         """
-        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 2))
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', subsample=(2, 2))
-        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 1))
-        self.validate((1, 1, 6, 6), (1, 1, 3, 3), 'valid', subsample=(3, 3))
 
         # Fails as of 2012-07-11
         self.assertRaises(NotImplementedError, self.validate, (1, 1, 6, 6),
                           (1, 1, 3, 3), 'full', subsample=(3, 3))
+
+        # Fails as of 2017-08-10
+        self.assertRaises(NotImplementedError, self.validate, (3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 2))
+        self.assertRaises(NotImplementedError, self.validate, (3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 1))
+        self.assertRaises(NotImplementedError, self.validate, (1, 1, 6, 6), (1, 1, 3, 3), 'valid', subsample=(3, 3))
 
     def test_shape_Constant_tensor(self):
         """
@@ -603,9 +605,6 @@ class TestConv2D(utt.InferShapeTester):
             [adtens_val, bdtens_val], conv.ConvOp,
             excluding=['conv_gemm'])
 
-
-class TestDefaultConv2D(TestConv2D):
-    conv2d = staticmethod(theano.tensor.nnet.conv2d)
 
 # Test that broadcasting of gradients works correctly when using the
 # nnet.conv2d() interface. This was reported in #3763, and uses the example

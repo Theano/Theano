@@ -125,9 +125,6 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       ``THEANO_FLAGS=optimizer_excluding=conv_dnn`` in your environment.
       As dnn_conv has a gradient defined, you can also use it manually.
 - Implemented operators for neural network 3D / video convolution:
-    - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`
-      3D Convolution applying multi-channel 3D filters to batches of
-      multi-channel 3D images. It does not flip the kernel.
     - :func:`GpuCorr3dMM <theano.gpuarray.blas.GpuCorr3dMM>`
       This is a GPU-only 3d correlation relying on a Toeplitz matrix
       and gemm implementation (see :func:`GpuCorrMM <theano.sandbox.cuda.blas.GpuCorrMM>`)
@@ -168,7 +165,6 @@ TODO: Give examples on how to use these things! They are pretty complicated.
 .. autofunction:: theano.tensor.nnet.conv2d
 .. autofunction:: theano.tensor.nnet.conv2d_transpose
 .. autofunction:: theano.tensor.nnet.conv3d
-.. autofunction:: theano.tensor.nnet.Conv3D.conv3D
 .. autofunction:: theano.tensor.nnet.conv3d2d.conv3d
 .. autofunction:: theano.tensor.nnet.conv.conv2d
 
