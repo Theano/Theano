@@ -247,7 +247,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         x_big = np.exp(10 * np.random.randn(*shape).astype(config.floatX))
         x_small = np.exp(np.random.randn(*shape).astype(config.floatX))
         # Create random labels
-        yv = np.zeros((shape_flatt, 5))
+        yv = np.zeros((shape_flatt, 5)).astype(config.floatX)
         yv[np.arange(shape_flatt), np.random.choice(5, shape_flatt)] = 1
         yv = yv.reshape(*shape)
         # Check for all dimensions
@@ -276,7 +276,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             # unstabilities (This is why we are using small values here)
             cm = tensor.nnet.categorical_crossentropy(sm.reshape((-1, 5)), y.reshape((-1, 5)))
             cm2 = cm2.flatten()
-            f2 = theano.function([x, y], [cm, cm2], mode=m)
+            f2 = theano.function([x, y], [cm, cm2])
             cm_, cm2_ = f2(test_val_x_small, test_val_y)
             utt.assert_allclose(cm_, cm2_)
 
