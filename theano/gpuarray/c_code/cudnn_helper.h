@@ -17,7 +17,6 @@ static inline int cudnnGetVersion() {
 /* a common struct for all 3 CUDNN enums */
 struct AlgoRec {
         int algo;
-        cudnnDataType_t dataType;
         size_t wsSize;
         cudnnMathType_t mathType;
 };

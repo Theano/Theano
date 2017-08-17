@@ -399,7 +399,7 @@ class DnnBase(COp):
         return []
 
     def c_code_cache_version(self):
-        return (super(DnnBase, self).c_code_cache_version(), version(), 1)
+        return (super(DnnBase, self).c_code_cache_version(), version(), 4)
 
 
 class GpuDnnConvDesc(COp):
