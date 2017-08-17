@@ -1566,10 +1566,8 @@ def test_dnn_batchnorm_train():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
-
     for mode in ('per-activation', 'spatial'):
-        for vartype in (tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
             x, scale, bias, running_mean, running_var = (vartype(n)
                                                          for n in ('x', 'scale', 'bias',
                                                                    'running_mean',
@@ -1804,10 +1802,8 @@ def test_batchnorm_inference():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
-    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
-
     for mode in ('per-activation', 'spatial'):
-        for vartype in (tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
             x, scale, bias, mean, var = (vartype(n)
                                          for n in ('x', 'scale', 'bias', 'mean', 'var'))
             ndim = x.ndim

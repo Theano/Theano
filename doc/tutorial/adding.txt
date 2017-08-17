@@ -175,13 +175,13 @@ by :ref:`broadcasting <libdoc_tensor_broadcastable>`.
 
 The following types are available:
 
-* **byte**: ``bscalar, bvector, bmatrix, brow, bcol, btensor3, btensor4, btensor5``
-* **16-bit integers**: ``wscalar, wvector, wmatrix, wrow, wcol, wtensor3, wtensor4, wtensor5``
-* **32-bit integers**: ``iscalar, ivector, imatrix, irow, icol, itensor3, itensor4, itensor5``
-* **64-bit integers**: ``lscalar, lvector, lmatrix, lrow, lcol, ltensor3, ltensor4, ltensor5``
-* **float**: ``fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4, ftensor5``
-* **double**: ``dscalar, dvector, dmatrix, drow, dcol, dtensor3, dtensor4, dtensor5``
-* **complex**: ``cscalar, cvector, cmatrix, crow, ccol, ctensor3, ctensor4, ctensor5``
+* **byte**: ``bscalar, bvector, bmatrix, brow, bcol, btensor3, btensor4, btensor5, btensor6, btensor7``
+* **16-bit integers**: ``wscalar, wvector, wmatrix, wrow, wcol, wtensor3, wtensor4, wtensor5, wtensor6, wtensor7``
+* **32-bit integers**: ``iscalar, ivector, imatrix, irow, icol, itensor3, itensor4, itensor5, itensor6, itensor7``
+* **64-bit integers**: ``lscalar, lvector, lmatrix, lrow, lcol, ltensor3, ltensor4, ltensor5, ltensor6, ltensor7``
+* **float**: ``fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4, ftensor5, ftensor6, ftensor7``
+* **double**: ``dscalar, dvector, dmatrix, drow, dcol, dtensor3, dtensor4, dtensor5, dtensor6, dtensor7``
+* **complex**: ``cscalar, cvector, cmatrix, crow, ccol, ctensor3, ctensor4, ctensor5, ctensor6, ctensor7``
 
 The previous list is not exhaustive and a guide to all types compatible
 with NumPy arrays may be found here: :ref:`tensor creation<libdoc_tensor_creation>`.

@@ -901,6 +901,62 @@ def tensor5(name=None, dtype=None):
 tensor5s, ftensor5s, dtensor5s, itensor5s, ltensor5s = _multi(
     tensor5, ftensor5, dtensor5, itensor5, ltensor5)
 
+ctensor6 = TensorType('complex64', ((False,) * 6))
+ztensor6 = TensorType('complex128', ((False,) * 6))
+ftensor6 = TensorType('float32', ((False,) * 6))
+dtensor6 = TensorType('float64', ((False,) * 6))
+btensor6 = TensorType('int8', ((False,) * 6))
+wtensor6 = TensorType('int16', ((False,) * 6))
+itensor6 = TensorType('int32', ((False,) * 6))
+ltensor6 = TensorType('int64', ((False,) * 6))
+
+
+def tensor6(name=None, dtype=None):
+    """Return a symbolic 6-D variable.
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = TensorType(dtype, (False,) * 6)
+    return type(name)
+tensor6s, ftensor6s, dtensor6s, itensor6s, ltensor6s = _multi(
+    tensor6, ftensor6, dtensor6, itensor6, ltensor6)
+
+ctensor7 = TensorType('complex64', ((False,) * 7))
+ztensor7 = TensorType('complex128', ((False,) * 7))
+ftensor7 = TensorType('float32', ((False,) * 7))
+dtensor7 = TensorType('float64', ((False,) * 7))
+btensor7 = TensorType('int8', ((False,) * 7))
+wtensor7 = TensorType('int16', ((False,) * 7))
+itensor7 = TensorType('int32', ((False,) * 7))
+ltensor7 = TensorType('int64', ((False,) * 7))
+
+
+def tensor7(name=None, dtype=None):
+    """Return a symbolic 7-D variable.
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = TensorType(dtype, (False,) * 7)
+    return type(name)
+tensor7s, ftensor7s, dtensor7s, itensor7s, ltensor7s = _multi(
+    tensor7, ftensor7, dtensor7, itensor7, ltensor7)
+
 
 Tensor = TensorType
 
