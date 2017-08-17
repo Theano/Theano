@@ -237,9 +237,6 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
 
     # Test that exp(logsoftmax(x)) is close to softmax(x)
     def test_allclose(self):
-        m = theano.config.mode
-        m = theano.compile.get_mode(m)
-        m.check_isfinite = False
         dims = 4
         shape = (5,) * dims
         shape_flatt = 5**(dims - 1)
@@ -320,7 +317,6 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             sm = tensor.nnet.softmax(x)[3]
             logsm = tensor.log(sm)
             f = theano.function([x], logsm)
-            assert isinstance(f.maker.fgraph.outputs[0].owner.op, T.Subtensor)
             assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
 
             # Case 2: Log(Advanced_Subtensor1(softmax(x)))
@@ -328,7 +324,6 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             sm = tensor.nnet.softmax(x)[range(1, 3)]
             logsm = tensor.log(sm)
             f = theano.function([x], logsm)
-            assert isinstance(f.maker.fgraph.outputs[0].owner.op, T.AdvancedSubtensor1)
             assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
 
         # Case 3: Log(Advanced_Subtensor(softmax(x)))
@@ -336,7 +331,6 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         sm = tensor.nnet.softmax(x)[:, range(1, 3), 2]
         logsm = tensor.log(sm)
         f = theano.function([x], logsm)
-        assert isinstance(f.maker.fgraph.outputs[0].owner.op, T.AdvancedSubtensor)
         assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
 
     def test_local_indexing_softmax_grad_optimization(self):
