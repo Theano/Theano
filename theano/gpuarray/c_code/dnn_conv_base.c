@@ -197,8 +197,8 @@ static std::string dnn_conv_shape(cudnnTensorDescriptor_t inputDesc, PyGpuArrayO
           (PyGpuArray_DIMS(output)[1] / groups  != expected_output_dims[1]) ||
           (PyGpuArray_DIMS(output)[2] != expected_output_dims[2]) ||
           (PyGpuArray_DIMS(output)[3] != expected_output_dims[3])) {
-        PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ld"
-                     " but received gradient with shape %dx%dx% dx%d",
+        PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %dx%dx%dx%d"
+                     " but received gradient with shape %ldx%ldx%ldx%ld",
                      expected_output_dims[0], expected_output_dims[1] / groups,
                      expected_output_dims[2], expected_output_dims[3],
                      PyGpuArray_DIMS(output)[0], PyGpuArray_DIMS(output)[1],
@@ -211,7 +211,7 @@ static std::string dnn_conv_shape(cudnnTensorDescriptor_t inputDesc, PyGpuArrayO
           (PyGpuArray_DIMS(output)[2] != expected_output_dims[2]) ||
           (PyGpuArray_DIMS(output)[3] != expected_output_dims[3]) ||
           (PyGpuArray_DIMS(output)[4] != expected_output_dims[4])) {
-        PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ldx%ld"
+        PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %dx%dx%dx%dx%d"
                      " but received gradient with shape %ldx%ldx%ldx%ldx%ld",
                      expected_output_dims[0], expected_output_dims[1],
                      expected_output_dims[2], expected_output_dims[3],

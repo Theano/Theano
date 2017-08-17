@@ -231,8 +231,9 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     cuda_exit(c->ctx);
     return 1;
   }
-  // save worksize for next time/cache
+  // save for next time/cache
   prev_algo.wsSize = worksize;
+  prev_algo.algo = algo;
 
   // Add to the cache, even if this node use *_once algo
   // (in case the user specify the algo per layer and not globally).

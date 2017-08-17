@@ -219,8 +219,9 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         }
       }
 
-      // save worksize for next time/cache
+      // save for next time/cache
       prev_algo.wsSize = worksize;
+      prev_algo.algo = algo;
 
       // Add to the cache
       if (params->choose_algo)
