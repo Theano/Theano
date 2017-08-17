@@ -2524,7 +2524,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
             _, src, _, _ = k._get_basic_kernel(k.init_local_size,
                                                node.inputs[0].ndim)
             nd = node.inputs[0].ndim
-            params = ['uint32', gpuarray.GpuArray]
+            params = ['uint32', gpuarray.GpuArray, 'uint32']
             params.extend('uint32' for _ in range(nd))
             params.append(gpuarray.GpuArray)
             params.append('uint32')
@@ -2631,9 +2631,10 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         code += """
         args[0] = &n;
         args[1] = tmp->ga.data;
+        args[2] = &tmp->ga.offset;
         """ % dict(output=output)
 
-        p = 2
+        p = 3
         for i in range(node.inputs[0].ndim):
             code += """
         proxy_dim[%(i)s] = %(input)s->ga.dimensions[%(i)s];
@@ -2691,7 +2692,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         return code
 
     def c_code_cache_version_apply(self, node):
-        return (3, self.kernel_version(node))
+        return (4, self.kernel_version(node))
 
     def generate_kernel(self, node, odtype, redux):
         if isinstance(self.scalar_op, scalar.basic.Add):
