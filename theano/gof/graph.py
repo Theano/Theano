@@ -799,9 +799,8 @@ def orphans(i, o):
     return variables_and_orphans(i, o)[1]
 
 
-def clone(i, o, copy_inputs=True):
-    """
-    Copies the subgraph contained between i and o.
+def clone(i, o, copy_inputs=True, copy_orphans=None):
+    """Copies the subgraph contained between i and o.
 
     Parameters
     ----------
@@ -811,18 +810,32 @@ def clone(i, o, copy_inputs=True):
         Output Variables.
     copy_inputs : bool
         If True, the inputs will be copied (defaults to True).
+    copy_orphans:
+        When None, use the copy_inputs value,
+        When True, new orphans nodes are created.
+        When False, original orphans nodes are reused in the new graph.
 
     Returns
     -------
     object
         The inputs and outputs of that copy.
 
+    Note
+    ----
+
+    A constant, if in the ``i`` list is not an orpha. So it will be
+    copied depending of the ``copy_inputs`` parameter. Otherwise it
+    will be copied depending of the ``copy_orphans`` parameter.
+
     """
-    equiv = clone_get_equiv(i, o, copy_inputs)
+    if copy_orphans is None:
+        copy_orphans = copy_inputs
+    equiv = clone_get_equiv(i, o, copy_inputs, copy_orphans)
     return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
-def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
+def clone_get_equiv(inputs, outputs, copy_inputs=True, copy_orphans=True,
+                    memo=None):
     """
     Return a dictionary that maps from Variable and Apply nodes in the
     original graph to a new node (a clone) in a new graph.
@@ -834,11 +847,14 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     ----------
     inputs : a list of Variables
     outputs : a list of Variables
-    copy_inputs_and_orphans : bool
-        True means to create the cloned graph from new input and constant
+    copy_inputs : bool
+        True means to create the cloned graph from new input
         nodes (the bottom of a feed-upward graph).
         False means to clone a graph that is rooted at the original input
         nodes.
+    copy_orphans:
+        When True, new constant nodes are created. When False, original
+        constant nodes are reused in the new graph.
     memo : None or dict
         Optionally start with a partly-filled dictionary for the return value.
         If a dictionary is passed, this function will work in-place on that
@@ -850,7 +866,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
 
     # clone the inputs if necessary
     for input in inputs:
-        if copy_inputs_and_orphans:
+        if copy_inputs:
             cpy = input.clone()
             cpy.owner = None
             cpy.index = None
@@ -862,7 +878,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     for apply in io_toposort(inputs, outputs):
         for input in apply.inputs:
             if input not in memo:
-                if copy_inputs_and_orphans:
+                if copy_orphans:
                     cpy = input.clone()
                     memo[input] = cpy
                 else:
