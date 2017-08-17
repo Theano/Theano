@@ -2168,17 +2168,17 @@ def sqr(a):
 square = sqr
 
 
-def cov(X, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=None):
+def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=None):
     """Calculate the covariance matrix.
     Covariance indicates the level to which two variables vary together.
-    If we examine N-dimensional samples, :math:`X = [x_1, x_2, ... x_N]^T`,
+    If we examine N-dimensional samples, :math:`m = [x_1, x_2, ... x_N]^T`,
     then the covariance matrix element :math:`C_{ij}` is the covariance of
     :math:`x_i` and :math:`x_j`. The element :math:`C_{ii}` is the variance
     of :math:`x_i`. Code and docstring ported from numpy.
     ----------
-    a : array_like
+    m : array_like
         A 2-D array containing multiple variables and observations.
-        Each row of `a` represents a variable, and each column is
+        Each row of `m` represents a variable, and each column is
         observations of all those variables.
     y : array_like, optional
         An additional set of variables and observations. `y` has the same form
@@ -2206,13 +2206,13 @@ def cov(X, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
     if aweights is not None:
         raise NotImplementedError('aweights are not implemented')
 
-    if not rowvar and X.shape[0] != 1:
-        X = X.T
+    if not rowvar and m.shape[0] != 1:
+        m = m.T
 
     if y is not None:
         if not rowvar and y.shape[0] != 1:
             y = y.T
-        X = theano.tensor.concatenate((X, y), axis=0)
+        m = theano.tensor.concatenate((m, y), axis=0)
 
     if ddof is None:
         if not bias:
@@ -2221,10 +2221,10 @@ def cov(X, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
             ddof = 0
 
     # Determine the normalization
-    fact = X.shape[1] - ddof
+    fact = m.shape[1] - ddof
 
-    X -= X.mean(axis=1, keepdims=1)
-    c = X.dot(X.T)
+    m -= m.mean(axis=1, keepdims=1)
+    c = m.dot(m.T)
     c *= theano.tensor.constant(1) / fact
     return c.squeeze()
 
