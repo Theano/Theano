@@ -353,7 +353,7 @@ int sub_setarray(GpuArray *dst, GpuArray *src) {
   int err;
   err = GpuArray_setarray(dst, src);
   if (err != GA_NO_ERROR)
-    PyErr_SetString(PyExc_RuntimeError, "setarray failed");
+    PyErr_SetString(PyExc_RuntimeError, GpuArray_error(src, err));
   return err;
 }
 """
@@ -1126,27 +1126,28 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
                                       const ga_size numColsX,
                                       const ga_ssize stridesX0,
                                       const ga_ssize stridesX1,
-                                      %(type_x)s *X,
+                                      GLOBAL_MEM %(type_x)s *X,
                                       const ga_size offset_X,
                                       const ga_size numRowsY,
                                       const ga_size numColsY,
                                       const ga_ssize stridesY0,
                                       const ga_ssize stridesY1,
-                                      %(type_y)s *Y,
+                                      GLOBAL_MEM %(type_y)s *Y,
                                       const ga_size offset_Y,
                                       const ga_size numIndices,
                                       const ga_ssize stridesIndices,
-                                      %(type_ind)s *indices_arr,
+                                      GLOBAL_MEM %(type_ind)s *indices_arr,
                                       const ga_size offset_indices_arr,
-                                      const int set_instead_of_inc,
-                                      ga_int *err)
+                                      const ga_int set_instead_of_inc,
+                                      GLOBAL_MEM ga_int *err)
         {
-             X = (%(type_x)s *)(((char *)X)+offset_X);
-             Y = (%(type_y)s *)(((char *)Y)+offset_Y);
-             indices_arr = (%(type_ind)s *)(((char *)indices_arr)+offset_indices_arr);
-             for (int i = (blockIdx.x); i < numIndices; i += gridDim.x)
+             X = (GLOBAL_MEM %(type_x)s *)(((GLOBAL_MEM char *)X)+offset_X);
+             Y = (GLOBAL_MEM %(type_y)s *)(((GLOBAL_MEM char *)Y)+offset_Y);
+             indices_arr = (GLOBAL_MEM %(type_ind)s *)(((GLOBAL_MEM char *)indices_arr)+offset_indices_arr);
+
+             for (ga_int i = GID_0; i < numIndices; i += GDIM_0)
              {
-                  for(int j = (threadIdx.x); j < numColsX;j += blockDim.x)
+                  for (ga_int j = LID_0; j < numColsX; j += LDIM_0)
                   {
                       ga_ssize x_row = indices_arr[i * stridesIndices];
                       if (x_row < 0)
@@ -1169,10 +1170,11 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
         }
         """ % dict(type_x=type_x, type_y=type_y, type_ind=type_ind,
                    tc=np.dtype(dtype_x).char)
+        from pygpu.gpuarray import SIZE, SSIZE
         params = [
-            'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
-            'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
-            'uintp', 'intp', gpuarray.GpuArray, 'uintp', 'int',
+            SIZE, SIZE, SSIZE, SSIZE, gpuarray.GpuArray, SIZE,
+            SIZE, SIZE, SSIZE, SSIZE, gpuarray.GpuArray, SIZE,
+            SIZE, SSIZE, gpuarray.GpuArray, SIZE, 'int32',
             gpuarray.GpuArray]
         return [Kernel(code=code, name=kname, params=params,
                        flags=flags, objvar=k_var)]
