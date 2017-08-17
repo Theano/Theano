@@ -95,6 +95,9 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     """
 
+    warnings.warn("theano.tensor.nnet.conv.conv2d is deprecated."
+                  " Use theano.tensor.nnet.conv2d instead.")
+
     # accept Constant value for image_shape and filter_shape.
     if image_shape is not None:
         image_shape = list(image_shape)
