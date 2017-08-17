@@ -1180,19 +1180,15 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
   old = *base;
   do {
     assumed = old;
-    ga_half old_perm;
-    __HALF_TO_US(old_perm)  = __byte_perm(old, 0,
-                     ((ga_size)addr & 2) ? 0x4432 : 0x4410);
-    sum = __float2half_as_us(
+    sum = __float2half_rn(
       __half2float(val) +
-      __half2float(old_perm));
+      __half2float((ga_half)__byte_perm(old, 0,
+                     ((ga_size)addr & 2) ? 0x4432 : 0x4410)));
     new_ = __byte_perm(old, sum, ((ga_size)addr & 2) ? 0x5410 : 0x3254);
     old = atomicCAS(base, assumed, new_);
   } while (assumed != old);
-  ga_half ret;
-  __HALF_TO_US(ret) = __byte_perm(old, 0,
-        ((ga_size)addr & 2) ? 0x4432 : 0x4410);
-  return ret;
+  return (ga_half)__byte_perm(old, 0,
+                                  ((ga_size)addr & 2) ? 0x4432 : 0x4410);
 }
 
 __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
@@ -1201,14 +1197,13 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
   old = *base;
   do {
     assumed = old;
-    new_ = __byte_perm(old, __HALF_TO_US(val), ((ga_size)addr & 2) ? 0x5410 : 0x3254);
+    new_ = __byte_perm(old, val, ((ga_size)addr & 2) ? 0x5410 : 0x3254);
     old = atomicCAS(base, assumed, new_);
   } while (assumed != old);
-  ga_half ret;
-  __HALF_TO_US(ret) =__byte_perm(old, 0,
-        ((ga_size)addr & 2) ? 0x4432 : 0x4410);
-  return ret;
+  return (ga_half)__byte_perm(old, 0,
+                                  ((ga_size)addr & 2) ? 0x4432 : 0x4410);
 }
+
         KERNEL void k_vector_add_fast(const ga_size numRowsX,
                                       const ga_size numColsX,
                                       const ga_ssize stridesX0,
