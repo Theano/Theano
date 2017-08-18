@@ -643,7 +643,6 @@ class Softmax(gof.Op):
                 for (j = 0; j < num_sm_classes; ++j)
                 {
                     sm_i[j * stride_sm] *= sum_inv;
-                    // std::cout << "Col: " << sm_i[j];
                 }
         """
         # Get the vectorized version of exp if it exist
@@ -741,8 +740,8 @@ class LogSoftmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage, param):
         x, = input_storage
-        # Make axis tuple or scalar
         axis = param.axis
+        # Apply logsoftmax on the specified dimension
         xdev = x - x.max(axis=axis, keepdims=True)
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axis, keepdims=True))
         output_storage[0][0] = lsm
