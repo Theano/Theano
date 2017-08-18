@@ -2287,154 +2287,6 @@ def dconvgi(border_mode, subsample, filter_dilation, num_groups):
     return dconvi
 
 
-class TestDnnConv2DRuntimeAlgorithms(object):
-    ndim = 2
-    cpu_conv_class = theano.tensor.nnet.corr.CorrMM
-    runtime_shapes = [
-        (3, [(2, 3, 10, 9), (5, 3, 7, 7)]),
-        (1, [(1, 1, 100, 200), (1, 1, 50, 200)]),
-        (1, [(4, 2, 20, 20), (2, 2, 20, 19)]),
-        (3, [(2, 3, 10, 9), (5, 3, 7, 7)]),  # cache should be used
-        (1, [(2, 2, 50, 50), (5, 2, 25, 31)]),
-        (1, [(1, 1, 100, 200), (1, 1, 50, 200)]),  # cache should be used
-        (1, [(4, 2, 20, 20), (2, 2, 20, 19)]),  # cache should be used
-        (1, [(1, 2, 3, 4), (6, 2, 2, 1)])
-    ]
-
-    def __init__(self):
-        if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
-        utt.seed_rng()
-        self.runtime_algorithms = ('time_once', 'guess_once', 'time_on_shape_change', 'guess_on_shape_change')
-
-    def test_fwd_runtime_algorithms(self):
-        dtype = 'float32'
-        unit_shape = (1,) * self.ndim
-        _broadcastable = [False] * (2 + self.ndim)
-
-        def run_fwd_runtime_algorithm(algo):
-            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
-            filters = theano.tensor.TensorType(dtype, _broadcastable)()
-            # Scale down the input values to prevent very large absolute errors
-            # due to float rounding
-            lower_inputs = inputs / 10
-            lower_filters = filters / 10
-            conv = dnn.dnn_conv(img=lower_inputs, kerns=lower_filters, algo=algo, precision=dtype,
-                                subsample=unit_shape, dilation=unit_shape)
-            f = theano.function([inputs, filters], conv, mode=mode_with_gpu)
-            if self.ndim == 3:
-                flipped_filters = lower_filters[:, :, ::-1, ::-1, ::-1]
-            else:
-                flipped_filters = lower_filters[:, :, ::-1, ::-1]
-            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(lower_inputs), flipped_filters)
-            f_ref = theano.function([inputs, filters], conv_ref, mode='FAST_RUN')
-            runtime_shapes = self.runtime_shapes
-            if algo in ('time_once', 'guess_once'):
-                runtime_shapes = [list(runtime_shapes[0])]
-                runtime_shapes[0][0] = 5
-            for ntimes, (inputs_shape, filters_shape) in runtime_shapes:
-                for i in range(ntimes):
-                    inputs_val = np.random.random(inputs_shape).astype(dtype)
-                    filters_val = np.random.random(filters_shape).astype(dtype)
-                    gpu_res = f(inputs_val, filters_val)
-                    cpu_res = f_ref(inputs_val, filters_val)
-                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
-
-        for algo in self.runtime_algorithms:
-            yield (run_fwd_runtime_algorithm, algo)
-
-    def test_gradinput_runtime_algorithms(self):
-        dtype = 'float32'
-        unit_shape = (1,) * self.ndim
-        _broadcastable = [False] * (2 + self.ndim)
-
-        def run_gradinput_runtime_algorithm(algo):
-            theano.config.dnn.conv.algo_bwd_data = algo
-            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
-            filters = theano.tensor.TensorType(dtype, _broadcastable)()
-            conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
-                                subsample=unit_shape, dilation=unit_shape)
-            grad_i = theano.tensor.grad(conv.sum(), [inputs])
-            f = theano.function([inputs, filters], grad_i, mode=mode_with_gpu)
-            assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, dnn.GpuDnnConvGradI)])
-            assert not any(isinstance(node.op, dnn.GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
-            assert not any(isinstance(node.op, dnn.GpuDnnConvGradW) for node in f.maker.fgraph.apply_nodes)
-            if self.ndim == 3:
-                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
-            else:
-                flipped_filters = filters[:, :, ::-1, ::-1]
-            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
-            grad_i_ref = theano.tensor.grad(conv_ref.sum(), [inputs])
-            f_ref = theano.function([inputs, filters], grad_i_ref, mode='FAST_RUN')
-            runtime_shapes = self.runtime_shapes
-            if algo in ('time_once', 'guess_once'):
-                runtime_shapes = [list(runtime_shapes[0])]
-                runtime_shapes[0][0] = 5
-            for ntimes, (inputs_shape, filters_shape) in runtime_shapes:
-                for i in range(ntimes):
-                    inputs_val = np.random.random(inputs_shape).astype(dtype)
-                    filters_val = np.random.random(filters_shape).astype(dtype)
-                    gpu_res = f(inputs_val, filters_val)
-                    cpu_res = f_ref(inputs_val, filters_val)
-                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
-
-        for algo in self.runtime_algorithms:
-            yield (run_gradinput_runtime_algorithm, algo)
-
-    def test_gradweight_runtime_algorithms(self):
-        dtype = 'float32'
-        unit_shape = (1,) * self.ndim
-        _broadcastable = [False] * (2 + self.ndim)
-
-        def run_gradweight_runtime_algorithm(algo):
-            theano.config.dnn.conv.algo_bwd_filter = algo
-            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
-            filters = theano.tensor.TensorType(dtype, _broadcastable)()
-            conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
-                                subsample=unit_shape, dilation=unit_shape)
-            grad_w = theano.tensor.grad(conv.sum(), [filters])
-            f = theano.function([inputs, filters], grad_w, mode=mode_with_gpu)
-            assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, dnn.GpuDnnConvGradW)])
-            assert not any(isinstance(node.op, dnn.GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
-            assert not any(isinstance(node.op, dnn.GpuDnnConvGradI) for node in f.maker.fgraph.apply_nodes)
-            if self.ndim == 3:
-                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
-            else:
-                flipped_filters = filters[:, :, ::-1, ::-1]
-            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
-            grad_w_ref = theano.tensor.grad(conv_ref.sum(), [filters])
-            f_ref = theano.function([inputs, filters], grad_w_ref, mode='FAST_RUN')
-            runtime_shapes = self.runtime_shapes
-            if algo in ('time_once', 'guess_once'):
-                runtime_shapes = [list(runtime_shapes[0])]
-                runtime_shapes[0][0] = 5
-            for ntimes, (inputs_shape, filters_shape) in runtime_shapes:
-                for i in range(ntimes):
-                    inputs_val = np.random.random(inputs_shape).astype(dtype)
-                    filters_val = np.random.random(filters_shape).astype(dtype)
-                    gpu_res = f(inputs_val, filters_val)
-                    cpu_res = f_ref(inputs_val, filters_val)
-                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
-
-        for algo in self.runtime_algorithms:
-            yield (run_gradweight_runtime_algorithm, algo)
-
-
-class TestDnnConv3DRuntimeAlgorithms(TestDnnConv2DRuntimeAlgorithms):
-    ndim = 3
-    cpu_conv_class = theano.tensor.nnet.corr3d.Corr3dMM
-    runtime_shapes = [
-        (3, [(2, 3, 5, 10, 9), (5, 3, 4, 7, 7)]),
-        (1, [(1, 1, 5, 100, 200), (1, 1, 4, 50, 200)]),
-        (1, [(4, 2, 20, 20, 20), (2, 2, 20, 19, 18)]),
-        (3, [(2, 3, 5, 10, 9), (5, 3, 4, 7, 7)]),  # cache should be used
-        (1, [(2, 2, 50, 50, 5), (5, 2, 25, 31, 4)]),
-        (1, [(1, 1, 5, 100, 200), (1, 1, 4, 50, 200)]),  # cache should be used
-        (1, [(4, 2, 20, 20, 20), (2, 2, 20, 19, 18)]),  # cache should be used
-        (1, [(1, 2, 3, 4, 5), (6, 2, 3, 2, 1)])
-    ]
-
-
 class Cudnn_grouped_conv(Grouped_conv_noOptim):
     mode = mode_with_gpu
     conv = staticmethod(dconvfwd)
@@ -2680,3 +2532,151 @@ def test_dnn_spatialtf_grad():
 
     utt.verify_grad(grad_functor, [inputs_val, theta_val], mode=mode_with_gpu,
                     abs_tol=atol, rel_tol=rtol)
+
+
+class TestDnnConv2DRuntimeAlgorithms(object):
+    ndim = 2
+    cpu_conv_class = theano.tensor.nnet.corr.CorrMM
+    runtime_shapes = [
+        (3, [(2, 3, 10, 9), (5, 3, 7, 7)]),
+        (1, [(1, 1, 100, 200), (1, 1, 50, 200)]),
+        (1, [(4, 2, 20, 20), (2, 2, 20, 19)]),
+        (3, [(2, 3, 10, 9), (5, 3, 7, 7)]),  # cache should be used
+        (1, [(2, 2, 50, 50), (5, 2, 25, 31)]),
+        (1, [(1, 1, 100, 200), (1, 1, 50, 200)]),  # cache should be used
+        (1, [(4, 2, 20, 20), (2, 2, 20, 19)]),  # cache should be used
+        (1, [(1, 2, 3, 4), (6, 2, 2, 1)])
+    ]
+
+    def __init__(self):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
+        utt.seed_rng()
+        self.runtime_algorithms = ('time_once', 'guess_once', 'time_on_shape_change', 'guess_on_shape_change')
+
+    def test_fwd_runtime_algorithms(self):
+        dtype = 'float32'
+        unit_shape = (1,) * self.ndim
+        _broadcastable = [False] * (2 + self.ndim)
+
+        def run_fwd_runtime_algorithm(algo):
+            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
+            filters = theano.tensor.TensorType(dtype, _broadcastable)()
+            # Scale down the input values to prevent very large absolute errors
+            # due to float rounding
+            lower_inputs = inputs / 10
+            lower_filters = filters / 10
+            conv = dnn.dnn_conv(img=lower_inputs, kerns=lower_filters, algo=algo, precision=dtype,
+                                subsample=unit_shape, dilation=unit_shape)
+            f = theano.function([inputs, filters], conv, mode=mode_with_gpu)
+            if self.ndim == 3:
+                flipped_filters = lower_filters[:, :, ::-1, ::-1, ::-1]
+            else:
+                flipped_filters = lower_filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(lower_inputs), flipped_filters)
+            f_ref = theano.function([inputs, filters], conv_ref, mode='FAST_RUN')
+            runtime_shapes = self.runtime_shapes
+            if algo in ('time_once', 'guess_once'):
+                runtime_shapes = [list(runtime_shapes[0])]
+                runtime_shapes[0][0] = 5
+            for ntimes, (inputs_shape, filters_shape) in runtime_shapes:
+                for i in range(ntimes):
+                    inputs_val = np.random.random(inputs_shape).astype(dtype)
+                    filters_val = np.random.random(filters_shape).astype(dtype)
+                    gpu_res = f(inputs_val, filters_val)
+                    cpu_res = f_ref(inputs_val, filters_val)
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
+
+        for algo in self.runtime_algorithms:
+            yield (run_fwd_runtime_algorithm, algo)
+
+    def test_gradinput_runtime_algorithms(self):
+        dtype = 'float32'
+        unit_shape = (1,) * self.ndim
+        _broadcastable = [False] * (2 + self.ndim)
+
+        def run_gradinput_runtime_algorithm(algo):
+            theano.config.dnn.conv.algo_bwd_data = algo
+            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
+            filters = theano.tensor.TensorType(dtype, _broadcastable)()
+            conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
+                                subsample=unit_shape, dilation=unit_shape)
+            grad_i = theano.tensor.grad(conv.sum(), [inputs])
+            f = theano.function([inputs, filters], grad_i, mode=mode_with_gpu)
+            assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, dnn.GpuDnnConvGradI)])
+            assert not any(isinstance(node.op, dnn.GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
+            assert not any(isinstance(node.op, dnn.GpuDnnConvGradW) for node in f.maker.fgraph.apply_nodes)
+            if self.ndim == 3:
+                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+            else:
+                flipped_filters = filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
+            grad_i_ref = theano.tensor.grad(conv_ref.sum(), [inputs])
+            f_ref = theano.function([inputs, filters], grad_i_ref, mode='FAST_RUN')
+            runtime_shapes = self.runtime_shapes
+            if algo in ('time_once', 'guess_once'):
+                runtime_shapes = [list(runtime_shapes[0])]
+                runtime_shapes[0][0] = 5
+            for ntimes, (inputs_shape, filters_shape) in runtime_shapes:
+                for i in range(ntimes):
+                    inputs_val = np.random.random(inputs_shape).astype(dtype)
+                    filters_val = np.random.random(filters_shape).astype(dtype)
+                    gpu_res = f(inputs_val, filters_val)
+                    cpu_res = f_ref(inputs_val, filters_val)
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
+
+        for algo in self.runtime_algorithms:
+            yield (run_gradinput_runtime_algorithm, algo)
+
+    def test_gradweight_runtime_algorithms(self):
+        dtype = 'float32'
+        unit_shape = (1,) * self.ndim
+        _broadcastable = [False] * (2 + self.ndim)
+
+        def run_gradweight_runtime_algorithm(algo):
+            theano.config.dnn.conv.algo_bwd_filter = algo
+            inputs = theano.tensor.TensorType(dtype, _broadcastable)()
+            filters = theano.tensor.TensorType(dtype, _broadcastable)()
+            conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
+                                subsample=unit_shape, dilation=unit_shape)
+            grad_w = theano.tensor.grad(conv.sum(), [filters])
+            f = theano.function([inputs, filters], grad_w, mode=mode_with_gpu)
+            assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, dnn.GpuDnnConvGradW)])
+            assert not any(isinstance(node.op, dnn.GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
+            assert not any(isinstance(node.op, dnn.GpuDnnConvGradI) for node in f.maker.fgraph.apply_nodes)
+            if self.ndim == 3:
+                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+            else:
+                flipped_filters = filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
+            grad_w_ref = theano.tensor.grad(conv_ref.sum(), [filters])
+            f_ref = theano.function([inputs, filters], grad_w_ref, mode='FAST_RUN')
+            runtime_shapes = self.runtime_shapes
+            if algo in ('time_once', 'guess_once'):
+                runtime_shapes = [list(runtime_shapes[0])]
+                runtime_shapes[0][0] = 5
+            for ntimes, (inputs_shape, filters_shape) in runtime_shapes:
+                for i in range(ntimes):
+                    inputs_val = np.random.random(inputs_shape).astype(dtype)
+                    filters_val = np.random.random(filters_shape).astype(dtype)
+                    gpu_res = f(inputs_val, filters_val)
+                    cpu_res = f_ref(inputs_val, filters_val)
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
+
+        for algo in self.runtime_algorithms:
+            yield (run_gradweight_runtime_algorithm, algo)
+
+
+class TestDnnConv3DRuntimeAlgorithms(TestDnnConv2DRuntimeAlgorithms):
+    ndim = 3
+    cpu_conv_class = theano.tensor.nnet.corr3d.Corr3dMM
+    runtime_shapes = [
+        (3, [(2, 3, 5, 10, 9), (5, 3, 4, 7, 7)]),
+        (1, [(1, 1, 5, 100, 200), (1, 1, 4, 50, 200)]),
+        (1, [(4, 2, 20, 20, 20), (2, 2, 20, 19, 18)]),
+        (3, [(2, 3, 5, 10, 9), (5, 3, 4, 7, 7)]),  # cache should be used
+        (1, [(2, 2, 50, 50, 5), (5, 2, 25, 31, 4)]),
+        (1, [(1, 1, 5, 100, 200), (1, 1, 4, 50, 200)]),  # cache should be used
+        (1, [(4, 2, 20, 20, 20), (2, 2, 20, 19, 18)]),  # cache should be used
+        (1, [(1, 2, 3, 4, 5), (6, 2, 3, 2, 1)])
+    ]

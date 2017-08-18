@@ -128,6 +128,11 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     return 1;
   if (c_set_filter(*kerns, APPLY_SPECIFIC(kerns), groups) == -1)
     return 1;
+
+  if (0 != dnn_check_convolution_output(desc, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
+                                        PyGpuArray_NDIM(*kerns), output, groups))
+    return 1;
+
   size_t input_offset = PyGpuArray_STRIDE(input, 0) / groups;
   size_t kern_offset = PyGpuArray_STRIDE(*kerns, 0) * PyGpuArray_DIM(*kerns, 0) / groups;
   size_t output_offset = PyGpuArray_STRIDE(output, 0) / groups;
