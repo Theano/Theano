@@ -1,6 +1,7 @@
 from __future__ import (division, absolute_import, print_function)
 
 import unittest
+from nose.plugins.skip import SkipTest
 import numpy as np
 
 import theano
@@ -84,6 +85,9 @@ class TestCTC(unittest.TestCase):
     """
 
     def setUp(self):
+        if theano.config.mode == "FAST_COMPILE" or theano.config.cxx == "":
+            raise SkipTest("We need a c compiler")
+
         if not ctc_available():
             self.skipTest('Optional library warp-ctc not available')
 
