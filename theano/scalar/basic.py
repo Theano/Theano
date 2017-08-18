@@ -3360,7 +3360,8 @@ class ArcTan2(BinaryScalarOp):
         if (node.inputs[0].type in complex_types or
                 node.inputs[1].type in complex_types):
             raise NotImplementedError('type not supported', type)
-        return "%(z)s = atan2(%(y)s, %(x)s);" % locals()
+        cast = node.outputs[0].type.dtype_specs()[1]
+        return "%(z)s = atan2((%(cast)s)%(y)s, (%(cast)s)%(x)s);" % locals()
 arctan2 = ArcTan2(upgrade_to_float, name='arctan2')
 
 
