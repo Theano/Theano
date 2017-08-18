@@ -2492,7 +2492,8 @@ class Ceil(UnaryScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
         (z,) = outputs
-        return "%(z)s = ceil(%(x)s);" % locals()
+        cast = node.outputs[0].type.dtype_specs()[1]
+        return "%(z)s = ceil((%(cast)s)%(x)s);" % locals()
 ceil = Ceil(upgrade_to_float_no_complex, name='ceil')
 
 
@@ -2515,7 +2516,8 @@ class Floor(UnaryScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
         (z,) = outputs
-        return "%(z)s = floor(%(x)s);" % locals()
+        cast = node.outputs[0].type.dtype_specs()[1]
+        return "%(z)s = floor((%(cast)s)%(x)s);" % locals()
 floor = Floor(upgrade_to_float_no_complex, name='floor')
 
 
