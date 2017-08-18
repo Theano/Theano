@@ -802,13 +802,13 @@ class Conv_opt_test(unittest.TestCase):
                        for node in conv_func.maker.fgraph.toposort()])
         utt.assert_allclose(conv_func(), ref_func())
 
-    def test_optimizers(self):
+    def test_optimizers_2d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
+
         imshp2d = [(2, 3, 5, 5), (2, 2, 5, 7), (2, 1, 3, 3)]
         kshp2d = [(4, 3, 3, 3), (3, 2, 3, 5), (4, 1, 1, 1)]
         tshp2d = [(2, 4, 3, 3), (2, 3, 3, 3), (2, 4, 3, 3)]
-
-        if theano.config.cxx == "":
-            raise SkipTest("Need a c compiler.")
 
         for imshp, kshp, tshp in zip(imshp2d, kshp2d, tshp2d):
             # forward passes
@@ -838,6 +838,10 @@ class Conv_opt_test(unittest.TestCase):
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
+
+    def test_optimizers_3d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
 
         imshp3d = [(2, 3, 5, 5, 5), (2, 2, 5, 7, 5), (2, 1, 3, 3, 3)]
         kshp3d = [(4, 3, 3, 3, 3), (3, 2, 3, 5, 3), (4, 1, 1, 1, 1)]
@@ -877,6 +881,9 @@ class Conv_opt_test(unittest.TestCase):
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
 
+    def test_optimizers_non_default(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
         # conv2d forward pass with Non-default border_mode and filter_dilation
         imshp2d = [(2, 3, 5, 5), (4, 2, 5, 5)]
         kshp2d = [(4, 3, 3, 3), (3, 2, 3, 3)]
