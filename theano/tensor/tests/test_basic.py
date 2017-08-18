@@ -1242,7 +1242,8 @@ CeilTester = makeBroadcastTester(
 CeilInplaceTester = makeBroadcastTester(
     op=inplace.ceil_inplace,
     expected=upcast_float16_ufunc(np.ceil),
-    good=_good_broadcast_unary_normal_no_complex,
+    good=copymod(_good_broadcast_unary_normal_no_complex,
+                 without=['integers', 'int8', 'uint8', 'uint16']),
     # corner cases includes a lot of integers: points where Ceil is not
     # continuous (not differentiable)
     inplace=True)
@@ -1256,7 +1257,8 @@ FloorTester = makeBroadcastTester(
 FloorInplaceTester = makeBroadcastTester(
     op=inplace.floor_inplace,
     expected=upcast_float16_ufunc(np.floor),
-    good=_good_broadcast_unary_normal_no_complex,
+    good=copymod(_good_broadcast_unary_normal_no_complex,
+                 without=["integers", "int8", "uint8", "uint16"]),
     inplace=True)
 
 TruncInplaceTester = makeBroadcastTester(
@@ -1603,7 +1605,8 @@ Arctan2InplaceTester = makeBroadcastTester(
     op=inplace.arctan2_inplace,
     expected=np.arctan2,
     good=copymod(_good_broadcast_binary_arctan2,
-                 without=['integers', 'int8', 'uint8', 'uint16']),
+                 without=['integers', 'int8', 'uint8',
+                          'uint16', 'dtype_mixup_2']),
     inplace=True)
 
 CoshTester = makeBroadcastTester(
