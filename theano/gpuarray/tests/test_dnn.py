@@ -2421,6 +2421,7 @@ class TestDnnConv2DRuntimeAlgorithms(object):
 
 class TestDnnConv3DRuntimeAlgorithms(TestDnnConv2DRuntimeAlgorithms):
     ndim = 3
+    cpu_conv_class = theano.tensor.nnet.corr3d.Corr3dMM
     runtime_shapes = [
         (3, [(2, 3, 5, 10, 9), (5, 3, 4, 7, 7)]),
         (1, [(1, 1, 5, 100, 200), (1, 1, 4, 50, 200)]),
