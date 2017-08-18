@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
-import numpy as np
+from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
+import numpy as np
 
 import theano
 from theano import tensor
@@ -797,6 +798,9 @@ class Conv_opt_test(unittest.TestCase):
         imshp2d = [(2, 3, 5, 5), (2, 2, 5, 7), (2, 1, 3, 3)]
         kshp2d = [(4, 3, 3, 3), (3, 2, 3, 5), (4, 1, 1, 1)]
         tshp2d = [(2, 4, 3, 3), (2, 3, 3, 3), (2, 4, 3, 3)]
+
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
 
         for imshp, kshp, tshp in zip(imshp2d, kshp2d, tshp2d):
             # forward passes
