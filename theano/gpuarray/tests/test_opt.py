@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 import numpy as np
 
