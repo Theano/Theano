@@ -746,7 +746,11 @@ class Conv_opt_test(unittest.TestCase):
         mode = mode_with_gpu.including('conv_meta')
 
         ref_func = theano.function([], conv_op, mode=mode_with_gpu)
-        conv_func = theano.function([], conv_op, mode=mode)
+        # All meta optimizer compile a new function. This need to know
+        # the current linker, but this information is not available,
+        # so it use the default mode.
+        with theano.change_flags(mode=mode):
+            conv_func = theano.function([], conv_op, mode=mode)
         assert any([isinstance(node.op, op)
                     for node in conv_func.maker.fgraph.toposort()])
         utt.assert_allclose(conv_func(), ref_func())
@@ -788,7 +792,11 @@ class Conv_opt_test(unittest.TestCase):
         mode = mode_with_gpu.including('conv_meta')
 
         ref_func = theano.function([], conv_op, mode=mode_with_gpu)
-        conv_func = theano.function([], conv_op, mode=mode)
+        # All meta optimizer compile a new function. This need to know
+        # the current linker, but this information is not available,
+        # so it use the default mode.
+        with theano.change_flags(mode=mode):
+            conv_func = theano.function([], conv_op, mode=mode)
         if op is not None:
             assert any([isinstance(node.op, op)
                        for node in conv_func.maker.fgraph.toposort()])
