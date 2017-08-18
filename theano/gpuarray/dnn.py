@@ -2501,7 +2501,7 @@ class GpuDnnRNNGradWeights(DnnBase):
 
 class RNNBlock(object):
     """
-    An object that allow us to use CuDNN v5 RNN implementation.
+    An object that allow us to use CuDNN RNN implementation.
     TODO: make an example how to use. You can check Theano tests
     test_dnn_rnn_gru() and test_dnn_rnn_lstm() in the file
     theano/gpuarray/tests/test_dnn.py for now.
@@ -2542,6 +2542,20 @@ class RNNBlock(object):
         self.dtype = dtype
 
     def get_param_size(self, input_size):
+        """
+        Get the size of the shared variable for the parameters of the RNN.
+
+        This will return a size (in items) necessary to store all the
+        parameters for the RNN.  You should allocate a variable of
+        that size to store those parameters.  The order and layout of
+        the parameters is opaque.
+
+        Parameters
+        ----------
+        input_size: (int, int)
+            Size of the input blocks
+
+        """
         bytesize = _get_param_size(self.desc, input_size, self.dtype,
                                    self.context_name)
         bytesize = int(bytesize)
@@ -2549,11 +2563,38 @@ class RNNBlock(object):
         return bytesize // np.dtype(self.dtype).itemsize
 
     def split_params(self, w, layer, input_size):
+        """
+        Split the opaque parameter block into components.
+
+        Parameters
+        ----------
+        w: GpuArraySharedVariable
+            opaque parameter block
+        layer: int
+            ID of the layer
+        input_size: (int, int)
+            Size of the input blocks
+
+        """
         if not isinstance(w, GpuArraySharedVariable):
             raise TypeError("split_params only works on gpuarray shared variables")
         return _split_rnn_params(w, self.desc, layer, input_size, self.dtype, self.rnn_mode)
 
     def apply(self, w, x, hx, cx=None):
+        """
+        Apply the RNN to some data
+
+        Parameters
+        ----------
+        w:
+            opaque parameter block
+        x:
+            input
+        hx:
+            initial hidden state
+        cx:
+            initial cell state (for LSTM)
+        """
         # Don't return the reserve as an output
         return GpuDnnRNNOp(self.rnn_mode, self.direction_mode)(
             rnndesc_type.make_constant(self.desc),
