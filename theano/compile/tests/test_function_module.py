@@ -654,9 +654,13 @@ class T_picklefunction(unittest.TestCase):
     def test_output_keys(self):
         x = T.vector()
         f = theano.function([x], {'vec': x**2})
-        assert isinstance(f([2, 3, 4]), dict)
+        o = f([2, 3, 4])
+        assert isinstance(o, dict)
+        assert np.allclose(o['vec'], [4, 9, 16])
         g = copy.deepcopy(f)
-        assert isinstance(g([2, 3, 4]), dict)
+        o = g([2, 3, 4])
+        assert isinstance(o, dict)
+        assert np.allclose(o['vec'], [4, 9, 16])
 
     def test_deepcopy_shared_container(self):
         # Ensure that shared containers remain shared after a deep copy.
