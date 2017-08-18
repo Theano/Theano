@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import os.path
 
 import theano
 from theano import Apply
@@ -9,7 +8,7 @@ from theano.tensor.basic import as_tensor_variable
 from theano.tensor.signal.pool import Pool, PoolingMode_t
 
 from .type import gpu_context_type
-from .basic_ops import (CGpuKernelBase, infer_context_name,
+from .basic_ops import (CGpuKernelBase, infer_context_name, gpuarray_helper_inc_dir,
                         as_gpuarray_variable, gpu_contiguous)
 
 try:
@@ -35,7 +34,7 @@ class GpuPool(CGpuKernelBase):
         if mode == 'average':
             mode = 'average_inc_pad'
         self.mode = mode
-        CGpuKernelBase.__init__(self, ['pool.c'],
+        CGpuKernelBase.__init__(self, ['c_code/pool.c'],
                                 'APPLY_SPECIFIC(pool)')
         assert PoolingMode_t.has_alias(self.mode)
         assert self.ndim in [2, 3]
@@ -47,7 +46,7 @@ class GpuPool(CGpuKernelBase):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        return [gpuarray_helper_inc_dir(), pygpu.get_include()]
 
     def make_node(self, inp, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp)
@@ -144,7 +143,7 @@ class GpuMaxPoolGrad(CGpuKernelBase):
         self.ndim = ndim
         self.ignore_border = ignore_border
         self.mode = mode
-        CGpuKernelBase.__init__(self, ['pool_max_grad.c'],
+        CGpuKernelBase.__init__(self, ['c_code/pool_max_grad.c'],
                                 'APPLY_SPECIFIC(max_pool_grad)')
         assert mode == 'max'
         assert ndim in [2, 3]
@@ -153,7 +152,7 @@ class GpuMaxPoolGrad(CGpuKernelBase):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        return [gpuarray_helper_inc_dir(), pygpu.get_include()]
 
     def make_node(self, inp, out, out_grad, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp, out, out_grad)
@@ -221,7 +220,7 @@ class GpuAveragePoolGrad(CGpuKernelBase):
         if mode == 'average':
             mode = 'average_inc_pad'
         self.mode = mode
-        CGpuKernelBase.__init__(self, ['pool_ave_grad.c'],
+        CGpuKernelBase.__init__(self, ['c_code/pool_ave_grad.c'],
                                 'APPLY_SPECIFIC(ave_pool_grad)')
         assert mode in ('sum', 'average_inc_pad', 'average_exc_pad')
         assert ndim in [2, 3]
@@ -233,7 +232,7 @@ class GpuAveragePoolGrad(CGpuKernelBase):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        return [gpuarray_helper_inc_dir(), pygpu.get_include()]
 
     def make_node(self, inp, out_grad, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp, out_grad)
@@ -297,7 +296,7 @@ class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
         self.ndim = ndim
         self.ignore_border = ignore_border
         self.mode = mode
-        CGpuKernelBase.__init__(self, ['pool_grad_grad.c'],
+        CGpuKernelBase.__init__(self, ['c_code/pool_grad_grad.c'],
                                 'APPLY_SPECIFIC(pool_grad_grad)')
         assert self.mode == 'max'
         assert self.ndim in [2, 3]
@@ -306,7 +305,7 @@ class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        return [gpuarray_helper_inc_dir(), pygpu.get_include()]
 
     def make_node(self, inp, out, out_grad, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp, out, out_grad)
@@ -372,7 +371,7 @@ class GpuMaxPoolRop(CGpuKernelBase):
         self.ndim = ndim
         self.ignore_border = ignore_border
         self.mode = mode
-        CGpuKernelBase.__init__(self, ['pool_max_rop.c'],
+        CGpuKernelBase.__init__(self, ['c_code/pool_max_rop.c'],
                                 'APPLY_SPECIFIC(max_pool_rop)')
         assert mode == 'max'
         assert ndim in [2, 3]
@@ -384,7 +383,7 @@ class GpuMaxPoolRop(CGpuKernelBase):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        return [gpuarray_helper_inc_dir(), pygpu.get_include()]
 
     def make_node(self, inp, eval_point, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp)

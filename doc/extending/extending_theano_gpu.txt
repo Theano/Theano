@@ -271,7 +271,7 @@ Python File
 ``tstgpueye.c``
 ~~~~~~~~~~~~~~~
 
-.. literalinclude:: ../../theano/gpuarray/tests/tstgpueye.c
+.. literalinclude:: ../../theano/gpuarray/tests/c_code/tstgpueye.c
     :language: C
 
 Wrapping Exisiting Libraries

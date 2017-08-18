@@ -193,12 +193,15 @@ AddConfigVar(
     in_c_key=False)
 
 
+def deprecated_gpuarray_sync(val):
+    if val:
+        raise RuntimeError("Flag gpuarray.sync is deprecated and will be removed in next Theano release.")
+    return False
+
 AddConfigVar('gpuarray.sync',
-             """If True, every op will make sure its work is done before
-                returning.  Setting this to True will slow down execution,
-                but give much more accurate results in profiling.""",
-             BoolParam(False),
-             in_c_key=True)
+             """This flag is deprecated and will be removed in next Theano release.""",
+             ConfigParam(False, allow_override=False, filter=deprecated_gpuarray_sync),
+             in_c_key=False)
 
 AddConfigVar('gpuarray.preallocate',
              """If negative it disables the allocation cache. If
@@ -362,7 +365,7 @@ AddConfigVar('dnn.conv.precision',
 
 # We want to default to the cuda root if cudnn is installed there
 def default_dnn_base_path():
-    root = get_cuda_root()
+    root = theano.config.cuda.root
     # The include doesn't change location between OS.
     if root and os.path.exists(os.path.join(root, 'include', 'cudnn.h')):
         return root
@@ -389,9 +392,13 @@ AddConfigVar('dnn.include_path',
 
 def default_dnn_lib_path():
     if theano.config.dnn.base_path != '':
-        path = os.path.join(theano.config.dnn.base_path, 'lib')
         if sys.platform == 'win32':
-            path = os.path.join(path, 'x64')
+            path = os.path.join(theano.config.dnn.base_path, 'lib', 'x64')
+        elif sys.platform == 'darwin':
+            path = os.path.join(theano.config.dnn.base_path, 'lib')
+        else:
+            # This is linux
+            path = os.path.join(theano.config.dnn.base_path, 'lib64')
         return path
     return ''
 
@@ -403,15 +410,12 @@ AddConfigVar('dnn.library_path',
 
 
 def default_dnn_bin_path():
-    if type(theano.config.dnn).base_path.is_default:
-        return ''
-    else:
-        if theano.config.dnn.base_path != '':
-            if sys.platform == 'win32':
-                return os.path.join(theano.config.dnn.base_path, 'bin')
-            else:
-                return theano.config.dnn.library_path
-        return ''
+    if theano.config.dnn.base_path != '':
+        if sys.platform == 'win32':
+            return os.path.join(theano.config.dnn.base_path, 'bin')
+        else:
+            return theano.config.dnn.library_path
+    return ''
 
 
 AddConfigVar('dnn.bin_path',
@@ -532,6 +536,10 @@ AddConfigVar('cxx',
              StrParam(param, is_valid=warn_cxx),
              in_c_key=False)
 del param
+
+if not config.cxx:
+    warnings.warn("DeprecationWarning: there is no c++ compiler."
+                  "This is deprecated and with Theano 0.11 a c++ compiler will be mandatory")
 
 if rc == 0 and config.cxx != "":
     # Keep the default linker the same as the one for the mode FAST_RUN
@@ -1208,9 +1216,7 @@ AddConfigVar('cmodule.age_thresh_use',
 AddConfigVar('cmodule.debug',
              "If True, define a DEBUG macro (if not exists) for any compiled C code.",
              BoolParam(False),
-             # Do not add it in the c key when we keep use the old default.
-             # To do not recompile for no good reason.
-             in_c_key=lambda: theano.config.cmodule.debug)
+             in_c_key=True)
 
 
 def default_blas_ldflags():
@@ -1450,9 +1456,22 @@ AddConfigVar('blas.ldflags',
 
 AddConfigVar(
     'metaopt.verbose',
-    "Enable verbose output for meta optimizers",
-    theano.configparser.BoolParam(False),
+    "0 for silent, 1 for only warnings, 2 for full output with"
+    "timings and selected implementation",
+    theano.configparser.IntParam(0),
     in_c_key=False)
+
+AddConfigVar('metaopt.optimizer_excluding',
+             ("exclude optimizers with these tags. "
+              "Separate tags with ':'."),
+             StrParam(""),
+             in_c_key=False)
+
+AddConfigVar('metaopt.optimizer_including',
+             ("include optimizers with these tags. "
+              "Separate tags with ':'."),
+             StrParam(""),
+             in_c_key=False)
 
 AddConfigVar('profile',
              "If VM should collect profile information",
@@ -1839,6 +1858,13 @@ AddConfigVar(
         allow_override=False),
     in_c_key=False)
 
+AddConfigVar(
+    'ctc.root',
+    'Directory which contains the root of Baidu CTC library. It is assumed \
+    that the compiled library is either inside the build, lib or lib64 \
+    subdirectory, and the header inside the include directory.',
+    StrParam('', allow_override=False),
+    in_c_key=False)
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
 for key in THEANO_FLAGS_DICT.keys():

@@ -1,9 +1,8 @@
 from __future__ import absolute_import, print_function, division
-import os.path
 from six import integer_types
 
 import theano
-from theano import Apply, config, Op
+from theano import Apply, Op
 
 from theano.compile import optdb
 from theano.gof import LocalOptGroup, ParamsType
@@ -12,7 +11,7 @@ from theano.tensor.basic import as_tensor_variable
 from theano.tensor.opt import in2out
 
 from .basic_ops import (GpuArrayType, CGpuKernelBase,
-                        as_gpuarray_variable, gpu_contiguous, infer_context_name)
+                        as_gpuarray_variable, gpu_contiguous, infer_context_name, gpuarray_helper_inc_dir)
 from .opt_util import inplace_allocempty
 
 try:
@@ -28,7 +27,7 @@ class BlasOp(Op):
         return ['<blas_api.h>', '<numpy_compat.h>', '<gpuarray_helper.h>']
 
     def c_header_dirs(self):
-        return [pygpu.get_include(), os.path.dirname(__file__)]
+        return [pygpu.get_include(), gpuarray_helper_inc_dir()]
 
     def c_init_code(self):
         return ['import_pygpu__blas();']
@@ -133,14 +132,11 @@ class GpuGemv(BlasOp):
             %(fail)s
         }
         """ % vars
-        if config.gpuarray.sync:
-            code += """
-            GpuArray_sync(&%(out)s->ga);
-            """ % vars
+
         return code
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
@@ -222,14 +218,11 @@ class GpuGemm(BlasOp):
                  %(fail)s
                }
         """ % vars
-        if config.gpuarray.sync:
-            code += """
-            GpuArray_sync(&%(out)s->ga);
-            """ % vars
+
         return code
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
 gpugemm_no_inplace = GpuGemm(inplace=False)
 gpugemm_inplace = GpuGemm(inplace=True)
@@ -293,14 +286,11 @@ class GpuGer(BlasOp):
                  %(fail)s
                }
                """ % vars
-        if config.gpuarray.sync:
-            code += """
-            GpuArray_sync(&%(out)s->ga);
-            """ % vars
+
         return code
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 
 gpuger_no_inplace = GpuGer(inplace=False)
@@ -361,14 +351,11 @@ class GpuDot22(BlasOp):
             %(fail)s
         }
         """ % vars
-        if config.gpuarray.sync:
-            code += """
-            GpuArray_sync(&%(out)s->ga);
-            """ % vars
+
         return code
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 gpu_dot22 = GpuDot22()
 
@@ -444,14 +431,11 @@ class GpuGemmBatch(BlasOp):
             %(fail)s;
         }
         """ % vars
-        if config.gpuarray.sync:
-            code += """
-            GpuArray_sync(&%(out)s->ga);
-            """ % vars
+
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 gpugemmbatch_no_inplace = GpuGemmBatch(inplace=False)
 gpugemmbatch_inplace = GpuGemmBatch(inplace=True)
@@ -502,7 +486,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
         if num_groups < 1:
             raise ValueError("Number of groups should be greater than 0")
         self.num_groups = num_groups
-        CGpuKernelBase.__init__(self, ['corr_gemm.c'])
+        CGpuKernelBase.__init__(self, ['c_code/corr_gemm.c'])
 
     @property
     def pad(self):
@@ -545,11 +529,11 @@ class BaseGpuCorrMM(CGpuKernelBase):
         return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_code_cache_version(self):
         # Raise this whenever modifying the C code (including the file).
-        return (9,)
+        return (10,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
@@ -633,16 +617,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
             if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
                 raise ValueError("width must be given for backprop with horizontal sampling or pad='half'")
             width = '-1'
-        sync = ""
-        if config.gpuarray.sync:
-            sync = """
-            int err = GpuArray_sync(&%(out)s->ga);
-            if (err != GA_NO_ERROR) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "BaseGpuCorrMM error: gpuarray sync failed.");
-                %(fail)s;
-            }
-            """ % locals()
+
         sub = sub.copy()
         sub.update(locals())
 
@@ -830,8 +805,6 @@ class BaseGpuCorrMM(CGpuKernelBase):
        %(fail)s
     }
     assert (out2 == %(out)s);
-
-    %(sync)s
 
 """ % sub
 
@@ -1120,7 +1093,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
             raise ValueError("filter_dilation must have three elements")
         self.subsample = tuple(subsample)
         self.filter_dilation = tuple(filter_dilation)
-        CGpuKernelBase.__init__(self, ['corr3d_gemm.c'])
+        CGpuKernelBase.__init__(self, ['c_code/corr3d_gemm.c'])
 
     @property
     def pad(self):
@@ -1157,11 +1130,11 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_code_cache_version(self):
         # raise this whenever modifying the code below.
-        return (7,)
+        return (8,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub,
                       height=None, width=None, depth=None):
@@ -1258,16 +1231,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
             if ((direction != 0) and (dD != 1)) or ((direction == 1) and (padD == -1)):
                 raise ValueError("depth must be given for backprop with horizontal sampling or pad='half'")
             depth = '-1'
-        sync = ""
-        if config.gpuarray.sync:
-            sync = """
-            int err = GpuArray_sync(&%(out)s->ga);
-            if (err != GA_NO_ERROR) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "BaseGpuCorr3dMM error: gpuarray sync failed.");
-                %(fail)s;
-            }
-            """ % locals()
+
         sub = sub.copy()
         sub.update(locals())
 
@@ -1489,8 +1453,6 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
        %(fail)s
     }
     assert (out2 == %(out)s);
-
-    %(sync)s
 
 """ % sub
 

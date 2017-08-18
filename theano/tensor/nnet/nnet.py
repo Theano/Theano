@@ -639,7 +639,6 @@ class Softmax(gof.Op):
                 for (j = 0; j < num_sm_classes; ++j)
                 {
                     sm_i[j * stride_sm] *= sum_inv;
-                    // std::cout << "Col: " << sm_i[j];
                 }
         """
         # Get the vectorized version of exp if it exist
@@ -735,16 +734,16 @@ class LogSoftmax(gof.Op):
 
     def perform(self, node, input_storage, output_storage, param):
         x, = input_storage
-        # Make axis tuple or scalar
         axis = param.axis
+        # Apply logsoftmax on the specified dimension
         xdev = x - x.max(axis=axis, keepdims=True)
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axis, keepdims=True))
         output_storage[0][0] = lsm
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, = inp
-        sm = Softmax(self.axis)(x)
-        return [grads[0] - tensor.sum(grads[0], axis=self.axis, keepdims=True) * sm]
+        lsm, = outputs
+        return [grads[0] - tensor.sum(grads[0], axis=self.axis, keepdims=True) * np.exp(lsm)]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
@@ -952,7 +951,6 @@ def local_logsoftmax_grad(node):
               *idx)
     which arises from the gradient of log(softmax(x)[*idx])
     """
-
     list_classes_IncSubtensor = ((IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
     list_classes_Subtensor = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
     if (isinstance(node.op, SoftmaxGrad) and
@@ -972,10 +970,8 @@ def local_logsoftmax_grad(node):
             # get parameters from unoptimized op
             sm = node.inputs[0].owner.inputs[1]
             axis = sm.owner.op.axis
-            # sm_input = node.inputs[1].owner.inputs[0]
             grads = node.inputs[0].owner.inputs[0]
-            if grads.broadcastable[axis] and not sm.broadcastable[axis]:
-                grads = tensor.alloc(grads, grads.shape[0], sm.shape[axis])
+            # Compute grad
             ret = grads - tensor.sum(grads, axis=axis, keepdims=True) * sm
             ret.tag.values_eq_approx = values_eq_approx_remove_nan
             copy_stack_trace(node.outputs[0], ret)
@@ -989,6 +985,8 @@ def local_logsoftmax_grad(node):
             subtensor_idx = d_sm.owner.inputs[2:]
             out_grad = 1.
             softmax_input = sm.owner.inputs[0]
+            x_var = sm.owner.inputs[0]
+
             # We dedect the case
             # log(softmax(x)[arange(y.shape[0]), y]) that will
             # be optimized by local_advanced_indexing_crossentropy_onehot
@@ -1030,9 +1028,13 @@ def local_logsoftmax_grad(node):
                         len(subtensor_op.owner.inputs) >= 2 and
                         subtensor_op.owner.inputs[0] is sm and
                         subtensor_op.owner.inputs[1:] == subtensor_idx):
-                    ret = out_grad * d_sm.owner.op(-sm, 1, *subtensor_idx)
+                    if x_var.type.ndim > 1:
+                        ret = out_grad - tensor.sum(out_grad, axis=-1, keepdims=True) * subtensor_op
+                    else:
+                        ret = out_grad - out_grad * subtensor_op
+                    ret = d_sm.owner.op(tensor.zeros_like(sm), -ret, *subtensor_idx)
                     ret.tag.values_eq_approx = values_eq_approx_remove_nan
-                    copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+                    copy_stack_trace([node.outputs[0]], ret)
                     return [ret]
 
 

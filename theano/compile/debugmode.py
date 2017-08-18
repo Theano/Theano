@@ -2189,7 +2189,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                  profile=None,
                  on_unused_input=None,
                  fgraph=None,  # If present the optimized graph. we ignore it.
-                 output_keys=None):
+                 output_keys=None,
+                 name=None):
         self.profile = profile
         optimizer = mode.optimizer
         # Handle the case where inputs and/or outputs is a single
@@ -2320,6 +2321,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.mode = mode
         self.on_unused_input = on_unused_input  # Used for the pickling/copy
         self.output_keys = output_keys
+        self.name = name
 
     def create(self, defaults=None, trustme=False, storage_map=None):
         """
@@ -2406,7 +2408,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                                              storage_map=storage_map)
         fn = self.function_builder(_fn, _i, _o, self.indices,
                                    self.outputs, defaults, self.unpack_single,
-                                   self.return_none, self.output_keys, self)
+                                   self.return_none, self.output_keys, self,
+                                   name=self.name)
         return fn
 
 

@@ -33,7 +33,7 @@ from theano.tensor.signal.pool import (
 from . import pygpu, cudnn_defs
 from .type import (get_context, gpu_context_type, list_contexts,
                    GpuArraySharedVariable)
-from .basic_ops import (as_gpuarray_variable, infer_context_name,
+from .basic_ops import (as_gpuarray_variable, infer_context_name, gpuarray_helper_inc_dir,
                         gpu_contiguous, GpuAllocEmpty,
                         empty_like, GpuArrayType, HostFromGpu)
 from .elemwise import GpuElemwise, GpuCAReduceCuda
@@ -137,7 +137,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 
     path_wrapper = "\"" if os.name == 'nt' else ""
     params = ["-l", "cudnn"]
-    params.extend(['-I%s%s%s' % (path_wrapper, os.path.dirname(__file__), path_wrapper)])
+    params.extend(['-I%s%s%s' % (path_wrapper, gpuarray_helper_inc_dir(), path_wrapper)])
     if config.dnn.include_path:
         params.extend(['-I%s%s%s' % (path_wrapper, config.dnn.include_path, path_wrapper)])
     if config.cuda.include_path:
@@ -371,7 +371,7 @@ class DnnBase(COp):
     def __init__(self, files=None, c_func=None):
         if files is None:
             files = []
-        COp.__init__(self, ["dnn_base.c"] + files, c_func)
+        COp.__init__(self, ["c_code/dnn_base.c"] + files, c_func)
 
     def c_headers(self):
         return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/kernel.h',
@@ -380,7 +380,7 @@ class DnnBase(COp):
                 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include(),
+        return [gpuarray_helper_inc_dir(), pygpu.get_include(),
                 config.dnn.include_path, config.cuda.include_path]
 
     def c_libraries(self):
@@ -426,7 +426,7 @@ class GpuDnnConvDesc(COp):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), config.dnn.include_path,
+        return [gpuarray_helper_inc_dir(), config.dnn.include_path,
                 config.cuda.include_path]
 
     def c_libraries(self):
@@ -448,7 +448,7 @@ class GpuDnnConvDesc(COp):
 
     def __init__(self, border_mode, subsample=(1, 1), dilation=(1, 1), conv_mode='conv',
                  precision="float32"):
-        COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
+        COp.__init__(self, ["c_code/conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
         if version() < 6000 and any([d != 1 for d in dilation]):
             raise RuntimeError("Dilation > 1 not supported for cuDNN version < 6.")
@@ -566,7 +566,7 @@ class GpuDnnConv(DnnBase):
                              num_groups=int_t)
 
     def __init__(self, algo=None, inplace=False, num_groups=1):
-        DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_fwd.c"],
+        DnnBase.__init__(self, ["c_code/dnn_conv_base.c", "c_code/dnn_fwd.c"],
                          "APPLY_SPECIFIC(conv_fwd)")
 
         if algo is None:
@@ -709,7 +709,7 @@ class GpuDnnConvGradW(DnnBase):
                              num_groups=int_t)
 
     def __init__(self, inplace=False, algo=None, num_groups=1):
-        DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_gw.c"],
+        DnnBase.__init__(self, ["c_code/dnn_conv_base.c", "c_code/dnn_gw.c"],
                          "APPLY_SPECIFIC(conv_gw)")
         self.inplace = bool(inplace)
         if self.inplace:
@@ -845,7 +845,7 @@ class GpuDnnConvGradI(DnnBase):
                              num_groups=int_t)
 
     def __init__(self, inplace=False, algo=None, num_groups=1):
-        DnnBase.__init__(self, ["dnn_conv_base.c", "dnn_gi.c"],
+        DnnBase.__init__(self, ["c_code/dnn_conv_base.c", "c_code/dnn_gi.c"],
                          "APPLY_SPECIFIC(conv_gi)")
         self.inplace = bool(inplace)
         if self.inplace:
@@ -1014,7 +1014,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
         return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3), ctx_name)
 
-    elif (border_mode == 'full' and subsample == (1, 1) and dilation == (1, 1) and
+    elif (border_mode == 'full' and subsample == (1, 1) and
           direction_hint != 'forward!' and num_groups == 1):
         # Special case: We can be faster by using GpuDnnConvGradI to compute
         # the full convolution as the backward pass of a valid convolution.
@@ -1024,11 +1024,11 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
         out_shp = (shape_i(img, 0, fgraph),
                    shape_i(kerns, 1, fgraph),
-                   shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1,
-                   shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1)
+                   shape_i(img, 2, fgraph) + (shape_i(kerns, 2, fgraph) - 1) * dilation[0],
+                   shape_i(img, 3, fgraph) + (shape_i(kerns, 3, fgraph) - 1) * dilation[1])
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
-        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=dilation,
                               conv_mode=conv_mode, precision=precision)(kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
 
@@ -1133,7 +1133,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
         return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3, 4), ctx_name)
 
-    elif (border_mode == 'full' and subsample == (1, 1, 1) and dilation == (1, 1, 1) and
+    elif (border_mode == 'full' and subsample == (1, 1, 1) and
           direction_hint != 'forward!'):
         # Special case: We can be faster by using GpuDnnConvGradI to compute
         # the full convolution as the backward pass of a valid convolution.
@@ -1143,12 +1143,12 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
         out_shp = (shape_i(img, 0, fgraph),
                    shape_i(kerns, 1, fgraph),
-                   shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1,
-                   shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1,
-                   shape_i(img, 4, fgraph) + shape_i(kerns, 4, fgraph) - 1)
+                   shape_i(img, 2, fgraph) + (shape_i(kerns, 2, fgraph) - 1) * dilation[0],
+                   shape_i(img, 3, fgraph) + (shape_i(kerns, 3, fgraph) - 1) * dilation[1],
+                   shape_i(img, 4, fgraph) + (shape_i(kerns, 4, fgraph) - 1) * dilation[2])
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
-        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1), dilation=(1, 1, 1),
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1), dilation=dilation,
                               conv_mode=conv_mode, precision=precision)(kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
 
@@ -1261,7 +1261,7 @@ class GpuDnnPoolDesc(Op):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), config.dnn.include_path]
+        return [gpuarray_helper_inc_dir(), config.dnn.include_path]
 
     def c_libraries(self):
         return ['cudnn']
@@ -1390,7 +1390,7 @@ class GpuDnnPool(GpuDnnPoolBase):
         (padX, padY) or (padX, padY, padZ)
 
     """
-    c_file = "dnn_pool.c"
+    c_file = "c_code/dnn_pool.c"
     c_function = "APPLY_SPECIFIC(dnn_pool)"
 
     def make_node(self, img, ws, stride, pad):
@@ -1458,7 +1458,7 @@ class GpuDnnPoolGrad(GpuDnnPoolBase):
         (padX, padY) or (padX, padY, padZ)
 
     """
-    c_file = "dnn_pool_grad.c"
+    c_file = "c_code/dnn_pool_grad.c"
     c_function = "APPLY_SPECIFIC(dnn_pool_grad)"
 
     def make_node(self, inp, out, out_grad, ws, stride, pad):
@@ -1587,7 +1587,7 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     """
     _f16_ok = True
     direction = "forward"
-    file = "dnn_softmax.c"
+    file = "c_code/dnn_softmax.c"
     c_func = "APPLY_SPECIFIC(softmax)"
 
     def make_node(self, x):
@@ -1624,7 +1624,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     """
     _f16_ok = True
     direction = 'backward'
-    file = "dnn_softmax_grad.c"
+    file = "c_code/dnn_softmax_grad.c"
     c_func = "APPLY_SPECIFIC(softmax_grad)"
 
     def make_node(self, dy, sm):
@@ -1649,7 +1649,7 @@ class GpuDnnReduction(DnnBase):
                              handle=handle_type)
 
     def __init__(self, red_op, axis, acc_dtype, dtype, return_indices):
-        DnnBase.__init__(self, ['dnn_redux.c'], 'APPLY_SPECIFIC(dnn_redux)')
+        DnnBase.__init__(self, ['c_code/dnn_redux.c'], 'APPLY_SPECIFIC(dnn_redux)')
         assert cudnn.cudnnReduceTensorOp_t.has_alias(red_op)
         self.red_op = red_op
         assert acc_dtype in ['float16', 'float32', 'float64']
@@ -1753,7 +1753,7 @@ class GpuDnnBatchNorm(DnnBase):
     def __init__(self, mode='per-activation', running_averages=False,
                  inplace_running_mean=False, inplace_running_var=False,
                  inplace_output=False):
-        DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm.c'],
+        DnnBase.__init__(self, ['c_code/dnn_batchnorm_base.c', 'c_code/dnn_batchnorm.c'],
                          'dnn_batchnorm_op')
 
         assert cudnn.cudnnBatchNormMode_t.has_alias(mode)
@@ -1864,7 +1864,7 @@ class GpuDnnBatchNormInference(DnnBase):
                              handle=handle_type)
 
     def __init__(self, mode='per-activation', inplace=False):
-        DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_inf.c'],
+        DnnBase.__init__(self, ['c_code/dnn_batchnorm_base.c', 'c_code/dnn_batchnorm_inf.c'],
                          'dnn_batchnorm_op')
 
         assert cudnn.cudnnBatchNormMode_t.has_alias(mode)
@@ -1931,7 +1931,7 @@ class GpuDnnBatchNormGrad(DnnBase):
                              handle=handle_type)
 
     def __init__(self, mode='per-activation'):
-        DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_grad.c'],
+        DnnBase.__init__(self, ['c_code/dnn_batchnorm_base.c', 'c_code/dnn_batchnorm_grad.c'],
                          'dnn_batchnorm_grad')
 
         assert cudnn.cudnnBatchNormMode_t.has_alias(mode)
@@ -1961,7 +1961,7 @@ class GpuDnnDropoutOp(DnnBase):
     __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
-        DnnBase.__init__(self, ["dnn_dropout_fwd.c"], "dnn_dropout_fwd")
+        DnnBase.__init__(self, ["c_code/dnn_dropout_fwd.c"], "dnn_dropout_fwd")
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {1: [2]}
@@ -1980,7 +1980,7 @@ class _DropoutDescriptor(DnnBase):
     __props__ = ('context_name',)
 
     def __init__(self, context_name):
-        DnnBase.__init__(self, ["dnn_dropout_desc.c"], "dnn_dropout_desc")
+        DnnBase.__init__(self, ["c_code/dnn_dropout_desc.c"], "dnn_dropout_desc")
         self.context_name = context_name
 
     def dnn_context(self, node):
@@ -2036,7 +2036,7 @@ class _RNNDescriptor(DnnBase):
     def __init__(self, context_name):
         if version() < 5005:
             raise RuntimeError("cudnn RNN require cudnn v5 final or higher.")
-        DnnBase.__init__(self, ["dnn_rnn_desc.c"], "dnn_rnn_desc")
+        DnnBase.__init__(self, ["c_code/dnn_rnn_desc.c"], "dnn_rnn_desc")
         self.context_name = context_name
 
     def dnn_context(self, node):
@@ -2103,7 +2103,7 @@ class _RNNParamSize(DnnBase):
     __props__ = ('context_name',)
 
     def __init__(self, context_name):
-        DnnBase.__init__(self, ["dnn_rnn_paramsize.c"],
+        DnnBase.__init__(self, ["c_code/dnn_rnn_paramsize.c"],
                          "dnn_rnn_paramsize")
         self.context_name = context_name
 
@@ -2348,7 +2348,7 @@ class GpuDnnRNNOp(DnnBase):
     _cop_num_outputs = 4
 
     def __init__(self, rnn_mode, direction_mode):
-        DnnBase.__init__(self, ["dnn_rnn_fwd.c"], 'dnn_rnn_fwd')
+        DnnBase.__init__(self, ["c_code/dnn_rnn_fwd.c"], 'dnn_rnn_fwd')
         self.rnn_mode = rnn_mode
         if direction_mode == 'bidirectional':
             self.num_dirs = 2
@@ -2439,7 +2439,7 @@ class GpuDnnRNNGradInputs(DnnBase):
     _cop_num_outputs = 4
 
     def __init__(self, rnn_mode, grad_h, grad_c):
-        DnnBase.__init__(self, ['dnn_rnn_gi.c'], 'dnn_rnn_gi')
+        DnnBase.__init__(self, ['c_code/dnn_rnn_gi.c'], 'dnn_rnn_gi')
         self.rnn_mode = rnn_mode
         self.grad_h = grad_h
         self.grad_c = grad_c
@@ -2488,7 +2488,7 @@ class GpuDnnRNNGradWeights(DnnBase):
     __props__ = ()
 
     def __init__(self):
-        DnnBase.__init__(self, ['dnn_rnn_gw.c'], 'dnn_rnn_gw')
+        DnnBase.__init__(self, ['c_code/dnn_rnn_gw.c'], 'dnn_rnn_gw')
 
     def make_node(self, desc, x, hx, y, reserve, w):
         # We trust the callers here
@@ -2886,6 +2886,215 @@ def local_abstractconv_cudnn(node):
         return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d):
         return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+
+
+@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
+def local_abstractconv_cudnn_alt(node):
+    if(not isinstance(node.op, (AbstractConv2d, AbstractConv2d_gradWeights,
+       AbstractConv2d_gradInputs))):
+        return
+
+    if version(raises=False) < 6000 and node.op.filter_dilation != (1, 1):
+        return None
+    inp1 = node.inputs[0]
+    inp2 = node.inputs[1]
+
+    if not dnn_available(inp1.type.context_name):
+        return
+
+    op = node.op
+    border_mode = node.op.border_mode
+    subsample = node.op.subsample
+    filter_dilation = node.op.filter_dilation
+    num_groups = node.op.num_groups
+    precision = get_precision(None, [inp1, inp2])
+
+    if node.op.filter_flip:
+        conv_mode = 'conv'
+    else:
+        conv_mode = 'cross'
+
+    if isinstance(op, AbstractConv2d):
+        if border_mode == 'half' or subsample != (1, 1) or num_groups != 1:
+            return None
+        if border_mode == 'full':
+            direction_hint = 'bprop inputs'
+        elif border_mode == 'valid' and filter_dilation == (1, 1):
+            direction_hint = 'bprop weights'
+        else:
+            return None
+
+        rval = dnn_conv(inp1, inp2,
+                        border_mode=border_mode,
+                        subsample=subsample,
+                        dilation=filter_dilation,
+                        direction_hint=direction_hint,
+                        conv_mode=conv_mode,
+                        num_groups=num_groups)
+
+    elif isinstance(op, AbstractConv2d_gradWeights):
+        if(border_mode == 'valid' and subsample == (1, 1) and
+           filter_dilation == (1, 1) and num_groups == 1):
+            img = gpu_contiguous(inp1)
+            topgrad = gpu_contiguous(inp2)
+            ctx_name = infer_context_name(img, topgrad)
+            img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3))
+            topgrad = gpu_contiguous(topgrad.dimshuffle(1, 0, 2, 3))
+            ishape = [shape_i_op(i)(img) for i in range(img.ndim)]
+            tshape = [shape_i_op(i)(topgrad) for i in range(topgrad.ndim)]
+            out_shp = get_conv_output_shape(ishape,
+                                            tshape,
+                                            border_mode=border_mode,
+                                            subsample=subsample,
+                                            filter_dilation=filter_dilation)
+
+            out_shp = assert_conv_shape(out_shp)
+            out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
+            desc = GpuDnnConvDesc(border_mode=border_mode,
+                                  subsample=subsample,
+                                  dilation=filter_dilation,
+                                  conv_mode='cross',
+                                  precision=precision)(out.shape)
+
+            conv = GpuDnnConv(algo=None, num_groups=num_groups)(img, topgrad, out, desc)
+            if conv_mode == 'conv':
+                conv = conv[:, :, ::-1, ::-1]
+
+            rval = as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3), ctx_name)
+        else:
+            return None
+
+    elif isinstance(op, AbstractConv2d_gradInputs):
+        if border_mode == 'valid' and subsample == (1, 1) and num_groups == 1:
+            kerns = gpu_contiguous(inp1.dimshuffle(1, 0, 2, 3))
+            topgrad = gpu_contiguous(inp2)
+            ctx_name = infer_context_name(kerns, topgrad)
+            conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
+            desc = GpuDnnConvDesc(border_mode='full',
+                                  subsample=subsample,
+                                  dilation=filter_dilation,
+                                  conv_mode=conv_mode,
+                                  precision=precision)(kerns.shape)
+
+            tshape = [shape_i_op(i)(topgrad) for i in range(topgrad.ndim)]
+            kshape = [shape_i_op(i)(kerns) for i in range(kerns.ndim)]
+            shape = get_conv_output_shape(tshape,
+                                          kshape,
+                                          border_mode='full',
+                                          subsample=subsample,
+                                          filter_dilation=filter_dilation)
+
+            shape = assert_conv_shape(shape)
+            out = GpuAllocEmpty(dtype=topgrad.dtype, context_name=ctx_name)(*shape)
+            rval = GpuDnnConv(algo=None, num_groups=num_groups)(topgrad, kerns, out, desc)
+        else:
+            return None
+
+    return [rval]
+
+
+@local_optimizer([AbstractConv3d, AbstractConv3d_gradWeights, AbstractConv3d_gradInputs])
+def local_abstractconv3d_cudnn_alt(node):
+    if(not isinstance(node.op, (AbstractConv3d,
+                                AbstractConv3d_gradWeights,
+                                AbstractConv3d_gradInputs))):
+        return
+
+    if version(raises=False) < 6000 and node.op.filter_dilation != (1, 1, 1):
+        return None
+    inp1 = node.inputs[0]
+    inp2 = node.inputs[1]
+
+    if not dnn_available(inp1.type.context_name):
+        return
+
+    op = node.op
+    border_mode = node.op.border_mode
+    subsample = node.op.subsample
+    filter_dilation = node.op.filter_dilation
+    precision = get_precision(None, [inp1, inp2])
+
+    if node.op.filter_flip:
+        conv_mode = 'conv'
+    else:
+        conv_mode = 'cross'
+
+    if isinstance(op, AbstractConv3d):
+        if border_mode == 'half' or subsample != (1, 1, 1):
+            return None
+        if border_mode == 'full':
+            direction_hint = 'bprop inputs'
+        elif border_mode == 'valid' and filter_dilation == (1, 1, 1):
+            direction_hint = 'bprop weights'
+        else:
+            return None
+
+        rval = dnn_conv3d(inp1, inp2,
+                          border_mode=border_mode,
+                          subsample=subsample,
+                          dilation=filter_dilation,
+                          direction_hint=direction_hint,
+                          conv_mode=conv_mode)
+
+    elif isinstance(op, AbstractConv3d_gradWeights):
+        if(border_mode == 'valid' and subsample == (1, 1, 1) and
+           filter_dilation == (1, 1, 1)):
+            img = gpu_contiguous(inp1)
+            topgrad = gpu_contiguous(inp2)
+            ctx_name = infer_context_name(img, topgrad)
+            img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3, 4))
+            topgrad = gpu_contiguous(topgrad.dimshuffle(1, 0, 2, 3, 4))
+            ishape = [shape_i_op(i)(img) for i in range(img.ndim)]
+            tshape = [shape_i_op(i)(topgrad) for i in range(topgrad.ndim)]
+            out_shp = get_conv_output_shape(ishape,
+                                            tshape,
+                                            border_mode=border_mode,
+                                            subsample=subsample,
+                                            filter_dilation=filter_dilation)
+
+            out_shp = assert_conv_shape(out_shp)
+            out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
+            desc = GpuDnnConvDesc(border_mode=border_mode,
+                                  subsample=subsample,
+                                  dilation=filter_dilation,
+                                  conv_mode='cross',
+                                  precision=precision)(out.shape)
+
+            conv = GpuDnnConv(algo=None)(img, topgrad, out, desc)
+            if conv_mode == 'conv':
+                conv = conv[:, :, ::-1, ::-1, ::-1]
+
+            rval = as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3, 4), ctx_name)
+        else:
+            return None
+
+    elif isinstance(op, AbstractConv3d_gradInputs):
+        if border_mode == 'valid' and subsample == (1, 1, 1):
+            kerns = gpu_contiguous(inp1.dimshuffle(1, 0, 2, 3, 4))
+            topgrad = gpu_contiguous(inp2)
+            ctx_name = infer_context_name(kerns, topgrad)
+            conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
+            desc = GpuDnnConvDesc(border_mode='full',
+                                  subsample=subsample,
+                                  dilation=filter_dilation,
+                                  conv_mode=conv_mode,
+                                  precision=precision)(kerns.shape)
+
+            tshape = [shape_i_op(i)(topgrad) for i in range(topgrad.ndim)]
+            kshape = [shape_i_op(i)(kerns) for i in range(kerns.ndim)]
+            shape = get_conv_output_shape(tshape,
+                                          kshape,
+                                          border_mode='full',
+                                          subsample=subsample,
+                                          filter_dilation=filter_dilation)
+
+            shape = assert_conv_shape(shape)
+            out = GpuAllocEmpty(dtype=topgrad.dtype, context_name=ctx_name)(*shape)
+            rval = GpuDnnConv(algo=None)(topgrad, kerns, out, desc)
+        else:
+            return None
+
+    return [rval]
 
 
 @local_optimizer([AbstractConv2d_gradWeights, AbstractConv3d_gradWeights])
