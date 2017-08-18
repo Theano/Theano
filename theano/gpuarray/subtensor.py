@@ -1088,7 +1088,6 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         return [gpuarray_helper_inc_dir()]
 
     def c_code(self, node, name, inputs, outputs, sub):
-        ctx = self.get_params(node).context
         if (node.inputs[0].ndim != node.inputs[1].ndim or
                 node.inputs[0].ndim != 2):
             raise NotImplementedError("This case does not have C code yet.")
