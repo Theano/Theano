@@ -2302,6 +2302,9 @@ class TestDnnConv2DRuntimeAlgorithms(object):
     ]
 
     def __init__(self):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
+        utt.seed_rng()
         self.runtime_algorithms = ('time_once', 'guess_once', 'time_on_shape_change', 'guess_on_shape_change')
 
     def test_fwd_runtime_algorithms(self):
@@ -2312,16 +2315,18 @@ class TestDnnConv2DRuntimeAlgorithms(object):
         def run_fwd_runtime_algorithm(algo):
             inputs = theano.tensor.TensorType(dtype, _broadcastable)()
             filters = theano.tensor.TensorType(dtype, _broadcastable)()
-            inputs /= 10
-            filters /= 10
-            conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
+            # Scale down the input values to prevent very large absolute errors
+            # due to float rounding
+            lower_inputs = inputs / 10
+            lower_filters = filters / 10
+            conv = dnn.dnn_conv(img=lower_inputs, kerns=lower_filters, algo=algo, precision=dtype,
                                 subsample=unit_shape, dilation=unit_shape)
             f = theano.function([inputs, filters], conv, mode=mode_with_gpu)
             if self.ndim == 3:
-                flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+                flipped_filters = lower_filters[:, :, ::-1, ::-1, ::-1]
             else:
-                flipped_filters = filters[:, :, ::-1, ::-1]
-            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
+                flipped_filters = lower_filters[:, :, ::-1, ::-1]
+            conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(lower_inputs), flipped_filters)
             f_ref = theano.function([inputs, filters], conv_ref, mode='FAST_RUN')
             runtime_shapes = self.runtime_shapes
             if algo in ('time_once', 'guess_once'):
@@ -2333,7 +2338,7 @@ class TestDnnConv2DRuntimeAlgorithms(object):
                     filters_val = np.random.random(filters_shape).astype(dtype)
                     gpu_res = f(inputs_val, filters_val)
                     cpu_res = f_ref(inputs_val, filters_val)
-                    utt.assert_allclose(cpu_res, gpu_res)
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
 
         for algo in self.runtime_algorithms:
             yield (run_fwd_runtime_algorithm, algo)
@@ -2347,8 +2352,6 @@ class TestDnnConv2DRuntimeAlgorithms(object):
             theano.config.dnn.conv.algo_bwd_data = algo
             inputs = theano.tensor.TensorType(dtype, _broadcastable)()
             filters = theano.tensor.TensorType(dtype, _broadcastable)()
-            inputs /= 10
-            filters /= 10
             conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
                                 subsample=unit_shape, dilation=unit_shape)
             grad_i = theano.tensor.grad(conv.sum(), [inputs])
@@ -2373,7 +2376,7 @@ class TestDnnConv2DRuntimeAlgorithms(object):
                     filters_val = np.random.random(filters_shape).astype(dtype)
                     gpu_res = f(inputs_val, filters_val)
                     cpu_res = f_ref(inputs_val, filters_val)
-                    utt.assert_allclose(cpu_res, gpu_res)
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
 
         for algo in self.runtime_algorithms:
             yield (run_gradinput_runtime_algorithm, algo)
@@ -2387,8 +2390,6 @@ class TestDnnConv2DRuntimeAlgorithms(object):
             theano.config.dnn.conv.algo_bwd_filter = algo
             inputs = theano.tensor.TensorType(dtype, _broadcastable)()
             filters = theano.tensor.TensorType(dtype, _broadcastable)()
-            inputs /= 10
-            filters /= 10
             conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
                                 subsample=unit_shape, dilation=unit_shape)
             grad_w = theano.tensor.grad(conv.sum(), [filters])
@@ -2413,7 +2414,7 @@ class TestDnnConv2DRuntimeAlgorithms(object):
                     filters_val = np.random.random(filters_shape).astype(dtype)
                     gpu_res = f(inputs_val, filters_val)
                     cpu_res = f_ref(inputs_val, filters_val)
-                    utt.assert_allclose(cpu_res, gpu_res)
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
 
         for algo in self.runtime_algorithms:
             yield (run_gradweight_runtime_algorithm, algo)
