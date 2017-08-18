@@ -471,7 +471,9 @@ def filter_mode(val):
                'NanGuardMode',
                'FAST_COMPILE', 'DEBUG_MODE']:
         return val
-    elif isinstance(val, theano.Mode):
+    # This can be executed before Theano is completly imported, so
+    # theano.Mode is not always available.
+    elif hasattr(theano, 'Mode') and isinstance(val, theano.Mode):
         return val
     else:
         raise ValueError("Expected one of those string 'Mode', 'DebugMode',"
