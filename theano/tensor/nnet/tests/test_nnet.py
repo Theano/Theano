@@ -89,28 +89,26 @@ class T_Softmax(utt.InferShapeTester):
         self._compile_and_check([admat], [Softmax()(admat)],
                                 [admat_val], Softmax)
 
-    def test_values_multiples_dim(self):
+    def test_values_multiples_dim_and_axes(self):
         dims = 4
         shape = (5,) * dims
         xv = np.random.randn(*shape).astype(config.floatX)
         for d in xrange(1, dims + 1):
             # Create a TensorType of the same dimensions as
             # as the data we want to test.
-            x = T.TensorType(dtype=config.floatX,
-                             broadcastable=(False,) * d)()
-            outputs = softmax_op(x)
-
+            x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)()
             # Make a slice of the test data that has the
             # dimensions we need by doing xv[0,...,0]
             # For example, for an array of shape (5,), we
             # need to do xv[0, 0, 0, 0].
             test_val = xv[((0,) * (dims - d))]
-
-            f = theano.function([x], outputs)
-            gt_val = (np.exp(test_val) /
-                      np.exp(test_val).sum(axis=-1, keepdims=True))
-            t_val = f(test_val)
-            assert(np.allclose(gt_val, t_val))
+            for ax in range(0, d):
+                outputs = Softmax(ax)(x)
+                f = theano.function([x], outputs)
+                gt_val = (np.exp(test_val) /
+                          np.exp(test_val).sum(axis=ax, keepdims=True))
+                t_val = f(test_val)
+                assert(np.allclose(gt_val, t_val))
 
     # Test gradients values of softmax(x) for arbitraty dimensions
     def test_grad_multiples_dim(self):
@@ -205,18 +203,17 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             # Create a TensorType of the same dimensions as
             # as the data we want to test.
             x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
-            outputs = T.nnet.logsoftmax(x)
-
             # Make a slice of the test data that has the
             # dimensions we need by doing xv[0,...,0]
             # For example, for an array of shape (5,), we
             # need to do xv[0, 0, 0, 0].
             test_val = xv[((0,) * (dims - d))]
-
-            f = theano.function([x], outputs)
-            gt_val = np.log(np.exp(test_val) / np.exp(test_val).sum(axis=-1, keepdims=True))
-            t_val = f(test_val)
-            assert(np.allclose(gt_val, t_val))
+            for ax in range(0, d):
+                outputs = T.nnet.logsoftmax(x, ax)
+                f = theano.function([x], outputs)
+                gt_val = np.log(np.exp(test_val) / np.exp(test_val).sum(axis=ax, keepdims=True))
+                t_val = f(test_val)
+                assert(np.allclose(gt_val, t_val))
 
     # Test gradients values of logsoftmax(x) for arbitraty dimensions
     def test_grad_multiples_dim(self):

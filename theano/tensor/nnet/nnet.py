@@ -1853,8 +1853,7 @@ def local_argmax_pushdown(node):
         x = node.inputs[0]
         axis = node.op.get_params(node)
         # TODO: Make a list/set of monotonic ops...
-        if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp,
-                                      tensor.log, tensor.tanh, sigmoid):
+        if x.owner and (isinstance(x.owner.op, Softmax) or x.owner.op in (softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid)):
             pre_x, = x.owner.inputs
             ret = tensor.max_and_argmax(pre_x, axis)
             copy_stack_trace(x_max, ret)
