@@ -748,6 +748,8 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
                 scal_op)
         if not have_cuda:
             return None
+    if not scal_op.supports_c_code(inputs, outputs):
+        return
     res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)

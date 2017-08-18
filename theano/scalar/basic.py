@@ -1124,6 +1124,38 @@ class ScalarOp(Op):
         """
         raise theano.gof.utils.MethodNotDefined()
 
+    def supports_c_code(self, inputs, outputs):
+        """Returns True if the current op has functioning C code for
+        the given Elemwise inputs, outputs.
+
+        """
+        try:
+            tmp_s_input = []
+            # To keep the same aliasing between inputs
+            mapping = dict()
+            for ii in inputs:
+                if ii in mapping:
+                    tmp_s_input.append(mapping[ii])
+                else:
+                    tmp = get_scalar_type(ii.dtype).make_variable()
+                    tmp_s_input.append(tmp)
+                    mapping[ii] = tmp_s_input[-1]
+
+            with theano.change_flags(compute_test_value='ignore'):
+                s_op = self(*tmp_s_input, return_list=True)
+
+            # if the scalar_op don't have a c implementation,
+            # we skip its fusion to allow the fusion of the
+            # other ops.
+            self.c_code(s_op[0].owner,
+                        "test_presence_of_c_code",
+                        ["x" for x in inputs],
+                        ["z" for z in outputs],
+                        {"fail": "%(fail)s"})
+        except (theano.gof.utils.MethodNotDefined, NotImplementedError):
+            return False
+        return True
+
 
 class UnaryScalarOp(ScalarOp):
     nin = 1
