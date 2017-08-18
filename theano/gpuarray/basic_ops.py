@@ -702,10 +702,10 @@ class GpuFromHost(Op):
         if (%(name)s_tmp == NULL)
           %(fail)s
 
-        if (%(out)s == NULL || GpuArray_IS_C_CONTIGUOUS(&%(out)s->ga) ||
-            theano_size_check(%(out)s, PyArray_NDIM(%(name)s_tmp),
-                              (size_t *)PyArray_DIMS(%(name)s_tmp),
-                              get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)))) {
+        if (%(out)s == NULL || !GpuArray_IS_C_CONTIGUOUS(&%(out)s->ga) ||
+            !theano_size_check(%(out)s, PyArray_NDIM(%(name)s_tmp),
+                               (size_t *)PyArray_DIMS(%(name)s_tmp),
+                               get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)))) {
           Py_XDECREF(%(out)s);
           %(out)s = pygpu_empty(PyArray_NDIM(%(name)s_tmp),
                                 (size_t *)PyArray_DIMS(%(name)s_tmp),
