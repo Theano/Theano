@@ -107,7 +107,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
         # load and compile kernels
         with open(os.path.join(
-            os.path.dirname(__file__), 'c_code', 'k_topk_common' + common_ext
+            os.path.dirname(__file__), 'c_code', 'topk_common' + common_ext
         )) as f:
             common_src = f.read()
 
@@ -128,14 +128,14 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
         subs['count_t'] = 'int'
         kernels.append(
-            build_kernel('k_topk_dense' + kernel_ext, 'k_topk_dense', subs))
-        subs['kname'] = 'k_topk_dense_large'
+            build_kernel('topk_dense' + kernel_ext, 'k_topk_dense', subs))
+        subs['kname'] = 'topk_dense_large'
         kernels.append(
-            build_kernel('k_topk_dense_large' + kernel_ext, 'k_topk_dense_large', subs))
+            build_kernel('topk_dense_large' + kernel_ext, 'k_topk_dense_large', subs))
         subs['count_t'] = 'long long'
-        subs['kname'] = 'k_topk_dense_xlarge'
+        subs['kname'] = 'topk_dense_xlarge'
         kernels.append(
-            build_kernel('k_topk_dense_large' + kernel_ext, 'k_topk_dense_xlarge', subs))
+            build_kernel('topk_dense_large' + kernel_ext, 'k_topk_dense_xlarge', subs))
         return kernels
 
     def c_code(self, node, nodename, inps, outs, sub):
