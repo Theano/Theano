@@ -168,7 +168,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         prep_output = ''
         if self.return_values:
             def_dvstrides = 'const ssize_t *dvstrides = PyGpuArray_STRIDES(%s)' % yv
-            params_dv = '(void*)(%s->ga.data),\n' % yv
+            params_dv = '(void*)((char*)(%s->ga.data) + (%s->ga.offset)),\n' % (yv, yv)
             params_dv += ''.join('(void*)(dvstrides+%d), ' % i for i in reordered_axes)
             prep_output += '''
     if (0 != theano_prep_output(
@@ -181,7 +181,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
         if self.return_indices:
             def_distrides = 'const ssize_t *distrides = PyGpuArray_STRIDES(%s)' % yi
-            params_di = '(void*)(%s->ga.data),\n' % yi
+            params_di = '(void*)((char*)(%s->ga.data) + (%s->ga.offset)),\n' % yi
             params_di += ''.join('(void*)(distrides+%d), ' % i for i in reordered_axes)
             prep_output += '''
     if (0 != theano_prep_output(
@@ -236,7 +236,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         %(params_dv)s
         %(params_di)s
         (void*)(&k_),
-        (void*)(%(x)s->ga.data),
+        (void*)((char*)(%(x)s->ga.data) + (%(x)s->ga.offset)),
         %(sstrides)s,
         (void*)(dims+%(axis)d),
     };
