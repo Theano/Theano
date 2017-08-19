@@ -19,7 +19,8 @@ set PATH=%PATH%;%LIBDIR%\bin
 
 REM Make fresh clones of libgpuarray (with no history since we dont need it)
 rmdir libgpuarray /s/q
-git clone --depth 1 "https://github.com/Theano/libgpuarray.git"
+set /p GPUARRAY_BRANCH=<.jenkins/gpuarray-branch
+git clone -b %GPUARRAY_BRANCH% --depth 1 "https://github.com/Theano/libgpuarray.git"
 
 REM Clean up previous installs (to make sure no old files are left)
 rmdir %LIBDIR% /s/q
