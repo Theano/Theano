@@ -6,32 +6,32 @@
 // works when length on axis is within max allowed threads in block (1024)
 KERNEL void k_topk_dense(
         $dims
-        // ga_size dims_1, ga_ssize dims_2, ... , dims_$${NDIM}
+        // size_t dims_1, ssize_t dims_2, ... , dims_$${NDIM}
         $dstv
         // INPUT_TYPE *dstv
         $dstv_strides
-        // ga_ssize dstv_strides_0, ga_ssize dstv_strides_1, ... , dstv_strides_$${NDIM}
+        // ssize_t dstv_strides_0, ssize_t dstv_strides_1, ... , dstv_strides_$${NDIM}
         $dsti
         // INDEX_TYPE *dsti
         $dsti_strides
-        // ga_ssize dsti_strides_0, ga_ssize dsti_strides_1, ... , dsti_strides_$${NDIM}
-        ga_ssize k,
+        // ssize_t dsti_strides_0, ssize_t dsti_strides_1, ... , dsti_strides_$${NDIM}
+        ssize_t k,
         INPUT_TYPE* src,
         $src_strides
-        // ga_ssize src_strides_0, ga_ssize src_strides_1, ... , src_strides_$${NDIM}
-        ga_size size) {
-    LOCAL_MEM ga_int smem[32 * RADIX_SIZE];
-    LOCAL_MEM ga_int k2;
-    const ga_uint idx = LID_0;
+        // ssize_t src_strides_0, ssize_t src_strides_1, ... , src_strides_$${NDIM}
+        size_t size) {
+    __shared__ int smem[32 * RADIX_SIZE];
+    __shared__ int k2;
+    const unsigned int idx = threadIdx.x;
     bool is_topk= (idx < size);
     bool is_topkth = is_topk;
-    ga_size out_idx;
+    size_t out_idx;
 
-    const ga_ubyte warp_id = idx / GA_WARP_SIZE;
+    const unsigned char warp_id = idx / GA_WARP_SIZE;
 
     // 0. get the slice for thread block to work on
 
-    ga_size gid = GID_0, gidx;
+    size_t gid = blockIdx.x, gidx;
     $set_slice
     // $$set_slice expands into:
     //for(int i=1; i<NDIM; i++) {
@@ -55,22 +55,22 @@ KERNEL void k_topk_dense(
 
     #pragma unroll
     for (int i=bitsof(INPUT_TYPE)-RADIX_BITS; i>=0; i-=RADIX_BITS) {
-        const ga_int digit = Bitfield<radix_t>::get(x, i, RADIX_BITS);
-        /*ga_int digit = (x>>i) & (RADIX_SIZE-1);*/
+        const int digit = Bitfield<radix_t>::get(x, i, RADIX_BITS);
+        /*int digit = (x>>i) & (RADIX_SIZE-1);*/
         // count within warp
         #pragma unroll
         for (int bin=0; bin<RADIX_SIZE; ++bin) {
             bool vote = (bin == digit) && is_topkth;
-            ga_uint votes = __ballot(vote);
+            unsigned int votes = __ballot(vote);
             if (lane_id()==0)
                 smem[bin + RADIX_SIZE*warp_id] = __popc(votes);
         }
         local_barrier();
         // sum counts across all warps
         if (idx < RADIX_SIZE) {
-            ga_int sum = smem[idx];
+            int sum = smem[idx];
             #pragma unroll
-            for(int w=RADIX_SIZE; w<LDIM_0*RADIX_SIZE / GA_WARP_SIZE; w+=RADIX_SIZE)
+            for(int w=RADIX_SIZE; w<blockDim.x*RADIX_SIZE / GA_WARP_SIZE; w+=RADIX_SIZE)
                 sum += smem[idx + w];
             smem[idx] = sum;
         }
@@ -79,7 +79,7 @@ KERNEL void k_topk_dense(
         // find the bucket and update k2
         // smem[:RADIX_SIZE:-1] = k2 - cumsum(smem[:RADIX_SIZE-1:-1])
         if (idx == 0) {
-            ga_int sum = k2;
+            int sum = k2;
             #pragma unroll
             for (int bin=RADIX_SIZE-1; bin>=0; --bin) {
                 sum -= smem[bin];

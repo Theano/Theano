@@ -126,7 +126,7 @@ struct RadixConfig {
 // We use this to enable radix selection of floating-point values.
 // This also gives a relative order for NaNs, but that's ok, as they
 // will all be adjacent
-  typedef ga_uint RadixType;
+  typedef unsigned int RadixType;
   static inline __device__ RadixType convert(T v) {
       return (RadixType)v;
   }
@@ -137,17 +137,17 @@ struct RadixConfig {
 };
 
 template <>
-struct RadixConfig<ga_float> {
-  typedef ga_uint RadixType;
+struct RadixConfig<float> {
+  typedef unsigned int RadixType;
 
-  static inline __device__ RadixType convert(ga_float v) {
+  static inline __device__ RadixType convert(float v) {
     RadixType x = __float_as_int(v);
     RadixType mask = (x & 0x80000000) ? 0xffffffff : 0x80000000;
 
     return (x ^ mask);
   }
 
-  static inline __device__ ga_float deconvert(RadixType v) {
+  static inline __device__ float deconvert(RadixType v) {
     RadixType mask = (v & 0x80000000) ? 0x80000000 : 0xffffffff;
 
     return __int_as_float(v ^ mask);
@@ -155,16 +155,16 @@ struct RadixConfig<ga_float> {
 };
 
 template <>
-struct RadixConfig<ga_double> {
-  typedef ga_ulong RadixType;
+struct RadixConfig<double> {
+  typedef unsigned long long RadixType;
 
-  static inline __device__ RadixType convert(ga_double v) {
+  static inline __device__ RadixType convert(double v) {
     RadixType x = __double_as_longlong(v);
     RadixType mask = -((x >> 63)) | 0x8000000000000000;
     return (x ^ mask);
   }
 
-  static inline __device__ ga_double deconvert(RadixType v) {
+  static inline __device__ double deconvert(RadixType v) {
     RadixType mask = ((v >> 63) - 1) | 0x8000000000000000;
     return __longlong_as_double(v ^ mask);
   }
@@ -172,52 +172,52 @@ struct RadixConfig<ga_double> {
 
 
 template <>
-struct RadixConfig<ga_byte> {
-  typedef ga_uint RadixType;
+struct RadixConfig<char> {
+  typedef unsigned int RadixType;
 
-  static inline __device__ RadixType convert(ga_byte v) {
+  static inline __device__ RadixType convert(char v) {
     return 128u + v;
   }
 
-  static inline __device__ ga_byte deconvert(RadixType v) {
+  static inline __device__ char deconvert(RadixType v) {
     return v - 128;
   }
 };
 
 template <>
-struct RadixConfig<ga_short> {
-  typedef ga_uint RadixType;
+struct RadixConfig<short> {
+  typedef unsigned int RadixType;
 
-  static inline __device__ RadixType convert(ga_short v) {
-    assert(sizeof(ga_short) == 2);
+  static inline __device__ RadixType convert(short v) {
+    assert(sizeof(short) == 2);
     return 32768u ^ v;
   }
 
-  static inline __device__ ga_short deconvert(RadixType v) {
+  static inline __device__ short deconvert(RadixType v) {
     return v - 32768;
   }
 };
 
 template <>
-struct RadixConfig<ga_int> {
-  typedef ga_uint RadixType;
+struct RadixConfig<int> {
+  typedef unsigned int RadixType;
 
-  static inline __device__ RadixType convert(ga_int v) {
+  static inline __device__ RadixType convert(int v) {
     assert(sizeof(int) == 4);
     return 2147483648u + v;
   }
 
-  static inline __device__ ga_int deconvert(RadixType v) {
+  static inline __device__ int deconvert(RadixType v) {
     return v - 2147483648u;
   }
 };
 
 template <>
-struct RadixConfig<ga_long> {
-  typedef ga_ulong RadixType;
+struct RadixConfig<long long> {
+  typedef unsigned long long RadixType;
 
-  static inline __device__ RadixType convert(ga_long v) {
-    assert(sizeof(ga_long) == 8);
+  static inline __device__ RadixType convert(long long v) {
+    assert(sizeof(long long) == 8);
     return 9223372036854775808ull + v;
   }
 
@@ -229,19 +229,19 @@ struct RadixConfig<ga_long> {
 #define USE_HALF $use_half
 
 #if USE_HALF == 1
-// since ga_half is ushort, use macro to protect this part is necessary
+// since half is ushort, using macro to protect this part is necessary
 template <>
-struct RadixConfig<ga_half> {
-  typedef ga_uint RadixType;
+struct RadixConfig<unsigned short> {
+  typedef unsigned int RadixType;
 
-  static inline __device__ RadixType convert(ga_half v) {
+  static inline __device__ RadixType convert(unsigned short v) {
     RadixType mask = -(((RadixType)v >> 15)) | 0x8000;
     return (v ^ mask);
   }
 
-  static inline __device__ ga_half deconvert(RadixType v) {
+  static inline __device__ unsigned short deconvert(RadixType v) {
     RadixType mask = ((v >> 15) - 1) | 0x8000;
-    return (ga_half)(v ^ mask);
+    return (unsigned short)(v ^ mask);
   }
 };
 #endif // USE_HALF
@@ -274,7 +274,7 @@ static inline __device__ T binary_cumsum(
     // binary_cumsum(1, 0, 1, 0, 1) -> (1, 1, 2, 2, 3)
 
     // cumsum within warp
-    ga_uint warp_bits = __ballot(value);
+    unsigned int warp_bits = __ballot(value);
     T warp_sum = __popc(lane_mask_le() & warp_bits);
 
     if (lane_id() == 0)
@@ -285,7 +285,7 @@ static inline __device__ T binary_cumsum(
     // cumsum across warps in one thread
     if (idx == 0) {
         T sum = smem[0];
-        for (int i = 1; i < LDIM_0 / GA_WARP_SIZE; ++i) {
+        for (int i = 1; i < blockDim.x / GA_WARP_SIZE; ++i) {
             sum += smem[i];
             smem[i] = sum;
         }
@@ -309,7 +309,7 @@ static inline __device__ T binary_cumsum_exclusive(
     // binary_cumsum_excl(1, 0, 1, 0, 1) -> (0, 1, 1, 2, 2)
 
     // cumsum within warp
-    ga_uint warp_bits = __ballot(value);
+    unsigned int warp_bits = __ballot(value);
     T warp_sum = __popc(lane_mask_lt() & warp_bits);
 
     if (lane_id() == 0)
@@ -320,7 +320,7 @@ static inline __device__ T binary_cumsum_exclusive(
     // cumsum across warps in one thread
     if (idx == 0) {
         T sum = smem[0];
-        for (int i = 1; i < LDIM_0 / GA_WARP_SIZE; ++i) {
+        for (int i = 1; i < blockDim.x / GA_WARP_SIZE; ++i) {
             sum += smem[i];
             smem[i] = sum;
         }
@@ -337,19 +337,19 @@ static inline __device__ T binary_cumsum_exclusive(
 
 // apply raw(byte) offset to pointer
 template <typename T>
-static __device__ inline T* ptr_add(T *ptr, ga_ssize offset) {
+static __device__ inline T* ptr_add(T *ptr, ssize_t offset) {
     return (T*)((char*)ptr + offset);
 }
 
 // get array element using raw(byte) offset
 template <typename T>
-static __device__ inline T& ptr_at(T *ptr, ga_ssize offset) {
+static __device__ inline T& ptr_at(T *ptr, ssize_t offset) {
     return *((T*)((char*)ptr + offset));
 }
 
 // read array element using raw(byte) offset
 template <typename T>
-static __device__ inline T ptr_read_cached(T *ptr, ga_ssize offset) {
+static __device__ inline T ptr_read_cached(T *ptr, ssize_t offset) {
     return __ldg(((T*)((char*)ptr + offset)));
 }
 

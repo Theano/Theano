@@ -14,13 +14,13 @@ __device__ DataType find_pattern(DataType* smem,
                              CountType stride,
                              RadixType known_bits,
                              RadixType known_bits_mask) {
-    if (LID_0 < 32)
-        smem[LID_0] = 0;
+    if (threadIdx.x < 32)
+        smem[threadIdx.x] = 0;
 
     local_barrier();
 
     // All threads participate in the loop, in order to sync on the flag
-    for (CountType i = LID_0; i < (slice_size + (CountType)LDIM_0-1); i += LDIM_0) {
+    for (CountType i = threadIdx.x; i < (slice_size + (CountType)blockDim.x-1); i += blockDim.x) {
         bool in_range = (i < slice_size);
         DataType v = in_range ? ptr_read_cached(data, i*stride) : 0;
 
@@ -64,14 +64,14 @@ __device__ void count_radix_masked(CountType counts[RADIX_SIZE],
     for (int i = 0; i < RADIX_SIZE; ++i)
         counts[i] = 0;
 
-    if (LID_0 < RADIX_SIZE)
-        smem[LID_0] = 0;
+    if (threadIdx.x < RADIX_SIZE)
+        smem[threadIdx.x] = 0;
 
     local_barrier();
 
     // Scan over all the data. Upon a read, the warp will accumulate
     // counts per each digit in the radix using warp voting.
-    for (CountType i = LID_0; i < slice_size; i += LDIM_0) {
+    for (CountType i = threadIdx.x; i < slice_size; i += blockDim.x) {
         RadixType val = RadixConfig<DataType>::convert(ptr_read_cached(data, i*stride));
 
         bool has_val = ((val & known_bits_mask) == known_bits);
@@ -196,32 +196,32 @@ __device__ void radix_select(DataType* data,
 
 KERNEL void KERNEL_NAME(
         $dims
-        // ga_size dims_1, ga_ssize dims_2, ... , dims_$${NDIM}
+        // size_t dims_1, ssize_t dims_2, ... , dims_$${NDIM}
         $dstv
         // INPUT_TYPE *dstv
         $dstv_strides
-        // ga_ssize dstv_strides_0, ga_ssize dstv_strides_1, ... , dstv_strides_$${NDIM}
+        // ssize_t dstv_strides_0, ssize_t dstv_strides_1, ... , dstv_strides_$${NDIM}
         $dsti
         // INDEX_TYPE *dsti
         $dsti_strides
-        // ga_ssize dsti_strides_0, ga_ssize dsti_strides_1, ... , dsti_strides_$${NDIM}
-        ga_ssize k,
+        // ssize_t dsti_strides_0, ssize_t dsti_strides_1, ... , dsti_strides_$${NDIM}
+        ssize_t k,
         INPUT_TYPE* src,
         $src_strides
-        // ga_ssize src_strides_0, ga_ssize src_strides_1, ... , src_strides_$${NDIM}
-        ga_size size) {
-    LOCAL_MEM COUNT_TYPE smem[32];
+        // ssize_t src_strides_0, ssize_t src_strides_1, ... , src_strides_$${NDIM}
+        size_t size) {
+    __shared__ COUNT_TYPE smem[32];
     INPUT_TYPE topkth_value;
 
     const bool order = (k>0);
     k = (order ? k : -k);
-    const ga_int idx = LID_0;
-    const ga_int warp_id = idx / GA_WARP_SIZE;
+    const int idx = threadIdx.x;
+    const int warp_id = idx / GA_WARP_SIZE;
 
     // get the slice for thread block to work on
     // size <- the axis to work on
     // dims_1+ <- batched dimensions
-    ga_uint gid = GID_0, gidx;
+    unsigned int gid = blockIdx.x, gidx;
     $set_slice
     // $$set_slice expands into:
     //for(int i=1; i<NDIM; i++) {
@@ -250,10 +250,10 @@ KERNEL void KERNEL_NAME(
     // All threads need to participate in the loop and the cumsum
     // but not necessarily in the load; hence loop bounds being rounded
     // up to a multiple of the block dim.
-    COUNT_TYPE iter_bound = size + LDIM_0-1;
+    COUNT_TYPE iter_bound = size + blockDim.x-1;
     INDEX_TYPE write_base = 0;
 
-    for (int i = idx; i < iter_bound; i += LDIM_0) {
+    for (int i = idx; i < iter_bound; i += blockDim.x) {
         bool in_range = (i < size);
         INPUT_TYPE v = in_range ? ptr_read_cached(src, i*src_strides_0) : 0;
         bool has_topk;
@@ -264,7 +264,7 @@ KERNEL void KERNEL_NAME(
         }
 
         int index = binary_cumsum_exclusive(idx, warp_id, smem, has_topk);
-        int carry = smem[LDIM_0 / 32 - 1];
+        int carry = smem[blockDim.x / 32 - 1];
 
         if (has_topk) {
             COUNT_TYPE write_idx = write_base + index;
@@ -281,13 +281,13 @@ KERNEL void KERNEL_NAME(
 
     COUNT_TYPE topk_remaining = (k - write_base);
 
-    for (COUNT_TYPE i = idx; i < iter_bound; i += LDIM_0) {
+    for (COUNT_TYPE i = idx; i < iter_bound; i += blockDim.x) {
         bool in_range = (i < size);
         INPUT_TYPE v = in_range ? ptr_read_cached(src, i*src_strides_0) : 0;
         bool has_topk = in_range && (v == topkth_value);
 
         int index = binary_cumsum_exclusive(idx, warp_id, smem, has_topk);
-        int carry = smem[LDIM_0 / 32 - 1];
+        int carry = smem[blockDim.x / 32 - 1];
 
         if (has_topk && index < topk_remaining) {
             COUNT_TYPE write_idx = write_base + index;

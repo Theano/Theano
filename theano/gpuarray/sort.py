@@ -63,9 +63,9 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         # prepare "$" macros
         if device_type == b'cuda':
             ndim = node.inputs[0].ndim
-            dstv_strides_code = ''.join('ga_ssize dstv_strides_%d, ' % i for i in range(ndim))
-            dsti_strides_code = ''.join('ga_ssize dsti_strides_%d, ' % i for i in range(ndim))
-            src_strides_code = ''.join('ga_ssize src_strides_%d, ' % i for i in range(ndim))
+            dstv_strides_code = ''.join('ssize_t dstv_strides_%d, ' % i for i in range(ndim))
+            dsti_strides_code = ''.join('ssize_t dsti_strides_%d, ' % i for i in range(ndim))
+            src_strides_code = ''.join('ssize_t src_strides_%d, ' % i for i in range(ndim))
             set_slice_code = '''
         gidx = gid %% dims_%(i)d;
         gid /= dims_%(i)d;
@@ -80,7 +80,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             subs = dict(
                 inp_t=ga.dtype_to_ctype(node.inputs[0].dtype),
                 out_t=ga.dtype_to_ctype(self.idx_dtype),
-                dims=''.join('ga_size dims_%d, ' % i for i in range(1, ndim)),
+                dims=''.join('size_t dims_%d, ' % i for i in range(1, ndim)),
                 dstv='INPUT_TYPE *dstv,' if self.return_values else '',
                 dsti='INDEX_TYPE *dsti,' if self.return_indices else '',
                 dstv_strides=dstv_strides_code if self.return_values else '',
