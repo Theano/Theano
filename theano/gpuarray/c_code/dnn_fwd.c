@@ -186,11 +186,12 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
   std::string hashkey;
 
-  size_t free = c_get_largest_free_block_size(c);
-  if (PyErr_Occurred()) return 1;
 
   cuda_enter(c->ctx);
 
+  size_t maxfree = c_get_largest_free_block_size(c);
+  if (PyErr_Occurred()) return 1;
+  
   if (params->choose_algo) {
 
     if (!reuse_algo) {
@@ -220,12 +221,14 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         cudnnConvolutionFwdAlgoPerf_t choice;
         gpudata *tmpmem;
 
-        tmpmem = gpudata_alloc(c->ctx, free, NULL, 0, NULL);
+        tmpmem = gpudata_alloc(c->ctx, maxfree, NULL, 0, NULL);
         if (tmpmem == NULL) {
-          PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
+          PyErr_SetString(PyExc_MemoryError, "Could not allocate GPU memory for FindEx");
           cuda_exit(c->ctx);
           return -1;
         }
+        // set the 'tensor math ok' flag
+        c_set_math_type_for_conv(desc, CUDNN_TENSOR_OP_MATH);
 
         // We don't sync the buffer as we don't care about the values.
         err = cudnnFindConvolutionForwardAlgorithmEx(
@@ -233,7 +236,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
           APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
           desc, APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(*output),
           1, &count, &choice, *(void **)tmpmem,
-          free);
+          maxfree);
         gpudata_release(tmpmem);
 
         if (err != CUDNN_STATUS_SUCCESS) {
@@ -269,7 +272,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         err = cudnnGetConvolutionForwardAlgorithm(
           params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
           desc, APPLY_SPECIFIC(output),
-          CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, free, &algo);
+          CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, maxfree, &algo);
         if (err != CUDNN_STATUS_SUCCESS) {
           PyErr_Format(PyExc_RuntimeError,
                        "error selecting convolution algo: %s",
@@ -283,8 +286,9 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       }
     }
   }
-
-  if (dnn_conv_fwd_fallback(&algo, input, kerns, desc) != 0) {
+  
+  if (c_set_math_type_for_conv(desc, mathtype) == -1 ||
+      dnn_conv_fwd_fallback(&algo, input, kerns, desc) != 0) {
     cuda_exit(c->ctx);
     return 1;
   }
@@ -343,12 +347,12 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       cuda_exit(c->ctx);
       return 1;
     }
-    fprintf(stderr, "(using %s %s%s%s%s, ws:%ld, hash:%s)\n",
+    fprintf(stderr, "(using %s%s %s%s%s, ws:%ld, hash:%s)\n",
             algorithm_name,
+            mathtype == CUDNN_TENSOR_OP_MATH ? "[T]" : "",
             params->choose_time ? "(timed)": "" ,
             reuse_algo ? "(reused)" : "",
             use_cached ? "(cache)": "",
-            mathtype == CUDNN_TENSOR_OP_MATH ? "(tensor op)" : "",
             worksize,
             hashkey.c_str()
       );
@@ -361,18 +365,6 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
   {
     gpudata *workspace = 0;
-#if CUDNN_MAJOR >= 7
-    // CUDNN7: need to set math type
-    err = cudnnSetConvolutionMathType(desc, mathtype);
-    if (err != CUDNN_STATUS_SUCCESS) {
-      PyErr_Format(PyExc_RuntimeError,
-                   "error setting math type for convolution : %s",
-                   cudnnGetErrorString(err));
-      cuda_exit(c->ctx);
-      return 1;
-    }
-#endif
-
     /*
      * This is less than ideal since we need to free it after (which
      * introduces a synchronization point. But we don't have a module

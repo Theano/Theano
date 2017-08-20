@@ -26,6 +26,20 @@ static int c_check_groups_for_conv(cudnnConvolutionDescriptor_t desc, int groups
 #endif
 }
 
+static int c_set_math_type_for_conv(cudnnConvolutionDescriptor_t desc, cudnnMathType_t mathtype) {
+#if CUDNN_MAJOR >= 7
+  // CUDNN7: need to set math type
+  cudnnStatus_t err = cudnnSetConvolutionMathType(desc, mathtype);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError,
+                 "error setting math type for convolution : %s",
+                 cudnnGetErrorString(err));
+    return -1;
+  }
+#endif
+  return 1;
+}
+
 #section init_code_struct
 
 cudnnStatus_t APPLY_SPECIFIC(err);
@@ -83,19 +97,19 @@ static cudnnStatus_t checkCudnnStatus(cudnnStatus_t err, const char* msg)
     return err;
 }
 
-static int
+static size_t
 c_get_largest_free_block_size(PyGpuContextObject *c)
 {
-  size_t free = 0;
+  size_t maxfree = 0;
 
-  int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_LARGEST_MEMBLOCK, &free);
+  int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_LARGEST_MEMBLOCK, &maxfree);
   if (err2 != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
                  "memory information on the GPU");
   }
   // Guess 4Mb if the info is not available
-  if (free == 0) free = 4 * 1024 * 1024;
-  return free;
+  if (maxfree == 0) maxfree = 4 * 1024 * 1024;
+  return maxfree;
 }
 
 /** Check if convolution output tensor has expected dimensions

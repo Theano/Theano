@@ -156,7 +156,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
 
   std::string hashkey;
 
-  size_t free = c_get_largest_free_block_size(c);
+  size_t maxfree = c_get_largest_free_block_size(c);
   if (PyErr_Occurred()) return 1;
 
   cuda_enter(c->ctx);
@@ -190,7 +190,10 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
         cudnnConvolutionBwdDataAlgoPerf_t choice;
         gpudata *tmpmem;
 
-        tmpmem = gpudata_alloc(c->ctx, free, NULL, 0, NULL);
+        // set the 'tensor math ok' flag
+        c_set_math_type_for_conv(desc, CUDNN_TENSOR_OP_MATH);
+        
+        tmpmem = gpudata_alloc(c->ctx, maxfree, NULL, 0, NULL);
         if (tmpmem == NULL) {
           PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
           cuda_exit(c->ctx);
@@ -201,7 +204,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
           params->handle, APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
           APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output), desc,
           APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(*input),
-          1, &count, &choice, *(void **)tmpmem, free);
+          1, &count, &choice, *(void **)tmpmem, maxfree);
         gpudata_release(tmpmem);
 
         if (err != CUDNN_STATUS_SUCCESS) {
@@ -235,7 +238,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
         err = cudnnGetConvolutionBackwardDataAlgorithm(
           params->handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output),
           desc, APPLY_SPECIFIC(input),
-          CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, free, &algo);
+          CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, maxfree, &algo);
         if (err != CUDNN_STATUS_SUCCESS) {
           PyErr_Format(PyExc_RuntimeError, "error selecting convolution algo: %s",
                        cudnnGetErrorString(err));
@@ -248,8 +251,9 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       }
     }
   }
-
-  if (dnn_conv_gi_fallback(&algo, *input, kerns, desc) != 0) {
+  
+  if (c_set_math_type_for_conv(desc, mathtype) == -1 ||
+      dnn_conv_gi_fallback(&algo, *input, kerns, desc) != 0) {
     cuda_exit(c->ctx);
     return 1;
   }
@@ -313,23 +317,11 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   }
 #endif
 
-    if (params->choose_once) {
-      reuse_algo = 1;
-    }
-
-    gpudata *workspace = 0;
-#if CUDNN_MAJOR >= 7
-    // CUDNN7: need to set math type
-    err = cudnnSetConvolutionMathType(desc, mathtype);
-    if (err != CUDNN_STATUS_SUCCESS) {
-      PyErr_Format(PyExc_RuntimeError,
-                   "error setting math type for convolution : %s",
-                   cudnnGetErrorString(err));
-      cuda_exit(c->ctx);
-      return 1;
-    }
-#endif
-
+  if (params->choose_once) {
+    reuse_algo = 1;
+  }
+  
+  gpudata *workspace = 0;
   if (worksize != 0) {
     workspace = gpudata_alloc(c->ctx, worksize, NULL, 0, NULL);
     if (workspace == NULL) {
