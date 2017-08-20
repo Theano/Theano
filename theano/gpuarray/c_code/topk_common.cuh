@@ -48,6 +48,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 
+typedef ptrdiff_t ssize_t;
+
+
 __device__ __forceinline__ int lane_id() {
   int id;
   asm("mov.s32 %0, %laneid;" : "=r"(id) );

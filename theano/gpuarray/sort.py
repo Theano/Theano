@@ -7,7 +7,7 @@ from theano.tensor import as_tensor_variable
 from theano.tensor.sort import TopKOp
 
 from .basic_ops import (GpuKernelBase, Kernel, infer_context_name,
-                        as_gpuarray_variable)
+                        as_gpuarray_variable, gpuarray_helper_inc_dir)
 from .opt import register_opt, op_lifter, register_opt2
 from .type import GpuArrayType
 
@@ -19,8 +19,6 @@ except ImportError as e:
     pass
 
 # TODO GPU sort / argsort
-# TODO support when k >= 2^31
-
 
 class GpuTopKOp(GpuKernelBase, TopKOp):
     '''
@@ -49,7 +47,10 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        return [
+            os.path.dirname(__file__),
+            gpuarray_helper_inc_dir(),
+            pygpu.get_include()]
 
     def c_code_cache_version(self):
         return (1,)
@@ -129,17 +130,18 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         subs['count_t'] = 'int'
         kernels.append(
             build_kernel('topk_dense' + kernel_ext, 'k_topk_dense', subs))
-        subs['kname'] = 'topk_dense_large'
+        subs['kname'] = 'k_topk_dense_large'
         kernels.append(
             build_kernel('topk_dense_large' + kernel_ext, 'k_topk_dense_large', subs))
         subs['count_t'] = 'long long'
-        subs['kname'] = 'topk_dense_xlarge'
+        subs['kname'] = 'k_topk_dense_xlarge'
         kernels.append(
             build_kernel('topk_dense_large' + kernel_ext, 'k_topk_dense_xlarge', subs))
         return kernels
 
     def c_code(self, node, nodename, inps, outs, sub):
-        if node.inputs[0].type.context.kind != b'cuda':
+        context = node.inputs[0].type.context
+        if context.kind != b'cuda':
             raise NotImplementedError(
                 '%s: We only have CUDA '
                 'implementation so far.' % self.__class__.__name__)
@@ -156,7 +158,10 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         fail = sub['fail']
         ctx = sub['params']
         k_dtype = node.inputs[1].type.dtype_specs()[1]
-        MAX_TPB = 1024  # max threads per block
+        # max threads per block
+        MAX_TPB = context.maxlsize
+        # max blocks per grid
+        MAX_BPG = context.maxgsize0
         WARP_SIZE = 32
 
         ndim = node.inputs[0].ndim
@@ -215,18 +220,22 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
     }
     %(prep_output)s
 
-    size_t blk[6];
-    size_t *grd = blk+3;
-    blk[0] = blk[1] = blk[2] = 1;
-    grd[0] = grd[1] = grd[2] = 1;
+    size_t grid_size=1, block_size=1;
     for (int i=0; i<%(ndim)d; ++i) {
         if (i!=%(axis)d)
-            grd[0] *= dims[i];
+            grid_size *= dims[i];
         else
-            blk[0] = dims[i];
+            block_size = dims[i];
     }
     // round up to multiples of warp size
-    blk[0] = ((blk[0] + %(WARP_SIZE)d - 1) / %(WARP_SIZE)d) * %(WARP_SIZE)d;
+    block_size = ((block_size + %(WARP_SIZE)d - 1) / %(WARP_SIZE)d) * %(WARP_SIZE)d;
+
+    if (grid_size > %(MAX_BPG)d) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "topk: too many slices to work with, expected <= %(MAX_BPG)d");
+        %(fail)s;
+    }
 
     %(def_dvstrides)s;
     %(def_distrides)s;
@@ -242,25 +251,20 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
     };
 
     int err;
-    if (dims[%(axis)d] > PY_SSIZE_T_MAX) {
-        PyErr_SetString(
-            PyExc_ValueError,
-            "topk: array size on specified axis is too large, should be less than PY_SSIZE_T_MAX.");
-        %(fail)s;
-    } else if (dims[%(axis)d] > (1u << 31)) {
-        blk[0] = %(MAX_TPB)d;
+    if (dims[%(axis)d] > (1u << 31)) {
+        block_size = %(MAX_TPB)d;
         err = GpuKernel_call(
-            &k_topk_dense_xlarge%(nodename)s, 3,
-            grd, blk, 0, args);
-    } else if (blk[0] > %(MAX_TPB)d) {
-        blk[0] = %(MAX_TPB)d;
+            &k_topk_dense_xlarge%(nodename)s, 1,
+            &grid_size, &block_size, 0, args);
+    } else if (block_size > %(MAX_TPB)d) {
+        block_size = %(MAX_TPB)d;
         err = GpuKernel_call(
-            &k_topk_dense_large%(nodename)s, 3,
-            grd, blk, 0, args);
+            &k_topk_dense_large%(nodename)s, 1,
+            &grid_size, &block_size, 0, args);
     } else {
         err = GpuKernel_call(
-            &k_topk_dense%(nodename)s, 3,
-            grd, blk, 0, args);
+            &k_topk_dense%(nodename)s, 1,
+            &grid_size, &block_size, 0, args);
     }
     if (err != GA_NO_ERROR) {
         PyErr_SetString(
@@ -295,9 +299,6 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 @op_lifter([TopKOp], cuda_only=True)
 @register_opt2([TopKOp], 'fast_compile')
 def local_gpua_topkop(op, ctx_name, inputs, outputs):
-    if isinstance(op, GpuTopKOp):
-        return False
-
     axis = op.axis
     rv = op.return_values
     ri = op.return_indices
