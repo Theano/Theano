@@ -1860,10 +1860,8 @@ class TestUnsharedConv(unittest.TestCase):
                                                                   self.border_mode, self.subsample, self.num_groups,
                                                                   self.verify_flags):
             single_kshp = kshp[:1] + kshp[3:]
-            single_kern = np.random.random(single_kshp).astype(theano.config.floatX)
-            kern = single_kern.reshape((kshp[:1] + (1, 1) + kshp[3:]))
-            kern = np.tile(kern, (1, kshp[1], kshp[2], 1, 1, 1))
 
+            kern = np.random.random(kshp).astype(theano.config.floatX)
             top = np.random.random(topshp).astype(theano.config.floatX)
 
             unshared_conv_op = self.conv2d_gradi(border_mode=mode, subsample=sub,
@@ -1880,7 +1878,15 @@ class TestUnsharedConv(unittest.TestCase):
                                             num_groups=groups, unshared=False)
             ref_out_sym = ref_conv_op(ref_kern_sym, top_sym, tensor.as_tensor_variable(imshp[-2:]))
             ref_func = theano.function([ref_kern_sym, top_sym], ref_out_sym, mode=self.mode)
-            ref_output = ref_func(single_kern, top)
+
+            ref_output = np.zeros(imshp)
+
+            for i in range(0, topshp[2]):
+                for j in range(0, topshp[3]):
+                    single_kern = kern[:, i, j, ...].reshape(single_kshp)
+                    top_single = np.zeros_like(top)
+                    top_single[:, :, i, j] = top[:, :, i, j]
+                    ref_output += ref_func(single_kern, top_single)
 
             utt.assert_allclose(ref_output, unshared_output)
 

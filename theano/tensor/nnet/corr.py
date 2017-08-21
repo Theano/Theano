@@ -449,8 +449,8 @@ class BaseCorrMM(gof.OpenMPOp):
                              (long int)out_dim[3], (long int)out_dim[4], (long int)out_dim[5],
                              (long int)PyArray_DIMS(top)[0], (long int)PyArray_DIMS(top)[1],
                              (long int)PyArray_DIMS(top)[2], (long int)PyArray_DIMS(top)[3]);
+                %(fail)s
             }
-            %(fail)s
         }
         else {
             if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
