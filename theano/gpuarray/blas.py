@@ -924,6 +924,8 @@ class GpuCorrMM(BaseGpuCorrMM):
         divided into.
         should be an int
         set to 1 to disable grouped convolution
+    unshared
+        Perform unshared correlation (default: False)
 
     Notes
     -----
