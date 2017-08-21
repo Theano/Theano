@@ -23,7 +23,7 @@ from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
 from theano.tensor.nnet.abstract_conv import bilinear_upsampling
-from theano.tensor.nnet.abstract_conv import separable_conv2d
+from theano.tensor.nnet.abstract_conv import separable_conv2d, separable_conv3d
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
 from theano.tensor.nnet.corr3d import (Corr3dMM, Corr3dMM_gradWeights,
@@ -1652,35 +1652,96 @@ class Grouped_conv3d_noOptim(Grouped_conv_noOptim):
 
 
 class Separable_conv(unittest.TestCase):
+    def setUp(self):
+        self.x = np.array([[[[1, 2, 3, 4, 5], [3, 2, 1, 4, 5], [3, 3, 1, 3, 6], [5, 3, 2, 1, 1], [4, 7, 1, 2, 1]],
+                            [[3, 3, 1, 2, 6], [6, 5, 4, 3, 1], [3, 4, 5, 2, 3], [6, 4, 1, 3, 4], [2, 3, 4, 2, 5]]]]).astype(theano.config.floatX)
 
-    def test_interface(self):
-        x = np.array([[[[1, 2, 3, 4, 5], [3, 2, 1, 4, 5], [3, 3, 1, 3, 6], [5, 3, 2, 1, 1], [4, 7, 1, 2, 1]],
-                       [[3, 3, 1, 2, 6], [6, 5, 4, 3, 1], [3, 4, 5, 2, 3], [6, 4, 1, 3, 4], [2, 3, 4, 2, 5]]]]).astype(theano.config.floatX)
+        self.depthwise_filter = np.array([[[[3, 2, 1], [5, 3, 2], [6, 4, 2]]], [[[5, 5, 2], [3, 7, 4], [3, 5, 4]]],
+                                          [[[7, 4, 7], [5, 3, 3], [1, 3, 1]]], [[[4, 4, 4], [2, 4, 6], [0, 0, 7]]]]).astype(theano.config.floatX)
 
-        depthwise_filter = np.array([[[[3, 2, 1], [5, 3, 2], [6, 4, 2]]], [[[5, 5, 2], [3, 7, 4], [3, 5, 4]]],
-                                     [[[7, 4, 7], [5, 3, 3], [1, 3, 1]]], [[[4, 4, 4], [2, 4, 6], [0, 0, 7]]]]).astype(theano.config.floatX)
+        self.pointwise_filter = np.array([[[[4]], [[1]], [[3]], [[5]]], [[[2]], [[1]], [[2]], [[8]]]]).astype(theano.config.floatX)
 
-        pointwise_filter = np.array([[[[4]], [[1]], [[3]], [[5]]], [[[2]], [[1]], [[2]], [[8]]]]).astype(theano.config.floatX)
-        precomp_output = np.array([[[[1385, 1333, 1339], [1382, 1243, 1291], [1303, 1120, 1228]],
-                                  [[1532, 1410, 1259], [1522, 1346, 1314], [1379, 1192, 1286]]]]).astype(theano.config.floatX)
+        self.precomp_output_valid = np.array([[[[1385, 1333, 1339], [1382, 1243, 1291], [1303, 1120, 1228]],
+                                               [[1532, 1410, 1259], [1522, 1346, 1314], [1379, 1192, 1286]]]]).astype(theano.config.floatX)
 
+        self.precomp_output_full = np.array([[[[140, 266, 343, 206, 59],
+                                              [395, 697, 979, 585, 245],
+                                              [429, 863, 1385, 919, 453],
+                                              [243, 499, 864, 627, 371],
+                                              [90, 183, 291, 254, 202]],
+
+                                             [[149, 289, 359, 213, 58],
+                                              [400, 750, 1076, 662, 266],
+                                              [387, 854, 1532, 1091, 540],
+                                              [174, 411, 971, 786, 518],
+                                              [51, 110, 286, 299, 298]]]]).astype(theano.config.floatX)
+
+    def test_interface2d(self):
         x_sym = theano.tensor.tensor4('x')
         dfilter_sym = theano.tensor.tensor4('d')
         pfilter_sym = theano.tensor.tensor4('p')
 
-        sep_op = separable_conv2d(x_sym, dfilter_sym, pfilter_sym, x.shape[1])
+        sep_op = separable_conv2d(x_sym, dfilter_sym, pfilter_sym, self.x.shape[1])
+        fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
+
+        # test for square matrix
+        top = fun(self.x, self.depthwise_filter, self.pointwise_filter)
+        utt.assert_allclose(top, self.precomp_output_valid)
+
+        # test for non-square matrix
+        top = fun(self.x[:, :, :3, :], self.depthwise_filter, self.pointwise_filter)
+        utt.assert_allclose(top, self.precomp_output_valid[:, :, :1, :])
+
+        # test if it infers shape
+        sep_op = separable_conv2d(x_sym,
+                                  dfilter_sym,
+                                  pfilter_sym,
+                                  self.x.shape[1],
+                                  input_shape=self.x.shape,
+                                  depthwise_filter_shape=self.depthwise_filter.shape,
+                                  pointwise_filter_shape=self.pointwise_filter.shape)
+        fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
+        top = fun(self.x, self.depthwise_filter, self.pointwise_filter)
+        utt.assert_allclose(top, self.precomp_output_valid)
+
+        # test non-default subsample
+        sep_op = separable_conv2d(x_sym,
+                                  dfilter_sym,
+                                  pfilter_sym,
+                                  self.x.shape[1],
+                                  subsample=(2, 2))
+        fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
+        top = fun(self.x, self.depthwise_filter, self.pointwise_filter)
+        utt.assert_allclose(top, np.delete(np.delete(self.precomp_output_valid, 1, axis=3), 1, axis=2))
+
+        # test non-default border_mode
+        sep_op = separable_conv2d(x_sym, dfilter_sym, pfilter_sym, self.x.shape[1], border_mode='full')
+        fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
+        top = fun(self.x[:, :, :3, :3], self.depthwise_filter, self.pointwise_filter)
+        utt.assert_allclose(top, self.precomp_output_full)
+
+    def test_interface3d(self):
+        # Expand the filter along the depth
+        x = np.tile(np.expand_dims(self.x, axis=2), (1, 1, 5, 1, 1))
+        depthwise_filter = np.tile(np.expand_dims(self.depthwise_filter, axis=2), (1, 1, 3, 1, 1))
+        pointwise_filter = np.expand_dims(self.pointwise_filter, axis=2)
+        precomp_output = np.tile(np.expand_dims(self.precomp_output_valid, axis=2), (1, 1, 3, 1, 1)) * 3
+
+        x_sym = theano.tensor.tensor5('x')
+        dfilter_sym = theano.tensor.tensor5('d')
+        pfilter_sym = theano.tensor.tensor5('p')
+
+        sep_op = separable_conv3d(x_sym, dfilter_sym, pfilter_sym, x.shape[1])
         fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
 
         # test for square matrix
         top = fun(x, depthwise_filter, pointwise_filter)
         utt.assert_allclose(top, precomp_output)
-
         # test for non-square matrix
-        top = fun(x[:, :, :3, :], depthwise_filter, pointwise_filter)
-        utt.assert_allclose(top, precomp_output[:, :, :1, :])
-
+        top = fun(x[:, :, :3, :, :3], depthwise_filter, pointwise_filter)
+        utt.assert_allclose(top, precomp_output[:, :, :1, :, :1])
         # test if it infers shape
-        sep_op = separable_conv2d(x_sym,
+        sep_op = separable_conv3d(x_sym,
                                   dfilter_sym,
                                   pfilter_sym,
                                   x.shape[1],
@@ -1692,29 +1753,20 @@ class Separable_conv(unittest.TestCase):
         utt.assert_allclose(top, precomp_output)
 
         # test non-default subsample
-        sep_op = separable_conv2d(x_sym,
+        sep_op = separable_conv3d(x_sym,
                                   dfilter_sym,
                                   pfilter_sym,
                                   x.shape[1],
-                                  subsample=(2, 2))
+                                  subsample=(2, 2, 2))
         fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
         top = fun(x, depthwise_filter, pointwise_filter)
-        utt.assert_allclose(top, np.delete(np.delete(precomp_output, 1, axis=3), 1, axis=2))
-
+        utt.assert_allclose(top, np.delete(np.delete(
+            np.delete(precomp_output, 1, axis=4), 1, axis=3), 1, axis=2))
         # test non-default border_mode
-        precomp_output = np.array([[[[140, 266, 343, 206, 59],
-                                     [395, 697, 979, 585, 245],
-                                     [429, 863, 1385, 919, 453],
-                                     [243, 499, 864, 627, 371],
-                                     [90, 183, 291, 254, 202]],
+        precomp_output = np.tile(np.expand_dims(self.precomp_output_full, axis=2),
+                                 (1, 1, 5, 1, 1)) * np.array([[[[[1]], [[2]], [[3]], [[2]], [[1]]]]])
 
-                                    [[149, 289, 359, 213, 58],
-                                     [400, 750, 1076, 662, 266],
-                                     [387, 854, 1532, 1091, 540],
-                                     [174, 411, 971, 786, 518],
-                                     [51, 110, 286, 299, 298]]]]).astype(theano.config.floatX)
-
-        sep_op = separable_conv2d(x_sym, dfilter_sym, pfilter_sym, x.shape[1], border_mode='full')
+        sep_op = separable_conv3d(x_sym, dfilter_sym, pfilter_sym, x.shape[1], border_mode='full')
         fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
-        top = fun(x[:, :, :3, :3], depthwise_filter, pointwise_filter)
+        top = fun(x[:, :, :3, :3, :3], depthwise_filter, pointwise_filter)
         utt.assert_allclose(top, precomp_output)
