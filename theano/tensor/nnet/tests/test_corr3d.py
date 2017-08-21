@@ -420,13 +420,7 @@ class TestCorr3D(utt.InferShapeTester):
 
 
 class TestGroupCorr3d(Grouped_conv3d_noOptim):
-    if theano.config.mode == "FAST_COMPILE":
-        mode = theano.compile.get_mode("FAST_RUN")
-    else:
-        mode = None
-    conv = corr3d.Corr3dMM
-    conv_gradw = corr3d.Corr3dMM_gradWeights
-    conv_gradi = corr3d.Corr3dMM_gradInputs
+    mode = theano.compile.get_mode("FAST_RUN")
     conv_op = corr3d.Corr3dMM
     conv_gradw_op = corr3d.Corr3dMM_gradWeights
     conv_gradi_op = corr3d.Corr3dMM_gradInputs

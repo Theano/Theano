@@ -418,18 +418,10 @@ class TestCorr2D(utt.InferShapeTester):
 
 
 class TestGroupCorr2d(Grouped_conv_noOptim):
-    if theano.config.mode == "FAST_COMPILE":
-        mode = theano.compile.get_mode("FAST_RUN")
-    else:
-        mode = None
-    conv = corr.CorrMM
-    conv_gradw = corr.CorrMM_gradWeights
-    conv_gradi = corr.CorrMM_gradInputs
+    mode = theano.compile.get_mode("FAST_RUN").excluding('gpuarray')
     conv_op = corr.CorrMM
     conv_gradw_op = corr.CorrMM_gradWeights
     conv_gradi_op = corr.CorrMM_gradInputs
-    flip_filter = True
-    is_dnn = False
 
     def test_graph(self):
         # define common values  first

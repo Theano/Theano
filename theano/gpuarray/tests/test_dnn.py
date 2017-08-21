@@ -2288,27 +2288,17 @@ def dconvgi(border_mode, subsample, filter_dilation, num_groups):
 
 
 class Cudnn_grouped_conv(Grouped_conv_noOptim):
-    mode = mode_with_gpu
-    conv = staticmethod(dconvfwd)
-    conv_gradw = staticmethod(dconvgw)
-    conv_gradi = staticmethod(dconvgi)
+    mode = mode_with_gpu.excluding('conv_gemm')
     conv_op = dnn.GpuDnnConv
     conv_gradw_op = dnn.GpuDnnConvGradW
     conv_gradi_op = dnn.GpuDnnConvGradI
-    flip_filter = False
-    is_dnn = True
 
 
 class Cudnn_grouped_conv3d(Grouped_conv3d_noOptim):
-    mode = mode_with_gpu
-    conv = staticmethod(dconvfwd)
-    conv_gradw = staticmethod(dconvgw)
-    conv_gradi = staticmethod(dconvgi)
+    mode = mode_with_gpu.excluding('conv_gemm')
     conv_op = dnn.GpuDnnConv
     conv_gradw_op = dnn.GpuDnnConvGradW
     conv_gradi_op = dnn.GpuDnnConvGradI
-    flip_filter = False
-    is_dnn = True
 
 
 def test_dnn_spatialtf():
