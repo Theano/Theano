@@ -3054,7 +3054,7 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
                         conv_mode=conv_mode,
                         num_groups=op.num_groups)
     elif isinstance(op, AbstractConv2d_gradWeights):
-        shape = (inp2.shape[1], inp1.shape[1],
+        shape = (inp2.shape[1], inp1.shape[1] // op.num_groups,
                  inputs[2][0], inputs[2][1])
         rval = dnn_gradweight(inp1, inp2, shape,
                               border_mode=op.border_mode,
@@ -3063,7 +3063,7 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
                               conv_mode=conv_mode,
                               num_groups=op.num_groups)
     elif isinstance(op, AbstractConv2d_gradInputs):
-        shape = (inp2.shape[0], inp1.shape[1],
+        shape = (inp2.shape[0], inp1.shape[1] * op.num_groups,
                  inputs[2][0], inputs[2][1])
         rval = dnn_gradinput(inp1, inp2, shape,
                              border_mode=op.border_mode,
@@ -3103,7 +3103,7 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
                           conv_mode=conv_mode,
                           num_groups=op.num_groups)
     elif isinstance(op, AbstractConv3d_gradWeights):
-        shape = (inp2.shape[1], inp1.shape[1],
+        shape = (inp2.shape[1], inp1.shape[1] // op.num_groups,
                  inputs[2][0], inputs[2][1], inputs[2][2])
         rval = dnn_gradweight3d(inp1, inp2, shape,
                                 border_mode=op.border_mode,
@@ -3112,7 +3112,7 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
                                 conv_mode=conv_mode,
                                 num_groups=op.num_groups)
     elif isinstance(op, AbstractConv3d_gradInputs):
-        shape = (inp2.shape[0], inp1.shape[1],
+        shape = (inp2.shape[0], inp1.shape[1] * op.num_groups,
                  inputs[2][0], inputs[2][1], inputs[2][2])
         rval = dnn_gradinput3d(inp1, inp2, shape,
                                border_mode=op.border_mode,
