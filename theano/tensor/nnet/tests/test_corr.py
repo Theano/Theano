@@ -454,17 +454,12 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
 
 class TestUnsharedCorr2d(TestUnsharedConv):
     if theano.config.mode == "FAST_COMPILE":
-        mode = theano.compile.get_mode("FAST_RUN")
+        mode = theano.compile.get_mode("FAST_RUN").excluding('gpuarray')
     else:
         mode = None
-    conv2d = corr.CorrMM
-    conv2d_gradw = corr.CorrMM_gradWeights
-    conv2d_gradi = corr.CorrMM_gradInputs
     conv2d_op = corr.CorrMM
     conv2d_gradw_op = corr.CorrMM_gradWeights
     conv2d_gradi_op = corr.CorrMM_gradInputs
-    flip_filter = True
-    is_dnn = False
 
 
 if __name__ == '__main__':
