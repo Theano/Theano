@@ -600,8 +600,12 @@ class CorrMM(BaseCorrMM):
         The filter dilation operation applied to each input image.
         Should be a tuple with 2 elements.
         Set to `(1, 1)` to disable filter dilation.
-    unshared:
-        Boolean value. If true, then a different kernel will be applied to
+    num_groups
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately.
+        Should be an integer.
+    unshared
+        Boolean value. If true, then a different filter will be applied to
         each region of the input image.
 
     """

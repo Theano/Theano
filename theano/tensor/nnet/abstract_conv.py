@@ -44,12 +44,13 @@ def get_conv_output_shape(image_shape, kernel_shape,
         to: batch size, number of input channels, height and width (and
         possibly depth) of the image. None where undefined.
     kernel_shape: tuple of int (symbolic or numeric) corresponding to the
-        kernel shape. For a normal convolution, its four (or five) elements
-        must correspond respectively to : number of output channels, number of
-        input channels, height and width (and possibly depth) of the kernel.
-        For an unshared convolution, its six channels must correspond to :
-        number of output channels, height and width
-        of the output, number of input channels, height and width of the kernel.
+        kernel shape. For a normal convolution, its four (for 2D convolution)
+        or five (for 3D convolution) elements must correspond respectively to :
+        number of output channels, number of input channels, height and width
+        (and possibly depth) of the kernel.
+        For an unshared 2D convolution, its six channels must correspond to :
+        number of output channels, height and width of the output, number of
+        input channels, height and width of the kernel.
         None where undefined.
     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
         or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
@@ -996,7 +997,7 @@ def conv2d_grad_wrt_inputs(output_grad,
         separate groups. Each which carry out convolutions separately
     unshared: bool
         If true, then unshared or 'locally connected' convolution will be
-        performed. A different kernel will be used for each region of the
+        performed. A different filter will be used for each region of the
         input.
 
     Returns
@@ -1032,13 +1033,16 @@ def conv2d_grad_wrt_inputs(output_grad,
 
     # checking the type of filter_shape
     if filter_shape is not None:
-        for dim in [0, 1, 2, 3]:
+        if unshared:
+            expected_dim = 6
+        else:
+            expected_dim = 4
+
+        assert len(filter_shape) == expected_dim
+
+        for dim in range(expected_dim):
             assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
                                                   integer_types, type(None)))
-        if unshared:
-            for dim in [4, 5]:
-                assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
-                                                      integer_types, type(None)))
 
     # setting the last two dimensions of input_shape to None, if
     # the type of these dimensions is TensorVariable.
@@ -1278,7 +1282,7 @@ def conv2d_grad_wrt_weights(input,
         separate groups. Each which carry out convolutions separately
     unshared: bool
         If true, then unshared or 'locally connected' convolution will be
-        performed. A different kernel will be used for each region of the
+        performed. A different filter will be used for each region of the
         input.
 
     Returns
@@ -1712,9 +1716,13 @@ class BaseAbstractConv(Op):
         Factor by which to subsample (stride) the input.
         Also called dilation factor.
 
+    num_groups : int
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
+
     unshared: bool
         If true, then unshared or 'locally connected' convolution will be
-        performed. A different kernel will be used for each region of the
+        performed. A different filter will be used for each region of the
         input.
     """
     check_broadcast = False
@@ -1843,7 +1851,9 @@ class BaseAbstractConv(Op):
         if unshared and direction == "backprop weights":
             if mode != "valid":
                 raise ValueError('conv mode for unshared backprop wrt weights must be "valid"')
-            # Do a transpose later to bring it to required shape
+            # To allow the same format for the call to 'unshared2d' for all three directions,
+            # the out_shape is shuffled here.
+            # We do a transpose in the 'perform' function to bring it to the required shape
             out_shape = (img.shape[0], kern.shape[0],
                          kern.shape[2], kern.shape[3],
                          img.shape[2] - kern.shape[2] + 1,

@@ -111,7 +111,7 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
 
     unshared: bool
         If true, then unshared or 'locally connected' convolution will be
-        performed. A different kernel will be used for each region of the
+        performed. A different filter will be used for each region of the
         input.
 
     kwargs: Any other keyword arguments are accepted for backwards
@@ -226,8 +226,9 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
 
     unshared: bool
         If true, then unshared or 'locally connected' convolution will be
-        performed. A different kernel will be used for each region of the
+        performed. A different filter will be used for each region of the
         input.
+        Grouped unshared convolution is supported.
 
     Returns
     -------
