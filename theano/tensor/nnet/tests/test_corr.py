@@ -452,9 +452,9 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
         utt.assert_allclose(gconv_output, conv_output)
 
 
-class TestUnsharedCorr2D(TestUnsharedConv):
+class TestUnsharedCorr2d(TestUnsharedConv):
     if theano.config.mode == "FAST_COMPILE":
-        mode = theano.compile.get_mode("FAST_RUN").excluding('gpuarray')
+        mode = theano.compile.get_mode("FAST_RUN")
     else:
         mode = None
     conv2d = corr.CorrMM

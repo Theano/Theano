@@ -8,9 +8,9 @@ from theano.tests import unittest_tools as utt
 
 from theano.tensor.nnet.corr import CorrMM, CorrMM_gradWeights, CorrMM_gradInputs
 
-from theano.gpuarray.type import gpuarray_shared_constructor
-from theano.gpuarray.blas import GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs
-from config import mode_with_gpu, mode_without_gpu, ref_cast
+from ..type import gpuarray_shared_constructor
+from ..blas import GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs
+from .config import mode_with_gpu, mode_without_gpu, ref_cast
 from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim, TestUnsharedConv
 
 
