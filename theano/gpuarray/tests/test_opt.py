@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
-import numpy as np
 from nose.tools import assert_raises
+import numpy as np
 
 import theano
 from theano import tensor
@@ -745,7 +745,11 @@ class Conv_opt_test(unittest.TestCase):
         mode = mode_with_gpu.including('conv_meta')
 
         ref_func = theano.function([], conv_op, mode=mode_with_gpu)
-        conv_func = theano.function([], conv_op, mode=mode)
+        # All meta optimizer compile a new function. This need to know
+        # the current linker, but this information is not available,
+        # so it use the default mode.
+        with theano.change_flags(mode=mode):
+            conv_func = theano.function([], conv_op, mode=mode)
         assert any([isinstance(node.op, op)
                     for node in conv_func.maker.fgraph.toposort()])
         utt.assert_allclose(conv_func(), ref_func())
@@ -787,13 +791,20 @@ class Conv_opt_test(unittest.TestCase):
         mode = mode_with_gpu.including('conv_meta')
 
         ref_func = theano.function([], conv_op, mode=mode_with_gpu)
-        conv_func = theano.function([], conv_op, mode=mode)
+        # All meta optimizer compile a new function. This need to know
+        # the current linker, but this information is not available,
+        # so it use the default mode.
+        with theano.change_flags(mode=mode):
+            conv_func = theano.function([], conv_op, mode=mode)
         if op is not None:
             assert any([isinstance(node.op, op)
                        for node in conv_func.maker.fgraph.toposort()])
         utt.assert_allclose(conv_func(), ref_func())
 
-    def test_optimizers(self):
+    def test_optimizers_2d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
+
         imshp2d = [(2, 3, 5, 5), (2, 2, 5, 7), (2, 1, 3, 3)]
         kshp2d = [(4, 3, 3, 3), (3, 2, 3, 5), (4, 1, 1, 1)]
         tshp2d = [(2, 4, 3, 3), (2, 3, 3, 3), (2, 4, 3, 3)]
@@ -826,6 +837,10 @@ class Conv_opt_test(unittest.TestCase):
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
+
+    def test_optimizers_3d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
 
         imshp3d = [(2, 3, 5, 5, 5), (2, 2, 5, 7, 5), (2, 1, 3, 3, 3)]
         kshp3d = [(4, 3, 3, 3, 3), (3, 2, 3, 5, 3), (4, 1, 1, 1, 1)]
@@ -865,6 +880,9 @@ class Conv_opt_test(unittest.TestCase):
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
 
+    def test_optimizers_non_default(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
         # conv2d forward pass with Non-default border_mode and filter_dilation
         imshp2d = [(2, 3, 5, 5), (4, 2, 5, 5)]
         kshp2d = [(4, 3, 3, 3), (3, 2, 3, 3)]

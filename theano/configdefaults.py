@@ -466,12 +466,24 @@ AddConfigVar(
 # scalable.
 # Also, please be careful not to modify the first item in the enum when adding
 # new modes, since it is the default mode.
+def filter_mode(val):
+    if val in ['Mode', 'DebugMode', 'FAST_RUN',
+               'NanGuardMode',
+               'FAST_COMPILE', 'DEBUG_MODE']:
+        return val
+    # This can be executed before Theano is completly imported, so
+    # theano.Mode is not always available.
+    elif hasattr(theano, 'Mode') and isinstance(val, theano.Mode):
+        return val
+    else:
+        raise ValueError("Expected one of those string 'Mode', 'DebugMode',"
+                         " 'FAST_RUN', 'NanGuardMode', 'FAST_COMPILE',"
+                         " 'DEBUG_MODE' or an instance of Mode.")
+
 AddConfigVar(
     'mode',
     "Default compilation mode",
-    EnumStr('Mode', 'DebugMode', 'FAST_RUN',
-            'NanGuardMode',
-            'FAST_COMPILE', 'DEBUG_MODE'),
+    ConfigParam('Mode', filter_mode),
     in_c_key=False)
 
 param = "g++"

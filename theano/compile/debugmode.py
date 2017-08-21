@@ -10,7 +10,6 @@ import copy
 import sys
 import gc
 import logging
-import six.moves.copyreg as copyreg
 from itertools import chain, product as itertools_product
 from theano.compat import izip
 
@@ -2413,10 +2412,6 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                                    name=self.name)
         return fn
 
-
-def _pickle_DebugMode_Maker(maker):
-    raise NotImplementedError('DebugMode is not picklable (yet)')
-copyreg.pickle(_Maker, _pickle_DebugMode_Maker)
 
 ########################
 #

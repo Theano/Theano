@@ -165,10 +165,13 @@ class GpuElemwise(HideC, Elemwise):
         scal_v_out = fake_node.outputs
         assert len(scal_v_out) == len(node.outputs)
 
-        kop = fake_node.op.c_code(fake_node, 'elem_scalar',
-                                  inps, outs,
-                                  dict(fail='return;'))
-
+        try:
+            kop = fake_node.op.c_code(fake_node, 'elem_scalar',
+                                      inps, outs,
+                                      dict(fail='return;'))
+        except MethodNotDefined:
+            raise AssertionError(
+                "No c code for this scalar. Can not make a GpuElemwise")
         # If the following assert fail, then we need to update the
         # code handler above.
         assert 'npy_float16' not in kop
