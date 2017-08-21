@@ -520,10 +520,14 @@ class _tensor_py_operators(object):
             args[ellipsis_at: ellipsis_at + 1] = (
                 [slice(None)] * (self.ndim - index_dim_count))
 
+        def is_empty_array(val):
+            return ((isinstance(val, (tuple, list)) and len(val) == 0) or
+                    (isinstance(val, np.ndarray) and val.size == 0))
+
         # Force input to be int64 datatype if input is an empty list or tuple
         # Else leave it as is if it is a real number
         args = tuple([np.array(inp, dtype=np.int64)
-                      if(inp == [] or inp == ()) else inp for inp in args])
+                      if(is_empty_array(inp)) else inp for inp in args])
         # Convert python literals to theano constants
         args = theano.tensor.subtensor.make_constant(args)
         # Determine if advanced indexing is needed or not
