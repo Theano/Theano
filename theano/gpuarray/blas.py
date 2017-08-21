@@ -1787,7 +1787,7 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
             broadcastable = [topgrad.type.broadcastable[0], False,
                              False, False, False]
         else:
-            broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[-3],
+            broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[-4],
                              False, False, False]
         return Apply(self, [kern, topgrad] + height_width_depth,
                      [GpuArrayType(dtype=topgrad.dtype,
