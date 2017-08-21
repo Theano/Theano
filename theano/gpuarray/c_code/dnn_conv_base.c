@@ -3,7 +3,7 @@ cudnnTensorDescriptor_t APPLY_SPECIFIC(input);
 cudnnTensorDescriptor_t APPLY_SPECIFIC(output);
 cudnnFilterDescriptor_t APPLY_SPECIFIC(kerns);
 
-static int c_check_groups_for_conv(cudnnConvolutionDescriptor_t desc, int groups) {
+static int c_get_groups_for_conv(cudnnConvolutionDescriptor_t desc, int groups) {
 #if CUDNN_MAJOR >= 7
   int desc_groups;
   if (groups > 1) {
@@ -83,7 +83,7 @@ typedef std::unordered_map<std::string, AlgoRec> AlgoCache;
 #endif
 #include "pthread.h"
 
-#line 73 "dnn_conv_base.c"
+#line 87 "dnn_conv_base.c"
 
 pthread_mutex_t  algoMutex;
 AlgoCache        algoCache;
