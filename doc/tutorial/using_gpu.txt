@@ -370,7 +370,7 @@ Consider again the logistic regression:
 
 .. testoutput::
    :hide:
-   :options: + ELLIPSIS
+   :options: +ELLIPSIS
 
    Used the cpu
    target values for D
