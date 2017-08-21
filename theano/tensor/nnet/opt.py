@@ -518,7 +518,10 @@ def local_spatialtf_cpu(node):
     if not isinstance(node.op, AbstractSpatialTransformerOp):
         return
 
-    return [spatialtf_cpu(*node.inputs)]
+    inp, theta, out_height, out_width = node.inputs
+    border_mode = node.op.border_mode
+
+    return [spatialtf_cpu(inp, theta, out_height, out_width, border_mode)]
 
 
 @local_optimizer([AbstractSpatialTransformerGradIOp])
