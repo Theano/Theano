@@ -300,7 +300,7 @@ def get_conv_gradinputs_shape(kernel_shape, top_shape,
     """
     bsize, topshp = top_shape[0], top_shape[2:]
 
-    convdim = len(topshp) - 2
+    convdim = len(top_shape) - 2
     nkern, kshp = kernel_shape[1], kernel_shape[-convdim:]
 
     if filter_dilation is None:

@@ -1648,8 +1648,7 @@ def local_abstractconv_gemm(node):
             if prod1 > prod2:
                 rval = GpuCorrMM_gradWeights(border_mode,
                                              subsample,
-                                             filter_dilation,
-                                             unshared)(
+                                             filter_dilation)(
                     gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
                     gpu_contiguous(kern.dimshuffle(1, 0, 2, 3)))
                 # (we need to wrap the result in as_gpuarray_variable,
