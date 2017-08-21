@@ -192,7 +192,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
 
         // set the 'tensor math ok' flag
         c_set_math_type_for_conv(desc, CUDNN_TENSOR_OP_MATH);
-        
+
         tmpmem = gpudata_alloc(c->ctx, maxfree, NULL, 0, NULL);
         if (tmpmem == NULL) {
           PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
@@ -251,7 +251,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       }
     }
   }
-  
+
   if (c_set_math_type_for_conv(desc, mathtype) == -1 ||
       dnn_conv_gi_fallback(&algo, *input, kerns, desc) != 0) {
     cuda_exit(c->ctx);
@@ -320,7 +320,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   if (params->choose_once) {
     reuse_algo = 1;
   }
-  
+
   gpudata *workspace = 0;
   if (worksize != 0) {
     workspace = gpudata_alloc(c->ctx, worksize, NULL, 0, NULL);

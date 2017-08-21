@@ -37,7 +37,7 @@ static int c_set_math_type_for_conv(cudnnConvolutionDescriptor_t desc, cudnnMath
     return -1;
   }
 #endif
-  return 1;
+  return 0;
 }
 
 #section init_code_struct

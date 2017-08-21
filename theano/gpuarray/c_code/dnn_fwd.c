@@ -191,7 +191,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
   size_t maxfree = c_get_largest_free_block_size(c);
   if (PyErr_Occurred()) return 1;
-  
+
   if (params->choose_algo) {
 
     if (!reuse_algo) {
@@ -286,7 +286,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       }
     }
   }
-  
+
   if (c_set_math_type_for_conv(desc, mathtype) == -1 ||
       dnn_conv_fwd_fallback(&algo, input, kerns, desc) != 0) {
     cuda_exit(c->ctx);

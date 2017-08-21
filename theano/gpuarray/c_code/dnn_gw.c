@@ -176,7 +176,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         int count;
         cudnnConvolutionBwdFilterAlgoPerf_t choice;
         gpudata *tmpmem;
-        
+
         // set the 'tensor math ok' flag
         c_set_math_type_for_conv(desc, CUDNN_TENSOR_OP_MATH);
 
@@ -241,7 +241,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       }
     }
   } /* choose_algo */
-  
+
   if (c_set_math_type_for_conv(desc, mathtype) == -1 ||
       dnn_conv_gw_fallback(&algo, input, *kerns, desc) != 0) {
     cuda_exit(c->ctx);
@@ -310,9 +310,9 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   if (params->choose_once) {
     reuse_algo = 1;
   }
-  
+
   gpudata *workspace = 0;
-  
+
   if (worksize != 0) {
     workspace = gpudata_alloc(c->ctx, worksize, NULL, 0, NULL);
     if (workspace == NULL) {
