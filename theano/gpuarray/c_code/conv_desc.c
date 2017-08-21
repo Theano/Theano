@@ -10,7 +10,7 @@ static int c_set_groups_for_conv(cudnnConvolutionDescriptor_t desc, int groups) 
     return -1;
   }
 #endif
-  return 1;
+  return 0;
 }
 
 int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
