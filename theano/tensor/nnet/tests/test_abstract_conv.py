@@ -1520,7 +1520,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
             grouped_conv_output = grouped_convgrad_op(img_sym,
                                                       top_sym,
                                                       tensor.as_tensor_variable(
-                                                             kshp[-self.convdim:]))
+                                                          kshp[-self.convdim:]))
             grouped_func = theano.function([img_sym, top_sym], grouped_conv_output, mode=self.mode)
             assert any([isinstance(node.op, self.conv_gradw_op)
                        for node in grouped_func.maker.fgraph.toposort()])
@@ -1543,7 +1543,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
             def conv_gradweight(inputs_val, output_val):
                 return grouped_convgrad_op(inputs_val, output_val,
                                            tensor.as_tensor_variable(
-                                                    kshp[-self.convdim:]))
+                                               kshp[-self.convdim:]))
 
             utt.verify_grad(conv_gradweight,
                             [img, top],
@@ -1569,7 +1569,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
             grouped_conv_output = grouped_convgrad_op(kern_sym,
                                                       top_sym,
                                                       tensor.as_tensor_variable(
-                                                               imshp[-self.convdim:]))
+                                                          imshp[-self.convdim:]))
             grouped_func = theano.function([kern_sym, top_sym], grouped_conv_output, mode=self.mode)
             assert any([isinstance(node.op, self.conv_gradi_op)
                        for node in grouped_func.maker.fgraph.toposort()])
@@ -1592,7 +1592,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
             def conv_gradinputs(filters_val, output_val):
                 return grouped_convgrad_op(filters_val, output_val,
                                            tensor.as_tensor_variable(
-                                                    imshp[-self.convdim:]))
+                                               imshp[-self.convdim:]))
 
             utt.verify_grad(conv_gradinputs,
                             [kern, top],
