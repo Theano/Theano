@@ -224,8 +224,10 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         shape = (5,) * dims
         xv = np.random.randn(*shape).astype(config.floatX)
 
-        def f(a):
-            return T.nnet.logsoftmax(a)
+        def f1(ax):
+            def f(a):
+                return T.nnet.logsoftmax(a, ax)
+            return f
 
         for d in xrange(1, dims + 1):
             # Make a slice of the test data that has the
@@ -233,7 +235,8 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             # For example, for an array of shape (5,), we
             # need to do xv[0, 0, 0, 0].
             test_val = xv[((0,) * (dims - d))]
-            utt.verify_grad(f, [test_val])
+            for ax in range(0, d):
+                utt.verify_grad(f1(ax), [test_val])
 
     # Test that exp(logsoftmax(x)) is close to softmax(x)
     def test_allclose(self):
