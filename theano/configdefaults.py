@@ -55,6 +55,13 @@ AddConfigVar('warn_float64',
              in_c_key=False,
              )
 
+AddConfigVar('pickle_test_value',
+             "Dump test values while pickling model. "
+             "If True, test values will be dumped with model.",
+             BoolParam(True),
+             in_c_key=False,
+             )
+
 AddConfigVar('cast_policy',
              'Rules for implicit type casting',
              EnumStr('custom', 'numpy+floatX',
