@@ -2720,6 +2720,11 @@ class TestDnnConv3DRuntimeAlgorithms(TestDnnConv2DRuntimeAlgorithms):
     ]
 
 
+class TestDnnConv2DRuntimeAlgorithmsWithBigInputs(TestDnnConv2DRuntimeAlgorithms):
+    runtime_shapes = [(5, [(12, 4, 128, 128), (5, 4, 64, 64)]),
+                      (6, [(12, 4, 256, 256), (5, 4, 32, 64)])]
+
+
 def test_conv_guess_once_with_dtypes():
     # This test checks that runtime conv algorithm selection does not raise any exception
     # when consecutive functions with different dtypes and precisions are executed.
