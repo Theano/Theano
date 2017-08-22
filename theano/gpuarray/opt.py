@@ -2133,8 +2133,9 @@ class ConvMetaOptimizer(LocalMetaOptimizer):
                                          node.op.border_mode,
                                          node.op.subsample,
                                          node.op.filter_dilation)
+            convdim = img.ndim - 2
 
-            result[kshape] = theano.tensor.as_tensor_variable(node.op.kshp[-2:])
+            result[kshape] = theano.tensor.as_tensor_variable(node.op.kshp[-convdim:])
 
             for(var, shape) in zip((img, top), (node.op.imshp, tshp)):
                 result[var] = theano.shared(np.random.random(shape).astype(var.dtype),

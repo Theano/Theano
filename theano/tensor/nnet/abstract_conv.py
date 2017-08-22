@@ -61,6 +61,8 @@ def get_conv_output_shape(image_shape, kernel_shape,
         possibly depth) axis.
     filter_dilation: tuple of int (symbolic or numeric). Its two or three
         elements correspond respectively to the dilation on height and width axis.
+    Note - The shape of the convolution output does not depend on the 'unshared'
+        or the 'num_groups' parameters.
 
     Returns
     -------
@@ -177,6 +179,8 @@ def get_conv_gradweights_shape(image_shape, top_shape,
         width axis.
     num_groups: An int which specifies the number of separate groups to
         be divided into.
+    unshared: Boolean value. If true, unshared convolution will be performed,
+        where a different filter is applied to each area of the input.
 
     Returns
     -------
@@ -291,6 +295,8 @@ def get_conv_gradinputs_shape(kernel_shape, top_shape,
         width axis.
     num_groups: An int which specifies the number of separate groups to
         be divided into.
+    Note - The shape of the convolution output does not depend on the 'unshared'
+        parameter.
 
     Returns
     -------
