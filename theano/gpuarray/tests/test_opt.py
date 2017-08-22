@@ -812,27 +812,52 @@ class Conv_opt_test(unittest.TestCase):
         for imshp, kshp, tshp in zip(imshp2d, kshp2d, tshp2d):
             # forward passes
             self.optimizer_2d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM,
+                              subsample=(2, 2))
+            self.optimizer_2d([imshp, kshp, tshp], 0,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorrMM_gradWeights)
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConv)
             self.optimizer_2d([imshp, kshp, tshp], 0,
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConvGradW)
             # backwards wrt weights
             self.optimizer_2d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM_gradWeights)
+            self.optimizer_2d([imshp, tshp, kshp], 1,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorrMM)
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradW)
             self.optimizer_2d([imshp, tshp, kshp], 1,
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
             # backwards wrt to inputs
             self.optimizer_2d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM_gradInputs)
+            self.optimizer_2d([tshp, kshp, imshp], 2,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorrMM)
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradI)
             self.optimizer_2d([tshp, kshp, imshp], 2,
                               'alternative',
                               'conv_gemm:default',
@@ -849,6 +874,11 @@ class Conv_opt_test(unittest.TestCase):
         for imshp, kshp, tshp in zip(imshp3d, kshp3d, tshp3d):
             # forwards passes
             self.optimizer_3d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_dnn:alternative:conv3d2d',
+                              blas.GpuCorr3dMM,
+                              subsample=(2, 2, 2))
+            self.optimizer_3d([imshp, kshp, tshp], 0,
                               'alternative',
                               'conv_dnn:default:conv3d2d',
                               blas.GpuCorr3dMM_gradWeights)
@@ -860,7 +890,15 @@ class Conv_opt_test(unittest.TestCase):
                               'alternative',
                               'conv_gemm:default:conv3d2d',
                               dnn.GpuDnnConvGradW)
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_gemm:alternative:conv3d2d',
+                              dnn.GpuDnnConv)
             # backward pass wrt weight
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorr3dMM_gradWeights)
             self.optimizer_3d([imshp, tshp, kshp], 1,
                               'alternative',
                               'conv_dnn:default',
@@ -869,9 +907,17 @@ class Conv_opt_test(unittest.TestCase):
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradW)
 
             # backward pass wrt inputs
             self.optimizer_3d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorr3dMM_gradInputs)
+            self.optimizer_3d([tshp, kshp, imshp], 2,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorr3dMM)
@@ -879,6 +925,10 @@ class Conv_opt_test(unittest.TestCase):
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradI)
 
     def test_optimizers_non_default(self):
         if theano.config.cxx == "":
@@ -889,12 +939,24 @@ class Conv_opt_test(unittest.TestCase):
         filter_dilation = [(1, 1), (2, 2)]
         for imshp, kshp, fdil in zip(imshp2d, kshp2d, filter_dilation):
             self.optimizer_2d([imshp, kshp], 0,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM,
+                              border_mode='full',
+                              subsample=(2, 2),
+                              filter_dilation=fdil)
+            self.optimizer_2d([imshp, kshp], 0,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorrMM_gradInputs,
                               border_mode='full',
                               filter_dilation=fdil)
-            # works only for cudnn > 6.0
+            self.optimizer_2d([imshp, kshp], 0,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConv,
+                              border_mode='full',
+                              filter_dilation=fdil)
             self.optimizer_2d([imshp, kshp], 0,
                               'alternative',
                               'conv_gemm:default',
@@ -907,12 +969,24 @@ class Conv_opt_test(unittest.TestCase):
         filter_dilation = [(1, 1, 1), (2, 2, 2)]
         for imshp, kshp, fdil in zip(imshp3d, kshp3d, filter_dilation):
             self.optimizer_3d([imshp, kshp], 0,
+                              '',
+                              'conv_dnn:alternative:conv3d2d',
+                              blas.GpuCorr3dMM,
+                              border_mode='full',
+                              subsample=(2, 2, 2),
+                              filter_dilation=fdil)
+            self.optimizer_3d([imshp, kshp], 0,
                               'alternative',
                               'conv_dnn:default:conv3d2d',
                               blas.GpuCorr3dMM_gradInputs,
                               border_mode='full',
                               filter_dilation=fdil)
-            # works only for cudnn > 6.0
+            self.optimizer_3d([imshp, kshp], 0,
+                              '',
+                              'conv_gemm:alternative:conv3d2d',
+                              dnn.GpuDnnConv,
+                              border_mode='full',
+                              filter_dilation=fdil)
             self.optimizer_3d([imshp, kshp], 0,
                               'alternative',
                               'conv_gemm:default:conv3d2d',
