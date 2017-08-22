@@ -454,12 +454,12 @@ class SoftmaxGrad(gof.Op):
                 dtype_%(dx)s sum_dy_times_sm = 0.;
                 for (size_t j = 0; j < num_sm_classes; ++j)
                 {
-                    dx_i[j] = dy_i[j] * sm_i[j];
-                    sum_dy_times_sm += dx_i[j];
+                    dx_i[j * stride_dx] = dy_i[j * stride_dy] * sm_i[j * stride_sm];
+                    sum_dy_times_sm += dx_i[j * stride_dx];
                 }
                 for (size_t j = 0; j < num_sm_classes; ++j)
                 {
-                    dx_i[j] -= sum_dy_times_sm * sm_i[j];
+                    dx_i[j * stride_dx] -= sum_dy_times_sm * sm_i[j * stride_sm];
                 }
                 PyArray_ITER_NEXT(it_dx);
                 PyArray_ITER_NEXT(it_sm);
