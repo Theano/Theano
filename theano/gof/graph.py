@@ -526,9 +526,12 @@ class Variable(Node):
     def __getstate__(self):
         d = self.__dict__.copy()
         d.pop("_fn_cache", None)
-        if (not config.pickle_test_value) and (hasattr(self.tag, 'test_value')):
-            warnings.warn("Test value of variable %s(%s) will not be dumped." % (d['auto_name'], d['name']))
-            t = d["tag"]
+        if (not config.pickle_test_value) \
+           and (hasattr(self.tag, 'test_value')) \
+           and (not type(config).pickle_test_value.is_default):
+            warnings.warn("pickle_test_value is not defaut value (True).\n"
+                          "Test value of variable %s(%s) will not be dumped." % (d['auto_name'], d['name']))
+            t = copy(d["tag"])
             del t.test_value
             d["tag"] = t
         return d

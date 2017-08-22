@@ -58,7 +58,7 @@ AddConfigVar('warn_float64',
 AddConfigVar('pickle_test_value',
              "Dump test values while pickling model. "
              "If True, test values will be dumped with model.",
-             BoolParam(False),
+             BoolParam(True),
              in_c_key=False,
              )
 
