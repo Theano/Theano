@@ -297,14 +297,17 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         only the forward pass is checked (i.e., doesn't check the gradient)
         """
         dims = 4
+        # Check for differents dimensions
         for d in xrange(1, dims + 1):
             x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
-            sm = tensor.nnet.softmax(x)
-            logsm = tensor.log(sm)
-            f = theano.function([x], logsm)
-            assert isinstance(f.maker.fgraph.outputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
-            assert check_stack_trace(
-                f, ops_to_check=theano.tensor.nnet.nnet.LogSoftmax)
+            # Check for differents axis
+            for ax in range(0, d):
+                sm = tensor.nnet.softmax(x, ax)
+                logsm = tensor.log(sm)
+                f = theano.function([x], logsm)
+                assert isinstance(f.maker.fgraph.outputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+                assert check_stack_trace(
+                    f, ops_to_check=theano.tensor.nnet.nnet.LogSoftmax)
 
     def test_local_indexing_softmax_optimization(self):
         """Test the Logsoftmax substitution with indexing
