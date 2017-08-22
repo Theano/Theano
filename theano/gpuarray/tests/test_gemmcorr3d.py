@@ -222,12 +222,7 @@ class TestCorr3dMM(unittest.TestCase):
 
 
 class TestGroupGpuCorr3d(Grouped_conv3d_noOptim):
-    mode = theano.compile.get_mode("FAST_RUN")
-    conv = GpuCorr3dMM
-    conv_gradw = GpuCorr3dMM_gradWeights
-    conv_gradi = GpuCorr3dMM_gradInputs
+    mode = mode_with_gpu.excluding('cudnn')
     conv_op = GpuCorr3dMM
     conv_gradw_op = GpuCorr3dMM_gradWeights
     conv_gradi_op = GpuCorr3dMM_gradInputs
-    flip_filter = True
-    is_dnn = False

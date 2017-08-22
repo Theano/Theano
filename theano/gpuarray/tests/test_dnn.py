@@ -2265,50 +2265,18 @@ def test_dnn_rnn_lstm_grad_c():
             utt.assert_allclose(ref_grads_layer[j], g)
 
 
-def dconvfwd(border_mode, subsample, filter_dilation, num_groups):
-    def dconv(img, kern):
-        return dnn.dnn_conv(img, kern, border_mode=border_mode, subsample=subsample, dilation=filter_dilation,
-                            conv_mode='conv', direction_hint='forward', workmem=None,
-                            algo=None, precision=None, num_groups=num_groups)
-    return dconv
-
-
-def dconvgw(border_mode, subsample, filter_dilation, num_groups):
-    def dconvw(img, topgrad, kshp):
-        return dnn.dnn_gradweight(img, topgrad, kshp, border_mode=border_mode, subsample=subsample, dilation=filter_dilation,
-                                  conv_mode='conv', precision=None, algo=None, num_groups=num_groups)
-    return dconvw
-
-
-def dconvgi(border_mode, subsample, filter_dilation, num_groups):
-    def dconvi(kern, topgrad, imshp):
-        return dnn.dnn_gradinput(kern, topgrad, imshp, border_mode=border_mode, subsample=subsample, dilation=filter_dilation,
-                                 conv_mode='conv', precision=None, algo=None, num_groups=num_groups)
-    return dconvi
-
-
 class Cudnn_grouped_conv(Grouped_conv_noOptim):
-    mode = mode_with_gpu
-    conv = staticmethod(dconvfwd)
-    conv_gradw = staticmethod(dconvgw)
-    conv_gradi = staticmethod(dconvgi)
+    mode = mode_with_gpu.excluding('conv_gemm')
     conv_op = dnn.GpuDnnConv
     conv_gradw_op = dnn.GpuDnnConvGradW
     conv_gradi_op = dnn.GpuDnnConvGradI
-    flip_filter = False
-    is_dnn = True
 
 
 class Cudnn_grouped_conv3d(Grouped_conv3d_noOptim):
-    mode = mode_with_gpu
-    conv = staticmethod(dconvfwd)
-    conv_gradw = staticmethod(dconvgw)
-    conv_gradi = staticmethod(dconvgi)
+    mode = mode_with_gpu.excluding('conv_gemm')
     conv_op = dnn.GpuDnnConv
     conv_gradw_op = dnn.GpuDnnConvGradW
     conv_gradi_op = dnn.GpuDnnConvGradI
-    flip_filter = False
-    is_dnn = True
 
 
 def test_dnn_spatialtf():

@@ -1439,7 +1439,6 @@ class Grouped_conv_noOptim(unittest.TestCase):
     conv_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
     conv_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
     mode = theano.Mode(optimizer=None)
-    flip_filter = False
     is_dnn = False
 
     def setUp(self):
@@ -1476,13 +1475,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
                                         subsample=self.subsample,
                                         filter_dilation=self.filter_dilation,
                                         num_groups=groups)
-            if self.flip_filter:
-                if self.convdim == 2:
-                    grouped_conv_output = grouped_conv_op(img_sym, kern_sym[:, :, ::-1, ::-1])
-                else:
-                    grouped_conv_output = grouped_conv_op(img_sym, kern_sym[:, :, ::-1, ::-1, ::-1])
-            else:
-                grouped_conv_output = grouped_conv_op(img_sym, kern_sym)
+            grouped_conv_output = grouped_conv_op(img_sym, kern_sym)
 
             grouped_func = theano.function([img_sym, kern_sym], grouped_conv_output, mode=self.mode)
             assert any([isinstance(node.op, self.conv_op)
@@ -1527,13 +1520,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
             grouped_conv_output = grouped_convgrad_op(img_sym,
                                                       top_sym,
                                                       tensor.as_tensor_variable(
-                                                          kshp if self.is_dnn
-                                                          else kshp[-self.convdim:]))
-            if self.flip_filter:
-                if self.convdim == 2:
-                    grouped_conv_output = grouped_conv_output[:, :, ::-1, ::-1]
-                else:
-                    grouped_conv_output = grouped_conv_output[:, :, ::-1, ::-1, ::-1]
+                                                          kshp[-self.convdim:]))
             grouped_func = theano.function([img_sym, top_sym], grouped_conv_output, mode=self.mode)
             assert any([isinstance(node.op, self.conv_gradw_op)
                        for node in grouped_func.maker.fgraph.toposort()])
@@ -1556,8 +1543,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
             def conv_gradweight(inputs_val, output_val):
                 return grouped_convgrad_op(inputs_val, output_val,
                                            tensor.as_tensor_variable(
-                                               kshp if self.is_dnn
-                                               else kshp[-self.convdim:]))
+                                               kshp[-self.convdim:]))
 
             utt.verify_grad(conv_gradweight,
                             [img, top],
@@ -1580,19 +1566,10 @@ class Grouped_conv_noOptim(unittest.TestCase):
                                                   subsample=self.subsample,
                                                   filter_dilation=self.filter_dilation,
                                                   num_groups=groups)
-            if self.flip_filter:
-                if self.convdim == 2:
-                    grouped_conv_output = grouped_convgrad_op(kern_sym[:, :, ::-1, ::-1], top_sym,
-                                                              tensor.as_tensor_variable(imshp[-self.convdim:]))
-                else:
-                    grouped_conv_output = grouped_convgrad_op(kern_sym[:, :, ::-1, ::-1, ::-1], top_sym,
-                                                              tensor.as_tensor_variable(imshp[-self.convdim:]))
-            else:
-                grouped_conv_output = grouped_convgrad_op(kern_sym,
-                                                          top_sym,
-                                                          tensor.as_tensor_variable(
-                                                              imshp if self.is_dnn
-                                                              else imshp[-self.convdim:]))
+            grouped_conv_output = grouped_convgrad_op(kern_sym,
+                                                      top_sym,
+                                                      tensor.as_tensor_variable(
+                                                          imshp[-self.convdim:]))
             grouped_func = theano.function([kern_sym, top_sym], grouped_conv_output, mode=self.mode)
             assert any([isinstance(node.op, self.conv_gradi_op)
                        for node in grouped_func.maker.fgraph.toposort()])
@@ -1615,8 +1592,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
             def conv_gradinputs(filters_val, output_val):
                 return grouped_convgrad_op(filters_val, output_val,
                                            tensor.as_tensor_variable(
-                                               imshp if self.is_dnn
-                                               else imshp[-self.convdim:]))
+                                               imshp[-self.convdim:]))
 
             utt.verify_grad(conv_gradinputs,
                             [kern, top],
@@ -1631,8 +1607,6 @@ class Grouped_conv3d_noOptim(Grouped_conv_noOptim):
     conv_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv3d_gradWeights
     conv_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv3d_gradInputs
     mode = theano.Mode(optimizer=None)
-    flip_filter = False
-    is_dnn = False
 
     def setUp(self):
         self.num_groups = [3, 2, 4, 4]
