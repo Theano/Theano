@@ -235,7 +235,6 @@ def struct_gen(args, struct_builders, blocks, sub):
 
     # declares the storage
     storage_decl = "\n".join(["PyObject* %s;" % arg for arg in args])
-    storage_init = "\n".join(["this->%s = NULL;" % arg for arg in args])
     # in the constructor, sets the storage to the arguments
     storage_set = "\n".join(["this->%s = %s;" % (arg, arg) for arg in args])
     # increments the storage's refcount in the constructor
@@ -291,8 +290,6 @@ def struct_gen(args, struct_builders, blocks, sub):
         %(struct_decl)s
 
         %(name)s() {
-            %(storage_init)s
-
             // This is only somewhat safe because we:
             //  1) Are not a virtual class
             //  2) Do not use any virtual classes in the members
