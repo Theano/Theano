@@ -9,6 +9,9 @@ hash_prefix = std::string("FWD|GPU#");
 int     reuse_algo;
 AlgoRec prev_algo;
 std::string hash_prefix;
+
+#define THEANO_DONT_MEMSET_STRUCT
+
 #ifdef DEBUG
 char algorithm_name[128];
 #endif
