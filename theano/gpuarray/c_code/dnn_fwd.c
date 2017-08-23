@@ -27,8 +27,8 @@ std::string hash_prefix;
 
 #ifdef DEBUG
 char algorithm_name[128];
-theano_clock_t total_computation_time;
-theano_clock_t total_selection_time;
+double total_computation_time;
+double total_selection_time;
 size_t n_computations;
 size_t n_selections;
 const char* selection_name;
@@ -140,7 +140,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
   bool use_cached = 0;
   #ifdef DEBUG
-  theano_clock_t t;
+  TheanoTimer timer;
+  fprintf(stderr, "%s\n", _cppver);
   #endif
 
   if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(kerns)[1] * params->num_groups) {
@@ -264,7 +265,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
         // We don't sync the buffer as we don't care about the values.
         #ifdef DEBUG
-        t = theano_clock();
+        timer.start();
         #endif
         err = cudnnFindConvolutionForwardAlgorithmEx(
           params->handle, APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
@@ -273,7 +274,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
           1, &count, &choice, *(void **)tmpmem,
           maxfree);
         #ifdef DEBUG
-        t = theano_clock() - t;
+        timer.end();
         #endif
         gpudata_release(tmpmem);
         if (beta != 0) {
@@ -310,14 +311,14 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 #endif
       } else {
         #ifdef DEBUG
-        t = theano_clock();
+        timer.start();
         #endif
         err = cudnnGetConvolutionForwardAlgorithm(
           params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
           desc, APPLY_SPECIFIC(output),
           CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, maxfree, &algo);
         #ifdef DEBUG
-        t = theano_clock() - t;
+        timer.end();
         #endif
         if (err != CUDNN_STATUS_SUCCESS) {
           PyErr_Format(PyExc_RuntimeError,
@@ -328,7 +329,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         }
       }
       #ifdef DEBUG
-      total_selection_time += t;
+      total_selection_time += timer.milliseconds;
       ++n_selections;
       #endif
     }
@@ -396,16 +397,13 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     );
     if (!(reuse_algo || use_cached)) {
         // We have selected an algorithm at runtime.
-        // `t` still contains timing about selection step.
-        fprintf(stderr, "\t(selected %s fwd algo in %g milliseconds)\n", selection_name, theano_clock_to_milliseconds(t));
+        // `timer` still contains timing about selection step.
+        fprintf(stderr, "\t(selected %s fwd algo in %g milliseconds)\n", selection_name, timer.milliseconds);
         if (n_selections > 1) {
             fprintf(stderr, "\t(selected %lu fwd algos in %g milliseconds (average: %g milliseconds per selection))\n",
-                    n_selections,
-                    theano_clock_to_milliseconds(total_selection_time),
-                    theano_clock_average_to_milliseconds(total_selection_time, n_selections));
+                    n_selections, total_selection_time, total_selection_time / n_selections);
         }
     }
-  }
 #endif
 
     if (!reuse_algo) {
@@ -441,7 +439,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   cuda_wait((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
   #ifdef DEBUG
-  t = theano_clock();
+  GpuArray_sync(&(*output)->ga);
+  timer.start();
   #endif
 
   for ( int g = 0; g < groups; g++) {
@@ -466,8 +465,9 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   cuda_record((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
   #ifdef DEBUG
-  t = theano_clock() - t;
-  total_computation_time += t;
+  GpuArray_sync(&(*output)->ga);
+  timer.end();
+  total_computation_time += timer.milliseconds;
   ++n_computations;
   #endif
 
@@ -479,12 +479,10 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     return 1;
   }
   #ifdef DEBUG
-  fprintf(stderr, "\t(ran fwd algo in %g milliseconds)\n", theano_clock_to_milliseconds(t));
+  fprintf(stderr, "\t(ran fwd algo in %g milliseconds)\n", timer.milliseconds);
   if (n_computations > 1) {
     fprintf(stderr, "\t(ran %lu fwd computations in %g milliseconds (average: %g milliseconds per call))\n",
-            n_computations,
-            theano_clock_to_milliseconds(total_computation_time),
-            theano_clock_average_to_milliseconds(total_computation_time, n_computations));
+            n_computations, total_computation_time, total_computation_time / n_computations);
   }
   #endif
   return 0;

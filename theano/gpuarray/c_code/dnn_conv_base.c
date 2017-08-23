@@ -85,21 +85,37 @@ typedef std::unordered_map<std::string, AlgoRec> AlgoCache;
 
 #line 87 "dnn_conv_base.c"
 
+#ifdef DEBUG
+
 #if __cplusplus < 201103L
-/* Using C standard interface (<ctime>). */
-#define theano_clock_t clock_t
-#define theano_clock() clock()
-#define theano_clock_to_milliseconds(t) ( 1000.0 * (t) / CLOCKS_PER_SEC )
-#define theano_clock_average_to_milliseconds(t, n) ( (1000.0 * (t) / (n)) / CLOCKS_PER_SEC )
+
+#include <plf_nanotimer/plf_nanotimer.h>
+const char* const _cppver = "Using plf_nanotimer: http://www.plflib.org/nanotimer.htm";
+struct TheanoTimer {
+    double milliseconds;
+    plf::nanotimer timer;
+    void start() {timer.start();}
+    void end() {milliseconds = timer.get_elapsed_ms();}
+};
+
 #else
-/* Using C++11 standard interface (<chrono>).
-I don't know if it's really more accurate, but at least
-it provides interfaces up to nanoseconds. */
+
 #include <chrono>
-#define theano_clock_t std::chrono::time_point
-#define theano_clock() std::chrono::steady_clock::now()
-#define theano_clock_to_milliseconds(t) ( std::chrono::duration_cast<std::chrono::nanoseconds>(t).count() / 1000000.0 )
-#define theano_clock_average_to_milliseconds(t, n) ( theano_clock_to_milliseconds(t) / (n) )
+const char* const _cppver = "Using C++11 chrono";
+struct TheanoTimer {
+    double milliseconds;
+    std::chrono::steady_clock::time_point base;
+    void start() {base = std::chrono::steady_clock::now();}
+    void end() {
+        milliseconds =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - base
+            ).count() / 1000000.0;
+    }
+};
+
+#endif
+
 #endif
 
 pthread_mutex_t  algoMutex;
