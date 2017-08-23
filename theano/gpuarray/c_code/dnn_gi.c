@@ -342,6 +342,8 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     }
   }
 
+  if (worksize != 0)
+    cuda_wait(workspace, GPUARRAY_CUDA_WAIT_WRITE);
   cuda_wait(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
   cuda_wait(output->ga.data, GPUARRAY_CUDA_WAIT_READ);
   cuda_wait((*input)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
@@ -357,8 +359,10 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       APPLY_SPECIFIC(input), ((char *)PyGpuArray_DEV_DATA(*input)) + input_offset * g);
   }
 
-  if (worksize != 0)
+  if (worksize != 0) {
+    cuda_record(workspace, GPUARRAY_CUDA_WAIT_WRITE);
     gpudata_release(workspace);
+  }
 
   cuda_record(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
   cuda_record(output->ga.data, GPUARRAY_CUDA_WAIT_READ);
