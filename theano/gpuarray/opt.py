@@ -1653,6 +1653,29 @@ def local_abstractconv_gemm(node):
     return [rval]
 
 
+# CorrMM opt used for Meta-optimizer
+@local_optimizer([AbstractConv2d])
+def local_abstractconv_gemm_def(node):
+    if not isinstance(node.op, AbstractConv2d):
+        return None
+    img, kern = node.inputs
+    if (not isinstance(img.type, GpuArrayType) or
+            not isinstance(kern.type, GpuArrayType)):
+        return None
+
+    border_mode = node.op.border_mode
+    subsample = node.op.subsample
+    filter_dilation = node.op.filter_dilation
+    if node.op.filter_flip:
+        kern = kern[:, :, ::-1, ::-1]
+    rval = GpuCorrMM(border_mode,
+                     subsample,
+                     filter_dilation,
+                     node.op.num_groups)(gpu_contiguous(img),
+                                         gpu_contiguous(kern))
+    return [rval]
+
+
 @local_optimizer([AbstractConv2d])
 def local_abstractconv_gemm_alt(node):
     if not isinstance(node.op, AbstractConv2d):
@@ -1765,6 +1788,30 @@ def local_abstractconv3d_gemm(node):
                 rval = as_gpuarray_variable(
                     rval.dimshuffle(1, 0, 2, 3, 4),
                     context_name=ctx)
+    return [rval]
+
+
+# Corr3dMM opt used for Meta-optimizer
+@local_optimizer([AbstractConv3d])
+def local_abstractconv3d_gemm_def(node):
+    if not isinstance(node.op, AbstractConv3d):
+        return None
+    img, kern = node.inputs
+    if (not isinstance(img.type, GpuArrayType) or
+            not isinstance(kern.type, GpuArrayType)):
+        return None
+
+    border_mode = node.op.border_mode
+    subsample = node.op.subsample
+    filter_dilation = node.op.filter_dilation
+    if node.op.filter_flip:
+        kern = kern[:, :, ::-1, ::-1, ::-1]
+    # By default use GpuCorr3dMM
+    rval = GpuCorr3dMM(border_mode,
+                       subsample,
+                       filter_dilation,
+                       node.op.num_groups)(gpu_contiguous(img),
+                                           gpu_contiguous(kern))
     return [rval]
 
 
@@ -2745,9 +2792,9 @@ conv_metaopt.register(local_abstractconv_gw_cudnn,
                       ['default', 'cudnn', 'conv_dnn'])
 conv_metaopt.register(local_abstractconv_gi_cudnn,
                       ['default', 'cudnn', 'conv_dnn'])
-conv_metaopt.register(local_abstractconv_gemm,
+conv_metaopt.register(local_abstractconv_gemm_def,
                       ['default', 'conv_gemm'])
-conv_metaopt.register(local_abstractconv3d_gemm,
+conv_metaopt.register(local_abstractconv3d_gemm_def,
                       ['default', 'conv_gemm'])
 conv_metaopt.register(local_abstractconv_gradweights_gemm,
                       ['default', 'conv_gemm'])
