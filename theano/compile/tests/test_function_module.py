@@ -582,6 +582,35 @@ class T_function(unittest.TestCase):
         except TypeError:
             assert(func(first=1) == x)
 
+    def test_check_for_aliased_inputs(self):
+        b = np.random.rand(5, 4)
+        s1 = theano.shared(b)
+        s2 = theano.shared(b)
+        x1 = theano.tensor.vector()
+
+        # Assert cases we should not check for aliased inputs
+        for d in [dict(outputs=[s1 + 1]),
+                  dict(outputs=[s1 + 1, s2 + 3]),
+                  dict(outputs=[s1 + 1], updates=[(s2, s2 + 3)]),
+                  dict(inputs=[x1], outputs=[x1 + 1], updates=[(s2, s2 + 3)])]:
+            if "inputs" not in d:
+                d["inputs"] = []
+            f = theano.function(**d)
+            assert not f._check_for_aliased_inputs, d
+
+        # Assert cases we should check for aliased inputs
+        for d in [dict(inputs=[theano.In(x1, borrow=True)],
+                       outputs=[x1 + 1], updates=[(s2, s2 + 3)]),
+                  dict(inputs=[theano.In(x1, borrow=True, mutable=True)],
+                       outputs=[x1 + 1], updates=[(s2, s2 + 3)]),
+                  dict(inputs=[theano.In(x1, mutable=True)],
+                       outputs=[x1 + 1], updates=[(s2, s2 + 3)])]:
+            if "inputs" not in d:
+                d["inputs"] = []
+            f = theano.function(**d)
+
+            assert f._check_for_aliased_inputs, d
+
 
 class T_picklefunction(unittest.TestCase):
 
