@@ -425,11 +425,6 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   } // params->choose_algo
 
   gpudata *workspace = 0;
-  /*
-   * This is less than ideal since we need to free it after (which
-   * introduces a synchronization point. But we don't have a module
-   * to place a nice get_work_mem() function in.
-   */
   if (worksize != 0) {
     workspace = gpudata_alloc(c->ctx, worksize, NULL, 0, NULL);
     if (workspace == NULL) {
