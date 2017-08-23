@@ -953,7 +953,7 @@ class TestDnnConv2D(BaseTestDnnConv):
 
     special_cases = [ConvCase.bwd_filter(algo='deterministic', dtype='float32', precision='float32',
                                          inputs_shape=(1, 1, 541211, 10), filters_shape=(50, 1, 3, 10),
-                                         border_mode=(1, 0), should_fail=True),
+                                         border_mode=(1, 0), should_fail=(cudnn.version <= 6)),
                      ConvCase.fwd(algo='small', dtype='float32', precision='float32',
                                   inputs_shape=(65536, 2, 2, 2), filters_shape=(1, 2, 2, 2)),
                      # NB: Due to current workaround (see dnn_fwd.c), this test won't fail for cuDNN < v6100.
