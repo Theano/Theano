@@ -262,12 +262,10 @@ def op_lifter(OP, cuda_only=False):
                         new_outputs = [new_op]
                         to_cpu_fn = lambda x: x.transfer('cpu')
                     # copy stack traces onto gpu outputs
-                    for old_output, new_output in zip(node.outputs, new_outputs):
-                        copy_stack_trace(old_output, new_output)
-                    new_outputs = [to_cpu_fn(o) for o in new_outputs]
                     # also copy the stack traces onto HostFromGpu outputs
                     for old_output, new_output in zip(node.outputs, new_outputs):
                         copy_stack_trace(old_output, new_output)
+                        copy_stack_trace(old_output, to_cpu_fn(new_output))
                     return new_outputs
             return False
         local_opt.__name__ = maker.__name__
