@@ -814,8 +814,7 @@ class Conv_opt_test(unittest.TestCase):
             self.optimizer_2d([imshp, kshp, tshp], 0,
                               '',
                               'conv_dnn:alternative',
-                              blas.GpuCorrMM,
-                              subsample=(2, 2))
+                              blas.GpuCorrMM)
             self.optimizer_2d([imshp, kshp, tshp], 0,
                               'alternative',
                               'conv_dnn:default',
@@ -876,8 +875,7 @@ class Conv_opt_test(unittest.TestCase):
             self.optimizer_3d([imshp, kshp, tshp], 0,
                               '',
                               'conv_dnn:alternative:conv3d2d',
-                              blas.GpuCorr3dMM,
-                              subsample=(2, 2, 2))
+                              blas.GpuCorr3dMM)
             self.optimizer_3d([imshp, kshp, tshp], 0,
                               'alternative',
                               'conv_dnn:default:conv3d2d',
@@ -943,7 +941,6 @@ class Conv_opt_test(unittest.TestCase):
                               'conv_dnn:alternative',
                               blas.GpuCorrMM,
                               border_mode='full',
-                              subsample=(2, 2),
                               filter_dilation=fdil)
             self.optimizer_2d([imshp, kshp], 0,
                               'alternative',
@@ -973,7 +970,6 @@ class Conv_opt_test(unittest.TestCase):
                               'conv_dnn:alternative:conv3d2d',
                               blas.GpuCorr3dMM,
                               border_mode='full',
-                              subsample=(2, 2, 2),
                               filter_dilation=fdil)
             self.optimizer_3d([imshp, kshp], 0,
                               'alternative',
