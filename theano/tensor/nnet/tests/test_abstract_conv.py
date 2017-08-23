@@ -1757,9 +1757,9 @@ class TestUnsharedConv(unittest.TestCase):
     mode = theano.compile.mode.Mode(optimizer='None')
 
     def setUp(self):
-        self.img_shape = [(2, 1, 4, 4), (1, 2, 4, 2), (1, 3, 5, 3), (1, 4, 4, 4)]
-        self.kern_shape = [(2, 2, 2, 1, 3, 3), (2, 4, 2, 2, 4, 2), (3, 2, 1, 1, 3, 3), (4, 3, 3, 2, 4, 2)]
-        self.topgrad_shape = [(2, 2, 2, 2), (1, 2, 4, 2), (1, 3, 2, 1), (1, 4, 3, 3)]
+        self.img_shape = [(2, 2, 4, 4), (3, 2, 4, 2), (3, 3, 5, 3), (3, 4, 4, 4)]
+        self.kern_shape = [(2, 2, 2, 2, 3, 3), (2, 4, 2, 2, 4, 2), (3, 2, 1, 1, 3, 3), (4, 3, 3, 2, 4, 2)]
+        self.topgrad_shape = [(2, 2, 2, 2), (3, 2, 4, 2), (3, 3, 2, 1), (3, 4, 3, 3)]
         self.border_mode = ['valid', 'full', 'valid', 'full']
         self.subsample = [(1, 1), (2, 2), (2, 1), (3, 2)]
         self.filter_dilation = (1, 1)
