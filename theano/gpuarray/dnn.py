@@ -1695,6 +1695,7 @@ class GpuDnnReduction(DnnBase):
     def make_node(self, inp):
         ctx_name = infer_context_name(inp)
         inp = as_gpuarray_variable(inp, ctx_name)
+        inp = gpu_contiguous(inp)
         if inp.ndim > 8:
             raise ValueError("cuDNN reduction doesn't support nd > 8")
         assert inp.dtype in ['float16', 'float32', 'float64']
