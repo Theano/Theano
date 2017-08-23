@@ -299,7 +299,9 @@ def struct_gen(args, struct_builders, blocks, sub):
             // now I am tired of chasing segfaults because
             // initialization code had an error and some pointer has
             // a junk value.
+            #ifndef THEANO_DONT_MEMSET_STRUCT
             memset(this, 0, sizeof(*this));
+            #endif
         }
         ~%(name)s(void) {
             cleanup();
