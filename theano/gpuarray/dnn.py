@@ -3424,25 +3424,22 @@ def local_dnn_convi_alpha_merge(node, *inputs):
 @register_opt('cudnn')
 @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_conv_output_merge(node, *inputs):
-    with inherit_stack_trace(node.outputs):
-        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConv(algo=node.op.algo)(*inputs)]
+    inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
+    return [GpuDnnConv(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_convw_output_merge(node, *inputs):
-    with inherit_stack_trace(node.outputs):
-        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
+    inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
+    return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_convi_output_merge(node, *inputs):
-    with inherit_stack_trace(node.outputs):
-        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
+    inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
+    return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
 
 
 def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):

@@ -274,7 +274,8 @@ def output_merge(cls, alpha_in, beta_in, out_in):
                 inputs = list(targ.inputs)
                 inputs[out_in] = W
                 inputs[beta_in] = _one.clone()
-                return maker(targ, *inputs)
+                with inherit_stack_trace(node.outputs):
+                    return maker(targ, *inputs)
         return opt
     return wrapper
 
