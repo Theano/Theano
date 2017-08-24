@@ -53,15 +53,6 @@ APPLY_SPECIFIC(dnn_sptf_grid)(PyGpuArrayObject * theta,
         return 1;
     }
 
-    if ( PyGpuArray_DIM( theta, 1 ) != 2 || PyGpuArray_DIM( theta, 2 ) != 3 )
-    {
-        PyErr_Format( PyExc_RuntimeError,
-            "GpuDnnTransformerGrid: incorrect dimensions for theta, expected (%d, %d, %d), got (%d, %d, %d)",
-            PyGpuArray_DIMS( theta )[0], 2, 3, PyGpuArray_DIMS( theta )[0],
-            PyGpuArray_DIMS( theta )[1], PyGpuArray_DIMS( theta )[2] );
-        return 1;
-    }
-
     if ( PyArray_NDIM( out_dims ) != 1 || PyArray_SIZE( out_dims ) != 4 )
     {
         PyErr_SetString( PyExc_MemoryError,
@@ -74,6 +65,16 @@ APPLY_SPECIFIC(dnn_sptf_grid)(PyGpuArrayObject * theta,
     num_channels = (int) *( (npy_int64 *) PyArray_GETPTR1( out_dims, 1 ) );
     height = (int) *( (npy_int64 *) PyArray_GETPTR1( out_dims, 2 ) );
     width = (int) *( (npy_int64 *) PyArray_GETPTR1( out_dims, 3 ) );
+
+    if ( PyGpuArray_DIM( theta, 0 ) != num_images ||
+         PyGpuArray_DIM( theta, 1 ) != 2 || PyGpuArray_DIM( theta, 2 ) != 3 )
+    {
+        PyErr_Format( PyExc_RuntimeError,
+            "GpuDnnTransformerGrid: incorrect dimensions for theta, expected (%d, %d, %d), got (%d, %d, %d)",
+            num_images, 2, 3, PyGpuArray_DIMS( theta )[0],
+            PyGpuArray_DIMS( theta )[1], PyGpuArray_DIMS( theta )[2] );
+        return 1;
+    }
 
     // Set transformed output dimensions to setup the descriptor
     desc_dims[0] = num_images;

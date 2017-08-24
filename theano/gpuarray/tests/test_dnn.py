@@ -3,6 +3,7 @@ import logging
 from collections import OrderedDict
 
 from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 from parameterized import parameterized
 import numpy as np
 from itertools import product, chain
@@ -2468,6 +2469,34 @@ def test_dnn_spatialtf():
         # Raise relative error tolerance when using float16
         rtol = 5e-2
     utt.assert_allclose(img_out_cpu, img_out_gpu, atol=atol, rtol=rtol)
+
+
+def test_dnn_spatialtf_invalid_shapes():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    inputs = T.tensor4('inputs')
+    theta = T.tensor3('theta')
+
+    st_dnn = dnn.dnn_spatialtf(inputs, theta)
+    st_dnn_func = theano.function([inputs, theta], st_dnn)
+
+    inputs_val = np.ones((3, 5, 7, 7), dtype=theano.config.floatX)
+
+    def try_theta_shp(theta_shp):
+        theta_val = np.ones(theta_shp, dtype=theano.config.floatX)
+        return st_dnn_func(inputs_val, theta_val)
+
+    # the theta shape for this input should be (3, 2, 3)
+    try_theta_shp((3, 2, 3))
+
+    # incorrect parameter dimensions
+    assert_raises(RuntimeError, try_theta_shp, (3, 1, 3))
+    assert_raises(RuntimeError, try_theta_shp, (3, 2, 1))
+
+    # number of rows does not match the number of input rows
+    assert_raises(RuntimeError, try_theta_shp, (1, 2, 3))
+    assert_raises(RuntimeError, try_theta_shp, (4, 2, 3))
 
 
 def test_dnn_spatialtf_grad():
