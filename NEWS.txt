@@ -12,7 +12,7 @@ We recommend that every developer updates to this version.
 
 Highlights:
  - Support NumPy ``1.13``
- - Faster optimization step with new destroy handler
+ - Optional faster optimization step with new destroy handler
  - Updated documentation
  - Bug fixes, crash fixes and warning improvements
 
@@ -33,7 +33,7 @@ GPU:
    - Official support for ``v6.*`` and ``v7.*``, support for ``v5.*`` will be removed in next release
    - Added spatial transformation operation based on cuDNN
    - Updated and improved caching system for runtime-chosen cuDNN convolution algorithms
-   - Support cuDNN v7 tensor core operations for convolutions
+   - Support cuDNN v7 tensor core operations for convolutions with runtime timed algorithms
    - Restricted cuDNN reductions to contiguous inputs
 
 New features:

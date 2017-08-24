@@ -32,7 +32,7 @@ Highlights:
 
  - Speed up graph toposort algorithm
  - Faster C compilation by massively using a new interface for op params
- - Faster optimization step with new destroy handler
+ - Faster optimization step, with new optional destroy handler
  - Documentation updated and more complete
  - Many bug fixes, crash fixes and warning improvements
 
@@ -82,7 +82,7 @@ GPU:
    - Official support for ``v6.*`` and ``v7.*``, support for ``v5.*`` will be removed in next release
    - Added spatial transformation operation based on cuDNN
    - Updated and improved caching system for runtime-chosen cuDNN convolution algorithms
-   - Support cuDNN v7 tensor core operations for convolutions
+   - Support cuDNN v7 tensor core operations for convolutions with runtime timed algorithms
    - Better support and loading on Windows and Mac
    - Support cuDNN v6 dilated convolutions
    - Support cuDNN v6 reductions for contiguous inputs
