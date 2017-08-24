@@ -181,7 +181,8 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         gpudata *tmpmem;
 
         // set the 'tensor math ok' flag
-        c_set_math_type_for_conv(desc, CUDNN_TENSOR_OP_MATH);
+        if (input->ga.typecode == GA_HALF)
+          c_set_math_type_for_conv(desc, CUDNN_TENSOR_OP_MATH);
 
         tmpmem = gpudata_alloc(c->ctx, maxfree, NULL, 0, NULL);
         if (tmpmem == NULL) {
@@ -220,12 +221,11 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
         #endif
 
         algo = choice.algo;
-        prev_algo.algo = (int)algo;
-        prev_algo.wsSize = worksize = choice.memory;
+        worksize = choice.memory;
 #if CUDNN_MAJOR >= 7
-        prev_algo.mathType = mathtype = choice.mathType;
+        if (input->ga.typecode == GA_HALF)
+          mathtype = choice.mathType;
 #endif
-
       } else {
         err = cudnnGetConvolutionBackwardFilterAlgorithm(
           params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output),
@@ -238,9 +238,6 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
           cuda_exit(c->ctx);
           return 1;
         }
-	    prev_algo.algo = algo;
-	    // no tensor_op returned from Get()
-	    prev_algo.mathType = mathtype = CUDNN_DEFAULT_MATH;
       }
     }
   } /* choose_algo */
@@ -281,18 +278,17 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     }
   }
 
-  if (params->choose_algo && (!params->choose_once || !reuse_algo)) {
-    // algo may have changed due to fallback, we must update it.
+  if (params->choose_algo && !reuse_algo) {
+    // save for next time/cache
     prev_algo.algo = algo;
-    // save worksize for next time/cache
     prev_algo.wsSize = worksize;
-
-    // Add to the cache
-    dnn_conv_update_cache(hashkey, prev_algo);
-  }
+    prev_algo.mathType = mathtype;
+    // Add to the cache if we choose on shape change, or first time if
+    // we choose once.
+    if (!use_cached)
+      dnn_conv_update_cache(hashkey, prev_algo);
 
 #ifdef DEBUG
-  if (params->choose_algo) {
     if (0 != theano_enum_to_string_cudnnConvolutionBwdFilterAlgo_t(algo, algorithm_name)) {
       cuda_exit(c->ctx);
       return 1;
@@ -306,13 +302,12 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
             worksize,
             hashkey.c_str()
      );
-  }
 #endif
 
-  if (params->choose_once) {
-    reuse_algo = 1;
-  }
-
+    if (params->choose_once)
+      reuse_algo = 1;
+  } // params->choose_algo && !reuse_algo
+  
   gpudata *workspace = 0;
 
   if (worksize != 0) {
