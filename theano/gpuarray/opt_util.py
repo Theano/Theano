@@ -185,7 +185,8 @@ def alpha_merge(cls, alpha_in, beta_in):
                 except NotScalarConstantError:
                     inputs[alpha_in] = lr * targ.inputs[alpha_in]
                     inputs[beta_in] = lr * targ.inputs[beta_in]
-                return maker(targ, *inputs)
+                with inherit_stack_trace(node.outputs):
+                    return maker(targ, *inputs)
         return opt
     return wrapper
 
