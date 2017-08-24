@@ -2784,7 +2784,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
 
         if any(p != (0, 0) or p != 0 for p in pad):
             img = img[(slice(None), slice(None)) +
-                      tuple(slice(pad[i][0], img.shape[i + 2] - pad[i][0])
+                      tuple(slice(pad[i][0], img.shape[i + 2] - pad[i][1])
                             for i in range(self.convdim))]
         o[0] = node.outputs[0].type.filter(img)
 
