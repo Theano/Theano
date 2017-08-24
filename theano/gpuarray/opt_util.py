@@ -5,6 +5,7 @@ import numpy as np
 
 from theano import tensor, scalar as scal, Constant
 from theano.gof import local_optimizer
+from theano.gof.opt import inherit_stack_trace
 from theano.tensor import (DimShuffle, get_scalar_constant_value,
                            NotScalarConstantError)
 
@@ -326,7 +327,8 @@ def inplace_allocempty(op, idx):
                     len(alloc.clients) > 1):
                 alloc_op = GpuAllocEmpty(alloc.owner.op.dtype, alloc.owner.op.context_name)
                 inputs[idx] = alloc_op(*alloc.owner.inputs)
-            return maker(node, inputs)
+            with inherit_stack_trace(node.outputs):
+                return maker(node, inputs)
         return opt
     return wrapper
 
