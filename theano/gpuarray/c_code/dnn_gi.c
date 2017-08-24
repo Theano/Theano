@@ -170,7 +170,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       char pci_id[16];
       gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);
       // check out cache
-      hashkey=dnn_conv_shape(APPLY_SPECIFIC(input), *input, APPLY_SPECIFIC(kerns), kerns, desc, output, groups);
+      hashkey = dnn_conv_shape(APPLY_SPECIFIC(input), *input, APPLY_SPECIFIC(kerns), kerns, desc, output, groups);
       if (hashkey.empty()) {
         cuda_exit(c->ctx);
         return 1;
@@ -307,13 +307,12 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
         cuda_exit(c->ctx);
         return 1;
     }
-    // NB: This is printed only when algorithm is chosen at runtime.
-    fprintf(stderr, "(using %s %s%s%s%s, ws:%ld, hash:%s)\n",
+    fprintf(stderr, "(using %s%s %s%s%s, ws:%ld, hash:%s)\n",
             algorithm_name,
+            mathtype == CUDNN_TENSOR_OP_MATH ? "(tensor_op)" : "",
             params->choose_time ? "(timed)": "" ,
             reuse_algo ? "(reused)" : "",
             use_cached ? "(cache)": "",
-            mathtype == CUDNN_TENSOR_OP_MATH ? "(tensor op)" : "",
             worksize,
             hashkey.c_str()
       );
