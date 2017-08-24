@@ -260,7 +260,9 @@ def op_lifter(OP, cuda_only=False):
                         to_cpu_fn = safe_to_cpu
                     else:  # suppose it is a variable on the GPU
                         new_outputs = [new_op]
-                        to_cpu_fn = lambda x: x.transfer('cpu')
+
+                        def to_cpu_fn(x):
+                            return x.transfer('cpu')
                     # copy stack traces onto gpu outputs
                     # also copy the stack traces onto HostFromGpu outputs
                     for old_output, new_output in zip(node.outputs, new_outputs):
@@ -673,8 +675,8 @@ def local_gpua_alloc_empty_to_zeros(node):
         context_name = infer_context_name(*node.inputs)
         z = np.asarray(0, dtype=node.outputs[0].dtype)
         with inherit_stack_trace(node.outputs):
-            return [GpuAlloc(context_name)(as_gpuarray_variable(z, context_name),
-                                            *node.inputs)]
+            return [GpuAlloc(context_name)(
+                as_gpuarray_variable(z, context_name), *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.

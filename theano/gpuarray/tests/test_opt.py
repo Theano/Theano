@@ -31,7 +31,7 @@ from theano.gpuarray import dnn, blas
 def _check_stack_trace(thing):
     def _ops_to_check(op):
         if not isinstance(op, theano.gof.Op):
-            op = op.op # assume node
+            op = op.op  # assume node
         return not isinstance(op, (theano.compile.ops.Shape_i,
                                    theano.compile.ops.Shape,
                                    theano.compile.ops.DeepCopyOp,
@@ -48,6 +48,7 @@ def _check_stack_trace(thing):
                                    ))
     return check_stack_trace(thing, ops_to_check=_ops_to_check,
                              bug_print="ignore")
+
 
 def test_local_assert():
     x = theano.tensor.fmatrix()
@@ -281,6 +282,7 @@ def test_rebroadcast():
     assert isinstance(rebr.inputs[0].type, GpuArrayType)
     assert isinstance(rebr.outputs[0].type, GpuArrayType)
     assert _check_stack_trace(f)
+
 
 class TestSpecifyShape(test_basic.TestSpecifyShape):
     mode = mode_with_gpu

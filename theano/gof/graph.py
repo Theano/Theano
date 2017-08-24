@@ -1449,6 +1449,7 @@ def is_in_ancestors(l_node, f_node):
 @contextlib.contextmanager
 def nodes_constructed():
     new_nodes = []
+
     def observer(node):
         new_nodes.append(node)
     Variable.append_construction_observer(observer)
