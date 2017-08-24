@@ -297,13 +297,12 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       cuda_exit(c->ctx);
       return 1;
     }
-    // NB: This is printed only when algorithm is chosen at runtime.
-    fprintf(stderr, "(using %s %s%s%s%s, ws:%ld, hash:%s)\n",
+    fprintf(stderr, "(using %s%s %s%s%s, ws:%ld, hash:%s)\n",
             algorithm_name,
+            mathtype == CUDNN_TENSOR_OP_MATH ? "(tensor_op)" : "",
             params->choose_time ? "(timed)": "" ,
             reuse_algo ? "(reused)" : "",
             use_cached ? "(cache)": "",
-            mathtype == CUDNN_TENSOR_OP_MATH ? "(tensor op)" : "",
             worksize,
             hashkey.c_str()
      );

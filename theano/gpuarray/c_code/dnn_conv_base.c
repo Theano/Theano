@@ -199,7 +199,7 @@ static std::string shape(cudnnFilterDescriptor_t t, cudnnDataType_t* type)
     return shape(res, outDims);
 };
 
-static std::string shape(cudnnConvolutionDescriptor_t convDesc)
+static std::string shape(cudnnConvolutionDescriptor_t convDesc, int dataTypecode)
 {
     int nDim;
     cudnnConvolutionMode_t mode;
@@ -208,6 +208,9 @@ static std::string shape(cudnnConvolutionDescriptor_t convDesc)
     int                                 padA[5];
     int                                 strideA[5];
     int                                 dilationA[5];
+    /* Data type configuration. Format: " -<dtype><precision>" with dtype and precision in {h, f, d},
+     * h for half (float16), f for float (float32), d for double (float64). */
+    char data_type_configuration[5];
 
     checkCudnnStatus(
         cudnnGetConvolutionNdDescriptor( convDesc, 5,
@@ -220,6 +223,27 @@ static std::string shape(cudnnConvolutionDescriptor_t convDesc)
         "error getting convolution description");
     if (PyErr_Occurred()) return "";
 
+    /* Build data type configuration string. */
+    data_type_configuration[0] = ' ';
+    data_type_configuration[1] = '-';
+    switch (dataTypecode) {
+        case GA_HALF: data_type_configuration[2] = 'h'; break;
+        case GA_FLOAT: data_type_configuration[2] = 'f'; break;
+        case GA_DOUBLE: data_type_configuration[2] = 'd'; break;
+        default:
+            PyErr_SetString(PyExc_TypeError, "Unsupported data type in convolution.");
+            return "";
+    }
+    switch (computeType) {
+        case CUDNN_DATA_HALF: data_type_configuration[3] = 'h'; break;
+        case CUDNN_DATA_FLOAT: data_type_configuration[3] = 'f'; break;
+        case CUDNN_DATA_DOUBLE: data_type_configuration[3] = 'd'; break;
+        default:
+            PyErr_SetString(PyExc_TypeError, "Unsupported precision in convolution.");
+            return "";
+    }
+    data_type_configuration[4] = '\0';
+
     return (std::string("-mode ") +
             ((mode == CUDNN_CONVOLUTION) ? "conv" : "cross") +
             " -pad " +
@@ -227,7 +251,8 @@ static std::string shape(cudnnConvolutionDescriptor_t convDesc)
             " -subsample " +
             shape(strideA, nDim) +
             " -dilation " +
-            shape(dilationA, nDim));
+            shape(dilationA, nDim) +
+            data_type_configuration);
 }
 
 static bool all_aligned(cudnnDataType_t type, void* in, void* out, void* filter)
@@ -253,7 +278,7 @@ static std::string dnn_conv_shape(cudnnTensorDescriptor_t inputDesc, PyGpuArrayO
         return "";
     std::string shapeInput = shape(inputDesc);
     std::string shapeFilter = shape(filterDesc, &dType);
-    std::string shapeConvDesc = shape(convDesc);
+    std::string shapeConvDesc = shape(convDesc, input->ga.typecode);
     if (shapeInput.empty() || shapeFilter.empty() || shapeConvDesc.empty())
         return "";
     s << "-g " << groups << " -dim " << shapeInput << " -filt " <<

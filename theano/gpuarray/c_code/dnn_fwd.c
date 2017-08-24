@@ -352,7 +352,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
     fprintf(stderr, "(using %s%s %s%s%s, ws:%ld, hash:%s)\n",
             algorithm_name,
-            mathtype == CUDNN_TENSOR_OP_MATH ? "[T]" : "",
+            mathtype == CUDNN_TENSOR_OP_MATH ? "(tensor_op)" : "",
             params->choose_time ? "(timed)": "" ,
             reuse_algo ? "(reused)" : "",
             use_cached ? "(cache)": "",
