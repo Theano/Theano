@@ -1673,13 +1673,19 @@ def local_abstractconv_gemm_def(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
+    num_groups = node.op.num_groups
+    unshared = node.op.unshared
+
     if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (kern.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        kern = kern[flip]
     rval = GpuCorrMM(border_mode,
                      subsample,
                      filter_dilation,
-                     node.op.num_groups)(gpu_contiguous(img),
-                                         gpu_contiguous(kern))
+                     num_groups,
+                     unshared)(gpu_contiguous(img),
+                               gpu_contiguous(kern))
     return [rval]
 
 
