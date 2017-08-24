@@ -75,7 +75,7 @@ class BaseCorrMM(gof.OpenMPOp):
                     'tuple of length 2'.format(border_mode))
             border = ()
             for mode in border_mode:
-                if isinstance(mode, integer_types) and mode > 0:
+                if isinstance(mode, integer_types) and mode >= 0:
                     border += ((mode, mode),)
                 elif isinstance(mode, tuple) and len(mode) == 2 and \
                         min(mode) >= 0:
@@ -489,8 +489,8 @@ class BaseCorrMM(gof.OpenMPOp):
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[wdim-3] * numgroups;
-        out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1 - 2*padH);
-        out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1 - 2*padW);
+        out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1 - padH_l - padH_r);
+        out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1 - padW_l - padW_r);
         if (unshared) {
             if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
             {

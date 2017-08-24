@@ -123,22 +123,29 @@ def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
     # Implicit dilated kernel shape
     dil_kernel_shape = (kernel_shape - 1) * dilation + 1
     if border_mode == "half":
-        pad = dil_kernel_shape // 2
+        pad_l = pad_r = dil_kernel_shape // 2
     elif border_mode == "full":
-        pad = dil_kernel_shape - 1
+        pad_l = pad_r = dil_kernel_shape - 1
     elif border_mode == "valid":
-        pad = 0
+        pad_l = pad_r = 0
     else:
-        pad = border_mode
-        if pad < 0:
+        if isinstance(border_mode, tuple):
+            pad_l, pad_r = border_mode
+        else:
+            pad_l = pad_r = border_mode
+        if pad_l < 0 or pad_r < 0:
             raise ValueError("border_mode must be >= 0")
 
     # In case of symbolic shape, we want to build the smallest graph
     # (image_shape + 2 * pad - dil_kernel_shape) // subsample + 1
-    if pad == 0:
+    if pad_l == 0 and pad_r == 0:
         out_shp = (image_shape - dil_kernel_shape)
+    elif pad_l == 0:
+        out_shp = (image_shape + pad_l - dil_kernel_shape)
+    elif pad_r == 0:
+        out_shp = (image_shape + pad_r - dil_kernel_shape)
     else:
-        out_shp = (image_shape + 2 * pad - dil_kernel_shape)
+        out_shp = (image_shape + pad_l + pad_r - dil_kernel_shape)
     if subsample != 1:
         out_shp = out_shp // subsample
     out_shp = out_shp + 1
@@ -252,9 +259,16 @@ def get_conv_gradweights_shape_1axis(image_shape, top_shape, border_mode,
     elif border_mode == "valid":
         kernel_shape = image_shape - top_shape
     else:
-        if border_mode < 0:
-            raise ValueError("border_mode must be >= 0")
-        kernel_shape = (image_shape + 2 * border_mode - top_shape)
+        if isinstance(border_mode, integer_types):
+            if border_mode < 0:
+                raise ValueError("border_mode must be >= 0")
+            pad_l = pad_r = border_mode
+        elif isinstance(border_mode, tuple):
+            if min(border_mode) < 0:
+                raise ValueError("border_mode must be >= 0")
+            pad_l, pad_r = border_mode
+
+        kernel_shape = (image_shape + pad_l + pad_r - top_shape)
 
     if dilation > 1:
         kernel_shape = kernel_shape / dilation
@@ -363,23 +377,30 @@ def get_conv_gradinputs_shape_1axis(kernel_shape, top_shape, border_mode,
     # Implicit dilated kernel shape
     dil_kernel_shape = (kernel_shape - 1) * dilation + 1
     if border_mode == "half":
-        pad = dil_kernel_shape // 2
+        pad_l = pad_r = dil_kernel_shape // 2
     elif border_mode == "full":
-        pad = dil_kernel_shape - 1
+        pad_l = pad_r = dil_kernel_shape - 1
     elif border_mode == "valid":
-        pad = 0
+        pad_l = pad_r = 0
     else:
-        pad = border_mode
-        if pad < 0:
+        if isinstance(border_mode, tuple):
+            pad_l, pad_r = border_mode
+        else:
+            pad_l = pad_r = border_mode
+        if pad_l < 0 or pad_r < 0:
             raise ValueError("border_mode must be >= 0")
 
     # In case of symbolic shape, we want to build the smallest graph
     # image_shape = (top_shape - 1) * s - 2 * pad + dil_kernel_shape + a
     # where 0 <= a < subsample, but we have checked that subsample == 1
-    if pad == 0:
+    if pad_l == 0 and pad_r == 0:
         image_shape = (top_shape + dil_kernel_shape - 1)
+    elif pad_l == 0:
+        image_shape = (top_shape - pad_l + dil_kernel_shape - 1)
+    elif pad_r == 0:
+        image_shape = (top_shape - pad_r + dil_kernel_shape - 1)
     else:
-        image_shape = (top_shape - 2 * pad + dil_kernel_shape - 1)
+        image_shape = (top_shape - pad_l - pad_r + dil_kernel_shape - 1)
 
     return image_shape
 
@@ -1762,7 +1783,7 @@ class BaseAbstractConv(Op):
                     'invalid border_mode {} which must be a '
                     'tuple of length {}'.format(border_mode, convdim))
             for mode in border_mode:
-                if not((isinstance(mode, integer_types) and mode > 0) or
+                if not((isinstance(mode, integer_types) and mode >= 0) or
                         (isinstance(mode, tuple) and len(mode) == 2 and
                          min(mode) >= 0)):
                     raise ValueError(
@@ -2042,7 +2063,7 @@ class AbstractConv(BaseAbstractConv):
                     'tuple of length {}'.format(mode, self.convdim))
             border = ()
             for m in mode:
-                if isinstance(m, integer_types) and m > 0:
+                if isinstance(m, integer_types) and m >= 0:
                     border += ((m, m),)
                 elif isinstance(m, tuple) and len(m) == 2 and \
                         min(m) >= 0:
@@ -2329,7 +2350,7 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                     'tuple of length {}'.format(mode, self.convdim))
             border = ()
             for m in mode:
-                if isinstance(m, integer_types) and m > 0:
+                if isinstance(m, integer_types) and m >= 0:
                     border += ((m, m),)
                 elif isinstance(m, tuple) and len(m) == 2 and \
                         min(m) >= 0:
@@ -2659,7 +2680,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                     'tuple of length {}'.format(mode, self.convdim))
             border = ()
             for m in mode:
-                if isinstance(m, integer_types) and m > 0:
+                if isinstance(m, integer_types) and m >= 0:
                     border += ((m, m),)
                 elif isinstance(m, tuple) and len(m) == 2 and \
                         min(m) >= 0:
@@ -2696,7 +2717,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
         dil_kernshp = tuple((kern.shape[-self.convdim + i] - 1) * self.filter_dilation[i] + 1
                             for i in range(self.convdim))
 
-        pad = (0,) * self.convdim
+        pad = ((0, 0),) * self.convdim
         if mode == "full":
             pad = tuple((dil_kernshp[i] - 1,) * 2 for i in range(self.convdim))
         elif mode == "half":
