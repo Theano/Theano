@@ -66,20 +66,29 @@ class BaseCorrMM(gof.OpenMPOp):
                 raise ValueError(
                     'invalid border_mode {}, which must be a '
                     'non-negative integer'.format(border_mode))
-            border_mode = (border_mode, border_mode)
-        if isinstance(border_mode, tuple):
-            if len(border_mode) != 2 or border_mode[0] < 0 or border_mode[1] < 0:
+            border_mode = ((border_mode, border_mode),) * 2
+        elif isinstance(border_mode, tuple):
+            if len(border_mode) != 2:
                 raise ValueError(
-                    'invalid border_mode {}, which must be a '
-                    'pair of non-negative integers'.format(border_mode))
-            pad_h, pad_w = map(int, border_mode)
-            border_mode = (pad_h, pad_w)
-        if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
-                border_mode in ('valid', 'full', 'half')):
+                    'invalid border_mode {} which must be a '
+                    'tuple of length 2'.format(border_mode))
+            border = ()
+            for mode in border_mode:
+                if isinstance(mode, integer_types) and mode > 0:
+                    border += ((mode, mode),)
+                elif isinstance(mode, tuple) and len(mode) == 2 and \
+                        min(mode) >= 0:
+                    border = ((mode[0], mode[1]),)
+                else:
+                    raise ValueError(
+                        'invalid border mode {}. The tuple can only contain '
+                        'integers or tuples of length 2'.format(border_mode))
+            border_mode = border
+        elif border_mode not in ('valid', 'full', 'half'):
             raise ValueError(
                 'invalid border_mode {}, which must be either '
-                '"valid", "full", "half", an integer or a pair of'
-                ' integers'.format(border_mode))
+                '"valid", "full", "half", an integer or a tuple '
+                'of length 2'.format(border_mode))
         self.border_mode = border_mode
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
@@ -110,14 +119,14 @@ class BaseCorrMM(gof.OpenMPOp):
     @property
     def pad(self):
         if self.border_mode == "half":
-            return (-1, -1)
+            return ((-1, -1),) * 2
         elif self.border_mode == "full":
-            return (-2, -2)
+            return ((-2, -2),) * 2
         elif isinstance(self.border_mode, tuple):
             return self.border_mode
         else:
             assert self.border_mode == "valid"
-            return (0, 0)
+            return ((0, 0),) * 2
 
     # Direction should be converted to real enum value,
     # as it is compared to integer later in c_code_helper().
@@ -129,8 +138,10 @@ class BaseCorrMM(gof.OpenMPOp):
     dilH = property(lambda self: self.filter_dilation[0])
     dilW = property(lambda self: self.filter_dilation[1])
 
-    padH = property(lambda self: self.pad[0])
-    padW = property(lambda self: self.pad[1])
+    padH_l = property(lambda self: self.pad[0][0])
+    padH_r = property(lambda self: self.pad[0][1])
+    padW_l = property(lambda self: self.pad[1][0])
+    padW_r = property(lambda self: self.pad[1][1])
 
     def __str__(self):
         return '%s{%s, %s, %s, %s %s}' % (
@@ -271,13 +282,13 @@ class BaseCorrMM(gof.OpenMPOp):
         if height:
             height = '(*(npy_int64 *)(PyArray_DATA(%s)))' % height
         else:
-            if ((self.direction != 0) and (self.dH != 1)) or ((self.direction == 1) and (self.padH == -1)):
+            if ((self.direction != 0) and (self.dH != 1)) or ((self.direction == 1) and (self.padH_l == -1)):
                 raise ValueError("height must be given for backprop with vertical sampling or border_mode='half'")
             height = '-1'
         if width:
             width = '(*(npy_int64 *)(PyArray_DATA(%s)))' % width
         else:
-            if ((self.direction != 0) and (self.dW != 1)) or ((self.direction == 1) and (self.padW == -1)):
+            if ((self.direction != 0) and (self.dW != 1)) or ((self.direction == 1) and (self.padW_l == -1)):
                 raise ValueError("width must be given for backprop with horizontal sampling or border_mode='half'")
             width = '-1'
 
@@ -290,8 +301,10 @@ class BaseCorrMM(gof.OpenMPOp):
     int dW = %(params)s->dW;
     int dilH = %(params)s->dilH;
     int dilW = %(params)s->dilW;
-    int padH = %(params)s->padH;
-    int padW = %(params)s->padW;
+    int padH_l = %(params)s->padH_l;
+    int padH_r = %(params)s->padH_r;
+    int padW_l = %(params)s->padW_l;
+    int padW_r = %(params)s->padW_r;
     int numgroups = %(params)s->num_groups;
     int unshared = %(params)s->unshared;
 
@@ -340,7 +353,7 @@ class BaseCorrMM(gof.OpenMPOp):
         }
         else {
             // explicit padding, we can infer the kernel height
-            kH = (PyArray_DIMS(bottom)[2] + 2*padH - (PyArray_DIMS(top)[2] - 1) * dH - 1) / dilH +1;
+            kH = (PyArray_DIMS(bottom)[2] + padH_l + padH_r - (PyArray_DIMS(top)[2] - 1) * dH - 1) / dilH +1;
         }
         if (%(width)s != -1) {
             // kernel width is specified (perhaps horizontal subsampling or half padding)
@@ -350,7 +363,7 @@ class BaseCorrMM(gof.OpenMPOp):
             kW = (2 - PyArray_DIMS(bottom)[3] + (PyArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
         }
         else {
-            kW = (PyArray_DIMS(bottom)[3] + 2*padW - (PyArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
+            kW = (PyArray_DIMS(bottom)[3] + padW_l + padW_r - (PyArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
         }
     }
 
@@ -386,11 +399,11 @@ class BaseCorrMM(gof.OpenMPOp):
     switch(direction) {
     case 0:  // forward pass
         // output is top: (batchsize, num_filters, height, width)
-        // height and width: top = (bottom + 2*pad - ((weight-1)*dil + 1)) / sample + 1
+        // height and width: top = (bottom + pad_l + pad_r - ((weight-1)*dil + 1)) / sample + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(bottom)[0];
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[0];
-        out_dim[2] = (npy_intp)((PyArray_DIMS(bottom)[2] + 2*padH - ((PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1)) / dH + 1);
-        out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - ((PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1)) / dW + 1);
+        out_dim[2] = (npy_intp)((PyArray_DIMS(bottom)[2] + padH_l + padH_r - ((PyArray_DIMS(weights)[wdim-2]-1)*dilH + 1)) / dH + 1);
+        out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + padW_l + padW_r - ((PyArray_DIMS(weights)[wdim-1]-1)*dilW + 1)) / dW + 1);
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
         {
             if (unshared) {
@@ -564,7 +577,8 @@ class BaseCorrMM(gof.OpenMPOp):
     }
 
     // Call corrMM code
-    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW, padH, padW, numgroups, unshared);
+    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW,
+                padH_l, padH_r, padW_l, padW_r, numgroups, unshared);
     if (out2==NULL){
        %(fail)s
     }
