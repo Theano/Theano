@@ -281,8 +281,6 @@ class TestConv2D(utt.InferShapeTester):
     @attr('slow')
     def test_subsample(self):
         # Tests convolution where subsampling != (1,1)
-
-        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 2))
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', subsample=(2, 2))
 
         # Fails as of 2012-07-11
