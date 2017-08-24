@@ -430,7 +430,6 @@ class GraphToGPU(Optimizer):
 
             for old_output, new_output in zip(node.outputs, outputs):
                 copy_stack_trace(old_output, new_output)
-                new_output.tag.tracefrom = old_output
 
             if new_ops:
                 node_created[lopt] += len(graph.ops([mapping[i] for i in node.inputs], outputs))
@@ -2407,7 +2406,7 @@ def local_gpu_elemwise_careduce(node):
         props["pre_scalar_op"] = scalar.basic.sqr
         out = GpuCAReduceCuda(**props)(inp)
         with inherit_stack_trace(node.outputs):
-        return out
+            return out
 
 
 @local_optimizer(None)

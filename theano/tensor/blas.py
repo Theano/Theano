@@ -1628,16 +1628,12 @@ def local_dot_to_dot22(node):
     if y.type.dtype in ['float16', 'float32', 'float64', 'complex64', 'complex128']:
         with inherit_stack_trace(node.outputs):
             if x.ndim == 2 and y.ndim == 2:
-                # print "local_dot_to_dot22: MM"
                 return [_dot22(*node.inputs)]
             if x.ndim == 2 and y.ndim == 1:
-                # print "local_dot_to_dot22: MV"
                 return [_dot22(x, y.dimshuffle(0, 'x')).dimshuffle(0)]
             if x.ndim == 1 and y.ndim == 2:
-                # print "local_dot_to_dot22: VM"
                 return [_dot22(x.dimshuffle('x', 0), y).dimshuffle(1)]
             if x.ndim == 1 and y.ndim == 1:
-                # print "local_dot_to_dot22: VV"
                 return [_dot22(x.dimshuffle('x', 0),
                                y.dimshuffle(0, 'x')).dimshuffle()]
 
