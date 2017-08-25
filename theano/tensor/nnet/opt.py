@@ -32,13 +32,15 @@ from theano.tensor import opt
 from theano.tensor.nnet.conv import conv2d, ConvOp
 
 # Abstract spatial transformer
-from theano.tensor.nnet.abstract_spatialtf import (AbstractSpatialTransformerOp,
-                                                   AbstractSpatialTransformerGradIOp,
-                                                   AbstractSpatialTransformerGradTOp)
+from theano.tensor.nnet.abstract_spatialtf import (AbstractTransformerGrid,
+                                                   AbstractTransformerSampler,
+                                                   AbstractTransformerGradI,
+                                                   AbstractTransformerGradT)
 # CPU implementation of the spatial transformer
-from theano.tensor.nnet.spatialtf import (spatialtf_cpu,
-                                          spatialtf_gradi_cpu,
-                                          spatialtf_gradt_cpu)
+from theano.tensor.nnet.spatialtf import (transformer_grid_impl,
+                                          transformer_sampler_impl,
+                                          transformer_gradi_impl,
+                                          transformer_gradt_impl)
 
 
 @gof.local_optimizer([SparseBlockGemv], inplace=True)
@@ -51,6 +53,8 @@ def local_inplace_sparse_block_gemv(node):
         copy_stack_trace(node.outputs[0], new_node)
         return [new_node]
     return False
+
+
 compile.optdb.register('local_inplace_sparse_block_gemv',
                        gof.TopoOptimizer(
                            local_inplace_sparse_block_gemv,
@@ -68,6 +72,8 @@ def local_inplace_sparse_block_outer(node):
         copy_stack_trace(node.outputs[0], new_node)
         return [new_node]
     return False
+
+
 compile.optdb.register('local_inplace_sparse_block_outer',
                        gof.TopoOptimizer(
                            local_inplace_sparse_block_outer,
@@ -508,46 +514,65 @@ def local_abstractconv_check(node):
             'On the CPU we do not support float16.' %
             node.op.__class__.__name__)
 
+
 optdb.register('AbstractConvCheck',
                opt.in2out(local_abstractconv_check, name="AbstractConvCheck"),
                48.7, 'fast_compile', 'fast_run')
 
 
-@local_optimizer([AbstractSpatialTransformerOp])
-def local_spatialtf_cpu(node):
-    if not isinstance(node.op, AbstractSpatialTransformerOp):
+@local_optimizer([AbstractTransformerGrid])
+def local_transformer_grid(node):
+    if not isinstance(node.op, AbstractTransformerGrid):
         return
 
-    inp, theta, out_height, out_width = node.inputs
+    theta, out_dims = node.inputs
+    return [transformer_grid_impl(theta, out_dims)]
+
+
+@local_optimizer([AbstractTransformerSampler])
+def local_transformer_sampler(node):
+    if not isinstance(node.op, AbstractTransformerSampler):
+        return
+
+    inp, grid = node.inputs
+    border_mode = node.op.border_mode
+    return [transformer_sampler_impl(inp, grid, border_mode)]
+
+
+@local_optimizer([AbstractTransformerGradI])
+def local_transformer_grad_inputs(node):
+    if not isinstance(node.op, AbstractTransformerGradI):
+        return
+
+    inp, grid, grad_outputs = node.inputs
     border_mode = node.op.border_mode
 
-    return [spatialtf_cpu(inp, theta, out_height, out_width, border_mode)]
+    grad_inp, grad_grid = transformer_gradi_impl(inp, grid, grad_outputs, border_mode)
+    return [grad_inp, grad_grid]
 
 
-@local_optimizer([AbstractSpatialTransformerGradIOp])
-def local_spatialtf_gradi_cpu(node):
-    if not isinstance(node.op, AbstractSpatialTransformerGradIOp):
+@local_optimizer([AbstractTransformerGradT])
+def local_transformer_grad_transform(node):
+    if not isinstance(node.op, AbstractTransformerGradT):
         return
 
-    return [spatialtf_gradi_cpu(*node.inputs)]
+    theta, grad_grid = node.inputs
+    return [transformer_gradt_impl(theta, grad_grid)]
 
-
-@local_optimizer([AbstractSpatialTransformerGradTOp])
-def local_spatialtf_gradt_cpu(node):
-    if not isinstance(node.op, AbstractSpatialTransformerGradTOp):
-        return
-
-    return [spatialtf_gradt_cpu(*node.inputs)]
 
 # Register CPU optimizations for the spatial transformer
-spatialtf_groupopt = theano.gof.optdb.LocalGroupDB()
-spatialtf_groupopt.__name__ = "spatialtf_opts"
-register_specialize_device(spatialtf_groupopt, 'fast_compile', 'fast_run')
-spatialtf_groupopt.register('local_spatialtf_cpu', local_spatialtf_cpu, 30,
-                            'fast_compile', 'fast_run')
-spatialtf_groupopt.register('local_spatialtf_gradi_cpu',
-                            local_spatialtf_gradi_cpu, 30,
-                            'fast_compile', 'fast_run')
-spatialtf_groupopt.register('local_spatialtf_gradt_cpu',
-                            local_spatialtf_gradt_cpu, 30,
-                            'fast_compile', 'fast_run')
+transformer_groupopt = theano.gof.optdb.LocalGroupDB()
+transformer_groupopt.__name__ = "transformer_opts"
+register_specialize_device(transformer_groupopt, 'fast_compile', 'fast_run')
+transformer_groupopt.register('local_transformer_grid',
+                              local_transformer_grid, 30,
+                              'fast_compile', 'fast_run')
+transformer_groupopt.register('local_transformer_sampler',
+                              local_transformer_sampler, 30,
+                              'fast_compile', 'fast_run')
+transformer_groupopt.register('local_transformer_grad_inputs',
+                              local_transformer_grad_inputs, 40,
+                              'fast_compile', 'fast_run')
+transformer_groupopt.register('local_transformer_grad_transform',
+                              local_transformer_grad_transform, 40,
+                              'fast_compile', 'fast_run')
