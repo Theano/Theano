@@ -1842,8 +1842,10 @@ def local_abstractconv3d_alt(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
+    num_groups = node.op.num_groups
 
-    if ((border_mode == 'full') and (subsample == (1, 1, 1))):
+    if((border_mode == 'full') and (subsample == (1, 1, 1)) and
+       (num_groups == 1)):
         if not node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1, ::-1]
         kern = kern.dimshuffle(1, 0, 2, 3, 4)
@@ -1853,7 +1855,7 @@ def local_abstractconv3d_alt(node):
             gpu_contiguous(kern), gpu_contiguous(img))
 
     elif(subsample == (1, 1, 1) and filter_dilation == (1, 1, 1) and
-         border_mode == 'valid'):
+         border_mode == 'valid' and num_groups == 1):
         if node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1, ::-1]
         rval = GpuCorr3dMM_gradWeights(border_mode,
@@ -1881,8 +1883,10 @@ def local_abstractconv3d2d(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
+    num_groups = node.op.num_groups
 
-    if subsample == (1, 1, 1) and filter_dilation == (1, 1, 1):
+    if(subsample == (1, 1, 1) and filter_dilation == (1, 1, 1) and
+       num_groups == 1):
         reorder_array = [0, 2, 1, 3, 4]
         rval = conv3d2d.conv3d(gpu_contiguous(img.dimshuffle(*reorder_array)),
                                gpu_contiguous(kern.dimshuffle(*reorder_array)),
@@ -1968,8 +1972,10 @@ def local_abstractconv3d_gemm_gradweights_alt(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
+    num_groups = node.op.num_groups
 
-    if border_mode == 'valid' and subsample == (1, 1, 1) and filter_dilation == (1, 1, 1):
+    if(border_mode == 'valid' and subsample == (1, 1, 1) and
+       filter_dilation == (1, 1, 1) and num_groups == 1):
         rval = GpuCorr3dMM(border_mode,
                            subsample,
                            filter_dilation)(
@@ -2091,8 +2097,10 @@ def local_abstractconv3d_gradinputs_gemm_alt(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
+    num_groups = node.op.num_groups
 
-    if border_mode == 'valid' and subsample == (1, 1, 1):
+    if(border_mode == 'valid' and subsample == (1, 1, 1) and
+       num_groups == 1):
         if not node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1, ::-1]
         rval = GpuCorr3dMM(border_mode='full',
