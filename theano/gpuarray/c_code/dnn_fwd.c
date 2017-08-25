@@ -331,15 +331,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
   }
 
-  if (params->choose_algo && !reuse_algo) {
-    // save for next time/cache
-    prev_algo.algo = algo;
-    prev_algo.wsSize = worksize;
-    prev_algo.mathType = mathtype;
-    // Add to the cache if we choose on shape change, or first time if
-    // we choose once.
-    if (!use_cached)
-      dnn_conv_update_cache(hashkey, prev_algo);
+  if (params->choose_algo) {
 
 #ifdef DEBUG
     if (0 != theano_enum_to_string_cudnnConvolutionFwdAlgo_t(algo, algorithm_name)) {
@@ -356,10 +348,22 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
             hashkey.c_str()
       );
 #endif
-    
-    if (params->choose_once)
+
+    if (!reuse_algo) {
+      // save for next time/cache
+      prev_algo.algo = algo;
+      prev_algo.wsSize = worksize;
+      prev_algo.mathType = mathtype;
+      // Add to the cache if we choose on shape change, or first time if
+      // we choose once.
+      if (!use_cached)
+        dnn_conv_update_cache(hashkey, prev_algo);
+
+      if (params->choose_once)
       reuse_algo = 1;
-  } // params->choose_algo && !reuse_algo
+    }
+
+  } // params->choose_algo
 
   {
     gpudata *workspace = 0;

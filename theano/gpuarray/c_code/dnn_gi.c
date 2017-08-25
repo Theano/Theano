@@ -230,7 +230,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
             return 1;
         } // Else, count is necessarly 1 for current implementation.
         #endif
-        
+
         algo = choice.algo;
         worksize = choice.memory;
 #if CUDNN_MAJOR >= 7
@@ -288,15 +288,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     }
   }  // !(reuse_algo || use_cached || params->choose_time)
 
-  if (params->choose_algo  && !reuse_algo) {
-    // save for next time/cache
-    prev_algo.algo = algo;
-    prev_algo.wsSize = worksize;
-    prev_algo.mathType = mathtype;
-
-    // Add to the cache
-    if (!use_cached)
-      dnn_conv_update_cache(hashkey, prev_algo);
+  if (params->choose_algo) {
 
 #ifdef DEBUG
     if (0 != theano_enum_to_string_cudnnConvolutionBwdDataAlgo_t(algo, algorithm_name)) {
@@ -313,10 +305,23 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
             hashkey.c_str()
       );
 #endif
-    if (params->choose_once)
-      reuse_algo = 1;
-  } // params->choose_algo  && !reuse_algo
-  
+
+    if (!reuse_algo) {
+      // save for next time/cache
+      prev_algo.algo = algo;
+      prev_algo.wsSize = worksize;
+      prev_algo.mathType = mathtype;
+
+      // Add to the cache
+      if (!use_cached)
+        dnn_conv_update_cache(hashkey, prev_algo);
+
+      if (params->choose_once)
+        reuse_algo = 1;
+    }
+
+  } // params->choose_algo
+
   gpudata *workspace = 0;
   if (worksize != 0) {
     workspace = gpudata_alloc(c->ctx, worksize, NULL, 0, NULL);
