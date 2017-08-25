@@ -1505,6 +1505,54 @@ def conv3d_grad_wrt_weights(input,
     return gradWeight_op(input, output_grad, filter_shape[-3:])
 
 
+def dilated_causal_conv(input,
+                        filters,
+                        filter_shape,
+                        input_shape=None,
+                        subsample=1,
+                        filter_flip=True,
+                        filter_dilation=1,
+                        num_groups=1):
+
+    input = as_tensor_variable(input)
+    filters = as_tensor_variable(filters)
+
+    if input.ndim != 3:
+        raise ValueError('Input should be 3D for Dilated Causal convolution.')
+    if filters.ndim != 3:
+        raise ValueError('Filters should be 3D for Dilated Causal convolution')
+
+    input = input.dimshuffle(0, 1, 2, 'x')
+    filters = filters.dimshuffle(0, 1, 2, 'x')
+
+    if input_shape is not None:
+        assert(len(input_shape) == 3)
+        input_shape = tuple(input_shape)
+        input_shape += (1,)
+
+    assert(len(filter_shape) == 3)
+    filter_shape = tuple(filter_shape)
+    filter_shape += (1,)
+
+    left_pad = filter_dilation * (filter_shape[2] - 1)
+
+    subsample = (subsample, 1)
+    filter_dilation = (filter_dilation, 1)
+
+    conv_op = AbstractConv2d(imshp=input_shape,
+                             kshp=filter_shape,
+                             border_mode=((left_pad, 0), 0),
+                             subsample=subsample,
+                             filter_flip=filter_flip,
+                             filter_dilation=filter_dilation,
+                             num_groups=num_groups,
+                             unshared=False)
+    output = conv_op(input, filters)
+
+    shape = output.shape[:-1]
+    return output.reshape(shape)
+
+
 def bilinear_kernel_2D(ratio, normalize=True):
     """Compute 2D kernel for bilinear upsampling
 
