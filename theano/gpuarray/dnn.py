@@ -227,7 +227,7 @@ dnn_available.msg = None
 
 def CUDNNDataType(name, freefunc=None):
     cargs = []
-    if config.dnn.bin_path:
+    if config.dnn.bin_path and sys.platform != 'win32':
         cargs.append('-Wl,-rpath,' + config.dnn.bin_path)
 
     return CDataType(name, freefunc,
@@ -256,7 +256,7 @@ class DnnVersion(Op):
         return [config.dnn.library_path]
 
     def c_compile_args(self):
-        if config.dnn.bin_path:
+        if config.dnn.bin_path and sys.platform != 'win32':
             return ['-Wl,-rpath,' + config.dnn.bin_path]
         return []
 
@@ -385,7 +385,7 @@ class DnnBase(COp):
         return [config.dnn.library_path]
 
     def c_compile_args(self):
-        if config.dnn.bin_path:
+        if config.dnn.bin_path and sys.platform != 'win32':
             return ['-Wl,-rpath,' + config.dnn.bin_path]
         return []
 
@@ -430,7 +430,7 @@ class GpuDnnConvDesc(COp):
         return [config.dnn.library_path]
 
     def c_compile_args(self):
-        if config.dnn.bin_path:
+        if config.dnn.bin_path and sys.platform != 'win32':
             return ['-Wl,-rpath,' + config.dnn.bin_path]
         return []
 
