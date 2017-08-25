@@ -228,10 +228,7 @@ dnn_available.msg = None
 def CUDNNDataType(name, freefunc=None):
     cargs = []
     if config.dnn.bin_path:
-        if sys.platform == 'darwin':
-            cargs.append('-Wl,-rpath,' + config.dnn.bin_path)
-        else:
-            cargs.append('-Wl,-rpath,"' + config.dnn.bin_path + '"')
+        cargs.append('-Wl,-rpath,' + config.dnn.bin_path)
 
     return CDataType(name, freefunc,
                      headers=['cudnn.h'],
@@ -260,10 +257,7 @@ class DnnVersion(Op):
 
     def c_compile_args(self):
         if config.dnn.bin_path:
-            if sys.platform == 'darwin':
-                return ['-Wl,-rpath,' + config.dnn.bin_path]
-            else:
-                return ['-Wl,-rpath,"' + config.dnn.bin_path + '"']
+            return ['-Wl,-rpath,' + config.dnn.bin_path]
         return []
 
     def c_support_code(self):
@@ -392,10 +386,7 @@ class DnnBase(COp):
 
     def c_compile_args(self):
         if config.dnn.bin_path:
-            if sys.platform == 'darwin':
-                return ['-Wl,-rpath,' + config.dnn.bin_path]
-            else:
-                return ['-Wl,-rpath,"' + config.dnn.bin_path + '"']
+            return ['-Wl,-rpath,' + config.dnn.bin_path]
         return []
 
     def c_code_cache_version(self):
@@ -440,10 +431,7 @@ class GpuDnnConvDesc(COp):
 
     def c_compile_args(self):
         if config.dnn.bin_path:
-            if sys.platform == 'darwin':
-                return ['-Wl,-rpath,' + config.dnn.bin_path]
-            else:
-                return ['-Wl,-rpath,"' + config.dnn.bin_path + '"']
+            return ['-Wl,-rpath,' + config.dnn.bin_path]
         return []
 
     def do_constant_folding(self, node):
