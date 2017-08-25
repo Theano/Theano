@@ -44,9 +44,14 @@ def get_conv_output_shape(image_shape, kernel_shape,
         to: batch size, number of input channels, height and width (and
         possibly depth) of the image. None where undefined.
     kernel_shape: tuple of int (symbolic or numeric) corresponding to the
-        kernel shape. Its four (or five) elements must correspond respectively
-        to: number of output channels, number of input channels, height and
-        width (and possibly depth) of the kernel. None where undefined.
+        kernel shape. For a normal convolution, its four (for 2D convolution)
+        or five (for 3D convolution) elements must correspond respectively to :
+        number of output channels, number of input channels, height and width
+        (and possibly depth) of the kernel.
+        For an unshared 2D convolution, its six channels must correspond to :
+        number of output channels, height and width of the output, number of
+        input channels, height and width of the kernel.
+        None where undefined.
     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
         or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
         If it is a tuple, its two (or three) elements respectively correspond
@@ -56,6 +61,8 @@ def get_conv_output_shape(image_shape, kernel_shape,
         possibly depth) axis.
     filter_dilation: tuple of int (symbolic or numeric). Its two or three
         elements correspond respectively to the dilation on height and width axis.
+    Note - The shape of the convolution output does not depend on the 'unshared'
+        or the 'num_groups' parameters.
 
     Returns
     -------
@@ -65,7 +72,10 @@ def get_conv_output_shape(image_shape, kernel_shape,
 
     """
     bsize, imshp = image_shape[0], image_shape[2:]
-    nkern, kshp = kernel_shape[0], kernel_shape[2:]
+
+    convdim = len(image_shape) - 2
+    nkern, kshp = kernel_shape[0], kernel_shape[-convdim:]
+
     if filter_dilation is None:
         filter_dilation = np.ones(len(subsample), dtype='int')
 
@@ -139,7 +149,7 @@ def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
 def get_conv_gradweights_shape(image_shape, top_shape,
                                border_mode, subsample,
                                filter_dilation=None,
-                               num_groups=1):
+                               num_groups=1, unshared=False):
     """
     This function tries to compute the kernel shape of convolution gradWeights.
 
@@ -169,6 +179,8 @@ def get_conv_gradweights_shape(image_shape, top_shape,
         width axis.
     num_groups: An int which specifies the number of separate groups to
         be divided into.
+    unshared: Boolean value. If true, unshared convolution will be performed,
+        where a different filter is applied to each area of the input.
 
     Returns
     -------
@@ -194,7 +206,10 @@ def get_conv_gradweights_shape(image_shape, top_shape,
         out_shp = tuple(get_conv_gradweights_shape_1axis(
             imshp[i], topshp[i], border_mode,
             subsample[i], filter_dilation[i]) for i in range(len(subsample)))
-    return (nchan, nkern) + out_shp
+    if unshared:
+        return (nchan,) + top_shape[2:] + (nkern,) + out_shp
+    else:
+        return (nchan, nkern) + out_shp
 
 
 def get_conv_gradweights_shape_1axis(image_shape, top_shape, border_mode,
@@ -280,6 +295,8 @@ def get_conv_gradinputs_shape(kernel_shape, top_shape,
         width axis.
     num_groups: An int which specifies the number of separate groups to
         be divided into.
+    Note - The shape of the convolution output does not depend on the 'unshared'
+        parameter.
 
     Returns
     -------
@@ -289,7 +306,9 @@ def get_conv_gradinputs_shape(kernel_shape, top_shape,
 
     """
     bsize, topshp = top_shape[0], top_shape[2:]
-    nkern, kshp = kernel_shape[1], kernel_shape[2:]
+
+    convdim = len(top_shape) - 2
+    nkern, kshp = kernel_shape[1], kernel_shape[-convdim:]
 
     if filter_dilation is None:
         filter_dilation = np.ones(len(subsample), dtype='int')
@@ -522,7 +541,8 @@ def conv2d(input,
            subsample=(1, 1),
            filter_flip=True,
            filter_dilation=(1, 1),
-           num_groups=1):
+           num_groups=1,
+           unshared=False):
     """This function will build the symbolic graph for convolving a mini-batch of a
     stack of 2D inputs with a set of 2D filters. The implementation is modelled
     after Convolutional Neural Networks (CNN).
@@ -538,7 +558,8 @@ def conv2d(input,
                              subsample=subsample,
                              filter_flip=filter_flip,
                              filter_dilation=filter_dilation,
-                             num_groups=num_groups)
+                             num_groups=num_groups,
+                             unshared=unshared)
     return conv_op(input, filters)
 
 
@@ -878,7 +899,6 @@ def conv3d(input,
         version until it is released.
 
     """
-
     input = as_tensor_variable(input)
     filters = as_tensor_variable(filters)
     conv_op = AbstractConv3d(imshp=input_shape,
@@ -899,7 +919,8 @@ def conv2d_grad_wrt_inputs(output_grad,
                            subsample=(1, 1),
                            filter_flip=True,
                            filter_dilation=(1, 1),
-                           num_groups=1):
+                           num_groups=1,
+                           unshared=False):
     """Compute conv output gradient w.r.t its inputs
 
     This function builds the symbolic graph for getting the
@@ -916,10 +937,14 @@ def conv2d_grad_wrt_inputs(output_grad,
         will be upsampled or the output gradient of the convolution
         whose gradient will be taken with respect to the input of the
         convolution.
-    filters : symbolic 4D tensor
-        set of filters used in CNN layer of shape (output channels,
-        input channels, filter rows, filter columns).  See the
-        optional parameter ``filter_shape``.
+    filters: symbolic 4D or 6D tensor
+        Set of filters used in CNN layer of shape
+        (output channels, input channels, filter rows, filter columns)
+        for normal convolution and
+        (output channels, output rows, output columns, input channels,
+        filter rows, filter columns)
+        for unshared convolution.
+        See the optional parameter ``filter_shape``.
     input_shape : [None/int/Constant] * 2 + [Tensor/int/Constant] * 2
         The shape of the input (upsampled) parameter.
         A tuple/list of len 4, with the first two dimensions
@@ -928,8 +953,9 @@ def conv2d_grad_wrt_inputs(output_grad,
         Not Optional, since given the output_grad shape
         and the subsample values, multiple input_shape may be
         plausible.
-    filter_shape : None or [None/int/Constant] * 4
-        The shape of the filters parameter. None or a tuple/list of len 4.
+    filter_shape : None or [None/int/Constant] * (4 or 6)
+        The shape of the filters parameter. None or a tuple/list of len 4 or a
+        tuple/list of len 6 (for unshared convolution)
         Optional, possibly used  to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that
         this element is not known at compile time.
@@ -975,6 +1001,10 @@ def conv2d_grad_wrt_inputs(output_grad,
     num_groups : int
         Divides the image, kernel and output tensors into num_groups
         separate groups. Each which carry out convolutions separately
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different filter will be used for each region of the
+        input.
 
     Returns
     -------
@@ -1009,7 +1039,14 @@ def conv2d_grad_wrt_inputs(output_grad,
 
     # checking the type of filter_shape
     if filter_shape is not None:
-        for dim in [0, 1, 2, 3]:
+        if unshared:
+            expected_dim = 6
+        else:
+            expected_dim = 4
+
+        assert len(filter_shape) == expected_dim
+
+        for dim in range(expected_dim):
             assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
                                                   integer_types, type(None)))
 
@@ -1026,7 +1063,8 @@ def conv2d_grad_wrt_inputs(output_grad,
                                               subsample=subsample,
                                               filter_flip=filter_flip,
                                               filter_dilation=filter_dilation,
-                                              num_groups=num_groups)
+                                              num_groups=num_groups,
+                                              unshared=unshared)
 
     return grad_input_op(filters, output_grad, input_shape[-2:])
 
@@ -1179,7 +1217,8 @@ def conv2d_grad_wrt_weights(input,
                             subsample=(1, 1),
                             filter_flip=True,
                             filter_dilation=(1, 1),
-                            num_groups=1):
+                            num_groups=1,
+                            unshared=False):
     """Compute conv output gradient w.r.t its weights
 
     This function will build the symbolic graph for getting the
@@ -1195,10 +1234,10 @@ def conv2d_grad_wrt_weights(input,
         mini-batch of feature map stacks, of shape (batch size, input
         channels, input rows, input columns).  This is the gradient of
         the output of convolution.
-    filter_shape : [None/int/Constant] * 2 + [Tensor/int/Constant] * 2
-        The shape of the filter parameter.  A tuple/list of len 4, with the
-        first two dimensions being None or int or Constant and the last two
-        dimensions being Tensor or int or Constant.
+    filter_shape : [None/int/Constant] * (2 or 4) + [Tensor/int/Constant] * 2
+        The shape of the filter parameter.  A tuple/list of len 4 or 6
+        (for unshared), with the first two dimensions being None or int or
+        Constant and the last two dimensions being Tensor or int or Constant.
         Not Optional, since given the output_grad shape and
         the input_shape, multiple filter_shape may be plausible.
     input_shape : None or [None/int/Constant] * 4
@@ -1247,13 +1286,19 @@ def conv2d_grad_wrt_weights(input,
     num_groups : int
         Divides the image, kernel and output tensors into num_groups
         separate groups. Each which carry out convolutions separately
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different filter will be used for each region of the
+        input.
 
     Returns
     -------
-    symbolic 4D tensor
+    symbolic 4D tensor or 6D tensor
         set of feature maps generated by convolutional layer. Tensor
         is of shape (batch size, output channels, output rows, output
-        columns)
+        columns) for normal convolution and
+        (output channels, output rows, output columns, input channels,
+        filter rows, filter columns) for unshared convolution
 
     Notes
     -----
@@ -1274,7 +1319,11 @@ def conv2d_grad_wrt_weights(input,
     for dim in [0, 1]:
         assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
                                               integer_types, type(None)))
-    for dim in [2, 3]:
+    if unshared:
+        for dim in [2, 3]:
+            assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
+                                                  integer_types, type(None)))
+    for dim in [-2, -1]:
         assert isinstance(filter_shape[dim], (theano.tensor.TensorVariable,
                                               theano.tensor.TensorConstant,
                                               integer_types))
@@ -1288,7 +1337,7 @@ def conv2d_grad_wrt_weights(input,
     # setting the last two dimensions of filter_shape to None, if
     # the type of these dimensions is TensorVariable.
     numerical_filter_shape = list(filter_shape)
-    for dim in [2, 3]:
+    for dim in [-2, -1]:
         if isinstance(filter_shape[dim], theano.tensor.TensorVariable):
             numerical_filter_shape[dim] = None
 
@@ -1298,7 +1347,8 @@ def conv2d_grad_wrt_weights(input,
                                                subsample=subsample,
                                                filter_flip=filter_flip,
                                                filter_dilation=filter_dilation,
-                                               num_groups=num_groups)
+                                               num_groups=num_groups,
+                                               unshared=unshared)
 
     return gradWeight_op(input, output_grad, filter_shape[-2:])
 
@@ -1631,7 +1681,8 @@ class BaseAbstractConv(Op):
         element is not known at compile time.
         imshp is defined w.r.t the forward conv.
 
-     kshp: None, tuple/list of len ``(2 + convdim)`` of int or Constant variable
+     kshp: None, tuple/list of len ``(2 + convdim)`` or ``(2 + 2 * convdim)``
+        (for unshared) of int or Constant variable
         The shape of the filters parameter.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that this
@@ -1670,14 +1721,24 @@ class BaseAbstractConv(Op):
     filter_dilation: tuple of len ``convdim``
         Factor by which to subsample (stride) the input.
         Also called dilation factor.
+
+    num_groups : int
+        Divides the image, kernel and output tensors into num_groups
+        separate groups. Each which carry out convolutions separately
+
+    unshared: bool
+        If true, then unshared or 'locally connected' convolution will be
+        performed. A different filter will be used for each region of the
+        input.
     """
     check_broadcast = False
     __props__ = ('convdim', 'border_mode', 'subsample', 'filter_flip',
-                 'imshp', 'kshp', 'filter_dilation', 'num_groups')
+                 'imshp', 'kshp', 'filter_dilation', 'num_groups', 'unshared')
 
     def __init__(self, convdim,
                  imshp=None, kshp=None, border_mode="valid",
-                 subsample=None, filter_flip=True, filter_dilation=None, num_groups=1):
+                 subsample=None, filter_flip=True, filter_dilation=None, num_groups=1,
+                 unshared=False):
 
         self.convdim = convdim
         if convdim not in (2, 3):
@@ -1718,7 +1779,10 @@ class BaseAbstractConv(Op):
                             ValueError("imshp should be None or a tuple of "
                                        "constant int values"),
                             sys.exc_info()[2])
-        self.kshp = tuple(kshp) if kshp else (None,) * (2 + convdim)
+        if kshp:
+            self.kshp = tuple(kshp)
+        else:
+            self.kshp = (None,) * ((2 + 2 * convdim) if unshared else (2 + convdim))
         for kshp_i in self.kshp:
             if kshp_i is not None:
                 # Components of kshp should be constant or ints
@@ -1742,6 +1806,10 @@ class BaseAbstractConv(Op):
         if num_groups < 1:
             raise ValueError("num_groups must have value greater than zero")
         self.num_groups = num_groups
+        if unshared and self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
+        self.unshared = unshared
 
     def do_constant_folding(self, node):
         # Disable constant folding since there is no implementation.
@@ -1768,11 +1836,10 @@ class BaseAbstractConv(Op):
             raise NotImplementedError(
                 'flops not implemented for convdim={}', self.convdim)
 
-    def conv(self, img, kern, mode="valid", dilation=1, num_groups=1):
+    def conv(self, img, kern, mode="valid", dilation=1, num_groups=1, unshared=False, direction="forward"):
         """
         Basic slow Python 2D or 3D convolution for DebugMode
         """
-
         if not imported_scipy_signal:
             raise NotImplementedError(
                 "AbstractConv perform requires the python package"
@@ -1787,18 +1854,29 @@ class BaseAbstractConv(Op):
             raise ValueError(
                 'invalid dilation {}, expected {} values'.format(dilation,
                                                                  self.convdim))
+        if unshared and direction == "backprop weights":
+            if mode != "valid":
+                raise ValueError('conv mode for unshared backprop wrt weights must be "valid"')
+            # To allow the same format for the call to 'unshared2d' for all three directions,
+            # the out_shape is shuffled here.
+            # We do a transpose in the 'perform' function to bring it to the required shape
+            out_shape = (img.shape[0], kern.shape[0],
+                         kern.shape[2], kern.shape[3],
+                         img.shape[2] - kern.shape[2] + 1,
+                         img.shape[3] - kern.shape[3] + 1)
+        else:
+            out_shape = get_conv_output_shape(img.shape, kern.shape,
+                                              mode, [1] * self.convdim, dilation)
 
-        out_shape = get_conv_output_shape(img.shape, kern.shape,
-                                          mode, [1] * self.convdim, dilation)
-
-        out = np.zeros(out_shape, dtype=img.dtype)
         dil_kern_shp = kern.shape[:-self.convdim] + tuple(
             (kern.shape[-self.convdim + i] - 1) * dilation[i] + 1
             for i in range(self.convdim))
         dilated_kern = np.zeros(dil_kern_shp, dtype=kern.dtype)
-        dilated_kern[(slice(None), slice(None)) +
+
+        dilated_kern[(slice(None),) * (dilated_kern.ndim - self.convdim) +
                      tuple(slice(None, None, dilation[i]) for i in range(self.convdim))
                      ] = kern
+        out = np.zeros(out_shape, dtype=img.dtype)
 
         if img.shape[1] % self.num_groups != 0:
             raise ValueError(
@@ -1823,11 +1901,19 @@ class BaseAbstractConv(Op):
                     for g in xrange(self.num_groups):
                         for n in xrange(output_channel_offset):
                             for im0 in xrange(input_channel_offset):
-                                # some cast generates a warning here
-                                out[b, g * output_channel_offset + n, ...] += _convolve2d(img[b, g * input_channel_offset + im0, ...],
-                                                                                          dilated_kern[g * output_channel_offset + n,
-                                                                                          im0, ...], 1, val, bval, 0)
+                                if unshared:
+                                    out[b, g * output_channel_offset + n, ...] += self.unshared2d(img[b, g * input_channel_offset + im0, ...],
+                                                                                                  dilated_kern[g * output_channel_offset + n, im0, ...],
+                                                                                                  out_shape[2:], direction)
+                                else:
+                                    # some cast generates a warning here
+                                    out[b, g * output_channel_offset + n, ...] += _convolve2d(img[b, g * input_channel_offset + im0, ...],
+                                                                                              dilated_kern[g * output_channel_offset + n, im0, ...],
+                                                                                              1, val, bval, 0)
+
         elif self.convdim == 3:
+            if unshared:
+                raise NotImplementedError('Unshared 3D convolution is not implemented')
             for b in xrange(img.shape[0]):
                 for g in xrange(self.num_groups):
                     for n in xrange(output_channel_offset):
@@ -1837,6 +1923,35 @@ class BaseAbstractConv(Op):
                                                                                    im0, ...], mode)
         else:
             raise NotImplementedError('only 2D and 3D convolution are implemented')
+        return out
+
+    def unshared2d(self, inp, kern, out_shape, direction="forward"):
+        '''
+        Basic slow Python unshared 2d convolution.
+        '''
+        if self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
+        out = np.zeros(out_shape, dtype=inp.dtype)
+
+        if direction == "forward":
+            for row in xrange(out_shape[0]):
+                for col in xrange(out_shape[1]):
+                    out[row, col] = np.sum(np.multiply(inp[row:row + kern.shape[2],
+                                                       col:col + kern.shape[3]],
+                                           kern[row, col, ::-1, ::-1]))
+        elif direction == "backprop weights":
+            for row in xrange(out_shape[0]):
+                for col in xrange(out_shape[1]):
+                    out[row, col, ...] = kern[row, col] * \
+                        inp[row:row + out_shape[2], col:col + out_shape[3]]
+        elif direction == "backprop inputs":
+            for row in xrange(kern.shape[0]):
+                for col in xrange(kern.shape[1]):
+                    out[row:row + kern.shape[2], col:col + kern.shape[3]] += inp[row, col] * \
+                        kern[row, col, ::-1, ::-1]
+        else:
+            raise ValueError("unshared2d: invalid value '{}' for 'direction'".format(direction))
         return out
 
 
@@ -1854,14 +1969,16 @@ class AbstractConv(BaseAbstractConv):
                  subsample=None,
                  filter_flip=True,
                  filter_dilation=None,
-                 num_groups=1):
+                 num_groups=1,
+                 unshared=False):
         super(AbstractConv, self).__init__(convdim=convdim,
                                            imshp=imshp, kshp=kshp,
                                            border_mode=border_mode,
                                            subsample=subsample,
                                            filter_flip=filter_flip,
                                            filter_dilation=filter_dilation,
-                                           num_groups=num_groups)
+                                           num_groups=num_groups,
+                                           unshared=unshared)
 
     def make_node(self, img, kern):
         # Make sure both inputs are Variables with the same Type
@@ -1875,8 +1992,14 @@ class AbstractConv(BaseAbstractConv):
 
         if img.type.ndim != 2 + self.convdim:
             raise TypeError('img must be %dD tensor' % (2 + self.convdim))
-        if kern.type.ndim != 2 + self.convdim:
-            raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
+
+        if self.unshared:
+            if kern.type.ndim != 2 + 2 * self.convdim:
+                raise TypeError('kern must be %dD tensor for unshared convolution'
+                                % (2 + 2 * self.convdim))
+        else:
+            if kern.type.ndim != 2 + self.convdim:
+                raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
 
         img = assert_shape(img, self.imshp,
                            'AbstractConv shape mismatch: shape of '
@@ -1894,8 +2017,12 @@ class AbstractConv(BaseAbstractConv):
         img, kern = inp
         img = np.asarray(img)
         kern = np.asarray(kern)
-        dil_kernshp = tuple((kern.shape[2 + i] - 1) * self.filter_dilation[i] + 1
+
+        dil_kernshp = tuple((kern.shape[-self.convdim + i] - 1) * self.filter_dilation[i] + 1
                             for i in range(self.convdim))
+        if self.unshared and self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
         o, = out_
         mode = self.border_mode
 
@@ -1922,8 +2049,34 @@ class AbstractConv(BaseAbstractConv):
                           for i in range(self.convdim))] = img
             img = new_img
         if not self.filter_flip:
-            kern = kern[(slice(None), slice(None)) + (slice(None, None, -1),) * self.convdim]
-        conv_out = self.conv(img, kern, mode="valid", dilation=self.filter_dilation, num_groups=self.num_groups)
+            kern = kern[(slice(None),) * (kern.ndim - self.convdim) + (slice(None, None, -1),) * self.convdim]
+
+        if self.unshared:
+            out_shape = get_conv_output_shape(img.shape, kern.shape,
+                                              mode, self.subsample, self.filter_dilation)
+            if kern.shape[1:1 + self.convdim] != out_shape[2:2 + self.convdim]:
+                raise ValueError('Kernel shape {} does not match '
+                                 'computed output size {}'.format(kern.shape[1:1 + self.convdim],
+                                                                  out_shape[2:2 + self.convdim]))
+            if any(self.subsample[i] > 1 for i in range(self.convdim)):
+                # Expand regions in kernel to correct for subsampling
+                out_shape = get_conv_output_shape(img.shape, kern.shape,
+                                                  mode, (1,) * self.convdim, self.filter_dilation)
+                exp_kern_shp = kern.shape[:1] + out_shape[2:2 + self.convdim] + \
+                    kern.shape[1 + self.convdim:]
+                exp_kern = np.zeros(exp_kern_shp, dtype=kern.dtype)
+                exp_kern[(slice(None),) +
+                         tuple(slice(None, None, self.subsample[i]) for i in range(self.convdim)) +
+                         (slice(None),) * (self.convdim + 1)] = kern
+                kern = exp_kern
+            # from (nFilters, out_rows, out_cols, nChannels, kH, kW)
+            # to (nFilters, nChannels, out_rows, out_cols, kH, kW)
+            axes_order = (0, 1 + self.convdim,) + tuple(range(1, 1 + self.convdim)) + \
+                tuple(range(2 + self.convdim, kern.ndim))
+            kern = kern.transpose(axes_order)
+
+        conv_out = self.conv(img, kern, mode="valid", dilation=self.filter_dilation, num_groups=self.num_groups,
+                             unshared=self.unshared)
         conv_out = conv_out[(slice(None), slice(None)) +
                             tuple(slice(None, None, self.subsample[i])
                                   for i in range(self.convdim))]
@@ -1934,6 +2087,8 @@ class AbstractConv(BaseAbstractConv):
         if self.num_groups > 1:
             raise NotImplementedError(
                 'Rop not implemented for grouped convolutions')
+        if self.unshared:
+            raise NotImplementedError('Rop not implemented for unshared convolution')
         rval = None
         if eval_points[0] is not None:
             rval = self.make_node(eval_points[0], inputs[1]).outputs[0]
@@ -1953,8 +2108,12 @@ class AbstractConv(BaseAbstractConv):
             imshp = [imshp[i] if self.imshp[i] is None else self.imshp[i]
                      for i in range(2 + self.convdim)]
         if self.kshp is not None:
-            kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
-                    for i in range(2 + self.convdim)]
+            if self.unshared:
+                kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
+                        for i in range(2 + 2 * self.convdim)]
+            else:
+                kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
+                        for i in range(2 + self.convdim)]
         res = get_conv_output_shape(imshp, kshp, self.border_mode,
                                     self.subsample, self.filter_dilation)
         return [res]
@@ -1973,14 +2132,16 @@ class AbstractConv2d(AbstractConv):
                  subsample=(1, 1),
                  filter_flip=True,
                  filter_dilation=(1, 1),
-                 num_groups=1):
+                 num_groups=1,
+                 unshared=False):
         super(AbstractConv2d, self).__init__(convdim=2,
                                              imshp=imshp, kshp=kshp,
                                              border_mode=border_mode,
                                              subsample=subsample,
                                              filter_flip=filter_flip,
                                              filter_dilation=filter_dilation,
-                                             num_groups=num_groups)
+                                             num_groups=num_groups,
+                                             unshared=unshared)
 
     def grad(self, inp, grads):
         bottom, weights = inp
@@ -1991,14 +2152,16 @@ class AbstractConv2d(AbstractConv):
                                              self.subsample,
                                              self.filter_flip,
                                              self.filter_dilation,
-                                             num_groups=self.num_groups)(
+                                             num_groups=self.num_groups,
+                                             unshared=self.unshared)(
             weights, top, bottom.shape[-2:], add_assert_shape=False)
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
                                                self.border_mode,
                                                self.subsample,
                                                self.filter_flip,
                                                self.filter_dilation,
-                                               num_groups=self.num_groups)(
+                                               num_groups=self.num_groups,
+                                               unshared=self.unshared)(
 
             bottom, top, weights.shape[-2:], add_assert_shape=False)
 
@@ -2085,14 +2248,16 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                  subsample=None,
                  filter_flip=True,
                  filter_dilation=None,
-                 num_groups=1):
+                 num_groups=1,
+                 unshared=False):
         super(AbstractConv_gradWeights, self).__init__(convdim=convdim,
                                                        imshp=imshp, kshp=kshp,
                                                        border_mode=border_mode,
                                                        subsample=subsample,
                                                        filter_flip=filter_flip,
                                                        filter_dilation=filter_dilation,
-                                                       num_groups=num_groups)
+                                                       num_groups=num_groups,
+                                                       unshared=unshared)
 
     # Update shape/height_width
     def make_node(self, img, topgrad, shape, add_assert_shape=True):
@@ -2115,8 +2280,12 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                                'image does not match given imshp.')
 
         shape = as_tensor_variable(shape)
-        broadcastable = [topgrad.broadcastable[1],
-                         img.broadcastable[1]] + ([False] * self.convdim)
+        if self.unshared:
+            broadcastable = [topgrad.broadcastable[1]] + ([False] * self.convdim) + \
+                            [img.broadcastable[1]] + ([False] * self.convdim)
+        else:
+            broadcastable = [topgrad.broadcastable[1],
+                             img.broadcastable[1]] + ([False] * self.convdim)
         output = img.type.clone(broadcastable=broadcastable)()
         return Apply(self, [img, topgrad, shape], [output])
 
@@ -2134,6 +2303,9 @@ class AbstractConv_gradWeights(BaseAbstractConv):
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a tuple of'
                 ' integers'.format(mode))
+        if self.unshared and self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
 
         dil_shape = tuple((shape[i] - 1) * self.filter_dilation[i] + 1
                           for i in range(self.convdim))
@@ -2166,9 +2338,7 @@ class AbstractConv_gradWeights(BaseAbstractConv):
             topgrad = new_topgrad
 
         axes_order = (1, 0) + tuple(range(2, self.convdim + 2))
-        flip_filters = ((slice(None), slice(None)) +
-                        (slice(None, None, -1),) * self.convdim)
-        topgrad = topgrad.transpose(axes_order)[flip_filters]
+        topgrad = topgrad.transpose(axes_order)
         img = img.transpose(axes_order)
 
         def correct_for_groups(mat):
@@ -2182,15 +2352,36 @@ class AbstractConv_gradWeights(BaseAbstractConv):
         if self.num_groups > 1:
             img = correct_for_groups(img)
 
-        kern = self.conv(img, topgrad, mode="valid", num_groups=self.num_groups)
+        if self.unshared:
+            flip_kern = ((slice(None),) * (2 + self.convdim) +
+                         (slice(None, None, -1),) * self.convdim)
+            kern = self.conv(img, topgrad, mode="valid", num_groups=self.num_groups,
+                             unshared=True, direction="backprop weights")
+            if any(self.subsample[i] > 1 for i in range(self.convdim)):
+                sub_slice = (slice(None),) * 2 + \
+                    tuple(slice(None, None, self.subsample[i]) for i in range(0, self.convdim)) + \
+                    (slice(None),) * self.convdim
+                kern = kern[sub_slice]
+            # from (nChannels, nFilters, out_rows, out_cols, kH, kW)
+            # to (nFilters, out_rows, out_cols, nChannels, kH, kW)
+            kern_axes = (1,) + tuple(range(2, self.convdim + 2)) + (0,) + \
+                tuple(range(self.convdim + 2, kern.ndim))
+        else:
+            flip_topgrad = flip_kern = ((slice(None), slice(None)) +
+                                        (slice(None, None, -1),) * self.convdim)
+            topgrad = topgrad[flip_topgrad]
+            kern = self.conv(img, topgrad, mode="valid", num_groups=self.num_groups)
+            kern_axes = (1, 0) + tuple(range(2, self.convdim + 2))
+
+        kern = kern.transpose(kern_axes)
+
         if any(self.filter_dilation[i] > 1 for i in range(self.convdim)):
-            kern = kern[(slice(None), slice(None)) +
+            kern = kern[(slice(None),) * (kern.ndim - self.convdim) +
                         tuple(slice(None, None, self.filter_dilation[i])
                               for i in range(self.convdim))]
+
         if self.filter_flip:
-            kern = kern.transpose(axes_order)[flip_filters]
-        else:
-            kern = kern.transpose(axes_order)
+            kern = kern[flip_kern]
         o[0] = node.outputs[0].type.filter(kern)
 
     def connection_pattern(self, node):
@@ -2203,15 +2394,24 @@ class AbstractConv_gradWeights(BaseAbstractConv):
         # from the shapes of inputs.
         imshp = input_shapes[0]
         topshp = input_shapes[1]
-        kshp = self.kshp[:] if self.kshp is not None else [None] * (2 + self.convdim)
-        if self.num_groups > 1:
+
+        if self.kshp:
+            kshp = self.kshp
+        else:
+            if self.unshared:
+                kshp = [None] * (2 + 2 * self.convdim)
+            else:
+                kshp = [None] * (2 + self.convdim)
+        if self.unshared:
+            fallback_kshp = ([topshp[1], topshp[2], topshp[3], imshp[1] // self.num_groups] +
+                             [node.inputs[2][i] for i in range(self.convdim)])
+            kshp = [fallback_kshp[i] if kshp[i] is None else kshp[i]
+                    for i in range(2 + 2 * self.convdim)]
+        else:
             fallback_kshp = ([topshp[1], imshp[1] // self.num_groups] +
                              [node.inputs[2][i] for i in range(self.convdim)])
-        else:
-            fallback_kshp = ([topshp[1], imshp[1]] +
-                             [node.inputs[2][i] for i in range(self.convdim)])
-        kshp = [fallback_kshp[i] if kshp[i] is None else kshp[i]
-                for i in range(2 + self.convdim)]
+            kshp = [fallback_kshp[i] if kshp[i] is None else kshp[i]
+                    for i in range(2 + self.convdim)]
         return [kshp]
 
 
@@ -2232,14 +2432,16 @@ class AbstractConv2d_gradWeights(AbstractConv_gradWeights):
                  subsample=(1, 1),
                  filter_flip=True,
                  filter_dilation=(1, 1),
-                 num_groups=1):
+                 num_groups=1,
+                 unshared=False):
         super(AbstractConv2d_gradWeights, self).__init__(convdim=2,
                                                          imshp=imshp, kshp=kshp,
                                                          border_mode=border_mode,
                                                          subsample=subsample,
                                                          filter_flip=filter_flip,
                                                          filter_dilation=filter_dilation,
-                                                         num_groups=num_groups)
+                                                         num_groups=num_groups,
+                                                         unshared=unshared)
 
     def grad(self, inp, grads):
         bottom, top = inp[:2]
@@ -2249,16 +2451,18 @@ class AbstractConv2d_gradWeights(AbstractConv_gradWeights):
                                              self.subsample,
                                              self.filter_flip,
                                              self.filter_dilation,
-                                             self.num_groups)(weights,
-                                                              top,
-                                                              bottom.shape[-2:])
+                                             self.num_groups,
+                                             self.unshared)(weights,
+                                                            top,
+                                                            bottom.shape[-2:])
         d_top = AbstractConv2d(self.imshp,
                                self.kshp,
                                self.border_mode,
                                self.subsample,
                                self.filter_flip,
                                self.filter_dilation,
-                               self.num_groups)(bottom, weights)
+                               self.num_groups,
+                               self.unshared)(bottom, weights)
         # Make sure that the broadcastable pattern of the inputs is used
         # for the gradients, even if the grad opts are not able to infer
         # that the dimensions are broadcastable.
@@ -2350,14 +2554,16 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                  subsample=None,
                  filter_flip=True,
                  filter_dilation=None,
-                 num_groups=1):
+                 num_groups=1,
+                 unshared=False):
         super(AbstractConv_gradInputs, self).__init__(convdim=convdim,
                                                       imshp=imshp, kshp=kshp,
                                                       border_mode=border_mode,
                                                       subsample=subsample,
                                                       filter_flip=filter_flip,
                                                       filter_dilation=filter_dilation,
-                                                      num_groups=num_groups)
+                                                      num_groups=num_groups,
+                                                      unshared=unshared)
 
     # Update shape/height_width
     def make_node(self, kern, topgrad, shape, add_assert_shape=True):
@@ -2370,10 +2576,19 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                                 broadcastable=topgrad.broadcastable)
         topgrad = gtype.filter_variable(topgrad)
 
-        if kern.type.ndim != 2 + self.convdim:
-            raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
+        if self.unshared:
+            if self.convdim != 2:
+                raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                          % self.convdim)
+            elif kern.type.ndim != 2 + 2 * self.convdim:
+                raise TypeError('kern must be %dD tensor for unshared convolution'
+                                % (2 + 2 * self.convdim))
+        else:
+            if kern.type.ndim != 2 + self.convdim:
+                raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
+
         if topgrad.type.ndim != 2 + self.convdim:
-            raise TypeError('topgrad must be %dD tensor' % (2 + self.convdim))
+                raise TypeError('topgrad must be %dD tensor' % (2 + self.convdim))
 
         if add_assert_shape:
             kern = assert_shape(kern, self.kshp,
@@ -2386,7 +2601,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                              False] + ([False] * self.convdim)
         else:
             broadcastable = [topgrad.type.broadcastable[0],
-                             kern.type.broadcastable[1]] + ([False] * self.convdim)
+                             kern.type.broadcastable[-self.convdim - 1]] + ([False] * self.convdim)
         output = kern.type.clone(broadcastable=broadcastable)()
         return Apply(self, [kern, topgrad, shape], [output])
 
@@ -2403,9 +2618,12 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a tuple of'
                 ' integers'.format(mode))
+        if self.unshared and self.convdim != 2:
+            raise NotImplementedError('Unshared convolution not implemented for %dD'
+                                      % self.convdim)
 
         imshp = self.imshp[:] if self.imshp is not None else [None] * (2 + self.convdim)
-        fallback_imshp = ([topgrad.shape[0], kern.shape[1]] +
+        fallback_imshp = ([topgrad.shape[0], kern.shape[-self.convdim - 1]] +
                           [shape[i] for i in range(self.convdim)])
         imshp = [fallback_imshp[i] if imshp[i] is None else imshp[i]
                  for i in range(2 + self.convdim)]
@@ -2419,8 +2637,9 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                 'has shape {}'.format(tuple(expected_topgrad_shape),
                                       tuple(topgrad.shape)))
 
-        dil_kernshp = tuple((kern.shape[i + 2] - 1) * self.filter_dilation[i] + 1
+        dil_kernshp = tuple((kern.shape[-self.convdim + i] - 1) * self.filter_dilation[i] + 1
                             for i in range(self.convdim))
+
         pad = (0,) * self.convdim
         if mode == "full":
             pad = tuple(dil_kernshp[i] - 1 for i in range(self.convdim))
@@ -2438,25 +2657,54 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                               for i in range(self.convdim))] = topgrad
             topgrad = new_topgrad
 
-        axes_order = (1, 0) + tuple(range(2, self.convdim + 2))
-        flip_filters = ((slice(None), slice(None)) +
-                        (slice(None, None, -1),) * self.convdim)
+            if self.unshared:
+                # Expand regions in kernel to correct for subsampling
+                exp_kern_shp = kern.shape[:1] + topgrad.shape[2:] + kern.shape[1 + self.convdim:]
+                exp_kern = np.zeros(exp_kern_shp, dtype=kern.dtype)
+                exp_kern[(slice(None),) +
+                         tuple(slice(None, None, self.subsample[i]) for i in range(self.convdim)) +
+                         (slice(None),) * (self.convdim + 1)] = kern
+                kern = exp_kern
 
         def correct_for_groups(mat):
             mshp0 = mat.shape[0] // self.num_groups
-            mshp1 = mat.shape[1] * self.num_groups
+            mshp1 = mat.shape[-self.convdim - 1] * self.num_groups
             mat = mat.reshape((self.num_groups, mshp0) + mat.shape[1:])
-            mat = mat.transpose((1, 0, 2) + tuple(range(3, 3 + self.convdim)))
-            mat = mat.reshape((mshp0, mshp1) + mat.shape[-self.convdim:])
+            if self.unshared:
+                # for 2D -> (1, 2, 3, 0, 4, 5, 6)
+                mat = mat.transpose(tuple(range(1, 2 + self.convdim)) + (0,) +
+                                    tuple(range(2 + self.convdim, mat.ndim)))
+                mat = mat.reshape((mshp0,) + mat.shape[1:1 + self.convdim] + (mshp1,) + mat.shape[-self.convdim:])
+            else:
+                mat = mat.transpose((1, 0, 2) + tuple(range(3, 3 + self.convdim)))
+                mat = mat.reshape((mshp0, mshp1) + mat.shape[-self.convdim:])
             return mat
-        kern = correct_for_groups(kern)
-        kern = kern.transpose(axes_order)
 
-        if self.filter_flip:
-            topgrad = topgrad[flip_filters]
-        img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation, num_groups=self.num_groups)
-        if self.filter_flip:
-            img = img[flip_filters]
+        kern = correct_for_groups(kern)
+
+        if self.unshared:
+            # from (nFilters, out_rows, out_cols, nChannels, kH, kW)
+            # to (nChannels, nFilters, out_rows, out_cols, kH, kW)
+            axes_order = (1 + self.convdim, 0,) + tuple(range(1, 1 + self.convdim)) + \
+                tuple(range(2 + self.convdim, kern.ndim))
+            kern = kern.transpose(axes_order)
+            if not self.filter_flip:
+                kern = kern[(slice(None),) * (kern.ndim - self.convdim) +
+                            (slice(None, None, -1),) * self.convdim]
+            img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation,
+                            num_groups=self.num_groups, unshared=True, direction="backprop inputs")
+        else:
+            axes_order = (1, 0) + tuple(range(2, 2 + self.convdim))
+            kern = kern.transpose(axes_order)
+            flip_filters = ((slice(None), slice(None)) +
+                            (slice(None, None, -1),) * self.convdim)
+            if self.filter_flip:
+                topgrad = topgrad[flip_filters]
+            img = self.conv(topgrad, kern, mode="full", dilation=self.filter_dilation,
+                            num_groups=self.num_groups)
+            if self.filter_flip:
+                img = img[flip_filters]
+
         if any(p > 0 for p in pad):
             img = img[(slice(None), slice(None)) +
                       tuple(slice(pad[i], img.shape[i + 2] - pad[i])
@@ -2475,10 +2723,10 @@ class AbstractConv_gradInputs(BaseAbstractConv):
         topshp = input_shapes[1]
         imshp = self.imshp[:] if self.imshp is not None else [None] * (2 + self.convdim)
         if self.num_groups > 1:
-            fallback_imshp = ([topshp[0], kshp[1] * self.num_groups] +
+            fallback_imshp = ([topshp[0], kshp[-self.convdim - 1] * self.num_groups] +
                               [node.inputs[2][i] for i in range(self.convdim)])
         else:
-            fallback_imshp = ([topshp[0], kshp[1]] +
+            fallback_imshp = ([topshp[0], kshp[-self.convdim - 1]] +
                               [node.inputs[2][i] for i in range(self.convdim)])
         imshp = [fallback_imshp[i] if imshp[i] is None else imshp[i]
                  for i in range(2 + self.convdim)]
@@ -2503,14 +2751,16 @@ class AbstractConv2d_gradInputs(AbstractConv_gradInputs):
                  subsample=(1, 1),
                  filter_flip=True,
                  filter_dilation=(1, 1),
-                 num_groups=1):
+                 num_groups=1,
+                 unshared=False):
         super(AbstractConv2d_gradInputs, self).__init__(convdim=2,
                                                         imshp=imshp, kshp=kshp,
                                                         border_mode=border_mode,
                                                         subsample=subsample,
                                                         filter_flip=filter_flip,
                                                         filter_dilation=filter_dilation,
-                                                        num_groups=num_groups)
+                                                        num_groups=num_groups,
+                                                        unshared=unshared)
 
     def grad(self, inp, grads):
         weights, top = inp[:2]
@@ -2520,7 +2770,8 @@ class AbstractConv2d_gradInputs(AbstractConv_gradInputs):
                                                self.subsample,
                                                self.filter_flip,
                                                self.filter_dilation,
-                                               self.num_groups)(
+                                               self.num_groups,
+                                               self.unshared)(
                                                    bottom, top,
                                                    weights.shape[-2:])
         d_top = AbstractConv2d(self.imshp, self.kshp,
@@ -2528,7 +2779,8 @@ class AbstractConv2d_gradInputs(AbstractConv_gradInputs):
                                self.subsample,
                                self.filter_flip,
                                self.filter_dilation,
-                               self.num_groups)(bottom, weights)
+                               self.num_groups,
+                               self.unshared)(bottom, weights)
         # Make sure that the broadcastable pattern of the inputs is used
         # for the gradients, even if the grad opts are not able to infer
         # that the dimensions are broadcastable.

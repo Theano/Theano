@@ -10,7 +10,7 @@ import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, conv
-from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim, TestUnsharedConv
 
 
 class TestCorr2D(utt.InferShapeTester):
@@ -450,6 +450,16 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
 
         # compare values
         utt.assert_allclose(gconv_output, conv_output)
+
+
+class TestUnsharedCorr2d(TestUnsharedConv):
+    if theano.config.mode == "FAST_COMPILE":
+        mode = theano.compile.get_mode("FAST_RUN").excluding('gpuarray')
+    else:
+        mode = None
+    conv2d_op = corr.CorrMM
+    conv2d_gradw_op = corr.CorrMM_gradWeights
+    conv2d_gradi_op = corr.CorrMM_gradInputs
 
 
 if __name__ == '__main__':

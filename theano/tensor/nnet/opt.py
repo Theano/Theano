@@ -82,12 +82,14 @@ def local_abstractconv_gemm(node):
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (kern.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        kern = kern[flip]
     rval = CorrMM(border_mode=node.op.border_mode,
                   subsample=node.op.subsample,
                   filter_dilation=node.op.filter_dilation,
-                  num_groups=node.op.num_groups)(img, kern)
-
+                  num_groups=node.op.num_groups,
+                  unshared=node.op.unshared)(img, kern)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -134,12 +136,15 @@ def local_abstractconv_gradweight_gemm(node):
     rval = CorrMM_gradWeights(border_mode=node.op.border_mode,
                               subsample=node.op.subsample,
                               filter_dilation=node.op.filter_dilation,
-                              num_groups=node.op.num_groups)(img, topgrad, shape)
+                              num_groups=node.op.num_groups,
+                              unshared=node.op.unshared)(img, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
-        rval = rval[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (rval.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        rval = rval[flip]
     rval = theano.tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
     copy_stack_trace(node.outputs[0], rval)
 
@@ -189,12 +194,14 @@ def local_abstractconv_gradinputs_gemm(node):
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (kern.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        kern = kern[flip]
     rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
                              filter_dilation=node.op.filter_dilation,
-                             num_groups=node.op.num_groups)(kern, topgrad,
-                                                            shape)
+                             num_groups=node.op.num_groups,
+                             unshared=node.op.unshared)(kern, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -242,7 +249,7 @@ def local_conv2d_cpu(node):
     if not node.op.filter_flip:
         # Not tested yet
         return None
-    if node.op.num_groups > 1:
+    if node.op.num_groups > 1 or node.op.unshared:
         return None
 
     rval = conv2d(img, kern,
@@ -270,7 +277,7 @@ def local_conv2d_gradweight_cpu(node):
     if not node.op.filter_flip:
         # Not tested yet
         return
-    if node.op.num_groups > 1:
+    if node.op.num_groups > 1 or node.op.unshared:
         return None
 
     if node.op.border_mode == 'valid' and \
@@ -370,7 +377,7 @@ def local_conv2d_gradinputs_cpu(node):
     if not node.op.filter_flip:
         # Not tested yet
         return None
-    if node.op.num_groups > 1:
+    if node.op.num_groups > 1 or node.op.unshared:
         return None
 
     # Conv 3d implementation, needed when subsample > 2

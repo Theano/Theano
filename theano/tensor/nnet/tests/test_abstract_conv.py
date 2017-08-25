@@ -1744,3 +1744,154 @@ class Separable_conv(unittest.TestCase):
         fun = theano.function([x_sym, dfilter_sym, pfilter_sym], sep_op, mode='FAST_RUN')
         top = fun(x[:, :, :3, :3, :3], depthwise_filter, pointwise_filter)
         utt.assert_allclose(top, precomp_output)
+
+
+class TestUnsharedConv(unittest.TestCase):
+    conv2d = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+    conv2d_op = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+
+    mode = theano.compile.mode.Mode(optimizer='None')
+
+    def setUp(self):
+        self.img_shape = [(2, 2, 4, 4), (3, 2, 4, 2), (3, 3, 5, 3), (3, 4, 4, 4)]
+        self.kern_shape = [(2, 2, 2, 2, 3, 3), (2, 4, 2, 2, 4, 2), (3, 2, 1, 1, 3, 3), (4, 3, 3, 2, 4, 2)]
+        self.topgrad_shape = [(2, 2, 2, 2), (3, 2, 4, 2), (3, 3, 2, 1), (3, 4, 3, 3)]
+        self.border_mode = ['valid', 'full', 'valid', 'full']
+        self.subsample = [(1, 1), (2, 2), (2, 1), (3, 2)]
+        self.filter_dilation = (1, 1)
+        self.num_groups = [1, 1, 3, 2]
+
+        # self.verify_flags = np.random.choice([True, False], 4, [0.5, 0.5])
+        # Above line can be used instead if speed is a concern
+        self.verify_flags = [True] * 4
+
+        self.ref_mode = 'FAST_RUN'
+        if theano.config.cxx == "":
+            raise SkipTest("CorrMM needs cxx")
+
+    def test_fwd(self):
+        tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
+        img_sym = theano.tensor.tensor4('img')
+        kern_sym = tensor6('kern')
+        ref_kern_sym = theano.tensor.tensor4('ref_kern')
+
+        for imshp, kshp, mode, sub, groups, verify in zip(self.img_shape, self.kern_shape, self.border_mode,
+                                                          self.subsample, self.num_groups, self.verify_flags):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+
+            unshared_conv_op = self.conv2d(border_mode=mode, subsample=sub,
+                                           filter_dilation=self.filter_dilation,
+                                           num_groups=groups, unshared=True)
+            unshared_out_sym = unshared_conv_op(img_sym, kern_sym)
+            unshared_func = theano.function([img_sym, kern_sym], unshared_out_sym, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_op)
+                        for node in unshared_func.maker.fgraph.toposort()])
+            unshared_output = unshared_func(img, kern)
+
+            single_kshp = kshp[:1] + kshp[3:]
+
+            ref_conv_op = self.conv2d(border_mode=mode, subsample=sub,
+                                      filter_dilation=self.filter_dilation,
+                                      num_groups=groups, unshared=False)
+            ref_out_sym = ref_conv_op(img_sym, ref_kern_sym)
+            ref_func = theano.function([img_sym, ref_kern_sym], ref_out_sym, mode=self.mode)
+
+            for i in range(0, kshp[1]):
+                for j in range(0, kshp[2]):
+                    single_kern = kern[:, i, j, ...].reshape(single_kshp)
+                    ref_val = ref_func(img, single_kern)
+                    utt.assert_allclose(ref_val[:, :, i, j], unshared_output[:, :, i, j])
+
+            if verify:
+                utt.verify_grad(unshared_conv_op, [img, kern], mode=self.mode, eps=1)
+
+    def test_gradweight(self):
+        img_sym = theano.tensor.tensor4('img')
+        top_sym = theano.tensor.tensor4('top')
+
+        for imshp, kshp, topshp, mode, sub, groups, verify in zip(self.img_shape, self.kern_shape, self.topgrad_shape,
+                                                                  self.border_mode, self.subsample, self.num_groups,
+                                                                  self.verify_flags):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            top = np.random.random(topshp).astype(theano.config.floatX)
+
+            unshared_conv_op = self.conv2d_gradw(border_mode=mode, subsample=sub,
+                                                 filter_dilation=self.filter_dilation,
+                                                 num_groups=groups, unshared=True)
+            unshared_out_sym = unshared_conv_op(img_sym, top_sym, tensor.as_tensor_variable(kshp[-2:]))
+            unshared_func = theano.function([img_sym, top_sym], unshared_out_sym, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_gradw_op)
+                        for node in unshared_func.maker.fgraph.toposort()])
+            unshared_output = unshared_func(img, top)
+
+            single_kshp = kshp[:1] + kshp[3:]
+
+            ref_conv_op = self.conv2d_gradw(border_mode=mode, subsample=sub,
+                                            filter_dilation=self.filter_dilation,
+                                            num_groups=groups, unshared=False)
+            ref_out_sym = ref_conv_op(img_sym, top_sym, tensor.as_tensor_variable(single_kshp[-2:]))
+            ref_func = theano.function([img_sym, top_sym], ref_out_sym, mode=self.mode)
+
+            for i in range(0, topshp[2]):
+                for j in range(0, topshp[3]):
+                    top_single = np.zeros_like(top)
+                    top_single[:, :, i, j] = top[:, :, i, j]
+                    ref_output = ref_func(img, top_single)
+                    utt.assert_allclose(unshared_output[:, i, j, ...], ref_output)
+
+            def conv_gradweight(inputs_val, output_val):
+                return unshared_conv_op(inputs_val, output_val, tensor.as_tensor_variable(kshp[-2:]))
+
+            if verify:
+                utt.verify_grad(conv_gradweight, [img, top], mode=self.mode, eps=1)
+
+    def test_gradinput(self):
+        tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
+        kern_sym = tensor6('kern')
+        top_sym = theano.tensor.tensor4('top')
+        ref_kern_sym = theano.tensor.tensor4('ref_kern')
+
+        for imshp, kshp, topshp, mode, sub, groups, verify in zip(self.img_shape, self.kern_shape, self.topgrad_shape,
+                                                                  self.border_mode, self.subsample, self.num_groups,
+                                                                  self.verify_flags):
+            single_kshp = kshp[:1] + kshp[3:]
+
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+            top = np.random.random(topshp).astype(theano.config.floatX)
+
+            unshared_conv_op = self.conv2d_gradi(border_mode=mode, subsample=sub,
+                                                 filter_dilation=self.filter_dilation,
+                                                 num_groups=groups, unshared=True)
+            unshared_out_sym = unshared_conv_op(kern_sym, top_sym, tensor.as_tensor_variable(imshp[-2:]))
+            unshared_func = theano.function([kern_sym, top_sym], unshared_out_sym, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_gradi_op)
+                        for node in unshared_func.maker.fgraph.toposort()])
+            unshared_output = unshared_func(kern, top)
+
+            ref_conv_op = self.conv2d_gradi(border_mode=mode, subsample=sub,
+                                            filter_dilation=self.filter_dilation,
+                                            num_groups=groups, unshared=False)
+            ref_out_sym = ref_conv_op(ref_kern_sym, top_sym, tensor.as_tensor_variable(imshp[-2:]))
+            ref_func = theano.function([ref_kern_sym, top_sym], ref_out_sym, mode=self.mode)
+
+            ref_output = np.zeros(imshp)
+
+            for i in range(0, topshp[2]):
+                for j in range(0, topshp[3]):
+                    single_kern = kern[:, i, j, ...].reshape(single_kshp)
+                    top_single = np.zeros_like(top)
+                    top_single[:, :, i, j] = top[:, :, i, j]
+                    ref_output += ref_func(single_kern, top_single)
+
+            utt.assert_allclose(ref_output, unshared_output)
+
+            def conv_gradinputs(filters_val, output_val):
+                return unshared_conv_op(filters_val, output_val, tensor.as_tensor_variable(imshp[-2:]))
+
+            if verify:
+                utt.verify_grad(conv_gradinputs, [kern, top], mode=self.mode, eps=1)
