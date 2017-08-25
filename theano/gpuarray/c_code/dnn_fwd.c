@@ -360,7 +360,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         dnn_conv_update_cache(hashkey, prev_algo);
 
       if (params->choose_once)
-      reuse_algo = 1;
+        reuse_algo = 1;
     }
 
   } // params->choose_algo
