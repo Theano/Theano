@@ -195,7 +195,7 @@ class BaseCorrMM(gof.OpenMPOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (9, self.openmp, blas_header_version())
+        return (10, self.openmp, blas_header_version())
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -439,7 +439,7 @@ class BaseCorrMM(gof.OpenMPOp):
         break;
     case 1:  // backprop wrt. weights
         // output is weights: (num_filters, num_channels, height, width)
-        // height and width: weights = (bottom + 2*pad - (top - 1) * sample - 1) / dil + 1
+        // height and width: weights = (bottom + pad_l + pad_r - (top - 1) * sample - 1) / dil + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[1];
         if (unshared){
             odim = 6;

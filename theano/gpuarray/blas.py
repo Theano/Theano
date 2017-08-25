@@ -468,16 +468,33 @@ class BaseGpuCorrMM(CGpuKernelBase):
     def __init__(self, border_mode="valid", subsample=(1, 1),
                  filter_dilation=(1, 1), num_groups=1, unshared=False):
         if isinstance(border_mode, integer_types):
-            border_mode = (border_mode, border_mode)
-        if isinstance(border_mode, tuple):
-            pad_h, pad_w = map(int, border_mode)
-            border_mode = (pad_h, pad_w)
-        if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
-                border_mode in ('valid', 'full', 'half')):
+            if border_mode < 0:
+                raise ValueError(
+                    'invalid border_mode {}, which must be a '
+                    'non-negative integer'.format(border_mode))
+            border_mode = ((border_mode, border_mode),) * 2
+        elif isinstance(border_mode, tuple):
+            if len(border_mode) != 2:
+                raise ValueError(
+                    'invalid border_mode {} which must be a '
+                    'tuple of length 2'.format(border_mode))
+            border = ()
+            for mode in border_mode:
+                if isinstance(mode, integer_types) and mode >= 0:
+                    border += ((mode, mode),)
+                elif isinstance(mode, tuple) and len(mode) == 2 and \
+                        min(mode) >= 0:
+                    border += ((int(mode[0]), int(mode[1])),)
+                else:
+                    raise ValueError(
+                        'invalid border mode {}. The tuple can only contain '
+                        'integers or tuples of length 2'.format(border_mode))
+            border_mode = border
+        elif border_mode not in ('valid', 'full', 'half'):
             raise ValueError(
                 'invalid border_mode {}, which must be either '
-                '"valid", "full", "half", an integer or a pair of'
-                ' integers'.format(border_mode))
+                '"valid", "full", "half", an integer or a tuple '
+                'of length 2'.format(border_mode))
         self.border_mode = border_mode
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
@@ -495,7 +512,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
     def pad(self):
         if self.border_mode != 'valid':
             return self.border_mode
-        return (0, 0)
+        return ((0, 0),) * 2
 
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s}' % (
@@ -537,7 +554,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
 
     def c_code_cache_version(self):
         # Raise this whenever modifying the C code (including the file).
-        return (11,)
+        return (12,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
@@ -587,14 +604,14 @@ class BaseGpuCorrMM(CGpuKernelBase):
         numgroups = self.num_groups
         unshared = int(self.unshared)
         if self.border_mode == "half":
-            padH = padW = -1
+            padH_l = padH_r = padW_l = padW_r = -1
         elif self.border_mode == "full":
-            padH = padW = -2
+            padH_l = padH_r = padW_l = padW_r = -2
         elif isinstance(self.border_mode, tuple):
-            padH, padW = self.border_mode
+            (padH_l, padH_r), (padW_l, padW_r) = self.border_mode
         else:
             assert self.border_mode == "valid"
-            padH = padW = 0
+            padH_l = padH_r = padW_l = padW_r = 0
         if direction == "forward":
             direction = 0
             out = top
@@ -613,13 +630,13 @@ class BaseGpuCorrMM(CGpuKernelBase):
         if height:
             height = '(*(npy_int*)(PyArray_DATA(%s)))' % height
         else:
-            if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
+            if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH_l == -1)):
                 raise ValueError("height must be given for backprop with vertical sampling or pad='half'")
             height = '-1'
         if width:
             width = '(*(npy_int*)(PyArray_DATA(%s)))' % width
         else:
-            if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
+            if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW_l == -1)):
                 raise ValueError("width must be given for backprop with horizontal sampling or pad='half'")
             width = '-1'
 
@@ -635,8 +652,10 @@ class BaseGpuCorrMM(CGpuKernelBase):
     size_t dW = %(dW)s;
     size_t dilH = %(dilH)s;
     size_t dilW = %(dilW)s;
-    int padH = %(padH)s;
-    int padW = %(padW)s;
+    int padH_l = %(padH_l)s;
+    int padH_r = %(padH_r)s;
+    int padW_l = %(padW_l)s;
+    int padW_r = %(padW_r)s;
     int numgroups = %(numgroups)s;
     int unshared = %(unshared)s;
 
@@ -662,22 +681,22 @@ class BaseGpuCorrMM(CGpuKernelBase):
             // kernel height is specified (perhaps vertical subsampling or half padding)
             kH = %(height)s;
         }
-        else if (padH == -2) {
+        else if (padH_l == -2 || padH_r == -2) {
             // vertical full padding, we can infer the kernel height
             kH = (2 - PyGpuArray_DIMS(bottom)[2] + (PyGpuArray_DIMS(top)[2] - 1) * dH - 1) / dilH + 1;
         }
         else {
             // explicit padding, we can infer the kernel height
-            kH = (PyGpuArray_DIMS(bottom)[2] + 2*padH - (PyGpuArray_DIMS(top)[2] - 1) * dH - 1) / dilH + 1 ;
+            kH = (PyGpuArray_DIMS(bottom)[2] + padH_l + padH_r - (PyGpuArray_DIMS(top)[2] - 1) * dH - 1) / dilH + 1 ;
         }
         if (%(width)s != -1) {
             kW = %(width)s;
         }
-        else if (padW == -2) {
+        else if (padW_l == -2 || padW_r == -2) {
             kW = (2 - PyGpuArray_DIMS(bottom)[3] + (PyGpuArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
         }
         else {
-            kW = (PyGpuArray_DIMS(bottom)[3] + 2*padW - (PyGpuArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
+            kW = (PyGpuArray_DIMS(bottom)[3] + padW_l + padW_r - (PyGpuArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
         }
     }
 
@@ -686,23 +705,23 @@ class BaseGpuCorrMM(CGpuKernelBase):
     dil_kW = (kW - 1) * dilW + 1;
 
     // Auto-padding if requested
-    if (padH == -1) {  // vertical half padding
-        padH = dil_kH / 2;
+    if (padH_l == -1 || padH_r == -1) {  // vertical half padding
+        padH_l = padH_r = dil_kH / 2;
     }
-    else if (padH == -2) {  // vertical full padding
-        padH = dil_kH - 1;
+    else if (padH_l == -2 || padH_r == -2) {  // vertical full padding
+        padH_l = padH_r = dil_kH - 1;
     }
-    else if (padH < 0) {
+    else if (padH_l < 0 || padH_r < 0) {
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorrMM: padH must be >= -2");
         %(fail)s
     }
-    if (padW == -1) {  // horizontal half padding
-        padW = dil_kW / 2;
+    if (padW_l == -1 || padW_r == -1) {  // horizontal half padding
+        padW_l = padW_r = dil_kW / 2;
     }
-    else if (padW == -2) {  // horizontal full padding
-        padW = dil_kW - 1;
+    else if (padW_l == -2 || padW_r == -2) {  // horizontal full padding
+        padW_l = padW_r = dil_kW - 1;
     }
-    else if (padW < 0) {
+    else if (padW_l < 0 || padW_r < 0) {
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorrMM: padW must be >= -2");
         %(fail)s
     }
@@ -718,11 +737,11 @@ class BaseGpuCorrMM(CGpuKernelBase):
     switch(direction) {
     case 0:  // forward pass
         // output is top: (batchsize, num_filters, height, width)
-        // height and width: top = (bottom + 2*pad - ((weight-1)*dil + 1)) / sample + 1
+        // height and width: top = (bottom + pad_l + pad_r - ((weight-1)*dil + 1)) / sample + 1
         out_dim[0] = PyGpuArray_DIMS(bottom)[0];
         out_dim[1] = PyGpuArray_DIMS(weights)[0];
-        out_dim[2] = (PyGpuArray_DIMS(bottom)[2] + 2*padH - ((PyGpuArray_DIMS(weights)[wdim-2]-1)*dilH + 1)) / dH + 1;
-        out_dim[3] = (PyGpuArray_DIMS(bottom)[3] + 2*padW - ((PyGpuArray_DIMS(weights)[wdim-1]-1)*dilW + 1)) / dW + 1;
+        out_dim[2] = (PyGpuArray_DIMS(bottom)[2] + padH_l + padH_r - ((PyGpuArray_DIMS(weights)[wdim-2]-1)*dilH + 1)) / dH + 1;
+        out_dim[3] = (PyGpuArray_DIMS(bottom)[3] + padW_l + padW_r - ((PyGpuArray_DIMS(weights)[wdim-1]-1)*dilW + 1)) / dW + 1;
         out_typecode = bottom->ga.typecode;
         out_context = bottom->context;
         if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
@@ -810,8 +829,8 @@ class BaseGpuCorrMM(CGpuKernelBase):
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = PyGpuArray_DIMS(top)[0];
         out_dim[1] = PyGpuArray_DIMS(weights)[wdim-3] * numgroups;
-        out_dim[2] = (%(height)s != -1) ? %(height)s : (PyGpuArray_DIMS(top)[2] - 1) * dH + (PyGpuArray_DIMS(weights)[wdim-2]-1)*dilH + 1 - 2*padH;
-        out_dim[3] = (%(width)s != -1) ? %(width)s : (PyGpuArray_DIMS(top)[3] - 1) * dW + (PyGpuArray_DIMS(weights)[wdim-1]-1)*dilW + 1 - 2*padW;
+        out_dim[2] = (%(height)s != -1) ? %(height)s : (PyGpuArray_DIMS(top)[2] - 1) * dH + (PyGpuArray_DIMS(weights)[wdim-2]-1)*dilH + 1 - padH_l - padH_r;
+        out_dim[3] = (%(width)s != -1) ? %(width)s : (PyGpuArray_DIMS(top)[3] - 1) * dW + (PyGpuArray_DIMS(weights)[wdim-1]-1)*dilW + 1 - padW_l - padW_r;
         out_typecode = top->ga.typecode;
         out_context = top->context;
         if (unshared) {
@@ -884,7 +903,8 @@ class BaseGpuCorrMM(CGpuKernelBase):
     }
 
     // Call GPU code
-    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW, padH, padW, numgroups, unshared);
+    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW,
+                padH_l, padH_r, padW_l, padW_r, numgroups, unshared);
     if (out2==NULL){
        %(fail)s
     }

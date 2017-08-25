@@ -11,6 +11,7 @@ import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, conv
 from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim, TestUnsharedConv
+from theano.tensor.nnet.tests.test_abstract_conv import TestAsymmetricPadding
 
 
 class TestCorr2D(utt.InferShapeTester):
@@ -453,6 +454,16 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
 
 
 class TestUnsharedCorr2d(TestUnsharedConv):
+    if theano.config.mode == "FAST_COMPILE":
+        mode = theano.compile.get_mode("FAST_RUN").excluding('gpuarray')
+    else:
+        mode = None
+    conv2d_op = corr.CorrMM
+    conv2d_gradw_op = corr.CorrMM_gradWeights
+    conv2d_gradi_op = corr.CorrMM_gradInputs
+
+
+class TestAsymmetricCorr(TestAsymmetricPadding):
     if theano.config.mode == "FAST_COMPILE":
         mode = theano.compile.get_mode("FAST_RUN").excluding('gpuarray')
     else:
