@@ -6,64 +6,82 @@ from __future__ import absolute_import, print_function, division
 import theano
 from theano.tensor import as_tensor_variable
 # Instantiate abstract Op, so the user just have to import this module
-from .abstract_spatialtf import AbstractSpatialTransformerOp
+from .abstract_spatialtf import (AbstractTransformerGrid, AbstractTransformerSampler)
 
 
 def spatialtf(inp, theta, scale_height=1, scale_width=1, border_mode='nearest'):
     inp = as_tensor_variable(inp)
     assert inp.ndim == 4
 
-    height, width = inp.shape[2:]
+    theta = as_tensor_variable(theta)
+    assert theta.ndim == 3
+
+    num_batch, num_channels, height, width = inp.shape
     out_height = theano.tensor.cast(scale_height * height, 'int64')
     out_width = theano.tensor.cast(scale_width * width, 'int64')
 
-    return AbstractSpatialTransformerOp(border_mode)(inp, theta, out_height, out_width)
+    out_dims = (num_batch, num_channels, out_height, out_width)
+    grid = AbstractTransformerGrid()(theta, out_dims)
+    sampler = AbstractTransformerSampler()(inp, grid)
+    return sampler
 
 
-def spatialtf_cpu(inp, theta, out_height, out_width, border_mode='nearest'):
-    # Assumes tensor is in NCHW format
-    num_batch, num_channels, height, width = inp.shape
-    theta = theano.tensor.reshape(theta, (-1, 2, 3))
+def transformer_grid_impl(theta, out_dims):
+    def _linspace(start, stop, num):
+        # Theano linspace. Behaves similar to np.linspace
+        start = theano.tensor.cast(start, theano.config.floatX)
+        stop = theano.tensor.cast(stop, theano.config.floatX)
+        num = theano.tensor.cast(num, theano.config.floatX)
+        step = (stop - start) / (num - 1)
+        return theano.tensor.arange(num, dtype=theano.config.floatX) * step + start
 
-    # grid of (x_t, y_t, 1), eq (1) in ref [1]
-    out_height = theano.tensor.cast(out_height, 'int64')
-    out_width = theano.tensor.cast(out_width, 'int64')
+    def _meshgrid(height, width):
+        x_t = theano.tensor.dot(theano.tensor.ones((height, 1)),
+                                _linspace(-1.0, 1.0, width).dimshuffle('x', 0))
+        y_t = theano.tensor.dot(_linspace(-1.0, 1.0, height).dimshuffle(0, 'x'),
+                                theano.tensor.ones((1, width)))
+
+        x_t_flat = x_t.reshape((1, -1))
+        y_t_flat = y_t.reshape((1, -1))
+        ones = theano.tensor.ones_like(x_t_flat)
+        grid = theano.tensor.concatenate([x_t_flat, y_t_flat, ones], axis=0)
+        return grid
+
+    num_batch, _, out_height, out_width = out_dims
     grid = _meshgrid(out_height, out_width)
     # transform a x (x_t, y_t, 1)^t -> (x_s, y_s)
-    t_g = theano.tensor.dot(theta, grid)
-    x_s = t_g[:, 0]
-    y_s = t_g[:, 1]
-    x_s_flat = x_s.flatten()
-    y_s_flat = y_s.flatten()
-
-    # dimshuffle input to (bs, height, width, channels)
-    inputs_dim = inp.dimshuffle(0, 2, 3, 1)
-    inputs_transformed = _interpolate(inputs_dim, x_s_flat, y_s_flat,
-                                      out_height, out_width, border_mode)
-
-    output = theano.tensor.reshape(inputs_transformed, (num_batch, out_height, out_width, num_channels))
-    output = output.dimshuffle(0, 3, 1, 2)  # dimshuffle to conv format
-    return output
+    transformed_grid = theano.tensor.dot(theta, grid)
+    # dimshuffle grid into (2, num_batch, out_height * out_width)
+    transposed_grid = transformed_grid.dimshuffle(1, 0, 2)
+    # reshape into (2, num_batch, out_height, out_width)
+    return transposed_grid.reshape((2, num_batch, out_height, out_width))
 
 
-def _interpolate(im, x, y, out_height, out_width, border_mode):
-    # *_f are floats
-    num_batch, height, width, channels = im.shape
+def transformer_sampler_impl(inp, grid, border_mode):
+    num_batch, num_channels, height, width = inp.shape
+    out_height, out_width = grid.shape[2], grid.shape[3]
+
     height_f = theano.tensor.cast(height, theano.config.floatX)
     width_f = theano.tensor.cast(width, theano.config.floatX)
 
-    # scale coordinates from [-1, 1] to [0, dimension - 1], where dimension
+    inp_transposed = inp.dimshuffle(0, 2, 3, 1)
+
+    # Scale coordinates from [-1, 1] to [0, dimension -1], where dimension
     # can be the width or height
+    x = grid[0, :].flatten()
     x = (x + 1) / 2 * (width_f - 1)
+
+    y = grid[1, :].flatten()
     y = (y + 1) / 2 * (height_f - 1)
 
-    # obtain indices of the 2x2 pixel neighborhood surrounding the coordinates;
+    # Obtain indices of the 2x2 pixel neighborhood surrounding the coordinates;
     # we need those in floatX for interpolation and in int64 for indexing.
     x0_f = theano.tensor.floor(x)
     y0_f = theano.tensor.floor(y)
     x1_f = x0_f + 1
     y1_f = y0_f + 1
 
+    x0, y0, x1, y1 = (None, None, None, None)
     # for indexing, we need to take care of the border mode for outside pixels.
     if border_mode == 'nearest':
         x0 = theano.tensor.clip(x0_f, 0, width_f - 1)
@@ -102,56 +120,36 @@ def _interpolate(im, x, y, out_height, out_width, border_mode):
     idx_d = base_y1 + x1
 
     # use indices to lookup pixels for all samples
-    im_flat = im.reshape((-1, channels))
-    Ia = im_flat[idx_a]
-    Ib = im_flat[idx_b]
-    Ic = im_flat[idx_c]
-    Id = im_flat[idx_d]
+    inp_flat = inp_transposed.reshape((-1, num_channels))
+    Ia = inp_flat[idx_a]
+    Ib = inp_flat[idx_b]
+    Ic = inp_flat[idx_c]
+    Id = inp_flat[idx_d]
 
     # calculate interpolated values
     wa = ((x1_f - x) * (y1_f - y)).dimshuffle(0, 'x')
     wb = ((x1_f - x) * (y - y0_f)).dimshuffle(0, 'x')
     wc = ((x - x0_f) * (y1_f - y)).dimshuffle(0, 'x')
     wd = ((x - x0_f) * (y - y0_f)).dimshuffle(0, 'x')
-    output = theano.tensor.sum([wa * Ia, wb * Ib, wc * Ic, wd * Id], axis=0)
+    transformed_inputs_flat = theano.tensor.sum([wa * Ia, wb * Ib, wc * Ic, wd * Id], axis=0)
+    transformed_inputs = theano.tensor.reshape(transformed_inputs_flat,
+                                               (num_batch, out_height, out_width, num_channels),
+                                               ndim=4)
+    # dimshuffle tensor from NHWC to NCHW format
+    output = transformed_inputs.dimshuffle(0, 3, 1, 2)
     return output
 
 
-def _linspace(start, stop, num):
-    # Theano linspace. Behaves similar to np.linspace
-    start = theano.tensor.cast(start, theano.config.floatX)
-    stop = theano.tensor.cast(stop, theano.config.floatX)
-    num = theano.tensor.cast(num, theano.config.floatX)
-    step = (stop - start) / (num - 1)
-    return theano.tensor.arange(num, dtype=theano.config.floatX) * step + start
+def transformer_gradi_impl(inp, grid, grad_out, border_mode):
+    out = transformer_sampler_impl(inp, grid, border_mode)
+    grad_inp = theano.tensor.grad(None, inp, known_grads={out: grad_out})
+    grad_grid = theano.tensor.grad(None, grid, known_grads={out: grad_out})
+    return (grad_inp, grad_grid)
 
 
-def _meshgrid(height, width):
-    # This function is the grid generator from eq. (1) in reference [1].
-    # It is equivalent to the following numpy code:
-    #  x_t, y_t = np.meshgrid(np.linspace(-1, 1, width),
-    #                         np.linspace(-1, 1, height))
-    #  ones = np.ones(np.prod(x_t.shape))
-    #  grid = np.vstack([x_t.flatten(), y_t.flatten(), ones])
-    # It is implemented in Theano instead to support symbolic grid sizes.
-    # Note: If the image size is known at layer construction time, we could
-    # compute the meshgrid offline in numpy instead of doing it dynamically
-    # in Theano. However, it hardly affected performance when we tried.
-    x_t = theano.tensor.dot(theano.tensor.ones((height, 1)),
-                            _linspace(-1.0, 1.0, width).dimshuffle('x', 0))
-    y_t = theano.tensor.dot(_linspace(-1.0, 1.0, height).dimshuffle(0, 'x'),
-                            theano.tensor.ones((1, width)))
-
-    x_t_flat = x_t.reshape((1, -1))
-    y_t_flat = y_t.reshape((1, -1))
-    ones = theano.tensor.ones_like(x_t_flat)
-    grid = theano.tensor.concatenate([x_t_flat, y_t_flat, ones], axis=0)
-    return grid
-
-
-def spatialtf_gradi_cpu(inp, theta, out_height, out_width):
-    raise NotImplemented('CPU spatial transformer gradient of inputs not yet implemented.')
-
-
-def spatialtf_gradt_cpu(inp, theta, out_height, out_width):
-    raise NotImplemented('CPU spatial transformer gradient of transformation not yet implemented.')
+def transformer_gradt_impl(theta, grad_grid):
+    num_batch = theta.shape[0]
+    out_height, out_width = grad_grid.shape[2:]
+    out_dims = (num_batch, 1, out_height, out_width)
+    grid_out = transformer_grid_impl(theta, out_dims)
+    return theano.tensor.grad(None, theta, known_grads={grid_out: grad_grid})
