@@ -49,6 +49,7 @@ from .opt import (gpu_seqopt, register_opt, pool_db, pool_db2,
 from .opt_util import alpha_merge, output_merge, inplace_allocempty, pad_dims, unpad_dims
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_RUNTIME
+import theano.pathparse
 
 DNN_CONV_ALGO_CHOOSE_ONCE = ['guess_once', 'time_once']
 DNN_CONV_ALGO_CHOOSE_TIME = ['time_once', 'time_on_shape_change']
@@ -60,6 +61,9 @@ except ImportError:
 
 # Update these names when new versions of cudnn are supported.
 WIN32_CUDNN_NAMES = ['cudnn64_7.dll', 'cudnn64_6.dll', 'cudnn64_5.dll']
+
+if sys.platform == 'win32':
+    theano.pathparse.PathParser(theano.config.dnn.bin_path)
 
 
 def _load_lib(name):
