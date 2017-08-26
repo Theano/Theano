@@ -24,7 +24,7 @@ from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
 from theano.tensor.nnet.abstract_conv import bilinear_upsampling
 from theano.tensor.nnet.abstract_conv import separable_conv2d, separable_conv3d
-from theano.tensor.nnet.abstract_conv import dilated_causal_conv
+from theano.tensor.nnet.abstract_conv import causal_conv
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
 from theano.tensor.nnet.corr3d import (Corr3dMM, Corr3dMM_gradWeights,
@@ -2017,7 +2017,7 @@ class TestAsymmetricPadding(unittest.TestCase):
         utt.verify_grad(conv_gradinputs, [kern, top], mode=self.mode, eps=1)
 
 
-class TestDilatedCausalConv(unittest.TestCase):
+class TestCausalConv(unittest.TestCase):
     mode = theano.compile.mode.Mode(optimizer='None')
 
     imshp = (3, 2, 5)
@@ -2031,7 +2031,7 @@ class TestDilatedCausalConv(unittest.TestCase):
         img = np.random.random(self.imshp).astype(theano.config.floatX)
         kern = np.random.random(self.kshp).astype(theano.config.floatX)
 
-        sym_out = dilated_causal_conv(img_sym, kern_sym, self.kshp, filter_dilation=1)
+        sym_out = causal_conv(img_sym, kern_sym, self.kshp, filter_dilation=1)
 
         causal_func = theano.function([img_sym, kern_sym], sym_out, mode=self.mode)
 

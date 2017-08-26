@@ -75,11 +75,11 @@ class BaseCorrMM(gof.OpenMPOp):
                     'tuple of length 2'.format(border_mode))
             border = ()
             for mode in border_mode:
-                if isinstance(mode, integer_types) and mode >= 0:
-                    border += ((mode, mode),)
-                elif isinstance(mode, tuple) and len(mode) == 2 and \
+                if isinstance(mode, tuple) and len(mode) == 2 and \
                         min(mode) >= 0:
                     border += ((int(mode[0]), int(mode[1])),)
+                elif mode >= 0:
+                    border += ((int(mode), int(mode)),)
                 else:
                     raise ValueError(
                         'invalid border mode {}. The tuple can only contain '
@@ -283,13 +283,13 @@ class BaseCorrMM(gof.OpenMPOp):
         if height:
             height = '(*(npy_int64 *)(PyArray_DATA(%s)))' % height
         else:
-            if ((self.direction != 0) and (self.dH != 1)) or ((self.direction == 1) and (self.padH_l == -1)):
+            if ((self.direction != 0) and (self.dH != 1)) or ((self.direction == 1) and (self.padH_l == -1 or self.padH_r == -1)):
                 raise ValueError("height must be given for backprop with vertical sampling or border_mode='half'")
             height = '-1'
         if width:
             width = '(*(npy_int64 *)(PyArray_DATA(%s)))' % width
         else:
-            if ((self.direction != 0) and (self.dW != 1)) or ((self.direction == 1) and (self.padW_l == -1)):
+            if ((self.direction != 0) and (self.dW != 1)) or ((self.direction == 1) and (self.padW_l == -1 or self.padW_r == -1)):
                 raise ValueError("width must be given for backprop with horizontal sampling or border_mode='half'")
             width = '-1'
 
@@ -725,7 +725,13 @@ class CorrMM_gradWeights(BaseCorrMM):
         elif self.border_mode == "full":
             padH_l = padH_r = padW_l = padW_r = -2
         elif isinstance(self.border_mode, tuple):
-            (padH_l, padH_r), (padW_l, padW_r) = self.border_mode
+            border = ()
+            for mode in self.border_mode:
+                if isinstance(mode, tuple):
+                    border += ((int(mode[0]), int(mode[1])),)
+                else:
+                    border += ((int(mode), int(mode)),)
+            (padH_l, padH_r), (padW_l, padW_r) = border
         else:
             assert self.border_mode == "valid"
             padH_l = padH_r = padW_l = padW_r = 0
@@ -839,7 +845,13 @@ class CorrMM_gradInputs(BaseCorrMM):
         elif self.border_mode == "full":
             padH_l = padH_r = padW_l = padW_r = -2
         elif isinstance(self.border_mode, tuple):
-            (padH_l, padH_r), (padW_l, padW_r) = self.border_mode
+            border = ()
+            for mode in self.border_mode:
+                if isinstance(mode, tuple):
+                    border += ((int(mode[0]), int(mode[1])),)
+                else:
+                    border += ((int(mode), int(mode)),)
+            (padH_l, padH_r), (padW_l, padW_r) = border
         else:
             assert self.border_mode == "valid"
             padH_l = padH_r = padW_l = padW_r = 0

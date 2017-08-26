@@ -139,9 +139,9 @@ def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
     # In case of symbolic shape, we want to build the smallest graph
     # (image_shape + 2 * pad - dil_kernel_shape) // subsample + 1
     out_shp = (image_shape - dil_kernel_shape)
-    if pad_l > 0:
+    if pad_l != 0:
         out_shp += pad_l
-    if pad_r > 0:
+    if pad_r != 0:
         out_shp += pad_r
     if subsample != 1:
         out_shp = out_shp // subsample
@@ -544,6 +544,42 @@ def assert_shape(x, expected_shape, msg='Unexpected shape.'):
         return Assert(msg)(x, *tests)
     else:
         return x
+
+
+def mode_to_pad(mode, convdim, kshp):
+    if isinstance(mode, tuple):
+        if len(mode) != convdim:
+            raise ValueError(
+                'invalid border_mode {} which must be a '
+                'tuple of length {}'.format(mode, convdim))
+        border = ()
+        for m in mode:
+            if isinstance(m, integer_types) and m >= 0:
+                border += ((m, m),)
+            elif isinstance(m, tuple) and min(m) >= 0 and \
+                    all(isinstance(b, integer_types) for b in m):
+                if len(m) != 2:
+                    raise NotImplementedError(
+                        'Asymmetric padding not implemented '
+                        'for {}d'.format(len(m)))
+                border += ((m[0], m[1]),)
+            else:
+                raise ValueError(
+                    'invalid border mode {}. The tuple can only contain '
+                    'integers or tuples of length 2'.format(mode))
+        pad = border
+    elif mode == 'full':
+        pad = tuple((kshp[i] - 1,) * 2 for i in range(convdim))
+    elif mode == 'half':
+        pad = tuple((kshp[i] // 2,) * 2 for i in range(convdim))
+    elif mode == 'valid':
+        pad = ((0, 0),) * convdim
+    else:
+        raise ValueError(
+            'invalid border_mode {}, which must be either '
+            '"valid", "full", "half", an integer or a tuple '
+            'of length {}'.format(mode, convdim))
+    return pad
 
 
 def conv2d(input,
@@ -2096,36 +2132,9 @@ class AbstractConv(BaseAbstractConv):
                                       % self.convdim)
         o, = out_
         mode = self.border_mode
+        pad = mode_to_pad(mode, self.convdim, dil_kernshp)
 
-        if isinstance(mode, tuple):
-            if len(mode) != 2:
-                raise ValueError(
-                    'invalid border_mode {} which must be a '
-                    'tuple of length {}'.format(mode, self.convdim))
-            border = ()
-            for m in mode:
-                if isinstance(m, integer_types) and m >= 0:
-                    border += ((m, m),)
-                elif isinstance(m, tuple) and len(m) == 2 and min(m) >= 0 and \
-                        all(isinstance(b, integer_types) for b in m):
-                    border += ((m[0], m[1]),)
-                else:
-                    raise ValueError(
-                        'invalid border mode {}. The tuple can only contain '
-                        'integers or tuples of length 2'.format(mode))
-            mode = border
-        elif mode not in ('valid', 'full', 'half'):
-            raise ValueError(
-                'invalid border_mode {}, which must be either '
-                '"valid", "full", "half", an integer or a tuple '
-                'of length {}'.format(mode, self.convdim))
-
-        if mode == "full":
-            mode = tuple((dil_kernshp[i] - 1,) * 2 for i in range(self.convdim))
-        elif mode == "half":
-            mode = tuple((dil_kernshp[i] // 2,) * 2 for i in range(self.convdim))
-        if isinstance(mode, tuple):
-            pad = mode
+        if any(p != (0, 0) for p in pad):
             mode = "valid"
             new_img = np.zeros((img.shape[0], img.shape[1]) +
                                tuple(img.shape[i + 2] + pad[i][0] + pad[i][1]
@@ -2167,7 +2176,6 @@ class AbstractConv(BaseAbstractConv):
         conv_out = conv_out[(slice(None), slice(None)) +
                             tuple(slice(None, None, self.subsample[i])
                                   for i in range(self.convdim))]
-
         o[0] = node.outputs[0].type.filter(conv_out)
 
     def R_op(self, inputs, eval_points):
@@ -2383,43 +2391,15 @@ class AbstractConv_gradWeights(BaseAbstractConv):
 
         o, = out_
 
-        mode = self.border_mode
-        if isinstance(mode, tuple):
-            if len(mode) != 2:
-                raise ValueError(
-                    'invalid border_mode {} which must be a '
-                    'tuple of length {}'.format(mode, self.convdim))
-            border = ()
-            for m in mode:
-                if isinstance(m, integer_types) and m >= 0:
-                    border += ((m, m),)
-                elif isinstance(m, tuple) and len(m) == 2 and \
-                        min(m) >= 0:
-                    border += ((int(m[0]), int(m[1])),)
-                else:
-                    raise ValueError(
-                        'invalid border mode {}. The tuple can only contain '
-                        'integers or tuples of length 2'.format(mode))
-            mode = border
-        elif mode not in ('valid', 'full', 'half'):
-            raise ValueError(
-                'invalid border_mode {}, which must be either '
-                '"valid", "full", "half", an integer or a tuple '
-                'of length {}'.format(mode, self.convdim))
         if self.unshared and self.convdim != 2:
             raise NotImplementedError('Unshared convolution not implemented for %dD'
                                       % self.convdim)
-
         dil_shape = tuple((shape[i] - 1) * self.filter_dilation[i] + 1
                           for i in range(self.convdim))
 
-        if mode == "full":
-            mode = tuple((dil_shape[i] - 1,) * 2 for i in range(self.convdim))
-        elif mode == "half":
-            mode = tuple((dil_shape[i] // 2,) * 2 for i in range(self.convdim))
-        if isinstance(mode, tuple):
-            pad = mode
-            mode = "valid"
+        pad = mode_to_pad(self.border_mode, self.convdim, dil_shape)
+
+        if any(p != (0, 0) for p in pad):
             new_img = np.zeros((img.shape[0], img.shape[1]) +
                                tuple(img.shape[i + 2] + pad[i][0] + pad[i][1]
                                      for i in range(self.convdim)),
@@ -2713,32 +2693,14 @@ class AbstractConv_gradInputs(BaseAbstractConv):
         topgrad = np.asarray(topgrad)
         o, = out_
 
-        mode = self.border_mode
-        if isinstance(mode, tuple):
-            if len(mode) != 2:
-                raise ValueError(
-                    'invalid border_mode {} which must be a '
-                    'tuple of length {}'.format(mode, self.convdim))
-            border = ()
-            for m in mode:
-                if isinstance(m, integer_types) and m >= 0:
-                    border += ((m, m),)
-                elif isinstance(m, tuple) and len(m) == 2 and \
-                        min(m) >= 0:
-                    border += ((int(m[0]), int(m[1])),)
-                else:
-                    raise ValueError(
-                        'invalid border mode {}. The tuple can only contain '
-                        'integers or tuples of length 2'.format(mode))
-            mode = border
-        elif mode not in ('valid', 'full', 'half'):
-            raise ValueError(
-                'invalid border_mode {}, which must be either '
-                '"valid", "full", "half", an integer or a tuple '
-                'of length {}'.format(mode, self.convdim))
         if self.unshared and self.convdim != 2:
             raise NotImplementedError('Unshared convolution not implemented for %dD'
                                       % self.convdim)
+        dil_kernshp = tuple((kern.shape[-self.convdim + i] - 1) * self.filter_dilation[i] + 1
+                            for i in range(self.convdim))
+
+        mode = self.border_mode
+        pad = mode_to_pad(mode, self.convdim, dil_kernshp)
 
         imshp = self.imshp[:] if self.imshp is not None else [None] * (2 + self.convdim)
         fallback_imshp = ([topgrad.shape[0], kern.shape[-self.convdim - 1]] +
@@ -2747,24 +2709,13 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                  for i in range(2 + self.convdim)]
         expected_topgrad_shape = get_conv_output_shape(
             imshp, kern.shape,
-            self.border_mode, self.subsample, self.filter_dilation)
+            mode, self.subsample, self.filter_dilation)
         if not tuple(expected_topgrad_shape) == tuple(topgrad.shape):
             raise ValueError(
                 'invalid input_shape for gradInputs: the given input_shape '
                 'would produce an output of shape {}, but the given topgrad '
                 'has shape {}'.format(tuple(expected_topgrad_shape),
                                       tuple(topgrad.shape)))
-
-        dil_kernshp = tuple((kern.shape[-self.convdim + i] - 1) * self.filter_dilation[i] + 1
-                            for i in range(self.convdim))
-
-        pad = ((0, 0),) * self.convdim
-        if mode == "full":
-            pad = tuple((dil_kernshp[i] - 1,) * 2 for i in range(self.convdim))
-        elif mode == "half":
-            pad = tuple((dil_kernshp[i] // 2,) * 2 for i in range(self.convdim))
-        elif isinstance(mode, tuple):
-            pad = mode
         if any(self.subsample[i] > 1 for i in range(self.convdim)):
             new_shape = ((topgrad.shape[0], topgrad.shape[1]) +
                          tuple(shape[i] + pad[i][0] + pad[i][1] - dil_kernshp[i] + 1
@@ -2823,7 +2774,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
             if self.filter_flip:
                 img = img[flip_filters]
 
-        if any(p != (0, 0) or p != 0 for p in pad):
+        if any(p != (0, 0) for p in pad):
             img = img[(slice(None), slice(None)) +
                       tuple(slice(pad[i][0], img.shape[i + 2] - pad[i][1])
                             for i in range(self.convdim))]
