@@ -480,11 +480,11 @@ class BaseGpuCorrMM(CGpuKernelBase):
                     'tuple of length 2'.format(border_mode))
             border = ()
             for mode in border_mode:
-                if isinstance(mode, integer_types) and mode >= 0:
-                    border += ((mode, mode),)
-                elif isinstance(mode, tuple) and len(mode) == 2 and \
+                if isinstance(mode, tuple) and len(mode) == 2 and \
                         min(mode) >= 0:
                     border += ((int(mode[0]), int(mode[1])),)
+                elif mode >= 0:
+                    border += ((int(mode), int(mode)),)
                 else:
                     raise ValueError(
                         'invalid border mode {}. The tuple can only contain '
@@ -630,13 +630,13 @@ class BaseGpuCorrMM(CGpuKernelBase):
         if height:
             height = '(*(npy_int*)(PyArray_DATA(%s)))' % height
         else:
-            if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH_l == -1)):
+            if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH_l == -1 or padH_r == -1)):
                 raise ValueError("height must be given for backprop with vertical sampling or pad='half'")
             height = '-1'
         if width:
             width = '(*(npy_int*)(PyArray_DATA(%s)))' % width
         else:
-            if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW_l == -1)):
+            if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW_l == -1 or padW_r == -1)):
                 raise ValueError("width must be given for backprop with horizontal sampling or pad='half'")
             width = '-1'
 

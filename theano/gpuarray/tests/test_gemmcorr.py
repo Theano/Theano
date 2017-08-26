@@ -12,7 +12,7 @@ from ..type import gpuarray_shared_constructor
 from ..blas import GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs
 from .config import mode_with_gpu, mode_without_gpu, ref_cast
 from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim, TestUnsharedConv
-from theano.tensor.nnet.tests.test_abstract_conv import TestAsymmetricPadding
+from theano.tensor.nnet.tests.test_abstract_conv import TestAsymmetricPadding, TestCausalConv
 
 
 class TestCorrMM(unittest.TestCase):
@@ -280,3 +280,7 @@ class TestAsymmetricGpu(TestAsymmetricPadding):
     conv2d_op = GpuCorrMM
     conv2d_gradw_op = GpuCorrMM_gradWeights
     conv2d_gradi_op = GpuCorrMM_gradInputs
+
+
+class TestCausalGpuCorr(TestCausalConv):
+    mode = mode_with_gpu.excluding('cudnn')
