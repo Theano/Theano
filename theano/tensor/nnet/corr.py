@@ -89,7 +89,7 @@ class BaseCorrMM(gof.OpenMPOp):
             raise ValueError(
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a tuple '
-                'of length 2'.format(border_mode))
+                'of two integers or a pair of integers'.format(border_mode))
         self.border_mode = border_mode
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")

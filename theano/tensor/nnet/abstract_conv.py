@@ -52,11 +52,11 @@ def get_conv_output_shape(image_shape, kernel_shape,
         number of output channels, height and width of the output, number of
         input channels, height and width of the kernel.
         None where undefined.
-    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
-        or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
-        If it is a tuple, its two (or three) elements respectively correspond
-        to the padding (possibly left and right) on height and width
-        (and possibly depth) axis.
+     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+        or numeric) or pairs of ints. If it is a string, it must be 'valid',
+        'half' or 'full'. If it is a tuple, its two (or three) elements respectively
+        correspond to the padding on height and width (and possibly depth)
+        axis. For asymmetric padding, provide a pair of ints for each dimension.
     subsample: tuple of int (symbolic or numeric). Its two or three elements
         espectively correspond to the subsampling on height and width (and
         possibly depth) axis.
@@ -104,10 +104,11 @@ def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
         given axis. None if undefined.
     kernel_shape: int or None. Corresponds to the kernel shape on a given
         axis. None if undefined.
-    border_mode: string, int or tuple. If it is a string, it must be
+    border_mode: string, int or tuple of 2 ints. If it is a string, it must be
         'valid', 'half' or 'full'. If it is an integer, it must correspond to
         the padding on the considered axis. If it is a tuple, its two elements
-        must correspond to the padding (left and right) on the desired axis.
+        must correspond to the asymmetric padding (e.g., left and right) on
+        the considered axis.
     subsample: int. It must correspond to the subsampling on the
         considered axis.
     dilation: int. It must correspond to the dilation on the
@@ -173,11 +174,11 @@ def get_conv_gradweights_shape(image_shape, top_shape,
         image shape. Its four (or five) element must correspond respectively
         to: batch size, number of output channels, height and width (and
         possibly depth) of the image. None where undefined.
-    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
-        or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
-        If it is a tuple, its two (or three) elements respectively correspond
-        to the padding (possibly left and right) on height and width
-        (and possibly depth) axis.
+     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+        or numeric) or pairs of ints. If it is a string, it must be 'valid',
+        'half' or 'full'. If it is a tuple, its two (or three) elements respectively
+        correspond to the padding on height and width (and possibly depth)
+        axis. For asymmetric padding, provide a pair of ints for each dimension.
     subsample: tuple of int (symbolic or numeric). Its two or three elements
         respectively correspond to the subsampling on height and width (and
         possibly depth) axis.
@@ -234,10 +235,11 @@ def get_conv_gradweights_shape_1axis(image_shape, top_shape, border_mode,
         given axis. None if undefined.
     top_shape: int or None. Corresponds to the top shape on a given axis.
         None if undefined.
-    border_mode: string, int or tuple. If it is a string, it must be
+    border_mode: string, int or tuple of 2 ints. If it is a string, it must be
         'valid', 'half' or 'full'. If it is an integer, it must correspond to
         the padding on the considered axis. If it is a tuple, its two elements
-        must correspond to the padding (left and right) on the desired axis.
+        must correspond to the asymmetric padding (e.g., left and right) on
+        the considered axis.
     subsample: int. It must correspond to the subsampling on the
         considered axis.
     dilation: int. It must correspond to the dilation on the
@@ -296,11 +298,11 @@ def get_conv_gradinputs_shape(kernel_shape, top_shape,
         image shape. Its four (or five) element must correspond respectively
         to: batch size, number of output channels, height and width (and
         possibly depth) of the image. None where undefined.
-    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
-        or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
-        If it is a tuple, its two (or three) elements respectively correspond
-        to the padding (possibly left and right) on height and width
-        (and possibly depth) axis.
+     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+        or numeric) or pairs of ints. If it is a string, it must be 'valid',
+        'half' or 'full'. If it is a tuple, its two (or three) elements respectively
+        correspond to the padding on height and width (and possibly depth)
+        axis. For asymmetric padding, provide a pair of ints for each dimension.
     subsample: tuple of int (symbolic or numeric). Its two or three elements
         respectively correspond to the subsampling on height and width (and
         possibly depth) axis.
@@ -354,10 +356,11 @@ def get_conv_gradinputs_shape_1axis(kernel_shape, top_shape, border_mode,
         axis. None if undefined.
     top_shape: int or None. Corresponds to the top shape on a given axis.
         None if undefined.
-    border_mode: string, int or tuple. If it is a string, it must be
+    border_mode: string, int or tuple of 2 ints. If it is a string, it must be
         'valid', 'half' or 'full'. If it is an integer, it must correspond to
         the padding on the considered axis. If it is a tuple, its two elements
-        must correspond to the padding (left and right) on the desired axis.
+        must correspond to the asymmetric padding (e.g., left and right) on
+        the considered axis.
     subsample: int. It must correspond to the subsampling on the
         considered axis.
     dilation: int. It must correspond to the dilation on the
@@ -423,11 +426,11 @@ def check_conv_gradinputs_shape(image_shape, kernel_shape, output_shape,
         output shape. Its four (or five) elements must correspond respectively
         to: batch size, number of output channels, height and width
         (and possibly depth) of the output. None where undefined.
-    border_mode: string, int (symbolic or numeric) or tuple where each element
-        is either an int or a tuple of length 2 (symbolic or numeric).
-        If it is a string, it must be 'valid', 'half' or 'full'.
-        If it is a tuple, its two (or three) elements respectively correspond
-        to the padding on height and width (and possibly depth) axis.
+     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+        or numeric) or pairs of ints. If it is a string, it must be 'valid',
+        'half' or 'full'. If it is a tuple, its two (or three) elements respectively
+        correspond to the padding on height and width (and possibly depth)
+        axis. For asymmetric padding, provide a pair of ints for each dimension.
     subsample: tuple of int (symbolic or numeric). Its two or three elements
         respectively correspond to the subsampling on height and width (and
         possibly depth) axis.
@@ -553,8 +556,9 @@ def assert_shape(x, expected_shape, msg='Unexpected shape.'):
         return x
 
 
-def mode_to_pad(mode, convdim, kshp):
-    """ Computes a tuple for padding given the border_mode parameter
+def border_mode_to_pad(mode, convdim, kshp):
+    """
+    Computes a tuple for padding given the border_mode parameter
 
     Parameters
     ----------
@@ -708,10 +712,10 @@ def separable_conv2d(input,
             width, then perform a valid convolution.
         ``(int1, int2)``: pad input with a symmetric border of ``int1`` rows
             and ``int2`` columns, then perform a valid convolution.
-        ``(int1, (int2, int3))`` or ``((int1, int2), int3)``: (for 2D)
+        ``(int1, (int2, int3))`` or ``((int1, int2), int3)``:
             pad input with one symmetric border of `int1`` or ``int3``, and
             one asymmetric border of ``(int2, int3)`` or ``(int1, int2)``.
-        ``((int1, int2), (int3, int4))``: (for 2D) pad input with an asymmetric
+        ``((int1, int2), (int3, int4))``: pad input with an asymmetric
             border of ``(int1, int2)`` along one dimension and ``(int3, int4)``
             along the second dimension.
 
@@ -1041,8 +1045,7 @@ def conv2d_grad_wrt_inputs(output_grad,
         Optional, possibly used  to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that
         this element is not known at compile time.
-     border_mode: str, int or tuple of 2 elements where each element
-        is an integer or a tuple of length 2.
+    border_mode: str, int or a tuple of two ints or pairs of ints
         Either of the following:
 
           ``'valid'``
@@ -1073,8 +1076,8 @@ def conv2d_grad_wrt_inputs(output_grad,
             pad input with one symmetric border of `int1`` or ``int3``, and
             one asymmetric border of ``(int2, int3)`` or ``(int1, int2)``.
 
-          ``((int1, int2), (int3, int4))``: (for 2D) pad input with an asymmetric
-            border of ``(int1, int2)`` along one dimension and ``(int3, int4)``
+          ``((int1, int2), (int3, int4))``
+            pad input with an asymmetric border of ``(int1, int2)`` along one dimension and ``(int3, int4)``
             along the second dimension.
 
     subsample : tuple of len 2
@@ -1336,8 +1339,7 @@ def conv2d_grad_wrt_weights(input,
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify
         that this element is not known at compile time.
-     border_mode: str, int or tuple of 2 elements where each element
-        is an integer or a tuple of length 2.
+    border_mode: str, int or a tuple of two ints or pairs of ints
         Either of the following:
 
           ``'valid'``
@@ -1368,9 +1370,9 @@ def conv2d_grad_wrt_weights(input,
             pad input with one symmetric border of `int1`` or ``int3``, and
             one asymmetric border of ``(int2, int3)`` or ``(int1, int2)``.
 
-          ``((int1, int2), (int3, int4))``: (for 2D) pad input with an asymmetric
-            border of ``(int1, int2)`` along one dimension and ``(int3, int4)``
-            along the second dimension.
+          ``((int1, int2), (int3, int4))``
+            pad input with an asymmetric border of ``(int1, int2)`` along
+            one dimension and ``(int3, int4)`` along the second dimension.
     subsample : tuple of len 2
         The subsampling used in the forward pass of the convolutional
         operation.  Also called strides elsewhere.
@@ -1584,16 +1586,17 @@ def conv3d_grad_wrt_weights(input,
     return gradWeight_op(input, output_grad, filter_shape[-3:])
 
 
-def causal_conv(input,
-                filters,
-                filter_shape,
-                input_shape=None,
-                subsample=1,
-                filter_flip=True,
-                filter_dilation=1,
-                num_groups=1,
-                unshared=False):
-    """Computes (dilated) causal convolution
+def causal_conv1d(input,
+                  filters,
+                  filter_shape,
+                  input_shape=None,
+                  subsample=1,
+                  filter_flip=True,
+                  filter_dilation=1,
+                  num_groups=1,
+                  unshared=False):
+    """
+    Computes (dilated) causal convolution
 
     The output at time t depends only on the inputs till t-1. Used for
     modelling temporal data.
@@ -1629,7 +1632,7 @@ def causal_conv(input,
     num_groups : int
         Divides the image, kernel and output tensors into num_groups
         separate groups. Each which carry out convolutions separately
-    unshared: bool
+    unshared : bool
         If true, then unshared or 'locally connected' convolution will be
         performed. A different filter will be used for each region of the
         input.
@@ -1639,6 +1642,11 @@ def causal_conv(input,
     Symbolic 3D tensor.
         Set of feature vectors generated by convolutional layer. Tensor is
         of shape (batch_size, output_channels, output_length)
+
+    Notes
+    -----
+
+    :note: Currently, this is implemented with the 2D convolution ops.
 
     """
 
@@ -1885,8 +1893,7 @@ class BaseAbstractConv(Op):
         element is not known at compile time.
         kshp is defined w.r.t the forward conv.
 
-     border_mode: str, int or tuple of ``convdim`` elements where each element
-        is an integer or a tuple of length 2.
+    border_mode: str, int or a tuple of two ints or pairs of ints
         Either of the following:
 
         ``'valid'``: apply filter wherever it completely overlaps with the
@@ -1965,12 +1972,15 @@ class BaseAbstractConv(Op):
                     'invalid border_mode {}, which must be a '
                     'tuple of length {}'.format(border_mode, convdim))
             for mode in border_mode:
+                if isinstance(mode, tuple) and convdim != 2:
+                    raise NotImplementedError(
+                        'Asymmetric padding not implemented for {}D'.format(convdim))
                 if not((isinstance(mode, integer_types) and mode >= 0) or
                         (isinstance(mode, tuple) and len(mode) == 2 and min(mode) >= 0 and
                          all(isinstance(m, integer_types) for m in mode))):
                     raise ValueError(
                         'invalid border mode {}. The tuple can only contain integers '
-                        ' or tuples of integers of length 2'.format(border_mode))
+                        ' or pairs of integers'.format(border_mode))
         elif border_mode not in ('valid', 'full', 'half'):
             raise ValueError(
                 'invalid border_mode {}, which must be either '
@@ -2238,7 +2248,7 @@ class AbstractConv(BaseAbstractConv):
                                       % self.convdim)
         o, = out_
         mode = self.border_mode
-        pad = mode_to_pad(mode, self.convdim, dil_kernshp)
+        pad = border_mode_to_pad(mode, self.convdim, dil_kernshp)
 
         if any(p != (0, 0) for p in pad):
             mode = "valid"
@@ -2503,7 +2513,7 @@ class AbstractConv_gradWeights(BaseAbstractConv):
         dil_shape = tuple((shape[i] - 1) * self.filter_dilation[i] + 1
                           for i in range(self.convdim))
 
-        pad = mode_to_pad(self.border_mode, self.convdim, dil_shape)
+        pad = border_mode_to_pad(self.border_mode, self.convdim, dil_shape)
 
         if any(p != (0, 0) for p in pad):
             new_img = np.zeros((img.shape[0], img.shape[1]) +
@@ -2805,8 +2815,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
         dil_kernshp = tuple((kern.shape[-self.convdim + i] - 1) * self.filter_dilation[i] + 1
                             for i in range(self.convdim))
 
-        mode = self.border_mode
-        pad = mode_to_pad(mode, self.convdim, dil_kernshp)
+        pad = border_mode_to_pad(self.border_mode, self.convdim, dil_kernshp)
 
         imshp = self.imshp[:] if self.imshp is not None else [None] * (2 + self.convdim)
         fallback_imshp = ([topgrad.shape[0], kern.shape[-self.convdim - 1]] +
@@ -2815,7 +2824,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                  for i in range(2 + self.convdim)]
         expected_topgrad_shape = get_conv_output_shape(
             imshp, kern.shape,
-            mode, self.subsample, self.filter_dilation)
+            self.border_mode, self.subsample, self.filter_dilation)
         if not tuple(expected_topgrad_shape) == tuple(topgrad.shape):
             raise ValueError(
                 'invalid input_shape for gradInputs: the given input_shape '

@@ -24,7 +24,7 @@ from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
 from theano.tensor.nnet.abstract_conv import bilinear_upsampling
 from theano.tensor.nnet.abstract_conv import separable_conv2d, separable_conv3d
-from theano.tensor.nnet.abstract_conv import causal_conv
+from theano.tensor.nnet.abstract_conv import causal_conv1d
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
 from theano.tensor.nnet.corr3d import (Corr3dMM, Corr3dMM_gradWeights,
@@ -2037,7 +2037,7 @@ class TestCausalConv(unittest.TestCase):
         img_sym = theano.tensor.tensor3('img')
         kern_sym = theano.tensor.tensor3('kern')
 
-        sym_out = causal_conv(img_sym, kern_sym, self.kern.shape, filter_dilation=self.dilation)
+        sym_out = causal_conv1d(img_sym, kern_sym, self.kern.shape, filter_dilation=self.dilation)
 
         causal_func = theano.function([img_sym, kern_sym], sym_out, mode=self.mode)
 
@@ -2046,6 +2046,6 @@ class TestCausalConv(unittest.TestCase):
         utt.assert_allclose(output, self.precomp_top)
 
         def causal_conv_fn(inputs_val, filters_val):
-            return causal_conv(inputs_val, filters_val, self.kern.shape, filter_dilation=1)
+            return causal_conv1d(inputs_val, filters_val, self.kern.shape, filter_dilation=1)
 
         utt.verify_grad(causal_conv_fn, [self.img, self.kern], mode=self.mode, eps=1)
