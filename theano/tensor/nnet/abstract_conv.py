@@ -52,7 +52,7 @@ def get_conv_output_shape(image_shape, kernel_shape,
         number of output channels, height and width of the output, number of
         input channels, height and width of the kernel.
         None where undefined.
-     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
         or numeric) or pairs of ints. If it is a string, it must be 'valid',
         'half' or 'full'. If it is a tuple, its two (or three) elements respectively
         correspond to the padding on height and width (and possibly depth)
@@ -174,7 +174,7 @@ def get_conv_gradweights_shape(image_shape, top_shape,
         image shape. Its four (or five) element must correspond respectively
         to: batch size, number of output channels, height and width (and
         possibly depth) of the image. None where undefined.
-     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
         or numeric) or pairs of ints. If it is a string, it must be 'valid',
         'half' or 'full'. If it is a tuple, its two (or three) elements respectively
         correspond to the padding on height and width (and possibly depth)
@@ -298,7 +298,7 @@ def get_conv_gradinputs_shape(kernel_shape, top_shape,
         image shape. Its four (or five) element must correspond respectively
         to: batch size, number of output channels, height and width (and
         possibly depth) of the image. None where undefined.
-     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
         or numeric) or pairs of ints. If it is a string, it must be 'valid',
         'half' or 'full'. If it is a tuple, its two (or three) elements respectively
         correspond to the padding on height and width (and possibly depth)
@@ -426,7 +426,7 @@ def check_conv_gradinputs_shape(image_shape, kernel_shape, output_shape,
         output shape. Its four (or five) elements must correspond respectively
         to: batch size, number of output channels, height and width
         (and possibly depth) of the output. None where undefined.
-     border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
         or numeric) or pairs of ints. If it is a string, it must be 'valid',
         'half' or 'full'. If it is a tuple, its two (or three) elements respectively
         correspond to the padding on height and width (and possibly depth)
