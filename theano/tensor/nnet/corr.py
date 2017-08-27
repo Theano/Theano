@@ -34,8 +34,8 @@ class BaseCorrMM(gof.OpenMPOp):
     Parameters
     ----------
     border_mode : {'valid', 'full', 'half'}
-        Additionally, the padding size could be directly specified by an integer
-        or a pair of integers
+        Additionally, the padding size could be directly specified by an integer,
+        a pair of integers, or two pairs of integers.
     subsample
         Perform subsampling of the output (default: (1, 1)).
     filter_dilation

@@ -72,21 +72,30 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         You can give ``None`` for any element of the list to specify that this
         element is not known at compile time.
 
-    border_mode: str, int or tuple of two int
+     border_mode: str, int or tuple of ``convdim`` elements where each element
+        is an integer or a tuple of length 2.
         Either of the following:
 
         ``'valid'``: apply filter wherever it completely overlaps with the
             input. Generates output of shape: input shape - filter shape + 1
         ``'full'``: apply filter wherever it partly overlaps with the input.
             Generates output of shape: input shape + filter shape - 1
-        ``'half'``: pad input with a symmetric border of ``filter rows // 2``
-            rows and ``filter columns // 2`` columns, then perform a valid
-            convolution. For filters with an odd number of rows and columns, this
-            leads to the output shape being equal to the input shape.
+        ``'half'``: pad input with a symmetric border of ``filter size // 2``
+            in each convolution dimension, then perform a valid convolution.
+            For filters with an odd filter size, this leads to the output
+            shape being equal to the input shape.
         ``int``: pad input with a symmetric border of zeros of the given
             width, then perform a valid convolution.
-        ``(int1, int2)``: pad input with a symmetric border of ``int1`` rows
-            and ``int2`` columns, then perform a valid convolution.
+        ``(int1, int2)``: (for 2D) pad input with a symmetric border of ``int1``,
+            ``int2``, then perform a valid convolution.
+        ``(int1, (int2, int3))`` or ``((int1, int2), int3)``: (for 2D)
+            pad input with one symmetric border of `int1`` or ``int3``, and
+            one asymmetric border of ``(int2, int3)`` or ``(int1, int2)``.
+        ``((int1, int2), (int3, int4))``: (for 2D) pad input with an asymmetric
+            border of ``(int1, int2)`` along one dimension and ``(int3, int4)``
+            along the second dimension.
+        ``(int1, int2, int3)``: (for 3D) pad input with a symmetric border of
+            ``int1``, ``int2`` and ``int3``, then perform a valid convolution.
 
     subsample: tuple of len 2
         Factor by which to subsample the output.
@@ -199,7 +208,7 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
         You can give ``None`` for any element of the list to specify that this
         element is not known at compile time.
 
-    border_mode: str, int or tuple of two int
+    border_mode: str, int or tuple of two elements
         Refers to the ``border_mode`` argument of the corresponding forward
         (non-transposed) convolution. See the argument description in
         ``conv2d``.  What was ``padding`` for the forward convolution means
