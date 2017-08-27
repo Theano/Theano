@@ -276,11 +276,11 @@ class TestUnsharedGpuCorr2d(TestUnsharedConv):
 
 
 class TestAsymmetricGpu(TestAsymmetricPadding):
-    mode = mode_with_gpu.excluding('cudnn')
+    mode = mode_with_gpu
     conv2d_op = GpuCorrMM
     conv2d_gradw_op = GpuCorrMM_gradWeights
     conv2d_gradi_op = GpuCorrMM_gradInputs
 
 
 class TestCausalGpuCorr(TestCausalConv):
-    mode = mode_with_gpu.excluding('cudnn')
+    mode = mode_with_gpu
