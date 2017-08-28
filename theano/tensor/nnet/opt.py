@@ -514,34 +514,3 @@ def local_abstractconv_check(node):
 optdb.register('AbstractConvCheck',
                opt.in2out(local_abstractconv_check, name="AbstractConvCheck"),
                48.7, 'fast_compile', 'fast_run')
-
-
-@local_optimizer([AbstractTransformerGrid])
-def local_transformer_grid(node):
-    if not isinstance(node.op, AbstractTransformerGrid):
-        return
-
-    theta, out_dims = node.inputs
-    return [transformer_grid_impl(theta, out_dims)]
-
-
-@local_optimizer([AbstractTransformerSampler])
-def local_transformer_sampler(node):
-    if not isinstance(node.op, AbstractTransformerSampler):
-        return
-
-    inp, grid = node.inputs
-    border_mode = node.op.border_mode
-    return [transformer_sampler_impl(inp, grid, border_mode)]
-
-
-# Register CPU optimizations for the spatial transformer
-transformer_groupopt = theano.gof.optdb.LocalGroupDB()
-transformer_groupopt.__name__ = "transformer_opts"
-register_specialize_device(transformer_groupopt, 'fast_compile', 'fast_run')
-transformer_groupopt.register('local_transformer_grid',
-                              local_transformer_grid, 30,
-                              'fast_compile', 'fast_run')
-transformer_groupopt.register('local_transformer_sampler',
-                              local_transformer_sampler, 30,
-                              'fast_compile', 'fast_run')
