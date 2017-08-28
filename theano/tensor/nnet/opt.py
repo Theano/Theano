@@ -42,8 +42,6 @@ def local_inplace_sparse_block_gemv(node):
         copy_stack_trace(node.outputs[0], new_node)
         return [new_node]
     return False
-
-
 compile.optdb.register('local_inplace_sparse_block_gemv',
                        gof.TopoOptimizer(
                            local_inplace_sparse_block_gemv,
@@ -61,8 +59,6 @@ def local_inplace_sparse_block_outer(node):
         copy_stack_trace(node.outputs[0], new_node)
         return [new_node]
     return False
-
-
 compile.optdb.register('local_inplace_sparse_block_outer',
                        gof.TopoOptimizer(
                            local_inplace_sparse_block_outer,
@@ -502,8 +498,6 @@ def local_abstractconv_check(node):
             'do you have a BLAS library installed Theano can link against? '
             'On the CPU we do not support float16.' %
             node.op.__class__.__name__)
-
-
 optdb.register('AbstractConvCheck',
                opt.in2out(local_abstractconv_check, name="AbstractConvCheck"),
                48.7, 'fast_compile', 'fast_run')
