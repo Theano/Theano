@@ -498,6 +498,7 @@ def local_abstractconv_check(node):
             'do you have a BLAS library installed Theano can link against? '
             'On the CPU we do not support float16.' %
             node.op.__class__.__name__)
+
 optdb.register('AbstractConvCheck',
                opt.in2out(local_abstractconv_check, name="AbstractConvCheck"),
                48.7, 'fast_compile', 'fast_run')

@@ -46,7 +46,7 @@ class TransformerGrid(Op):
 
         assert len(out_dims) == 4
         # Theta should be in the format (batch_size, 2, 3)
-        assert len(theta.shape) == 3
+        assert theta.ndim == 3
         assert (theta.shape[1] == 2) and (theta.shape[2] == 3)
         # Check if theta has the same batch size as out_dims
         assert theta.shape[0] == out_dims[0]
@@ -73,6 +73,9 @@ class TransformerGrid(Op):
 
 class TransformerSampler(Op):
     def __init__(self, border_mode='nearest'):
+        if border_mode not in ('nearest', 'wrap', 'mirror'):
+            raise ValueError("border_mode must be one of "
+                             "'nearest', 'mirror', 'wrap'")
         self.border_mode = border_mode
 
     def make_node(self, inp, grid):
@@ -107,8 +110,8 @@ class TransformerSampler(Op):
 
     def perform(self, node, inputs, output_storage):
         inp, grid = inputs
-        assert len(inp.shape) == 4
-        assert len(grid.shape) == 4
+        assert inp.ndim == 4
+        assert grid.ndim == 4
 
         out = output_storage[0]
 
@@ -121,7 +124,7 @@ class TransformerSampler(Op):
 
         height_f, width_f = float(height), float(width)
 
-        # Scale coordinates from [-1, 1] to [0, dimension -1], where dimension
+        # Scale coordinates from [-1, 1] to [0, dimension-1], where dimension
         # can be the width or height
         x = grid[0, :].flatten()
         x = (x + 1) / 2 * (width_f - 1)
@@ -192,6 +195,9 @@ class TransformerSampler(Op):
 
 class TransformerGradI(Op):
     def __init__(self, border_mode):
+        if border_mode not in ('nearest', 'wrap', 'mirror'):
+            raise ValueError("border_mode must be one of "
+                             "'nearest', 'mirror', 'wrap'")
         self.border_mode = border_mode
 
     def make_node(self, inp, grid, grad_outputs):
@@ -214,9 +220,6 @@ class TransformerGradI(Op):
 
     def perform(self, node, inputs, output_storage):
         inp, grid, grad_outputs = inputs
-        assert len(inp.shape) == 4
-        assert len(grid.shape) == 4
-        assert len(grad_outputs.shape) == 4
 
         grad_inp_out = output_storage[0]
         grad_grid_out = output_storage[1]
@@ -331,7 +334,10 @@ class TransformerGradI(Op):
 class TransformerGradT(Op):
     def make_node(self, theta, grad_grid):
         _theta = as_tensor_variable(theta)
+        assert _theta.ndim == 3
+
         _grad_grid = as_tensor_variable(grad_grid)
+        assert _grad_grid.ndim == 4
 
         out = theano.tensor.tensor(dtype=_theta.type.dtype,
                                    broadcastable=_theta.broadcastable)
@@ -343,6 +349,8 @@ class TransformerGradT(Op):
         out = output_storage[0]
 
         num_batch = theta.shape[0]
+        assert num_batch == grad_grid.shape[0]
+
         out_height, out_width = grad_grid.shape[2:]
 
         grid = sampling_grid(out_height, out_width)
