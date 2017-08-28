@@ -4,10 +4,359 @@ Concrete spatial transformer implementation
 from __future__ import absolute_import, print_function, division
 
 import theano
+from theano.gof.op import Op
 from theano.scalar import as_scalar
 from theano.tensor import as_tensor_variable
-# Instantiate abstract Op, so the user just have to import this module
-from .abstract_spatialtf import (AbstractTransformerGrid, AbstractTransformerSampler)
+from theano.tensor.extra_ops import cpu_contiguous
+from theano.gof import Apply
+from theano.gradient import grad_not_implemented
+import numpy as np
+
+
+def sampling_grid(height, width):
+    # Create sampling grid
+    x_t, y_t = np.meshgrid(np.linspace(-1, 1, width),
+                           np.linspace(-1, 1, height))
+    ones = np.ones(np.prod(x_t.shape))
+    grid = np.vstack([x_t.flatten(), y_t.flatten(), ones])
+    return grid
+
+
+class TransformerGrid(Op):
+    def make_node(self, theta, out_dims):
+        _theta = cpu_contiguous(as_tensor_variable(theta))
+
+        if _theta.ndim != 3:
+            raise TypeError('SpatialTransformerGrid (make_node) requires theta to '
+                            'be a 3D tensor; received "%s" (%i dims)' %
+                            (theta, _theta.ndim))
+
+        assert _theta.type.dtype in ('float16', 'float32', 'float64')
+
+        _out_dims = cpu_contiguous(as_tensor_variable(out_dims))
+        _out_dims = theano.tensor.basic.cast(out_dims, 'int64')
+
+        _grid = theano.tensor.tensor(dtype=_theta.type.dtype,
+                                     broadcastable=len(out_dims) * (False,))
+
+        return Apply(self, [_theta, _out_dims], [_grid])
+
+    def perform(self, node, inputs, output_storage):
+        theta, out_dims = inputs
+
+        assert len(out_dims) == 4
+        # Theta should be in the format (batch_size, 2, 3)
+        assert len(theta.shape) == 3
+        assert (theta.shape[1] == 2) and (theta.shape[2] == 3)
+        # Check if theta has the same batch size as out_dims
+        assert theta.shape[0] == out_dims[0]
+
+        num_batch = theta.shape[0]
+        grid_out = output_storage[0]
+
+        out_height, out_width = out_dims[2:]
+        grid = sampling_grid(out_height, out_width)
+        # Generate transformed grid with shape (num_batch, 2, out_height * out_width)
+        transformed_grid = np.dot(theta, grid)
+        # Dimshuffle grid into (2, num_batch, out_height * out_width)
+        transposed_grid = np.transpose(transformed_grid, axes=(1, 0, 2))
+        # Reshape into (2, num_batch, out_height, out_width)
+        grid_out[0] = np.reshape(transposed_grid, (2, num_batch, out_height, out_width)).astype(theta.dtype)
+
+    def grad(self, inputs, grads):
+        theta, out_dims = inputs
+        dgrid = grads[0]
+
+        dtheta = TransformerGradT()(theta, dgrid)
+        return [dtheta, grad_not_implemented(self, 1, out_dims)]
+
+
+class TransformerSampler(Op):
+    def __init__(self, border_mode='nearest'):
+        self.border_mode = border_mode
+
+    def make_node(self, inp, grid):
+        _inp = cpu_contiguous(as_tensor_variable(inp))
+
+        if _inp.ndim != 4:
+            raise TypeError('SpatialTransformerSampler (make_node) requires input to '
+                            'be a 4D tensor; received "%s" (%i dims)' %
+                            (inp, _inp.ndim))
+
+        assert _inp.type.dtype in ('float16', 'float32', 'float64')
+
+        _grid = cpu_contiguous(as_tensor_variable(grid))
+
+        if _grid.ndim != 4:
+            raise TypeError('SpatialTransformerSampler (make_node) requires grid to '
+                            'be a 4D tensor; received "%s" (%i dims)' %
+                            (grid, _grid.ndim))
+
+        out = theano.tensor.tensor(dtype=_inp.type.dtype,
+                                   broadcastable=_inp.broadcastable)
+
+        return Apply(self, [_inp, _grid], [out])
+
+    def grad(self, inputs, grads):
+        inp, grid = inputs
+        grad_outputs = grads[0]
+
+        grad_inp, grad_grid = TransformerGradI(self.border_mode)(inp, grid, grad_outputs)
+
+        return [grad_inp, grad_grid]
+
+    def perform(self, node, inputs, output_storage):
+        inp, grid = inputs
+        assert len(inp.shape) == 4
+        assert len(grid.shape) == 4
+
+        out = output_storage[0]
+
+        out_height, out_width = grid.shape[2:]
+        num_batch, num_channels, height, width = inp.shape
+        border_mode = node.op.border_mode
+
+        # Convert inp from NCHW to NHWC format
+        inp_transposed = np.transpose(inp, axes=(0, 2, 3, 1))
+
+        height_f, width_f = float(height), float(width)
+
+        # Scale coordinates from [-1, 1] to [0, dimension -1], where dimension
+        # can be the width or height
+        x = grid[0, :].flatten()
+        x = (x + 1) / 2 * (width_f - 1)
+
+        y = grid[1, :].flatten()
+        y = (y + 1) / 2 * (height_f - 1)
+
+        # Obtain indices of the 2x2 pixel neighborhood surrounding the coordinates;
+        # we need those in floatX for interpolation and in int64 for indexing.
+        x0_f = np.floor(x)
+        y0_f = np.floor(y)
+        x1_f = x0_f + 1
+        y1_f = y0_f + 1
+
+        # For indexing, we need to take care of the border mode for outside pixels.
+        x0, y0, x1, y1 = (None, None, None, None)
+        if border_mode == 'nearest':
+            x0 = np.clip(x0_f, 0, width_f - 1)
+            x1 = np.clip(x1_f, 0, width_f - 1)
+            y0 = np.clip(y0_f, 0, height_f - 1)
+            y1 = np.clip(y1_f, 0, height_f - 1)
+        elif border_mode == 'mirror':
+            w = 2 * (width_f - 1)
+            x0 = np.minimum(x0_f % w, -x0_f % w)
+            x1 = np.minimum(x1_f % w, -x1_f % w)
+            h = 2 * (height_f - 1)
+            y0 = np.minimum(y0_f % h, -y0_f % h)
+            y1 = np.minimum(y1_f % h, -y1_f % h)
+        elif border_mode == 'wrap':
+            x0 = np.mod(x0_f, width_f)
+            x1 = np.mod(x1_f, width_f)
+            y0 = np.mod(y0_f, height_f)
+            y1 = np.mod(y1_f, height_f)
+        else:
+            raise ValueError("border_mode must be one of "
+                             "'nearest', 'mirror', 'wrap'")
+        x0, x1, y0, y1 = np.asarray([x0, x1, y0, y1]).astype('int64')
+
+        # Compute offsets and indices
+        height_stride = width
+        batch_stride = width * height
+        base = np.repeat(np.arange(num_batch, dtype='int64') * batch_stride,
+                         out_height * out_width)
+        base_y0 = base + y0 * height_stride
+        base_y1 = base + y1 * height_stride
+        idx_a = base_y0 + x0
+        idx_b = base_y1 + x0
+        idx_c = base_y0 + x1
+        idx_d = base_y1 + x1
+        # Use indices to lookup pixels for all samples
+        inp_flat = inp_transposed.reshape((-1, num_channels))
+        Ia = inp_flat[idx_a]
+        Ib = inp_flat[idx_b]
+        Ic = inp_flat[idx_c]
+        Id = inp_flat[idx_d]
+        # Compute bilinear interpolation weights
+        wa = ((x1_f - x) * (y1_f - y))[:, np.newaxis]
+        wb = ((x1_f - x) * (y - y0_f))[:, np.newaxis]
+        wc = ((x - x0_f) * (y1_f - y))[:, np.newaxis]
+        wd = ((x - x0_f) * (y - y0_f))[:, np.newaxis]
+        # Compute interpolated values
+        transformed_inputs = np.sum([wa * Ia, wb * Ib, wc * Ic, wd * Id], axis=0)
+        # Reshape flat array into NHWC format
+        output = np.reshape(transformed_inputs, (num_batch, out_height, out_width, num_channels))
+        # Dimshuffle NHWC tensor into NCHW format
+        out[0] = np.transpose(output, axes=(0, 3, 1, 2)).astype(inp.dtype)
+
+
+class TransformerGradI(Op):
+    def __init__(self, border_mode):
+        self.border_mode = border_mode
+
+    def make_node(self, inp, grid, grad_outputs):
+        _inp = cpu_contiguous(as_tensor_variable(inp))
+        assert _inp.ndim == 4
+
+        _grid = cpu_contiguous(as_tensor_variable(grid))
+        assert _grid.ndim == 4
+
+        _grad_outputs = cpu_contiguous(as_tensor_variable(grad_outputs))
+        assert _grad_outputs.ndim == 4
+
+        grad_inp = theano.tensor.tensor(dtype=_inp.type.dtype,
+                                        broadcastable=_inp.broadcastable)
+
+        grad_grid = theano.tensor.tensor(dtype=_inp.type.dtype,
+                                         broadcastable=_inp.broadcastable)
+
+        return Apply(self, [_inp, _grid, _grad_outputs], [grad_inp, grad_grid])
+
+    def perform(self, node, inputs, output_storage):
+        inp, grid, grad_outputs = inputs
+        assert len(inp.shape) == 4
+        assert len(grid.shape) == 4
+        assert len(grad_outputs.shape) == 4
+
+        grad_inp_out = output_storage[0]
+        grad_grid_out = output_storage[1]
+
+        out_height, out_width = grid.shape[2:]
+        num_batch, num_channels, height, width = inp.shape
+        border_mode = node.op.border_mode
+
+        # Convert gradient of outputs' tensor from NCHW to NHWC format
+        t_grad_outputs = np.transpose(grad_outputs, axes=(0, 2, 3, 1))
+
+        height_f, width_f = float(height), float(width)
+
+        # Scale coordinates from [-1, 1] to [0, dimension -1], where dimension
+        # can be the width or height
+        x = grid[0, :].flatten()
+        x = (x + 1) / 2 * (width_f - 1)
+
+        y = grid[1, :].flatten()
+        y = (y + 1) / 2 * (height_f - 1)
+
+        # Obtain indices of the 2x2 pixel neighborhood surrounding the coordinates;
+        # we need those in floatX for interpolation and in int64 for indexing.
+        x0_f = np.floor(x)
+        y0_f = np.floor(y)
+        x1_f = x0_f + 1
+        y1_f = y0_f + 1
+
+        # For indexing, we need to take care of the border mode for outside pixels.
+        x0, y0, x1, y1 = (None, None, None, None)
+        if border_mode == 'nearest':
+            x0 = np.clip(x0_f, 0, width_f - 1)
+            x1 = np.clip(x1_f, 0, width_f - 1)
+            y0 = np.clip(y0_f, 0, height_f - 1)
+            y1 = np.clip(y1_f, 0, height_f - 1)
+        elif border_mode == 'mirror':
+            w = 2 * (width_f - 1)
+            x0 = np.minimum(x0_f % w, -x0_f % w)
+            x1 = np.minimum(x1_f % w, -x1_f % w)
+            h = 2 * (height_f - 1)
+            y0 = np.minimum(y0_f % h, -y0_f % h)
+            y1 = np.minimum(y1_f % h, -y1_f % h)
+        elif border_mode == 'wrap':
+            x0 = np.mod(x0_f, width_f)
+            x1 = np.mod(x1_f, width_f)
+            y0 = np.mod(y0_f, height_f)
+            y1 = np.mod(y1_f, height_f)
+        else:
+            raise ValueError("border_mode must be one of "
+                             "'nearest', 'mirror', 'wrap'")
+        x0, x1, y0, y1 = np.asarray([x0, x1, y0, y1]).astype('int64')
+
+        G_out = t_grad_outputs.reshape((-1, num_channels))
+
+        # Compute offsets and indices for gradient of inputs
+        height_stride = width
+        batch_stride = width * height
+        base = np.repeat(np.arange(num_batch, dtype='int64') * batch_stride,
+                         out_height * out_width)
+        base_y0 = base + y0 * height_stride
+        base_y1 = base + y1 * height_stride
+        idx_a = base_y0 + x0
+        idx_b = base_y1 + x0
+        idx_c = base_y0 + x1
+        idx_d = base_y1 + x1
+        # Compute bilinear interpolation weights
+        wa = ((x1_f - x) * (y1_f - y))[:, np.newaxis]
+        wb = ((x1_f - x) * (y - y0_f))[:, np.newaxis]
+        wc = ((x - x0_f) * (y1_f - y))[:, np.newaxis]
+        wd = ((x - x0_f) * (y - y0_f))[:, np.newaxis]
+
+        # Compute gradients of the inputs
+        grad_inputs = np.zeros((num_batch * height * width, num_channels), dtype=inp.dtype)
+        grad_inputs[idx_a] += wa * G_out
+        grad_inputs[idx_b] += wb * G_out
+        grad_inputs[idx_c] += wc * G_out
+        grad_inputs[idx_d] += wd * G_out
+        # Reshape gradients to NHWC tensor format
+        grad_inputs = np.reshape(grad_inputs, (num_batch, height, width, num_channels))
+        # Dimshuffle tensor from NHWC to NCHW format
+        grad_inp_out[0] = np.transpose(grad_inputs, axes=(0, 3, 1, 2))
+
+        # Compute gradients of the sampling grid
+        grad_gradients = np.zeros((2, num_batch * out_height * out_width), dtype=grid.dtype)
+
+        inp_transposed = np.transpose(inp, axes=(0, 2, 3, 1))
+        inp_flat = inp_transposed.reshape((-1, num_channels))
+
+        # shapes: (n * h * w, c) * (n * h * w, c)
+        tl = inp_flat[idx_a] * G_out
+        tr = inp_flat[idx_b] * G_out
+        bl = inp_flat[idx_c] * G_out
+        br = inp_flat[idx_d] * G_out
+
+        xw_top_left = (x1_f - x)[:, np.newaxis]  # shape (n * h * w, 1)
+        xw_bottom_left = (x - x0_f)[:, np.newaxis]  # shape (n * h * w, 1)
+
+        yw_top_left = (y1_f - y)[:, np.newaxis]  # shape (n * h * w, 1)
+        yw_bottom_left = (y - y0_f)[:, np.newaxis]  # shape (n * h * w, 1)
+
+        # resulting shape: (n * h * w, c)
+        xf = - yw_top_left * tl + yw_top_left * tr - yw_bottom_left * bl + yw_bottom_left * br
+        yf = - xw_top_left * tl + xw_bottom_left * bl - xw_bottom_left * tr + xw_bottom_left * br
+
+        # Sum over feature maps of xf and yf
+        grad_gradients[0, :] = np.sum(xf, axis=1)  # * (width_f - 1) / 2
+        grad_gradients[1, :] = np.sum(yf, axis=1)  # * (height_f - 1) / 2
+
+        grad_grid_out[0] = np.reshape(grad_gradients, grid.shape)
+
+
+class TransformerGradT(Op):
+    def make_node(self, theta, grad_grid):
+        _theta = as_tensor_variable(theta)
+        _grad_grid = as_tensor_variable(grad_grid)
+
+        out = theano.tensor.tensor(dtype=_theta.type.dtype,
+                                   broadcastable=_theta.broadcastable)
+
+        return Apply(self, [_theta, _grad_grid], [out])
+
+    def perform(self, node, inputs, output_storage):
+        theta, grad_grid = inputs
+        out = output_storage[0]
+
+        num_batch = theta.shape[0]
+        out_height, out_width = grad_grid.shape[2:]
+
+        grid = sampling_grid(out_height, out_width)
+        # (3, h * w) -> (h * w, 3)
+        transposed_grid = np.transpose(grid, axes=(1, 0))
+        # repeat sampling grid, for all images in the batch, i.e. (n, h * w, 3)
+        batch_grid = np.asarray(num_batch * [transposed_grid], dtype=theta.dtype)
+
+        # reshape gradients of grid from (n, h, w, 2) -> (n, h * w, 2)
+        _grad_grid_transposed = np.transpose(grad_grid, axes=(1, 0, 2, 3))
+        # (n, h * w, 2) -> (n, 2, h * w)
+        _grad_grid = np.reshape(_grad_grid_transposed, (num_batch, 2, out_height * out_width))
+
+        out[0] = np.asarray([np.matmul(_grad_grid[i], batch_grid[i]) for i in range(num_batch)]).astype(theta.dtype)
 
 
 def spatialtf(img, theta, scale_width=1, scale_height=1, border_mode='nearest'):
@@ -61,120 +410,6 @@ def spatialtf(img, theta, scale_width=1, scale_height=1, border_mode='nearest'):
     out_dims = (num_batch, num_channels, out_height, out_width)
     out_dims = tuple([as_scalar(v).astype('int64') for v in out_dims])
 
-    grid = AbstractTransformerGrid()(theta, out_dims)
-    sampler = AbstractTransformerSampler()(img, grid)
+    grid = TransformerGrid()(theta, out_dims)
+    sampler = TransformerSampler()(img, grid)
     return sampler
-
-
-def transformer_grid_impl(theta, out_dims):
-    def _linspace(start, stop, num):
-        # Theano linspace. Behaves similar to np.linspace
-        start = theano.tensor.cast(start, theano.config.floatX)
-        stop = theano.tensor.cast(stop, theano.config.floatX)
-        num = theano.tensor.cast(num, theano.config.floatX)
-        step = (stop - start) / (num - 1)
-        return theano.tensor.arange(num, dtype=theano.config.floatX) * step + start
-
-    def _meshgrid(height, width):
-        x_t = theano.tensor.dot(theano.tensor.ones((height, 1)),
-                                _linspace(-1.0, 1.0, width).dimshuffle('x', 0))
-        y_t = theano.tensor.dot(_linspace(-1.0, 1.0, height).dimshuffle(0, 'x'),
-                                theano.tensor.ones((1, width)))
-
-        x_t_flat = x_t.reshape((1, -1))
-        y_t_flat = y_t.reshape((1, -1))
-        ones = theano.tensor.ones_like(x_t_flat)
-        grid = theano.tensor.concatenate([x_t_flat, y_t_flat, ones], axis=0)
-        return grid
-
-    num_batch, _, out_height, out_width = out_dims
-    grid = _meshgrid(out_height, out_width)
-    # transform a x (x_t, y_t, 1)^t -> (x_s, y_s)
-    transformed_grid = theano.tensor.dot(theta, grid)
-    # dimshuffle grid into (2, num_batch, out_height * out_width)
-    transposed_grid = transformed_grid.dimshuffle(1, 0, 2)
-    # reshape into (2, num_batch, out_height, out_width)
-    return transposed_grid.reshape((2, num_batch, out_height, out_width))
-
-
-def transformer_sampler_impl(inp, grid, border_mode):
-    num_batch, num_channels, height, width = inp.shape
-    out_height, out_width = grid.shape[2], grid.shape[3]
-
-    height_f = theano.tensor.cast(height, theano.config.floatX)
-    width_f = theano.tensor.cast(width, theano.config.floatX)
-
-    inp_transposed = inp.dimshuffle(0, 2, 3, 1)
-
-    # Scale coordinates from [-1, 1] to [0, dimension -1], where dimension
-    # can be the width or height
-    x = grid[0, :].flatten()
-    x = (x + 1) / 2 * (width_f - 1)
-
-    y = grid[1, :].flatten()
-    y = (y + 1) / 2 * (height_f - 1)
-
-    # Obtain indices of the 2x2 pixel neighborhood surrounding the coordinates;
-    # we need those in floatX for interpolation and in int64 for indexing.
-    x0_f = theano.tensor.floor(x)
-    y0_f = theano.tensor.floor(y)
-    x1_f = x0_f + 1
-    y1_f = y0_f + 1
-
-    x0, y0, x1, y1 = (None, None, None, None)
-    # for indexing, we need to take care of the border mode for outside pixels.
-    if border_mode == 'nearest':
-        x0 = theano.tensor.clip(x0_f, 0, width_f - 1)
-        x1 = theano.tensor.clip(x1_f, 0, width_f - 1)
-        y0 = theano.tensor.clip(y0_f, 0, height_f - 1)
-        y1 = theano.tensor.clip(y1_f, 0, height_f - 1)
-    elif border_mode == 'mirror':
-        w = 2 * (width_f - 1)
-        x0 = theano.tensor.minimum(x0_f % w, -x0_f % w)
-        x1 = theano.tensor.minimum(x1_f % w, -x1_f % w)
-        h = 2 * (height_f - 1)
-        y0 = theano.tensor.minimum(y0_f % h, -y0_f % h)
-        y1 = theano.tensor.minimum(y1_f % h, -y1_f % h)
-    elif border_mode == 'wrap':
-        x0 = theano.tensor.mod(x0_f, width_f)
-        x1 = theano.tensor.mod(x1_f, width_f)
-        y0 = theano.tensor.mod(y0_f, height_f)
-        y1 = theano.tensor.mod(y1_f, height_f)
-    else:
-        raise ValueError("border_mode must be one of "
-                         "'nearest', 'mirror', 'wrap'")
-    x0, x1, y0, y1 = (theano.tensor.cast(v, 'int64') for v in (x0, x1, y0, y1))
-
-    # The input is [num_batch, height, width, channels]. We do the lookup in
-    # the flattened input, i.e [num_batch*height*width, channels]. We need
-    # to offset all indices to match the flat version
-    dim2 = width
-    dim1 = width * height
-    base = theano.tensor.repeat(
-        theano.tensor.arange(num_batch, dtype='int64') * dim1, out_height * out_width)
-    base_y0 = base + y0 * dim2
-    base_y1 = base + y1 * dim2
-    idx_a = base_y0 + x0
-    idx_b = base_y1 + x0
-    idx_c = base_y0 + x1
-    idx_d = base_y1 + x1
-
-    # use indices to lookup pixels for all samples
-    inp_flat = inp_transposed.reshape((-1, num_channels))
-    Ia = inp_flat[idx_a]
-    Ib = inp_flat[idx_b]
-    Ic = inp_flat[idx_c]
-    Id = inp_flat[idx_d]
-
-    # calculate interpolated values
-    wa = ((x1_f - x) * (y1_f - y)).dimshuffle(0, 'x')
-    wb = ((x1_f - x) * (y - y0_f)).dimshuffle(0, 'x')
-    wc = ((x - x0_f) * (y1_f - y)).dimshuffle(0, 'x')
-    wd = ((x - x0_f) * (y - y0_f)).dimshuffle(0, 'x')
-    transformed_inputs_flat = theano.tensor.sum([wa * Ia, wb * Ib, wc * Ic, wd * Id], axis=0)
-    transformed_inputs = theano.tensor.reshape(transformed_inputs_flat,
-                                               (num_batch, out_height, out_width, num_channels),
-                                               ndim=4)
-    # dimshuffle tensor from NHWC to NCHW format
-    output = transformed_inputs.dimshuffle(0, 3, 1, 2)
-    return output
