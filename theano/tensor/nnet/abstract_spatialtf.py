@@ -66,7 +66,7 @@ class AbstractTransformerGrid(Op):
         theta, out_dims = inputs
         dgrid = grads[0]
 
-        dtheta = AbstractTransformerGradT()(dgrid)
+        dtheta = AbstractTransformerGradT()(theta, dgrid)
         return [dtheta, grad_not_implemented(self, 1, out_dims)]
 
 
@@ -211,7 +211,7 @@ class AbstractTransformerGradI(Op):
 
         return Apply(self, [_inp, _grid, _grad_outputs], [grad_inp, grad_grid])
 
-    def debug_perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage):
         inp, grid, grad_outputs = inputs
         assert len(inp.shape) == 4
         assert len(grid.shape) == 4
@@ -224,8 +224,7 @@ class AbstractTransformerGradI(Op):
         num_batch, num_channels, height, width = inp.shape
         border_mode = node.op.border_mode
 
-        # Convert inputs and gradient of outputs' tensors from NCHW to NHWC format
-        # t_inp = np.transpose(inp, axes=(0, 2, 3, 1))
+        # Convert gradient of outputs' tensor from NCHW to NHWC format
         t_grad_outputs = np.transpose(grad_outputs, axes=(0, 2, 3, 1))
 
         height_f, width_f = float(height), float(width)
@@ -300,11 +299,32 @@ class AbstractTransformerGradI(Op):
         grad_inp_out[0] = np.transpose(grad_inputs, axes=(0, 3, 1, 2))
 
         # Compute gradients of the sampling grid
-        grad_gradients = np.empty(grid.shape, dtype=grid.dtype)
+        grad_gradients = np.zeros((2, num_batch * out_height * out_width), dtype=grid.dtype)
 
-        # TODO: gradients of the sampling grid
-        # Reshape gradients to NHWC tensor format
-        grad_grid_out[0] = grad_gradients
+        inp_transposed = np.transpose(inp, axes=(0, 2, 3, 1))
+        inp_flat = inp_transposed.reshape((-1, num_channels))
+
+        # shapes: (n * h * w, c) * (n * h * w, c)
+        tl = inp_flat[idx_a] * G_out
+        tr = inp_flat[idx_b] * G_out
+        bl = inp_flat[idx_c] * G_out
+        br = inp_flat[idx_d] * G_out
+
+        xw_top_left = (x1_f - x)[:, np.newaxis]  # shape (n * h * w, 1)
+        xw_bottom_left = (x - x0_f)[:, np.newaxis]  # shape (n * h * w, 1)
+
+        yw_top_left = (y1_f - y)[:, np.newaxis]  # shape (n * h * w, 1)
+        yw_bottom_left = (y - y0_f)[:, np.newaxis]  # shape (n * h * w, 1)
+
+        # resulting shape: (n * h * w, c)
+        xf = - yw_top_left * tl + yw_top_left * tr - yw_bottom_left * bl + yw_bottom_left * br
+        yf = - xw_top_left * tl + xw_bottom_left * bl - xw_bottom_left * tr + xw_bottom_left * br
+
+        # Sum over feature maps of xf and yf
+        grad_gradients[0, :] = np.sum(xf, axis=1)  # * (width_f - 1) / 2
+        grad_gradients[1, :] = np.sum(yf, axis=1)  # * (height_f - 1) / 2
+
+        grad_grid_out[0] = np.reshape(grad_gradients, grid.shape)
 
 
 class AbstractTransformerGradT(Op):
@@ -317,24 +337,22 @@ class AbstractTransformerGradT(Op):
 
         return Apply(self, [_theta, _grad_grid], [out])
 
-    def debug_perform(self, node, inputs, output_storage):
-        """
+    def perform(self, node, inputs, output_storage):
         theta, grad_grid = inputs
         out = output_storage[0]
 
-        num_batch, num_channels, height, width = inp.shape
+        num_batch = theta.shape[0]
+        out_height, out_width = grad_grid.shape[2:]
 
-        grid = self.sampling_grid(out_height, out_width)
+        grid = sampling_grid(out_height, out_width)
         # (3, h * w) -> (h * w, 3)
         transposed_grid = np.transpose(grid, axes=(1, 0))
         # repeat sampling grid, for all images in the batch, i.e. (n, h * w, 3)
-        batch_grid = np.asarray(num_batch * [transposed_grid]).astype(theta.dtype)
+        batch_grid = np.asarray(num_batch * [transposed_grid], dtype=theta.dtype)
 
         # reshape gradients of grid from (n, h, w, 2) -> (n, h * w, 2)
-        grad_grid = np.reshape(_grad_grid, (num_batch, out_height * out_width, 2))
+        _grad_grid_transposed = np.transpose(grad_grid, axes=(1, 0, 2, 3))
         # (n, h * w, 2) -> (n, 2, h * w)
-        grad_grid_transposed = np.transpose(grad_grid, axes=(0, 2, 1))
+        _grad_grid = np.reshape(_grad_grid_transposed, (num_batch, 2, out_height * out_width))
 
-        out[0] = np.asarray([np.dot(grad_grid_transposed[i], batch_grid[i]) for i in range(num_batch)]).astype(theta.dtype)
-        """
-        raise NotImplementedError('debug_perform not implemented yet.')
+        out[0] = np.asarray([np.matmul(_grad_grid[i], batch_grid[i]) for i in range(num_batch)]).astype(theta.dtype)
