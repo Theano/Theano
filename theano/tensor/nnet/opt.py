@@ -33,14 +33,10 @@ from theano.tensor.nnet.conv import conv2d, ConvOp
 
 # Abstract spatial transformer
 from theano.tensor.nnet.abstract_spatialtf import (AbstractTransformerGrid,
-                                                   AbstractTransformerSampler,
-                                                   AbstractTransformerGradI,
-                                                   AbstractTransformerGradT)
+                                                   AbstractTransformerSampler)
 # CPU implementation of the spatial transformer
 from theano.tensor.nnet.spatialtf import (transformer_grid_impl,
-                                          transformer_sampler_impl,
-                                          transformer_gradi_impl,
-                                          transformer_gradt_impl)
+                                          transformer_sampler_impl)
 
 
 @gof.local_optimizer([SparseBlockGemv], inplace=True)
@@ -539,27 +535,6 @@ def local_transformer_sampler(node):
     return [transformer_sampler_impl(inp, grid, border_mode)]
 
 
-@local_optimizer([AbstractTransformerGradI])
-def local_transformer_grad_inputs(node):
-    if not isinstance(node.op, AbstractTransformerGradI):
-        return
-
-    inp, grid, grad_outputs = node.inputs
-    border_mode = node.op.border_mode
-
-    grad_inp, grad_grid = transformer_gradi_impl(inp, grid, grad_outputs, border_mode)
-    return [grad_inp, grad_grid]
-
-
-@local_optimizer([AbstractTransformerGradT])
-def local_transformer_grad_transform(node):
-    if not isinstance(node.op, AbstractTransformerGradT):
-        return
-
-    theta, grad_grid = node.inputs
-    return [transformer_gradt_impl(theta, grad_grid)]
-
-
 # Register CPU optimizations for the spatial transformer
 transformer_groupopt = theano.gof.optdb.LocalGroupDB()
 transformer_groupopt.__name__ = "transformer_opts"
@@ -569,10 +544,4 @@ transformer_groupopt.register('local_transformer_grid',
                               'fast_compile', 'fast_run')
 transformer_groupopt.register('local_transformer_sampler',
                               local_transformer_sampler, 30,
-                              'fast_compile', 'fast_run')
-transformer_groupopt.register('local_transformer_grad_inputs',
-                              local_transformer_grad_inputs, 40,
-                              'fast_compile', 'fast_run')
-transformer_groupopt.register('local_transformer_grad_transform',
-                              local_transformer_grad_transform, 40,
                               'fast_compile', 'fast_run')
