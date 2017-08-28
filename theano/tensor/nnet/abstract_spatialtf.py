@@ -40,7 +40,7 @@ class AbstractTransformerGrid(Op):
 
         return Apply(self, [_theta, _out_dims], [_grid])
 
-    def debug_perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage):
         theta, out_dims = inputs
 
         assert len(out_dims) == 4
@@ -104,7 +104,7 @@ class AbstractTransformerSampler(Op):
 
         return [grad_inp, grad_grid]
 
-    def debug_perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage):
         inp, grid = inputs
         assert len(inp.shape) == 4
         assert len(grid.shape) == 4
