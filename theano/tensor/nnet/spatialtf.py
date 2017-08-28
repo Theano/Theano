@@ -128,7 +128,7 @@ class TransformerSampler(Op):
 
         # Scale coordinates from [-1, 1] to [0, dimension-1], where dimension
         # can be the width or height
-        grid_flat= grid.reshape((num_batch * out_height * out_width, 2))
+        grid_flat = grid.reshape((num_batch * out_height * out_width, 2))
         x = grid_flat[:, 0].flatten()
         x = (x + 1) / 2 * (width_f - 1)
 
