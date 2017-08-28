@@ -13,8 +13,8 @@
    This interface is the prefered interface. It will be moved
    automatically to the GPU.
 
-.. module:: theano.tensor.nnet.ctc
-   :platform: Unix
+.. module:: theano.tensor.nnet.spatialtf
+   :platform: Unix, Windows
    :synopsis: Spatial transformer (by Jaderberg et. al)
 .. moduleauthor:: `João Victor Risso <https://github.com/joaovictortr>`_
 
