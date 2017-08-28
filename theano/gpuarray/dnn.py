@@ -30,8 +30,10 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv3d_gradInputs,
                                               get_conv_output_shape,
                                               assert_conv_shape)
-from theano.tensor.nnet.spatialtf import (AbstractTransformerGrid,
-                                          AbstractTransformerSampler)
+from theano.tensor.nnet.abstract_spatialtf import (AbstractTransformerGrid,
+                                                   AbstractTransformerSampler,
+                                                   AbstractTransformerGradI,
+                                                   AbstractTransformerGradT)
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
 from . import pygpu, cudnn_defs
@@ -3815,7 +3817,7 @@ def local_dnn_spatialtf_grid(op, ctx_name, inputs, outputs):
     if theta.ndim != 3:
         return
 
-    if len(out_dims) != 4:
+    if out_dims.ndim != 4:
         return
 
     grid = GpuDnnTransformerGrid()(theta, out_dims)
@@ -3830,7 +3832,8 @@ def local_dnn_spatialtf_sampler(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         return
 
-    inp, grid = inputs
+    inp, _grid = inputs
+    grid = _grid.dimshuffle(1, 2, 3, 0)
 
     if inp.ndim != 4:
         return
@@ -3841,6 +3844,48 @@ def local_dnn_spatialtf_sampler(op, ctx_name, inputs, outputs):
     sampler = GpuDnnTransformerSampler()(inp, grid)
 
     return [sampler]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([AbstractTransformerGradI])
+@register_opt2([AbstractTransformerGradI], 'fast_compile', 'cudnn')
+def local_dnn_spatialtf_gradi(op, ctx_name, inputs, outputs):
+    if not dnn_available(ctx_name):
+        return
+
+    inp, _grid, grad_outputs = inputs
+    grid = _grid.dimshuffle(1, 2, 3, 0)
+
+    if inp.ndim != 4:
+        return
+
+    if grid.ndim != 4:
+        return
+
+    if grad_outputs.ndim != 4:
+        return
+
+    dimg, dgrid = GpuDnnTransformerGradI()(inp, grid, grad_outputs)
+
+    return [dimg, dgrid]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([AbstractTransformerGradT])
+@register_opt2([AbstractTransformerGradT], 'fast_compile', 'cudnn')
+def local_dnn_spatialtf_gradt(op, ctx_name, inputs, outputs):
+    if not dnn_available(ctx_name):
+        return
+
+    theta, _grad_grid = inputs
+    grad_grid = _grad_grid.dimshuffle(1, 2, 3, 0)
+
+    if grad_grid.ndim != 4:
+        return
+
+    gradt = GpuDnnTransformerGradT()(grad_grid)
+
+    return [gradt]
 
 
 class NoCuDNNRaise(Optimizer):
