@@ -1030,10 +1030,10 @@ class Function(object):
         if (hasattr(theano, "gpuarray") and
                 theano.gpuarray.pygpu_activated):
             import pygpu
-            for i, inp in enumerate(self.input_storage):
-                if i in self.maker.fgraph.update_mapping.values():
-                    if isinstance(inp.data, pygpu.gpuarray.GpuArray):
-                        inp.data.sync()
+            for i in self.maker.fgraph.update_mapping.values():
+                inp = self.input_storage[i]
+                if isinstance(inp.data, pygpu.gpuarray.GpuArray):
+                    inp.data.sync()
 
 
 # pickling/deepcopy support for Function
