@@ -147,7 +147,8 @@ class TestTransformer(unittest.TestCase):
         utt.seed_rng()
 
     def getInputs(self):
-        inp_shape = (np.random.randint(1, 11), 3, 32, 32)
+        inp_shape = (np.random.randint(1, 11), 3, np.random.randint(10, 101),
+                     np.random.randint(10, 101))
         num_images, num_channels, height, width = inp_shape
 
         inp = np.random.random(inp_shape).astype(config.floatX)
@@ -192,20 +193,23 @@ class TestTransformer(unittest.TestCase):
         t_theta = T.tensor3('theta')
         t_scale_height = T.scalar('scale_height')
         t_scale_width = T.scalar('scalar_width')
-        # Setup spatial transformer on the CPU
-        op_cpu = spatialtf(t_inp, t_theta, t_scale_width, t_scale_height)
-        fn_cpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
-                                 op_cpu, mode=mode_without_gpu)
-        # Evaluate CPU function
-        out_cpu = fn_cpu(inp, theta, scale_width, scale_height)
         # Setup spatial transformer on the GPU using cuDNN
         op_gpu = dnn_spatialtf(t_inp, t_theta, t_scale_width, t_scale_height)
         fn_gpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
                                  op_gpu, mode=mode_with_gpu)
         # Evaluate GPU function
         out_gpu = fn_gpu(inp, theta, scale_width, scale_height)
-        # Check results
-        utt.assert_allclose(out_gpu, out_cpu)
+
+        for border_mode in ('nearest', 'mirror', 'wrap'):
+            # Setup spatial transformer on the CPU
+            op_cpu = spatialtf(t_inp, t_theta, t_scale_width, t_scale_height, border_mode)
+            fn_cpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     op_cpu, mode=mode_without_gpu)
+            # Evaluate CPU function
+            out_cpu = fn_cpu(inp, theta, scale_width, scale_height)
+
+            # Check results
+            utt.assert_allclose(out_gpu, out_cpu)
 
     def test_gradi(self):
         inp, theta, scale_width, scale_height = self.getInputs()
