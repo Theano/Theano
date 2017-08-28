@@ -3832,8 +3832,7 @@ def local_dnn_spatialtf_sampler(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         return
 
-    inp, _grid = inputs
-    grid = _grid.dimshuffle(1, 2, 3, 0)
+    inp, grid = inputs
 
     if inp.ndim != 4:
         return
@@ -3853,8 +3852,7 @@ def local_dnn_spatialtf_gradi(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         return
 
-    inp, _grid, grad_outputs = inputs
-    grid = _grid.dimshuffle(1, 2, 3, 0)
+    inp, grid, grad_outputs = inputs
 
     if inp.ndim != 4:
         return
