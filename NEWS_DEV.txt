@@ -8,6 +8,7 @@ git log -p rel-0.9.0... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 
 
 # Commit count per user
 git shortlog -sn rel-0.9.0..
+git shortlog -sn rel-0.10.0beta1..
 
 
 
@@ -59,8 +60,10 @@ Convolution updates:
  - Deprecated old ``conv2d`` interface
  - Updated ``conv`` documentation
  - Extended Theano flag ``dnn.enabled`` with new option ``no_check`` to help speed up cuDNN importation
+ - Added unshared convolutions
  - Implemented separable convolutions for 2D and 3D
  - Implemented grouped convolutions for 2D and 3D
+ - Automatic addition of cuDNN DLL path to ``PATH`` environment variable on Windows
 
 GPU:
  - Added a meta-optimizer to select the fastest GPU implementations for convolutions
@@ -133,6 +136,15 @@ Other more detailed changes:
  - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/6349
+* https://github.com/Theano/Theano/pull/6361
+* https://github.com/Theano/Theano/pull/6356
+* https://github.com/Theano/Theano/pull/6359
+* https://github.com/Theano/Theano/pull/6286
+* https://github.com/Theano/Theano/pull/6357
+* https://github.com/Theano/Theano/pull/6354
+* https://github.com/Theano/Theano/pull/6336
+* https://github.com/Theano/Theano/pull/6351
 * https://github.com/Theano/Theano/pull/6301
 * https://github.com/Theano/Theano/pull/6333
 * https://github.com/Theano/Theano/pull/6341

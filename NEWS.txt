@@ -16,9 +16,10 @@ Highlights:
  - Updated documentation
  - Bug fixes, crash fixes and warning improvements
 
-A total of 14 people contributed to this release since 0.10.0beta1, see list below.
+A total of 15 people contributed to this release since 0.10.0beta1, see list below.
 
 Convolution updates:
+ - Added unshared convolutions
  - Added 3D separable convolutions
  - Added 3D grouped convolutions
  - Removed old ``conv3d`` interface
@@ -35,6 +36,7 @@ GPU:
    - Updated and improved caching system for runtime-chosen cuDNN convolution algorithms
    - Support cuDNN v7 tensor core operations for convolutions with runtime timed algorithms
    - Restricted cuDNN reductions to contiguous inputs
+   - Automatic addition of cuDNN DLL path to ``PATH`` environment variable on Windows
 
 New features:
  - Added ``tensor6()`` and ``tensor7()`` in ``theano.tensor`` module
@@ -50,10 +52,11 @@ Commiters since 0.10.0beta1:
  - João Victor Tozatti Risso
  - Mohammed Affan
  - Frederic Bastien
- - Reyhane Askari
  - Steven Bocco
+ - Reyhane Askari
  - Gijs van Tulder
  - Boris Fomitchev
+ - Vikram
  - Arnaud Bergeron
  - Joseph Paul Cohen
  - Dzmitry Bahdanau
