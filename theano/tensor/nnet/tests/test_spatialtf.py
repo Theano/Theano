@@ -147,7 +147,7 @@ class TestTransformer(unittest.TestCase):
         utt.seed_rng()
 
     def getInputs(self):
-        inp_shape = (np.random.randint(1, 11), 1, 32, 32)
+        inp_shape = (np.random.randint(1, 11), 3, 32, 32)
         num_images, num_channels, height, width = inp_shape
 
         inp = np.random.random(inp_shape).astype(config.floatX)
@@ -208,15 +208,7 @@ class TestTransformer(unittest.TestCase):
         utt.assert_allclose(out_gpu, out_cpu)
 
     def test_gradi(self):
-        inp_shape = (np.random.randint(1, 11), 1, 32, 32)
-        num_images, num_channels, height, width = inp_shape
-
-        inp = np.random.random(inp_shape).astype(config.floatX)
-        transform = [[-1, 0, 0],
-                     [0, -1, 0]]
-        theta = np.asarray(num_images * [transform], dtype=config.floatX)
-        scale_height = 0.5
-        scale_width = 0.25
+        inp, theta, scale_width, scale_height = self.getInputs()
 
         def grad_inp_functor(inputs):
             out = spatialtf(inputs, theta, scale_width, scale_height)

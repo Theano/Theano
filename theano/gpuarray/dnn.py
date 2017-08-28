@@ -3877,8 +3877,7 @@ def local_dnn_spatialtf_gradt(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         return
 
-    theta, _grad_grid = inputs
-    grad_grid = _grad_grid.dimshuffle(1, 2, 3, 0)
+    theta, grad_grid = inputs
 
     if grad_grid.ndim != 4:
         return

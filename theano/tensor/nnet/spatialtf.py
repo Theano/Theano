@@ -58,10 +58,10 @@ class TransformerGrid(Op):
         grid = sampling_grid(out_height, out_width)
         # Generate transformed grid with shape (num_batch, 2, out_height * out_width)
         transformed_grid = np.dot(theta, grid)
-        # Dimshuffle grid into (2, num_batch, out_height * out_width)
-        transposed_grid = np.transpose(transformed_grid, axes=(1, 0, 2))
-        # Reshape into (2, num_batch, out_height, out_width)
-        grid_out[0] = np.reshape(transposed_grid, (2, num_batch, out_height, out_width)).astype(theta.dtype)
+        # Dimshuffle grid into (num_batch, out_height * out_width, 2)
+        transposed_grid = np.transpose(transformed_grid, axes=(0, 2, 1))
+        # Reshape into (num_batch, out_height, out_width, 2)
+        grid_out[0] = np.reshape(transposed_grid, (num_batch, out_height, out_width, 2)).astype(theta.dtype)
 
     def grad(self, inputs, grads):
         theta, out_dims = inputs
@@ -115,9 +115,11 @@ class TransformerSampler(Op):
 
         out = output_storage[0]
 
-        out_height, out_width = grid.shape[2:]
+        out_height, out_width = grid.shape[1], grid.shape[2]
         num_batch, num_channels, height, width = inp.shape
         border_mode = node.op.border_mode
+
+        assert num_batch == grid.shape[0]
 
         # Convert inp from NCHW to NHWC format
         inp_transposed = np.transpose(inp, axes=(0, 2, 3, 1))
@@ -126,10 +128,11 @@ class TransformerSampler(Op):
 
         # Scale coordinates from [-1, 1] to [0, dimension-1], where dimension
         # can be the width or height
-        x = grid[0, :].flatten()
+        grid_flat= grid.reshape((num_batch * out_height * out_width, 2))
+        x = grid_flat[:, 0].flatten()
         x = (x + 1) / 2 * (width_f - 1)
 
-        y = grid[1, :].flatten()
+        y = grid_flat[:, 1].flatten()
         y = (y + 1) / 2 * (height_f - 1)
 
         # Obtain indices of the 2x2 pixel neighborhood surrounding the coordinates;
@@ -168,6 +171,12 @@ class TransformerSampler(Op):
         batch_stride = width * height
         base = np.repeat(np.arange(num_batch, dtype='int64') * batch_stride,
                          out_height * out_width)
+
+        print("[grid]\n{0}".format(grid))
+        print("grid.shape = {0}".format(grid.shape))
+        print("y0.shape = {0}".format(y0.shape))
+        print("base.shape = {0}".format(base.shape))
+
         base_y0 = base + y0 * height_stride
         base_y1 = base + y1 * height_stride
         idx_a = base_y0 + x0
