@@ -1,0 +1,26 @@
+.. _libdoc_tensor_nnet_spatialtf:
+
+===========================================================
+:mod:`theano.tensor.nnet.spatialtf` -- Spatial Transformer
+===========================================================
+
+.. note::
+
+    Currently, only bilinear interpolation is implemented as the sampling method.
+
+.. note::
+
+   This interface is the prefered interface. It will be moved
+   automatically to the GPU.
+
+.. module:: theano.tensor.nnet.ctc
+   :platform: Unix
+   :synopsis: Spatial transformer (by Jaderberg et. al)
+.. moduleauthor:: `João Victor Risso <https://github.com/joaovictortr>`_
+
+.. autofunction:: theano.tensor.nnet.spatialtf.spatialtf
+.. autoclass:: theano.tensor.nnet.spatialtf.TransformerGrid
+.. autoclass:: theano.tensor.nnet.spatialtf.TransformerSampler
+.. autoclass:: theano.tensor.nnet.spatialtf.TransformerGradI
+.. autoclass:: theano.tensor.nnet.spatialtf.TransformerGradT
+
