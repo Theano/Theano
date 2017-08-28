@@ -392,10 +392,8 @@ def spatialtf(img, theta, scale_width=1, scale_height=1, border_mode='nearest'):
 
     Notes
     -----
-    Currently, cuDNN only supports 2D transformations with 2x3 affine
-    transformation matrices.
-
-    Bilinear interpolation is the only grid sampler method available.
+    Currently, only 2D transformations with 2x3 affine transformation matrices
+    are supported.
     """
     img = as_tensor_variable(img)
     assert img.ndim == 4
