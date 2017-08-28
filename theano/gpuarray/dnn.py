@@ -2934,7 +2934,7 @@ class GpuDnnTransformerSampler(DnnBase):
 
         grid : GpuDnnTransformerGrid
             Grid that contains the coordinates of the pixels to be sampled from
-            the inputs images.
+            the input images.
         """
         context_name = infer_context_name(img, grid)
 
