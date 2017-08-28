@@ -31,13 +31,6 @@ from theano.tensor import opt
 # Cpu implementation
 from theano.tensor.nnet.conv import conv2d, ConvOp
 
-# Abstract spatial transformer
-from theano.tensor.nnet.abstract_spatialtf import (AbstractTransformerGrid,
-                                                   AbstractTransformerSampler)
-# CPU implementation of the spatial transformer
-from theano.tensor.nnet.spatialtf import (transformer_grid_impl,
-                                          transformer_sampler_impl)
-
 
 @gof.local_optimizer([SparseBlockGemv], inplace=True)
 def local_inplace_sparse_block_gemv(node):
