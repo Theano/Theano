@@ -74,7 +74,7 @@ if (APPLY_SPECIFIC(kerns) != NULL)
 #section support_code
 #include <sstream>
 #include <string>
-#if __cplusplus < 201103L
+#if __cplusplus < 201103L && !defined(__APPLE__)
 #include <tr1/unordered_map>
 typedef std::tr1::unordered_map<std::string, AlgoRec> AlgoCache;
 #else
