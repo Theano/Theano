@@ -191,12 +191,22 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
           return -1;
         }
 
+        /* cudnnFindConvolutionBackwardFilterAlgorithmEx() may write to kernels output (kerns).
+           We don't want that if output is used in computation (ie. if beta != 0). */
+        PyGpuArrayObject* k = *kerns;
+        if (beta != 0) {
+            k = pygpu_empty(PyGpuArray_NDIM(*kerns), PyGpuArray_DIMS(*kerns), (*kerns)->ga.typecode, GA_C_ORDER, c, Py_None);
+        }
+
         err = cudnnFindConvolutionBackwardFilterAlgorithmEx(
           params->handle, APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
           APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output), desc,
-          APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(*kerns),
+          APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(k),
           1, &count, &choice, *(void **)tmpmem, maxfree);
         gpudata_release(tmpmem);
+        if (beta != 0) {
+            Py_XDECREF(k);
+        }
 
         if (err != CUDNN_STATUS_SUCCESS) {
           PyErr_Format(PyExc_RuntimeError,
