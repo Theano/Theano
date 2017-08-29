@@ -50,9 +50,12 @@ def init_dev(dev, name=None, preallocate=None):
         raise ValueError(
             "Your installed version of pygpu is too old, please upgrade to 0.6.1 or later")
     # This is for the C headers API, we need to match the exact version.
-    if pygpu.gpuarray.api_version()[0] != 1:
+    gpuarray_version_major = pygpu.gpuarray.api_version()[0]
+    gpuarray_version_major_supported = 1
+    if gpuarray_version_major != gpuarray_version_major_supported:
         raise ValueError(
-            "Your installed libgpuarray is not in sync, please make sure to have the appropriate version")
+            "Detected libgpuarray version (%d) is not supported, please ensure version %d is installed" %
+            (gpuarray_version_major, gpuarray_version_major_supported))
     if dev not in init_dev.devmap:
         if config.gpuarray.cache_path != '':
             os.environ['GPUARRAY_CACHE_PATH'] = config.gpuarray.cache_path
