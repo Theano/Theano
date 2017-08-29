@@ -1,12 +1,10 @@
 from __future__ import absolute_import, print_function, division
 import os.path
 
-import theano
 from theano import Apply, Op
 
-from theano.gof import LocalOptGroup
-from .basic_ops import (GpuArrayType, 
-                        as_gpuarray_variable, gpu_contiguous, infer_context_name)
+from .basic_ops import (GpuArrayType, as_gpuarray_variable,
+                        infer_context_name)
 
 try:
     import pygpu
@@ -33,7 +31,7 @@ class SortGenOp(Op):
 class SortOp(SortGenOp):
     """
     Sort on the GPU.
-    
+
     """
     def make_node(self, x):
         ctx_name = infer_context_name(x)
@@ -75,7 +73,7 @@ sort_gpu = SortOp()
 class ArgSortOp(SortGenOp):
     """
     Argsort on the GPU.
-    
+
     """
     def make_node(self, x):
         ctx_name = infer_context_name(x)
@@ -119,4 +117,3 @@ class ArgSortOp(SortGenOp):
 
 
 argsort_gpu = ArgSortOp()
-
