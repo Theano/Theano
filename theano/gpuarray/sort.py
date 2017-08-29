@@ -57,12 +57,14 @@ class SortOp(SortGenOp):
                int err = GA_NO_ERROR;
                if (!GpuArray_ISONESEGMENT(&%(inp)s->ga)) {
                    PyErr_SetString(PyExc_RuntimeError, 
-                                   "Input must be contiguous");
+                                   "Input must be one segment");
                    %(fail)s   
                }
-               theano_prep_output(&%(out)s, %(inp)s->ga.nd,
+               if (theano_prep_output(&%(out)s, %(inp)s->ga.nd,
                                  %(inp)s->ga.dimensions, %(inp)s->ga.typecode,
-                                 GA_C_ORDER, %(inp)s->context);
+                                 GA_C_ORDER, %(inp)s->context) ) {
+                   %(fail)s
+               }
                err = GpuArray_sort(&%(out)s->ga, &%(inp)s->ga, 1, NULL);
                if (err != GA_NO_ERROR) {
                    PyErr_SetString(PyExc_RuntimeError,"GpuArray_sort failed");
@@ -70,17 +72,9 @@ class SortOp(SortGenOp):
                }
                 """ % vars
 
-        if config.gpuarray.sync:
-            code += """
-            GpuArray_sync(&%(out)s->ga);
-            """ % vars
-
         return code
 
 sort_gpu = SortOp()
-
-
-#Apply(self, [x], [GpuArrayType(dtype='uint64', context_name=ctx_name, broadcastable=brcast)()])
 
 
 class ArgSortOp(SortGenOp):
@@ -103,28 +97,25 @@ class ArgSortOp(SortGenOp):
                int err = GA_NO_ERROR;
                if (!GpuArray_ISONESEGMENT(&%(inp)s->ga)) {
                    PyErr_SetString(PyExc_RuntimeError,
-                                   "Input must be contiguous");
+                                   "Input must be one segment");
                    %(fail)s   
                }
-               theano_prep_output(&%(out)s, %(inp)s->ga.nd,
-                                  %(inp)s->ga.dimensions, GA_ULONG,GA_C_ORDER,
-                                  %(inp)s->context);
+               if (theano_prep_output(&%(out)s, PyGpuArray_NDIM(%(inp)s),
+                                  PyGpuArray_DIMS(%(inp)s), GA_ULONG,GA_C_ORDER,
+                                  %(inp)s->context) ) {
+                   %(fail)s
+               }
                GpuArray dst;
                GpuArray_empty(&dst, GpuArray_context(&%(inp)s->ga),
                               %(inp)s->ga.typecode, %(inp)s->ga.nd,
                               %(inp)s->ga.dimensions, GA_C_ORDER);
                err = GpuArray_sort(&dst, &%(inp)s->ga, 1, &%(out)s->ga);
+               GpuArray_clear(&dst);
                if (err != GA_NO_ERROR) {
-                   PyErr_SetString(PyExc_RuntimeError, "Memset failed");
+                   PyErr_SetString(PyExc_RuntimeError, "GpuArray_sort failed");
                    %(fail)s
                }
-               GpuArray_clear(&dst);
                """ % vars
-
-        if config.gpuarray.sync:
-            code += """
-            GpuArray_sync(&%(out)s->ga);
-            """ % vars
 
         return code
 
