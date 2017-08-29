@@ -984,7 +984,8 @@ Separable Convolutions
 Separable convolutions consists of two consecutive convolution operations.
 First is depth-wise convolutions which performs convolutions separately for
 each channel of the input. The output of this operation is the given as input
-to point-wise convolutions which mixes the channels to give the final output.
+to point-wise convolutions which is a special case of general convolutions with
+1x1 filters. This mixes the channels to give the final output.
 
 As we can see from this diagram, modified from `Vanhoucke(2014)`_ [#]_, depth-wise
 convolutions is performed with :math:`c2` single channel depth-wise filters
