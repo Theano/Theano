@@ -25,7 +25,7 @@ except ImportError as e:
 
 class SortGenOp(Op):
     def c_headers(self):
-        return ['<blas_api.h>', '<numpy_compat.h>', '<gpuarray_helper.h>',
+        return ['<blas_api.h>', '<numpy_compat.h>', '<c_code/gpuarray_helper.h>',
                 '<gpuarray/sort.h>']
 
     def c_header_dirs(self):
