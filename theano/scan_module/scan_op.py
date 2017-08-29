@@ -208,7 +208,7 @@ class Scan(PureOp):
             # Do the missing inputs check here to have the error early.
             for var in theano.gof.graph.inputs(self.outputs, self.inputs):
                 if var not in self.inputs and not isinstance(var, theano.Constant):
-                    raise theano.gof.MissingInputError("ScanOp is missing an input.")
+                    raise theano.gof.MissingInputError("ScanOp is missing an input: %s" % repr(var))
             self._cmodule_key = gof.CLinker().cmodule_key_variables(self.inputs,
                                                                     self.outputs,
                                                                     [])
@@ -2561,7 +2561,7 @@ class Scan(PureOp):
                     n_zeros = inputs[0] - n_steps
                     shp = (n_zeros,)
                     if x.ndim > 1:
-                        shp = shp + x.shape[1:]
+                        shp = shp + tuple(x.shape[i] for i in range(1, x.ndim))
                     z = tensor.zeros(shp, dtype=x.dtype)
                     x = tensor.concatenate([x[::-1], z], axis=0)
                     gradients.append(x)
@@ -2589,7 +2589,7 @@ class Scan(PureOp):
                     n_zeros = inputs[0] - grad_steps
                     shp = (n_zeros,)
                     if x.ndim > 1:
-                        shp = shp + x.shape[1:]
+                        shp = shp + tuple(x.shape[i] for i in range(1, x.ndim))
                     z = tensor.zeros(shp, dtype=x.dtype)
                     x = tensor.concatenate([x[::-1], z], axis=0)
                     gradients.append(x)
@@ -2895,7 +2895,15 @@ def profile_printer(message, compile_time, fct_call_time,
         total_scan_fct_time = 0
         total_scan_op_time = 0
         for node, v in iteritems(apply_time):
-            if isinstance(node.op, Scan) and node.op.fn.profile:
+            if isinstance(node.op, Scan) and not node.op.fn.profile:
+                print(
+                    "  One scan node do not have its inner profile enabled. "
+                    "If you enable Theano profiler with "
+                    "'theano.function(..., profile=True)', you must manually"
+                    " enable the profiling for each scan too: "
+                    "'theano.scan_module.scan(...,profile=True)'."
+                    " Or use Theano flag 'profile=True'.", file=file)
+            elif isinstance(node.op, Scan) and node.op.fn.profile:
                 if v > 0:
                     scan_fct_time = node.op.fn.profile.call_time
                     scan_op_time = sum(node.op.fn.profile.apply_time.values())
@@ -2911,9 +2919,12 @@ def profile_printer(message, compile_time, fct_call_time,
                 else:
                     print((' The node took 0s, so we can not '
                            'compute the overhead'), node, file=file)
-        print('total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
-            total_super_scan_time,
-            total_scan_fct_time,
-            total_scan_op_time,
-            total_scan_fct_time / total_super_scan_time * 100,
-            total_scan_op_time / total_super_scan_time * 100), file=file)
+        if total_super_scan_time == 0:
+            print('  No scan have its inner profile enabled.', file=file)
+        else:
+            print('total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
+                total_super_scan_time,
+                total_scan_fct_time,
+                total_scan_op_time,
+                total_scan_fct_time / total_super_scan_time * 100,
+                total_scan_op_time / total_super_scan_time * 100), file=file)

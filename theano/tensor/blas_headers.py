@@ -9,7 +9,7 @@ import logging
 import textwrap
 import sys
 import os
-from os.path import dirname, normpath
+from os.path import dirname
 
 from theano import config
 from theano.gof.cmodule import GCC_compiler
@@ -736,8 +736,8 @@ def blas_header_text():
     if not config.blas.ldflags:
         # Include the Numpy version implementation of [sd]gemm_.
         current_filedir = dirname(__file__)
-        gemm_common_filepath = normpath(current_filedir + "/alt_gemm_common.c")
-        gemm_template_filepath = normpath(current_filedir + "/alt_gemm_template.c")
+        gemm_common_filepath = os.path.join(current_filedir, 'c_code', 'alt_gemm_common.c')
+        gemm_template_filepath = os.path.join(current_filedir, 'c_code', 'alt_gemm_template.c')
         common_code = ""
         sgemm_code = ""
         dgemm_code = ""

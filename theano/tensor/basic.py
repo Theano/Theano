@@ -12,11 +12,12 @@ import numbers
 
 import theano
 from theano.compat import izip
-from theano.configparser import config
+from theano import config
 from theano import gof
 from theano.gof import Apply, Constant, Op, Variable, ParamsType
 from theano.gof.type import Generic
 
+from theano.scalar import int32 as int32_t
 from theano.tensor import elemwise
 from theano.tensor.var import (AsTensorError, TensorVariable,
                                TensorConstant, TensorConstantSignature,
@@ -899,6 +900,62 @@ def tensor5(name=None, dtype=None):
     return type(name)
 tensor5s, ftensor5s, dtensor5s, itensor5s, ltensor5s = _multi(
     tensor5, ftensor5, dtensor5, itensor5, ltensor5)
+
+ctensor6 = TensorType('complex64', ((False,) * 6))
+ztensor6 = TensorType('complex128', ((False,) * 6))
+ftensor6 = TensorType('float32', ((False,) * 6))
+dtensor6 = TensorType('float64', ((False,) * 6))
+btensor6 = TensorType('int8', ((False,) * 6))
+wtensor6 = TensorType('int16', ((False,) * 6))
+itensor6 = TensorType('int32', ((False,) * 6))
+ltensor6 = TensorType('int64', ((False,) * 6))
+
+
+def tensor6(name=None, dtype=None):
+    """Return a symbolic 6-D variable.
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = TensorType(dtype, (False,) * 6)
+    return type(name)
+tensor6s, ftensor6s, dtensor6s, itensor6s, ltensor6s = _multi(
+    tensor6, ftensor6, dtensor6, itensor6, ltensor6)
+
+ctensor7 = TensorType('complex64', ((False,) * 7))
+ztensor7 = TensorType('complex128', ((False,) * 7))
+ftensor7 = TensorType('float32', ((False,) * 7))
+dtensor7 = TensorType('float64', ((False,) * 7))
+btensor7 = TensorType('int8', ((False,) * 7))
+wtensor7 = TensorType('int16', ((False,) * 7))
+itensor7 = TensorType('int32', ((False,) * 7))
+ltensor7 = TensorType('int64', ((False,) * 7))
+
+
+def tensor7(name=None, dtype=None):
+    """Return a symbolic 7-D variable.
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = TensorType(dtype, (False,) * 7)
+    return type(name)
+tensor7s, ftensor7s, dtensor7s, itensor7s, ltensor7s = _multi(
+    tensor7, ftensor7, dtensor7, itensor7, ltensor7)
 
 
 Tensor = TensorType
@@ -2142,6 +2199,67 @@ def sqr(a):
 
 # alias to sqr, included to maintain similarity with numpy interface
 square = sqr
+
+
+def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=None):
+    """Calculate the covariance matrix.
+    Covariance indicates the level to which two variables vary together.
+    If we examine N-dimensional samples, :math:`m = [x_1, x_2, ... x_N]^T`,
+    then the covariance matrix element :math:`C_{ij}` is the covariance of
+    :math:`x_i` and :math:`x_j`. The element :math:`C_{ii}` is the variance
+    of :math:`x_i`. Code and docstring ported from numpy.
+    ----------
+    m : array_like
+        A 2-D array containing multiple variables and observations.
+        Each row of `m` represents a variable, and each column is
+        observations of all those variables.
+    y : array_like, optional
+        An additional set of variables and observations. `y` has the same form
+        as that of `m`.
+    rowvar : bool, optional
+        If `rowvar` is True (default), then each row represents a
+        variable, with observations in the columns. Otherwise, the relationship
+        is transposed: each column represents a variable, while the rows
+        contain observations.
+    bias : bool, optional
+        Default normalization (False) is by ``(N - 1)``, where ``N`` is the
+        number of observations given (unbiased estimate). If `bias` is True, then
+        normalization is by ``N``. These values can be overridden by using the
+        keyword ``ddof``.
+    ddof : int, optional
+        If not ``None`` the default value implied by `bias` is overridden.
+        The default value is ``None``.
+    Returns
+    -------
+    out : The covariance matrix of the variables.
+    """
+
+    if fweights is not None:
+        raise NotImplementedError('fweights are not implemented')
+    if aweights is not None:
+        raise NotImplementedError('aweights are not implemented')
+
+    if not rowvar and m.shape[0] != 1:
+        m = m.T
+
+    if y is not None:
+        if not rowvar and y.shape[0] != 1:
+            y = y.T
+        m = theano.tensor.concatenate((m, y), axis=0)
+
+    if ddof is None:
+        if not bias:
+            ddof = 1
+        else:
+            ddof = 0
+
+    # Determine the normalization
+    fact = m.shape[1] - ddof
+
+    m -= m.mean(axis=1, keepdims=1)
+    c = m.dot(m.T)
+    c *= theano.tensor.constant(1) / fact
+    return c.squeeze()
 
 
 @_scal_elemwise
@@ -6632,12 +6750,17 @@ class Choose(Op):
 class AllocEmpty(gof.Op):
     """Implement Alloc on the cpu, but without initializing memory."""
 
-    __props__ = ("dtype",)
+    __props__ = ("dtype", )
+    params_type = ParamsType(typecode=int32_t)
 
     # specify the type of the data
     def __init__(self, dtype):
         assert isinstance(dtype, str), dtype
         self.dtype = dtype.lower()
+
+    @property
+    def typecode(self):
+        return np.dtype(self.dtype).num
 
     def make_node(self, *shape):
         shape, bcast = alloc_validate_shape(shape)
@@ -6657,22 +6780,22 @@ class AllocEmpty(gof.Op):
         output.tag.nan_guard_mode_check = False
         return Apply(self, shape, [output])
 
-    def debug_perform(self, node, inputs, out_):
-        self.perform(node, inputs, out_)
+    def debug_perform(self, node, inputs, out_, params):
+        self.perform(node, inputs, out_, params)
         out_[0][0].fill(-123456789)
 
-    def perform(self, node, inputs, out_):
+    def perform(self, node, inputs, out_, params):
         out, = out_
         sh = tuple([int(i) for i in inputs])
         if out[0] is None or out[0].shape != sh:
             out[0] = np.empty(sh, dtype=self.dtype)
 
     def c_code(self, node, name, inputs, out_, sub):
-        dtype = "NPY_" + self.dtype.upper()
         out, = out_
         fail = sub['fail']
         shps = inputs
         nd = len(shps)
+        params = sub['params']
         str = "npy_intp dims[%(nd)s];\n" % locals()
         for idx, sh in enumerate(shps):
             str += "dims[%(idx)s] =" \
@@ -6691,7 +6814,7 @@ class AllocEmpty(gof.Op):
             Py_XDECREF(%(out)s);
             %(out)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s,
                                                     dims,
-                                                    %(dtype)s,
+                                                    %(params)s->typecode,
                                                     0);
             if (!%(out)s)
             {
@@ -6706,7 +6829,7 @@ class AllocEmpty(gof.Op):
         return [node.inputs]
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def do_constant_folding(self, node):
         return False

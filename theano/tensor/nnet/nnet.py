@@ -429,6 +429,10 @@ class Softmax(gof.Op):
             raise ValueError('x must be 1-d or 2-d tensor of floats. Got %s' %
                              x.type)
         if x.ndim == 1:
+            warnings.warn("DEPRECATION: If x is a vector, Softmax will not automatically pad x "
+                          "anymore in next releases. If you need it, please do it manually. The "
+                          "vector case is gonna be supported soon and the output will be a vector.",
+                          stacklevel=4)
             x = tensor.shape_padleft(x, n_ones=1)
 
         return Apply(self, [x], [x.type()])
@@ -613,6 +617,10 @@ class LogSoftmax(gof.Op):
             raise ValueError('x must be 1-d or 2-d tensor of floats. Got %s' %
                              x.type)
         if x.ndim == 1:
+            warnings.warn("DEPRECATION: If x is a vector, LogSoftmax will not automatically pad x "
+                          "anymore in next releases. If you need it, please do it manually. The "
+                          "vector case is gonna be supported soon and the output will be a vector.",
+                          stacklevel=4)
             x = tensor.shape_padleft(x, n_ones=1)
 
         return Apply(self, [x], [x.type()])

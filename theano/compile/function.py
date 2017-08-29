@@ -10,10 +10,8 @@ import traceback as tb
 import re
 
 from six import string_types
-from theano.compile.io import In
 from theano.compile.function_module import orig_function
 from theano.compile.pfunc import pfunc
-import numpy as np
 import warnings
 from theano import compat
 
@@ -286,16 +284,9 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                         "input.")
 
     # compute some features of the arguments:
-    uses_tuple = np.any([isinstance(i, (list, tuple)) for i in inputs])
+    uses_tuple = any([isinstance(i, (list, tuple)) for i in inputs])
     uses_updates = bool(updates)
     uses_givens = bool(givens)
-
-    # See if we have any mutable / borrow inputs
-    check_for_aliased_inputs = False
-    for i in inputs:
-        if (isinstance(i, In) and ((hasattr(i, 'borrow') and i.borrow) or
-                                   (hasattr(i, 'mutable') and i.mutable))):
-            check_for_aliased_inputs = True
 
     if uses_tuple:
         # we must use old semantics in this case.
@@ -324,7 +315,4 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                    on_unused_input=on_unused_input,
                    profile=profile,
                    output_keys=output_keys)
-    # We need to add the flag check_aliased inputs if we have any mutable or
-    # borrowed used defined inputs
-    fn._check_for_aliased_inputs = check_for_aliased_inputs
     return fn

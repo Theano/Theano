@@ -429,7 +429,7 @@ def _ldflags(ldflags_str, libs, flags, libs_dir, include_dir):
                         found_dyn = True
         if not found_dyn and dirs:
             _logger.warning(
-                "We did not found a dynamic library into the "
+                "We did not find a dynamic library in the "
                 "library_dir of the library we use for blas. If you use "
                 "ATLAS, make sure to compile it with dynamics library.")
 

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-from theano import Op, Apply, config
+from theano import Op, Apply
 from theano.gof import ParamsType
 from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor as T
@@ -45,7 +45,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                    context_name=ten4.type.context_name)()])
 
     def c_code_cache_version(self):
-        return (13,)
+        return (14,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -284,12 +284,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                 %(fail)s;
             }
         """ % dict(fail=sub['fail'])
-        sync = ""
-        if config.gpuarray.sync:
-            sync = """
-            err = GpuArray_sync(&%(z)s->ga);
-            %(err_check)s
-            """ % dict(z=out[0], err_check=err_check)
+
         # NB: To reduce C code variability:
         # For itemsize_ten4, I use GpuArray_ITEMSIZE(&ten4->ga) instead of np.dtype(node.inputs[0].dtype).itemsize
         # For itemsize_z, I use itemsize_ten4, as ten4 and z have same type properties (deduced from make_node)
@@ -563,13 +558,11 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                      (void *)&%(z)s->ga.offset};
             err = GpuKernel_call(fptr, 3, n_blocks, threads_per_block, 0, kernel_params);
             %(err_check)s
-            %(sync)s
         } // END NESTED SCOPE
         """ % dict(ten4=inp[0], neib_shape=inp[1], neib_step=inp[2], z=out[0],
                    dtype_neib_shape=node.inputs[1].dtype,
                    dtype_neib_step=node.inputs[2].dtype,
                    err_check=err_check,
-                   sync=sync,
                    name=name,
                    params=sub['params'],
                    fail=sub['fail'])

@@ -8,7 +8,7 @@ from six.moves import xrange
 import theano
 from theano import gof
 from theano.compat import izip
-from theano.configparser import change_flags
+from theano import change_flags
 from theano.gof import Apply, Op, COp, OpenMPOp, ParamsType
 from theano import scalar
 from theano.scalar import get_scalar_type

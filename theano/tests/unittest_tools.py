@@ -4,7 +4,8 @@ from functools import wraps
 import logging
 import sys
 import unittest
-from nose_parameterized import parameterized
+from parameterized import parameterized
+from nose.tools import assert_raises
 
 from six import integer_types
 from six.moves import StringIO
@@ -21,7 +22,7 @@ import numpy as np
 
 import theano
 import theano.tensor as T
-from theano.configparser import config
+from theano import config
 try:
     from nose.plugins.skip import SkipTest
 except ImportError:
@@ -445,3 +446,16 @@ class AttemptManyTimes:
                         current_seed = str(int(current_seed) + 1)
 
         return attempt_multiple_times
+
+
+def assertFailure_fast(f):
+    """A Decorator to handle the test cases that are failing when
+    THEANO_FLAGS =cycle_detection='fast'.
+    """
+    if theano.config.cycle_detection == 'fast':
+        def test_with_assert(*args, **kwargs):
+            with assert_raises(Exception):
+                f(*args, **kwargs)
+        return test_with_assert
+    else:
+        return f

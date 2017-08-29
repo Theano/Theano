@@ -1,0 +1,33 @@
+.. _libdoc_gpuarray_ctc:
+
+================================================================================
+:mod:`theano.gpuarray.ctc` -- Connectionist Temporal Classification (CTC) loss
+================================================================================
+
+
+.. warning::
+
+    This is not the recomanded user interface. Use :ref:`the CPU
+    interface <libdoc_tensor_nnet_ctc>`. It will get moved
+    automatically to the GPU.
+
+.. note::
+
+    Usage of connectionist temporal classification (CTC) loss Op, requires that
+    the `warp-ctc <https://github.com/baidu-research/warp-ctc>`_ library is
+    available. In case the warp-ctc library is not in your compiler's library path,
+    the ``config.ctc.root`` configuration option must be appropriately set to the
+    directory containing the warp-ctc library files.
+
+.. note::
+
+    Unfortunately, Windows platforms are not yet supported by the underlying
+    library.
+
+.. module:: theano.gpuarray.ctc
+   :platform: Unix
+   :synopsis: Connectionist temporal classification (CTC) loss Op, using the warp-ctc library
+.. moduleauthor:: `João Victor Risso <https://github.com/joaovictortr>`_
+
+.. autofunction:: theano.gpuarray.ctc.gpu_ctc
+.. autoclass:: theano.gpuarray.ctc.GpuConnectionistTemporalClassification

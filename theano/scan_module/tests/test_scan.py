@@ -886,6 +886,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(numpy_out, theano_out)
 
     # simple rnn ; compute inplace version 1
+    @utt.assertFailure_fast
     def test_inplace1(self):
         rng = np.random.RandomState(utt.fetch_seed())
         vW = asarrayX(np.random.uniform())
@@ -950,6 +951,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(theano_x1, numpy_x1)
 
     # simple rnn ; compute inplace version 2
+    @utt.assertFailure_fast
     def test_inplace2(self):
         rng = np.random.RandomState(utt.fetch_seed())
         vW = asarrayX(np.random.uniform())
@@ -1021,6 +1023,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(theano_x0, numpy_x0)
         utt.assert_allclose(theano_x1, numpy_x1)
 
+    @utt.assertFailure_fast
     def test_inplace3(self):
         rng = np.random.RandomState(utt.fetch_seed())
 
@@ -2790,7 +2793,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(expected_output, scan_output)
         utt.assert_allclose(expected_output, jacobian_outputs)
 
-    @theano.configparser.change_flags(on_opt_error='raise')
+    @theano.change_flags(on_opt_error='raise')
     def test_pushout_seqs2(self):
         # This test for a bug with PushOutSeqScan that was reported on the
         # theano-user mailing list where the optimization raised an exception
@@ -2807,7 +2810,7 @@ class T_Scan(unittest.TestCase):
         # an exception being raised
         theano.function([x], outputs, updates=updates)
 
-    @theano.configparser.change_flags(on_opt_error='raise')
+    @theano.change_flags(on_opt_error='raise')
     def test_pushout_nonseq(self):
         # Test case originally reported by Daniel Renshaw. The crashed occured
         # during the optimization PushOutNonSeqScan when it attempted to
@@ -5488,6 +5491,25 @@ class TestGradUntil(unittest.TestCase):
 
         utt.assert_allclose(theano_output, self.numpy_output)
         utt.assert_allclose(theano_gradient, self.numpy_gradient)
+
+    def test_grad_until_ndim_greater_one(self):
+        def tile_array(inp):
+            n_cols = 5
+            return np.tile(inp.reshape((-1, 1)), (1, n_cols))
+
+        X = tensor.matrix(name='x')
+        arr = tile_array(self.seq)
+        r, _ = theano.scan(lambda x, u: (x * x,
+                                         theano.scan_module.until(
+                                             tensor.all(x > u))),
+                           sequences=X,
+                           non_sequences=[self.threshold])
+        g = theano.grad(r.sum(), X)
+        f = theano.function([X, self.threshold], [r, g])
+        theano_output, theano_gradient = f(arr, 5)
+
+        utt.assert_allclose(theano_output, tile_array(self.numpy_output))
+        utt.assert_allclose(theano_gradient, tile_array(self.numpy_gradient))
 
     def test_grad_until_and_truncate(self):
         n = 3

@@ -10,7 +10,6 @@ import copy
 import sys
 import gc
 import logging
-import six.moves.copyreg as copyreg
 from itertools import chain, product as itertools_product
 from theano.compat import izip
 
@@ -28,6 +27,7 @@ from theano.compile.function_module import (
     std_fgraph)
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard, _output_guard
+from theano import change_flags
 
 
 __docformat__ = "restructuredtext en"
@@ -2188,7 +2188,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                  profile=None,
                  on_unused_input=None,
                  fgraph=None,  # If present the optimized graph. we ignore it.
-                 output_keys=None):
+                 output_keys=None,
+                 name=None):
         self.profile = profile
         optimizer = mode.optimizer
         # Handle the case where inputs and/or outputs is a single
@@ -2227,17 +2228,11 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                 inputs, outputs, accept_inplace)
             fgraph.equivalence_tracker = equivalence_tracker
 
-            # optimize the fgraph
-            compute_test_value_orig = theano.config.compute_test_value
-            try:
-                theano.config.compute_test_value = \
-                    theano.config.compute_test_value_opt
+            with change_flags(compute_test_value=config.compute_test_value_opt):
                 optimizer(fgraph)
 
                 theano.compile.function_module.insert_deepcopy(
                     fgraph, inputs, list(chain(outputs, additional_outputs)))
-            finally:
-                theano.config.compute_test_value = compute_test_value_orig
 
             if i == 0:
                 fgraph0 = fgraph
@@ -2277,24 +2272,26 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                               "of", len(li), "events was stable.",
                               file=sys.stderr)
         self.fgraph = fgraph
-        destroy_handler_added = False
-        for feature in fgraph._features:
-            if isinstance(feature, gof.DestroyHandler):
-                destroy_handler_added = True
-                break
-        if not destroy_handler_added:
-            fgraph.attach_feature(gof.DestroyHandler())
-        for o in fgraph.outputs:
-            try:
-                fgraph.replace_validate(o, _output_guard(o), reason='output_guard')
-                raise Exception("Output variable %s required output_guard, "
-                                "how was this output left unprotected against "
-                                "destructive operations?" % o)
+        if theano.config.cycle_detection == 'regular':
+            destroy_handler_added = False
+            for feature in fgraph._features:
+                if isinstance(feature, gof.DestroyHandler):
+                    destroy_handler_added = True
+                    break
+            if not destroy_handler_added:
+                fgraph.attach_feature(gof.DestroyHandler())
+            for o in fgraph.outputs:
+                try:
+                    with change_flags(compute_test_value=config.compute_test_value_opt):
+                        fgraph.replace_validate(o, _output_guard(o), reason='output_guard')
+                    raise Exception("Output variable %s required output_guard, "
+                                    "how was this output left unprotected against "
+                                    "destructive operations?" % o)
 
-            except gof.InconsistencyError:
-                # This output is already impossible to destroy.
-                # No guard necessary
-                pass
+                except gof.InconsistencyError:
+                    # This output is already impossible to destroy.
+                    # No guard necessary
+                    pass
 
         linker = _Linker(self)
 
@@ -2324,6 +2321,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.mode = mode
         self.on_unused_input = on_unused_input  # Used for the pickling/copy
         self.output_keys = output_keys
+        self.name = name
 
     def create(self, defaults=None, trustme=False, storage_map=None):
         """
@@ -2410,13 +2408,10 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                                              storage_map=storage_map)
         fn = self.function_builder(_fn, _i, _o, self.indices,
                                    self.outputs, defaults, self.unpack_single,
-                                   self.return_none, self.output_keys, self)
+                                   self.return_none, self.output_keys, self,
+                                   name=self.name)
         return fn
 
-
-def _pickle_DebugMode_Maker(maker):
-    raise NotImplementedError('DebugMode is not picklable (yet)')
-copyreg.pickle(_Maker, _pickle_DebugMode_Maker)
 
 ########################
 #

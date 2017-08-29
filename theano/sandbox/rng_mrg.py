@@ -754,7 +754,7 @@ class MRG_RandomStreams(object):
         self.rstate = multMatVect(self.rstate, A1p134, M1, A2p134, M2)
         assert self.rstate.dtype == np.int32
 
-    @theano.configparser.change_flags(compute_test_value='off')
+    @theano.change_flags(compute_test_value='off')
     def get_substream_rstates(self, n_streams, dtype, inc_rstate=True):
         # TODO : need description for parameter and return
         """

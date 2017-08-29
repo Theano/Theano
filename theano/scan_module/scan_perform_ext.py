@@ -66,7 +66,7 @@ except ImportError:
                 raise ImportError("no c compiler, can't compile cython code")
             _logger.info("Compiling C code for scan")
             dirname = 'scan_perform'
-            cfile = os.path.join(theano.__path__[0], 'scan_module',
+            cfile = os.path.join(theano.__path__[0], 'scan_module', 'c_code',
                                  'scan_perform.c')
             if not os.path.exists(cfile):
                 # This can happen in not normal case. We just

@@ -132,6 +132,11 @@ class Supervisor:
         self.protected = list(protected)
 
     def validate(self, fgraph):
+        if config.cycle_detection == 'fast' and hasattr(fgraph, 'has_destroyers'):
+            if fgraph.has_destroyers(self.protected):
+                raise gof.InconsistencyError("Trying to destroy a protected"
+                                             "Variable.")
+            return True
         if not hasattr(fgraph, 'destroyers'):
             return True
         for r in self.protected + list(fgraph.outputs):
@@ -190,7 +195,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
                    for spec, input in zip(input_specs, fgraph.inputs)
                    if not (spec.mutable or
                            (hasattr(fgraph, 'destroyers') and
-                            fgraph.destroyers(input)))))
+                            fgraph.has_destroyers([input])))))
 
     # If named nodes are replaced, keep the name
     for feature in std_fgraph.features:
@@ -359,7 +364,8 @@ class Function(object):
     """
 
     def __init__(self, fn, input_storage, output_storage, indices, outputs,
-                 defaults, unpack_single, return_none, output_keys, maker):
+                 defaults, unpack_single, return_none, output_keys, maker,
+                 name=None):
         self.fn = fn
         self.input_storage = input_storage
         self.output_storage = output_storage
@@ -371,9 +377,22 @@ class Function(object):
         self.maker = maker
         self.profile = None  # reassigned in FunctionMaker.create
         self.trust_input = False  # If True, we don't check the input parameter
-        self.name = None
+        self.name = name
         self.nodes_with_inner_function = []
         self.output_keys = output_keys
+
+        # See if we have any mutable / borrow inputs
+        # TODO: this only need to be set if there is more then 1 input
+        self._check_for_aliased_inputs = False
+        for i in maker.inputs:
+            # If the input is a shared variable, the memory region is
+            # under Theano control and so we don't need to check if it
+            # is aliased as we never do that.
+            if (isinstance(i, In) and not i.shared and
+                (getattr(i, 'borrow', False) or
+                 getattr(i, 'mutable', False))):
+                self._check_for_aliased_inputs = True
+                break
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
@@ -821,6 +840,7 @@ class Function(object):
                 self[k] = arg
 
         if (not self.trust_input and
+            # The getattr is only needed for old pickle
                 getattr(self, '_check_for_aliased_inputs', True)):
             # Collect aliased inputs among the storage space
             args_share_memory = []
@@ -836,9 +856,9 @@ class Function(object):
                              in args_share_memory[j]],
                             [self.input_storage[k].storage[0] for k
                              in args_share_memory[j]])
-                        if np.any([(var.type is i_var.type and
-                                  var.type.may_share_memory(val, i_val))
-                                  for (var, val) in group_j]):
+                        if any([(var.type is i_var.type and
+                                 var.type.may_share_memory(val, i_val))
+                                for (var, val) in group_j]):
 
                             is_aliased = True
                             args_share_memory[j].append(i)
@@ -847,13 +867,13 @@ class Function(object):
                     if not is_aliased:
                         args_share_memory.append([i])
 
-                # Check for groups of more than one argument that share memory
-                for group in args_share_memory:
-                    if len(group) > 1:
-                        # copy all but the first
-                        for idx in group[1:]:
-                            self.input_storage[i].storage[0] = copy.copy(
-                                self.input_storage[i].storage[0])
+            # Check for groups of more than one argument that share memory
+            for group in args_share_memory:
+                if len(group) > 1:
+                    # copy all but the first
+                    for j in group[1:]:
+                        self.input_storage[j].storage[0] = copy.copy(
+                            self.input_storage[j].storage[0])
 
         # Check if inputs are missing, or if inputs were set more than once, or
         # if we tried to provide inputs that are supposed to be implicit.
@@ -1006,6 +1026,15 @@ class Function(object):
         """
         return [i.variable for i in self.maker.inputs if i.implicit]
 
+    def sync_shared(self):
+        if (hasattr(theano, "gpuarray") and
+                theano.gpuarray.pygpu_activated):
+            import pygpu
+            for i in self.maker.fgraph.update_mapping.values():
+                inp = self.input_storage[i]
+                if isinstance(inp.data, pygpu.gpuarray.GpuArray):
+                    inp.data.sync()
+
 
 # pickling/deepcopy support for Function
 def _pickle_Function(f):
@@ -1038,19 +1067,25 @@ def _pickle_Function(f):
                                             (str(d_i), str(d_j)))
                         else:
                             raise AliasedMemoryError(d_i, d_j)
-    rval = (_constructor_Function, (f.maker, input_storage, inputs_data))
+    # The user can override trust_input. Our doc tell that.  We should
+    # not do that anymore and make sure the Maker have all the
+    # information needed.
+    rval = (_constructor_Function,
+            (f.maker, input_storage, inputs_data, f.trust_input))
     return rval
 
 
-def _constructor_Function(maker, input_storage, inputs_data):
+def _constructor_Function(maker, input_storage, inputs_data, trust_input=False):
     if not theano.config.unpickle_function:
         return None
+
     f = maker.create(input_storage, trustme=True)
     assert len(f.input_storage) == len(inputs_data)
     for container, x in zip(f.input_storage, inputs_data):
         assert (container.data is x) or \
             (isinstance(x, np.ndarray) and (container.data == x).all()) or \
             (container.data == x)
+    f.trust_input = trust_input
     return f
 
 copyreg.pickle(Function, _pickle_Function)
@@ -1085,7 +1120,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
 
     # We can't use fgraph.inputs as this don't include Constant Value.
     all_graph_inputs = gof.graph.inputs(fgraph.outputs)
-    has_destroyers = hasattr(fgraph, 'get_destroyers_of')
+    has_destroyers_attr = hasattr(fgraph, 'has_destroyers')
 
     for i in xrange(len(fgraph.outputs)):
         views_of_output_i = set()
@@ -1116,7 +1151,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
                 #    being updated
                 if input_j in updated_fgraph_inputs:
                     continue
-                if input_j in views_of_output_i and not (has_destroyers and fgraph.get_destroyers_of(input_j)):
+                if input_j in views_of_output_i and not (has_destroyers_attr and fgraph.has_destroyers([input_j])):
                     # We don't put deep_copy_op if the input and the
                     # output have borrow==True
                     if input_j in fgraph.inputs:
@@ -1176,6 +1211,9 @@ class FunctionMaker(object):
         - 'warn': log a warning
         - 'ignore': do not do anything
         - None: Use the value in the Theano flags on_unused_input.
+    name : str
+        An optional name for this function. If used, the profile mode will
+        print the time spent in this function.
 
     """
 
@@ -1390,7 +1428,12 @@ class FunctionMaker(object):
     def __init__(self, inputs, outputs,
                  mode=None, accept_inplace=False, function_builder=Function,
                  profile=None, on_unused_input=None, fgraph=None,
-                 output_keys=None):
+                 output_keys=None, name=None):
+        # Save the provided mode, not the instanciated mode.
+        # The instanciated mode don't pickle and if we unpickle a Theano
+        # function and it get re-compiled, we want the current optimizer to be
+        # used, not the optimizer when it was saved.
+        self.mode = mode
         mode = theano.compile.mode.get_mode(mode)
 
         # Assert old way of working isn't used
@@ -1529,18 +1572,18 @@ class FunctionMaker(object):
             # hacky thing so VMLinker knows about updates
             self.linker.accept_var_updates(
                 fgraph_updated_vars(fgraph, inputs))
-
+        fgraph.name = name
         self.indices = indices
         self.inputs = inputs
         self.expanded_inputs = inputs
         self.outputs = outputs
         self.unpack_single = unpack_single
         self.return_none = return_none
-        self.mode = mode
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
         self.on_unused_input = on_unused_input  # Used for the pickling/copy
         self.output_keys = output_keys
+        self.name = name
 
         self.required = [(i.value is None) for i in self.inputs]
         self.refeed = [
@@ -1687,33 +1730,22 @@ class FunctionMaker(object):
 
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs,
                                    defaults, self.unpack_single,
-                                   self.return_none, self.output_keys, self)
+                                   self.return_none, self.output_keys, self,
+                                   name=self.name)
+
         fn.profile = self.profile
         return fn
 
 
-def _pickle_FunctionMaker(self):
-    kwargs = dict(
-        inputs=self.inputs,
-        outputs=self.orig_outputs,
-        fgraph=self.fgraph,
-        mode=self.mode,
-        accept_inplace=self.accept_inplace,
-        function_builder=self.function_builder,
-        profile=self.profile,
-        on_unused_input=self.on_unused_input)
-    return (_constructor_FunctionMaker, (kwargs,))
-
-
 def _constructor_FunctionMaker(kwargs):
+    # Needed for old pickle
+    # Old pickle have at least the problem that output_keys where not saved.
     if theano.config.unpickle_function:
         if theano.config.reoptimize_unpickled_function:
             del kwargs['fgraph']
         return FunctionMaker(**kwargs)
     else:
         return None
-
-copyreg.pickle(FunctionMaker, _pickle_FunctionMaker)
 
 __checkers = []
 
@@ -1804,8 +1836,9 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   accept_inplace=accept_inplace,
                   profile=profile,
                   on_unused_input=on_unused_input,
-                  output_keys=output_keys)
-        with theano.configparser.change_flags(compute_test_value="off"):
+                  output_keys=output_keys,
+                  name=name)
+        with theano.change_flags(compute_test_value="off"):
             fn = m.create(defaults)
     finally:
         t2 = time.time()
@@ -1814,8 +1847,6 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
             # TODO: append
             profile.nb_nodes = len(fn.maker.fgraph.apply_nodes)
 
-    fn.name = name
-    fn.maker.fgraph.name = name
     return fn
 
 

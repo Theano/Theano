@@ -8,7 +8,7 @@ import numpy as np
 
 import theano
 from six import string_types, iteritems
-from theano.configparser import config
+from theano import config
 from theano.gof.utils import flatten
 
 

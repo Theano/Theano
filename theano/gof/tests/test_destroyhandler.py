@@ -11,8 +11,9 @@ from theano.gof.opt import (OpKeyOptimizer, PatternSub, NavigatorOptimizer,
 from theano.gof import destroyhandler
 from theano.gof.fg import FunctionGraph, InconsistencyError
 from theano.gof.toolbox import ReplaceValidate
+from theano.tests.unittest_tools import assertFailure_fast
 
-from theano.configparser import change_flags
+from theano import change_flags
 
 from copy import copy
 
@@ -169,6 +170,7 @@ def test_misc():
 ######################
 
 
+@assertFailure_fast
 def test_aliased_inputs_replacement():
     x, y, z = inputs()
     tv = transpose_view(x)
@@ -200,6 +202,7 @@ def test_indestructible():
     consistent(g)
 
 
+@assertFailure_fast
 def test_usage_loop_through_views_2():
     x, y, z = inputs()
     e0 = transpose_view(transpose_view(sigmoid(x)))
@@ -210,6 +213,7 @@ def test_usage_loop_through_views_2():
     inconsistent(g)  # we cut off the path to the sigmoid
 
 
+@assertFailure_fast
 def test_destroyers_loop():
     # AddInPlace(x, y) and AddInPlace(y, x) should not coexist
     x, y, z = inputs()
@@ -259,6 +263,7 @@ def test_aliased_inputs2():
     inconsistent(g)
 
 
+@assertFailure_fast
 def test_aliased_inputs_tolerate():
     x, y, z = inputs()
     e = add_in_place_2(x, x)
@@ -273,6 +278,7 @@ def test_aliased_inputs_tolerate2():
     inconsistent(g)
 
 
+@assertFailure_fast
 def test_same_aliased_inputs_ignored():
     x, y, z = inputs()
     e = add_in_place_3(x, x)
@@ -280,6 +286,7 @@ def test_same_aliased_inputs_ignored():
     consistent(g)
 
 
+@assertFailure_fast
 def test_different_aliased_inputs_ignored():
     x, y, z = inputs()
     e = add_in_place_3(x, transpose_view(x))
@@ -314,6 +321,7 @@ def test_indirect():
     inconsistent(g)
 
 
+@assertFailure_fast
 def test_indirect_2():
     x, y, z = inputs()
     e0 = transpose_view(x)
@@ -325,6 +333,7 @@ def test_indirect_2():
     consistent(g)
 
 
+@assertFailure_fast
 def test_long_destroyers_loop():
     x, y, z = inputs()
     e = dot(dot(add_in_place(x, y),
@@ -366,6 +375,7 @@ def test_multi_destroyers():
         pass
 
 
+@assertFailure_fast
 def test_multi_destroyers_through_views():
     x, y, z = inputs()
     e = dot(add(transpose_view(z), y), add(z, x))
@@ -408,6 +418,7 @@ def test_usage_loop_through_views():
     consistent(g)
 
 
+@assertFailure_fast
 def test_usage_loop_insert_views():
     x, y, z = inputs()
     e = dot(add_in_place(x, add(y, z)),
@@ -442,6 +453,7 @@ def test_value_repl_2():
     consistent(g)
 
 
+@assertFailure_fast
 def test_multiple_inplace():
     # this tests issue #5223
     # there were some problems with Ops that have more than

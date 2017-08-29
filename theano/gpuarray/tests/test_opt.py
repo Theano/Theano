@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
-import numpy as np
 from nose.tools import assert_raises
+import numpy as np
 
 import theano
 from theano import tensor
@@ -22,6 +22,9 @@ from ..subtensor import GpuSubtensor
 from ..linalg import GpuCusolverSolve, cusolver_available, GpuCholesky
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, SkipTest
+import unittest
+from theano.tensor.nnet import abstract_conv
+from theano.gpuarray import dnn, blas
 
 
 def test_local_assert():
@@ -280,7 +283,7 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
         z = tensor.constant(2.)
 
         a = theano.ifelse.ifelse(x, y, z)
-        with theano.configparser.change_flags(on_opt_error='raise'):
+        with theano.change_flags(on_opt_error='raise'):
             theano.function([x], [a], mode=mode_with_gpu)
 
 
@@ -513,7 +516,7 @@ def test_not_useless_scalar_gpuelemwise():
     # We don't want to move elemwise on scalar on the GPU when the
     # result will not be used on the GPU!
 
-    with theano.configparser.change_flags(warn_float64='ignore'):
+    with theano.change_flags(warn_float64='ignore'):
         X = tensor.fmatrix()
         x = np.random.randn(32, 32).astype(np.float32)
         m1 = theano.shared(np.random.randn(32, 32).astype(np.float32))
@@ -582,6 +585,7 @@ def test_no_complex():
                     mode=mode_with_gpu)
 
 
+@utt.assertFailure_fast
 def test_local_lift_solve():
     if not cusolver_available:
         raise SkipTest('No cuSolver')
@@ -616,6 +620,7 @@ def test_gpu_solve_not_inplace():
     utt.assert_allclose(f_cpu(A_val, b_val), f_gpu(A_val, b_val))
 
 
+@utt.assertFailure_fast
 def test_local_lift_cholesky():
     if not cusolver_available:
         raise SkipTest('No cuSolver')
@@ -699,3 +704,288 @@ def test_crossentropycategorical1hot_lifter():
                    for n in f.maker.fgraph.apply_nodes)
     f(rng.uniform(0.1, 0.9, (13, 5)).astype(theano.config.floatX),
       rng.randint(5, size=(13,)))
+
+
+class Conv_opt_test(unittest.TestCase):
+
+    def optimizer_2d(self, input_shapes, direction, include_tags, exclude_tags,
+                     op, border_mode='valid', subsample=(1, 1), filter_dilation=(1, 1)):
+
+        inp1 = theano.shared(np.random.random(input_shapes[0]).astype(theano.config.floatX))
+        inp2 = theano.shared(np.random.random(input_shapes[1]).astype(theano.config.floatX))
+        if(direction == 0):
+            conv_op = abstract_conv.conv2d(inp1,
+                                           inp2,
+                                           input_shapes[0],
+                                           input_shapes[1],
+                                           border_mode=border_mode,
+                                           subsample=subsample,
+                                           filter_dilation=filter_dilation)
+
+        if(direction == 1):
+            conv_op = abstract_conv.conv2d_grad_wrt_weights(inp1,
+                                                            inp2,
+                                                            input_shapes[2],
+                                                            input_shapes[0],
+                                                            border_mode=border_mode,
+                                                            subsample=subsample,
+                                                            filter_dilation=filter_dilation)
+
+        if(direction == 2):
+            conv_op = abstract_conv.conv2d_grad_wrt_inputs(inp1,
+                                                           inp2,
+                                                           input_shapes[2],
+                                                           input_shapes[1],
+                                                           border_mode=border_mode,
+                                                           subsample=subsample,
+                                                           filter_dilation=filter_dilation)
+
+        theano.config.metaopt.optimizer_including = include_tags
+        theano.config.metaopt.optimizer_excluding = exclude_tags
+        mode = mode_with_gpu.including('conv_meta')
+
+        ref_func = theano.function([], conv_op, mode=mode_with_gpu)
+        # All meta optimizer compile a new function. This need to know
+        # the current linker, but this information is not available,
+        # so it use the default mode.
+        with theano.change_flags(mode=mode):
+            conv_func = theano.function([], conv_op, mode=mode)
+        assert any([isinstance(node.op, op)
+                    for node in conv_func.maker.fgraph.toposort()])
+        utt.assert_allclose(conv_func(), ref_func())
+
+    def optimizer_3d(self, input_shapes, direction, include_tags, exclude_tags,
+                     op, border_mode='valid', subsample=(1, 1, 1),
+                     filter_dilation=(1, 1, 1)):
+        inp1 = theano.shared(np.random.random(input_shapes[0]).astype(theano.config.floatX))
+        inp2 = theano.shared(np.random.random(input_shapes[1]).astype(theano.config.floatX))
+        if(direction == 0):
+            conv_op = abstract_conv.conv3d(inp1,
+                                           inp2,
+                                           input_shapes[0],
+                                           input_shapes[1],
+                                           border_mode=border_mode,
+                                           subsample=subsample,
+                                           filter_dilation=filter_dilation)
+
+        if(direction == 1):
+            conv_op = abstract_conv.conv3d_grad_wrt_weights(inp1,
+                                                            inp2,
+                                                            input_shapes[2],
+                                                            input_shapes[0],
+                                                            border_mode=border_mode,
+                                                            subsample=subsample,
+                                                            filter_dilation=filter_dilation)
+
+        if(direction == 2):
+            conv_op = abstract_conv.conv3d_grad_wrt_inputs(inp1,
+                                                           inp2,
+                                                           input_shapes[2],
+                                                           input_shapes[1],
+                                                           border_mode=border_mode,
+                                                           subsample=subsample,
+                                                           filter_dilation=filter_dilation)
+
+        theano.config.metaopt.optimizer_including = include_tags
+        theano.config.metaopt.optimizer_excluding = exclude_tags
+        mode = mode_with_gpu.including('conv_meta')
+
+        ref_func = theano.function([], conv_op, mode=mode_with_gpu)
+        # All meta optimizer compile a new function. This need to know
+        # the current linker, but this information is not available,
+        # so it use the default mode.
+        with theano.change_flags(mode=mode):
+            conv_func = theano.function([], conv_op, mode=mode)
+        if op is not None:
+            assert any([isinstance(node.op, op)
+                       for node in conv_func.maker.fgraph.toposort()])
+        utt.assert_allclose(conv_func(), ref_func())
+
+    def test_optimizers_2d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
+
+        imshp2d = [(2, 3, 5, 5), (2, 2, 5, 7), (2, 1, 3, 3)]
+        kshp2d = [(4, 3, 3, 3), (3, 2, 3, 5), (4, 1, 1, 1)]
+        tshp2d = [(2, 4, 3, 3), (2, 3, 3, 3), (2, 4, 3, 3)]
+
+        for imshp, kshp, tshp in zip(imshp2d, kshp2d, tshp2d):
+            # forward passes
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM)
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              'alternative',
+                              'conv_dnn:default',
+                              blas.GpuCorrMM_gradWeights)
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConv)
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              'alternative',
+                              'conv_gemm:default',
+                              dnn.GpuDnnConvGradW)
+            # backwards wrt weights
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM_gradWeights)
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              'alternative',
+                              'conv_dnn:default',
+                              blas.GpuCorrMM)
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradW)
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              'alternative',
+                              'conv_gemm:default',
+                              dnn.GpuDnnConv)
+            # backwards wrt to inputs
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM_gradInputs)
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              'alternative',
+                              'conv_dnn:default',
+                              blas.GpuCorrMM)
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradI)
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              'alternative',
+                              'conv_gemm:default',
+                              dnn.GpuDnnConv)
+
+    def test_optimizers_3d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
+
+        imshp3d = [(2, 3, 5, 5, 5), (2, 2, 5, 7, 5), (2, 1, 3, 3, 3)]
+        kshp3d = [(4, 3, 3, 3, 3), (3, 2, 3, 5, 3), (4, 1, 1, 1, 1)]
+        tshp3d = [(2, 4, 3, 3, 3), (2, 3, 3, 3, 3), (2, 4, 3, 3, 3)]
+
+        for imshp, kshp, tshp in zip(imshp3d, kshp3d, tshp3d):
+            # forwards passes
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_dnn:alternative:conv3d2d',
+                              blas.GpuCorr3dMM)
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              'alternative',
+                              'conv_dnn:default:conv3d2d',
+                              blas.GpuCorr3dMM_gradWeights)
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              'conv3d2d',
+                              'default',
+                              None)
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              'alternative',
+                              'conv_gemm:default:conv3d2d',
+                              dnn.GpuDnnConvGradW)
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_gemm:alternative:conv3d2d',
+                              dnn.GpuDnnConv)
+            # backward pass wrt weight
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorr3dMM_gradWeights)
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              'alternative',
+                              'conv_dnn:default',
+                              blas.GpuCorr3dMM)
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              'alternative',
+                              'conv_gemm:default',
+                              dnn.GpuDnnConv)
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradW)
+
+            # backward pass wrt inputs
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorr3dMM_gradInputs)
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              'alternative',
+                              'conv_dnn:default',
+                              blas.GpuCorr3dMM)
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              'alternative',
+                              'conv_gemm:default',
+                              dnn.GpuDnnConv)
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradI)
+
+    def test_optimizers_non_default(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
+        # conv2d forward pass with Non-default border_mode and filter_dilation
+        imshp2d = [(2, 3, 5, 5), (4, 2, 5, 5)]
+        kshp2d = [(4, 3, 3, 3), (3, 2, 3, 3)]
+        filter_dilation = [(1, 1), (2, 2)]
+        for imshp, kshp, fdil in zip(imshp2d, kshp2d, filter_dilation):
+            self.optimizer_2d([imshp, kshp], 0,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            self.optimizer_2d([imshp, kshp], 0,
+                              'alternative',
+                              'conv_dnn:default',
+                              blas.GpuCorrMM_gradInputs,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            self.optimizer_2d([imshp, kshp], 0,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConv,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            self.optimizer_2d([imshp, kshp], 0,
+                              'alternative',
+                              'conv_gemm:default',
+                              dnn.GpuDnnConvGradI,
+                              border_mode='full',
+                              filter_dilation=fdil)
+        # conv3d forward pass with Non-default border_mode and filter_dilation
+        imshp3d = [(2, 3, 5, 5, 5), (4, 2, 5, 5, 5)]
+        kshp3d = [(4, 3, 3, 3, 3), (3, 2, 3, 3, 3)]
+        filter_dilation = [(1, 1, 1), (2, 2, 2)]
+        for imshp, kshp, fdil in zip(imshp3d, kshp3d, filter_dilation):
+            self.optimizer_3d([imshp, kshp], 0,
+                              '',
+                              'conv_dnn:alternative:conv3d2d',
+                              blas.GpuCorr3dMM,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            self.optimizer_3d([imshp, kshp], 0,
+                              'alternative',
+                              'conv_dnn:default:conv3d2d',
+                              blas.GpuCorr3dMM_gradInputs,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            self.optimizer_3d([imshp, kshp], 0,
+                              '',
+                              'conv_gemm:alternative:conv3d2d',
+                              dnn.GpuDnnConv,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            self.optimizer_3d([imshp, kshp], 0,
+                              'alternative',
+                              'conv_gemm:default:conv3d2d',
+                              dnn.GpuDnnConvGradI,
+                              border_mode='full',
+                              filter_dilation=fdil)
