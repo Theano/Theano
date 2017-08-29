@@ -199,6 +199,7 @@ class TestTransformer(unittest.TestCase):
                                  op_gpu, mode=mode_with_gpu)
         # Evaluate GPU function
         out_gpu = fn_gpu(inp, theta, scale_width, scale_height)
+        out_gpu = np.asarray(out_gpu)
 
         for border_mode in ('nearest', 'mirror', 'wrap'):
             # Setup spatial transformer on the CPU
