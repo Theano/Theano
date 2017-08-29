@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 import os.path
-from six import integer_types
 
 import theano
 from theano import Apply, config, Op
@@ -17,22 +16,18 @@ from .opt_util import inplace_allocempty
 
 try:
     import pygpu
-    from pygpu import blas
 except ImportError as e:
     # To make sure theano is importable
     pass
 
-
+#
 class SortGenOp(Op):
     def c_headers(self):
-        return ['<blas_api.h>', '<numpy_compat.h>', '<c_code/gpuarray_helper.h>',
-                '<gpuarray/sort.h>']
+        return ['<blas_api.h>', '<numpy_compat.h>', 
+                '<c_code/gpuarray_helper.h>', '<gpuarray/sort.h>']
 
     def c_header_dirs(self):
         return [pygpu.get_include(), os.path.dirname(__file__)]
-
-    def c_init_code(self):
-        return ['import_pygpu__blas();']
 
     def valid_input_type(self, in_type):
         supported_types = ('uint32', 'int32', 'float32', 'float64', 'uint8',
