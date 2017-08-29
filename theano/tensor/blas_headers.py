@@ -986,6 +986,10 @@ def blas_header_text():
     return (header % {'const': const}) + blas_code
 
 
+if not config.blas.ldflags:
+    print('Using NumPy based implementation for BLAS functions.')
+
+
 def mkl_threads_text():
     """C header for MKL threads interface"""
     header = """
