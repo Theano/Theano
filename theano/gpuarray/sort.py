@@ -2,17 +2,11 @@ from __future__ import absolute_import, print_function, division
 import os.path
 
 import theano
-from theano import Apply, config, Op
+from theano import Apply, Op
 
-from theano.compile import optdb
-from theano.gof import LocalOptGroup, ParamsType
-from theano.scalar import bool as bool_t
-from theano.tensor.basic import as_tensor_variable
-from theano.tensor.opt import in2out
-
-from .basic_ops import (GpuArrayType, CGpuKernelBase,
+from theano.gof import LocalOptGroup
+from .basic_ops import (GpuArrayType, 
                         as_gpuarray_variable, gpu_contiguous, infer_context_name)
-from .opt_util import inplace_allocempty
 
 try:
     import pygpu
@@ -20,10 +14,11 @@ except ImportError as e:
     # To make sure theano is importable
     pass
 
-#
+
 class SortGenOp(Op):
+
     def c_headers(self):
-        return ['<blas_api.h>', '<numpy_compat.h>', 
+        return ['<blas_api.h>', '<numpy_compat.h>',
                 '<c_code/gpuarray_helper.h>', '<gpuarray/sort.h>']
 
     def c_header_dirs(self):
@@ -34,8 +29,12 @@ class SortGenOp(Op):
                            'int8', 'unit16', 'int16')
         return in_type in supported_types
 
-class SortOp(SortGenOp):
 
+class SortOp(SortGenOp):
+    """
+    Sort on the GPU.
+    
+    """
     def make_node(self, x):
         ctx_name = infer_context_name(x)
         x = as_gpuarray_variable(x, ctx_name)
@@ -51,9 +50,9 @@ class SortOp(SortGenOp):
         code = """
                int err = GA_NO_ERROR;
                if (!GpuArray_ISONESEGMENT(&%(inp)s->ga)) {
-                   PyErr_SetString(PyExc_RuntimeError, 
+                   PyErr_SetString(PyExc_RuntimeError,
                                    "Input must be one segment");
-                   %(fail)s   
+                   %(fail)s
                }
                if (theano_prep_output(&%(out)s, %(inp)s->ga.nd,
                                  %(inp)s->ga.dimensions, %(inp)s->ga.typecode,
@@ -69,11 +68,15 @@ class SortOp(SortGenOp):
 
         return code
 
+
 sort_gpu = SortOp()
 
 
 class ArgSortOp(SortGenOp):
-
+    """
+    Argsort on the GPU.
+    
+    """
     def make_node(self, x):
         ctx_name = infer_context_name(x)
         x = as_gpuarray_variable(x, ctx_name)
@@ -82,7 +85,7 @@ class ArgSortOp(SortGenOp):
         assert x.ndim == 1
         assert SortGenOp.valid_input_type(self, x.dtype) == True
 
-        return Apply(self, [x], [GpuArrayType(dtype='uint64', context_name=ctx_name, 
+        return Apply(self, [x], [GpuArrayType(dtype='uint64', context_name=ctx_name,
                                               broadcastable=bcast)()])
 
     def c_code(self, node, name, inp, out, sub):
@@ -93,7 +96,7 @@ class ArgSortOp(SortGenOp):
                if (!GpuArray_ISONESEGMENT(&%(inp)s->ga)) {
                    PyErr_SetString(PyExc_RuntimeError,
                                    "Input must be one segment");
-                   %(fail)s   
+                   %(fail)s
                }
                if (theano_prep_output(&%(out)s, PyGpuArray_NDIM(%(inp)s),
                                   PyGpuArray_DIMS(%(inp)s), GA_ULONG,GA_C_ORDER,
@@ -114,4 +117,6 @@ class ArgSortOp(SortGenOp):
 
         return code
 
+
 argsort_gpu = ArgSortOp()
+
