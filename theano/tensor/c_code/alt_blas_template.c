@@ -1,10 +1,10 @@
-/** %(name)s **/
+/** Alternative template NumPy-based implementation of BLAS functions used in Theano. **/
 
-/* Scalar*Matrix function.
- * Computes: matrix = scalar*matrix. */
+/* Scalar * Matrix function.
+ * Computes: matrix = scalar * matrix. */
 void alt_numpy_scale_matrix_inplace_%(float_type)s(const %(float_type)s* scalar, PyArrayObject* matrix) {
-    NpyIter* iterator = NpyIter_New(matrix, 
-        NPY_ITER_READWRITE | NPY_ITER_EXTERNAL_LOOP | NPY_ITER_REFS_OK, 
+    NpyIter* iterator = NpyIter_New(matrix,
+        NPY_ITER_READWRITE | NPY_ITER_EXTERNAL_LOOP | NPY_ITER_REFS_OK,
         NPY_KEEPORDER, NPY_NO_CASTING, NULL);
     if(iterator == NULL)
         alt_fatal_error("Unable to iterate over a matrix "
@@ -25,7 +25,8 @@ void alt_numpy_scale_matrix_inplace_%(float_type)s(const %(float_type)s* scalar,
     } while(get_next(iterator));
     NpyIter_Deallocate(iterator);
 }
-/* Matrix+Matrix function.
+
+/* Matrix + Matrix function.
  * Computes: matrix2 = (scalar1 * matrix1) + (scalar2 * matrix2) */
 void alt_numpy_matrix_extended_sum_inplace_%(float_type)s(
         const %(float_type)s* scalar1, PyArrayObject* matrix1,
@@ -48,11 +49,12 @@ void alt_numpy_matrix_extended_sum_inplace_%(float_type)s(
     } while(get_next(iterators));
     NpyIter_Deallocate(iterators);
 }
+
 /* NumPy Wrapping function. Wraps a data into a NumPy's PyArrayObject.
  * By default, data is considered as Fortran-style array (column by column).
  * If to_transpose, data will be considered as C-style array (row by row)
  * with dimensions reversed. */
-PyObject* alt_op_%(float_type)s(int to_transpose, %(float_type)s* M, int nrow, int ncol, int LDM) {
+PyObject* alt_op_%(float_type)s(int to_transpose, %(float_type)s* M, int nrow, int ncol, int LDM, int numpyFlags) {
     npy_intp dims[2];
     npy_intp strides[2];
     if(to_transpose) {
@@ -66,9 +68,10 @@ PyObject* alt_op_%(float_type)s(int to_transpose, %(float_type)s* M, int nrow, i
         strides[0] = %(float_size)d;
         strides[1] = LDM * %(float_size)d;
     }
-    return PyArray_New(&PyArray_Type, 2, dims, %(npy_float)s, strides, M, 0, 0, NULL);
+    return PyArray_New(&PyArray_Type, 2, dims, %(npy_float)s, strides, M, 0, numpyFlags, NULL);
 }
-/* Special wrapping case used for matrix C in gemm implementation. */
+
+/* Special wrapping case used for matrix C in gemm_ implementation. */
 inline PyObject* alt_wrap_fortran_writeable_matrix_%(float_type)s(
     %(float_type)s* matrix, const int* nrow, const int* ncol, const int* LD
 ) {
@@ -76,15 +79,16 @@ inline PyObject* alt_wrap_fortran_writeable_matrix_%(float_type)s(
     npy_intp strides[2] = {%(float_size)d, (*LD) * %(float_size)d};
     return PyArray_New(&PyArray_Type, 2, dims, %(npy_float)s, strides, matrix, 0, NPY_ARRAY_WRITEABLE, NULL);
 }
-/* %(name)s template code */
-void %(name)s(
+
+/* gemm_ template code */
+void %(precision)sgemm_(
     char* TRANSA, char* TRANSB, const int* M, const int* N, const int* K,
-    const %(float_type)s* ALPHA, %(float_type)s* A, const int* LDA, 
-    %(float_type)s* B, const int* LDB, const %(float_type)s* BETA, 
+    const %(float_type)s* ALPHA, %(float_type)s* A, const int* LDA,
+    %(float_type)s* B, const int* LDB, const %(float_type)s* BETA,
     %(float_type)s* C, const int* LDC
 ) {
     if(*M < 0 || *N < 0 || *K < 0 || *LDA < 0 || *LDB < 0 || *LDC < 0)
-        alt_fatal_error("The integer arguments passed to %(name)s must all be at least 0.");
+        alt_fatal_error("The integer arguments passed to %(precision)sgemm_ must all be at least 0.");
     /* If M or N is null, there is nothing to do with C,
      * as C should contain M*N == 0 items. */
     if(*M == 0 || *N == 0)
@@ -136,13 +140,15 @@ void %(name)s(
      * for A and B will be reversed, so that the buffer will contain
      * C-contiguous opB_transposed * opA_transposed (N*M matrix).
      * After that, the code that uses the buffer (either the code calling
-     * this function, or this function if BETA != 0) just has to 
+     * this function, or this function if BETA != 0) just has to
      * consider the buffer as a F-contiguous M*N matrix, so that
      * it will get the transposed of op_B_transposed * op_A_transposed,
      * that is op_A * op_B (M*N matrix) as expected. */
-    PyObject* opA_transposed = alt_op_%(float_type)s(!to_transpose_A, A, nrowa, ncola, *LDA);
-    PyObject* opB_transposed = alt_op_%(float_type)s(!to_transpose_B, B, nrowb, ncolb, *LDB);
-    PyObject* opB_trans_dot_opA_trans = PyArray_New(&PyArray_Type, 2, computation_dims, %(npy_float)s, computation_strides, computation_pointer, 0, computation_flags, NULL);
+    PyObject* opA_transposed = alt_op_%(float_type)s(!to_transpose_A, A, nrowa, ncola, *LDA, 0);
+    PyObject* opB_transposed = alt_op_%(float_type)s(!to_transpose_B, B, nrowb, ncolb, *LDB, 0);
+    PyObject* opB_trans_dot_opA_trans = PyArray_New(&PyArray_Type, 2, computation_dims, %(npy_float)s,
+                                                    computation_strides, computation_pointer, 0,
+                                                    computation_flags, NULL);
     PyArray_MatrixProduct2(opB_transposed, opA_transposed, (PyArrayObject*)opB_trans_dot_opA_trans);
     /* PyArray_MatrixProduct2 adds a reference to the output array,
      * which we need to remove to avoid a memory leak. */
@@ -156,7 +162,7 @@ void %(name)s(
             PyObject* matrix_C = alt_wrap_fortran_writeable_matrix_%(float_type)s(C, M, N, LDC);
             PyObject* alpha_opA_dot_opB = PyArray_Transpose((PyArrayObject*)opB_trans_dot_opA_trans, NULL);
             if(0 != PyArray_CopyInto((PyArrayObject*)matrix_C, (PyArrayObject*)alpha_opA_dot_opB))
-                alt_fatal_error("NumPy %(name)s implementation: unable to copy ALPHA*op(A)*op(B) into C when BETA == 0.");
+                alt_fatal_error("NumPy %(precision)sgemm_ implementation: unable to copy ALPHA*op(A)*op(B) into C when BETA == 0.");
             Py_XDECREF(alpha_opA_dot_opB);
             Py_XDECREF(matrix_C);
         }
@@ -164,11 +170,90 @@ void %(name)s(
         /* C is read, so we must consider it as Fortran-style matrix. */
         PyObject* matrix_C = alt_wrap_fortran_writeable_matrix_%(float_type)s(C, M, N, LDC);
         PyObject* opA_dot_opB = PyArray_Transpose((PyArrayObject*)opB_trans_dot_opA_trans, NULL);
-        alt_numpy_matrix_extended_sum_inplace_%(float_type)s(ALPHA, (PyArrayObject*)opA_dot_opB, BETA, (PyArrayObject*)matrix_C);
+        alt_numpy_matrix_extended_sum_inplace_%(float_type)s(ALPHA, (PyArrayObject*)opA_dot_opB,
+                                                             BETA, (PyArrayObject*)matrix_C);
         Py_XDECREF(opA_dot_opB);
         Py_XDECREF(matrix_C);
     }
     Py_XDECREF(opB_trans_dot_opA_trans);
     Py_XDECREF(opB_transposed);
     Py_XDECREF(opA_transposed);
+}
+
+/* gemv */
+void %(precision)sgemv_(
+    char* TRANS,
+    const int* M,
+    const int* N,
+    const %(float_type)s* ALPHA,
+    %(float_type)s* A,
+    const int* LDA,
+    %(float_type)s* x,
+    const int* incx,
+    const %(float_type)s* BETA,
+    %(float_type)s* y,
+    const int* incy
+) {
+    /**
+    If TRANS is 'n' or 'N', computes:
+        y = ALPHA * A * x + BETA * y
+    Else, computes:
+        y = ALPHA * A.T * x + BETA * y
+    A is a M*N matrix, A.T is A transposed
+    x, y are vectors
+    ALPHA, BETA are scalars
+    **/
+    if (*M < 0 || *N < 0 || *LDA < 0 | *incx < 0 || *incy < 0)
+        alt_fatal_error("The integer arguments passed to %(precision)sgemv_ must all be at least 0.");
+    int transpose = alt_trans_to_bool(TRANS);
+    if (*M == 0 || *N == 0) {
+        /* A contains M * N == 0 values. y should be empty too, and we have nothing to do. */
+        if ((transpose && *N != 0) || (!transpose && *M != 0))
+            alt_fatal_error("NumPy %(precision)sgemv_ implementation: the output vector should be empty.");
+        return;
+    }
+    PyObject* matrixA = alt_op_%(float_type)s(transpose, A, *M, *N, *LDA, 0);
+    PyObject* matrixX = NULL;
+    PyObject* matrixY = NULL;
+    if (transpose) {
+        matrixX = alt_op_%(float_type)s(1, x, 1, *M, *incx, 0);
+        matrixY = alt_op_%(float_type)s(1, y, 1, *N, *incy, NPY_ARRAY_WRITEABLE);
+    } else {
+        matrixX = alt_op_%(float_type)s(1, x, 1, *N, *incx, 0);
+        matrixY = alt_op_%(float_type)s(1, y, 1, *M, *incy, NPY_ARRAY_WRITEABLE);
+    };
+    if (*ALPHA == 0) {
+        // Just BETA * y
+        alt_numpy_scale_matrix_inplace_%(float_type)s(BETA, (PyArrayObject*)matrixY);
+    } else if (*BETA == 0) {
+        // We can directly compute alpha * A * x into y if y is C-contiguous.
+        if (PyArray_IS_C_CONTIGUOUS((PyArrayObject*)matrixY)) {
+            PyArray_MatrixProduct2(matrixA, matrixX, (PyArrayObject*)matrixY);
+            // PyArray_MatrixProduct2 adds an extra reference to the output array.
+            Py_XDECREF(matrixY);
+            alt_numpy_scale_matrix_inplace_%(float_type)s(ALPHA, (PyArrayObject*)matrixY);
+        } else {
+            // If y is not contiguous, we need a temporar workspace.
+            PyObject* tempAX = PyArray_MatrixProduct(matrixA, matrixX);
+            if (tempAX == NULL)
+                alt_fatal_error("NumPy %(precision)sgemv_ implementation: Unable to get matrix product.");
+            alt_numpy_scale_matrix_inplace_%(float_type)s(ALPHA, (PyArrayObject*)tempAX);
+            if(0 != PyArray_CopyInto((PyArrayObject*)matrixY, (PyArrayObject*)tempAX)) {
+                alt_fatal_error("NumPy %(precision)sgemv_ implementation: unable to update output.");
+            }
+            Py_XDECREF(tempAX);
+        }
+    } else {
+        // We must perform full computation.
+        PyObject* tempAX = PyArray_MatrixProduct(matrixA, matrixX);
+        if (tempAX == NULL)
+            alt_fatal_error("NumPy %(precision)sgemv_ implementation: unable to get matrix product.");
+        // ALPHA * (A * x) + BETA * y.
+        alt_numpy_matrix_extended_sum_inplace_%(float_type)s(ALPHA, (PyArrayObject*)tempAX,
+                                                             BETA, (PyArrayObject*)matrixY);
+        Py_XDECREF(tempAX);
+    }
+    Py_XDECREF(matrixY);
+    Py_XDECREF(matrixX);
+    Py_XDECREF(matrixA);
 }
