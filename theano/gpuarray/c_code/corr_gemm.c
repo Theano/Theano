@@ -349,7 +349,8 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                          const size_t dilW = 1,
                          const size_t padH = 0,
                          const size_t padW = 0,
-                         const size_t numgroups = 1)
+                         const size_t numgroups = 1,
+                         const size_t unshared = 0)
 {
     if (PyGpuArray_NDIM(bottom) != 4)
     {
@@ -368,21 +369,35 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         return NULL;
     }
 
-    if (PyGpuArray_NDIM(weight) != 4)
+    if (PyGpuArray_NDIM(weight) != (unshared ? 6 : 4))
     {
-        PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires weight of 4D");
+        PyErr_Format(PyExc_ValueError, "GpuCorrMM requires weight of %dD", unshared ? 6 : 4);
         return NULL;
     }
     if (!GpuArray_IS_C_CONTIGUOUS(&weight->ga))
     {
-        PyErr_Format(PyExc_ValueError,
-                "GpuCorrMM requires weight to be C-contiguous, "
-                "but strides are: %ld %ld %ld %ld\n",
-                PyGpuArray_STRIDES(weight)[0],
-                PyGpuArray_STRIDES(weight)[1],
-                PyGpuArray_STRIDES(weight)[2],
-                PyGpuArray_STRIDES(weight)[3]);
-        return NULL;
+        if (unshared) {
+            PyErr_Format(PyExc_ValueError,
+                    "GpuCorrMM requires weight to be C-contiguous, "
+                    "but strides are: %ld %ld %ld %ld %ld %ld\n",
+                    PyGpuArray_STRIDES(weight)[0],
+                    PyGpuArray_STRIDES(weight)[1],
+                    PyGpuArray_STRIDES(weight)[2],
+                    PyGpuArray_STRIDES(weight)[3],
+                    PyGpuArray_STRIDES(weight)[4],
+                    PyGpuArray_STRIDES(weight)[5]);
+            return NULL;
+        }
+        else {  
+            PyErr_Format(PyExc_ValueError,
+                    "GpuCorrMM requires weight to be C-contiguous, "
+                    "but strides are: %ld %ld %ld %ld\n",
+                    PyGpuArray_STRIDES(weight)[0],
+                    PyGpuArray_STRIDES(weight)[1],
+                    PyGpuArray_STRIDES(weight)[2],
+                    PyGpuArray_STRIDES(weight)[3]);
+            return NULL;
+        }
     }
 
     if (PyGpuArray_NDIM(top) != 4)
@@ -409,12 +424,19 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     const size_t bottomHeight = PyGpuArray_DIMS(bottom)[2];
     const size_t bottomWidth = PyGpuArray_DIMS(bottom)[3];
     // weights: (nFilters, nChannels, rows, columns)
+    // or (nFilters, out_rows, out_columns, nChannels, rows, columns) -> for unshared
     const size_t nFilters = PyGpuArray_DIMS(weight)[0];
-    const size_t kH = PyGpuArray_DIMS(weight)[2];
-    const size_t kW = PyGpuArray_DIMS(weight)[3];
-    if (nChannels != (PyGpuArray_DIMS(weight)[1] * numgroups)) {
+
+    const size_t kH = PyGpuArray_DIMS(weight)[unshared ? 4 : 2];
+    const size_t kW = PyGpuArray_DIMS(weight)[unshared ? 5 : 3];
+    if (nChannels != PyGpuArray_DIMS(weight)[unshared ? 3 : 1] * numgroups) {
         PyErr_SetString(PyExc_ValueError,
                 "GpuCorrMM images and kernel must have the same stack size\n");
+        return NULL;
+    }
+    if ((nFilters % numgroups) != 0) {
+        PyErr_SetString(PyExc_ValueError,
+                "GPUCorrMM the number of filters must be divisible by the number of groups\n");
         return NULL;
     }
     // implicit dilated filter
@@ -430,21 +452,56 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     const size_t topHeight = _CONV_FLOORDIV_X(topHeightNoDH, dH) + 1;
     const size_t topWidth  = _CONV_FLOORDIV_X(topWidthNoDW, dW) + 1;
 #undef _CONV_FLOORDIV
-    if (batchSize != PyGpuArray_DIMS(top)[0] ||
-            nFilters != PyGpuArray_DIMS(top)[1] ||
-            topHeight != PyGpuArray_DIMS(top)[2] ||
-            topWidth != PyGpuArray_DIMS(top)[3]) {
-        PyErr_Format(PyExc_ValueError,
-                "GpuCorrMM shape inconsistency:\n"
-                "  bottom shape: %ld %ld %ld %ld\n"
-                "  weight shape: %ld %ld %ld %ld\n"
-                "  top shape: %ld %ld %ld %ld (expected %ld %ld %ld %ld)\n",
-                batchSize, nChannels, bottomHeight, bottomWidth,
-                nFilters, nChannels, kH, kW,
-                PyGpuArray_DIMS(top)[0], PyGpuArray_DIMS(top)[1],
-                PyGpuArray_DIMS(top)[2], PyGpuArray_DIMS(top)[3],
-                batchSize, nFilters, topHeight, topWidth);
-        return NULL;
+    if (unshared) {
+        if (topHeight != PyGpuArray_DIMS(weight)[1] ||
+                topWidth != PyGpuArray_DIMS(weight)[2]) {
+            PyErr_Format(PyExc_ValueError,
+                    "GpuCorrMM regions in kernel must match output regions:\n"
+                    "  bottom shape: %ld %ld %ld %ld\n"
+                    "  weight shape: %ld %ld %ld %ld %ld %ld"
+                    " (expected %ld %ld %ld %ld %ld %ld)\n"
+                    "  top shape(calculated): %ld %ld %ld %ld\n",
+                    batchSize, nChannels, bottomHeight, bottomWidth,
+                    nFilters, PyGpuArray_DIMS(weight)[1],
+                    PyGpuArray_DIMS(weight)[2], nChannels / numgroups, kH, kW,
+                    nFilters, topHeight, topWidth, nChannels / numgroups, kH, kW,
+                    batchSize, nFilters, topHeight, topWidth);
+            return NULL;
+        }
+        if (batchSize != PyGpuArray_DIMS(top)[0] ||
+                nFilters != PyGpuArray_DIMS(top)[1] ||
+                topHeight != PyGpuArray_DIMS(top)[2] ||
+                topWidth != PyGpuArray_DIMS(top)[3]) {
+            PyErr_Format(PyExc_ValueError,
+                    "GpuCorrMM shape inconsistency:\n"
+                    "  bottom shape: %ld %ld %ld %ld\n"
+                    "  weight shape: %ld %ld %ld %ld %ld %ld\n"
+                    "  top shape: %ld %ld %ld %ld (expected %ld %ld %ld %ld)\n",
+                    batchSize, nChannels, bottomHeight, bottomWidth,
+                    nFilters, topHeight, topWidth, nChannels / numgroups, kH, kW,
+                    PyGpuArray_DIMS(top)[0], PyGpuArray_DIMS(top)[1],
+                    PyGpuArray_DIMS(top)[2], PyGpuArray_DIMS(top)[3],
+                    batchSize, nFilters, topHeight, topWidth);
+            return NULL;
+        }
+    }
+    else{
+        if (batchSize != PyGpuArray_DIMS(top)[0] ||
+                nFilters != PyGpuArray_DIMS(top)[1] ||
+                topHeight != PyGpuArray_DIMS(top)[2] ||
+                topWidth != PyGpuArray_DIMS(top)[3]) {
+            PyErr_Format(PyExc_ValueError,
+                    "GpuCorrMM shape inconsistency:\n"
+                    "  bottom shape: %ld %ld %ld %ld\n"
+                    "  weight shape: %ld %ld %ld %ld\n"
+                    "  top shape: %ld %ld %ld %ld (expected %ld %ld %ld %ld)\n",
+                    batchSize, nChannels, bottomHeight, bottomWidth,
+                    nFilters, nChannels / numgroups, kH, kW,
+                    PyGpuArray_DIMS(top)[0], PyGpuArray_DIMS(top)[1],
+                    PyGpuArray_DIMS(top)[2], PyGpuArray_DIMS(top)[3],
+                    batchSize, nFilters, topHeight, topWidth);
+            return NULL;
+        }
     }
 
     int err = gpublas_setup(bottom->context->ctx);
@@ -507,19 +564,37 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                 return NULL;
             }
             // Second, gemm
-            for (size_t g = 0; g < numgroups; g++){
-                err = rgemm(cb_fortran, cb_no_trans, cb_no_trans,
-                            N_, M_, K_, 1,
-                            &col->ga, g * group_col_stride, N_,
-                            &weight->ga, g * group_weight_stride, K_,
-                            0,
-                            &top->ga, n * batch_top_stride + g * group_top_stride, N_);
+            if (unshared) {
+              for (size_t g = 0; g < numgroups; ++g) {
+                for (size_t reg = 0; reg < N_; ++reg){
+                  err = rgemm(cb_fortran, cb_no_trans, cb_no_trans,
+                                      1, M_, K_, 1,
+                                      &col->ga, g * group_col_stride + reg, N_,
+                                      &weight->ga, g * group_weight_stride + reg * K_, K_ * N_,
+                                      0,
+                                      &top->ga, n * batch_top_stride + g * group_top_stride + reg, N_);
+                  if (err != GA_NO_ERROR) {
+                      PyErr_Format(PyExc_RuntimeError, "GpuCorrMM forward encountered an error running gemm: %d", err);
+                      Py_DECREF(col);
+                      return NULL;
+                  }
+                }
+              }
             }
-            if (err != GA_NO_ERROR) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "GpuCorrMM forward encountered an error running gemm: %d", err);
-                Py_DECREF(col);
-                return NULL;
+            else {
+              for (size_t g = 0; g < numgroups; ++g){
+                  err = rgemm(cb_fortran, cb_no_trans, cb_no_trans,
+                              N_, M_, K_, 1,
+                              &col->ga, g * group_col_stride, N_,
+                              &weight->ga, g * group_weight_stride, K_,
+                              0,
+                              &top->ga, n * batch_top_stride + g * group_top_stride, N_);
+                if (err != GA_NO_ERROR) {
+                    PyErr_Format(PyExc_RuntimeError, "GpuCorrMM forward encountered an error running gemm: %d", err);
+                    Py_DECREF(col);
+                    return NULL;
+                }
+              }
             }
         }
     }
@@ -552,19 +627,37 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
-            for(size_t g = 0; g < numgroups; g++){ 
-                err = rgemm(cb_fortran, cb_trans, cb_no_trans,
-                            K_, M_, N_, 1,
-                            &col->ga, g * group_col_stride, N_,
-                            &top->ga, n * batch_top_stride + g * group_top_stride, N_,
-                            (n == 0) ? 0 : 1,
-                            &weight->ga, g * group_weight_stride, K_);
+            if (unshared) {
+              for (size_t g = 0; g < numgroups; ++g) {
+                for (size_t reg = 0; reg < N_; ++reg){
+                  err = rgemm(cb_fortran, cb_trans, cb_no_trans,
+                              K_, M_, 1, 1,
+                              &col->ga, g * group_col_stride + reg, N_,
+                              &top->ga, n * batch_top_stride + g * group_top_stride + reg, N_,
+                              (n == 0) ? 0 : 1,
+                              &weight->ga, g * group_weight_stride + reg * K_, K_ * N_);
+                  if (err != GA_NO_ERROR) {
+                      PyErr_Format(PyExc_RuntimeError, "GpuCorrMM grad weights encountered an error running gemm: %d", err);
+                      Py_DECREF(col);
+                      return NULL;
+                  }
+                }
+              }
             }
-            if (err != GA_NO_ERROR) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "GpuCorrMM grad weights encountered an error running gemm: %d", err);
-                Py_DECREF(col);
-                return NULL;
+            else{
+              for(size_t g = 0; g < numgroups; g++){ 
+                  err = rgemm(cb_fortran, cb_trans, cb_no_trans,
+                              K_, M_, N_, 1,
+                              &col->ga, g * group_col_stride, N_,
+                              &top->ga, n * batch_top_stride + g * group_top_stride, N_,
+                              (n == 0) ? 0 : 1,
+                              &weight->ga, g * group_weight_stride, K_);
+                if (err != GA_NO_ERROR) {
+                    PyErr_Format(PyExc_RuntimeError, "GpuCorrMM grad weights encountered an error running gemm: %d", err);
+                    Py_DECREF(col);
+                    return NULL;
+                }
+              }
             }
         }
     }
@@ -585,19 +678,37 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
             // gemm into columns
-            for(size_t g = 0; g < numgroups; g++){
-              err = rgemm(cb_fortran, cb_no_trans, cb_trans,
-                          N_, K_, M_, 1,
-                          &top->ga, n * batch_top_stride + g * group_top_stride, N_,
-                          &weight->ga, g * group_weight_stride, K_,
-                          0,
-                          &col->ga, g * group_col_stride, N_);
+            if (unshared) {
+              for (size_t g = 0; g < numgroups; ++g){
+                for (size_t reg = 0; reg < N_; ++reg) {
+                  err = rgemm(cb_fortran, cb_no_trans, cb_trans,
+                              1, K_, M_, 1,
+                              &top->ga, n * batch_top_stride + g * group_top_stride + reg, N_,
+                              &weight->ga, g * group_weight_stride + reg * K_, K_ * N_,
+                              0,
+                              &col->ga, g * group_col_stride + reg, N_);
+                  if (err != GA_NO_ERROR) {
+                      PyErr_Format(PyExc_RuntimeError, "GpuCorrMM grad inputs encountered an error running gemm: %d", err);
+                      Py_DECREF(col);
+                      return NULL;
+                  }
+                }
+              }
             }
-            if (err != GA_NO_ERROR) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "GpuCorrMM grad inputs encountered an error running gemm: %d", err);
-                Py_DECREF(col);
-                return NULL;
+            else {
+              for (size_t g = 0; g < numgroups; ++g){
+                err = rgemm(cb_fortran, cb_no_trans, cb_trans,
+                            N_, K_, M_, 1,
+                            &top->ga, n * batch_top_stride + g * group_top_stride, N_,
+                            &weight->ga, g * group_weight_stride, K_,
+                            0,
+                            &col->ga, g * group_col_stride, N_);
+                if (err != GA_NO_ERROR) {
+                    PyErr_Format(PyExc_RuntimeError, "GpuCorrMM grad inputs encountered an error running gemm: %d", err);
+                    Py_DECREF(col);
+                    return NULL;
+                }
+              }
             }
             // col2im back to the data
             err = col2im(&col->ga, nChannels, bottomHeight, bottomWidth,

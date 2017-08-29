@@ -112,7 +112,7 @@ class Record(object):
 class RecordMode(Mode):
     """
     Records all computations done with a function in a file at output_path.
-    Writes into the file the index of each apply node and md5 digests of the
+    Writes into the file the index of each apply node and sha256 digests of the
     numpy ndarrays it receives as inputs and produces as output.
 
     Example:

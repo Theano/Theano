@@ -182,6 +182,7 @@ def local_dimshuffle_subtensor(node):
             return False
         new_order = node.op.new_order
         # new order could be empty
+        # Verif that we don't change dimensions order.
         if len(new_order) > 1:
             past_dim = new_order[0]
             for dim in new_order[1:]:
@@ -216,7 +217,7 @@ def local_dimshuffle_subtensor(node):
             j = 0
             slice_i = -1
             subtensor_removed_dims = 0
-            for idx in input_.owner.op.idx_list:
+            for i, idx in enumerate(input_.owner.op.idx_list):
                 if isinstance(idx, slice):
                     past_j = j
                     slice_i += 1
@@ -228,7 +229,7 @@ def local_dimshuffle_subtensor(node):
                     # that's where we want to index with 0 if it is also at
                     # the same spot of a missing dim
                     if past_j == j and slice_i in missing_dims:
-                        new_idx_list[j] = zero
+                        new_idx_list[i] = zero
                         new_inputs += [zero]
                 else:
                     new_inputs += [input_.owner.inputs[1 + j]]

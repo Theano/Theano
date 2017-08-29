@@ -1,10 +1,8 @@
 from __future__ import absolute_import, print_function, division
 
-import os
-
 import numpy as np
 from six import integer_types
-from six.moves import StringIO
+from six.moves import StringIO, xrange
 
 from theano import tensor, gof, Op
 from theano.gof import ParamsType
@@ -20,7 +18,7 @@ except ImportError:
     pass
 
 from .type import GpuArrayType, gpu_context_type
-from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
+from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel, gpuarray_helper_inc_dir,
                         infer_context_name, gpu_contiguous)
 
 iadd_reg = {}
@@ -481,23 +479,45 @@ if (err != GA_NO_ERROR) {
         return (0,)
 
 
-class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
+def check_and_convert_boolean_masks(input, idx_list):
     """
-    AdvancedSubtensor On the GPU.
+    This function checks if the boolean mask arrays in the index have
+    the right shape and converts them to index arrays by calling nonzero.
+    For each boolean mask, we check if the mask has the
+    same shape as the input. This is enforced in NumPy 0.13.0 and
+    newer, but not by earlier versions. If the size is not the same,
+    this method raises an IndexError.
     """
-    def make_node(self, x, *inputs):
-        ctx_name = infer_context_name(x)
-        rval = tensor.AdvancedSubtensor.make_node(self, x, *inputs)
-        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
-                             broadcastable=rval.outputs[0].type.broadcastable,
-                             context_name=ctx_name)
-        x = as_gpuarray_variable(x, ctx_name)
-        return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
+    dim_seen = 0
+    out_idx_list = []
+    for index in idx_list:
+        if index is np.newaxis:
+            # skip, does not count as an input dimension
+            out_idx_list.append(index)
+        elif isinstance(index, np.ndarray) and index.dtype == 'bool':
+            for i in xrange(index.ndim):
+                if index.shape[i] != input.shape[dim_seen + i]:
+                    raise IndexError('boolean index did not match indexed array '
+                                     'along dimension %d; dimension is %d but '
+                                     'corresponding boolean dimension is %d' %
+                                     (dim_seen + i, input.shape[dim_seen + i],
+                                      index.shape[i]))
+            dim_seen += index.ndim
+            out_idx_list += index.nonzero()
+        else:
+            dim_seen += 1
+            out_idx_list.append(index)
+    return out_idx_list
 
+
+class BaseGpuAdvancedSubtensor(object):
     def perform(self, node, inputs, out_):
         out, = out_
         x = inputs[0]
         idx = inputs[1:]
+
+        # convert boolean masks to index arrays
+        idx = check_and_convert_boolean_masks(x, idx)
 
         # detect and transpose array indices
         nidx = []
@@ -600,32 +620,56 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         out[0] = o
 
 
-class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
+class GpuAdvancedSubtensor(HideC, BaseGpuAdvancedSubtensor, tensor.AdvancedSubtensor):
     """
-    Implement AdvancedIncSubtensor on the gpu.
-
+    AdvancedSubtensor on the GPU.
     """
-    def make_node(self, x, y, *inputs):
-        ctx_name = infer_context_name(x, y)
-        rval = tensor.AdvancedIncSubtensor.make_node(self, x, y, *inputs)
+    def make_node(self, x, *inputs):
+        ctx_name = infer_context_name(x)
+        # This method relies on AdvancedSubtensor.make_node to
+        # call tensor.subtensor.check_and_reject_bool(inputs),
+        # which raises an IndexError if there are any boolean indices.
+        rval = tensor.AdvancedSubtensor.make_node(self, x, *inputs)
         otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
                              broadcastable=rval.outputs[0].type.broadcastable,
                              context_name=ctx_name)
         x = as_gpuarray_variable(x, ctx_name)
-        y = as_gpuarray_variable(y, ctx_name)
-        return gof.Apply(self, [x, y] + rval.inputs[2:], [otype()])
+        return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
 
+
+class GpuAdvancedBooleanSubtensor(HideC, BaseGpuAdvancedSubtensor, tensor.AdvancedBooleanSubtensor):
+    """
+    AdvancedBooleanSubtensor on the GPU.
+    """
+    def make_node(self, x, *inputs):
+        ctx_name = infer_context_name(x)
+        rval = tensor.AdvancedBooleanSubtensor.make_node(self, x, *inputs)
+        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
+
+
+class BaseGpuAdvancedIncSubtensor(object):
     def perform(self, node, inp, out_):
         out, = out_
         x = inp[0]
         y = inp[1]
         idx = inp[2:]
         x = x.copy()
+        # Get a handle to the GpuElemwise object that will be called.
+        # It is not necessary to have the right number of dimensions,
+        # so we just pass symbolic x and y.
+        iadd = get_iadd(node.inputs[0], node.inputs[1])
 
         # convert all indices to np.array
         for i in range(len(idx)):
             if isinstance(idx[i], gpuarray.GpuArray):
                 idx[i] = np.asarray(idx[i])
+
+        # convert boolean masks to index arrays
+        idx = check_and_convert_boolean_masks(x, idx)
 
         # Insert axes for None indexing
         nidx = []
@@ -699,15 +743,10 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                 else:
                     val = y_flat[j]
 
-                tmp = pygpu.elemwise.elemwise2(
-                    x_flat[i], '+', val, x_flat[i],
-                    broadcast=True,
-                    convert_f16=True
-                )
-                x_flat.__setitem__(i, tmp)
+                iadd(x_flat[i], val, broadcast=True)
         else:
-            k = get_iadd(node.inputs[0], node.inputs[1])
-            if x_flat.shape[-len(y_flat.shape):] == y_flat.shape or y_flat.shape == ():
+            if (x_flat.shape[-len(y_flat.shape):] == y_flat.shape or
+                    y_flat.shape == ()):
                 # y_flat has to be broadcast over axes of x_flat[i]
 
                 for i in take_idx.flatten():
@@ -715,13 +754,7 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                         x_flat_sub = x_flat[i].__getitem__(index)
                     else:
                         x_flat_sub = x_flat[i]
-                    tmp = pygpu.elemwise.elemwise2(
-                        x_flat_sub, '+', y_flat, x_flat_sub,
-                        broadcast=True,
-                        convert_f16=True
-                    )
-                    x_flat[i].__setitem__(index, tmp)
-
+                    iadd(x_flat_sub, y_flat, broadcast=True)
             else:
                 # y_flat's first axis corresponds to first exist of x_flat
                 for j, i in enumerate(take_idx.flatten()):
@@ -729,9 +762,41 @@ class GpuAdvancedIncSubtensor(HideC, tensor.AdvancedIncSubtensor):
                         x_flat_sub = x_flat[i].__getitem__(index)
                     else:
                         x_flat_sub = x_flat[i]
-                    k(x_flat_sub, y_flat[j % y_flat.shape[0]], broadcast=True)
+                    iadd(x_flat_sub, y_flat[j % y_flat.shape[0]], broadcast=True)
         x_ = x_flat.reshape(x_.shape).transpose(*rtransp)
         out[0] = x_
+
+
+class GpuAdvancedIncSubtensor(HideC, BaseGpuAdvancedIncSubtensor, tensor.AdvancedIncSubtensor):
+    """
+    Implement AdvancedIncSubtensor on the gpu.
+
+    """
+    def make_node(self, x, y, *inputs):
+        ctx_name = infer_context_name(x, y)
+        rval = tensor.AdvancedIncSubtensor.make_node(self, x, y, *inputs)
+        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        y = as_gpuarray_variable(y, ctx_name)
+        return gof.Apply(self, [x, y] + rval.inputs[2:], [otype()])
+
+
+class GpuAdvancedBooleanIncSubtensor(HideC, BaseGpuAdvancedIncSubtensor, tensor.AdvancedBooleanIncSubtensor):
+    """
+    Implement AdvancedBooleanIncSubtensor on the gpu.
+
+    """
+    def make_node(self, x, y, *inputs):
+        ctx_name = infer_context_name(x, y)
+        rval = tensor.AdvancedBooleanIncSubtensor.make_node(self, x, y, *inputs)
+        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        y = as_gpuarray_variable(y, ctx_name)
+        return gof.Apply(self, [x, y] + rval.inputs[2:], [otype()])
 
 
 class GpuAdvancedIncSubtensor1(Op):
@@ -850,7 +915,7 @@ class GpuAdvancedIncSubtensor1(Op):
                 '<gpuarray/elemwise.h>', 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_support_code_struct(self, node, nodename):
         return "\nGpuElemwise *iadd;\n"
@@ -1021,7 +1086,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
                 '<gpuarray/types.h>']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [gpuarray_helper_inc_dir()]
 
     def c_code(self, node, name, inputs, outputs, sub):
         ctx = self.get_params(node).context

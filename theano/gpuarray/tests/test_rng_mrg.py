@@ -4,8 +4,7 @@ import functools
 import numpy as np
 
 import theano
-from theano import tensor
-from theano.configparser import change_flags
+from theano import change_flags, tensor
 from theano.sandbox import rng_mrg
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.sandbox.tests.test_rng_mrg import java_samples, rng_mrg_overflow

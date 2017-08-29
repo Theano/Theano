@@ -95,6 +95,9 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     """
 
+    warnings.warn("theano.tensor.nnet.conv.conv2d is deprecated."
+                  " Use theano.tensor.nnet.conv2d instead.")
+
     # accept Constant value for image_shape and filter_shape.
     if image_shape is not None:
         image_shape = list(image_shape)
@@ -854,35 +857,9 @@ class ConvOp(OpenMPOp):
             raise NotImplementedError('todo')
 
         if self.out_mode == 'valid' and (self.dx, self.dy) != (1, 1):
-            # Use the gradient as defined in conv3D, because the implementation
-            # by Conv is slow (about 3x slower than conv3D, and probably 10x
-            # slower than it could be), and incorrect when dx or dy > 2.
-
-            # build a "node", that should be equivalent to the one given by
-            # self.make_node, but using conv3D instead of self.
-            shuffled_inputs = inputs.dimshuffle(0, 2, 3, 'x', 1)
-            if inputs.name is not None:
-                shuffled_inputs.name = 'shuffle_for_conv3D(%s)' % inputs.name
-            flipped_kerns = kerns[:, :, ::-1, ::-1]
-            if kerns.name is not None:
-                flipped_kerns.name = 'flipped(%s)' % kerns.name
-            shuffled_kerns = flipped_kerns.dimshuffle(0, 2, 3, 'x', 1)
-            if flipped_kerns.name is not None:
-                shuffled_kerns.name = 'shuffled_for_conv3D(%s)' % flipped_kerns.name
-
-            tmp_node = theano.tensor.nnet.conv3D(
-                V=shuffled_inputs,
-                W=shuffled_kerns,
-                b=theano.tensor.alloc(np.asarray(0, dtype=kerns.dtype),
-                                      kerns.shape[0]),
-                d=(self.dx, self.dy, 1))
-            node = theano.tensor.addbroadcast(
-                tmp_node, 3).dimshuffle(0, 4, 1, 2)
-
-            # mimic what happens inside theano.grad: get the input gradient
-            # of the final cost wrt all variables involved.
-            return theano.gradient.grad(cost=None, known_grads={node: gz},
-                                        wrt=[inputs, kerns])
+            raise NotImplementedError(
+                "ERROR: ConvOp.grad is now disabled for 'valid' convolutions with"
+                " stride != (1, 1); call theano.tensor.nnet.conv2d() instead.")
 
         if self.dx not in (1, 2) or self.dy not in (1, 2):
             raise NotImplementedError(

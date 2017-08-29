@@ -579,7 +579,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-
         assert (fgraph.outputs[0].owner.op ==
                 crossentropy_softmax_argmax_1hot_with_bias)
 
@@ -652,7 +651,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         #    print node.op
         # print '===='
         assert len(fgraph.toposort()) == 2
-
         assert (fgraph.outputs[0].owner.op ==
                 crossentropy_softmax_argmax_1hot_with_bias)
 
@@ -1382,6 +1380,7 @@ def test_argmax_pushdown_bias():
     #    print node.op
     types_to_check = (tensor.DimShuffle, tensor.Elemwise, tensor.Argmax)
     assert len(fgraph.toposort()) == 3
+
     for i, type in enumerate(types_to_check):
         assert isinstance(fgraph.toposort()[i].op, type)
     assert check_stack_trace(fgraph, ops_to_check=types_to_check)

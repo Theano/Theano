@@ -98,7 +98,7 @@ except ImportError:
                 raise
             _logger.info("Compiling new CVM")
             dirname = 'lazylinker_ext'
-            cfile = os.path.join(theano.__path__[0], 'gof', 'lazylinker_c.c')
+            cfile = os.path.join(theano.__path__[0], 'gof', 'c_code', 'lazylinker_c.c')
             if not os.path.exists(cfile):
                 # This can happen in not normal case. We just
                 # disable the c clinker. If we are here the user

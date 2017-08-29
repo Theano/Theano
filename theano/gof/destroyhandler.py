@@ -250,7 +250,7 @@ def fast_inplace_check(inputs):
 
     inputs = [i for i in inputs if
               not isinstance(i, graph.Constant) and
-              not fgraph.destroyers(i) and
+              not fgraph.has_destroyers([i]) and
               i not in protected_inputs]
     return inputs
 
@@ -297,7 +297,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         <unknown>
 
     """
-    pickle_rm_attr = ["destroyers"]
+    pickle_rm_attr = ["destroyers", "has_destroyers"]
 
     def __init__(self, do_imports_on_attach=True, algo=None):
         self.fgraph = None
@@ -394,6 +394,41 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                 return []
         fgraph.destroyers = get_destroyers_of
 
+        def has_destroyers(protected_list):
+            if self.algo != 'fast':
+                droot, _, root_destroyer = self.refresh_droot_impact()
+                for protected_var in protected_list:
+                    try:
+                        root_destroyer[droot[protected_var]]
+                        return True
+                    except KeyError:
+                        pass
+                return False
+
+            def recursive_destroys_finder(protected_var):
+                # protected_var is the idx'th input of app.
+                for (app, idx) in protected_var.clients:
+                    if app == 'output':
+                        continue
+                    destroy_maps = getattr(app.op, 'destroy_map', {}).values()
+                    # If True means that the apply node, destroys the protected_var.
+                    if idx in [dmap for sublist in destroy_maps for dmap in sublist]:
+                        return True
+                    for var_idx in getattr(app.op, 'view_map', {}).keys():
+                        if idx in app.op.view_map[var_idx]:
+                            # We need to recursivly check the destroy_map of all the
+                            # outputs that we have a view_map on.
+                            if recursive_destroys_finder(app.outputs[var_idx]):
+                                return True
+                return False
+
+            for protected_var in protected_list:
+                if recursive_destroys_finder(protected_var):
+                    return True
+            return False
+
+        fgraph.has_destroyers = has_destroyers
+
     def refresh_droot_impact(self):
         """
         Makes sure self.droot, self.impact, and self.root_destroyer are up to
@@ -416,6 +451,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         del self.stale_droot
         assert self.fgraph.destroyer_handler is self
         delattr(self.fgraph, 'destroyers')
+        delattr(self.fgraph, 'has_destroyers')
         delattr(self.fgraph, 'destroy_handler')
         self.fgraph = None
 
@@ -452,11 +488,11 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                     if len(v) > 0:
                         self.fail_validate[app] = theano.gof.InconsistencyError(
                             "Destroyed variable has view_map. " + str(reason))
-                    elif d:
-                        d = d.get(inp_idx2, [])
-                        if len(d) > 0:
-                            self.fail_validate[app] = theano.gof.InconsistencyError(
-                                "Destroyed variable has destroy_map. " + str(reason))
+                elif d:
+                    d = d.get(inp_idx2, [])
+                    if len(d) > 0:
+                        self.fail_validate[app] = theano.gof.InconsistencyError(
+                            "Destroyed variable has destroy_map. " + str(reason))
 
                 # These 2 assertions are commented since this function is called so many times
                 # but they should be true.
@@ -474,13 +510,15 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         # print 'DH IMPORT', app, id(app), id(self), len(self.debug_all_apps)
 
         # If it's a destructive op, add it to our watch list
-        if getattr(app.op, 'destroy_map', None):
+        dmap = getattr(app.op, 'destroy_map', None)
+        vmap = getattr(app.op, 'view_map', {})
+        if dmap:
             self.destroyers.add(app)
             if self.algo == 'fast':
                 self.fast_destroy(app, reason)
 
         # add this symbol to the forward and backward maps
-        for o_idx, i_idx_list in iteritems(getattr(app.op, 'view_map', {})):
+        for o_idx, i_idx_list in iteritems(vmap):
             if len(i_idx_list) > 1:
                 raise NotImplementedError(
                     'destroying this output invalidates multiple inputs',

@@ -57,7 +57,7 @@ from theano.tensor import (
 
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
-from theano.configparser import change_flags
+from theano import change_flags
 
 imported_scipy_special = False
 mode_no_scipy = get_default_mode()
@@ -1242,7 +1242,8 @@ CeilTester = makeBroadcastTester(
 CeilInplaceTester = makeBroadcastTester(
     op=inplace.ceil_inplace,
     expected=upcast_float16_ufunc(np.ceil),
-    good=_good_broadcast_unary_normal_no_complex,
+    good=copymod(_good_broadcast_unary_normal_no_complex,
+                 without=['integers', 'int8', 'uint8', 'uint16']),
     # corner cases includes a lot of integers: points where Ceil is not
     # continuous (not differentiable)
     inplace=True)
@@ -1256,7 +1257,8 @@ FloorTester = makeBroadcastTester(
 FloorInplaceTester = makeBroadcastTester(
     op=inplace.floor_inplace,
     expected=upcast_float16_ufunc(np.floor),
-    good=_good_broadcast_unary_normal_no_complex,
+    good=copymod(_good_broadcast_unary_normal_no_complex,
+                 without=["integers", "int8", "uint8", "uint16"]),
     inplace=True)
 
 TruncInplaceTester = makeBroadcastTester(
@@ -1603,7 +1605,8 @@ Arctan2InplaceTester = makeBroadcastTester(
     op=inplace.arctan2_inplace,
     expected=np.arctan2,
     good=copymod(_good_broadcast_binary_arctan2,
-                 without=['integers', 'int8', 'uint8', 'uint16']),
+                 without=['integers', 'int8', 'uint8',
+                          'uint16', 'dtype_mixup_2']),
     inplace=True)
 
 CoshTester = makeBroadcastTester(
@@ -1729,6 +1732,7 @@ else:
     expected_gamma = []
     expected_gammaln = []
     expected_psi = []
+    expected_tri_gamma = []
     expected_chi2sf = []
     expected_j0 = []
     expected_j1 = []
@@ -4804,6 +4808,9 @@ class T_exp(unittest.TestCase):
         utt.verify_grad(inplace.exp_inplace, [
             np.asarray([[1.5089518, 1.48439076, -4.7820262],
                         [2.04832468, 0.50791564, -1.58892269]])])
+
+    if theano.config.cycle_detection == 'fast' and theano.config.mode != 'FAST_COMPILE':
+        test_grad_1 = unittest.expectedFailure(test_grad_1)
 
     def test_int(self):
         x = ivector()
@@ -8220,6 +8227,107 @@ def test_norm():
     n = x.norm(2)
     f = theano.function([x], n)
     assert np.allclose(f([1, 1]), np.sqrt(2))
+
+
+class test_cov(unittest.TestCase):
+
+    def test_core(self):
+        x = theano.tensor.matrix('x')
+        c = theano.tensor.cov(x)
+        f = theano.function([x], c)
+
+        # basic cov function
+        data = np.asarray(np.random.rand(3, 5), dtype=config.floatX)
+        assert np.allclose(f(data), np.cov(data))
+
+        data = np.asarray(np.random.rand(5, 3), dtype=config.floatX)
+        assert np.allclose(f(data), np.cov(data))
+
+        data = np.asarray(np.random.rand(10, 10), dtype=config.floatX)
+        assert np.allclose(f(data), np.cov(data))
+
+        data = np.asarray(np.random.rand(2, 2), dtype=config.floatX)
+        assert np.allclose(f(data), np.cov(data))
+
+        data = np.asarray(np.random.rand(1, 2), dtype=config.floatX)
+        assert np.allclose(f(data), np.cov(data))
+
+    def test_rowvar(self):
+        for rowvar in [True, False]:
+            x = theano.tensor.matrix('x')
+            c = theano.tensor.cov(x, rowvar=rowvar)
+            f = theano.function([x], c)
+
+            data = np.asarray(np.random.rand(3, 5), dtype=config.floatX)
+            assert np.allclose(f(data), np.cov(data, rowvar=rowvar))
+
+            data = np.asarray(np.random.rand(5, 3), dtype=config.floatX)
+            assert np.allclose(f(data), np.cov(data, rowvar=rowvar))
+
+            data = np.asarray(np.random.rand(10, 10), dtype=config.floatX)
+            assert np.allclose(f(data), np.cov(data, rowvar=rowvar))
+
+            data = np.asarray(np.random.rand(2, 2), dtype=config.floatX)
+            assert np.allclose(f(data), np.cov(data, rowvar=rowvar))
+
+        # check when variables are along the first axis
+        x = theano.tensor.matrix('x')
+        c = theano.tensor.cov(x, rowvar=False)
+        f = theano.function([x], c)
+        data = np.asarray(np.random.rand(2, 1), dtype=config.floatX)
+        assert np.allclose(f(data), np.cov(data, rowvar=False))
+
+    def test_y(self):
+        # test y
+        x = theano.tensor.matrix('x')
+        y = theano.tensor.matrix('y')
+        c = theano.tensor.cov(x, y=y)
+        f = theano.function([x, y], c)
+
+        data = np.asarray(np.random.rand(3, 5), dtype=config.floatX)
+        y = np.asarray(np.random.rand(3, 5), dtype=config.floatX)
+        assert np.allclose(f(data, y), np.cov(data, y=y))
+
+        data = np.asarray(np.random.rand(5, 3), dtype=config.floatX)
+        y = np.asarray(np.random.rand(5, 3), dtype=config.floatX)
+        assert np.allclose(f(data, y), np.cov(data, y=y))
+
+        data = np.asarray(np.random.rand(10, 10), dtype=config.floatX)
+        y = np.asarray(np.random.rand(10, 10), dtype=config.floatX)
+        assert np.allclose(f(data, y), np.cov(data, y=y))
+
+        data = np.asarray(np.random.rand(2, 2), dtype=config.floatX)
+        y = np.asarray(np.random.rand(2, 2), dtype=config.floatX)
+        assert np.allclose(f(data, y), np.cov(data, y=y))
+
+    def test_ddof(self):
+
+        for ddof in range(0, 5):
+            x = theano.tensor.matrix('x')
+            c = theano.tensor.cov(x, ddof=ddof)
+            f = theano.function([x], c)
+
+            data = np.asarray(np.random.rand(3, 5), dtype=config.floatX)
+            assert np.allclose(f(data), np.cov(data, ddof=ddof))
+
+    def test_bias(self):
+
+        for bias in [True, False]:
+            x = theano.tensor.matrix('x')
+            c = theano.tensor.cov(x, bias=bias)
+            f = theano.function([x], c)
+
+            data = np.asarray(np.random.rand(3, 5), dtype=config.floatX)
+            assert np.allclose(f(data), np.cov(data, bias=bias))
+
+        for ddof in range(0, 5):
+            for bias in [True, False]:
+                x = theano.tensor.matrix('x')
+                c = theano.tensor.cov(x, ddof=ddof, bias=bias)
+                f = theano.function([x], c)
+
+                data = np.asarray(np.random.rand(3, 5), dtype=config.floatX)
+                assert np.allclose(f(data), np.cov(data, ddof=ddof, bias=bias))
 
 
 class test_ptp(unittest.TestCase):

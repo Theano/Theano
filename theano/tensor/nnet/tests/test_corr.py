@@ -10,7 +10,7 @@ import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, conv
-from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim, TestUnsharedConv
 
 
 class TestCorr2D(utt.InferShapeTester):
@@ -418,18 +418,10 @@ class TestCorr2D(utt.InferShapeTester):
 
 
 class TestGroupCorr2d(Grouped_conv_noOptim):
-    if theano.config.mode == "FAST_COMPILE":
-        mode = theano.compile.get_mode("FAST_RUN")
-    else:
-        mode = None
-    conv2d = corr.CorrMM
-    conv2d_gradw = corr.CorrMM_gradWeights
-    conv2d_gradi = corr.CorrMM_gradInputs
-    conv2d_op = corr.CorrMM
-    conv2d_gradw_op = corr.CorrMM_gradWeights
-    conv2d_gradi_op = corr.CorrMM_gradInputs
-    flip_filter = True
-    is_dnn = False
+    mode = theano.compile.get_mode("FAST_RUN").excluding('gpuarray')
+    conv_op = corr.CorrMM
+    conv_gradw_op = corr.CorrMM_gradWeights
+    conv_gradi_op = corr.CorrMM_gradInputs
 
     def test_graph(self):
         # define common values  first
@@ -440,13 +432,13 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
         kern_sym = T.tensor4('kern')
 
         # grouped convolution graph
-        conv_group = self.conv2d(num_groups=groups)(bottom_sym, kern_sym)
+        conv_group = self.conv(num_groups=groups)(bottom_sym, kern_sym)
         gconv_func = theano.function([bottom_sym, kern_sym], conv_group, mode=self.mode)
 
         # Graph for the normal hard way
         kern_offset = kern_sym.shape[0] // groups
         bottom_offset = bottom_sym.shape[1] // groups
-        split_conv_output = [self.conv2d()(bottom_sym[:, i * bottom_offset:(i + 1) * bottom_offset, :, :],
+        split_conv_output = [self.conv()(bottom_sym[:, i * bottom_offset:(i + 1) * bottom_offset, :, :],
                              kern_sym[i * kern_offset:(i + 1) * kern_offset, :, :, :])
                              for i in range(groups)]
         concatenated_output = T.concatenate(split_conv_output, axis=1)
@@ -458,6 +450,16 @@ class TestGroupCorr2d(Grouped_conv_noOptim):
 
         # compare values
         utt.assert_allclose(gconv_output, conv_output)
+
+
+class TestUnsharedCorr2d(TestUnsharedConv):
+    if theano.config.mode == "FAST_COMPILE":
+        mode = theano.compile.get_mode("FAST_RUN").excluding('gpuarray')
+    else:
+        mode = None
+    conv2d_op = corr.CorrMM
+    conv2d_gradw_op = corr.CorrMM_gradWeights
+    conv2d_gradi_op = corr.CorrMM_gradInputs
 
 
 if __name__ == '__main__':

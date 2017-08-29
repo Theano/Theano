@@ -948,7 +948,7 @@ def scan_can_remove_outs(op, out_idxs):
         added = False
         for pos, idx in enumerate(out_idxs):
             if (out_idxs_mask[pos] and
-                 np.any([x in required_inputs for x in out_ins[idx]])):
+                    any([x in required_inputs for x in out_ins[idx]])):
                 # This output is required ..
                 out_idxs_mask[pos] = 0
                 required_inputs += gof.graph.inputs([op.outputs[idx]])

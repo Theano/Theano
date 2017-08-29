@@ -12,10 +12,9 @@ from six import string_types
 
 import re
 import theano
-from theano.gof import utils
+from theano.gof import graph, utils
 from theano.gof.utils import MethodNotDefined, object2
-from theano.gof import graph
-from theano.configparser import change_flags
+from theano import change_flags
 
 ########
 # Type #
@@ -658,28 +657,21 @@ class CDataType(Type):
     """
     __props__ = ('ctype', 'freefunc', 'headers', 'header_dirs',
                  'libraries', 'lib_dirs', 'extra_support_code',
-                 'version')
+                 'compile_args', 'version')
 
-    def __init__(self, ctype, freefunc=None, headers=None, header_dirs=None,
-                 libraries=None, lib_dirs=None, extra_support_code="",
-                 version=None):
+    def __init__(self, ctype, freefunc=None, headers=(), header_dirs=(),
+                 libraries=(), lib_dirs=(), compile_args=(),
+                 extra_support_code="", version=None):
         assert isinstance(ctype, string_types)
         self.ctype = ctype
         if freefunc is not None:
             assert isinstance(freefunc, string_types)
         self.freefunc = freefunc
-        if headers is None:
-            headers = ()
         self.headers = tuple(headers)
-        if header_dirs is None:
-            header_dirs = ()
         self.header_dirs = tuple(header_dirs)
-        if libraries is None:
-            libraries = ()
         self.libraries = tuple(libraries)
-        if lib_dirs is None:
-            lib_dirs = ()
         self.lib_dirs = tuple(lib_dirs)
+        self.compile_args = tuple(compile_args)
         self.extra_support_code = extra_support_code
         self._fn = None
         self.version = None
@@ -786,6 +778,9 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
 
     def c_lib_dirs(self):
         return self.lib_dirs
+
+    def c_compile_args(self):
+        return self.compile_args
 
     def c_code_cache_version(self):
         v = (3, )

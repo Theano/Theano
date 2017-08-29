@@ -13,6 +13,7 @@ Requirements
 .. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
 .. _pycuda: https://mathema.tician.de/software/pycuda/
 .. _skcuda: http://scikit-cuda.readthedocs.io/en/latest/
+.. _warp-ctc: https://github.com/baidu-research/warp-ctc
 
     Python_ == 2.7* or ( >= 3.4 and < 3.6 )
         |PythonDistRecommended|. Python 2.4 was supported up to and including the
@@ -57,6 +58,12 @@ Requirements
         cusolver: ``pip install pycuda; pip install
         git+https://github.com/lebedov/scikit-cuda.git#egg=scikit-cuda``.
 
+    `warp-ctc`_
+        Required for :ref:`Theano CTC implementation
+        <libdoc_tensor_nnet_ctc>`. It is faster then using an
+        equivalent graph of Theano ops.
+
+
 Requirements installation through Conda (recommended)
 -----------------------------------------------------
 
@@ -80,6 +87,11 @@ Install requirements and optional packages
 
 * Arguments between <...> are optional.
 
+Package ``parameterized`` is also optional but may be required for unit testing. It is available via ``pip``.
+
+.. code-block:: bash
+
+    pip install parameterized
 
 Install and configure the GPU drivers (recommended)
 ---------------------------------------------------
