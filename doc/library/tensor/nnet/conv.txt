@@ -22,7 +22,7 @@
 .. moduleauthor:: LISA
 
 
-The recomanded user interface are:
+The recommended user interface are:
 
 - :func:`theano.tensor.nnet.conv2d` for 2d convolution
 - :func:`theano.tensor.nnet.conv3d` for 3d convolution
@@ -42,7 +42,7 @@ Either cuDNN and the gemm version can be disabled using the Theano flags
 respectively. If both are disabled, it will raise an error.
 
 
-For the cuDNN version, there are different algorythms with different
+For the cuDNN version, there are different algorithms with different
 memory/speed trade-offs. Manual selection of the right one is very
 difficult as it depends on the shapes and hardware. So it can change
 for each layer. An auto-tuning mode exists and can be activated by
@@ -55,6 +55,15 @@ This auto-tuning has the inconvenience that the first call is much
 slower as it tries and times each implementation it has. So if you
 benchmark, it is important that you remove the first call from your
 timing.
+
+Also, a meta-optimizer has been implemented for the gpu convolution
+implementations to automatically choose the fastest implementation
+for each specific convolution in your graph. For each instance, it will
+compile and benchmark each applicable implementation and choose the
+fastest one. It can be enabled using ``optimizer_including=conv_meta``.
+The meta-optimizer can also selectively disable cudnn and gemm version
+using the Theano flag ``metaopt.optimizer_excluding=conv_dnn`` and
+``metaopt.optimizer_excluding=conv_gemm`` respectively.
 
 
 .. note::

@@ -944,6 +944,84 @@ Here is an example for :math:`i = 7`, :math:`k = 3`, :math:`d = 2`, :math:`s =
 .. [#] Yu, Fisher and Koltun, Vladlen. "Multi-scale context aggregation by
        dilated convolutions". arXiv preprint arXiv:1511.07122 (2015)
 
+Grouped Convolutions
+--------------------
+
+In grouped convolutions with :math:`n` number of groups, the input and kernel
+are split by their channels to form :math:`n` distinct groups. Each group
+performs convolutions independent of the other groups to give :math:`n`
+different outputs. These individual outputs are then concatenated together to give
+the final output. A few examples of works using grouped convolutions are `Krizhevsky et al (2012)
+<https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks>`_ [#]_;
+`Xie et at (2016) <https://arxiv.org/abs/1611.05431>`_ [#]_.
+
+A special case of grouped  convolutions is when :math:`n` equals the number of input
+channels. This is called depth-wise convolutions or channel-wise convolutions.
+depth-wise convolutions also forms a part of separable convolutions.
+
+An example to use Grouped convolutions would be:
+
+    .. code-block:: python
+
+        output = theano.tensor.nnet.conv2d(
+            input, filters, input_shape=(b, c2, i1, i2), filter_shape=(c1, c2 / n, k1, k2),
+            border_mode=(p1, p2), subsample=(s1, s2), filter_dilation=(d1, d2), num_groups=n)
+        # output.shape[0] == b
+        # output.shape[1] == c1
+        # output.shape[2] == (i1 + 2 * p1 - k1 - (k1 - 1) * (d1 - 1)) // s1 + 1
+        # output.shape[3] == (i2 + 2 * p2 - k2 - (k2 - 1) * (d2 - 1)) // s2 + 1
+
+.. [#] Alex Krizhevsky, Ilya Sutskever, Geoffrey E. Hinton. "ImageNet
+       Classification with Deep Convolutional Neural Networks".
+       Advances in Neural Information Processing Systems 25 (NIPS 2012)
+.. [#] Saining Xie, Ross Girshick, Piotr Dollár, Zhuowen Tu, Kaiming He.
+       "Aggregated Residual Transformations for Deep Neural Networks".
+       arxiv preprint arXiv:1611.05431 (2016).
+
+Separable Convolutions
+----------------------
+
+Separable convolutions consists of two consecutive convolution operations.
+First is depth-wise convolutions which performs convolutions separately for
+each channel of the input. The output of this operation is the given as input
+to point-wise convolutions which is a special case of general convolutions with
+1x1 filters. This mixes the channels to give the final output.
+
+As we can see from this diagram, modified from `Vanhoucke(2014)`_ [#]_, depth-wise
+convolutions is performed with :math:`c2` single channel depth-wise filters
+to give a total of :math:`c2` output channels in the intermediate output where
+each channel in the input separately performs convolutions with separate kernels
+to give :math:`c2 / n` channels to the intermediate output, where :math:`n` is
+the number of input channels. The intermediate output then performs point-wise
+convolutions with :math:`c3` 1x1 filters which mixes the channels of the intermediate
+output to give the final output.
+
+.. image:: conv_arithmetic_figures/sep2D.jpg
+    :align: center
+
+Separable convolutions is used as follows:
+
+    .. code-block:: python
+
+        output = theano.tensor.nnet.separable_conv2d(
+            input, depthwise_filters, pointwise_filters, num_channels = c1,
+            input_shape=(b, c1, i1, i2), depthwise_filter_shape=(c2, 1, k1, k2),
+            pointwise_filter_shape=(c3, c2, 1, 1), border_mode=(p1, p2),
+            subsample=(s1, s2), filter_dilation=(d1, d2))
+        # output.shape[0] == b
+        # output.shape[1] == c3
+        # output.shape[2] == (i1 + 2 * p1 - k1 - (k1 - 1) * (d1 - 1)) // s1 + 1
+        # output.shape[3] == (i2 + 2 * p2 - k2 - (k2 - 1) * (d2 - 1)) // s2 + 1
+
+.. _Vanhoucke(2014):
+   http://scholar.google.co.in/scholar_url?url=http://vincent.vanhoucke.com/
+   publications/vanhoucke-iclr14.pdf&hl=en&sa=X&scisig=AAGBfm0x0bgnudAqSVgZ
+   ALfu8uPjYOIWwQ&nossl=1&oi=scholarr&ved=0ahUKEwjLreLjr_DVAhULwI8KHWmHAM8QgAMIJigAMAA
+
+.. [#] Vincent Vanhoucke. "Learning Visual Representations at Scale",
+   International Conference on Learning Representations(2014).
+
+
 Quick reference
 ===============
 
