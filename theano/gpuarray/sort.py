@@ -18,8 +18,8 @@ except ImportError as e:
     # To make sure theano is importable
     pass
 
-# TODO GPU sort / argsort
 
+# TODO GPU sort / argsort
 class GpuTopKOp(GpuKernelBase, TopKOp):
     '''
     Implements TopKOp on gpu
