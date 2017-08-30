@@ -16,7 +16,7 @@ from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         LocalGroupDB,
                         SequenceDB, Optimizer, DB, toolbox, graph)
 from theano.gof.opt import (LocalMetaOptimizer, copy_stack_trace,
-                            with_stack_trace, inherit_stack_trace)
+                            inherit_stack_trace)
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -468,7 +468,7 @@ class GraphToGPU(Optimizer):
                         new_o.owner.inputs[0].type == o.type):
                     new_o = new_o.owner.inputs[0]
                 else:
-                    new_o = with_stack_trace(o, safe_to_cpu(new_o))
+                    new_o = copy_stack_trace(o, safe_to_cpu(new_o))
             new_nodes.append(new_o)
         fgraph.replace_all_validate(zip(fgraph.outputs, new_nodes),
                                     reason=self.__class__.__name__)

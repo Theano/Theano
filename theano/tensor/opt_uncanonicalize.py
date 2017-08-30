@@ -43,7 +43,7 @@ from theano.tensor import DimShuffle, Subtensor
 
 from theano.tensor.opt import register_uncanonicalize
 from theano import scalar as scal
-from theano.gof.opt import copy_stack_trace, with_stack_trace
+from theano.gof.opt import copy_stack_trace
 
 _logger = logging.getLogger('theano.tensor.opt')
 
@@ -89,7 +89,7 @@ def local_max_to_min(node):
             neg = max.owner.inputs[0]
             if neg.owner and neg.owner.op == T.neg:
                 new = CAReduce(scal.minimum, max.owner.op.axis)(neg.owner.inputs[0])
-                return [with_stack_trace(node.outputs[0], new)]
+                return [copy_stack_trace(node.outputs[0], new)]
 
     return False
 

@@ -1831,20 +1831,17 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
 
 @inplace_allocempty(GpuGemv, 0)
 def local_inplace_gpuagemv(node, inputs):
-    with inherit_stack_trace(node.outputs):
-        return [gpugemv_inplace(*inputs)]
+    return [gpugemv_inplace(*inputs)]
 
 
 @inplace_allocempty(GpuGemm, 0)
 def local_inplace_gpuagemm(node, inputs):
-    with inherit_stack_trace(node.outputs):
-        return [gpugemm_inplace(*inputs)]
+    return [gpugemm_inplace(*inputs)]
 
 
 @inplace_allocempty(GpuGer, 0)
 def local_inplace_gpuager(node, inputs):
-    with inherit_stack_trace(node.outputs):
-        return [gpuger_inplace(*inputs)]
+    return [gpuger_inplace(*inputs)]
 
 
 @inplace_allocempty(GpuGemmBatch, 0)
