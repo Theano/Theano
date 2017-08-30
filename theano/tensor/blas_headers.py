@@ -732,7 +732,6 @@ def blas_header_text():
     """C header for the fortran blas interface"""
 
     blas_code = ""
-    const = "const"
     if not config.blas.ldflags:
         # Include the Numpy version implementation of [sd]gemm_.
         current_filedir = dirname(__file__)
@@ -749,7 +748,6 @@ def blas_header_text():
             dblas_code = template_code % {"float_type": "double", "float_size": 8, "npy_float": "NPY_FLOAT64", "precision": "d"}
         if not common_code or not template_code:
             raise IOError("Unable to load NumPy implementation of BLAS functions from C source files.")
-        const = ""
         blas_code += common_code
         blas_code += sblas_code
         blas_code += dblas_code
@@ -833,7 +831,7 @@ def blas_header_text():
 
     /* Single Precision */
 
-        void sgemv_(char*, const int*, const int*, const float *, %(const)s float *, const int*, %(const)s float *, const int*, const float *, float *, const int*);
+        void sgemv_(char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
         void sgbmv_(char*, const int*, const int*, const int*, const int*, const float *,  const float *, const int*, const float *, const int*, const float *, float *, const int*);
         void ssymv_(char*, const int*, const float *, const float *, const int*, const float *,  const int*, const float *, float *, const int*);
         void ssbmv_(char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
@@ -915,7 +913,7 @@ def blas_header_text():
 
     /* Single Precision */
 
-        void sgemm_(char*, char*, const int*, const int*, const int*, const float *, %(const)s float *, const int*, %(const)s float *, const int*, const float *, float *, const int*);
+        void sgemm_(char*, char*, const int*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
         void ssymm_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
         void ssyrk_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, float *, const int*);
         void ssyr2k_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
@@ -924,7 +922,7 @@ def blas_header_text():
 
     /* Double Precision */
 
-        void dgemm_(char*, char*, const int*, const int*, const int*, const double *, %(const)s double *, const int*, %(const)s double *, const int*, const double *, double *, const int*);
+        void dgemm_(char*, char*, const int*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
         void dsymm_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
         void dsyrk_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, double *, const int*);
         void dsyr2k_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
@@ -983,7 +981,7 @@ def blas_header_text():
                     }
                     """)
 
-    return (header % {'const': const}) + blas_code
+    return header + blas_code
 
 
 if not config.blas.ldflags:
@@ -1035,7 +1033,7 @@ def openblas_threads_text():
 
 def blas_header_version():
     # Version for the base header
-    version = (3,)
+    version = (4,)
     if detect_macos_sdot_bug():
         if detect_macos_sdot_bug.fix_works:
             # Version with fix

@@ -276,12 +276,12 @@ void %(precision)sgemv_(
     PyObject* vector_y = alt_op_%(float_type)s(1, SY, 1, *N, *INCY, 0);
 
     if (vector_x == NULL || vector_y == NULL)
-        alt_fatal_error("NumPy %(precision)sdot_: unables to wrap x and y arrays.");
+        alt_fatal_error("NumPy %(precision)sdot_: unable to wrap x and y arrays.");
 
     // Make matrix product: (1, N) * (N, 1) => (1, 1)
     PyObject* dot_product = PyArray_MatrixProduct(vector_x, vector_y);
     if (dot_product == NULL)
-        alt_fatal_error("NumPy %(precision)sdot_: unables to compute dot.");
+        alt_fatal_error("NumPy %(precision)sdot_: unable to compute dot.");
     // Get result.
     %(float_type)s result = *(%(float_type)s*)PyArray_DATA((PyArrayObject*)dot_product);
     Py_XDECREF(dot_product);
