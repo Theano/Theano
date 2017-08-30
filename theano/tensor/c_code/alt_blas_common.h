@@ -1,7 +1,11 @@
 /** C Implementation (with NumPy back-end) of BLAS functions used in Theano.
  * Used instead of BLAS when Theano flag ``blas.ldflags`` is empty.
  * This file contains some useful header code not templated.
- * File alt_blas_template.c contains template code for [sd]gemm_ and [sd]gemv_. **/
+ * File alt_blas_template.c currently contains template code for:
+ * - [sd]gemm_
+ * - [sd]gemv_
+ * - [sd]dot_
+ **/
 
 #define alt_fatal_error(message) { if (PyErr_Occurred()) PyErr_Print(); if(message != NULL) fprintf(stderr, message); exit(-1); }
 
