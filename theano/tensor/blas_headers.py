@@ -987,7 +987,7 @@ def blas_header_text():
 
 
 if not config.blas.ldflags:
-    print('Using NumPy based implementation for BLAS functions.')
+    print('Using NumPy C-API based implementation for BLAS functions.')
 
 
 def mkl_threads_text():
