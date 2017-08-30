@@ -234,14 +234,24 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
         if (input->ga.typecode == GA_HALF)
           c_set_math_type_for_conv(desc, CUDNN_TENSOR_OP_MATH);
 
+        /* cudnnFindConvolutionForwardAlgorithmEx() may write to output.
+           We don't want that if output is used in computation (ie. if beta != 0). */
+        PyGpuArrayObject* o = *output;
+        if (beta != 0) {
+            o = pygpu_empty(PyGpuArray_NDIM(*output), PyGpuArray_DIMS(*output), (*output)->ga.typecode, GA_C_ORDER, c, Py_None);
+        }
+
         // We don't sync the buffer as we don't care about the values.
         err = cudnnFindConvolutionForwardAlgorithmEx(
           params->handle, APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
           APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
-          desc, APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(*output),
+          desc, APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(o),
           1, &count, &choice, *(void **)tmpmem,
           maxfree);
         gpudata_release(tmpmem);
+        if (beta != 0) {
+            Py_XDECREF(o);
+        }
 
         if (err != CUDNN_STATUS_SUCCESS) {
           PyErr_Format(PyExc_RuntimeError,

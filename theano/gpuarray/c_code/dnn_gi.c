@@ -204,12 +204,22 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
           return -1;
         }
 
+        /* cudnnFindConvolutionBackwardDataAlgorithmEx() may write to output (input).
+           We don't want that if output is used in computation (ie. if beta != 0). */
+        PyGpuArrayObject* ip = *input;
+        if (beta != 0) {
+            ip = pygpu_empty(PyGpuArray_NDIM(*input), PyGpuArray_DIMS(*input), (*input)->ga.typecode, GA_C_ORDER, c, Py_None);
+        }
+
         err = cudnnFindConvolutionBackwardDataAlgorithmEx(
           params->handle, APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
           APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output), desc,
-          APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(*input),
+          APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(ip),
           1, &count, &choice, *(void **)tmpmem, maxfree);
         gpudata_release(tmpmem);
+        if (beta != 0) {
+            Py_XDECREF(ip);
+        }
 
         if (err != CUDNN_STATUS_SUCCESS) {
           PyErr_Format(PyExc_RuntimeError, "error selecting convolution algo: %s",
