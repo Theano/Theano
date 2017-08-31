@@ -866,8 +866,10 @@ class MRG_RandomStreams(object):
         rstates = self.get_substream_rstates(nstreams, dtype)
 
         d = {}
-        if kwargs.has_key('target'):
+        if 'target' in kwargs:
             d = dict(target=kwargs.pop('target'))
+        if len(kwargs) > 0:
+            raise TypeError("uniform() got unexpected keyword arguements %s" % (str(kwargs.keys())))
         node_rstate = shared(rstates, **d)
         u = self.pretty_return(node_rstate,
                                *mrg_uniform.new(node_rstate,
@@ -883,8 +885,6 @@ class MRG_RandomStreams(object):
                 '`low` and `high` arguments')
 
         assert r.dtype == dtype
-        if len(kwargs) > 0:
-            raise TypeError("uniform() got unexpected keyword arguements %s" % (str(kwargs.keys())))
         return r
 
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',

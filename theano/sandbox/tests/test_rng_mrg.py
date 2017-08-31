@@ -753,6 +753,21 @@ def test_f16_nonzero(mode=None, op_to_check=rng_mrg.mrg_uniform):
     assert np.all((0 < m_val) & (m_val < 1))
 
 
+def test_target_parameter():
+    srng = MRG_RandomStreams()
+    pvals = np.array([[.98, .01, .01], [.01, .49, .50]])
+
+    def basic_target_parameter_test(x):
+        f = theano.function([], x)
+        assert isinstance(f(), np.ndarray)
+
+    basic_target_parameter_test(srng.uniform((3, 2), target='cpu'))
+    basic_target_parameter_test(srng.binomial((3, 2), target='cpu'))
+    basic_target_parameter_test(srng.multinomial(pvals=pvals.astype('float32'), target='cpu'))
+    basic_target_parameter_test(srng.choice(p=pvals.astype('float32'), replace=False, target='cpu'))
+    basic_target_parameter_test(srng.multinomial_wo_replacement(pvals=pvals.astype('float32'), target='cpu'))
+
+
 if __name__ == "__main__":
     rng = MRG_RandomStreams(np.random.randint(2147462579))
     print(theano.__file__)
