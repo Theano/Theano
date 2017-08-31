@@ -155,7 +155,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
     if (!reuse_algo) {
       char pci_id[16];
-      gpucontext_property(c->ctx, GA_CTX_PROP_PCIBUSID, pci_id);
+      gpucontext_property(c->ctx, GA_CTX_PROP_UNIQUE_ID, pci_id);
       // check out cache
       hashkey = dnn_conv_shape(APPLY_SPECIFIC(input), input, APPLY_SPECIFIC(kerns), *kerns, desc, output, groups);
       if (hashkey.empty()) {
