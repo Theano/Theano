@@ -3258,6 +3258,7 @@ def local_abstractconv3d_cudnn_alt(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
+    num_groups = node.op.num_groups
     precision = get_precision(None, [inp1, inp2])
 
     if node.op.filter_flip:
@@ -3266,7 +3267,7 @@ def local_abstractconv3d_cudnn_alt(node):
         conv_mode = 'cross'
 
     if isinstance(op, AbstractConv3d):
-        if border_mode == 'half' or subsample != (1, 1, 1):
+        if border_mode == 'half' or subsample != (1, 1, 1) or num_groups > 1:
             return None
         if border_mode == 'full':
             direction_hint = 'bprop inputs'
@@ -3284,7 +3285,7 @@ def local_abstractconv3d_cudnn_alt(node):
 
     elif isinstance(op, AbstractConv3d_gradWeights):
         if(border_mode == 'valid' and subsample == (1, 1, 1) and
-           filter_dilation == (1, 1, 1)):
+           filter_dilation == (1, 1, 1) and num_groups == 1):
             img = gpu_contiguous(inp1)
             topgrad = gpu_contiguous(inp2)
             ctx_name = infer_context_name(img, topgrad)
@@ -3315,7 +3316,7 @@ def local_abstractconv3d_cudnn_alt(node):
             return None
 
     elif isinstance(op, AbstractConv3d_gradInputs):
-        if border_mode == 'valid' and subsample == (1, 1, 1):
+        if border_mode == 'valid' and subsample == (1, 1, 1) and num_groups == 1:
             kerns = gpu_contiguous(inp1.dimshuffle(1, 0, 2, 3, 4))
             topgrad = gpu_contiguous(inp2)
             ctx_name = infer_context_name(kerns, topgrad)
