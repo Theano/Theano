@@ -1971,16 +1971,22 @@ class BaseAbstractConv(Op):
                 raise ValueError(
                     'invalid border_mode {}, which must be a '
                     'tuple of length {}'.format(border_mode, convdim))
+            new_border_mode = ()
             for mode in border_mode:
-                if isinstance(mode, tuple) and convdim != 2:
-                    raise NotImplementedError(
-                        'Asymmetric padding not implemented for {}D'.format(convdim))
                 if not((isinstance(mode, integer_types) and mode >= 0) or
                         (isinstance(mode, tuple) and len(mode) == 2 and min(mode) >= 0 and
                          all(isinstance(m, integer_types) for m in mode))):
                     raise ValueError(
                         'invalid border mode {}. The tuple can only contain integers '
                         ' or pairs of integers'.format(border_mode))
+                if isinstance(mode, tuple):
+                    if convdim != 2:
+                        raise NotImplementedError(
+                            'Asymmetric padding not implemented for {}D'.format(convdim))
+                    if mode[0] == mode[1]:
+                        mode = mode[0]
+                new_border_mode += (mode,)
+            border_mode = new_border_mode
         elif border_mode not in ('valid', 'full', 'half'):
             raise ValueError(
                 'invalid border_mode {}, which must be either '

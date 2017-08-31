@@ -603,8 +603,11 @@ class CorrMM(BaseCorrMM):
         ``'valid'`` for ``(0, 0)`` (valid convolution, no padding), ``'full'``
         for ``(kernel_rows - 1, kernel_columns - 1)`` (full convolution),
         ``'half'`` for ``(kernel_rows // 2, kernel_columns // 2)`` (same
-        convolution for odd-sized kernels). Note that the two widths are each
-        applied twice, once per side (left and right, top and bottom).
+        convolution for odd-sized kernels).
+        If it is a tuple containing 2 pairs of integers, then these specify
+        the padding to be applied on each side ((left, right), (top, bottom)).
+        Otherwise, each width is applied twice, once per side (left and right,
+        top and bottom).
     subsample
         The subsample operation applied to each output image.
         Should be a tuple with 2 elements.
