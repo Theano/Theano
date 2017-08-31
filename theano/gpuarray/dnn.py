@@ -3133,12 +3133,13 @@ def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    with inherit_stack_trace(node.outputs):
-        if node.op.unshared:
-            return None
-        if isinstance(node.op, AbstractConv2d):
+    if node.op.unshared:
+        return None
+    if isinstance(node.op, AbstractConv2d):
+        with inherit_stack_trace(node.outputs):
             return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
-        elif isinstance(node.op, AbstractConv3d):
+    elif isinstance(node.op, AbstractConv3d):
+        with inherit_stack_trace(node.outputs):
             return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
@@ -3358,12 +3359,13 @@ def local_abstractconv_gw_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    with inherit_stack_trace(node.outputs):
-        if node.op.unshared:
-            return None
-        if isinstance(node.op, AbstractConv2d_gradWeights):
+    if node.op.unshared:
+        return None
+    if isinstance(node.op, AbstractConv2d_gradWeights):
+        with inherit_stack_trace(node.outputs):
             return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
-        elif isinstance(node.op, AbstractConv3d_gradWeights):
+    elif isinstance(node.op, AbstractConv3d_gradWeights):
+        with inherit_stack_trace(node.outputs):
             return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
@@ -3372,12 +3374,13 @@ def local_abstractconv_gi_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    with inherit_stack_trace(node.outputs):
-        if node.op.unshared:
-            return None
-        if isinstance(node.op, AbstractConv2d_gradInputs):
+    if node.op.unshared:
+        return None
+    if isinstance(node.op, AbstractConv2d_gradInputs):
+        with inherit_stack_trace(node.outputs):
             return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
-        elif isinstance(node.op, AbstractConv3d_gradInputs):
+    elif isinstance(node.op, AbstractConv3d_gradInputs):
+        with inherit_stack_trace(node.outputs):
             return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
