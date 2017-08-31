@@ -444,7 +444,7 @@ def gemv_c_code(y, A, x, z, alpha, beta, fail,
         dtype_%(x)s* x_data = (dtype_%(x)s*) PyArray_DATA(%(x)s);
         dtype_%(z)s* z_data = (dtype_%(z)s*) PyArray_DATA(%(z)s);
         // gemv expects pointers to the beginning of memory arrays,
-        // but numpy provides provides a pointer to the first element,
+        // but numpy provides a pointer to the first element,
         // so when the stride is negative, we need to get the last one.
         if (Sx < 0)
             x_data += (NA1 - 1) * Sx;

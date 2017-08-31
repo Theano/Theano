@@ -203,27 +203,40 @@ void %(precision)sgemv_(
     x, y are vectors
     ALPHA, BETA are scalars
     **/
-    if (*M < 0 || *N < 0 || *LDA < 0 || *incx < 0 || *incy < 0)
-        alt_fatal_error("The integer arguments passed to %(precision)sgemv_ must all be at least 0.");
+
+    // If alpha == 0 and beta == 1, we have nothing to do, as alpha*A*x + beta*y == y.
+    if (*ALPHA == 0 && *BETA == 1)
+        return;
+    if (*M < 0 || *N < 0 || *LDA < 0)
+        alt_fatal_error("NumPy %(precision)sgemv_ implementation: M, N and LDA must be at least 0.");
+    if (*incx == 0 || *incy == 0)
+        alt_fatal_error("NumPy %(precision)sgemv_ implementation: incx and incy must not be 0.");
     int transpose = alt_trans_to_bool(TRANS);
+    int size_x = 0, size_y = 0;
+    if (transpose) {
+        size_x = *M;
+        size_y = *N;
+    } else {
+        size_x = *N;
+        size_y = *M;
+    }
     if (*M == 0 || *N == 0) {
         /* A contains M * N == 0 values. y should be empty too, and we have nothing to do. */
-        if ((transpose && *N != 0) || (!transpose && *M != 0))
+        if (size_y != 0)
             alt_fatal_error("NumPy %(precision)sgemv_ implementation: the output vector should be empty.");
         return;
     }
+    /* Vector pointers points to the begining of memory (see function `theano.tensor.blas_c.gemv_c_code`).
+     * NumPy seems to expect that pointers points to the first element of the array. */
+    if (*incx < 0)
+        x += (size_x - 1) * (-*incx);
+    if (*incy < 0)
+        y += (size_y - 1) * (-*incy);
     PyObject* matrixA = alt_op_%(float_type)s(transpose, A, *M, *N, *LDA, 0);
-    PyObject* matrixX = NULL;
-    PyObject* matrixY = NULL;
-    if (transpose) {
-        matrixX = alt_op_%(float_type)s(1, x, 1, *M, *incx, 0);
-        matrixY = alt_op_%(float_type)s(1, y, 1, *N, *incy, NPY_ARRAY_WRITEABLE);
-    } else {
-        matrixX = alt_op_%(float_type)s(1, x, 1, *N, *incx, 0);
-        matrixY = alt_op_%(float_type)s(1, y, 1, *M, *incy, NPY_ARRAY_WRITEABLE);
-    };
+    PyObject* matrixX = alt_op_%(float_type)s(1, x, 1, size_x, *incx, 0);
+    PyObject* matrixY = alt_op_%(float_type)s(1, y, 1, size_y, *incy, NPY_ARRAY_WRITEABLE);
     if (matrixA == NULL || matrixX == NULL || matrixY == NULL)
-        alt_fatal_error("NumPy %(precision)sgemv_: unable to wrap A, x or y arrays.")
+        alt_fatal_error("NumPy %(precision)sgemv_ implementation: unable to wrap A, x or y arrays.")
     if (*ALPHA == 0) {
         // Just BETA * y
         alt_numpy_scale_matrix_inplace_%(float_type)s(BETA, (PyArrayObject*)matrixY);
@@ -268,22 +281,33 @@ void %(precision)sgemv_(
     %(float_type)s *SY,
     const int *INCY
 ) {
-    if (*N < 0 || *INCX < 0 || *INCY < 0)
-        alt_fatal_error("The integer arguments passed to %(precision)sdot_ must all be at least 0.");
+    if (*N < 0)
+        alt_fatal_error("NumPy %(precision)sdot_ implementation: N must be at least 0.");
+    if (*INCX == 0 || *INCY == 0)
+        alt_fatal_error("NumPy %(precision)sdot_ implementation: INCX and INCY must not be 0.");
+    %(float_type)s result = 0;
+    int one = 1;
+    /* Vector pointers points to the begining of memory (see function `theano.tensor.blas_c.gemv_c_code`).
+     * NumPy seems to expect that pointers points to the first element of the array. */
+    if (*INCX < 0)
+        SX += (*N - 1) * (-*INCX);
+    if (*INCY < 0)
+        SY += (*N - 1) * (-*INCY);
     // Create vector_x with shape (1, N)
     PyObject* vector_x = alt_op_%(float_type)s(0, SX, 1, *N, *INCX, 0);
     // Create vector_y with shape (N, 1)
     PyObject* vector_y = alt_op_%(float_type)s(1, SY, 1, *N, *INCY, 0);
+    // Create output scalar z with shape (1, 1) to wrap `result`.
+    PyArrayObject* dot_product = (PyArrayObject*)alt_wrap_fortran_writeable_matrix_%(float_type)s(&result, &one, &one, &one);
 
-    if (vector_x == NULL || vector_y == NULL)
-        alt_fatal_error("NumPy %(precision)sdot_: unable to wrap x and y arrays.");
+    if (vector_x == NULL || vector_y == NULL || dot_product == NULL)
+        alt_fatal_error("NumPy %(precision)sdot_ implementation: unable to wrap x, y or output arrays.");
 
-    // Make matrix product: (1, N) * (N, 1) => (1, 1)
-    PyObject* dot_product = PyArray_MatrixProduct(vector_x, vector_y);
-    if (dot_product == NULL)
-        alt_fatal_error("NumPy %(precision)sdot_: unable to compute dot.");
+    // Compute matrix product: (1, N) * (N, 1) => (1, 1)
+    PyArray_MatrixProduct2(vector_x, vector_y, dot_product);
+    if (PyErr_Occurred())
+        alt_fatal_error("NumPy %(precision)sdot_ implementation: unable to compute dot.");
     // Get result.
-    %(float_type)s result = *(%(float_type)s*)PyArray_DATA((PyArrayObject*)dot_product);
     Py_XDECREF(dot_product);
     Py_XDECREF(vector_y);
     Py_XDECREF(vector_x);
