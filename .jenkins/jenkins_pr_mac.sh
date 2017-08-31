@@ -8,7 +8,7 @@ set -x
 
 # Copy cache from master
 BASECOMPILEDIR=$HOME/.theano/pr_theano_mac
-rsync -a $HOME/.theano/buildbot_theano_mac/ $BASECOMPILEDIR
+# rsync -a --delete $HOME/.theano/buildbot_theano_mac/ $BASECOMPILEDIR
 
 # Set path for conda and cmake
 export PATH="/Users/jenkins/miniconda2/bin:/usr/local/bin:$PATH"
