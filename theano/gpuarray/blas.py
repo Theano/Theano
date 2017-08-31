@@ -7,7 +7,6 @@ from theano import Apply, Op
 from theano.compile import optdb
 from theano.gof import LocalOptGroup, ParamsType
 from theano.scalar import bool as bool_t
-from theano.gof.opt import inherit_stack_trace
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.opt import in2out
 
