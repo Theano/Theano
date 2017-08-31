@@ -2698,6 +2698,8 @@ class TestDnnConv3DRuntimeAlgorithms(TestDnnConv2DRuntimeAlgorithms):
 
 
 def test_conv_guess_once_with_dtypes():
+    # This test checks that runtime conv algorithm selection does not raise any exception
+    # when consecutive functions with different dtypes and precisions are executed.
     utt.seed_rng()
     inputs_shape = (2, 3, 5, 5)
     filters_shape = (2, 3, 40, 4)
@@ -2719,7 +2721,11 @@ def test_conv_guess_once_with_dtypes():
     f_float_config = get_function('float32', 'float32')
     f_double_config = get_function('float64', 'float64')
     # Let's just see if everything runs without raising any exception.
-    f_true_half_config()
+    try:
+        f_true_half_config()
+    except RuntimeError as e:
+        # float16 precision is not supported on all GPU cards.
+        assert 'CUDNN_STATUS_ARCH_MISMATCH' in e.message
     f_pseudo_half_config()
     f_float_config()
     f_double_config()
