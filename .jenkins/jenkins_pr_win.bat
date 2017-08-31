@@ -7,7 +7,7 @@ set PATH=%PATH%;%CUDNNPATH%\bin;C:\Program Files\CMake\bin
 
 REM Set cache dir and copy from master
 set COMPILEDIR=%WORKSPACE%\cache
-C:\Windows\System32\robocopy /E /purge C:\Jenkins\theano_cache\buildbot_windows %COMPILEDIR% > nul
+REM C:\Windows\System32\robocopy /E /purge C:\Jenkins\theano_cache\buildbot_windows %COMPILEDIR% > nul
 
 set THEANO_FLAGS=init_gpu_device=cuda
 
