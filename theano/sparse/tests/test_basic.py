@@ -98,32 +98,32 @@ def random_lil(shape, dtype, nnz):
 
 def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
                          explicit_zero=False, unsorted_indices=False):
-    """Return a tuple containing everything needed to
-    perform a test.
+    # Return a tuple containing everything needed to
+    # perform a test.
 
-    If `out_dtype` is `None`, theano.config.floatX is
-    used.
+    # If `out_dtype` is `None`, theano.config.floatX is
+    # used.
 
-    :param format: Sparse format.
-    :param shape: Shape of data.
-    :param n: Number of variable.
-    :param out_dtype: dtype of output.
-    :param p: Sparsity proportion.
-    :param gap: Tuple for the range of the random sample. When
-                length is 1, it is assumed to be the exclusive
-                max, when `gap` = (`a`, `b`) it provide a sample
-                from [a, b[. If `None` is used, it provide [0, 1]
-                for float dtypes and [0, 50[ for integer dtypes.
-    :param explicit_zero: When True, we add explicit zero in the
-                          returned sparse matrix
-    :param unsorted_indices: when True, we make sure there is
-                             unsorted indices in the returned
-                             sparse matrix.
-    :return: (variable, data) where both `variable`
-             and `data` are list.
+    # :param format: Sparse format.
+    # :param shape: Shape of data.
+    # :param n: Number of variable.
+    # :param out_dtype: dtype of output.
+    # :param p: Sparsity proportion.
+    # :param gap: Tuple for the range of the random sample. When
+    #             length is 1, it is assumed to be the exclusive
+    #             max, when `gap` = (`a`, `b`) it provide a sample
+    #             from [a, b[. If `None` is used, it provide [0, 1]
+    #             for float dtypes and [0, 50[ for integer dtypes.
+    # :param explicit_zero: When True, we add explicit zero in the
+    #                       returned sparse matrix
+    # :param unsorted_indices: when True, we make sure there is
+    #                          unsorted indices in the returned
+    #                          sparse matrix.
+    # :return: (variable, data) where both `variable`
+    #          and `data` are list.
 
-    :note: explicit_zero and unsorted_indices was added in Theano 0.6rc4
-    """
+    # :note: explicit_zero and unsorted_indices was added in Theano 0.6rc4
+
 
     if out_dtype is None:
         out_dtype = theano.config.floatX
@@ -183,28 +183,28 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
 
 
 def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
-    """
-    Wrapper for theano.test.unittest_tools.py:verify_grad wich
-    converts sparse variables back and forth.
 
-    Parameters
-    ----------
-    op
-        Op to check.
-    pt
-        List of inputs to realize the tests.
-    structured
-        True to tests with a structured grad, False otherwise.
-    args
-        Other `verify_grad` parameters if any.
-    kwargs
-        Other `verify_grad` keywords if any.
+    # Wrapper for theano.test.unittest_tools.py:verify_grad wich
+    # converts sparse variables back and forth.
 
-    Returns
-    -------
-    None
+    # Parameters
+    #----------
+    # op
+    #     Op to check.
+    # pt
+    #     List of inputs to realize the tests.
+    # structured
+    #     True to tests with a structured grad, False otherwise.
+    # args
+    #     Other `verify_grad` parameters if any.
+    # kwargs
+    #     Other `verify_grad` keywords if any.
 
-    """
+    # Returns
+    #-------
+    # None
+
+
 
     def conv_none(x):
         return x
@@ -845,10 +845,10 @@ class test_comparison(unittest.TestCase):
                               self.testsDic[op], sp.csr_matrix)
 
     def test_equality_case(self):
-        """
-        Test assuring normal behaviour when values
-        in the matrices are equal
-        """
+
+        # Test assuring normal behaviour when values
+        # in the matrices are equal
+
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
@@ -995,9 +995,9 @@ class test_csm(unittest.TestCase):
                     [spmat.data], structured=True)
 
     def test_csm_sparser(self):
-        """
-        Test support for gradients sparser than the input.
-        """
+
+        # Test support for gradients sparser than the input.
+
         sp_types = {'csc': sp.csc_matrix,
                     'csr': sp.csr_matrix}
 
@@ -1023,9 +1023,9 @@ class test_csm(unittest.TestCase):
                 assert len(spmat.data) == len(res)
 
     def test_csm_unsorted(self):
-        """
-        Test support for gradients of unsorted inputs.
-        """
+
+        # Test support for gradients of unsorted inputs.
+
         sp_types = {'csc': sp.csc_matrix,
                     'csr': sp.csr_matrix}
 
@@ -1435,7 +1435,7 @@ class DotTests(utt.InferShapeTester):
 
 
 class UsmmTests(unittest.TestCase):
-    """ Test the Usmm and UsmmCscDense class and related optimization """
+    # Test the Usmm and UsmmCscDense class and related optimization
     def setUp(self):
         x_size = (10, 100)
         y_size = (100, 200)
@@ -1723,9 +1723,9 @@ def test_sparse_shared_memory():
 
 
 def test_size():
-    """
-    Ensure the `size` attribute of sparse matrices behaves as in numpy.
-    """
+
+    # Ensure the `size` attribute of sparse matrices behaves as in numpy.
+
     for sparse_type in ('csc_matrix', 'csr_matrix'):
         x = getattr(theano.sparse, sparse_type)()
         y = getattr(scipy.sparse, sparse_type)((5, 7)).astype(config.floatX)
@@ -2215,7 +2215,7 @@ class Test_getitem(unittest.TestCase):
             vx = as_sparse_format(self.rng.binomial(1, 0.5, (100, 97)),
                                       format).astype(theano.config.floatX)
 
-            #mode_no_debug = theano.compile.mode.get_default_mode()
+            # mode_no_debug = theano.compile.mode.get_default_mode()
             # if isinstance(mode_no_debug, theano.compile.DebugMode):
             #    mode_no_debug = 'FAST_RUN'
             if is_supported_version:
@@ -2229,37 +2229,35 @@ class Test_getitem(unittest.TestCase):
             assert r1.shape == t1.shape
             assert np.all(t1.toarray() == r1.toarray())
 
-            """
-            Important: based on a discussion with both Fred and James
-            The following indexing methods is not supported because the rval
-            would be a sparse matrix rather than a sparse vector, which is a
-            deviation from numpy indexing rule. This decision is made largely
-            for keeping the consistency between numpy and theano.
+            # Important: based on a discussion with both Fred and James
+            # The following indexing methods is not supported because the rval
+            # would be a sparse matrix rather than a sparse vector, which is a
+            # deviation from numpy indexing rule. This decision is made largely
+            # for keeping the consistency between numpy and theano.
 
-            f2 = theano.function([x, a, b, c], x[a:b, c])
-            r2 = f2(vx, m, n, p)
-            t2 = vx[m:n, p]
-            assert r2.shape == t2.shape
-            assert np.all(t2.toarray() == r2.toarray())
+            # f2 = theano.function([x, a, b, c], x[a:b, c])
+            # r2 = f2(vx, m, n, p)
+            # t2 = vx[m:n, p]
+            # assert r2.shape == t2.shape
+            # assert np.all(t2.toarray() == r2.toarray())
 
-            f3 = theano.function([x, a, b, c], x[a, b:c])
-            r3 = f3(vx, m, n, p)
-            t3 = vx[m, n:p]
-            assert r3.shape == t3.shape
-            assert np.all(t3.toarray() == r3.toarray())
+            # f3 = theano.function([x, a, b, c], x[a, b:c])
+            # r3 = f3(vx, m, n, p)
+            # t3 = vx[m, n:p]
+            # assert r3.shape == t3.shape
+            # assert np.all(t3.toarray() == r3.toarray())
 
-            f5 = theano.function([x], x[1:2,3])
-            r5 = f5(vx)
-            t5 = vx[1:2, 3]
-            assert r5.shape == t5.shape
-            assert np.all(r5.toarray() == t5.toarray())
+            # f5 = theano.function([x], x[1:2,3])
+            # r5 = f5(vx)
+            # t5 = vx[1:2, 3]
+            # assert r5.shape == t5.shape
+            # assert np.all(r5.toarray() == t5.toarray())
 
-            f7 = theano.function([x], x[50])
-            r7 = f7(vx)
-            t7 = vx[50]
-            assert r7.shape == t7.shape
-            assert np.all(r7.toarray() == t7.toarray())
-            """
+            # f7 = theano.function([x], x[50])
+            # r7 = f7(vx)
+            # t7 = vx[50]
+            # assert r7.shape == t7.shape
+            # assert np.all(r7.toarray() == t7.toarray())
             if is_supported_version:
                 f4 = theano.function([x, a, b, e], x[a:b:e])
                 r4 = f4(vx, m, n, j)
@@ -2479,9 +2477,7 @@ def _format_info(nb):
 
 
 class _HVStackTester(utt.InferShapeTester):
-    """Test for both HStack and VStack.
-
-    """
+    #Test for both HStack and VStack.
     nb = 3  # Number of sparse matrix to stack
     x, mat = _format_info(nb)
 
@@ -2527,12 +2523,11 @@ class _HVStackTester(utt.InferShapeTester):
 
 
 def _hv_switch(op, expected_function):
-    """Return the right test class for HStack or VStack.
+    # Return the right test class for HStack or VStack.
 
-    :Parameters:
-    - `op`: HStack or VStack class.
-    - `expected_function`: function from scipy for comparaison.
-    """
+    # :Parameters:
+    # - `op`: HStack or VStack class.
+    # - `expected_function`: function from scipy for comparaison.
 
     class XStackTester(_HVStackTester):
         op_class = op
@@ -2596,29 +2591,29 @@ class AddSSDataTester(utt.InferShapeTester):
 
 def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                      grad_test=True, name=None, gap_grad=None):
-    """Return the appropriate test class for the elemwise on sparse.
+    # Return the appropriate test class for the elemwise on sparse.
 
-    :param op: Op to test.
-    :expected_f: Function use to compare. This function must act
-                 on dense matrix. If the op is structured
-                 see the `structure_function` decorator to make
-                 this function structured.
-    :param gap: Tuple for the range of the random sample. When
-                length is 1, it is assumed to be the exclusive
-                max, when `gap` = (`a`, `b`) it provide a sample
-                from [a, b[. If `None` is used, it provide [0, 1]
-                for float dtypes and [0, 50[ for integer dtypes.
-    :param test_dtypes: Particular dtypes for testing the op.
-                        If `None`, this is set to the most common
-                        dtypes.
-    :param grad_test: True for testing the grad. False will
-                      skip this test.
-    :param gap_grad: If None, we reuse gap. Otherwise it is the same as gap
-                     but for testing the gradiant of the op.
+    # :param op: Op to test.
+    # :expected_f: Function use to compare. This function must act
+    #              on dense matrix. If the op is structured
+    #              see the `structure_function` decorator to make
+    #              this function structured.
+    # :param gap: Tuple for the range of the random sample. When
+    #             length is 1, it is assumed to be the exclusive
+    #             max, when `gap` = (`a`, `b`) it provide a sample
+    #             from [a, b[. If `None` is used, it provide [0, 1]
+    #             for float dtypes and [0, 50[ for integer dtypes.
+    # :param test_dtypes: Particular dtypes for testing the op.
+    #                     If `None`, this is set to the most common
+    #                     dtypes.
+    # :param grad_test: True for testing the grad. False will
+    #                   skip this test.
+    # :param gap_grad: If None, we reuse gap. Otherwise it is the same as gap
+    #                  but for testing the gradiant of the op.
 
-    :return: The class that perform the tests, not an instance
-             of the class.
-    """
+    # :return: The class that perform the tests, not an instance
+    #          of the class.
+
 
     if test_dtypes is None:
         test_dtypes = sparse.all_dtypes
@@ -2765,10 +2760,10 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
 
 
 def test_hstack_vstack():
-    """
-    Tests sparse.hstack and sparse.vstack (as opposed to the HStack and VStack
-    classes that they wrap).
-    """
+
+    # Tests sparse.hstack and sparse.vstack (as opposed to the HStack and VStack
+    # classes that they wrap).
+
 
     def make_block(dtype):
         return theano.sparse.csr_matrix(name="%s block" % dtype,
@@ -2796,20 +2791,20 @@ def test_hstack_vstack():
 
 
 def structure_function(f, index=0):
-    """Decorator to structure a function wich
-    apply on dense matrix.
+    # Decorator to structure a function wich
+    # apply on dense matrix.
 
-    Here, the inputs of the function must be
-    dense matrix. The sparse pattern is
-    determined by finding the zeros.
+    # Here, the inputs of the function must be
+    # dense matrix. The sparse pattern is
+    # determined by finding the zeros.
 
-    :param index: The index of the parameter
+    # :param index: The index of the parameter
                   from wich the function must
                   be structured.
 
-    :return: The structured function for its
-             `index` parameter.
-    """
+    # :return: The structured function for its
+    #          `index` parameter.
+
 
     def structured_function(*args):
         pattern = args[index]
