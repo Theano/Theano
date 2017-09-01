@@ -2339,10 +2339,10 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         if defaults is None:
             defaults = [None] * len(self.inputs)
         # List of independent one-element lists, will be passed to the linker.
-        input_storage = []
+        input_storage_list = []
         _defaults = []
 
-        # The following loop is to fill in the input_storage and _defaults
+        # The following loop is to fill in the input_storage_list and _defaults
         # lists.
         for (input, indices, subinputs), default in izip(self.indices,
                                                          defaults):
@@ -2351,15 +2351,15 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             if isinstance(default, gof.Container):
                 # If the default is a gof.Container, this means we want to
                 # share the same storage. This is done by appending
-                # default.storage to input_storage.
+                # default.storage to input_storage_list.
                 if indices is not None:
                     raise TypeError("Cannot take a Container instance as "
                                     "default for a SymbolicInput.")
-                input_storage.append(default.storage)
+                input_storage_list.append(default.storage)
                 default = None
             else:
                 # Normal case: one new, independent storage unit
-                input_storage.append([None])
+                input_storage_list.append([None])
 
             # Filling _defaults. Each entry is a tuple of three elements:
             # (required, refeed, value)
@@ -2403,7 +2403,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         defaults = _defaults
 
         # Get a function instance
-        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage,
+        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage_list,
                                              storage_map=storage_map)
         fn = self.function_builder(_fn, _i, _o, self.indices,
                                    self.outputs, defaults, self.unpack_single,
