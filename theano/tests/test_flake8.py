@@ -4,6 +4,7 @@ Test flake8 errors.
 from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 import os
+import sys
 from fnmatch import fnmatch
 import theano
 try:
@@ -129,6 +130,8 @@ def test_format_flake8():
     total_errors = 0
     for path in list_files():
         rel_path = os.path.relpath(path, theano.__path__[0])
+        if sys.platform == 'win32':
+            rel_path = rel_path.replace('\\', '/')
         if rel_path in whitelist_flake8:
             continue
         else:
