@@ -2953,13 +2953,14 @@ def copy_stack_trace(from_var, to_var):
 @contextlib.contextmanager
 def inherit_stack_trace(from_var):
     """
-    Contextmanager that copies the stack trace from one or more tensor variables to all tensor
-    variables constructed in the body.
+    Contextmanager that copies the stack trace from one or more variable nodes to all
+    variable nodes constructed in the body. new_nodes is the list of all the newly created
+    variable nodes inside an optimization that is managed by graph.nodes_constructed().
 
     Parameters
     ----------
     from_var
-        Tensor variable or list of tensor variables to copy stack traces from.
+        Variable node or a list of variable nodes to copy stack traces from.
 
     """
     with graph.nodes_constructed() as new_nodes:
