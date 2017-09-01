@@ -1033,7 +1033,7 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
             assert shape[1].ndim == 0
 
         if self.unshared:
-            broadcastable = [topgrad.type.broadcastable[0], False, False,
+            broadcastable = [topgrad.type.broadcastable[1], False, False,
                              img.type.broadcastable[1], False, False]
         else:
             broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
