@@ -3667,11 +3667,12 @@ def local_dnn_reduction(node):
     if not cudnn.cudnnReduceTensorOp_t.has_alias(node.op.scalar_op.name):
         return
 
-    return (GpuDnnReduction(node.op.scalar_op.name,
-                            node.op.axis,
-                            node.op.acc_dtype,
-                            node.op.dtype,
-                            False)(node.inputs[0]),)
+    with inherit_stack_trace(node.outputs):
+        return (GpuDnnReduction(node.op.scalar_op.name,
+                                node.op.axis,
+                                node.op.acc_dtype,
+                                node.op.dtype,
+                                False)(node.inputs[0]),)
 
 
 @register_opt('cudnn')
