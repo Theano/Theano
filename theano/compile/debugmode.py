@@ -2192,6 +2192,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                  name=None):
         self.mode = mode
         self.profile = profile
+        if profile is not None:
+            raise Exception("DebugMode do not support profiling.")
         optimizer = mode.optimizer
         # Handle the case where inputs and/or outputs is a single
         # Variable (not in a list)
