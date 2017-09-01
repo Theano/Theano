@@ -3,8 +3,8 @@ Release Notes
 =============
 
 
-Theano 0.10.0beta2 (25th of August, 2017)
-=========================================
+Theano 0.10.0beta2 (5th of September, 2017)
+===========================================
 
 This release contains new features, improvements and bug fixes to prepare the upcoming release candidate.
 
@@ -12,11 +12,12 @@ We recommend that every developer updates to this version.
 
 Highlights:
  - Support NumPy ``1.13``
+ - Added conda recipe
  - Optional faster optimization step with new destroy handler
  - Updated documentation
  - Bug fixes, crash fixes and warning improvements
 
-A total of 15 people contributed to this release since 0.10.0beta1, see list below.
+A total of 16 people contributed to this release since 0.10.0beta1, see list below.
 
 Convolution updates:
  - Added unshared convolutions
@@ -55,12 +56,13 @@ Commiters since 0.10.0beta1:
  - Steven Bocco
  - Reyhane Askari
  - Gijs van Tulder
+ - Arnaud Bergeron
  - Boris Fomitchev
  - Vikram
- - Arnaud Bergeron
  - Joseph Paul Cohen
- - Dzmitry Bahdanau
  - Yikang Shen
+ - Dzmitry Bahdanau
  - Faruk Ahmed
  - Shawn Tan
+ - Simon Lefrancois
  - wyjw

@@ -8,7 +8,6 @@ git log -p rel-0.9.0... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 
 
 # Commit count per user
 git shortlog -sn rel-0.9.0..
-git shortlog -sn rel-0.10.0beta1..
 
 
 
@@ -20,6 +19,7 @@ TODO: better Theano conv doc
 
 Highlights:
  - Support NumPy ``1.13``
+ - Added conda recipe
  - Moved Python 3.* minimum supported version from 3.3 to 3.4
  - Replaced deprecated package ``nose-parameterized`` with up-to-date package ``parameterized`` for Theano requirements
  - Theano now internally uses ``sha256`` instead of ``md5`` to work on systems that forbide ``md5`` for security reason
@@ -136,6 +136,14 @@ Other more detailed changes:
  - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/6373
+* https://github.com/Theano/Theano/pull/6374
+* https://github.com/Theano/Theano/pull/6371
+* https://github.com/Theano/Theano/pull/6362
+* https://github.com/Theano/Theano/pull/6368
+* https://github.com/Theano/Theano/pull/6339
+* https://github.com/Theano/Theano/pull/6366
+* https://github.com/Theano/Theano/pull/6364
 * https://github.com/Theano/Theano/pull/6349
 * https://github.com/Theano/Theano/pull/6361
 * https://github.com/Theano/Theano/pull/6356
