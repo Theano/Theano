@@ -21,10 +21,9 @@ one = theano.tensor.as_tensor_variable(1.)
 
 
 def grad_sources_inputs(sources, inputs):
-    """
-    This implements the old grad_sources_inputs function in terms of
-    the new interface so the tests don't need to be rewritten.
-    """
+    # This implements the old grad_sources_inputs function in terms of
+    # the new interface so the tests don't need to be rewritten.
+
     if inputs is None:
         inputs = theano.gof.graph.inputs([source[0] for source in sources])
     return dict(izip(inputs, theano.gradient.grad(cost=None, known_grads=dict(sources),
@@ -34,7 +33,7 @@ def grad_sources_inputs(sources, inputs):
 class testgrad_sources_inputs(unittest.TestCase):
 
     def test_retNone1(self):
-        """Test that it is not ok to return None from op.grad()"""
+        # Test that it is not ok to return None from op.grad()
         class retNone(gof.op.Op):
             __props__ = ()
 
@@ -51,8 +50,8 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertRaises(TypeError, grad_sources_inputs, [(a.out, one)], None)
 
     def test_wrong_rval_len1(self):
-        """Test that it is not ok to return the wrong number of gradient terms
-        """
+        # Test that it is not ok to return the wrong number of gradient terms
+
         class retOne(gof.op.Op):
             __props__ = ()
 
@@ -71,7 +70,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertRaises(ValueError, grad_sources_inputs, [(a2.out, one)], None)
 
     def test_1in_1out(self):
-        """Test grad is called correctly for a 1-to-1 op"""
+        # Test grad is called correctly for a 1-to-1 op
         gval = theano.tensor.matrix()
 
         class O(gof.op.Op):
@@ -89,7 +88,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[0]] is gval)
 
     def test_1in_Nout(self):
-        """Test grad is called correctly for a 1-to-many op"""
+        # Test grad is called correctly for a 1-to-many op
         gval = theano.tensor.matrix()
 
         class O(gof.op.Op):
@@ -109,7 +108,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[0]] is gval)
 
     def test_Nin_1out(self):
-        """Test grad is called correctly for a many-to-1 op"""
+        # Test grad is called correctly for a many-to-1 op
         gval0 = theano.tensor.scalar()
         gval1 = theano.tensor.scalar()
 
@@ -131,7 +130,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         self.assertTrue(g[a1.inputs[1]] is gval1)
 
     def test_Nin_Nout(self):
-        """Test grad is called correctly for a many-to-many op"""
+        # Test grad is called correctly for a many-to-many op
         gval0 = theano.tensor.matrix()
         gval1 = theano.tensor.matrix()
 

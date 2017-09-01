@@ -1,6 +1,5 @@
-"""
- Tests fof the lazy conditiona
-"""
+# Tests fof the lazy conditiona
+
 
 from __future__ import absolute_import, print_function, division
 import unittest
@@ -480,9 +479,8 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
                            vx2 + vy2 + vw2)
 
     def test_grad_test_values(self):
-        """
-        Regression test for test values of `ifelse` gradient.
-        """
+        # Regression test for test values of `ifelse` gradient.
+
         backup = theano.config.compute_test_value
         theano.config.compute_test_value = 'raise'
         try:
