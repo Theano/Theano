@@ -2322,13 +2322,13 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.output_keys = output_keys
         self.name = name
 
-    def create(self, defaults=None, trustme=False, storage_map=None):
+    def create(self, input_storage=None, trustme=False, storage_map=None):
         """
         Create a function.
 
         Parameters
         ----------
-        defaults
+        input_storage
             A list matching the inputs list and providing default values if the
             default for an input is None, then that input is a required input.
             For an input with an update, the default acts as initialization.
@@ -2336,8 +2336,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             Disables some exceptions, used internally.
 
         """
-        if defaults is None:
-            defaults = [None] * len(self.inputs)
+        if input_storage is None:
+            input_storage = [None] * len(self.inputs)
         # List of independent one-element lists, will be passed to the linker.
         input_storage_list = []
         _defaults = []
@@ -2345,7 +2345,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         # The following loop is to fill in the input_storage_list and _defaults
         # lists.
         for (input, indices, subinputs), default in izip(self.indices,
-                                                         defaults):
+                                                         input_storage):
             __default = default
 
             if isinstance(default, gof.Container):
