@@ -2190,6 +2190,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                  fgraph=None,  # If present the optimized graph. we ignore it.
                  output_keys=None,
                  name=None):
+        self.mode = mode
         self.profile = profile
         optimizer = mode.optimizer
         # Handle the case where inputs and/or outputs is a single
@@ -2298,18 +2299,15 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         # the 'no_borrow' outputs are the ones for which that we can't return
         # the internal storage pointer.
 
-        no_borrow = [
-            output
-            for output, spec in izip(fgraph.outputs,
-                                     outputs + additional_outputs)
-            if not spec.borrow]
+        no_borrow = [output for output, spec in
+                     izip(fgraph.outputs, outputs + additional_outputs)
+                     if not spec.borrow]
         if no_borrow:
             self.linker = linker.accept(
-                fgraph,
-                no_recycling=infer_reuse_pattern(fgraph, no_borrow))
+                fgraph, no_recycling=infer_reuse_pattern(fgraph, no_borrow))
         else:
             self.linker = linker.accept(fgraph)
-
+        fgraph.name = name
         self.indices = indices
         self.inputs = inputs
         self.expanded_inputs = inputs
@@ -2318,7 +2316,6 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.return_none = return_none
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
-        self.mode = mode
         self.on_unused_input = on_unused_input  # Used for the pickling/copy
         self.output_keys = output_keys
         self.name = name
@@ -2410,6 +2407,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                                    self.outputs, defaults, self.unpack_single,
                                    self.return_none, self.output_keys, self,
                                    name=self.name)
+        fn.profile = self.profile
         return fn
 
 
