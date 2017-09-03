@@ -49,11 +49,19 @@ def init_dev(dev, name=None, preallocate=None):
     if (pygpu.version.major != 0 or pygpu.version.minor != 7 or
             pygpu.version.patch < 0):
         raise ValueError(
-            "Your installed version of pygpu is too old, please upgrade to 0.7.0 or later")
+            "Your installed version of pygpu(%s) is too old, please upgrade to 0.7.0 or later" %
+            pygpu.version.fullversion)
     # This is for the C headers API, we need to match the exact version.
-    if pygpu.gpuarray.api_version()[0] != 2:
+    gpuarray_version_major_supported = 2
+    gpuarray_version_major_detected = pygpu.gpuarray.api_version()[0]
+    if gpuarray_version_major_detected != gpuarray_version_major_supported:
         raise ValueError(
-            "Your installed libgpuarray is not in sync, please make sure to have the appropriate version")
+            "Your installed version oflibgpuarray is not in sync with the current Theano"
+            " version. The installed libgpuarray version support API version %d,"
+            " while current Theano support API version %d. Change the version of"
+            " libgpuarray or Theano to fix this problem.",
+            gpuarray_version_major_detected,
+            gpuarray_version_major_supported)
     if dev not in init_dev.devmap:
         args = dict()
         if config.gpuarray.cache_path != '':
