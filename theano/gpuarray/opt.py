@@ -15,7 +15,8 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         LocalGroupDB,
                         SequenceDB, Optimizer, DB, toolbox, graph)
-from theano.gof.opt import LocalMetaOptimizer
+from theano.gof.opt import (LocalMetaOptimizer, copy_stack_trace,
+                            inherit_stack_trace)
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -252,12 +253,25 @@ def op_lifter(OP, cuda_only=False):
                 # This is needed as sometimes new_op inherits from OP.
                 if new_op and new_op != node.op:
                     if isinstance(new_op, theano.Op):
-                        return [safe_to_cpu(o) for o in
-                                new_op(*node.inputs, return_list=True)]
+                        new_outputs = new_op(*node.inputs, return_list=True)
+                        to_cpu_fn = safe_to_cpu
                     elif isinstance(new_op, (tuple, list)):
-                        return [safe_to_cpu(o) for o in new_op]
+                        new_outputs = new_op
+                        to_cpu_fn = safe_to_cpu
                     else:  # suppose it is a variable on the GPU
-                        return [new_op.transfer('cpu')]
+                        new_outputs = [new_op]
+
+                        def to_cpu_fn(x):
+                            return x.transfer('cpu')
+                    # copy stack traces onto gpu outputs
+                    # also copy the stack traces onto HostFromGpu outputs
+                    on_cpu = []
+                    for old_output, new_output in zip(node.outputs, new_outputs):
+                        copy_stack_trace(old_output, new_output)
+                        cpu = to_cpu_fn(new_output)
+                        on_cpu.append(cpu)
+                        copy_stack_trace(old_output, cpu)
+                    return on_cpu
             return False
         local_opt.__name__ = maker.__name__
         return local_optimizer(OP)(local_opt)
@@ -419,6 +433,9 @@ class GraphToGPU(Optimizer):
             elif isinstance(new_ops, theano.Variable):
                 outputs = [new_ops]
 
+            for old_output, new_output in zip(node.outputs, outputs):
+                copy_stack_trace(old_output, new_output)
+
             if new_ops:
                 node_created[lopt] += len(graph.ops([mapping[i] for i in node.inputs], outputs))
                 if any([getattr(old_o, 'dtype', None) != getattr(new_o, 'dtype', None)
@@ -451,7 +468,7 @@ class GraphToGPU(Optimizer):
                         new_o.owner.inputs[0].type == o.type):
                     new_o = new_o.owner.inputs[0]
                 else:
-                    new_o = safe_to_cpu(new_o)
+                    new_o = copy_stack_trace(o, safe_to_cpu(new_o))
             new_nodes.append(new_o)
         fgraph.replace_all_validate(zip(fgraph.outputs, new_nodes),
                                     reason=self.__class__.__name__)
@@ -650,7 +667,8 @@ def local_gpualloc_memset_0(node):
                 inp.data.size == 1 and
                 (np.asarray(inp.data) == 0).all()):
             new_op = GpuAlloc(node.op.context_name, memset_0=True)
-            return [new_op(*node.inputs)]
+            with inherit_stack_trace(node.outputs):
+                return new_op(*node.inputs, return_list=True)
 
 
 # Don't register by default.
@@ -659,10 +677,9 @@ def local_gpua_alloc_empty_to_zeros(node):
     if isinstance(node.op, GpuAllocEmpty):
         context_name = infer_context_name(*node.inputs)
         z = np.asarray(0, dtype=node.outputs[0].dtype)
-        return [GpuAlloc(context_name)(as_gpuarray_variable(z, context_name),
-                                       *node.inputs)]
-
-
+        with inherit_stack_trace(node.outputs):
+            return [GpuAlloc(context_name)(
+                as_gpuarray_variable(z, context_name), *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.
@@ -1206,7 +1223,8 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
             op.scalar_op, axis=op.axis,
             dtype=odtype,
             acc_dtype=adtype)
-        gvar = greduce(x)
+        with inherit_stack_trace(outputs):
+            gvar = greduce(x)
         # We need to have the make node called, otherwise the mask can
         # be None
         if (op2 is GpuCAReduceCPY or
@@ -1246,25 +1264,27 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
                 dtype=getattr(op, 'dtype', outputs[0].dtype),
                 acc_dtype=getattr(op, 'acc_dtype', None))
 
-            reshaped_x = x.reshape(tensor.stack(new_in_shp))
-            gpu_reshaped_x = as_gpuarray_variable(reshaped_x, context_name)
-            gvar = greduce(gpu_reshaped_x)
-            # We need to have the make node called, otherwise the mask can
-            # be None
-            reshaped_gpu_inputs = [gpu_reshaped_x]
-            if greduce.supports_c_code(reshaped_gpu_inputs):
-                reduce_reshaped_x = greduce(gpu_reshaped_x)
+            with inherit_stack_trace(outputs):
+                reshaped_x = x.reshape(tensor.stack(new_in_shp))
+                gpu_reshaped_x = as_gpuarray_variable(reshaped_x, context_name)
+                # We need to have the make node called, otherwise the mask can
+                # be None
+                gvar = greduce(gpu_reshaped_x)
+                reshaped_gpu_inputs = [gpu_reshaped_x]
+                if greduce.supports_c_code(reshaped_gpu_inputs):
+                    reduce_reshaped_x = greduce(gpu_reshaped_x)
 
-                if reduce_reshaped_x.ndim != outputs[0].ndim:
-                    out_shp = []
-                    for i in range(x.ndim):
-                        if i not in op.axis:
-                            out_shp.append(shape_i(x, i))
-                    unreshaped_reduce = GpuReshape(len(out_shp))(reduce_reshaped_x,
-                                                                 tensor.stack(out_shp))
-                else:
-                    unreshaped_reduce = reduce_reshaped_x
-                return [unreshaped_reduce]
+                    if reduce_reshaped_x.ndim != outputs[0].ndim:
+                        out_shp = []
+                        for i in range(x.ndim):
+                            if i not in op.axis:
+                                out_shp.append(shape_i(x, i))
+                        unreshaped_reduce = GpuReshape(len(out_shp))(
+                            reduce_reshaped_x,
+                            tensor.stack(out_shp))
+                    else:
+                        unreshaped_reduce = reduce_reshaped_x
+                    return [unreshaped_reduce]
 
 
 @register_opt('fast_compile')
@@ -1305,33 +1325,34 @@ def local_gpua_gemm(op, context_name, inputs, outputs):
 def local_gpua_gemmbatch(op, context_name, inputs, outputs):
     if inputs[0].dtype not in ['float16', 'float32', 'float64']:
         return
-    a, b = inputs
-    # Since GpuGemmBatch only supports 3D inputs and output,
-    # we need to add broadcastable dims to the inputs, and drop
-    # them from outputs
-    output_dims = [0, 1, 2]
-    if a.ndim == 2:
-        a = GpuDimShuffle(a.broadcastable, (0, 'x', 1))(a)
-        del output_dims[1]
-    if b.ndim == 2:
-        b = GpuDimShuffle(b.broadcastable, (0, 1, 'x'))(b)
-        del output_dims[-1]
-    # In case of mismatched dtypes, we also have to upcast
-    out_dtype = outputs[0].dtype
-    if a.dtype != out_dtype or b.dtype != out_dtype:
-        gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
-        if a.dtype != out_dtype:
-            a = gpu_cast_op(a)
-        if b.dtype != out_dtype:
-            b = gpu_cast_op(b)
+    with inherit_stack_trace(outputs):
+        a, b = inputs
+        # Since GpuGemmBatch only supports 3D inputs and output,
+        # we need to add broadcastable dims to the inputs, and drop
+        # them from outputs
+        output_dims = [0, 1, 2]
+        if a.ndim == 2:
+            a = GpuDimShuffle(a.broadcastable, (0, 'x', 1))(a)
+            del output_dims[1]
+        if b.ndim == 2:
+            b = GpuDimShuffle(b.broadcastable, (0, 1, 'x'))(b)
+            del output_dims[-1]
+        # In case of mismatched dtypes, we also have to upcast
+        out_dtype = outputs[0].dtype
+        if a.dtype != out_dtype or b.dtype != out_dtype:
+            gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
+            if a.dtype != out_dtype:
+                a = gpu_cast_op(a)
+            if b.dtype != out_dtype:
+                b = gpu_cast_op(b)
 
-    c = GpuAllocEmpty(out_dtype, context_name)(
-        a.shape[0], a.shape[1], b.shape[2])
-    out = gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=out_dtype),
-                                  a, b, np.asarray(0.0, dtype=out_dtype))
-    if len(output_dims) != 3:
-        out = GpuDimShuffle(out.broadcastable, output_dims)(out)
-    return out
+        c = GpuAllocEmpty(out_dtype, context_name)(
+            a.shape[0], a.shape[1], b.shape[2])
+        out = gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=out_dtype),
+                                      a, b, np.asarray(0.0, dtype=out_dtype))
+        if len(output_dims) != 3:
+            out = GpuDimShuffle(out.broadcastable, output_dims)(out)
+        return out
 
 
 @register_opt()
@@ -1378,11 +1399,12 @@ def local_gpua_dot22(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.Dot22Scalar])
 @register_opt2([tensor.blas.Dot22Scalar], 'fast_compile')
 def local_gpua_dot22scalar(op, context_name, inputs, outputs):
-    x, y, a = inputs
-    x = as_gpuarray_variable(x, context_name)
-    y = as_gpuarray_variable(y, context_name)
-    z = GpuAllocEmpty(x.dtype, context_name)(x.shape[0], y.shape[1])
-    return [gpugemm_no_inplace(z, a, x, y, 0)]
+    with inherit_stack_trace(outputs):
+        x, y, a = inputs
+        x = as_gpuarray_variable(x, context_name)
+        y = as_gpuarray_variable(y, context_name)
+        z = GpuAllocEmpty(x.dtype, context_name)(x.shape[0], y.shape[1])
+        return [gpugemm_no_inplace(z, a, x, y, 0)]
 
 
 @register_opt('fast_compile')
@@ -2392,7 +2414,8 @@ def local_gpu_elemwise_careduce(node):
         props = node.op._props_dict()
         props["pre_scalar_op"] = scalar.basic.sqr
         out = GpuCAReduceCuda(**props)(inp)
-        return [out]
+        with inherit_stack_trace(node.outputs):
+            return [out]
 
 
 @local_optimizer(None)
@@ -2583,8 +2606,9 @@ def local_gpu_solve(op, context_name, inputs, outputs):
 @local_optimizer([GpuCusolverSolve], inplace=True)
 def local_inplace_gpu_solve(node):
     if isinstance(node.op, GpuCusolverSolve) and not node.op.inplace:
-        return [GpuCusolverSolve(A_structure=node.op.A_structure, trans=node.op.trans,
-                                 inplace=True)(*node.inputs)]
+        with inherit_stack_trace(node.outputs):
+            return [GpuCusolverSolve(A_structure=node.op.A_structure, trans=node.op.trans,
+                                     inplace=True)(*node.inputs)]
 
 
 # Cholesky decomposition
@@ -2622,7 +2646,8 @@ register_opt2([slinalg.Solve], 'fast_compile', name='matrix_ops_db2')(matrix_ops
 @local_optimizer([GpuCholesky], inplace=True)
 def local_inplace_gpu_cholesky(node):
     if isinstance(node.op, GpuCholesky) and not node.op.inplace:
-        return [node.op.clone_inplace()(*node.inputs)]
+        with inherit_stack_trace(node.outputs):
+            return [node.op.clone_inplace()(*node.inputs)]
 
 
 def local_gpu_magma_cholesky(op, context_name, inputs, outputs):
@@ -2705,7 +2730,8 @@ def local_gpu_magma_matrix_inverse(op, context_name, inputs, outputs):
 @local_optimizer([GpuMagmaMatrixInverse])
 def local_inplace_gpu_magma_matrix_inverse(node):
     if isinstance(node.op, GpuMagmaMatrixInverse) and not node.op.inplace:
-        return [node.op.clone_inplace()(*node.inputs)]
+        with inherit_stack_trace(node.outputs):
+            return [node.op.clone_inplace()(*node.inputs)]
 
 
 # Eigen decomposition of a symmetric matrix

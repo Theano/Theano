@@ -4,6 +4,7 @@ Node classes (`Apply`, `Variable`) and expression graph algorithms.
 from __future__ import absolute_import, print_function, division
 
 from collections import deque
+import contextlib
 from copy import copy
 from itertools import count
 
@@ -390,6 +391,8 @@ class Variable(Node):
         self.name = name
         self.auto_name = 'auto_' + str(next(self.__count__))
 
+        Variable.notify_construction_observers(self)
+
     def __str__(self):
         """Return a str representation of the Variable.
 
@@ -535,6 +538,22 @@ class Variable(Node):
             del t.test_value
             d["tag"] = t
         return d
+
+    #  refer to doc in nodes_constructed.
+    construction_observers = []
+
+    @classmethod
+    def append_construction_observer(cls, observer):
+        cls.construction_observers.append(observer)
+
+    @classmethod
+    def remove_construction_observer(cls, observer):
+        cls.construction_observers.remove(observer)
+
+    @classmethod
+    def notify_construction_observers(cls, instance):
+        for observer in cls.construction_observers:
+            observer(instance)
 
 
 class Constant(Variable):
@@ -1426,3 +1445,38 @@ def is_in_ancestors(l_node, f_node):
             todo.append(cur)
             todo.extend(i.owner for i in cur.inputs if i.owner)
     return False
+
+
+@contextlib.contextmanager
+def nodes_constructed():
+    """
+    A contextmanager that is used in inherit_stack_trace and keeps track
+    of all the newly created varaible nodes inside an optimization. A list
+    of new_nodes is instantiated but will be filled in a lazy manner (when
+    Variable.notify_construction_observers is called).
+
+
+    `observer` is the entity that updates the new_nodes list.
+    construction_observers is a list inside Variable class and contains
+    a list of observer functions. The observer functions inside
+    construction_observers are only called when a variable node is
+    instantiated (where Variable.notify_construction_observers is called).
+    When the observer function is called, a new variable node is added to
+    the new_nodes list.
+
+
+    Parameters
+    ----------
+    new_nodes
+        A list of all the variable nodes that are created inside the optimization.
+
+    yields
+        new_nodes list.
+    """
+    new_nodes = []
+
+    def observer(node):
+        new_nodes.append(node)
+    Variable.append_construction_observer(observer)
+    yield new_nodes
+    Variable.remove_construction_observer(observer)

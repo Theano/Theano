@@ -18,6 +18,7 @@ from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp, ParamsType, EnumList
 from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
+from theano.gof.opt import inherit_stack_trace
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
@@ -3127,9 +3128,11 @@ def local_abstractconv_cudnn(node):
     if node.op.unshared:
         return None
     if isinstance(node.op, AbstractConv2d):
-        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d):
-        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
@@ -3352,9 +3355,11 @@ def local_abstractconv_gw_cudnn(node):
     if node.op.unshared:
         return None
     if isinstance(node.op, AbstractConv2d_gradWeights):
-        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d_gradWeights):
-        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @local_optimizer([AbstractConv2d_gradInputs, AbstractConv3d_gradInputs])
@@ -3365,9 +3370,11 @@ def local_abstractconv_gi_cudnn(node):
     if node.op.unshared:
         return None
     if isinstance(node.op, AbstractConv2d_gradInputs):
-        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d_gradInputs):
-        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @inplace_allocempty(GpuDnnConv, 2)
@@ -3383,7 +3390,6 @@ def local_dnn_convgw_inplace(node, inputs):
 @inplace_allocempty(GpuDnnConvGradI, 2)
 def local_dnn_convgi_inplace(node, inputs):
     return [GpuDnnConvGradI(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
-
 
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
@@ -3654,11 +3660,12 @@ def local_dnn_reduction(node):
     if not cudnn.cudnnReduceTensorOp_t.has_alias(node.op.scalar_op.name):
         return
 
-    return (GpuDnnReduction(node.op.scalar_op.name,
-                            node.op.axis,
-                            node.op.acc_dtype,
-                            node.op.dtype,
-                            False)(node.inputs[0]),)
+    with inherit_stack_trace(node.outputs):
+        return (GpuDnnReduction(node.op.scalar_op.name,
+                                node.op.axis,
+                                node.op.acc_dtype,
+                                node.op.dtype,
+                                False)(node.inputs[0]),)
 
 
 @register_opt('cudnn')

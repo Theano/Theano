@@ -6,6 +6,7 @@ amount of useful generic optimization tools.
 from __future__ import absolute_import, print_function, division
 
 from collections import deque, defaultdict, OrderedDict
+import contextlib
 import copy
 import inspect
 import logging
@@ -2902,7 +2903,7 @@ def pre_greedy_local_optimizer(list_optimizations, out):
 def copy_stack_trace(from_var, to_var):
     """
     Copies the stack trace from one or more tensor variables to
-    one or more tensor variables.
+    one or more tensor variables and returns the destination variables.
 
     Parameters
     ----------
@@ -2946,6 +2947,25 @@ def copy_stack_trace(from_var, to_var):
         # Copy over stack traces from from_var to each variable to
         # to_var, including the stack_trace of the to_var before
         to_var.tag.trace = getattr(to_var.tag, 'trace', []) + tr
+    return to_var
+
+
+@contextlib.contextmanager
+def inherit_stack_trace(from_var):
+    """
+    Contextmanager that copies the stack trace from one or more variable nodes to all
+    variable nodes constructed in the body. new_nodes is the list of all the newly created
+    variable nodes inside an optimization that is managed by graph.nodes_constructed().
+
+    Parameters
+    ----------
+    from_var
+        Variable node or a list of variable nodes to copy stack traces from.
+
+    """
+    with graph.nodes_constructed() as new_nodes:
+        yield
+    copy_stack_trace(from_var, new_nodes)
 
 
 def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
