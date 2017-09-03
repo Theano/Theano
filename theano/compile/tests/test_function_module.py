@@ -340,6 +340,7 @@ class T_function(unittest.TestCase):
     def test_swap_SharedVariable_with_given(self):
         # A special testcase for logistic_sgd.py in Deep Learning Tutorial
         # This test assert that SharedVariable in different function have same storage
+
         train_x = theano.shared(value=np.random.rand(10, 10).astype(config.floatX))
         test_x = theano.shared(value=np.random.rand(10, 10).astype(config.floatX))
 
@@ -494,6 +495,7 @@ class T_function(unittest.TestCase):
         # impossible for outputs to be aliased to the input variables provided by the user,
         # either through a view-map or a destroy map. New tests should be added in the future
         # when borrow=True is implemented.
+
         a = T.dmatrix()
         aval = np.random.rand(3, 3)
 
@@ -547,12 +549,14 @@ class T_function(unittest.TestCase):
 
     def test_givens_input_var(self):
         # Ensure error is raised when trying to replace an input variable.
+
         x = T.scalar('x')
         y = x * 2
         self.assertRaises(RuntimeError, function, [x], y, givens={x: x + 1})
 
     def test_free(self):
         # Make test on free() function
+
         x = T.vector('x')
         func = function([x], x + 1)
         func.fn.allow_gc = False
@@ -573,6 +577,7 @@ class T_function(unittest.TestCase):
     def test_default_values(self):
         # Check that default values are restored
         # when an exception occurs in interactive mode.
+
         a, b = T.dscalars('a', 'b')
         c = a + b
         func = theano.function([theano.In(a, name='first'), theano.In(b, value=1, name='second')], c)
@@ -952,6 +957,7 @@ class SomethingToPickle(object):
 
 def test_empty_givens_updates():
     # Regression test for bug fixed in 8625e03.
+
     # Empty givens / updates dictionaries were not properly detected before,
     # triggering useless crashes at compile time.
     x = T.scalar()

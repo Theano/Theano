@@ -100,13 +100,12 @@ def test_gc_never_pickles_temporaries():
 
 
 def test_merge_opt_runtime():
-    """In the original merge optimization, the following graph took
-    like caused the MERGE optimizer to exhibit really bad performance
-    (quadratic? exponential?)
+    # In the original merge optimization, the following graph took
+    # like caused the MERGE optimizer to exhibit really bad performance
+    # (quadratic? exponential?)
+    #
+    # Ironically, there is actually no merging to do in this graph.
 
-    Ironically, there is actually no merging to do in this graph.
-
-    """
     x = T.dvector()
     for i in xrange(50):
         if i:

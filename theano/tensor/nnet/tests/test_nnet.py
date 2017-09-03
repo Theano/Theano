@@ -250,11 +250,11 @@ class T_LogSoftmax(utt.InferShapeTester):
             return logsoftmax_op(a)
 
     def test_local_softmax_optimization(self):
-        """Test the Logsoftmax substitution
+        # Test the Logsoftmax substitution
+        #
+        # Check that Log(Softmax(x)) is substituted with Logsoftmax(x). Note that
+        # only the forward pass is checked (i.e., doesn't check the gradient)
 
-        Check that Log(Softmax(x)) is substituted with Logsoftmax(x). Note that
-        only the forward pass is checked (i.e., doesn't check the gradient)
-        """
         x, y = tensor.matrices('xy')
         sm = tensor.nnet.softmax(x)
         logsm = tensor.log(sm)
@@ -265,12 +265,12 @@ class T_LogSoftmax(utt.InferShapeTester):
             f, ops_to_check=theano.tensor.nnet.nnet.LogSoftmax)
 
     def test_local_softmax_grad_optimization_and_big_input(self):
-        """Test the Logsoftmax's grad substitution.
+        # Test the Logsoftmax's grad substitution.
+        #
+        # Check that Log(Softmax(x))'s grad is substituted with Logsoftmax(x)'s
+        # grad and that the new operation does not explode for big inputs.
+        # Note that only the grad is checked.
 
-        Check that Log(Softmax(x))'s grad is substituted with Logsoftmax(x)'s
-        grad and that the new operation does not explode for big inputs.
-        Note that only the grad is checked.
-        """
         m = theano.config.mode
         m = theano.compile.get_mode(m)
         m.check_isfinite = False
@@ -1412,10 +1412,8 @@ def test_argmax_pushdown_bias():
 
 
 def test_asymptotic_32():
-    """
-    This test makes sure that our functions behave sensibly when
-    huge values are present
-    """
+    # This test makes sure that our functions behave sensibly when
+    # huge values are present
 
     # TODO: consider adding the optimization of crossentropy into the current
     # mode for the purpose of running this test
@@ -1646,10 +1644,8 @@ def test_relu():
 
 
 def test_h_softmax():
-    """
-    Tests the output dimensions of the h_softmax when a target is provided or
-    not.
-    """
+    # Tests the output dimensions of the h_softmax when a target is provided or
+    # not.
 
     #############
     # Config
@@ -1783,10 +1779,9 @@ class T_sigmoid_binary_crossentropy(unittest.TestCase):
         return [pred, 1 / (1 + np.exp(-target))]
 
     def test_matches_binary_crossentropy(self):
-        """
-        Test sigmoid_binary_crossentropy(p, t) ==
-             binary_crossentropy(sigmoid(p), t).
-        """
+        # Test sigmoid_binary_crossentropy(p, t) ==
+        #      binary_crossentropy(sigmoid(p), t).
+
         pred, target = inputs = tensor.vectors('pt')
 
         reference_val = binary_crossentropy(sigmoid(pred), target)

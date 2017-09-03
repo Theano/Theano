@@ -142,11 +142,10 @@ class TestCorr2D(utt.InferShapeTester):
 
     @attr('slow')
     def test_basic(self):
-        """
-        Tests that basic correlations work for odd and even
-        dimensions of image and filter shapes, as well as rectangular
-        images and filters.
-        """
+        # Tests that basic correlations work for odd and even
+        # dimensions of image and filter shapes, as well as rectangular
+        # images and filters.
+
         border_modes = ['valid', 'full', 'half', (1, 1), (2, 1), (1, 2),
                         (3, 3), 1]
         img_shapes = [(2, 2, 3, 3), (3, 2, 8, 8), (3, 2, 7, 5), (3, 2, 7, 5),
@@ -170,9 +169,8 @@ class TestCorr2D(utt.InferShapeTester):
 
     @attr('slow')
     def test_subsample(self):
-        """
-        Tests correlation where subsampling != (1,1)
-        """
+        # Tests correlation where subsampling != (1,1)
+
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 2))
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 1))
         self.validate((1, 1, 6, 6), (1, 1, 3, 3), 'valid', subsample=(3, 3))
@@ -192,9 +190,8 @@ class TestCorr2D(utt.InferShapeTester):
         self.validate((1, 1, 6, 6), (1, 1, 3, 3), 1, subsample=(3, 3))
 
     def test_filter_dilation(self):
-        """
-        Tests correlation where filter dilation != (1,1)
-        """
+        # Tests correlation where filter dilation != (1,1)
+
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', filter_dilation=(2, 2))
         self.validate((3, 2, 14, 10), (5, 2, 2, 3), 'valid', filter_dilation=(3, 1))
         self.validate((1, 1, 14, 14), (1, 1, 3, 3), 'valid', filter_dilation=(2, 3))
@@ -215,9 +212,8 @@ class TestCorr2D(utt.InferShapeTester):
 
     @attr('slow')
     def test_shape_Constant_tensor(self):
-        """
-        Tests correlation where the {image,filter}_shape is a Constant tensor.
-        """
+        # Tests correlation where the {image,filter}_shape is a Constant tensor.
+
         as_t = T.as_tensor_variable
         border_modes = ['valid', 'full', 'half', (1, 1), (2, 1), (1, 2), (3, 3), 1]
 
@@ -232,18 +228,16 @@ class TestCorr2D(utt.InferShapeTester):
             self.validate(as_t([3, 2, 7, 5]), as_t([5, 2, 2, 3]), border_mode)
 
     def test_invalid_filter_shape(self):
-        """
-        Tests scenario where filter_shape[1] != input_shape[1]
-        """
+        # Tests scenario where filter_shape[1] != input_shape[1]
+
         self.assertRaises(ValueError, self.validate,
                           (3, 2, 8, 8), (4, 3, 5, 5),
                           'valid')
 
     def test_full_mode(self):
-        """
-        Tests basic correlation in full mode and case where filter
-        is larger than the input image.
-        """
+        # Tests basic correlation in full mode and case where filter
+        # is larger than the input image.
+
         self.validate((3, 2, 5, 5), (4, 2, 8, 8), 'full')
 
         def f():
@@ -251,9 +245,8 @@ class TestCorr2D(utt.InferShapeTester):
         self.assertRaises(Exception, f)
 
     def test_wrong_input(self):
-        """
-        Make sure errors are raised when image and kernel are not 4D tensors
-        """
+        # Make sure errors are raised when image and kernel are not 4D tensors
+
         self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
                           'valid', input=T.dmatrix())
         self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
@@ -262,9 +255,8 @@ class TestCorr2D(utt.InferShapeTester):
                           'valid', input=T.dtensor3())
 
     def test_dtype_upcast(self):
-        """
-        Checks dtype upcast for CorrMM methods.
-        """
+        # Checks dtype upcast for CorrMM methods.
+
         def rand(shape, dtype='float64'):
             r = np.asarray(np.random.rand(*shape), dtype=dtype)
             return r * 2 - 1

@@ -1224,14 +1224,12 @@ class TestElemwise(unittest_tools.InferShapeTester):
 
 
 def test_gt_grad():
-    """A user test that failed.
+    # A user test that failed.
+    # Something about it made Elemwise.grad return something that was
+    # too complicated for get_scalar_constant_value to recognize as being 0, so
+    # gradient.grad reported that it was not a valid gradient of an
+    # integer.
 
-    Something about it made Elemwise.grad return something that was
-    too complicated for get_scalar_constant_value to recognize as being 0, so
-    gradient.grad reported that it was not a valid gradient of an
-    integer.
-
-    """
     floatX = config.floatX
     T = theano.tensor
 
@@ -1262,16 +1260,16 @@ def test_clip_grad():
 
 
 def test_grad_useless_sum():
-    """Test absence of useless sum.
+    # Test absence of useless sum.
+    #
+    # When an operation (such as T.mul) is done on a broadcastable vector and
+    # a matrix, the gradient in backward path is computed for the broadcasted
+    # vector. So a sum reverts the broadcasted vector to a vector. In the case
+    # of operations on two broadcastable vectors, the sum should not be generated.
+    #
+    # This test checks whether there is a useless sum in the gradient
+    # computations.
 
-    When an operation (such as T.mul) is done on a broadcastable vector and
-    a matrix, the gradient in backward path is computed for the broadcasted
-    vector. So a sum reverts the broadcasted vector to a vector. In the case
-    of operations on two broadcastable vectors, the sum should not be generated.
-
-    This test checks whether there is a useless sum in the gradient
-    computations.
-    """
     mode = theano.compile.get_default_mode().including('canonicalize')
     mode.check_isfinite = False
     x = TensorType(theano.config.floatX, (True,))('x')
@@ -1323,9 +1321,7 @@ def test_clip_grad_int():
 
 
 def test_not_implemented_elemwise_grad():
-    """
-    Regression test for unimplemented gradient in an Elemwise Op.
-    """
+    # Regression test for unimplemented gradient in an Elemwise Op.
 
     class TestOp(scalar.ScalarOp):
 

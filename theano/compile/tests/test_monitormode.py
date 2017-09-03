@@ -6,6 +6,7 @@ import theano
 
 def test_detect_nan():
     # Test the code snippet example that detects NaN values.
+
     nan_detected = [False]
 
     def detect_nan(i, node, fn):
@@ -28,6 +29,7 @@ def test_detect_nan():
 
 def test_optimizer():
     # Test that we can remove optimizer
+
     nan_detected = [False]
 
     def detect_nan(i, node, fn):
@@ -55,6 +57,7 @@ def test_optimizer():
 
 def test_not_inplace():
     # Test that we can remove optimizers including inplace optimizers
+
     nan_detected = [False]
 
     def detect_nan(i, node, fn):

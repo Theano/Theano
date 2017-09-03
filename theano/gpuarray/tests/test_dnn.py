@@ -119,10 +119,9 @@ def test_dnn_conv_merge():
 
 
 def test_dnn_conv_inplace():
-    """This test that we have inplace work correctly even when
-    GpuAllocEmpty get merged together.
+    # This test that we have inplace work correctly even when
+    # GpuAllocEmpty get merged together.
 
-    """
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
@@ -547,9 +546,8 @@ def test_pooling_empty_batch():
 
 
 def test_dnn_tag():
-    """
-    Test that if cudnn isn't avail we crash and that if it is avail, we use it.
-    """
+    # Test that if cudnn isn't avail we crash and that if it is avail, we use it.
+
     x = T.tensor4()
     old = theano.config.on_opt_error
     theano.config.on_opt_error = "raise"

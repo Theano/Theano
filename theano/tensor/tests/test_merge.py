@@ -59,7 +59,7 @@ op1 = MyOp('Op1')
 
 
 def test_merge_with_weird_eq():
-    """numpy arrays don't compare equal like other python objects"""
+    # numpy arrays don't compare equal like other python objects
 
     # SCALAR CASE
     x = T.constant(np.asarray(1), name='x')

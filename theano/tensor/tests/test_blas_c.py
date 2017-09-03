@@ -115,11 +115,11 @@ class TestCGer(TestCase, TestOptimizationMixin):
 
 
 class TestCGemv(TestCase, TestOptimizationMixin):
-    """Tests of CGemv specifically.
+    """
+    Tests of CGemv specifically.
 
     Generic tests of Gemv-compatibility, including both dtypes are
     done below in TestCGemvFloat32 and TestCGemvFloat64
-
     """
     def setUp(self, dtype='float64'):
         # This tests can run even when theano.config.blas.ldflags is empty.

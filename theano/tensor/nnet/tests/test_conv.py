@@ -137,19 +137,17 @@ class TestConv2D(utt.InferShapeTester):
             utt.verify_grad(sym_conv2d, [orig_image_data, filter_data])
 
     def test_basic1(self):
-        """Tests that basic convolutions work for odd and even
-        dimensions of image and filter shapes, as well as rectangular
-        images and filters.
+        # Tests that basic convolutions work for odd and even
+        # dimensions of image and filter shapes, as well as rectangular
+        # images and filters.
 
-        """
         self.validate((2, 2, 3, 3), (2, 2, 2, 2), 'valid', verify_grad=False)
 
     def test_basic(self):
-        """Tests that basic convolutions work for odd and even
-        dimensions of image and filter shapes, as well as rectangular
-        images and filters.
+        # Tests that basic convolutions work for odd and even
+        # dimensions of image and filter shapes, as well as rectangular
+        # images and filters.
 
-        """
         self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'valid', verify_grad=False)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid')
         self.validate((3, 2, 7, 5), (5, 2, 3, 2), 'valid', verify_grad=False)
@@ -158,16 +156,15 @@ class TestConv2D(utt.InferShapeTester):
         # test filter same size as input
 
     def test_uint_image_shape_datatype(self):
-        """Tests for uint datatype in image_shape.
-        """
+        # Tests for uint datatype in image_shape.
+
         self.validate((2, 2, 3, np.uint8(3)), (3, 2, 3, 3), 'valid', verify_grad=False)
         self.validate((np.uint16(2), 2, 3, 3), (3, 2, 3, 3), 'valid', verify_grad=False)
         self.validate((2, np.uint32(2), 3, 3), (3, 2, 3, 3), 'valid', verify_grad=False)
 
     def test_uint_filter_shape_datatype(self):
-        """Tests for uint datatype in filter_shape
+        # Tests for uint datatype in filter_shape
 
-        """
         self.validate((3, 2, 3, 3), (2, 2, 3, np.uint8(3)), 'valid', verify_grad=False)
         self.validate((3, 2, 3, 3), (np.uint16(2), 2, 3, 3), 'valid', verify_grad=False)
         self.validate((3, 2, 3, 3), (2, np.uint32(2), 3, 3), 'valid', verify_grad=False)
@@ -177,9 +174,8 @@ class TestConv2D(utt.InferShapeTester):
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'valid')
 
     def test_unroll_patch_true(self):
-        """
-        Test basic convs with True.
-        """
+        # Test basic convs with True.
+
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', unroll_patch=True)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', unroll_patch=True)
         self.validate(
@@ -187,9 +183,8 @@ class TestConv2D(utt.InferShapeTester):
             unroll_patch=True, verify_grad=False)
 
     def test_unroll_patch_false(self):
-        """
-        Test basic convs with False.
-        """
+        # Test basic convs with False.
+
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', unroll_patch=False)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', unroll_patch=False)
         self.validate(
@@ -197,9 +192,8 @@ class TestConv2D(utt.InferShapeTester):
             unroll_patch=False, verify_grad=False)
 
     def test_unroll_patch_true_fail(self):
-        """
-        Test basic convs with True.
-        """
+        # Test basic convs with True.
+
         self.validate(
             (3, 2, 7, 5), (5, 2, 2, 3), 'valid', unroll_patch=True,
             N_image_shape=(1, 3, 3, 3), N_filter_shape=(6, 3, 2, 2),
@@ -214,15 +208,13 @@ class TestConv2D(utt.InferShapeTester):
             should_raise=True)
 
     def test_unroll_special(self):
-        """
-        (unroll_kern, unroll_batch) in (0,1),(1,0) is special case.
-        """
+        # (unroll_kern, unroll_batch) in (0,1),(1,0) is special case.
+
         self.validate((6, 2, 3, 3), (3, 2, 2, 2), 'valid', unroll_batch=1)
 
     def test_unroll_batch(self):
-        """
-        Test mini-batch unrolling for various legal values.
-        """
+        # Test mini-batch unrolling for various legal values.
+
         # mini-batch of size 6 is multiple of 2 and 3. Should work.
         self.validate(
             (6, 2, 3, 3), (3, 2, 2, 2), 'valid',
@@ -232,9 +224,8 @@ class TestConv2D(utt.InferShapeTester):
             unroll_batch=3, verify_grad=False)
 
     def test_unroll_kern(self):
-        """
-        Test kernel unrolling for various legal values.
-        """
+        # Test kernel unrolling for various legal values.
+
         # 6 filters is a multiple of 2 and 3. Should work.
         self.validate(
             (2, 3, 3, 3), (6, 3, 2, 2), 'valid', unroll_kern=2,
@@ -244,10 +235,9 @@ class TestConv2D(utt.InferShapeTester):
             verify_grad=False)
 
     def test_unroll_batch_kern(self):
-        """Test mini-batch unrolling with kernel unrolling for various
-        legal values.
+        # Test mini-batch unrolling with kernel unrolling for various
+        # legal values.
 
-        """
         # mini-batch of size 6 is multiple of 2 and 3. Should work.
         self.validate(
             (6, 2, 3, 3), (3, 2, 2, 2), 'valid',
@@ -264,11 +254,10 @@ class TestConv2D(utt.InferShapeTester):
             unroll_batch=2, unroll_kern=3, verify_grad=False)
 
     def test_unroll_batch_kern_fail(self):
-        """Test mini-batch unrolling with kernel unrolling for various
-        legal values, but pass bad input.  All those test must
-        generate errors
+        # Test mini-batch unrolling with kernel unrolling for various
+        # legal values, but pass bad input.  All those test must
+        # generate errors
 
-        """
         # mini-batch of size 6 is multiple of 2 and 3. Should work.
         self.validate((6, 2, 3, 3), (3, 2, 2, 2), 'valid',
                       unroll_batch=2, unroll_kern=3,
@@ -291,14 +280,11 @@ class TestConv2D(utt.InferShapeTester):
 
     @attr('slow')
     def test_subsample(self):
-        """
-        Tests convolution where subsampling != (1,1)
-        """
+        # Tests convolution where subsampling != (1,1)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', subsample=(2, 2))
 
         # Fails as of 2012-07-11
-        self.assertRaises(NotImplementedError, self.validate, (1, 1, 6, 6),
-                          (1, 1, 3, 3), 'full', subsample=(3, 3))
+        self.assertRaises(NotImplementedError, self.validate, (1, 1, 6, 6), (1, 1, 3, 3), 'full', subsample=(3, 3))
 
         # Fails as of 2017-08-10
         self.assertRaises(NotImplementedError, self.validate, (3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 2))
@@ -306,9 +292,8 @@ class TestConv2D(utt.InferShapeTester):
         self.assertRaises(NotImplementedError, self.validate, (1, 1, 6, 6), (1, 1, 3, 3), 'valid', subsample=(3, 3))
 
     def test_shape_Constant_tensor(self):
-        """
-        Tests convolution where the {image,filter}_shape is a Constant tensor.
-        """
+        # Tests convolution where the {image,filter}_shape is a Constant tensor.
+
         as_t = T.as_tensor_variable
         self.validate(
             (as_t(3), as_t(2), as_t(7), as_t(5)), (5, 2, 2, 3), 'valid')
@@ -323,19 +308,17 @@ class TestConv2D(utt.InferShapeTester):
         self.validate(as_t([3, 2, 7, 5]), as_t([5, 2, 2, 3]), 'full')
 
     def test_invalid_filter_shape(self):
-        """
-        Tests scenario where filter_shape[1] != input_shape[1]
-        """
+        # Tests scenario where filter_shape[1] != input_shape[1]
+
         self.assertRaises(AssertionError, self.validate,
                           (3, 2, 8, 8), (4, 3, 5, 5),
                           'valid')
 
     @attr('slow')
     def test_invalid_input_shape(self):
-        """
-        Tests that when the shape gived at build time is not the same as
-        run time we raise an error
-        """
+        # Tests that when the shape gived at build time is not the same as
+        # run time we raise an error
+
         for unroll_batch in [None, 1, 3]:
             for unroll_kern in [None, 2, 4]:
                 for unroll_patch in [None, True, False]:
@@ -391,9 +374,8 @@ class TestConv2D(utt.InferShapeTester):
                                           unroll_patch=unroll_patch)
 
     def test_missing_info(self):
-        """
-        Test convolutions for various pieces of missing info.
-        """
+        # Test convolutions for various pieces of missing info.
+
         self.validate(None, None,
                       N_image_shape=(3, 2, 8, 8),
                       N_filter_shape=(4, 2, 5, 5))
@@ -411,9 +393,8 @@ class TestConv2D(utt.InferShapeTester):
                       N_filter_shape=(4, 2, 5, 5))
 
     def test_wrong_info(self):
-        """
-        Test convolutions when we don't give a constant as shape information
-        """
+        # Test convolutions when we don't give a constant as shape information
+
         i = theano.scalar.basic.int32()
         self.assertRaises(NotScalarConstantError, self.validate,
                           (3, 2, 8, i), (4, 2, 5, 5),
@@ -425,10 +406,9 @@ class TestConv2D(utt.InferShapeTester):
                           N_filter_shape=(4, 2, 5, 5))
 
     def test_full_mode(self):
-        """
-        Tests basic convolution in full mode and case where filter
-        is larger than the input image.
-        """
+        # Tests basic convolution in full mode and case where filter
+        # is larger than the input image.
+
         self.validate((3, 2, 5, 5), (4, 2, 8, 8), 'full')
 
         def f():
@@ -436,9 +416,8 @@ class TestConv2D(utt.InferShapeTester):
         self.assertRaises(Exception, f)
 
     def test_wrong_input(self):
-        """
-        Make sure errors are raised when image and kernel are not 4D tensors
-        """
+        # Make sure errors are raised when image and kernel are not 4D tensors
+
         self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
                           'valid', input=T.dmatrix())
         self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
@@ -447,12 +426,11 @@ class TestConv2D(utt.InferShapeTester):
                           'valid', input=T.dtensor3())
 
     def test_gcc_crash(self):
-        """
-        gcc 4.3.0 20080428 (Red Hat 4.3.0-8)
+        # gcc 4.3.0 20080428 (Red Hat 4.3.0-8)
+        #
+        # crashed in this following case. I changed the c code to don't hit
+        # gcc bug. So it should not crash anymore
 
-        crashed in this following case. I changed the c code to don't hit
-        gcc bug. So it should not crash anymore
-        """
         self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid',
                       verify_grad=False)
 

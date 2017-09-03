@@ -49,7 +49,7 @@ def mysend(subject, file):
     msg['From'] = me
     msg['To'] = COMMASPACE.join(family)
     msg.preamble = 'The output of the buildbot'
-    
+
     # Open the files in binary mode.  Let the MIMEImage class automatically
     # guess the specific image type.
     with open(file, 'rb') as fp:
@@ -91,7 +91,7 @@ def mysend(subject, file):
                 nb_ran+=int(token)
             except Exception as e:
                 print(e)
-                
+
     start = ""
     for line in s.splitlines():
         if gpu_time is None and line.startswith("gpu % expected/get"):
@@ -112,12 +112,12 @@ def mysend(subject, file):
                 elif start.startswith("float64 % expected/get"):
                     float64_time = start
                     start = ""
-    
+
     s = ("Summary of the output:\n\n" + filter_output(open(file)) +
          "\n\nFull output:\n\n" + s)
     img = MIMEText(s)
     msg.attach(img)
-    
+
 # Send the email via our own SMTP server.
     if show_speed_failure:
         msg['Subject'] = subject+" Fail="+str(failures)+" Err="+str(errors)+" Ran="+str(nb_ran)+" Skip="+str(skip)+" KnownFail="+str(knownfail)+ " SpeedFailure="+str(speed_failure)

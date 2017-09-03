@@ -144,10 +144,8 @@ class TestPushOutScanOutputDot(object):
     """
 
     def test_dot_not_output(self):
-        """
-        Test the case where the vector input to the dot is not already an
-        output of the inner function.
-        """
+        # Test the case where the vector input to the dot is not already an
+        # output of the inner function.
 
         v = T.vector()
         m = T.matrix()
@@ -180,10 +178,8 @@ class TestPushOutScanOutputDot(object):
         utt.assert_allclose(output_opt, output_no_opt)
 
     def test_dot_nitsot_output(self):
-        """
-        Test the case where the vector input to the dot is already a nitsot
-        output of the inner function.
-        """
+        # Test the case where the vector input to the dot is already a nitsot
+        # output of the inner function.
 
         a = T.matrix()
         b = T.matrix()
@@ -227,10 +223,8 @@ class TestPushOutScanOutputDot(object):
         utt.assert_allclose(output_opt[1], output_no_opt[1])
 
     def test_dot_sitsot_output(self):
-        """
-        Test the case where the vector input to the dot is not already a
-        non-nitsot (in this case a sitsot) output of the inner function.
-        """
+        # Test the case where the vector input to the dot is not already a
+        # non-nitsot (in this case a sitsot) output of the inner function.
 
         a = T.matrix()
         b = T.matrix()
@@ -281,13 +275,11 @@ class TestPushOutSumOfDot():
     """
 
     def test_machine_translation(self):
-        """
-        This test case comes from https://github.com/rizar/scan-grad-speed and
-        is an example of actual computation done with scan in the context of
-        machine translation
-
-        'dim' has been reduced from 1000 to 5 to make the test run faster
-        """
+        # This test case comes from https://github.com/rizar/scan-grad-speed and
+        # is an example of actual computation done with scan in the context of
+        # machine translation
+        #
+        # 'dim' has been reduced from 1000 to 5 to make the test run faster
 
         # Parameters from an actual machine tranlation run
         batch_size = 80
@@ -366,10 +358,7 @@ class TestPushOutSumOfDot():
         utt.assert_allclose(f_opt_output, f_no_opt_output)
 
     def test_non_zero_init(self):
-        """
-        Test the case where the initial value for the nitsot output is
-        non-zero
-        """
+        # Test the case where the initial value for the nitsot output is non-zero
 
         input1 = T.tensor3()
         input2 = T.tensor3()

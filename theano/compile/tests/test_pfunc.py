@@ -668,19 +668,19 @@ class Test_pfunc(unittest.TestCase):
 class Test_aliasing_rules(unittest.TestCase):
     # 1. Theano manages its own memory space, which typically does not overlap
     # with the memory of normal python variables that the user uses.
-
+    #
     # 2. shared variables are allocated in this memory space, as are the
     # temporaries used for Function evalution.
-
+    #
     # 3. Physically, this managed memory space may be spread across the host,
     # on a GPU device(s), or even on a remote machine.
-
+    #
     # 4. Theano assumes that shared variables are never aliased to one another,
     # and tries to make it impossible to accidentally alias them.
-
+    #
     # 5. Theano's managed data is constant while Theano Functions are not running
     # and theano library code is not running.
-
+    #
     # 6. The default behaviour of Function is to return user-space values for
     # outputs, but this can be overridden (borrow=True) for better performance,
     # in which case the returned value may be aliased to managed memory, and
