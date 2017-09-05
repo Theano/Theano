@@ -5,6 +5,7 @@ DRAFT Release Notes
 ===================
 
 git log -p rel-0.9.0... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
+git log -p rel-0.10.0beta1... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
 
 # Commit count per user
 git shortlog -sn rel-0.9.0..
@@ -19,6 +20,7 @@ TODO: better Theano conv doc
 
 Highlights:
  - Support NumPy ``1.13``
+ - Support pygpu ``0.7``
  - Added conda recipe
  - Moved Python 3.* minimum supported version from 3.3 to 3.4
  - Replaced deprecated package ``nose-parameterized`` with up-to-date package ``parameterized`` for Theano requirements
@@ -35,9 +37,13 @@ Highlights:
  - Faster C compilation by massively using a new interface for op params
  - Faster optimization step, with new optional destroy handler
  - Documentation updated and more complete
+
+   - Added documentation for RNNBlock
+
  - Many bug fixes, crash fixes and warning improvements
 
 Interface changes:
+ - Added new parameter ``target`` for MRG functions
  - Merged duplicated diagonal functions into two ops: ``ExtractDiag`` (extract a diagonal to a vector),
    and ``AllocDiag`` (set a vector as a diagonal of an empty array)
  - Renamed ``MultinomialWOReplacementFromUniform`` to ``ChoiceFromUniform``
@@ -120,6 +126,7 @@ New features:
  - Added new Theano flag ``pickle_test_value`` to help disable pickling test values
 
 Others:
+ - Kept stack trace for optimizations in new GPU backend
  - Added deprecation warning for the softmax and logsoftmax vector case
  - Added a warning to announce that C++ compiler will become mandatory in next Theano release ``0.11``
 
@@ -136,6 +143,13 @@ Other more detailed changes:
  - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/6326
+* https://github.com/Theano/Theano/pull/6317
+* https://github.com/Theano/Theano/pull/6269
+* https://github.com/Theano/Theano/pull/5688
+* https://github.com/Theano/Theano/pull/6376
+* https://github.com/Theano/Theano/pull/6377
+* https://github.com/Theano/Theano/pull/6355
 * https://github.com/Theano/Theano/pull/6373
 * https://github.com/Theano/Theano/pull/6374
 * https://github.com/Theano/Theano/pull/6371

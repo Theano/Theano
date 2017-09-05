@@ -12,12 +12,16 @@ We recommend that every developer updates to this version.
 
 Highlights:
  - Support NumPy ``1.13``
+ - Support pygpu ``0.7``
  - Added conda recipe
  - Optional faster optimization step with new destroy handler
- - Updated documentation
- - Bug fixes, crash fixes and warning improvements
+ - Added documentation for RNNBlock
+ - Bug fixes, crash fixes, warning improvements and documentation updates
 
-A total of 16 people contributed to this release since 0.10.0beta1, see list below.
+A total of 67 people contributed to this release since 0.9.0, see list below.
+
+Interface changes:
+ - Added new parameter ``target`` for MRG functions
 
 Convolution updates:
  - Added unshared convolutions
@@ -45,24 +49,78 @@ New features:
  - Added covariance matrix function ``theano.tensor.cov``
  - Added new Theano flag ``pickle_test_value`` to help disable pickling test values
 
+Others:
+ - Kept stack trace for optimizations in new GPU backend
+
 Other more detailed changes:
  - Moved all C code files into separate folder ``c_code`` in every Theano module
  - Improvements for Jenkins tests
 
-Commiters since 0.10.0beta1:
- - João Victor Tozatti Risso
- - Mohammed Affan
+Commiters since 0.9.0:
  - Frederic Bastien
- - Steven Bocco
- - Reyhane Askari
- - Gijs van Tulder
+ - João Victor Tozatti Risso
  - Arnaud Bergeron
- - Boris Fomitchev
- - Vikram
- - Joseph Paul Cohen
- - Yikang Shen
- - Dzmitry Bahdanau
- - Faruk Ahmed
- - Shawn Tan
+ - Steven Bocco
+ - Mohammed Affan
+ - amrithasuresh
+ - Pascal Lamblin
+ - Reyhane Askari
+ - Alexander Matyasko
  - Simon Lefrancois
+ - Shawn Tan
+ - Gijs van Tulder
+ - Thomas George
+ - Vikram
+ - Andrei Costinescu
+ - Faruk Ahmed
+ - Boris Fomitchev
+ - Zhouhan LIN
+ - Aleksandar Botev
+ - jhelie
+ - xiaoqie
+ - Tegan Maharaj
+ - Matt Graham
+ - Cesar Laurent
+ - Gabe Schwartz
+ - Juan Camilo Gamboa Higuera
+ - Tim Cooijmans
+ - Anirudh Goyal
+ - Saizheng Zhang
+ - vipulraheja
+ - Florian Bordes
+ - Sina Honari
+ - Yikang Shen
+ - erakra
+ - Chiheb Trabelsi
+ - Shubh Vachher
+ - Daren Eiri
+ - Joseph Paul Cohen
+ - Laurent Dinh
+ - Mohamed Ishmael Diwan Belghazi
+ - Jeff Donahue
+ - Ramana Subramanyam
+ - Bogdan Budescu
+ - Dzmitry Bahdanau
+ - Ghislain Antony Vaillant
+ - Jan Schlüter
+ - Xavier Bouthillier
+ - fo40225
+ - Aarni Koskela
+ - Adam Becker
+ - Adam Geitgey
+ - Adrian Keet
+ - Adrian Seyboldt
+ - Anmol Sahoo
+ - Chong Wu
+ - Holger Kohr
+ - Jayanth Koushik
+ - Lilian Besson
+ - Lv Tao
+ - Michael Manukyan
+ - Murugesh Marvel
+ - NALEPA
+ - Zotov Yuriy
+ - dareneiri
+ - lrast
+ - morrme
  - wyjw
