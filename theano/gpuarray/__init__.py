@@ -46,23 +46,36 @@ def init_dev(dev, name=None, preallocate=None):
     global pygpu_activated
     if not config.cxx:
         raise RuntimeError("The new gpu-backend need a c++ compiler.")
-    if (pygpu.version.major, pygpu.version.minor, pygpu.version.patch) < (0, 6, 1):
+    if (pygpu.version.major != 0 or pygpu.version.minor != 7 or
+            pygpu.version.patch < 0):
         raise ValueError(
-            "Your installed version of pygpu is too old, please upgrade to 0.6.1 or later")
+            "Your installed version of pygpu(%s) is too old, please upgrade to 0.7.0 or later" %
+            pygpu.version.fullversion)
     # This is for the C headers API, we need to match the exact version.
-    if pygpu.gpuarray.api_version()[0] != 1:
+    gpuarray_version_major_supported = 2
+    gpuarray_version_major_detected = pygpu.gpuarray.api_version()[0]
+    if gpuarray_version_major_detected != gpuarray_version_major_supported:
         raise ValueError(
-            "Your installed libgpuarray is not in sync, please make sure to have the appropriate version")
+            "Your installed version oflibgpuarray is not in sync with the current Theano"
+            " version. The installed libgpuarray version support API version %d,"
+            " while current Theano support API version %d. Change the version of"
+            " libgpuarray or Theano to fix this problem.",
+            gpuarray_version_major_detected,
+            gpuarray_version_major_supported)
     if dev not in init_dev.devmap:
+        args = dict()
         if config.gpuarray.cache_path != '':
-            os.environ['GPUARRAY_CACHE_PATH'] = config.gpuarray.cache_path
+            args['kernel_cache_path'] = config.gpuarray.cache_path
         if preallocate is None:
             preallocate = config.gpuarray.preallocate
+        if preallocate < 0:
+            args['max_cache_size'] = 0
+        else:
+            args['initial_cache_size'] = preallocate
         context = pygpu.init(
             dev,
-            disable_alloc_cache=preallocate < 0,
-            single_stream=config.gpuarray.single_stream,
-            sched=config.gpuarray.sched)
+            sched=config.gpuarray.sched,
+            **args)
         context.dev = dev
         init_dev.devmap[dev] = context
         reg_context(name, context)
@@ -115,12 +128,12 @@ def init_dev(dev, name=None, preallocate=None):
     # This will map the context name to the real context object.
     if config.print_active_device:
         try:
-            pcibusid = '(' + context.pcibusid + ')'
+            unique_id = '(' + context.unique_id + ')'
         except pygpu.gpuarray.UnsupportedException:
-            pcibusid = ''
+            unique_id = ''
 
         print("Mapped name %s to device %s: %s %s" %
-              (name, dev, context.devname, pcibusid),
+              (name, dev, context.devname, unique_id),
               file=sys.stderr)
     pygpu_activated = True
 
@@ -207,5 +220,5 @@ else:
             config.device.startswith('opencl') or
             config.device.startswith('cuda') or
             config.contexts != ''):
-        error("pygpu was configured but could not be imported or is too old (version 0.6 or higher required)",
+        error("pygpu was configured but could not be imported or is too old (version 0.7 or higher required)",
               exc_info=True)
