@@ -6413,6 +6413,26 @@ class ExtractDiag(Op):
         out_shape.append(diag_size)
         return [tuple(out_shape)]
 
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if self.view and not numpy_diagonal_return_view:
+            warnings.warn("View will forced to False. ExtractDiag property view is "
+                          "set to True but numpy version %s and prior versions of "
+                          "numpy.diagonal() do not return a view. Update "
+                          "numpy to use ExtractDiag(view=True)" %
+                          np.version.version)
+            self.view = False
+
+        if self.view:
+            self.view_map = {0: [0]}
+
+        if "offset" not in state:
+            self.offset = 0
+        if "axis1" not in state:
+            self.axis1 = 0
+        if "axis2" not in state:
+            self.axis2 = 1
+
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
     """
