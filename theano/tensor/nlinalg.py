@@ -10,7 +10,7 @@ from theano.tensor import as_tensor_variable
 from theano.gof import Op, Apply
 from theano.gradient import DisconnectedType
 from theano.tensor import basic as tensor
-
+from theano.tensor.basic import ExtractDiag
 logger = logging.getLogger(__name__)
 
 
@@ -193,75 +193,6 @@ class AllocDiag(Op):
         return [(x_s[0], x_s[0])]
 
 alloc_diag = AllocDiag()
-
-
-class ExtractDiag(Op):
-    """Return the diagonal of a matrix.
-
-    Notes
-    -----
-    Works on the GPU.
-
-    """
-
-    __props__ = ("view",)
-
-    def __init__(self, view=False):
-        self.view = view
-        if self.view:
-            self.view_map = {0: [0]}
-
-    def make_node(self, _x):
-        warnings.warn("DeprecationWarning: theano.tensor.nlinalg.ExtractDiag"
-                      "is deprecated, please use theano.tensor.ExtractDiag"
-                      "instead.",
-                      category=DeprecationWarning)
-        if not isinstance(_x, theano.Variable):
-            x = as_tensor_variable(_x)
-        else:
-            x = _x
-
-        if x.type.ndim != 2:
-            raise TypeError('ExtractDiag only works on matrices', _x)
-        y = x.type.clone(broadcastable=(False,))()
-        return Apply(self, [x], [y])
-
-    def perform(self, node, ins, outs):
-        """ For some reason numpy.diag(x) is really slow, so we
-        implemented our own. """
-        x, = ins
-        z, = outs
-        # zero-dimensional matrices ...
-        if x.shape[0] == 0 or x.shape[1] == 0:
-            z[0] = node.outputs[0].type.value_zeros((0,))
-            return
-
-        if x.shape[0] < x.shape[1]:
-            rval = x[:, 0]
-        else:
-            rval = x[0]
-
-        rval.strides = (x.strides[0] + x.strides[1],)
-        if self.view:
-            z[0] = rval
-        else:
-            z[0] = rval.copy()
-
-    def __str__(self):
-        return 'ExtractDiag{view=%s}' % self.view
-
-    def grad(self, inputs, g_outputs):
-        x = theano.tensor.zeros_like(inputs[0])
-        xdiag = alloc_diag(g_outputs[0])
-        return [theano.tensor.set_subtensor(
-            x[:xdiag.shape[0], :xdiag.shape[1]],
-            xdiag)]
-
-    def infer_shape(self, node, shapes):
-        x_s, = shapes
-        shp = theano.tensor.min(node.inputs[0].shape)
-        return [(shp,)]
-
 extract_diag = ExtractDiag()
 # TODO: optimization to insert ExtractDiag with view=True
 
