@@ -25,7 +25,7 @@ from ..linalg import GpuCusolverSolve, cusolver_available, GpuCholesky
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, SkipTest
 import unittest
 from theano.tensor.nnet import abstract_conv
-from theano.gpuarray import dnn, blas
+from theano.gpuarray import dnn, blas, opt
 
 
 def _check_stack_trace(thing):
@@ -773,55 +773,53 @@ class Conv_opt_test(unittest.TestCase):
 
     def optimizer_2d(self, input_shapes, direction, include_tags, exclude_tags,
                      op, border_mode='valid', subsample=(1, 1),
-                     filter_dilation=(1, 1), num_groups=1):
+                     filter_dilation=(1, 1), num_groups=1, optimiser=None):
 
         inp1 = theano.shared(np.random.random(input_shapes[0]).astype(theano.config.floatX))
         inp2 = theano.shared(np.random.random(input_shapes[1]).astype(theano.config.floatX))
+        if op is None:
+            inp1 = basic_ops.as_gpuarray_variable(inp1, test_ctx_name)
+            inp2 = basic_ops.as_gpuarray_variable(inp2, test_ctx_name)
         if(direction == 0):
-            conv_op = abstract_conv.conv2d(inp1,
-                                           inp2,
-                                           input_shapes[0],
-                                           input_shapes[1],
-                                           border_mode=border_mode,
-                                           subsample=subsample,
-                                           filter_dilation=filter_dilation,
-                                           num_groups=num_groups)
+            conv_op = abstract_conv.AbstractConv2d(input_shapes[0],
+                                                   input_shapes[1],
+                                                   border_mode=border_mode,
+                                                   subsample=subsample,
+                                                   filter_dilation=filter_dilation,
+                                                   num_groups=num_groups)(inp1, inp2)
 
         if(direction == 1):
-            conv_op = abstract_conv.conv2d_grad_wrt_weights(inp1,
-                                                            inp2,
-                                                            input_shapes[2],
-                                                            input_shapes[0],
-                                                            border_mode=border_mode,
-                                                            subsample=subsample,
-                                                            filter_dilation=filter_dilation,
-                                                            num_groups=num_groups)
+            conv_op = abstract_conv.AbstractConv2d_gradWeights(imshp=input_shapes[0],
+                                                               kshp=input_shapes[2],
+                                                               border_mode=border_mode,
+                                                               subsample=subsample,
+                                                               filter_dilation=filter_dilation,
+                                                               num_groups=num_groups)(inp1,
+                                                                                      inp2,
+                                                                                      input_shapes[2][-2:])
 
         if(direction == 2):
-            conv_op = abstract_conv.conv2d_grad_wrt_inputs(inp1,
-                                                           inp2,
-                                                           input_shapes[2],
-                                                           input_shapes[1],
-                                                           border_mode=border_mode,
-                                                           subsample=subsample,
-                                                           filter_dilation=filter_dilation,
-                                                           num_groups=num_groups)
+            conv_op = abstract_conv.AbstractConv2d_gradInputs(imshp=input_shapes[2],
+                                                              kshp=input_shapes[1],
+                                                              border_mode=border_mode,
+                                                              subsample=subsample,
+                                                              filter_dilation=filter_dilation,
+                                                              num_groups=num_groups)(inp2,
+                                                                                     inp1,
+                                                                                     input_shapes[2][-2:])
 
         theano.config.metaopt.optimizer_including = include_tags
         theano.config.metaopt.optimizer_excluding = exclude_tags
         mode = mode_with_gpu.including('conv_meta').excluding('conv_dnn').excluding('conv_gemm')
 
-        ref_func = theano.function([], conv_op, mode=mode_with_gpu)
         # All meta optimizer compile a new function. This need to know
         # the current linker, but this information is not available,
         # so it use the default mode.
         if op is None:
             # No convolutions optimization takes place
-            with theano.change_flags(mode=mode):
-                with self.assertRaises(AssertionError):
-                    theano.function([], conv_op, mode=mode)
-            return
+            assert optimiser.transform(conv_op.owner) is None
         else:
+            ref_func = theano.function([], conv_op, mode=mode_with_gpu)
             with theano.change_flags(mode=mode):
                 conv_func = theano.function([], conv_op, mode=mode)
             assert any([isinstance(node.op, op)
@@ -830,52 +828,51 @@ class Conv_opt_test(unittest.TestCase):
 
     def optimizer_3d(self, input_shapes, direction, include_tags, exclude_tags,
                      op, border_mode='valid', subsample=(1, 1, 1),
-                     filter_dilation=(1, 1, 1), num_groups=1):
+                     filter_dilation=(1, 1, 1), num_groups=1, optimiser=None):
         inp1 = theano.shared(np.random.random(input_shapes[0]).astype(theano.config.floatX))
         inp2 = theano.shared(np.random.random(input_shapes[1]).astype(theano.config.floatX))
+
+        if op is None:
+            inp1 = basic_ops.as_gpuarray_variable(inp1, None)
+            inp2 = basic_ops.as_gpuarray_variable(inp2, None)
         if(direction == 0):
-            conv_op = abstract_conv.conv3d(inp1,
-                                           inp2,
-                                           input_shapes[0],
-                                           input_shapes[1],
-                                           border_mode=border_mode,
-                                           subsample=subsample,
-                                           filter_dilation=filter_dilation,
-                                           num_groups=num_groups)
+            conv_op = abstract_conv.AbstractConv3d(input_shapes[0],
+                                                   input_shapes[1],
+                                                   border_mode=border_mode,
+                                                   subsample=subsample,
+                                                   filter_dilation=filter_dilation,
+                                                   num_groups=num_groups)(inp1, inp2)
 
         if(direction == 1):
-            conv_op = abstract_conv.conv3d_grad_wrt_weights(inp1,
-                                                            inp2,
-                                                            input_shapes[2],
-                                                            input_shapes[0],
-                                                            border_mode=border_mode,
-                                                            subsample=subsample,
-                                                            filter_dilation=filter_dilation,
-                                                            num_groups=num_groups)
+            conv_op = abstract_conv.AbstractConv3d_gradWeights(input_shapes[0],
+                                                               input_shapes[2],
+                                                               border_mode=border_mode,
+                                                               subsample=subsample,
+                                                               filter_dilation=filter_dilation,
+                                                               num_groups=num_groups)(inp1,
+                                                                                      inp2,
+                                                                                      input_shapes[2][-3:])
 
         if(direction == 2):
-            conv_op = abstract_conv.conv3d_grad_wrt_inputs(inp1,
-                                                           inp2,
-                                                           input_shapes[2],
-                                                           input_shapes[1],
-                                                           border_mode=border_mode,
-                                                           subsample=subsample,
-                                                           filter_dilation=filter_dilation,
-                                                           num_groups=num_groups)
+            conv_op = abstract_conv.AbstractConv3d_gradInputs(input_shapes[2],
+                                                              input_shapes[1],
+                                                              border_mode=border_mode,
+                                                              subsample=subsample,
+                                                              filter_dilation=filter_dilation,
+                                                              num_groups=num_groups)(inp2,
+                                                                                     inp1,
+                                                                                     input_shapes[2][-3:])
 
         theano.config.metaopt.optimizer_including = include_tags
         theano.config.metaopt.optimizer_excluding = exclude_tags
         mode = mode_with_gpu.including('conv_meta').excluding('conv_dnn').excluding('conv_gemm')
 
-        ref_func = theano.function([], conv_op, mode=mode_with_gpu)
         # All meta optimizer compile a new function. This need to know
         # the current linker, but this information is not available,
         # so it use the default mode.
         if op is None:
             # No convolutions optimization takes place
-            with theano.change_flags(mode=mode):
-                with self.assertRaises(AssertionError):
-                    theano.function([], conv_op, mode=mode)
+            assert optimiser.transform(conv_op.owner) is None
             return
         elif op != 'conv3d2d':
             with theano.change_flags(mode=mode):
@@ -887,7 +884,7 @@ class Conv_opt_test(unittest.TestCase):
                 conv_func = theano.function(
                     [], conv_op,
                     mode=mode_with_gpu.including('conv_meta'))
-
+        ref_func = theano.function([], conv_op, mode=mode_with_gpu)
         utt.assert_allclose(conv_func(), ref_func())
 
     def test_optimizers_2d(self):
@@ -1158,91 +1155,111 @@ class Conv_opt_test(unittest.TestCase):
                               dnn.GpuDnnConvGradI,
                               num_groups=groups)
 
-    def test_returns_none(self):
+    def test_returns_none_2d(self):
         if theano.config.cxx == "":
             raise SkipTest("Need a c compiler.")
         # values given dont matter since it returns None
         imshp = (2, 3, 5, 5)
         kshp = (4, 3, 3, 3)
         tshp = (2, 4, 3, 3)
-        exclude_string = ['conv_dnn:default', 'conv_gemm:default']
         conv_direction = [0, 1, 2]
+        optimisers = [[opt.local_abstractconv_gemm_alt,
+                       opt.local_abstractconv_cudnn_alt],
+                      [opt.local_abstractconv_gemm_gradweights_alt,
+                       opt.local_abstractconv_cudnn_alt],
+                      [opt.local_abstractconv_gradinputs_gemm_alt,
+                       opt.local_abstractconv_cudnn_alt]]
         # test that non default subsample returns None
-        for string in exclude_string:
-            for direction in conv_direction:
+        for opt_direction, direction in zip(optimisers, conv_direction):
+            for optimiser in opt_direction:
                 self.optimizer_2d([imshp, kshp, tshp],
                                   direction,
-                                  'alternative',
-                                  string,
+                                  '',
+                                  '',
                                   None,
-                                  subsample=(2, 2))
+                                  subsample=(2, 2),
+                                  optimiser=optimiser)
         # test that non default num_groups returns None
-        for string in exclude_string:
-            for direction in conv_direction:
+        for opt_direction, direction in zip(optimisers, conv_direction):
+            for optimiser in opt_direction:
                 self.optimizer_2d([imshp, kshp, tshp],
                                   direction,
-                                  'alternative',
-                                  string,
+                                  '',
+                                  '',
                                   None,
-                                  num_groups=3)
+                                  num_groups=3,
+                                  optimiser=optimiser)
         # test that border_mode=half returns None
-        for string in exclude_string:
-            for direction in conv_direction:
+        for opt_direction, direction in zip(optimisers, conv_direction):
+            for optimiser in opt_direction:
                 self.optimizer_2d([imshp, kshp, tshp],
                                   direction,
-                                  'alternative',
-                                  string,
+                                  '',
+                                  '',
                                   None,
-                                  border_mode='half')
+                                  border_mode='half',
+                                  optimiser=optimiser)
         # test that Non-default filter dilation return None for
         # direction 1
-        for string in exclude_string:
-            direction = 1
+        for optimiser in optimisers[1]:
             self.optimizer_2d([imshp, kshp, tshp],
-                              direction,
-                              'alternative',
-                              'conv_dnn:default',
+                              1,
+                              '',
+                              '',
                               None,
-                              filter_dilation=(2, 2))
+                              filter_dilation=(2, 2),
+                              optimiser=optimiser)
 
+    def test_returns_none_3d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
         imshp = (2, 3, 5, 5, 5)
         kshp = (4, 3, 3, 3, 3)
         tshp = (2, 4, 3, 3, 3)
-        exclude_string = ['conv_dnn:default', 'conv_gemm:default']
+        conv_direction = [0, 1, 2]
+        optimisers = [[opt.local_abstractconv3d_alt,
+                       opt.local_abstractconv3d_cudnn_alt],
+                      [opt.local_abstractconv3d_gemm_gradweights_alt,
+                       opt.local_abstractconv3d_cudnn_alt],
+                      [opt.local_abstractconv3d_gradinputs_gemm_alt,
+                       opt.local_abstractconv3d_cudnn_alt]]
         # test that non default subsample returns None
-        for string in exclude_string:
-            for direction in conv_direction:
+        for opt_direction, direction in zip(optimisers, conv_direction):
+            for optimiser in opt_direction:
                 self.optimizer_3d([imshp, kshp, tshp],
                                   direction,
-                                  'alternative',
-                                  string,
+                                  '',
+                                  '',
                                   None,
-                                  subsample=(2, 2, 2))
+                                  subsample=(2, 2, 2),
+                                  optimiser=optimiser)
         # test that non default num_groups returns None
-        for string in exclude_string:
-            for direction in conv_direction:
+        for opt_direction, direction in zip(optimisers, conv_direction):
+            for optimiser in opt_direction:
                 self.optimizer_3d([imshp, kshp, tshp],
                                   direction,
-                                  'alternative',
-                                  string,
+                                  '',
+                                  '',
                                   None,
-                                  num_groups=3)
+                                  num_groups=3,
+                                  optimiser=optimiser)
         # test that border_mode=half returns None
-        for string in exclude_string:
-            for direction in conv_direction:
+        for opt_direction, direction in zip(optimisers, conv_direction):
+            for optimiser in opt_direction:
                 self.optimizer_3d([imshp, kshp, tshp],
                                   direction,
-                                  'alternative',
-                                  string,
+                                  '',
+                                  '',
                                   None,
-                                  border_mode='half')
+                                  border_mode='half',
+                                  optimiser=optimiser)
         # test that Non-default filter dilation return None for
         # direction 1
-        for string in exclude_string:
-            direction = 1
+        for optimiser in optimisers[1]:
             self.optimizer_3d([imshp, kshp, tshp],
-                              direction,
-                              'alternative',
-                              string,
+                              1,
+                              '',
+                              '',
                               None,
-                              filter_dilation=(2, 2, 2))
+                              filter_dilation=(2, 2, 2),
+                              optimiser=optimiser)
