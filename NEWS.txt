@@ -3,7 +3,7 @@ Release Notes
 =============
 
 
-Theano 0.10.0beta2 (5th of September, 2017)
+Theano 0.10.0beta2 (7th of September, 2017)
 ===========================================
 
 This release contains new features, improvements and bug fixes to prepare the upcoming release candidate.
