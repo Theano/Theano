@@ -773,7 +773,8 @@ class Conv_opt_test(unittest.TestCase):
 
     def optimizer_2d(self, input_shapes, direction, include_tags, exclude_tags,
                      op, border_mode='valid', subsample=(1, 1),
-                     filter_dilation=(1, 1), num_groups=1, optimiser=None):
+                     filter_dilation=(1, 1), num_groups=1, unshared=False,
+                     optimiser=None):
 
         inp1 = theano.shared(np.random.random(input_shapes[0]).astype(theano.config.floatX))
         inp2 = theano.shared(np.random.random(input_shapes[1]).astype(theano.config.floatX))
@@ -786,7 +787,8 @@ class Conv_opt_test(unittest.TestCase):
                                                    border_mode=border_mode,
                                                    subsample=subsample,
                                                    filter_dilation=filter_dilation,
-                                                   num_groups=num_groups)(inp1, inp2)
+                                                   num_groups=num_groups,
+                                                   unshared=unshared)(inp1, inp2)
 
         if(direction == 1):
             conv_op = abstract_conv.AbstractConv2d_gradWeights(imshp=input_shapes[0],
@@ -794,9 +796,10 @@ class Conv_opt_test(unittest.TestCase):
                                                                border_mode=border_mode,
                                                                subsample=subsample,
                                                                filter_dilation=filter_dilation,
-                                                               num_groups=num_groups)(inp1,
-                                                                                      inp2,
-                                                                                      input_shapes[2][-2:])
+                                                               num_groups=num_groups,
+                                                               unshared=unshared)(inp1,
+                                                                                  inp2,
+                                                                                  input_shapes[2][-2:])
 
         if(direction == 2):
             conv_op = abstract_conv.AbstractConv2d_gradInputs(imshp=input_shapes[2],
@@ -804,9 +807,10 @@ class Conv_opt_test(unittest.TestCase):
                                                               border_mode=border_mode,
                                                               subsample=subsample,
                                                               filter_dilation=filter_dilation,
-                                                              num_groups=num_groups)(inp2,
-                                                                                     inp1,
-                                                                                     input_shapes[2][-2:])
+                                                              num_groups=num_groups,
+                                                              unshared=unshared)(inp2,
+                                                                                 inp1,
+                                                                                 input_shapes[2][-2:])
 
         theano.config.metaopt.optimizer_including = include_tags
         theano.config.metaopt.optimizer_excluding = exclude_tags
@@ -1116,6 +1120,30 @@ class Conv_opt_test(unittest.TestCase):
                               dnn.GpuDnnConvGradI,
                               num_groups=groups)
 
+        # test unshared for default optimizers
+        imshp2d = [(2, 2, 4, 4), (3, 2, 5, 3)]
+        kshp2d = [(2, 2, 2, 2, 3, 3), (2, 3, 1, 2, 3, 3)]
+        tshp2d = [(2, 2, 2, 2), (3, 2, 3, 1)]
+        for imshp, kshp, tshp, groups in zip(imshp2d, kshp2d, tshp2d, num_groups):
+            # forward pass
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              '',
+                              'alternative',
+                              blas.GpuCorrMM,
+                              unshared=True)
+            # grad with respect to weights
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              '',
+                              'alternative',
+                              blas.GpuCorrMM_gradWeights,
+                              unshared=True)
+            # grad with respect to inputs
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              '',
+                              'alternative',
+                              blas.GpuCorrMM_gradInputs,
+                              unshared=True)
+
         imshp3d = [(2, 6, 5, 5, 5), (2, 4, 5, 5, 5)]
         kshp3d = [(3, 2, 3, 3, 3), (2, 2, 3, 3, 3)]
         tshp3d = [(2, 3, 3, 3, 3), (2, 2, 3, 3, 3)]
@@ -1209,6 +1237,23 @@ class Conv_opt_test(unittest.TestCase):
                               None,
                               filter_dilation=(2, 2),
                               optimiser=optimiser)
+        imshp = (2, 2, 4, 4)
+        kshp = (2, 2, 2, 2, 3, 3)
+        tshp = (2, 2, 2, 2)
+        shape_perms = [[imshp, kshp, tshp],
+                       [imshp, tshp, kshp],
+                       [tshp, kshp, imshp]]
+        # test unshared convolution returns None
+        for opt_direction, direction, perms in zip(optimisers, conv_direction,
+                                                   shape_perms):
+            for optimiser in opt_direction:
+                self.optimizer_2d(perms,
+                                  direction,
+                                  '',
+                                  '',
+                                  None,
+                                  unshared=True,
+                                  optimiser=optimiser)
 
     def test_returns_none_3d(self):
         if theano.config.cxx == "":
