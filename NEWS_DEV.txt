@@ -5,6 +5,7 @@ DRAFT Release Notes
 ===================
 
 git log -p rel-0.9.0... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
+git log -p rel-0.10.0beta1... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
 
 # Commit count per user
 git shortlog -sn rel-0.9.0..
@@ -18,6 +19,9 @@ TODO: better Theano conv doc
 # NB: Following notes contains infos since 0.9.0.
 
 Highlights:
+ - Support NumPy ``1.13``
+ - Support pygpu ``0.7``
+ - Added conda recipe
  - Moved Python 3.* minimum supported version from 3.3 to 3.4
  - Replaced deprecated package ``nose-parameterized`` with up-to-date package ``parameterized`` for Theano requirements
  - Theano now internally uses ``sha256`` instead of ``md5`` to work on systems that forbide ``md5`` for security reason
@@ -31,11 +35,15 @@ Highlights:
 
  - Speed up graph toposort algorithm
  - Faster C compilation by massively using a new interface for op params
- - Faster optimization step
+ - Faster optimization step, with new optional destroy handler
  - Documentation updated and more complete
+
+   - Added documentation for RNNBlock
+
  - Many bug fixes, crash fixes and warning improvements
 
 Interface changes:
+ - Added new parameter ``target`` for MRG functions
  - Merged duplicated diagonal functions into two ops: ``ExtractDiag`` (extract a diagonal to a vector),
    and ``AllocDiag`` (set a vector as a diagonal of an empty array)
  - Renamed ``MultinomialWOReplacementFromUniform`` to ``ChoiceFromUniform``
@@ -54,11 +62,17 @@ Interface changes:
  - Changed ``grad()`` method to ``L_op()`` in ops that need the outputs to compute gradient
 
 Convolution updates:
+ - Removed old ``conv3d`` interface
+ - Deprecated old ``conv2d`` interface
+ - Updated ``conv`` documentation
  - Extended Theano flag ``dnn.enabled`` with new option ``no_check`` to help speed up cuDNN importation
- - Implemented separable convolutions
- - Implemented grouped convolutions
+ - Added unshared convolutions
+ - Implemented separable convolutions for 2D and 3D
+ - Implemented grouped convolutions for 2D and 3D
+ - Automatic addition of cuDNN DLL path to ``PATH`` environment variable on Windows
 
 GPU:
+ - Added a meta-optimizer to select the fastest GPU implementations for convolutions
  - Prevent GPU initialization when not required
  - Added disk caching option for kernels
  - Added method ``my_theano_function.sync_shared()`` to help synchronize GPU Theano functions
@@ -74,11 +88,13 @@ GPU:
  - ``CrossentropyCategorical1Hot`` and its gradient are now lifted to GPU
 
  - Better cuDNN support
-
-   - Official support for ``v5.*`` and ``v6.*``
+   - Official support for ``v6.*`` and ``v7.*``, support for ``v5.*`` will be removed in next release
+   - Added spatial transformation operation based on cuDNN
+   - Updated and improved caching system for runtime-chosen cuDNN convolution algorithms
+   - Support cuDNN v7 tensor core operations for convolutions with runtime timed algorithms
    - Better support and loading on Windows and Mac
    - Support cuDNN v6 dilated convolutions
-   - Support cuDNN v6 reductions
+   - Support cuDNN v6 reductions for contiguous inputs
    - Added new Theano flags ``cuda.include_path``, ``dnn.base_path`` and ``dnn.bin_path``
      to help configure Theano when CUDA and cuDNN can not be found automatically.
 
@@ -89,6 +105,9 @@ GPU:
    - Started to use ``float32`` precision for computations that don't support ``float16`` on GPU
 
 New features:
+ - Added ``tensor6()`` and ``tensor7()`` in ``theano.tensor`` module
+ - Added boolean indexing for sub-tensors
+ - Added covariance matrix function ``theano.tensor.cov``
  - Added a wrapper for `Baidu's CTC <https://github.com/baidu-research/warp-ctc>`_ cost and gradient functions
  - Added scalar and elemwise CPU ops for modified Bessel function of order 0 and 1 from ``scipy.special``.
  - Added Scaled Exponential Linear Unit (SELU) activation
@@ -104,8 +123,10 @@ New features:
  - Added new Theano flag ``cycle_detection`` to speed-up optimization step by reducing time spending in inplace optimizations
  - Added new Theano flag ``check_stack_trace`` to help check the stack trace during optimization process
  - Added new Theano flag ``cmodule.debug`` to allow a debug mode for Theano C code. Currently used for cuDNN convolutions only.
+ - Added new Theano flag ``pickle_test_value`` to help disable pickling test values
 
 Others:
+ - Kept stack trace for optimizations in new GPU backend
  - Added deprecation warning for the softmax and logsoftmax vector case
  - Added a warning to announce that C++ compiler will become mandatory in next Theano release ``0.11``
 
@@ -117,11 +138,66 @@ Other more detailed changes:
  - Removed ``COp.get_op_params()``
  - Support of list of strings for ``Op.c_support_code()``, to help not duplicate support codes
  - Macro names provided for array properties are now standardized in both CPU and GPU C codes
- - Started to move C code files into separate folder ``c_code`` in every Theano module
+ - Moved all C code files into separate folder ``c_code`` in every Theano module
  - Many improvements for Travis CI tests (with better splitting for faster testing)
  - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/6384
+* https://github.com/Theano/Theano/pull/6326
+* https://github.com/Theano/Theano/pull/6317
+* https://github.com/Theano/Theano/pull/6269
+* https://github.com/Theano/Theano/pull/5688
+* https://github.com/Theano/Theano/pull/6376
+* https://github.com/Theano/Theano/pull/6377
+* https://github.com/Theano/Theano/pull/6355
+* https://github.com/Theano/Theano/pull/6373
+* https://github.com/Theano/Theano/pull/6374
+* https://github.com/Theano/Theano/pull/6371
+* https://github.com/Theano/Theano/pull/6362
+* https://github.com/Theano/Theano/pull/6368
+* https://github.com/Theano/Theano/pull/6339
+* https://github.com/Theano/Theano/pull/6366
+* https://github.com/Theano/Theano/pull/6364
+* https://github.com/Theano/Theano/pull/6349
+* https://github.com/Theano/Theano/pull/6361
+* https://github.com/Theano/Theano/pull/6356
+* https://github.com/Theano/Theano/pull/6359
+* https://github.com/Theano/Theano/pull/6286
+* https://github.com/Theano/Theano/pull/6357
+* https://github.com/Theano/Theano/pull/6354
+* https://github.com/Theano/Theano/pull/6336
+* https://github.com/Theano/Theano/pull/6351
+* https://github.com/Theano/Theano/pull/6301
+* https://github.com/Theano/Theano/pull/6333
+* https://github.com/Theano/Theano/pull/6341
+* https://github.com/Theano/Theano/pull/6332
+* https://github.com/Theano/Theano/pull/6319
+* https://github.com/Theano/Theano/pull/6302
+* https://github.com/Theano/Theano/pull/6300
+* https://github.com/Theano/Theano/pull/6323
+* https://github.com/Theano/Theano/pull/6324
+* https://github.com/Theano/Theano/pull/5817
+* https://github.com/Theano/Theano/pull/6312
+* https://github.com/Theano/Theano/pull/6061
+* https://github.com/Theano/Theano/pull/6305
+* https://github.com/Theano/Theano/pull/6059
+* https://github.com/Theano/Theano/pull/6315
+* https://github.com/Theano/Theano/pull/6295
+* https://github.com/Theano/Theano/pull/6252
+* https://github.com/Theano/Theano/pull/6267
+* https://github.com/Theano/Theano/pull/6207
+* https://github.com/Theano/Theano/pull/6309
+* https://github.com/Theano/Theano/pull/6307
+* https://github.com/Theano/Theano/pull/6000
+* https://github.com/Theano/Theano/pull/6293
+* https://github.com/Theano/Theano/pull/6292
+* https://github.com/Theano/Theano/pull/6299
+* https://github.com/Theano/Theano/pull/6143
+* https://github.com/Theano/Theano/pull/6296
+* https://github.com/Theano/Theano/pull/6280
+* https://github.com/Theano/Theano/pull/6289
+* https://github.com/Theano/Theano/pull/6285
 * https://github.com/Theano/Theano/pull/6275
 * https://github.com/Theano/Theano/pull/6218
 * https://github.com/Theano/Theano/pull/6271
