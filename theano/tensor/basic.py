@@ -6333,18 +6333,59 @@ del x
 
 
 class ExtractDiag(Op):
-    """Return specified diagonals.
+    """
+    Return specified diagonals.
+
+    If a is 2-D, returns the diagonal of a with the given offset,
+    i.e., the collection of elements of the form a[i, i+offset].
+    If a has more than two dimensions, then the axes specified by
+    axis1 and axis2 are used to determine the 2-D sub-array whose
+    diagonal is returned. The shape of the resulting array can be
+    determined by removing axis1 and axis2 and appending an index
+    to the right equal to the size of the resulting diagonals.
 
     Parameters
     ----------
-    x
-        A tensor variable with x.ndim >= 2.
+    x: A tensor variable with x.ndim >= 2.
+
+    offset: Offset of the diagonal from the main diagonal.
+        Can be positive or negative.
+        Defaults to main diagonal (0).
+
+    axis1: Axis to be used as the first axis of the 2-D
+        sub-arrays from which the diagonals should be taken.
+        Defaults to first axis (0).
+
+    axis2: Axis to be used as the second axis of the 2-D
+        sub-arrays from which the diagonals should be taken.
+        Defaults to second axis (1).
+
+
 
     Returns
     -------
-    vector
-        A vector representing the diagonal elements.
+    array_of_diagonals:
+        If a is 2-D and not a matrix, a 1-D array of the
+        same type as a containing the diagonal is returned.
+        If a is a matrix, a 1-D array containing the diagonal
+        is returned in order to maintain backward compatibility.
+        If the dimension of a is greater than two, then an
+        array of diagonals is returned, “packed” from left-most
+        dimension to right-most (e.g., if a is 3-D, then the
+        diagonals are “packed” along rows).
 
+
+
+    Raises
+    ------
+    ValueError
+        If the dimension of x is less than 2.
+
+
+    See Also
+    --------
+    numpy.diagonal:
+        https://docs.scipy.org/doc/numpy-dev/reference/generated/numpy.diagonal.html
     """
     __props__ = ("offset", "axis1", "axis2", "view")
 
