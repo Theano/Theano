@@ -27,6 +27,7 @@ def makeSharedTester(shared_constructor_,
                      theano_fct_,
                      ref_fct_,
                      cast_value_=np.asarray,
+                     expect_fail_fast_shape_inplace=True,
                      ):
     """
     This is a generic fct to allow reusing the same test function
@@ -57,8 +58,6 @@ def makeSharedTester(shared_constructor_,
                  the name of the variable that will hold the returned class.
     :note:
         We must use /= as sparse type don't support other inplace operation.
-
-
     """
     class m(type):
         pass
@@ -291,10 +290,9 @@ def makeSharedTester(shared_constructor_,
                 assert np.allclose(x_ref, total_func())
 
         def test_inplace_set_value(self):
-            """
-            We test that if the SharedVariable implement it we do inplace set_value
-            We also test this for partial inplace modification when accessing the internal of theano.
-            """
+            # We test that if the SharedVariable implement it we do inplace set_value
+            # We also test this for partial inplace modification when accessing the internal of theano.
+
             dtype = self.dtype
             if dtype is None:
                 dtype = theano.config.floatX
@@ -513,13 +511,13 @@ def makeSharedTester(shared_constructor_,
                                          + s_shared)])
             topo = f.maker.fgraph.toposort()
             f()
-            #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
+            # [Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
             if theano.config.mode != 'FAST_COMPILE':
                 assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo]) == 1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op, tensor.blas.Gemm))
                 assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
             # Their is no inplace gemm for sparse
-            #assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "StructuredDot")
+            # assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "StructuredDot")
             s_shared_specify = tensor.specify_shape(s_shared, s_shared.get_value(borrow=True).shape)
 
             # now test with the specify shape op in the output
@@ -549,8 +547,12 @@ def makeSharedTester(shared_constructor_,
                 assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo]) == 1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op, tensor.blas.Gemm))
                 assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
+
+        if theano.config.cycle_detection == 'fast' and expect_fail_fast_shape_inplace and theano.config.mode != 'FAST_COMPILE':
+            test_specify_shape_inplace = unittest.expectedFailure(test_specify_shape_inplace)
+
         def test_values_eq(self):
-            """ Test the type.values_eq[_approx] function"""
+            # Test the type.values_eq[_approx] function
             dtype = self.dtype
             if dtype is None:
                 dtype = theano.config.floatX
@@ -581,6 +583,7 @@ def makeSharedTester(shared_constructor_,
     def f(cls):
         return update_wrapper(SharedTester, cls, updated=())
     return f
+
 
 @makeSharedTester(
     shared_constructor_=tensor._shared,

@@ -4,8 +4,11 @@ Node classes (`Apply`, `Variable`) and expression graph algorithms.
 from __future__ import absolute_import, print_function, division
 
 from collections import deque
+import contextlib
 from copy import copy
 from itertools import count
+
+import warnings
 
 import theano
 from theano import config
@@ -388,6 +391,8 @@ class Variable(Node):
         self.name = name
         self.auto_name = 'auto_' + str(next(self.__count__))
 
+        Variable.notify_construction_observers(self)
+
     def __str__(self):
         """Return a str representation of the Variable.
 
@@ -524,7 +529,31 @@ class Variable(Node):
     def __getstate__(self):
         d = self.__dict__.copy()
         d.pop("_fn_cache", None)
+        if (not config.pickle_test_value) \
+                and (hasattr(self.tag, 'test_value')):
+            if not type(config).pickle_test_value.is_default:
+                warnings.warn("pickle_test_value is not defaut value (True).\n"
+                              "Test value of variable %s(%s) will not be dumped." % (d['auto_name'], d['name']))
+            t = copy(d["tag"])
+            del t.test_value
+            d["tag"] = t
         return d
+
+    #  refer to doc in nodes_constructed.
+    construction_observers = []
+
+    @classmethod
+    def append_construction_observer(cls, observer):
+        cls.construction_observers.append(observer)
+
+    @classmethod
+    def remove_construction_observer(cls, observer):
+        cls.construction_observers.remove(observer)
+
+    @classmethod
+    def notify_construction_observers(cls, instance):
+        for observer in cls.construction_observers:
+            observer(instance)
 
 
 class Constant(Variable):
@@ -799,9 +828,8 @@ def orphans(i, o):
     return variables_and_orphans(i, o)[1]
 
 
-def clone(i, o, copy_inputs=True):
-    """
-    Copies the subgraph contained between i and o.
+def clone(i, o, copy_inputs=True, copy_orphans=None):
+    """Copies the subgraph contained between i and o.
 
     Parameters
     ----------
@@ -811,18 +839,32 @@ def clone(i, o, copy_inputs=True):
         Output Variables.
     copy_inputs : bool
         If True, the inputs will be copied (defaults to True).
+    copy_orphans:
+        When None, use the copy_inputs value,
+        When True, new orphans nodes are created.
+        When False, original orphans nodes are reused in the new graph.
 
     Returns
     -------
     object
         The inputs and outputs of that copy.
 
+    Note
+    ----
+
+    A constant, if in the ``i`` list is not an orpha. So it will be
+    copied depending of the ``copy_inputs`` parameter. Otherwise it
+    will be copied depending of the ``copy_orphans`` parameter.
+
     """
-    equiv = clone_get_equiv(i, o, copy_inputs)
+    if copy_orphans is None:
+        copy_orphans = copy_inputs
+    equiv = clone_get_equiv(i, o, copy_inputs, copy_orphans)
     return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
-def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
+def clone_get_equiv(inputs, outputs, copy_inputs=True, copy_orphans=True,
+                    memo=None):
     """
     Return a dictionary that maps from Variable and Apply nodes in the
     original graph to a new node (a clone) in a new graph.
@@ -834,11 +876,14 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     ----------
     inputs : a list of Variables
     outputs : a list of Variables
-    copy_inputs_and_orphans : bool
-        True means to create the cloned graph from new input and constant
+    copy_inputs : bool
+        True means to create the cloned graph from new input
         nodes (the bottom of a feed-upward graph).
         False means to clone a graph that is rooted at the original input
         nodes.
+    copy_orphans:
+        When True, new constant nodes are created. When False, original
+        constant nodes are reused in the new graph.
     memo : None or dict
         Optionally start with a partly-filled dictionary for the return value.
         If a dictionary is passed, this function will work in-place on that
@@ -850,7 +895,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
 
     # clone the inputs if necessary
     for input in inputs:
-        if copy_inputs_and_orphans:
+        if copy_inputs:
             cpy = input.clone()
             cpy.owner = None
             cpy.index = None
@@ -862,7 +907,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     for apply in io_toposort(inputs, outputs):
         for input in apply.inputs:
             if input not in memo:
-                if copy_inputs_and_orphans:
+                if copy_orphans:
                     cpy = input.clone()
                     memo[input] = cpy
                 else:
@@ -1400,3 +1445,38 @@ def is_in_ancestors(l_node, f_node):
             todo.append(cur)
             todo.extend(i.owner for i in cur.inputs if i.owner)
     return False
+
+
+@contextlib.contextmanager
+def nodes_constructed():
+    """
+    A contextmanager that is used in inherit_stack_trace and keeps track
+    of all the newly created varaible nodes inside an optimization. A list
+    of new_nodes is instantiated but will be filled in a lazy manner (when
+    Variable.notify_construction_observers is called).
+
+
+    `observer` is the entity that updates the new_nodes list.
+    construction_observers is a list inside Variable class and contains
+    a list of observer functions. The observer functions inside
+    construction_observers are only called when a variable node is
+    instantiated (where Variable.notify_construction_observers is called).
+    When the observer function is called, a new variable node is added to
+    the new_nodes list.
+
+
+    Parameters
+    ----------
+    new_nodes
+        A list of all the variable nodes that are created inside the optimization.
+
+    yields
+        new_nodes list.
+    """
+    new_nodes = []
+
+    def observer(node):
+        new_nodes.append(node)
+    Variable.append_construction_observer(observer)
+    yield new_nodes
+    Variable.remove_construction_observer(observer)

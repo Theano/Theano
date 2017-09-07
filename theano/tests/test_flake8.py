@@ -4,6 +4,7 @@ Test flake8 errors.
 from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 import os
+import sys
 from fnmatch import fnmatch
 import theano
 try:
@@ -121,14 +122,14 @@ def list_files(dir_path=theano.__path__[0], pattern='*.py', no_match=".#"):
 
 
 def test_format_flake8():
-    """
-    Test if flake8 is respected.
-    """
+    # Test if flake8 is respected.
     if not flake8_available:
         raise SkipTest("flake8 is not installed")
     total_errors = 0
     for path in list_files():
         rel_path = os.path.relpath(path, theano.__path__[0])
+        if sys.platform == 'win32':
+            rel_path = rel_path.replace('\\', '/')
         if rel_path in whitelist_flake8:
             continue
         else:

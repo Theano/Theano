@@ -10,7 +10,6 @@ import copy
 import sys
 import gc
 import logging
-import six.moves.copyreg as copyreg
 from itertools import chain, product as itertools_product
 from theano.compat import izip
 
@@ -28,7 +27,7 @@ from theano.compile.function_module import (
     std_fgraph)
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard, _output_guard
-from theano.configparser import change_flags
+from theano import change_flags
 
 
 __docformat__ = "restructuredtext en"
@@ -2273,25 +2272,26 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                               "of", len(li), "events was stable.",
                               file=sys.stderr)
         self.fgraph = fgraph
-        destroy_handler_added = False
-        for feature in fgraph._features:
-            if isinstance(feature, gof.DestroyHandler):
-                destroy_handler_added = True
-                break
-        if not destroy_handler_added:
-            fgraph.attach_feature(gof.DestroyHandler())
-        for o in fgraph.outputs:
-            try:
-                with change_flags(compute_test_value=config.compute_test_value_opt):
-                    fgraph.replace_validate(o, _output_guard(o), reason='output_guard')
-                raise Exception("Output variable %s required output_guard, "
-                                "how was this output left unprotected against "
-                                "destructive operations?" % o)
+        if theano.config.cycle_detection == 'regular':
+            destroy_handler_added = False
+            for feature in fgraph._features:
+                if isinstance(feature, gof.DestroyHandler):
+                    destroy_handler_added = True
+                    break
+            if not destroy_handler_added:
+                fgraph.attach_feature(gof.DestroyHandler())
+            for o in fgraph.outputs:
+                try:
+                    with change_flags(compute_test_value=config.compute_test_value_opt):
+                        fgraph.replace_validate(o, _output_guard(o), reason='output_guard')
+                    raise Exception("Output variable %s required output_guard, "
+                                    "how was this output left unprotected against "
+                                    "destructive operations?" % o)
 
-            except gof.InconsistencyError:
-                # This output is already impossible to destroy.
-                # No guard necessary
-                pass
+                except gof.InconsistencyError:
+                    # This output is already impossible to destroy.
+                    # No guard necessary
+                    pass
 
         linker = _Linker(self)
 
@@ -2412,10 +2412,6 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                                    name=self.name)
         return fn
 
-
-def _pickle_DebugMode_Maker(maker):
-    raise NotImplementedError('DebugMode is not picklable (yet)')
-copyreg.pickle(_Maker, _pickle_DebugMode_Maker)
 
 ########################
 #

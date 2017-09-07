@@ -132,6 +132,11 @@ class Supervisor:
         self.protected = list(protected)
 
     def validate(self, fgraph):
+        if config.cycle_detection == 'fast' and hasattr(fgraph, 'has_destroyers'):
+            if fgraph.has_destroyers(self.protected):
+                raise gof.InconsistencyError("Trying to destroy a protected"
+                                             "Variable.")
+            return True
         if not hasattr(fgraph, 'destroyers'):
             return True
         for r in self.protected + list(fgraph.outputs):
@@ -190,7 +195,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
                    for spec, input in zip(input_specs, fgraph.inputs)
                    if not (spec.mutable or
                            (hasattr(fgraph, 'destroyers') and
-                            fgraph.destroyers(input)))))
+                            fgraph.has_destroyers([input])))))
 
     # If named nodes are replaced, keep the name
     for feature in std_fgraph.features:
@@ -380,8 +385,12 @@ class Function(object):
         # TODO: this only need to be set if there is more then 1 input
         self._check_for_aliased_inputs = False
         for i in maker.inputs:
-            if (isinstance(i, In) and ((hasattr(i, 'borrow') and i.borrow) or
-                                       (hasattr(i, 'mutable') and i.mutable))):
+            # If the input is a shared variable, the memory region is
+            # under Theano control and so we don't need to check if it
+            # is aliased as we never do that.
+            if (isinstance(i, In) and not i.shared and
+                (getattr(i, 'borrow', False) or
+                 getattr(i, 'mutable', False))):
                 self._check_for_aliased_inputs = True
                 break
 
@@ -1021,10 +1030,10 @@ class Function(object):
         if (hasattr(theano, "gpuarray") and
                 theano.gpuarray.pygpu_activated):
             import pygpu
-            for i, inp in enumerate(self.input_storage):
-                if i in self.maker.fgraph.update_mapping.values():
-                    if isinstance(inp.data, pygpu.gpuarray.GpuArray):
-                        inp.data.sync()
+            for i in self.maker.fgraph.update_mapping.values():
+                inp = self.input_storage[i]
+                if isinstance(inp.data, pygpu.gpuarray.GpuArray):
+                    inp.data.sync()
 
 
 # pickling/deepcopy support for Function
@@ -1111,7 +1120,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
 
     # We can't use fgraph.inputs as this don't include Constant Value.
     all_graph_inputs = gof.graph.inputs(fgraph.outputs)
-    has_destroyers = hasattr(fgraph, 'get_destroyers_of')
+    has_destroyers_attr = hasattr(fgraph, 'has_destroyers')
 
     for i in xrange(len(fgraph.outputs)):
         views_of_output_i = set()
@@ -1142,7 +1151,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
                 #    being updated
                 if input_j in updated_fgraph_inputs:
                     continue
-                if input_j in views_of_output_i and not (has_destroyers and fgraph.get_destroyers_of(input_j)):
+                if input_j in views_of_output_i and not (has_destroyers_attr and fgraph.has_destroyers([input_j])):
                     # We don't put deep_copy_op if the input and the
                     # output have borrow==True
                     if input_j in fgraph.inputs:
@@ -1829,7 +1838,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   on_unused_input=on_unused_input,
                   output_keys=output_keys,
                   name=name)
-        with theano.configparser.change_flags(compute_test_value="off"):
+        with theano.change_flags(compute_test_value="off"):
             fn = m.create(defaults)
     finally:
         t2 = time.time()

@@ -17,12 +17,8 @@ mode_wo_cudnn = mode_with_gpu.excluding("cudnn")
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
-    """
-    This is basic test for GpuCrossentropySoftmaxArgmax1HotWithBias
-
-    We check that we loop when their is too much threads
-
-    """
+    # This is basic test for GpuCrossentropySoftmaxArgmax1HotWithBias
+    # We check that we loop when their is too much threads
 
     n_in = 1000
     batch_size = 4097
@@ -82,12 +78,9 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
 
 
 def test_GpuCrossentropySoftmax1HotWithBiasDx():
-    """
-    This is basic test for GpuCrossentropySoftmax1HotWithBiasDx
+    # This is basic test for GpuCrossentropySoftmax1HotWithBiasDx
+    # We check that we loop when their is too much threads
 
-    We check that we loop when their is too much threads
-
-    """
     batch_size = 4097
     n_out = 1250
 
@@ -153,15 +146,13 @@ def test_softmax_with_bias_float64():
 
 
 def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
-    """
-    This is a basic test for GpuSoftmaxWithBias.
+    # This is a basic test for GpuSoftmaxWithBias.
+    #
+    # We check that we loop when there are too many blocks.
+    #
+    # TODO: check that we loop when there are too many threads. (THIS IS
+    # NOT IMPLEMENTED)
 
-    We check that we loop when there are too many blocks.
-
-    TODO: check that we loop when there are too many threads. (THIS IS
-    NOT IMPLEMENTED)
-
-    """
     x = T.matrix('x', dtype=dtypeInput)
     b = T.vector('b', dtype=dtypeBias)
 
@@ -211,12 +202,11 @@ def test_softmax_float64():
 
 
 def softmax_unittest_template(dtypeInput):
-    """
-    This is basic test for GpuSoftmax.
+    # This is basic test for GpuSoftmax.
+    #
+    # We check that we loop when their is too much block
+    # We use slower code when there isn't enough shared memory
 
-    We check that we loop when their is too much block
-    We use slower code when there isn't enough shared memory
-    """
     x = T.matrix('x', dtype=dtypeInput)
 
     z = T.nnet.softmax(x)
@@ -254,20 +244,12 @@ class test_SoftMax(unittest.TestCase):
     gpu_op = GpuSoftmax
     mode = mode_wo_cudnn
 
-    def _test_softmax(
-        self,
-        x,
-        x_gpu,
-        f_z,
-        f_gpu_z,
-        cmp
-    ):
-        """
-        This is basic test for GpuSoftmax and GpuDnnSoftmax
+    def _test_softmax(self, x, x_gpu, f_z, f_gpu_z, cmp):
+        # This is basic test for GpuSoftmax and GpuDnnSoftmax
+        #
+        # We check that we loop when there is too much block
+        # We use slower code when there isn't enough shared memory
 
-        We check that we loop when there is too much block
-        We use slower code when there isn't enough shared memory
-        """
         f_z_out = f_z(x)
         f_gpu_z_out = f_gpu_z(x_gpu)
 
@@ -329,12 +311,6 @@ class test_SoftMax(unittest.TestCase):
         x = T.fmatrix('x')
         z = T.nnet.softmax_op
 
-        f, f_gpu = self._test_softmax(
-            x,
-            x,
-            z,
-            z,
-            self._cmp
-        )
+        f, f_gpu = self._test_softmax(x, x, z, z, self._cmp)
         # Theano can handle that case, but cudnn can't
         self._cmp(0, 10, f, f_gpu)

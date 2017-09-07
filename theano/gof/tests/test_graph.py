@@ -156,6 +156,26 @@ class TestClone(X):
         assert self.str(inputs(new_node.outputs), new_node.outputs) == ["MyOp(R7, R8)"]
         assert self.str(inputs(node.outputs), node.outputs) == ["MyOp(MyOp(R1, R2), R5)"]
 
+    def test_constant(self):
+        r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
+        node = MyOp.make_node(MyOp.make_node(r1, r2).outputs[0], r5)
+        _, new = clone([r1, r2, r5], node.outputs, False)
+        new_node = new[0].owner
+        new_node.inputs = MyVariable(7), MyVariable(8)
+        c1 = tensor.constant(1.5)
+
+        i, o = clone([c1], [c1])
+        assert i[0] is not c1 and o[0] is not c1
+
+        i, o = clone([c1], [c1], False)
+        assert i[0] is c1 and o[0] is c1
+
+        i, o = clone([c1], [c1], True, False)
+        assert i[0] is not c1 and o[0] is not c1
+
+        i, o = clone([c1], [c1], False, True)
+        assert i[0] is c1 and o[0] is c1
+
 
 ############
 # toposort #
@@ -172,7 +192,7 @@ def prenode(obj):
 class TestToposort:
 
     def test_0(self):
-        """Test a simple graph"""
+        # Test a simple graph
         r1, r2, r5 = MyVariable(1), MyVariable(2), MyVariable(5)
         o = MyOp.make_node(r1, r2)
         o2 = MyOp.make_node(o.outputs[0], r5)
@@ -184,7 +204,7 @@ class TestToposort:
         assert all == [o, o2]
 
     def test_1(self):
-        """Test a graph with double dependencies"""
+        # Test a graph with double dependencies
         r1, r5 = MyVariable(1), MyVariable(5)
         o = MyOp.make_node(r1, r1)
         o2 = MyOp.make_node(o.outputs[0], r5)
@@ -192,7 +212,7 @@ class TestToposort:
         assert all == [r5, r1, o, o.outputs[0], o2, o2.outputs[0]]
 
     def test_2(self):
-        """Test a graph where the inputs have owners"""
+        # Test a graph where the inputs have owners
         r1, r5 = MyVariable(1), MyVariable(5)
         o = MyOp.make_node(r1, r1)
         r2b = o.outputs[0]
@@ -205,7 +225,7 @@ class TestToposort:
         assert all == [o2]
 
     def test_3(self):
-        """Test a graph which is not connected"""
+        # Test a graph which is not connected
         r1, r2, r3, r4 = MyVariable(1), MyVariable(2), MyVariable(3), MyVariable(4)
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(r3, r4)
@@ -213,7 +233,7 @@ class TestToposort:
         assert all == [o1, o0] or all == [o0, o1]
 
     def test_4(self):
-        """Test inputs and outputs mixed together in a chain graph"""
+        # Test inputs and outputs mixed together in a chain graph
         r1, r2 = MyVariable(1), MyVariable(2)
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(o0.outputs[0], r1)
@@ -221,7 +241,7 @@ class TestToposort:
         assert all == [o1]
 
     def test_5(self):
-        """Test when outputs have clients"""
+        # Test when outputs have clients
         r1, r2, r4 = MyVariable(1), MyVariable(2), MyVariable(4)
         o0 = MyOp.make_node(r1, r2)
         MyOp.make_node(o0.outputs[0], r4)
@@ -259,9 +279,8 @@ class TestIsSameGraph(unittest.TestCase):
                 assert r2 == oj
 
     def test_single_var(self):
-        """
-        Test `is_same_graph` with some trivial graphs (one Variable).
-        """
+        # Test `is_same_graph` with some trivial graphs (one Variable).
+
         x, y, z = tensor.vectors('x', 'y', 'z')
         self.check([
                    (x, x, (({}, True), )),
@@ -271,9 +290,8 @@ class TestIsSameGraph(unittest.TestCase):
                    ])
 
     def test_full_graph(self):
-        """
-        Test `is_same_graph` with more complex graphs.
-        """
+        # Test `is_same_graph` with more complex graphs.
+
         x, y, z = tensor.vectors('x', 'y', 'z')
         t = x * y
         self.check([
@@ -287,9 +305,8 @@ class TestIsSameGraph(unittest.TestCase):
                    ])
 
     def test_merge_only(self):
-        """
-        Test `is_same_graph` when `equal_computations` cannot be used.
-        """
+        # Test `is_same_graph` when `equal_computations` cannot be used.
+
         x, y, z = tensor.vectors('x', 'y', 'z')
         t = x * y
         self.check([

@@ -291,11 +291,10 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             return logsoftmax_op(a)
 
     def test_local_softmax_optimization(self):
-        """Test the Logsoftmax substitution
-
-        Check that Log(Softmax(x)) is substituted with Logsoftmax(x). Note that
-        only the forward pass is checked (i.e., doesn't check the gradient)
-        """
+        # Test the Logsoftmax substitution
+        #
+        # Check that Log(Softmax(x)) is substituted with Logsoftmax(x). Note that
+        # only the forward pass is checked (i.e., doesn't check the gradient)
         dims = 4
         # Check for differents dimensions
         for d in xrange(1, dims + 1):
@@ -410,12 +409,12 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         utt.verify_grad(f, [np.random.rand(*shape)])
 
     def test_local_softmax_grad_optimization_and_big_input(self):
-        """Test the Logsoftmax's grad substitution.
+        # Test the Logsoftmax's grad substitution.
+        #
+        # Check that Log(Softmax(x))'s grad is substituted with Logsoftmax(x)'s
+        # grad and that the new operation does not explode for big inputs.
+        # Note that only the grad is checked.
 
-        Check that Log(Softmax(x))'s grad is substituted with Logsoftmax(x)'s
-        grad and that the new operation does not explode for big inputs.
-        Note that only the grad is checked.
-        """
         m = theano.config.mode
         m = theano.compile.get_mode(m)
         m.check_isfinite = False
@@ -793,7 +792,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-
         assert (fgraph.outputs[0].owner.op ==
                 crossentropy_softmax_argmax_1hot_with_bias)
 
@@ -852,7 +850,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         #    print node.op
         # print '===='
         assert len(fgraph.toposort()) == 2
-
         assert (fgraph.outputs[0].owner.op ==
                 crossentropy_softmax_argmax_1hot_with_bias)
 
@@ -1292,6 +1289,7 @@ def test_argmax_pushdown_bias():
     #    print node.op
     types_to_check = (tensor.DimShuffle, tensor.Elemwise, tensor.Argmax)
     assert len(fgraph.toposort()) == 3
+
     for i, type in enumerate(types_to_check):
         assert isinstance(fgraph.toposort()[i].op, type)
     assert check_stack_trace(fgraph, ops_to_check=types_to_check)
@@ -1323,10 +1321,8 @@ def test_argmax_pushdown_bias():
 
 
 def test_asymptotic_32():
-    """
-    This test makes sure that our functions behave sensibly when
-    huge values are present
-    """
+    # This test makes sure that our functions behave sensibly when
+    # huge values are present
 
     # TODO: consider adding the optimization of crossentropy into the current
     # mode for the purpose of running this test
@@ -1557,10 +1553,8 @@ def test_relu():
 
 
 def test_h_softmax():
-    """
-    Tests the output dimensions of the h_softmax when a target is provided or
-    not.
-    """
+    # Tests the output dimensions of the h_softmax when a target is provided or
+    # not.
 
     #############
     # Config
@@ -1694,10 +1688,9 @@ class T_sigmoid_binary_crossentropy(unittest.TestCase):
         return [pred, 1 / (1 + np.exp(-target))]
 
     def test_matches_binary_crossentropy(self):
-        """
-        Test sigmoid_binary_crossentropy(p, t) ==
-             binary_crossentropy(sigmoid(p), t).
-        """
+        # Test sigmoid_binary_crossentropy(p, t) ==
+        #      binary_crossentropy(sigmoid(p), t).
+
         pred, target = inputs = tensor.vectors('pt')
 
         reference_val = binary_crossentropy(sigmoid(pred), target)

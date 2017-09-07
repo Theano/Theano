@@ -17,10 +17,9 @@ def test_make_slice_merge():
 
 
 def test_none_Constant():
-    """ Tests equals
+    # Tests equals
+    # We had an error in the past with unpickling
 
-    We had an error in the past with unpickling
-    """
     o1 = Constant(NoneTypeT(), None, name='NoneConst')
     o2 = Constant(NoneTypeT(), None, name='NoneConst')
     assert o1.equals(o2)

@@ -14,6 +14,11 @@
 
 .. note::
 
+   This interface is the prefered interface. It will be moved
+   automatically to the GPU.
+
+.. note::
+
     Unfortunately, Windows platforms are not yet supported by the underlying
     library.
 

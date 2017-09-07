@@ -55,17 +55,16 @@ def test_n_samples_2():
 
 
 def test_n_samples_compatibility():
-    """
-    This test checks if the new change to MultinomialFromUniform is still compatible
-    with old interface. Here I will load a graph created (using the old interface) as follows:
-    RandomStreams = theano.sandbox.rng_mrg.MRG_RandomStreams
-    th_rng = RandomStreams(12345)
-    X = T.matrix('X')
-    pvals = T.exp(X)
-    pvals = pvals / pvals.sum(axis=1, keepdims=True)
-    samples = th_rng.multinomial(pvals=pvals)
-    pickle.dump([X, samples], open("multinomial_test_graph.pkl", "w"))
-    """
+    # This test checks if the new change to MultinomialFromUniform is still compatible
+    # with old interface. Here I will load a graph created (using the old interface) as follows:
+    # RandomStreams = theano.sandbox.rng_mrg.MRG_RandomStreams
+    # th_rng = RandomStreams(12345)
+    # X = T.matrix('X')
+    # pvals = T.exp(X)
+    # pvals = pvals / pvals.sum(axis=1, keepdims=True)
+    # samples = th_rng.multinomial(pvals=pvals)
+    # pickle.dump([X, samples], open("multinomial_test_graph.pkl", "w"))
+
     folder = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(folder, "multinomial_test_graph.pkl"),
               "rb") as pkl_file:

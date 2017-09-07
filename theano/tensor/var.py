@@ -15,7 +15,7 @@ from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
 from theano.tensor.utils import hash_from_ndarray
 from theano.tensor.type import TensorType
-from theano.configparser import config
+from theano import config
 
 
 def equal_slices(s1, s2):
@@ -460,23 +460,16 @@ class _tensor_py_operators(object):
     # SLICING/INDEXING
     def __getitem__(self, args):
 
-        def check_bool(args_el):
-            try:
-                if (isinstance(args_el, (np.bool_, bool)) or
-                        args_el.dtype == 'bool'):
-                    raise TypeError('TensorType does not support boolean '
-                                    'mask for indexing such as tensor[x==0]. '
-                                    'Instead you can use non_zeros() such as '
-                                    'tensor[(x == 0).nonzeros()]. ')
-            except AttributeError:
-                pass
-
+        def includes_bool(args_el):
+            if (isinstance(args_el, (np.bool_, bool)) or
+                    (hasattr(args_el, 'dtype') and args_el.dtype == 'bool')):
+                return True
             if (not isinstance(args_el, theano.tensor.Variable) and
                     isinstance(args_el, collections.Iterable)):
                 for el in args_el:
-                    check_bool(el)
-
-        check_bool(args)
+                    if includes_bool(el):
+                        return True
+            return False
 
         if (isinstance(args, list) and
                 any([isinstance(a, slice) for a in args])):
@@ -484,34 +477,66 @@ class _tensor_py_operators(object):
         elif not isinstance(args, tuple):
             args = args,
 
+        # Count the dimensions, check for bools and find ellipses.
+        ellipses = []
+        index_dim_count = 0
+        for i, arg in enumerate(args):
+            if arg is np.newaxis:
+                # no increase in index_dim_count
+                pass
+            elif arg is Ellipsis:
+                # no increase in index_dim_count
+                ellipses.append(i)
+            elif (isinstance(arg, (np.ndarray, theano.tensor.Variable)) and
+                    hasattr(arg, 'dtype') and arg.dtype == 'bool'):
+                index_dim_count += arg.ndim
+            else:
+                # Python arrays can contain a mixture of bools and integers,
+                # which requires complex rules to handle all special cases.
+                # These rules differ slightly between NumPy versions.
+                # Since earlier versions of Theano did not support any boolean
+                # indexing, it is safe to throw an error if we encounter
+                # any of these difficult cases.
+                if includes_bool(arg):
+                    raise TypeError('TensorType does not support Python bools '
+                                    'for indexing, such as tensor[[True, False]]. '
+                                    'To use a boolean mask, convert the mask to '
+                                    'a NumPy array first, e.g., '
+                                    'tensor[numpy.array([True, False])].')
+                index_dim_count += 1
+
+        # Check if the number of dimensions isn't too large.
+        if self.ndim < index_dim_count:
+            raise IndexError('too many indices for array')
+
         # Convert an Ellipsis if provided into an appropriate number of
         # slice(None).
-        ellipses = [i
-                    for i, index in enumerate(args)
-                    if index is Ellipsis]
         if len(ellipses) > 1:
             raise IndexError(
                 "an index can only have a single Ellipsis (`...`)")
         elif len(ellipses) == 1:
-            new_axes = sum(1
-                           for index in args
-                           if index is np.newaxis)  # numpy.newaxis is None
             ellipsis_at = ellipses[0]
             args = list(args)
             args[ellipsis_at: ellipsis_at + 1] = (
-                [slice(None)] * (self.ndim - (len(args) - 1 - new_axes)))
+                [slice(None)] * (self.ndim - index_dim_count))
+
+        def is_empty_array(val):
+            return ((isinstance(val, (tuple, list)) and len(val) == 0) or
+                    (isinstance(val, np.ndarray) and val.size == 0))
 
         # Force input to be int64 datatype if input is an empty list or tuple
         # Else leave it as is if it is a real number
         args = tuple([np.array(inp, dtype=np.int64)
-                      if(inp == [] or inp == ()) else inp for inp in args])
+                      if(is_empty_array(inp)) else inp for inp in args])
         # Convert python literals to theano constants
         args = theano.tensor.subtensor.make_constant(args)
         # Determine if advanced indexing is needed or not
         # The logic is already in Subtensor.convert: if it succeeds,
         # standard indexing is used; if it fails with
-        # AdvancedIndexingError, advanced indexing
+        # AdvancedIndexingError, advanced indexing, or
+        # AdvancedBooleanIndexingError, advanced indexing with boolean masks
         advanced = False
+        advanced_boolean = False
         axis = None
         for i, arg in enumerate(args):
             try:
@@ -524,13 +549,20 @@ class _tensor_py_operators(object):
                 else:
                     advanced = True
                     axis = i
+            except theano.tensor.subtensor.AdvancedBooleanIndexingError:
+                advanced = False
+                advanced_boolean = True
+                break
 
-        if advanced:
+        if advanced_boolean:
+            return theano.tensor.subtensor.advanced_boolean_subtensor(self, *args)
+        elif advanced:
             if (axis is not None and
                 all(isinstance(a, slice) and
                     equal_slices(a, slice(None)) for a in args[:axis]) and
                 all(isinstance(a, slice) and
                     equal_slices(a, slice(None)) for a in args[axis + 1:]) and
+                (not hasattr(args[axis], 'dtype') or args[axis].dtype != 'bool') and
                 isinstance(args[axis],
                            (np.ndarray, list,
                             TensorVariable, TensorConstant,

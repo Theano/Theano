@@ -4,6 +4,13 @@
 :mod:`theano.gpuarray.ctc` -- Connectionist Temporal Classification (CTC) loss
 ================================================================================
 
+
+.. warning::
+
+    This is not the recomanded user interface. Use :ref:`the CPU
+    interface <libdoc_tensor_nnet_ctc>`. It will get moved
+    automatically to the GPU.
+
 .. note::
 
     Usage of connectionist temporal classification (CTC) loss Op, requires that

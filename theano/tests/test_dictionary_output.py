@@ -7,10 +7,7 @@ import theano.tensor as T
 class dictionary_output_checker(unittest.TestCase):
 
     def test_output_dictionary(self):
-
-        '''
-        Tests that theano.function works when outputs is a dictionary
-        '''
+        # Tests that theano.function works when outputs is a dictionary
 
         x = T.scalar()
         f = theano.function([x], outputs={'a': x, 'c': x * 2,
@@ -24,10 +21,7 @@ class dictionary_output_checker(unittest.TestCase):
         assert outputs['c'] == 20.0
 
     def test_input_named_variables(self):
-
-        '''
-        Tests that named variables work when outputs is a dictionary
-        '''
+        # Tests that named variables work when outputs is a dictionary
 
         x = T.scalar('x')
         y = T.scalar('y')
@@ -39,10 +33,7 @@ class dictionary_output_checker(unittest.TestCase):
         assert f(x=2, y=4) == f(2, 4)
 
     def test_output_order_sorted(self):
-
-        '''
-        Tests that the output keys are sorted correctly.
-        '''
+        # Tests that the output keys are sorted correctly.
 
         x = T.scalar('x')
         y = T.scalar('y')
@@ -60,11 +51,8 @@ class dictionary_output_checker(unittest.TestCase):
         assert 'z' in str(f.outputs[4])
 
     def test_composing_function(self):
-
-        '''
-        Tests that one can compose two theano functions when the outputs are
-        provided in a dictionary.
-        '''
+        # Tests that one can compose two theano functions when the outputs are
+        # provided in a dictionary.
 
         x = T.scalar('x')
         y = T.scalar('y')
@@ -88,10 +76,7 @@ class dictionary_output_checker(unittest.TestCase):
         assert result[1] == 420.0
 
     def test_output_list_still_works(self):
-
-        '''
-        Test that theano.function works if outputs is a list.
-        '''
+        # Test that theano.function works if outputs is a list.
 
         x = T.scalar('x')
 
@@ -105,10 +90,7 @@ class dictionary_output_checker(unittest.TestCase):
         assert result[3] == 5.0
 
     def test_debug_mode_dict(self):
-
-        '''
-        Tests that debug mode works where outputs is a dictionary.
-        '''
+        # Tests that debug mode works where outputs is a dictionary.
 
         x = T.scalar('x')
 
@@ -122,10 +104,7 @@ class dictionary_output_checker(unittest.TestCase):
         assert result['3'] == 9.0
 
     def test_debug_mode_list(self):
-
-        '''
-        Tests that debug mode works where the outputs argument is a list.
-        '''
+        # Tests that debug mode works where the outputs argument is a list.
 
         x = T.scalar('x')
 
@@ -138,10 +117,9 @@ class dictionary_output_checker(unittest.TestCase):
         assert result[2] == 15.0
 
     def test_key_string_requirement(self):
-        '''
-        Tests that an exception is thrown if a non-string key is used in
-        the outputs dictionary.
-        '''
+        # Tests that an exception is thrown if a non-string key is used in
+        # the outputs dictionary.
+
         x = T.scalar('x')
         try:
             theano.function([x], outputs={1.0: x})

@@ -22,21 +22,17 @@ class test_typed_list_type(unittest.TestCase):
         utt.seed_rng()
 
     def test_wrong_input_on_creation(self):
-        """
-        Typed list type should raises an
-        error if the argument passed for
-        type is not a valid theano type
-        """
+        # Typed list type should raises an
+        # error if the argument passed for
+        # type is not a valid theano type
 
         self.assertRaises(TypeError, TypedListType, None)
 
     def test_wrong_input_on_filter(self):
-        """
-        Typed list type should raises an
-        error if the argument given to filter
-        isn't of the same type as the one
-        specified on creation
-        """
+        # Typed list type should raises an
+        # error if the argument given to filter
+        # isn't of the same type as the one
+        # specified on creation
 
         # list of matrices
         myType = TypedListType(T.TensorType(theano.config.floatX,
@@ -45,10 +41,8 @@ class test_typed_list_type(unittest.TestCase):
         self.assertRaises(TypeError, myType.filter, [4])
 
     def test_not_a_list_on_filter(self):
-        """
-        Typed List Value should raises an error
-        if no iterable variable is given on input
-        """
+        # Typed List Value should raises an error
+        # if no iterable variable is given on input
 
         # list of matrices
         myType = TypedListType(T.TensorType(theano.config.floatX,
@@ -57,11 +51,10 @@ class test_typed_list_type(unittest.TestCase):
         self.assertRaises(TypeError, myType.filter, 4)
 
     def test_type_equality(self):
-        """
-        Typed list types should only be equal
-        when they contains the same theano
-        variables
-        """
+        # Typed list types should only be equal
+        # when they contains the same theano
+        # variables
+
         # list of matrices
         myType1 = TypedListType(T.TensorType(theano.config.floatX,
                                              (False, False)))
@@ -76,9 +69,8 @@ class test_typed_list_type(unittest.TestCase):
         self.assertFalse(myType3 == myType1)
 
     def test_filter_sanity_check(self):
-        """
-        Simple test on typed list type filter
-        """
+        # Simple test on typed list type filter
+
         myType = TypedListType(T.TensorType(theano.config.floatX,
                                             (False, False)))
 
@@ -87,11 +79,10 @@ class test_typed_list_type(unittest.TestCase):
         self.assertTrue(np.array_equal(myType.filter([x]), [x]))
 
     def test_intern_filter(self):
-        """
-        Test checking if values contained are themselves
-        filtered. If they weren't this code would raise
-        an exception.
-        """
+        # Test checking if values contained are themselves
+        # filtered. If they weren't this code would raise
+        # an exception.
+
         myType = TypedListType(T.TensorType('float64',
                                             (False, False)))
 
@@ -101,7 +92,7 @@ class test_typed_list_type(unittest.TestCase):
 
     # Will fail for unknown reasons
     # under search
-    """
+    '''
     def test_load(self):
         myType = TypedListType(T.TensorType(theano.config.floatX,
                                             (False, False)))
@@ -112,12 +103,11 @@ class test_typed_list_type(unittest.TestCase):
             testList.append(x)
 
         self.assertTrue(numpy.array_equal(myType.filter(testList), testList))
-    """
+    '''
 
     def test_basic_nested_list(self):
-        """
-        Testing nested list with one level of depth
-        """
+        # Testing nested list with one level of depth
+
         myNestedType = TypedListType(T.TensorType(theano.config.floatX,
                                                   (False, False)))
 
@@ -128,9 +118,8 @@ class test_typed_list_type(unittest.TestCase):
         self.assertTrue(np.array_equal(myType.filter([[x]]), [[x]]))
 
     def test_comparison_different_depth(self):
-        """
-        Nested list with different depth aren't the same
-        """
+        # Nested list with different depth aren't the same
+
         myNestedType = TypedListType(T.TensorType(theano.config.floatX,
                                                   (False, False)))
 
@@ -141,9 +130,8 @@ class test_typed_list_type(unittest.TestCase):
         self.assertFalse(myNestedType2 == myNestedType3)
 
     def test_nested_list_arg(self):
-        """
-        test for the 'depth' optionnal argument
-        """
+        # test for the 'depth' optionnal argument
+
         myNestedType = TypedListType(T.TensorType(theano.config.floatX,
                                                   (False, False)), 3)
 
@@ -156,9 +144,8 @@ class test_typed_list_type(unittest.TestCase):
         self.assertTrue(myNestedType == myManualNestedType)
 
     def test_get_depth(self):
-        """
-        test case for get_depth utilitary function
-        """
+        # test case for get_depth utilitary function
+
         myType = TypedListType(T.TensorType(theano.config.floatX,
                                             (False, False)))
 
@@ -168,9 +155,7 @@ class test_typed_list_type(unittest.TestCase):
         self.assertTrue(myManualNestedType.get_depth() == 3)
 
     def test_comparison_uneven_nested(self):
-        """
-        test for comparison between uneven nested list
-        """
+        # test for comparison between uneven nested list
 
         myType = TypedListType(T.TensorType(theano.config.floatX,
                                             (False, False)))

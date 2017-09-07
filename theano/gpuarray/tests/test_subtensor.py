@@ -13,6 +13,7 @@ from ..elemwise import GpuDimShuffle
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor1,
                          GpuAdvancedSubtensor,
+                         GpuAdvancedBooleanSubtensor,
                          GpuAdvancedIncSubtensor,
                          GpuAdvancedIncSubtensor1,
                          GpuAdvancedIncSubtensor1_dev20,
@@ -39,6 +40,8 @@ class G_subtensor(test_subtensor.T_subtensor):
             inc_sub=GpuIncSubtensor,
             adv_sub1=GpuAdvancedSubtensor1,
             adv_incsub1=GpuAdvancedIncSubtensor1,
+            adv_sub=GpuAdvancedSubtensor,
+            adv_bool_sub=GpuAdvancedBooleanSubtensor,
             dimshuffle=GpuDimShuffle,
             mode=mode_with_gpu,
             # avoid errors with limited devices
@@ -66,6 +69,8 @@ class G_subtensorF16(test_subtensor.T_subtensor):
             inc_sub=GpuIncSubtensor,
             adv_sub1=GpuAdvancedSubtensor1,
             adv_incsub1=GpuAdvancedIncSubtensor1,
+            adv_sub=GpuAdvancedSubtensor,
+            adv_bool_sub=GpuAdvancedBooleanSubtensor,
             dimshuffle=GpuDimShuffle,
             mode=mode_with_gpu,
             # avoid errors with limited devices
@@ -123,7 +128,7 @@ def test_advinc_subtensor1_dtype():
         assert np.allclose(rval, rep)
 
 
-@theano.configparser.change_flags(deterministic='more')
+@theano.change_flags(deterministic='more')
 def test_deterministic_flag():
     shp = (3, 4)
     for dtype1, dtype2 in [('float32', 'int8')]:

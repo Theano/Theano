@@ -340,6 +340,7 @@ class T_function(unittest.TestCase):
     def test_swap_SharedVariable_with_given(self):
         # A special testcase for logistic_sgd.py in Deep Learning Tutorial
         # This test assert that SharedVariable in different function have same storage
+
         train_x = theano.shared(value=np.random.rand(10, 10).astype(config.floatX))
         test_x = theano.shared(value=np.random.rand(10, 10).astype(config.floatX))
 
@@ -494,6 +495,7 @@ class T_function(unittest.TestCase):
         # impossible for outputs to be aliased to the input variables provided by the user,
         # either through a view-map or a destroy map. New tests should be added in the future
         # when borrow=True is implemented.
+
         a = T.dmatrix()
         aval = np.random.rand(3, 3)
 
@@ -547,12 +549,14 @@ class T_function(unittest.TestCase):
 
     def test_givens_input_var(self):
         # Ensure error is raised when trying to replace an input variable.
+
         x = T.scalar('x')
         y = x * 2
         self.assertRaises(RuntimeError, function, [x], y, givens={x: x + 1})
 
     def test_free(self):
         # Make test on free() function
+
         x = T.vector('x')
         func = function([x], x + 1)
         func.fn.allow_gc = False
@@ -573,6 +577,7 @@ class T_function(unittest.TestCase):
     def test_default_values(self):
         # Check that default values are restored
         # when an exception occurs in interactive mode.
+
         a, b = T.dscalars('a', 'b')
         c = a + b
         func = theano.function([theano.In(a, name='first'), theano.In(b, value=1, name='second')], c)
@@ -581,6 +586,35 @@ class T_function(unittest.TestCase):
             func(second=2)
         except TypeError:
             assert(func(first=1) == x)
+
+    def test_check_for_aliased_inputs(self):
+        b = np.random.rand(5, 4)
+        s1 = theano.shared(b)
+        s2 = theano.shared(b)
+        x1 = theano.tensor.vector()
+
+        # Assert cases we should not check for aliased inputs
+        for d in [dict(outputs=[s1 + 1]),
+                  dict(outputs=[s1 + 1, s2 + 3]),
+                  dict(outputs=[s1 + 1], updates=[(s2, s2 + 3)]),
+                  dict(inputs=[x1], outputs=[x1 + 1], updates=[(s2, s2 + 3)])]:
+            if "inputs" not in d:
+                d["inputs"] = []
+            f = theano.function(**d)
+            assert not f._check_for_aliased_inputs, d
+
+        # Assert cases we should check for aliased inputs
+        for d in [dict(inputs=[theano.In(x1, borrow=True)],
+                       outputs=[x1 + 1], updates=[(s2, s2 + 3)]),
+                  dict(inputs=[theano.In(x1, borrow=True, mutable=True)],
+                       outputs=[x1 + 1], updates=[(s2, s2 + 3)]),
+                  dict(inputs=[theano.In(x1, mutable=True)],
+                       outputs=[x1 + 1], updates=[(s2, s2 + 3)])]:
+            if "inputs" not in d:
+                d["inputs"] = []
+            f = theano.function(**d)
+
+            assert f._check_for_aliased_inputs, d
 
 
 class T_picklefunction(unittest.TestCase):
@@ -654,9 +688,13 @@ class T_picklefunction(unittest.TestCase):
     def test_output_keys(self):
         x = T.vector()
         f = theano.function([x], {'vec': x**2})
-        assert isinstance(f([2, 3, 4]), dict)
+        o = f([2, 3, 4])
+        assert isinstance(o, dict)
+        assert np.allclose(o['vec'], [4, 9, 16])
         g = copy.deepcopy(f)
-        assert isinstance(g([2, 3, 4]), dict)
+        o = g([2, 3, 4])
+        assert isinstance(o, dict)
+        assert np.allclose(o['vec'], [4, 9, 16])
 
     def test_deepcopy_shared_container(self):
         # Ensure that shared containers remain shared after a deep copy.
@@ -919,6 +957,7 @@ class SomethingToPickle(object):
 
 def test_empty_givens_updates():
     # Regression test for bug fixed in 8625e03.
+
     # Empty givens / updates dictionaries were not properly detected before,
     # triggering useless crashes at compile time.
     x = T.scalar()

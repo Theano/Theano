@@ -1,9 +1,9 @@
-"""Some pickle test when pygpu isn't there. The test when pygpu is
+"""
+Some pickle test when pygpu isn't there. The test when pygpu is
 available are in test_type.py.
 
 This is needed as we skip all the test file when pygpu isn't there in
 regular test file.
-
 """
 from __future__ import absolute_import, print_function, division
 import os

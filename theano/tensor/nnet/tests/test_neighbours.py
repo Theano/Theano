@@ -8,7 +8,7 @@ import theano.tensor as T
 from theano.tensor.nnet.neighbours import images2neibs, neibs2images, Images2Neibs
 
 from theano.tests import unittest_tools
-from theano.configparser import change_flags
+from theano import change_flags
 
 mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 

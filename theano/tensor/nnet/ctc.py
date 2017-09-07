@@ -1,5 +1,6 @@
 from __future__ import (division, absolute_import, print_function)
 import os
+import sys
 import theano.tensor as T
 from theano import config
 from theano import gof
@@ -126,6 +127,14 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
             lib_dirs += [ctc_available.path]
         return lib_dirs
 
+    def c_compile_args(self):
+        if ctc_available.path is not None:
+            if sys.platform != 'darwin' and ' ' in ctc_available.path:
+                return ['-Wl,-rpath,"' + ctc_available.path + '"']
+            else:
+                return ['-Wl,-rpath,' + ctc_available.path]
+        return []
+
     def c_libraries(self):
         return ["warpctc"]
 
@@ -224,7 +233,7 @@ def ctc(activations, labels, input_lengths):
 
 
 # Disable gradient computation if not needed
-@register_canonicalize
+@register_canonicalize('fast_compile')
 @local_optimizer([ConnectionistTemporalClassification])
 def local_ctc_no_grad(node):
     if isinstance(node.op, ConnectionistTemporalClassification):

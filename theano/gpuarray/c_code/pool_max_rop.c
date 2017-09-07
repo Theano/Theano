@@ -1,6 +1,7 @@
 #section kernels
 
 #kernel max_pool2d_rop_kernel : size, size, size, size, size, size, size, *, size, *, size, size, size, size, size, size, size, *, size :
+#include "cluda.h"
 
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void max_pool2d_rop_kernel(const ga_size nthreads,
@@ -50,6 +51,7 @@ KERNEL void max_pool2d_rop_kernel(const ga_size nthreads,
 }
 
 #kernel max_pool3d_rop_kernel : size, size, size, size, size, size, size, size, size, *, size, *, size, size, size, size, size, size, size, size, size, size, *, size :
+#include "cluda.h"
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void max_pool3d_rop_kernel(const ga_size nthreads,

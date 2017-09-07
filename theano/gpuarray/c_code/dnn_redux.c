@@ -59,7 +59,12 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
   static float falpha = 1.0f;
   static double dalpha = 1.0;
   static float fbeta = 0.0f;
-  static double dbeta = 0.0;  
+  static double dbeta = 0.0;
+
+  if (!GpuArray_IS_C_CONTIGUOUS(&input->ga)) {
+    PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
+    return 1;
+  }
 
   if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) != 0)
     return 1;

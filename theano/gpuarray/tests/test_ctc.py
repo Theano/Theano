@@ -49,7 +49,7 @@ class TestCTC(unittest.TestCase):
             # Symbolic gradient of CTC cost
             gpu_ctc_grad = T.grad(T.mean(gpu_ctc_cost), activations)
             outputs += [gpu_ctc_grad]
-        return theano.function([], outputs)
+        return theano.function([], outputs, mode=mode_with_gpu)
 
     def check_expected_values(self, activations, labels, input_length, expected_costs, expected_grads):
         gpu_train = self.setup_gpu_op(activations, labels, input_length)
@@ -139,4 +139,4 @@ class TestCTC(unittest.TestCase):
 
         ctc_op = ctc_op_functor(labels, activation_times)
 
-        utt.verify_grad(ctc_op, [activations])
+        utt.verify_grad(ctc_op, [activations], mode=mode_with_gpu)
