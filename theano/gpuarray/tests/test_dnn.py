@@ -2288,12 +2288,22 @@ class Cudnn_grouped_conv(Grouped_conv_noOptim):
     conv_gradw_op = dnn.GpuDnnConvGradW
     conv_gradi_op = dnn.GpuDnnConvGradI
 
+    def __init__(self, *args, **kwargs):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
+        super(Cudnn_grouped_conv, self).__init__(*args, **kwargs)
+
 
 class Cudnn_grouped_conv3d(Grouped_conv3d_noOptim):
     mode = mode_with_gpu.excluding('conv_gemm')
     conv_op = dnn.GpuDnnConv
     conv_gradw_op = dnn.GpuDnnConvGradW
     conv_gradi_op = dnn.GpuDnnConvGradI
+
+    def __init__(self, *args, **kwargs):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
+        super(Cudnn_grouped_conv3d, self).__init__(*args, **kwargs)
 
 
 def test_dnn_spatialtf():
