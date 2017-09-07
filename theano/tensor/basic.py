@@ -6336,9 +6336,9 @@ class ExtractDiag(Op):
     """
     Return specified diagonals.
 
-    If a is 2-D, returns the diagonal of a with the given offset,
-    i.e., the collection of elements of the form a[i, i+offset].
-    If a has more than two dimensions, then the axes specified by
+    If x is 2-D, returns the diagonal of x with the given offset,
+    i.e., the collection of elements of the form x[i, i+offset].
+    If x has more than two dimensions, then the axes specified by
     axis1 and axis2 are used to determine the 2-D sub-array whose
     diagonal is returned. The shape of the resulting array can be
     determined by removing axis1 and axis2 and appending an index
@@ -6365,14 +6365,14 @@ class ExtractDiag(Op):
     Returns
     -------
     array_of_diagonals:
-        If a is 2-D and not a matrix, a 1-D array of the
+        If x is 2-D and not a matrix, a 1-D array of the
         same type as a containing the diagonal is returned.
-        If a is a matrix, a 1-D array containing the diagonal
+        If x is a matrix, a 1-D array containing the diagonal
         is returned in order to maintain backward compatibility.
-        If the dimension of a is greater than two, then an
-        array of diagonals is returned, “packed” from left-most
-        dimension to right-most (e.g., if a is 3-D, then the
-        diagonals are “packed” along rows).
+        If the dimension of x is greater than two, then an
+        array of diagonals is returned, "packed" from left-most
+        dimension to right-most (e.g., if x is 3-D, then the
+        diagonals are "packed" along rows).
 
 
 
