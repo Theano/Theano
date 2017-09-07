@@ -320,17 +320,18 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         for d in xrange(2, dims + 1):
             # Case 1: Log(Subtensor(softmax(x)))
             x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
-            sm = tensor.nnet.softmax(x)[3]
-            logsm = tensor.log(sm)
-            f = theano.function([x], logsm)
-            assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+            # Check for differents axis
+            for ax in range(0, d):
+                sm = tensor.nnet.softmax(x, ax)[3]
+                logsm = tensor.log(sm)
+                f = theano.function([x], logsm)
+                assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
 
-            # Case 2: Log(Advanced_Subtensor1(softmax(x)))
-            x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
-            sm = tensor.nnet.softmax(x)[range(1, 3)]
-            logsm = tensor.log(sm)
-            f = theano.function([x], logsm)
-            assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
+                # Case 2: Log(Advanced_Subtensor1(softmax(x)))
+                sm = tensor.nnet.softmax(x, ax)[range(1, 3)]
+                logsm = tensor.log(sm)
+                f = theano.function([x], logsm)
+                assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
 
         # Case 3: Log(Advanced_Subtensor(softmax(x)))
         x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * 3)('x')
@@ -348,45 +349,50 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         dims = 4
         # Vector case tested in test_optimize_xent_vector
         for d in xrange(2, dims + 1):
+            x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
             shape = (5,) * d
-            # Case 0: Log(softmax(x))
+            # Check for differents axis
+            for ax in range(d-2, d):
+                # Case 0: Log(softmax(x))
 
-            def f(a):
-                return tensor.log(tensor.nnet.softmax(a))
+                def f1(ax):
+                    def f(a):
+                        return tensor.log(tensor.nnet.softmax(a, ax))
+                    return f
 
-            x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
-            logsm = f(x).sum()
-            g = T.grad(logsm, x)
-            fgraph = gof.FunctionGraph([x], [g])
-            theano.compile.mode.optdb.query(theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-            assert softmax_grad not in [n.op for n in fgraph.toposort()]
-            utt.verify_grad(f, [np.random.rand(*shape)])
+                logsm = f1(ax)(x).sum()
+                g = T.grad(logsm, x)
+                fgraph = gof.FunctionGraph([x], [g])
+                theano.compile.mode.optdb.query(theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
+                assert softmax_grad not in [n.op for n in fgraph.toposort()]
+                utt.verify_grad(f1(ax), [np.random.rand(*shape).astype(config.floatX)])
 
-            # Case 1: Log(Subtensor(softmax(x)))
+                # Case 1: Log(Subtensor(softmax(x)))
+                def f1(ax):
+                    def f(a):
+                        return tensor.log(tensor.nnet.softmax(a, ax)[3])
+                    return f
 
-            def f(a):
-                return tensor.log(tensor.nnet.softmax(a)[3])
+                logsm = f1(ax)(x).sum()
+                g = T.grad(logsm, x)
+                fgraph = gof.FunctionGraph([x], [g])
+                theano.compile.mode.optdb.query(theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
+                assert softmax_grad not in [n.op for n in fgraph.toposort()]
+                utt.verify_grad(f1(ax), [np.random.rand(*shape).astype(config.floatX)])
 
-            x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
-            logsm = f(x).sum()
-            g = T.grad(logsm, x)
-            fgraph = gof.FunctionGraph([x], [g])
-            theano.compile.mode.optdb.query(theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-            assert softmax_grad not in [n.op for n in fgraph.toposort()]
-            utt.verify_grad(f, [np.random.rand(*shape)])
+                # Case 2: Log(Advanced_Subtensor1(softmax(x)))
 
-            # Case 2: Log(Advanced_Subtensor1(softmax(x)))
+                def f1(ax):
+                    def f(a):
+                        return tensor.log(tensor.nnet.softmax(a, ax)[range(1, 3)])
+                    return f
 
-            def f(a):
-                return tensor.log(tensor.nnet.softmax(a)[range(1, 3)])
-
-            x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
-            logsm = f(x).sum()
-            g = T.grad(logsm, x)
-            fgraph = gof.FunctionGraph([x], [g])
-            theano.compile.mode.optdb.query(theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-            assert softmax_grad not in [n.op for n in fgraph.toposort()]
-            utt.verify_grad(f, [np.random.rand(*shape)])
+                logsm = f1(ax)(x).sum()
+                g = T.grad(logsm, x)
+                fgraph = gof.FunctionGraph([x], [g])
+                theano.compile.mode.optdb.query(theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
+                assert softmax_grad not in [n.op for n in fgraph.toposort()]
+                utt.verify_grad(f1(ax), [np.random.rand(*shape).astype(config.floatX)])
 
         # Case 3: Log(Advanced_Subtensor(softmax(x)))
         dim = 4
