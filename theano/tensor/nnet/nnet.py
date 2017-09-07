@@ -986,6 +986,7 @@ def local_logsoftmax_grad(node):
             out_grad = 1.
             softmax_input = sm.owner.inputs[0]
             x_var = sm.owner.inputs[0]
+            axis = sm.owner.op.axis
 
             # We dedect the case
             # log(softmax(x)[arange(y.shape[0]), y]) that will
@@ -1028,11 +1029,30 @@ def local_logsoftmax_grad(node):
                         len(subtensor_op.owner.inputs) >= 2 and
                         subtensor_op.owner.inputs[0] is sm and
                         subtensor_op.owner.inputs[1:] == subtensor_idx):
-                    if x_var.type.ndim > 1:
-                        ret = out_grad - tensor.sum(out_grad, axis=-1, keepdims=True) * subtensor_op
-                    else:
+                    # Spetial vector case
+                    if x_var.type.ndim == 1:
                         ret = out_grad - out_grad * subtensor_op
-                    ret = d_sm.owner.op(tensor.zeros_like(sm), -ret, *subtensor_idx)
+                        ret = d_sm.owner.op(tensor.zeros_like(sm), ret, *subtensor_idx)
+                        ret.tag.values_eq_approx = values_eq_approx_remove_nan
+                        copy_stack_trace([node.outputs[0]], ret)
+                        return [ret]
+
+                    # Special case when we take we have a
+                    # subtensor on the axis where the softmax is applied
+                    elif x_var.type.ndim == 2 and len(subtensor_idx) == 1 and isinstance(subtensor_op.owner.op, Subtensor):
+                            scalar = subtensor_idx[0]
+                            scalar = scalar.eval()
+                            indices_list = subtensor_op.owner.op.get_constant_idx(subtensor_op.owner.inputs, allow_partial=True)
+                            if indices_list.index(scalar) != axis:
+                                sub = out_grad - tensor.sum(out_grad) * subtensor_op
+                                ret = d_sm.owner.op(tensor.zeros_like(sm), - sub, *subtensor_idx)
+                                ret.tag.values_eq_approx = values_eq_approx_remove_nan
+                                copy_stack_trace([node.outputs[0]], ret)
+                                return [ret]
+
+                    # General case
+                    ret = d_sm.owner.op(tensor.zeros_like(sm), -out_grad, *subtensor_idx)
+                    ret = ret - tensor.sum(ret, axis=axis, keepdims=True) * sm
                     ret.tag.values_eq_approx = values_eq_approx_remove_nan
                     copy_stack_trace([node.outputs[0]], ret)
                     return [ret]
