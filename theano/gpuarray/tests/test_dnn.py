@@ -2448,7 +2448,7 @@ def test_dnn_spatialtf():
     t_theta = T.tensor3('theta')
 
     st_dnn = dnn.dnn_spatialtf(t_img, t_theta, scale_height=scale_height, scale_width=scale_width)
-    st_dnn_func = theano.function([t_img, t_theta], st_dnn)
+    st_dnn_func = theano.function([t_img, t_theta], st_dnn, mode=mode_with_gpu)
     # Check if function graph contains the spatial transformer's grid and sampler Ops
     apply_nodes = st_dnn_func.maker.fgraph.apply_nodes
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGrid) for node in apply_nodes])
@@ -2477,7 +2477,7 @@ def test_dnn_spatialtf_invalid_shapes():
     theta = T.tensor3('theta')
 
     st_dnn = dnn.dnn_spatialtf(inputs, theta)
-    st_dnn_func = theano.function([inputs, theta], st_dnn)
+    st_dnn_func = theano.function([inputs, theta], st_dnn, mode=mode_with_gpu)
 
     inputs_val = np.ones((3, 5, 7, 7), dtype=theano.config.floatX)
 
@@ -2511,11 +2511,11 @@ def test_dnn_spatialtf_grad():
     mean_gi = T.grad(out_mean, [inputs])
     mean_gt = T.grad(out_mean, [theta])
 
-    f_gi = theano.function([inputs, theta], mean_gi)
+    f_gi = theano.function([inputs, theta], mean_gi, mode=mode_with_gpu)
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradI)
                 for node in f_gi.maker.fgraph.apply_nodes])
 
-    f_gt = theano.function([inputs, theta], mean_gt)
+    f_gt = theano.function([inputs, theta], mean_gt, mode=mode_with_gpu)
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
                 for node in f_gt.maker.fgraph.apply_nodes])
 
@@ -2712,7 +2712,7 @@ def test_conv_guess_once_with_dtypes():
         filters = theano.shared(filters_val)
         conv = dnn.dnn_conv(img=inputs, kerns=filters, border_mode=border_mode, precision=precision,
                             algo='guess_once', direction_hint='forward!')
-        return theano.function([], conv)
+        return theano.function([], conv, mode=mode_with_gpu)
 
     f_true_half_config = get_function('float16', 'float16')
     f_pseudo_half_config = get_function('float16', 'float32')
