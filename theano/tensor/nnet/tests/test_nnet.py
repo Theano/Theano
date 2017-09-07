@@ -291,10 +291,11 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             return logsoftmax_op(a)
 
     def test_local_softmax_optimization(self):
-        # Test the Logsoftmax substitution
-        #
-        # Check that Log(Softmax(x)) is substituted with Logsoftmax(x). Note that
-        # only the forward pass is checked (i.e., doesn't check the gradient)
+        """Test the Logsoftmax substitution
+
+        Check that Log(Softmax(x)) is substituted with Logsoftmax(x). Note that
+        only the forward pass is checked (i.e., doesn't check the gradient)
+        """
         dims = 4
         # Check for differents dimensions
         for d in xrange(1, dims + 1):
@@ -351,7 +352,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
             shape = (5,) * d
             # Check for differents axis
-            for ax in range(d-2, d):
+            for ax in range(d - 2, d):
                 # Case 0: Log(softmax(x))
 
                 def f1(ax):
