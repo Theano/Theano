@@ -6385,14 +6385,12 @@ class ExtractDiag(Op):
         (gz,) = gout
 
         if x.ndim == 2:
-            # The following code is moved from tensor.nlinalg.ExtractDiag, only
-            # works for matrices.
             x = theano.tensor.zeros_like(x)
             xdiag = theano.tensor.AllocDiag(offset=self.offset)(gz)
             return [theano.tensor.set_subtensor(
                 x[:xdiag.shape[0], :xdiag.shape[1]], xdiag)]
         else:
-            warnings.warn("gradient of theano.tensor.nlinalg.ExtractDiag only"
+            warnings.warn("gradient of theano.tensor.basic.ExtractDiag only"
                           "works for matrices.")
             return [grad_not_implemented(self, 0, x)]
 
