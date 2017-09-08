@@ -584,6 +584,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
     conv_modes = ['conv', 'cross']
 
     def setUp(self):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
         super(TestDnnInferShapes, self).setUp()
         self.mode = mode_with_gpu
 
@@ -1032,6 +1034,8 @@ def test_dnn_conv_grad():
 
 
 def get_conv3d_test_cases():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
     # Every element of test_shapes follows the format
     # [input_shape, filter_shape, subsample, dilation]
     test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1), (1, 1, 1)],
@@ -1117,14 +1121,18 @@ def run_conv_small_batched_vs_multicall(inputs_shape, filters_shape, batch_sub):
 
 
 def test_batched_conv_small():
-    # OK
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
     yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2), (1, 2, 2, 2), 5)
     # Should fail with cuDNN < V6020, but there's currently a workaround in `dnn_fwd.c` for that case.
     yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2), (1, 2, 2, 2), 5)
 
 
 def test_batched_conv3d_small():
-    # OK
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
     yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)
     # Should fail with cuDNN < V6020, but there's currently a workaround in `dnn_fwd.c` for that case.
     yield (run_conv_small_batched_vs_multicall, (65537, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)
@@ -1529,11 +1537,15 @@ def dnn_reduction_strides(shp, shuffle, slice):
 
 
 def test_dnn_reduction_strides():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
     yield dnn_reduction_strides, (2, 3, 2), (1, 0, 2), slice(None, None, None)
     yield dnn_reduction_strides, (2, 3, 2), (0, 1, 2), slice(None, None, -1)
 
 
 def test_dnn_reduction_error():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
     nLoops = 5
     vec = np.arange(0, 10, dtype=np.float32)
     slow_output = np.zeros((5, 10))
@@ -2288,12 +2300,22 @@ class Cudnn_grouped_conv(Grouped_conv_noOptim):
     conv_gradw_op = dnn.GpuDnnConvGradW
     conv_gradi_op = dnn.GpuDnnConvGradI
 
+    def __init__(self, *args, **kwargs):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
+        super(Cudnn_grouped_conv, self).__init__(*args, **kwargs)
+
 
 class Cudnn_grouped_conv3d(Grouped_conv3d_noOptim):
     mode = mode_with_gpu.excluding('conv_gemm')
     conv_op = dnn.GpuDnnConv
     conv_gradw_op = dnn.GpuDnnConvGradW
     conv_gradi_op = dnn.GpuDnnConvGradI
+
+    def __init__(self, *args, **kwargs):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
+        super(Cudnn_grouped_conv3d, self).__init__(*args, **kwargs)
 
 
 def test_dnn_spatialtf():
@@ -2448,7 +2470,7 @@ def test_dnn_spatialtf():
     t_theta = T.tensor3('theta')
 
     st_dnn = dnn.dnn_spatialtf(t_img, t_theta, scale_height=scale_height, scale_width=scale_width)
-    st_dnn_func = theano.function([t_img, t_theta], st_dnn)
+    st_dnn_func = theano.function([t_img, t_theta], st_dnn, mode=mode_with_gpu)
     # Check if function graph contains the spatial transformer's grid and sampler Ops
     apply_nodes = st_dnn_func.maker.fgraph.apply_nodes
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGrid) for node in apply_nodes])
@@ -2477,7 +2499,7 @@ def test_dnn_spatialtf_invalid_shapes():
     theta = T.tensor3('theta')
 
     st_dnn = dnn.dnn_spatialtf(inputs, theta)
-    st_dnn_func = theano.function([inputs, theta], st_dnn)
+    st_dnn_func = theano.function([inputs, theta], st_dnn, mode=mode_with_gpu)
 
     inputs_val = np.ones((3, 5, 7, 7), dtype=theano.config.floatX)
 
@@ -2511,11 +2533,11 @@ def test_dnn_spatialtf_grad():
     mean_gi = T.grad(out_mean, [inputs])
     mean_gt = T.grad(out_mean, [theta])
 
-    f_gi = theano.function([inputs, theta], mean_gi)
+    f_gi = theano.function([inputs, theta], mean_gi, mode=mode_with_gpu)
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradI)
                 for node in f_gi.maker.fgraph.apply_nodes])
 
-    f_gt = theano.function([inputs, theta], mean_gt)
+    f_gt = theano.function([inputs, theta], mean_gt, mode=mode_with_gpu)
     assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
                 for node in f_gt.maker.fgraph.apply_nodes])
 
@@ -2698,6 +2720,8 @@ class TestDnnConv3DRuntimeAlgorithms(TestDnnConv2DRuntimeAlgorithms):
 def test_conv_guess_once_with_dtypes():
     # This test checks that runtime conv algorithm selection does not raise any exception
     # when consecutive functions with different dtypes and precisions are executed.
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
     inputs_shape = (2, 3, 5, 5)
     filters_shape = (2, 3, 40, 4)
@@ -2712,7 +2736,7 @@ def test_conv_guess_once_with_dtypes():
         filters = theano.shared(filters_val)
         conv = dnn.dnn_conv(img=inputs, kerns=filters, border_mode=border_mode, precision=precision,
                             algo='guess_once', direction_hint='forward!')
-        return theano.function([], conv)
+        return theano.function([], conv, mode=mode_with_gpu)
 
     f_true_half_config = get_function('float16', 'float16')
     f_pseudo_half_config = get_function('float16', 'float32')
