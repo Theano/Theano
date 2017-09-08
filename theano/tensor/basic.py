@@ -2342,17 +2342,17 @@ def arctanh(a):
     """hyperbolic arc tangent of a"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.erf', 1, 1)
 def erf(a):
     """error function"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.erfc', 1, 1)
 def erfc(a):
     """complementary error function"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.erfcx', 1, 1)
 def erfcx(a):
     """scaled complementary error function"""
 
@@ -2362,22 +2362,22 @@ def erfinv(a):
     """inverse error function"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.erfcinv', 1, 1)
 def erfcinv(a):
     """inverse complementary error function"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.gamma', 1, 1)
 def gamma(a):
     """gamma function"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.gammaln', 1, 1)
 def gammaln(a):
     """log gamma function"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.psi', 1, 1)
 def psi(a):
     """derivative of log gamma function"""
 
@@ -2387,37 +2387,37 @@ def tri_gamma(a):
     """second derivative of the log gamma function"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.stats.chi2.sf', 2, 1)
 def chi2sf(x, k):
     """chi squared survival function"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.j0', 1, 1)
 def j0(x):
     """Bessel function of the first kind of order 0."""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.j1', 1, 1)
 def j1(x):
     """Bessel function of the first kind of order 1."""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.jv', 2, 1)
 def jv(v, x):
     """Bessel function of the first kind of order v (real)."""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.i0', 1, 1)
 def i0(x):
     """Modified Bessel function of the first kind of order 0."""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.i1', 1, 1)
 def i1(x):
     """Modified Bessel function of the first kind of order 1."""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.iv', 2, 1)
 def iv(v, x):
     """Modified Bessel function of the first kind of order v (real)."""
 
