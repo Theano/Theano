@@ -401,7 +401,14 @@ second dimension
             nfunc_spec = getattr(scalar_op, 'nfunc_spec', None)
         self.nfunc_spec = nfunc_spec
         if nfunc_spec:
-            self.nfunc = getattr(np, nfunc_spec[0])
+            self.nfunc = getattr(np, nfunc_spec[0], None)
+            if self.nfunc is None:
+                # Not inside NumPy. So probably another package like scipy.
+                symb = 'scipy.special.erfinv'.split(".")
+                module = __import__('.'.join(symb[:-1]))
+                for sub in symb[1:-1]:
+                    module = getattr(module, sub)
+                self.nfunc = getattr(module, symb[-1])
 
         super(Elemwise, self).__init__(openmp=openmp)
 

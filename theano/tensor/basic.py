@@ -2357,7 +2357,7 @@ def erfcx(a):
     """scaled complementary error function"""
 
 
-@_scal_elemwise
+@_scal_elemwise_with_nfunc('scipy.special.erfinv', 1, 1)
 def erfinv(a):
     """inverse error function"""
 
