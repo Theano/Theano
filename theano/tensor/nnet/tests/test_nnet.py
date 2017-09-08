@@ -355,7 +355,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             assert softmax_grad not in [n.op for n in fgraph.toposort()]
             utt.verify_grad(f, [np.random.rand(*shape)])
 
-            # Case 1: Log(Subtensor(softmax(x)))
+            # Case 1: Log(Subtensor(softmax(x))) with subtensor on lines
 
             def f(a):
                 return tensor.log(tensor.nnet.softmax(a)[3])
@@ -368,7 +368,20 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             assert softmax_grad not in [n.op for n in fgraph.toposort()]
             utt.verify_grad(f, [np.random.rand(*shape)])
 
-            # Case 2: Log(Advanced_Subtensor1(softmax(x)))
+            # Case 2: Log(Subtensor(softmax(x))) with subtensor on cols
+
+            def f(a):
+                return tensor.log(tensor.nnet.softmax(a)[:, 3])
+
+            x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+            logsm = f(x).sum()
+            g = T.grad(logsm, x)
+            fgraph = gof.FunctionGraph([x], [g])
+            theano.compile.mode.optdb.query(theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
+            assert softmax_grad not in [n.op for n in fgraph.toposort()]
+            utt.verify_grad(f, [np.random.rand(*shape)])
+
+            # Case 3: Log(Advanced_Subtensor1(softmax(x)))
 
             def f(a):
                 return tensor.log(tensor.nnet.softmax(a)[range(1, 3)])
@@ -381,7 +394,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             assert softmax_grad not in [n.op for n in fgraph.toposort()]
             utt.verify_grad(f, [np.random.rand(*shape)])
 
-        # Case 3: Log(Advanced_Subtensor(softmax(x)))
+        # Case 4: Log(Advanced_Subtensor(softmax(x)))
         dim = 4
         shape = (5,) * dim
 
