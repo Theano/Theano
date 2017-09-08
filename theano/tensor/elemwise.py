@@ -660,7 +660,11 @@ second dimension
                     except ImportError:
                         break
                 for sub in symb[1:]:
-                    module = getattr(module, sub)
+                    try:
+                        module = getattr(module, sub)
+                    except AttributeError:
+                        module = None
+                        break
                 self.nfunc = module
 
         if (len(node.inputs) < 32 and
