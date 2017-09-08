@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+import sys
 from copy import copy
 
 import numpy as np
@@ -17,6 +18,12 @@ from theano.gradient import DisconnectedType
 from theano.gof.null_type import NullType
 from theano.tensor import elemwise_cgen as cgen
 from theano.misc.frozendict import frozendict
+from theano.gof.type import Generic
+from theano.gof import ParamsType
+
+from theano.scalar import Scalar
+
+
 config = theano.config
 
 
@@ -335,6 +342,16 @@ pprint.assign(DimShuffle, DimShufflePrinter())
 #   Elemwise   #
 ################
 
+class ElemwiseParams(object):
+    def __init__(self, inplace_pattern):
+        self._inplace_pattern = inplace_pattern  # frozendict is still useful for hashing method.
+        self.inplace_pattern = self._inplace_pattern._dict  # Now `inplace_pattern` is a real dict.        
+
+    def __hash__(self):
+        return hash(self._inplace_pattern)
+
+    
+
 class Elemwise(OpenMPOp):
     """
     Generalizes a scalar op to tensors.
@@ -385,16 +402,19 @@ second dimension
     """
 
     __props__ = ("scalar_op", "inplace_pattern")
-
+    params_type = Generic()
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
+
         if inplace_pattern is None:
             inplace_pattern = frozendict({})
+
         self.name = name
         self.scalar_op = scalar_op
+
         self.inplace_pattern = frozendict(inplace_pattern)
         self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
-
+        
         self.ufunc = None
         self.nfunc = None
         if nfunc_spec is None:
@@ -404,6 +424,12 @@ second dimension
             self.nfunc = getattr(np, nfunc_spec[0])
 
         super(Elemwise, self).__init__(openmp=openmp)
+
+    def get_params(self, node):
+        if(not hasattr(self, 'params')):
+            self.params = ElemwiseParams(self.inplace_pattern)
+            
+        return self.params
 
     def __getstate__(self):
         d = copy(self.__dict__)
@@ -426,8 +452,11 @@ second dimension
 
     def get_output_info(self, dim_shuffle, *inputs):
         """Return the outputs dtype and broadcastable pattern and the
-        dimshuffled niputs.
-
+        dimshuffled inputs.
+  
+        If the inputs have different number of dimensions, their shape
+        is left-completed to the greatest number of dimensions with 1s
+        using DimShuffle.
         """
         shadow = self.scalar_op.make_node(
             *[get_scalar_type(dtype=i.type.dtype).make_variable()
@@ -700,7 +729,7 @@ second dimension
 
         self.scalar_op.prepare_node(node.tag.fake_node, None, None, impl)
 
-    def perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage, params=None):
         if len(node.inputs) >= 32:
             # Some versions of NumPy will segfault, other will raise a
             # ValueError, if the number of inputs to a ufunc is 32 or more.
@@ -873,7 +902,7 @@ second dimension
 
         # dtypes of the inputs
         idtypes = [input.type.dtype_specs()[1] for input in inputs]
-
+        odtypes = [output.type.dtype_specs()[1] for output in node.outputs]
         # These are the outputs that we will need to allocate
         # (output, name, name of the c type), transposed
         real = list(zip(*[(r, s, r.type.dtype_specs()[1])
@@ -925,11 +954,96 @@ second dimension
             alloc_fortran = '0'
 
         alloc = ""
-        # We loop over the "real" outputs, i.e., those that are not
-        # inplace (must be allocated) and we declare/allocate/check
-        # them
-        for output, oname, odtype in izip(
-                real_outputs, real_onames, real_odtypes):
+
+        # Array referencing all inputs
+        ilength = len(_inames)
+        inArray = """
+        PyArrayObject **inRef[%(ilength)s];
+        """ % locals()
+        for iname, j in izip(_inames, range(len(_inames))):
+            inArray += """
+            inRef[%(j)i]=&%(iname)s;
+            """ % locals()
+
+        # Array referencing all outputs
+        olength = len(_onames)
+        outArray = """
+        PyArrayObject **outRef[%(olength)s];
+        """ % locals()
+        for oname, j in izip(_onames, range(len(onames))):
+            outArray += """
+            outRef[%(j)i]=&%(oname)s;
+            """ % locals()
+
+        alloc += inArray + outArray
+
+        # Declaration and initialization of the hardcoded olv_index
+        # used by the code generated in elemwise_cgen
+        alloc += """
+        int olv_index;
+        olv_index = %(j)i;
+        """ % locals()
+        if 'params' in sub:
+            # Get the destroy map from params
+            alloc += """
+               PyObject *tmpOut, *tmpIn;
+               Py_ssize_t pos;
+               pos = 0;
+               PyObject* destroyMap;
+               destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
+               if( destroyMap == NULL){
+                  %(fail)s
+               }
+               """ % dict(p=sub['params'], fail=sub['fail'])
+            # Iterate over the python object to fill the destroy map arrays
+            # and make the output point to the corresponding input and
+            # decrease the reference of whatever the output contained
+            # prior to this
+
+            alloc += """
+               int lenDM;
+               lenDM = PyDict_Size(destroyMap);
+               int *outDm;
+               int *inDm;
+               outDm =(int*) malloc(lenDM * sizeof(int));
+               inDm =(int*) malloc(lenDM * sizeof(int));
+               int it;
+               for(it = 0; it < lenDM; it++){
+                    PyDict_Next(destroyMap, &pos, &tmpOut, &tmpIn);
+                    outDm[it] = PyInt_AsLong(tmpOut);
+                    inDm[it] = PyInt_AsLong(tmpIn);
+                    PyArrayObject **aliasedOutput;
+                    aliasedOutput = outRef[outDm[it]];
+                    if (*aliasedOutput) {
+                       Py_XDECREF(*aliasedOutput);
+                    }
+                    *aliasedOutput = *inRef[inDm[it]];
+                    Py_XINCREF(*aliasedOutput);
+                    olv_index = outDm[it];
+               }
+               """
+
+            # We no longer need the reference to the original Python object
+            # containing the destroy map
+            alloc += """
+               Py_XDECREF(destroyMap);
+               """
+
+            alloc += """
+            int outIndexes[%(olength)i];
+
+            for(int i = 0; i<%(olength)i; i++){
+                  outIndexes[i] = i + %(ilength)i;
+            }
+
+            for(int i = 0; i < lenDM; i++){
+                  outIndexes[outDm[i]] = inDm[i];
+            }
+            """ % dict(olength=len(_onames), ilength=len(_inames))
+
+        # We loop over all input, inplace ouputs won't be affected.
+        for output, oname in izip(node.outputs, onames):
+            odtype = output.type.dtype_specs()[1]
             i += 1  # before this loop, i = number of inputs
             sub['lv%i' % i] = oname
             sub['olv'] = oname
@@ -939,32 +1053,52 @@ second dimension
                                      fortran=alloc_fortran)
             alloc += cgen.make_checks([list(range(nnested))], [odtype],
                                       dict(sub, lv0=oname))
-        olv_index = i  # index of the last output
 
-        # We loop over the "aliased" outputs, i.e., those that are
-        # inplace (overwrite the contents of one of the inputs) and
-        # make the output pointers point to their corresponding input
-        # pointers.
-        for output, oname in izip(aliased_outputs, aliased_onames):
-            olv_index = inputs.index(dmap[output][0])
-            iname = inames[olv_index]
-            # We make the output point to the corresponding input and
-            # decrease the reference of whatever the output contained
-            # prior to this
-            alloc += """
-            if (%(oname)s) {
-                Py_XDECREF(%(oname)s);
-            }
-            %(oname)s = %(iname)s;
-            Py_XINCREF(%(oname)s);
-            """ % locals()
-            # We alias the scalar variables
-            defines += "#define %(oname)s_i %(iname)s_i\n" % locals()
-            undefs += "#undef %(oname)s_i\n" % locals()
+        # index of the last output
+        olv_index = i
+        task_code = ""
 
-        # Note: here, olv_index is either the index of the last output
-        # which is allocated, OR, if there are any aliased outputs,
-        # the index of the last of these aliased outputs.
+        if 'params' in sub:
+
+            # All variables names, inputs followed by outputs
+            vnames = _inames+_onames
+
+            # We declare another array to easily access the scalar variables
+            # from their respectives index
+            defines = """
+            void *refVar[%i];
+            """ % len(vnames)
+            for (i, name) in enumerate(vnames):
+                defines += """
+                refVar[%(i)i] = &%(name)s_i;
+                """ % locals()
+
+            # We loop over the "aliased" outputs, i.e., those that are
+            # inplace (overwrite the contents of one of the inputs) and
+            # make the output pointers point to their corresponding input
+            # pointers.
+
+            for output, oname, i in izip(node.outputs, onames,
+                                         range(len(onames))):
+                idtype = output.type.dtype_specs()[1]
+
+                name = _onames[i]
+                defines += """
+                    typedef typeof(%(name)s_i) t%(i)i;
+                """ % locals()
+                # We alias the scalar variables
+                defines += """
+                #define %(oname)s_i *(t%(i)i*) (refVar[outIndexes[%(i)i]])
+                """ % locals()
+
+                undefs += "#undef %(oname)s_i" % locals()
+
+            if len(aliased_outputs) > 0:
+                olv_index = inputs.index(dmap[aliased_outputs[-1]][0])
+
+            # Note: here, olv_index is either the index of the last output
+            # which is allocated, OR, if there are any aliased outputs,
+            # the index of the last of these aliased outputs.
 
         # We generate the C code of the inner loop using the scalar op
         if self.openmp:
@@ -973,8 +1107,14 @@ second dimension
             fail = gof.cc.failure_code(sub, use_goto=False)
         else:
             fail = sub['fail']
-        task_code = self.scalar_op.c_code(
-            node.tag.fake_node,
+
+       
+        task_code += self.scalar_op.c_code(
+            Apply(self.scalar_op,
+                  [get_scalar_type(dtype=input.type.dtype).make_variable()
+                   for input in node.inputs],
+                  [get_scalar_type(dtype=output.type.dtype).make_variable()
+                   for output in node.outputs]),
             nodename + '_scalar_',
             ["%s_i" % s for s in _inames],
             ["%s_i" % s for s in onames],
@@ -987,8 +1127,9 @@ second dimension
         }
         """ % locals()
 
-        loop_orders = orders + [list(range(nnested))] * len(real_onames)
-        dtypes = (idtypes + list(real_odtypes))
+        loop_orders = orders + [list(range(nnested))] * len(onames)
+        dtypes = (idtypes + odtypes)
+
         if all([o.ndim <= 1 for o in node.outputs] or
                # Use simpler code when output ndim == 0 or 1
                # or for broadcated scalar.
@@ -1001,8 +1142,8 @@ second dimension
                 # No loops
                 task_decl = "".join([
                     "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
-                    for name, dtype in izip(inames + list(real_onames),
-                                            idtypes + list(real_odtypes))])
+                    for name, dtype in izip(inames + onames,
+                                            idtypes + odtypes)])
 
                 preloops = {}
                 for i, (loop_order, dtype) in enumerate(zip(loop_orders,
@@ -1023,9 +1164,9 @@ second dimension
                 init_array = preloops.get(0, " ")
                 loop = """
                 {
-                  %(defines)s
                   %(init_array)s
                   %(task_decl)s
+                  %(defines)s
                   %(task_code)s
                   %(undefs)s
                 }
@@ -1108,7 +1249,13 @@ second dimension
                 %(loop)s
             }
             """ % locals()
-        return decl, checks, alloc, loop
+        cleanUp = ""
+        if 'params' in sub:
+            cleanUp += """
+                       free(inDm);
+                       free(outDm);
+                       """
+        return decl, checks, alloc, loop, cleanUp
 
     def c_code(self, node, nodename, inames, onames, sub):
         if (any(i.dtype == 'float16' for i in node.inputs) or
