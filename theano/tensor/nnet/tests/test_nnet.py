@@ -313,21 +313,23 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         for d in xrange(2, dims + 1):
             # Case 1: Log(Subtensor(softmax(x)))
             x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
-            sm = tensor.nnet.softmax(x)[3]
+            sm = tensor.nnet.softmax(x)[np.random.randint(10), :]
             logsm = tensor.log(sm)
             f = theano.function([x], logsm)
             assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
 
             # Case 2: Log(Advanced_Subtensor1(softmax(x)))
             x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
-            sm = tensor.nnet.softmax(x)[range(1, 3)]
+            sm = tensor.nnet.softmax(x)[np.random.randint(10, size=3)]
             logsm = tensor.log(sm)
             f = theano.function([x], logsm)
             assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
 
         # Case 3: Log(Advanced_Subtensor(softmax(x)))
+        random_slice = np.random.randint(10, size=3)
+        random_row = np.random.randint(10)
         x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * 3)('x')
-        sm = tensor.nnet.softmax(x)[:, range(1, 3), 2]
+        sm = tensor.nnet.softmax(x)[:, random_slice, random_row]
         logsm = tensor.log(sm)
         f = theano.function([x], logsm)
         assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, theano.tensor.nnet.nnet.LogSoftmax)
@@ -358,7 +360,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             # Case 1: Log(Subtensor(softmax(x))) with subtensor on lines
 
             def f(a):
-                return tensor.log(tensor.nnet.softmax(a)[3])
+                return tensor.log(tensor.nnet.softmax(a)[np.random.randint(shape[0]), :])
 
             x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
             logsm = f(x).sum()
@@ -371,7 +373,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             # Case 2: Log(Subtensor(softmax(x))) with subtensor on cols
 
             def f(a):
-                return tensor.log(tensor.nnet.softmax(a)[:, 3])
+                return tensor.log(tensor.nnet.softmax(a)[:, np.random.randint(shape[0])])
 
             x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
             logsm = f(x).sum()
@@ -384,7 +386,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
             # Case 3: Log(Advanced_Subtensor1(softmax(x)))
 
             def f(a):
-                return tensor.log(tensor.nnet.softmax(a)[range(1, 3)])
+                return tensor.log(tensor.nnet.softmax(a)[np.random.randint(shape[0], size=3)])
 
             x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
             logsm = f(x).sum()
@@ -397,9 +399,11 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         # Case 4: Log(Advanced_Subtensor(softmax(x)))
         dim = 4
         shape = (5,) * dim
+        random_slice = np.random.randint(shape[0], size=3)
+        random_row = np.random.randint(shape[0])
 
         def f(a):
-            return tensor.log(tensor.nnet.softmax(a)[range(1, 3), 2])
+            return tensor.log(tensor.nnet.softmax(a)[random_slice, random_row])
 
         x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * dim)('x')
         logsm = f(x).sum()
