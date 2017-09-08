@@ -27,6 +27,7 @@ except (ImportError, ValueError):
 
 class Erf(UnaryScalarOp):
     nfunc_spec = ('scipy.special.erf', 1, 1)
+
     def impl(self, x):
         if imported_scipy_special:
             return scipy.special.erf(x)
@@ -146,6 +147,7 @@ class Erfinv(UnaryScalarOp):
     (TODO) Find a C implementation of erfinv for CPU.
     """
     nfunc_spec = ('scipy.special.erfinv', 1, 1)
+
     def impl(self, x):
         if imported_scipy_special:
             return scipy.special.erfinv(x)

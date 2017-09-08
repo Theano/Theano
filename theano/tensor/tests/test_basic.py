@@ -2017,7 +2017,8 @@ def test_verify_jv_grad():
     # Verify Jv gradient.
     # Implemented separately due to need to fix first input for which grad is
     # not defined.
-
+    if skip_scipy:
+        raise SkipTest("SciPy needed")
     v_val, x_val = _grad_broadcast_binary_bessel['normal']
 
     def fixed_first_input_jv(x):
@@ -2084,6 +2085,8 @@ def test_verify_iv_grad():
     # Verify Iv gradient.
     # Implemented separately due to need to fix first input for which grad is
     # not defined.
+    if skip_scipy:
+        raise SkipTest("SciPy needed")
 
     v_val, x_val = _grad_broadcast_binary_bessel['normal']
 
