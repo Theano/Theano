@@ -109,6 +109,7 @@ class Erfcx(UnaryScalarOp):
 
     """
     nfunc_spec = ('scipy.special.erfcx', 1, 1)
+
     def impl(self, x):
         if imported_scipy_special:
             return scipy.special.erfcx(x)
