@@ -19,7 +19,9 @@ from theano.tensor.basic import _allclose
 
 # Used in TestComputeTestValue.test_no_perform
 class IncOneC(Op):
-    """An Op with only a C (c_code) implementation"""
+    """
+    An Op with only a C (c_code) implementation
+    """
     __props__ = ()
 
     def make_node(self, input):
@@ -230,9 +232,8 @@ class TestComputeTestValue(unittest.TestCase):
             theano.config.compute_test_value = orig_compute_test_value
 
     def test_scan(self):
-        """
-        Test the compute_test_value mechanism Scan.
-        """
+        # Test the compute_test_value mechanism Scan.
+
         orig_compute_test_value = theano.config.compute_test_value
         try:
             theano.config.compute_test_value = 'raise'
@@ -333,7 +334,9 @@ class TestComputeTestValue(unittest.TestCase):
 
     def test_no_c_code(self):
         class IncOnePython(Op):
-            """An Op with only a Python (perform) implementation"""
+            """
+            An Op with only a Python (perform) implementation
+            """
             __props__ = ()
 
             def make_node(self, input):

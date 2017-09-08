@@ -1,5 +1,18 @@
 #section support_code_apply
 
+static int c_set_groups_for_conv(cudnnConvolutionDescriptor_t desc, int groups) {
+#if CUDNN_MAJOR >= 7
+  cudnnStatus_t err = cudnnSetConvolutionGroupCount(desc, groups);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError,
+		   "error setting groups for convolution : %s",
+		   cudnnGetErrorString(err));
+    return -1;
+  }
+#endif
+  return 0;
+}
+
 int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
                               cudnnConvolutionDescriptor_t *desc,
                               PARAMS_TYPE* params) {
@@ -43,5 +56,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
                  "descriptor: %s", cudnnGetErrorString(err));
     return -1;
   }
+  if (c_set_groups_for_conv(*desc, params->num_groups) == -1)
+      return -1;
   return 0;
 }

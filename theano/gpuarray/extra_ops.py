@@ -74,7 +74,8 @@ class GpuCumOp(GpuKernelBase, Op):
         k_var = "k_cumadd_" + nodename
         dtype_x = node.inputs[0].dtype
         flags = Kernel.get_flags(dtype_x)
-        code = """
+        code = """#include "cluda.h"
+
         KERNEL void %(kname)s(float* input, ga_size input_offset,
                               float* output, ga_size output_offset,
                               ga_ssize inputStrides_x, ga_ssize inputStrides_y, ga_ssize inputStrides_z,
@@ -112,7 +113,8 @@ class GpuCumOp(GpuKernelBase, Op):
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
                   'int32', 'int32', gpuarray.GpuArray, gpuarray.SIZE]
-        code = """
+        code = """#include "cluda.h"
+
         // helper functions
         WITHIN_KERNEL
         void k_reductionPhase(float* partialCumOp) {
@@ -213,7 +215,8 @@ class GpuCumOp(GpuKernelBase, Op):
         # k_finalCumOp
         kname = "k_finalCumOp"
         k_var = "k_finalCumOp_" + nodename
-        code = """
+        code = """#include "cluda.h"
+
         KERNEL void k_finalCumOp(float* output, ga_size output_offset,
                                  float* blockSum, ga_size blockSum_offset,
                                  size_t nbElementsPerCumOp,

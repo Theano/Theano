@@ -22,7 +22,7 @@ def load_w(dtype):
 
     """
     if dtype == 'float16':
-        return '__half2float'
+        return 'ga_half2float'
     else:
         return ''
 
@@ -37,6 +37,6 @@ def write_w(dtype):
 
     """
     if dtype == 'float16':
-        return '__float2half_rn'
+        return 'ga_float2half'
     else:
         return ''

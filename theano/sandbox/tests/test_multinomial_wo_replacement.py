@@ -12,9 +12,8 @@ import unittest
 class test_OP(unittest.TestCase):
 
     def test_select_distinct(self):
-        """
-        Tests that ChoiceFromUniform always selects distinct elements
-        """
+        # Tests that ChoiceFromUniform always selects distinct elements
+
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
@@ -45,10 +44,9 @@ class test_OP(unittest.TestCase):
             assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
-        """
-        Tests that ChoiceFromUniform fails when asked to sample more
-        elements than the actual number of elements
-        """
+        # Tests that ChoiceFromUniform fails when asked to sample more
+        # elements than the actual number of elements
+
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
@@ -65,10 +63,9 @@ class test_OP(unittest.TestCase):
         self.assertRaises(ValueError, f, pvals, uni, n_selected)
 
     def test_select_proportional_to_weight(self):
-        """
-        Tests that ChoiceFromUniform selects elements, on average,
-        proportional to the their probabilities
-        """
+        # Tests that ChoiceFromUniform selects elements, on average,
+        # proportional to the their probabilities
+
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
@@ -97,9 +94,8 @@ class test_OP(unittest.TestCase):
 class test_function(unittest.TestCase):
 
     def test_select_distinct(self):
-        """
-        Tests that multinomial_wo_replacement always selects distinct elements
-        """
+        # Tests that multinomial_wo_replacement always selects distinct elements
+
         th_rng = RandomStreams(12345)
 
         p = tensor.fmatrix()
@@ -120,10 +116,9 @@ class test_function(unittest.TestCase):
             assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
-        """
-        Tests that multinomial_wo_replacement fails when asked to sample more
-        elements than the actual number of elements
-        """
+        # Tests that multinomial_wo_replacement fails when asked to sample more
+        # elements than the actual number of elements
+
         th_rng = RandomStreams(12345)
 
         p = tensor.fmatrix()
@@ -140,10 +135,9 @@ class test_function(unittest.TestCase):
         self.assertRaises(ValueError, f, pvals, n_selected)
 
     def test_select_proportional_to_weight(self):
-        """
-        Tests that multinomial_wo_replacement selects elements, on average,
-        proportional to the their probabilities
-        """
+        # Tests that multinomial_wo_replacement selects elements, on average,
+        # proportional to the their probabilities
+
         th_rng = RandomStreams(12345)
 
         p = tensor.fmatrix()

@@ -80,7 +80,8 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         else:
             raise ValueError('Unsupported data type for output',
                              self.output_type.dtype)
-        code = """
+        code = """#include "cluda.h"
+
         KERNEL void mrg_uniform(
                 GLOBAL_MEM %(otype)s *sample_data,
                 ga_size sample_offset,

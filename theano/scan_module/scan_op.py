@@ -208,7 +208,7 @@ class Scan(PureOp):
             # Do the missing inputs check here to have the error early.
             for var in theano.gof.graph.inputs(self.outputs, self.inputs):
                 if var not in self.inputs and not isinstance(var, theano.Constant):
-                    raise theano.gof.MissingInputError("ScanOp is missing an input.")
+                    raise theano.gof.MissingInputError("ScanOp is missing an input: %s" % repr(var))
             self._cmodule_key = gof.CLinker().cmodule_key_variables(self.inputs,
                                                                     self.outputs,
                                                                     [])

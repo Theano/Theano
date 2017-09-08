@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import theano
 from theano import tensor
+from theano.tests.unittest_tools import assertFailure_fast
 from theano.gof.opt import check_stack_trace
 from theano.tensor.nnet.blocksparse import (
     sparse_block_dot, sparse_block_gemv_inplace, sparse_block_outer_inplace,
@@ -24,6 +25,9 @@ def test_blocksparse_inplace_gemv_opt():
     else:
         assert f.maker.fgraph.toposort()[-1].op.inplace
         assert check_stack_trace(f, ops_to_check=[sparse_block_gemv_inplace])
+
+if theano.config.mode != 'FAST_COMPILE':
+    test_blocksparse_inplace_gemv_opt = assertFailure_fast(test_blocksparse_inplace_gemv_opt)
 
 
 def test_blocksparse_inplace_outer_opt():

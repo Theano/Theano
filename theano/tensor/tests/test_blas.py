@@ -46,10 +46,10 @@ def sharedX(x, name):
 
 
 class t_gemm(TestCase):
-    """This test suite is supposed to establish that gemm works as it
-    is supposed to.
-
     """
+    This test suite is supposed to establish that gemm works as it is supposed to.
+    """
+
     def setUp(self):
         unittest_tools.seed_rng()
         Gemm.debug = False
@@ -438,10 +438,9 @@ def fail(msg):
     assert False
 
 
-"""This test suite ensures that Gemm is inserted where it belongs, and
-that the resulting functions compute the same things as the
-originals.
-
+"""
+This test suite ensures that Gemm is inserted where it belongs, and
+that the resulting functions compute the same things as the originals.
 """
 
 
@@ -500,6 +499,7 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
         raise
 
 
+@unittest_tools.assertFailure_fast
 def test_gemm_opt0():
     # Many subgraphs whose dots can be eliminated
     X, Y, Z, a, b = XYZab()
@@ -528,6 +528,7 @@ def test_gemm_opt0():
     just_gemm([X, Y, Z, a, b], [Z - a * b * a * T.dot(X, Y)])
 
 
+@unittest_tools.assertFailure_fast
 def test_gemm_opt_double_gemm():
     # This is the pattern that shows up in the autoencoder
     X, Y, Z, a, b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()

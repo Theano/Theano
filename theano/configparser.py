@@ -103,7 +103,7 @@ class change_flags(object):
         args = dict(args)
         args.update(kwargs)
         for k in args:
-            l = [v for v in theano.configparser._config_var_list
+            l = [v for v in _config_var_list
                  if v.fullname == k]
             assert len(l) == 1, l
             confs[k] = l[0]

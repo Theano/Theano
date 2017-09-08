@@ -13,7 +13,7 @@ from theano.tensor.opt import register_canonicalize
 from theano.tensor.nnet.ctc import ctc_available
 
 import os
-import os.path
+import sys
 from . import pygpu
 
 
@@ -54,11 +54,20 @@ class GpuConnectionistTemporalClassification(gof.COp):
             lib_dirs += [ctc_available.path]
         return lib_dirs
 
+    def c_compile_args(self):
+        if ctc_available.path is not None:
+            if sys.platform != 'darwin' and ' ' in ctc_available.path:
+                return ['-Wl,-rpath,"' + ctc_available.path + '"']
+            else:
+                return ['-Wl,-rpath,' + ctc_available.path]
+        return []
+
     def c_libraries(self):
         return ["warpctc", "gpuarray"]
 
     def c_header_dirs(self):
-        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include()]
+        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include(),
+                config.cuda.include_path]
         if config.ctc.root != '':
             dirs.append(os.path.join(config.ctc.root, "include"))
         return dirs
@@ -163,7 +172,7 @@ def gpu_ctc(activations, labels, input_lengths):
 
 
 # Disable gradient computation if not needed
-@register_canonicalize
+@register_canonicalize("fast_compile")
 @local_optimizer([GpuConnectionistTemporalClassification])
 def local_gpu_ctc_no_grad(node):
     if isinstance(node.op, GpuConnectionistTemporalClassification):

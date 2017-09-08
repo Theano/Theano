@@ -165,10 +165,13 @@ class GpuElemwise(HideC, Elemwise):
         scal_v_out = fake_node.outputs
         assert len(scal_v_out) == len(node.outputs)
 
-        kop = fake_node.op.c_code(fake_node, 'elem_scalar',
-                                  inps, outs,
-                                  dict(fail='return;'))
-
+        try:
+            kop = fake_node.op.c_code(fake_node, 'elem_scalar',
+                                      inps, outs,
+                                      dict(fail='return;'))
+        except MethodNotDefined:
+            raise AssertionError(
+                "No c code for this scalar. Can not make a GpuElemwise")
         # If the following assert fail, then we need to update the
         # code handler above.
         assert 'npy_float16' not in kop
@@ -1740,7 +1743,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kname = "kernel_reduce_ccontig"
             k_var = "kernel_reduce_ccontig_" + nodename
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             KERNEL void %(kname)s(
                     const ga_size d0,
                     const %(in_type)s *A, const ga_size offset_A,
@@ -1778,7 +1782,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kname = "kernel_reduce_1"
             k_var = "kernel_reduce_1_" + nodename
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             KERNEL void %(kname)s(
                     const ga_size d0,
                     const %(in_type)s *A, const ga_size offset_A,
@@ -1818,7 +1823,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kname = "kernel_reduce_11"
             k_var = "kernel_reduce_11_" + nodename
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             KERNEL void %(kname)s(
                     const ga_size d0, const ga_size d1,
                     const %(in_type)s *A, const ga_size offset_A,
@@ -1906,7 +1912,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 load_in + "(A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0])",
                 {}, True)
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
                 %(decl)s{
                     %(init)s
                     for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x){
@@ -1940,7 +1947,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kname = "kernel_reduce_010"
             k_var = "kernel_reduce_010_" + nodename
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             KERNEL void %(kname)s(
                     const ga_size d0, const ga_size d1, const ga_size d2,
                     const %(in_type)s *A, const ga_size offset_A,
@@ -1986,7 +1994,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kname = "kernel_reduce_010_AD"
             k_var = "kernel_reduce_010_AD_" + nodename
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             KERNEL void %(kname)s(
                     const ga_size A, const ga_size B, const ga_size C, const ga_size D,
                     const %(in_type)s *X, const ga_size offset_X,
@@ -2050,7 +2059,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                              {}, True)
             reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + 0 * sA1 + i2 * sA2])")
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             %(decl)s
             {
               %(init)s
@@ -2085,7 +2095,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kname = "kernel_reduce_110"
             k_var = "kernel_reduce_110_" + nodename
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             KERNEL void %(kname)s(
                     const ga_size d0, const ga_size d1, const ga_size d2,
                     const %(in_type)s *A, const ga_size offset_A,
@@ -2130,7 +2141,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                              {}, True)
             reduce_init = self._assign_init(load_in + "(A[i1 * sA1 + i2 * sA2])")
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             %(decl)s
             {
                 %(init)s
@@ -2160,7 +2172,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                              {}, True)
             reduce_init = self._assign_init(load_in + "(A[0])")
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             %(decl)s
             {
                 %(init)s
@@ -2192,7 +2205,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kname = "kernel_reduce_001"
             k_var = "kernel_reduce_001_" + nodename
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
             KERNEL void %(kname)s(
                     const ga_size d0, const ga_size d1, const ga_size d2,
                     const %(in_type)s *A, const ga_size offset_A,
@@ -2241,7 +2254,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                              {}, True)
             reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + i1 * sA1])")
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             %(decl)s
             {
                 %(init)s
@@ -2277,7 +2291,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                              {}, True)
             reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + i2 * sA2])")
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             %(decl)s
             {
                 %(init)s
@@ -2311,7 +2326,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                              {}, True)
             reduce_init = self._assign_init(load_in + "(A[0])")
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             %(decl)s
             {
                 %(init)s
@@ -2342,7 +2358,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kname = "kernel_reduce_1011"
             k_var = "kernel_reduce_1011_" + nodename
             sio = StringIO()
-            print("""
+            print("""#include "cluda.h"
+
             KERNEL void %(kname)s(
                     const ga_size d0, const ga_size d1, const ga_size d2, const ga_size d3,
                     const %(in_type)s *A, const ga_size offset_A,
@@ -2499,15 +2516,15 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
 
     def gpu_kernels(self, node, name):
         if not any(getattr(self, 'redux', [node.inputs[0].ndim != 0])):
-            # Some OpenCL compilers do not accept no-arguments kernels
-            src = "KERNEL void reduk(GLOBAL_MEM float *a) {}"
+            # Some OpenCL compilers do not accept no-arguments empty kernels
+            src = "#include \"cluda.h\"\nKERNEL void reduk(GLOBAL_MEM float *a) { a[0] = 0; }"
             params = ['float32']
         else:
             k = self.get_kernel_cache(node)
             _, src, _, _ = k._get_basic_kernel(k.init_local_size,
                                                node.inputs[0].ndim)
             nd = node.inputs[0].ndim
-            params = ['uint32', gpuarray.GpuArray]
+            params = ['uint32', gpuarray.GpuArray, 'uint32']
             params.extend('uint32' for _ in range(nd))
             params.append(gpuarray.GpuArray)
             params.append('uint32')
@@ -2614,9 +2631,10 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         code += """
         args[0] = &n;
         args[1] = tmp->ga.data;
+        args[2] = &tmp->ga.offset;
         """ % dict(output=output)
 
-        p = 2
+        p = 3
         for i in range(node.inputs[0].ndim):
             code += """
         proxy_dim[%(i)s] = %(input)s->ga.dimensions[%(i)s];
@@ -2674,7 +2692,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         return code
 
     def c_code_cache_version_apply(self, node):
-        return (3, self.kernel_version(node))
+        return (4, self.kernel_version(node))
 
     def generate_kernel(self, node, odtype, redux):
         if isinstance(self.scalar_op, scalar.basic.Add):

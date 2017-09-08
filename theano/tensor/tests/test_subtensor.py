@@ -34,7 +34,7 @@ from theano.tensor.subtensor import (AdvancedIncSubtensor,
 from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
-from theano.configparser import change_flags
+from theano import change_flags
 
 if PY3:
     def L(i):
@@ -46,8 +46,7 @@ else:
 
 class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     """
-    This is build in a way that allow to reuse it to test the
-    equivalent gpu op.
+    This is build in a way that allow to reuse it to test the equivalent gpu op.
     """
     def __init__(self, name, shared=tensor._shared,
                  sub=tensor.Subtensor,
@@ -55,6 +54,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                  adv_sub1=tensor.AdvancedSubtensor1,
                  adv_incsub1=tensor.AdvancedIncSubtensor1,
                  adv_sub=tensor.AdvancedSubtensor,
+                 adv_bool_sub=tensor.AdvancedBooleanSubtensor,
+                 adv_bool_inc_sub=tensor.AdvancedBooleanIncSubtensor,
                  mode=None,
                  dtype=theano.config.floatX,
                  type=tensor.TensorType,
@@ -66,6 +67,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.adv_sub1 = adv_sub1
         self.adv_incsub1 = adv_incsub1
         self.adv_sub = adv_sub
+        self.adv_bool_sub = adv_bool_sub
+        self.adv_bool_inc_sub = adv_bool_inc_sub
         self.dimshuffle = dimshuffle
         if mode is None:
             mode = theano.compile.mode.get_default_mode()
@@ -75,12 +78,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.type = type
         self.ignore_topo = ignore_topo
         self.fast_compile = theano.config.mode == 'FAST_COMPILE'
-        self.ops = (sub, inc_sub, adv_sub1, adv_incsub1)
+        self.ops = (sub, inc_sub, adv_sub1, adv_incsub1,
+                    adv_bool_sub, adv_bool_inc_sub)
         return super(T_subtensor, self).__init__(name)
 
     def function(self, inputs, outputs, accept_inplace=False,
                  op=None, mode=None, N=1, N_fast=None):
-        """ wrapper around theano.function that also check the output
+        """
+        wrapper around theano.function that also check the output
 
         :param N: the number of op expected in the toposort
                   if tuple of length 2, (expected if fast_compile,
@@ -120,12 +125,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test0_err_invalid(self):
         # it is impossible to retrieve a view of a 0-d tensor
         n = self.shared(np.ones((), dtype=self.dtype))
-        try:
-            n[0]
-        except ValueError as e:
-            self.assertTrue(hasattr(e, 'subtensor_invalid'))
-            return
-        self.fail()
+        self.assertRaises(IndexError, n.__getitem__, 0)
 
     @change_flags(compute_test_value='off')
     def test1_err_bounds(self):
@@ -184,12 +184,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test1_err_invalid(self):
         n = self.shared(np.ones(1, dtype=self.dtype))
-        try:
-            n[0, 0]
-        except ValueError as e:
-            self.assertTrue(hasattr(e, 'subtensor_invalid'))
-            return
-        self.fail()
+        self.assertRaises(IndexError, n.__getitem__, (0, 0))
 
     def test1_ok_elem(self):
         n = self.shared(np.ones(1, dtype=self.dtype) * 5)
@@ -362,16 +357,121 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             assert_equal(tval.shape, numpy_tval.shape)
             assert_array_equal(tval, numpy_tval)
 
-    def test_newaxis(self):
-        """
-        newaxis support comes from logic in the __getitem__ of TensorType
-        Variables, which currently inserts dimshuffle to get the right number
-        of dimensions, and adjusts the slice tuple accordingly.
+    def test_boolean(self):
+        def numpy_inc_subtensor(x, idx, a):
+            x = x.copy()
+            x[idx] += a
+            return x
 
-        So testing is done via square-bracket notation rather than direct
-        interaction with the Subtensor Op (which has no support of its own for
-        newaxis).
-        """
+        numpy_n = np.arange(6, dtype=self.dtype).reshape((2, 3))
+        n = self.shared(numpy_n)
+
+        # indexing with a mask for some dimensions
+        mask = np.array([True, False])
+        val = self.eval_output_and_check(n[mask], op_type=self.adv_bool_sub)
+        assert_array_equal(numpy_n[mask], val)
+        val = self.eval_output_and_check(inc_subtensor(n[mask], 1),
+                                         op_type=self.adv_bool_inc_sub)
+        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, 1), val)
+        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, numpy_n[mask]),
+                           inc_subtensor(n[mask], n[mask]).eval())
+
+        # test gradient
+        utt.verify_grad(lambda m: m[mask], [numpy_n])
+        utt.verify_grad(lambda m: inc_subtensor(m[mask], 1), [numpy_n])
+
+        # indexing with a comparison (should translate to a boolean mask)
+        assert_array_equal(numpy_n[numpy_n > 2], n[n > 2].eval())
+        assert_array_equal(numpy_n[[0], numpy_n[0] > 2], n[[0], n[0] > 2].eval())
+        assert_array_equal(numpy_n[[1], numpy_n[0] > 2], n[[1], n[0] > 2].eval())
+
+        # indexing with a mask for the second dimension
+        mask = np.array([True, False, True])
+        assert_array_equal(numpy_n[0, mask], n[0, mask].eval())
+        assert_array_equal(numpy_n[:, mask], n[:, mask].eval())
+        assert_array_equal(numpy_n[:, mask], n[:, self.shared(mask)].eval())
+        assert_array_equal(numpy_n[1:, mask], n[1:, mask].eval())
+        assert_array_equal(numpy_n[:1, mask], n[:1, mask].eval())
+        assert_array_equal(numpy_n[1:, mask, np.newaxis], n[1:, mask, np.newaxis].eval())
+        assert_array_equal(numpy_n[np.newaxis, 1:, mask], n[np.newaxis, 1:, mask].eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, [0, mask], 1),
+                           inc_subtensor(n[(0,) + mask.nonzero()], 1).eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, [0, mask], 1),
+                           inc_subtensor(n[0, mask], 1).eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, [slice(None), mask], 1),
+                           inc_subtensor(n[:, mask], 1).eval())
+
+        # indexing with a boolean ndarray
+        mask = np.array([[True, False, True], [False, False, True]])
+        assert_array_equal(numpy_n[mask], n[mask].eval())
+        assert_array_equal(numpy_n[mask], n[self.shared(mask)].eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n, mask, 1),
+                           inc_subtensor(n[mask], 1).eval())
+
+        # indexing with ellipsis
+        numpy_n4 = np.arange(48, dtype=self.dtype).reshape((2, 3, 4, 2))
+        n4 = self.shared(numpy_n4)
+        assert_array_equal(numpy_n4[numpy_n > 2, ...], n4[n > 2, ...].eval())
+        assert_array_equal(numpy_n4[numpy_n > 2, ..., 1], n4[n > 2, ..., 1].eval())
+        assert_array_equal(numpy_n4[numpy_n > 2, ..., 0, 1], n4[n > 2, ..., 0, 1].eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n4, [numpy_n > 2, Ellipsis], 1),
+                           inc_subtensor(n4[n > 2, ...], 1).eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n4, [numpy_n > 2, Ellipsis, 1], 1),
+                           inc_subtensor(n4[n > 2, ..., 1], 1).eval())
+        assert_array_equal(numpy_inc_subtensor(numpy_n4, [numpy_n > 2, Ellipsis, 0, 1], 1),
+                           inc_subtensor(n4[n > 2, ..., 0, 1], 1).eval())
+
+        # the boolean mask should have the correct shape
+        # - too large, padded with True
+        mask = np.array([True, False, True])
+        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, n[mask, ...].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask, ...], 1).eval)
+        mask = np.array([[True, False, False, True], [False, True, False, True]])
+        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+        # - too large, padded with False (this works in NumPy < 0.13.0)
+        mask = np.array([True, False, False])
+        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, n[mask, ...].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask, ...], 1).eval)
+        mask = np.array([[True, False, False, False], [False, True, False, False]])
+        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+        # - mask too small (this works in NumPy < 0.13.0)
+        mask = np.array([True])
+        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, n[mask, ...].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask, ...], 1).eval)
+        mask = np.array([[True], [True]])
+        self.assertRaises(IndexError, n[mask].eval)
+        self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+        # - too many dimensions
+        mask = np.array([[[True, False, False],
+                          [False, True, False]]])
+        self.assertRaises(IndexError, n.__getitem__, mask)
+        self.assertRaises(IndexError, n.__getitem__, mask)
+
+        # special cases: Python bools and bools nested in Python arrays are not supported
+        self.assertRaises(TypeError, n.__getitem__, (True,))
+        self.assertRaises(TypeError, n.__getitem__, (False,))
+        self.assertRaises(TypeError, n.__getitem__, (True, False))
+        self.assertRaises(TypeError, n.__getitem__, ([True, False]))
+        self.assertRaises(TypeError, n.__getitem__, ([0, 1], [0, False]))
+        self.assertRaises(TypeError, n.__getitem__, ([0, 1], [0, theano.shared(True)]))
+
+    def test_newaxis(self):
+        # newaxis support comes from logic in the __getitem__ of TensorType
+        # Variables, which currently inserts dimshuffle to get the right number
+        # of dimensions, and adjusts the slice tuple accordingly.
+        #
+        # So testing is done via square-bracket notation rather than direct
+        # interaction with the Subtensor Op (which has no support of its own for
+        # newaxis).
+
         newaxis = np.newaxis
 
         n = self.shared(np.arange(24, dtype=self.dtype).reshape((2, 3, 4)))
@@ -534,7 +634,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test_err_invalid_list(self):
         n = self.shared(np.asarray(5, dtype=self.dtype))
-        self.assertRaises(TypeError, n.__getitem__, [0, 0])
+        self.assertRaises(IndexError, n.__getitem__, [0, 0])
 
     def test_err_invalid_2list_dtype(self):
         n = self.shared(np.ones((3, 3), dtype=self.dtype) * 5)
@@ -972,9 +1072,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             mode=self.mode)
 
     def test_inc_and_set_subtensor(self):
-        """
-        Test increment and set with broadcast
-        """
+        # Test increment and set with broadcast
 
         X = self.shared(np.ones((9, 9)).astype(self.dtype))
         y = set_subtensor(X[1::, 1::], 0)
@@ -988,9 +1086,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert np.allclose(out, res)
 
     def test_advanced1_inc_and_set(self):
-        """
-        Test advanced increment and set.
-        """
+        # Test advanced increment and set.
+
         rng = np.random.RandomState(seed=utt.fetch_seed())
         all_inputs_var = []
         all_inputs_num = []
@@ -1284,7 +1381,7 @@ class TestIncSubtensor1(unittest.TestCase):
         self.adv1q = tensor.lvector()  # advanced 1d query
 
     def test_cant_adv_idx_into_scalar(self):
-        self.assertRaises(TypeError, lambda: self.s[self.adv1q])
+        self.assertRaises(IndexError, lambda: self.s[self.adv1q])
 
     def test_index_into_vec_w_vec(self):
         a = self.v[self.adv1q]
@@ -1433,7 +1530,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         return tval
 
     def test_cant_adv_idx_into_scalar(self):
-        self.assertRaises(TypeError, lambda: self.s[self.ix1])
+        self.assertRaises(IndexError, lambda: self.s[self.ix1])
 
     def test_index_into_vec_w_vec(self):
         a = self.v[self.ix1]
@@ -1889,4 +1986,18 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([admat, aivec],
                                 [admat[1:3, aivec]],
                                 [admat_val, aivec_val], AdvancedSubtensor,
+                                check_topo=False)
+
+    def test_boolean(self):
+        n = dmatrix()
+        n_val = np.arange(6).reshape((2, 3))
+
+        # infer_shape is not implemented, but it should not crash
+        self._compile_and_check([n],
+                                [n[n[:, 0] > 2, n[0, :] > 2]],
+                                [n_val], tensor.AdvancedBooleanSubtensor,
+                                check_topo=False)
+        self._compile_and_check([n],
+                                [n[n[:, 0] > 2]],
+                                [n_val], tensor.AdvancedBooleanSubtensor,
                                 check_topo=False)

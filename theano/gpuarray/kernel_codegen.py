@@ -34,7 +34,9 @@ def nvcc_kernel(name, params, body):
             else:
                 yield b
     bodystr = ';\n'.join(flatbody())
-    return """KERNEL void %(name)s (%(paramstr)s)
+    return """#include "cluda.h"
+
+    KERNEL void %(name)s (%(paramstr)s)
     {
         %(bodystr)s;
     }

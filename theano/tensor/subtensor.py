@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import sys
 from textwrap import dedent
+import collections
 import warnings
 import logging
 
@@ -35,9 +36,15 @@ class AdvancedIndexingError(TypeError):
     Raised when Subtensor is asked to perform advanced indexing.
 
     """
+    pass
 
-    def __init__(self, *args):
-        TypeError.__init__(self, *args)
+
+class AdvancedBooleanIndexingError(TypeError):
+    """
+    Raised when Subtensor is asked to perform advanced indexing with boolean masks.
+
+    """
+    pass
 
 
 ##########
@@ -280,11 +287,6 @@ class Subtensor(Op):
     @todo: add support for advanced tensor indexing (in Subtensor_dx too).
 
     """
-    e_invalid = ('The index list is longer (size %d) than the number of '
-                 'dimensions of the tensor(namely %d). You are asking for '
-                 'a dimension of the tensor that does not exist! You might '
-                 'need to use dimshuffle to add extra dimension to your '
-                 'tensor.')
     e_subslice = 'nested slicing is not supported'
     e_indextype = "Invalid index type or slice for Subtensor"
     debug = 0
@@ -341,6 +343,11 @@ class Subtensor(Op):
                         theano.tensor.wscalar, theano.tensor.bscalar]
         invalid_tensor_types = [theano.tensor.fscalar, theano.tensor.dscalar,
                                 theano.tensor.cscalar, theano.tensor.zscalar]
+
+        if (isinstance(entry, (np.ndarray, theano.tensor.Variable)) and
+                hasattr(entry, 'dtype') and entry.dtype == 'bool'):
+            raise AdvancedBooleanIndexingError(Subtensor.e_indextype, entry)
+
         if (isinstance(entry, gof.Variable) and
             (entry.type in invalid_scal_types or
              entry.type in invalid_tensor_types)):
@@ -473,10 +480,7 @@ class Subtensor(Op):
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
-            exception = ValueError(Subtensor.e_invalid % (
-                len(idx_list), x.type.ndim))
-            exception.subtensor_invalid = True
-            raise exception
+            raise IndexError('too many indices for array')
 
         input_types = Subtensor.collapse(idx_list,
                                          lambda entry: isinstance(entry,
@@ -1108,6 +1112,13 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         the_op = AdvancedIncSubtensor(inplace,
                                       set_instead_of_inc=set_instead_of_inc)
         return the_op(real_x, y, *ilist)
+    elif isinstance(x.owner.op, AdvancedBooleanSubtensor):
+        real_x = x.owner.inputs[0]
+        ilist = x.owner.inputs[1:]
+
+        the_op = AdvancedBooleanIncSubtensor(inplace,
+                                             set_instead_of_inc=set_instead_of_inc)
+        return the_op(real_x, y, *ilist)
     elif isinstance(x.owner.op, DimShuffle):
         inner_x = x.owner.inputs[0]
         # In the dimshuffle case, there are in fact two dimshuffles:
@@ -1292,12 +1303,7 @@ class IncSubtensor(Op):
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
-            exception = ValueError(
-                Subtensor.e_invalid % (
-                    len(idx_list),
-                    x.type.ndim))
-            exception.subtensor_invalid = True
-            raise exception
+            raise IndexError('too many indices for array')
 
         input_types = Subtensor.collapse(
             idx_list,
@@ -2062,8 +2068,8 @@ def as_index_variable(idx):
     if isinstance(idx, gof.Variable) and isinstance(idx.type, NoneTypeT):
         return idx
     idx = theano.tensor.as_tensor_variable(idx)
-    if idx.type.dtype not in theano.tensor.integer_dtypes:
-        raise TypeError('index must be integers')
+    if idx.type.dtype not in theano.tensor.discrete_dtypes:
+        raise TypeError('index must be integers or a boolean mask')
     return idx
 
 
@@ -2091,7 +2097,10 @@ def adv_index_broadcastable_pattern(a, idx):
         if isinstance(v.type, SliceType):
             return slice(None, None)
 
-        return np.zeros((2,) * v.ndim, int)
+        if v.dtype == 'bool':
+            return np.ones((2,) * v.ndim, v.dtype)
+        else:
+            return np.zeros((2,) * v.ndim, int)
 
     newidx = tuple(map(replace_slice, idx))
 
@@ -2101,14 +2110,58 @@ def adv_index_broadcastable_pattern(a, idx):
     return tuple([dim == 1 for dim in retshape])
 
 
-class AdvancedSubtensor(Op):
+def check_advanced_indexing_dimensions(input, idx_list):
     """
-    Return a subtensor copy, using advanced indexing.
+    This function checks if the index list in idx_list is correct.
+    If there are any boolean masks, we check if the mask has the
+    same shape as the input. This is enforced in NumPy 0.13.0 and
+    newer, but not by earlier versions. If the size is not the same,
+    this method raises an IndexError.
+    """
+    dim_seen = 0
+    for index in idx_list:
+        if index is np.newaxis:
+            # skip, does not count as an input dimension
+            pass
+        elif isinstance(index, np.ndarray) and index.dtype == 'bool':
+            for i in xrange(index.ndim):
+                if index.shape[i] != input.shape[dim_seen + i]:
+                    raise IndexError('boolean index did not match indexed array '
+                                     'along dimension %d; dimension is %d but '
+                                     'corresponding boolean dimension is %d' %
+                                     (dim_seen + i, input.shape[dim_seen + i],
+                                      index.shape[i]))
+            dim_seen += index.ndim
+        else:
+            dim_seen += 1
+
+
+def check_and_reject_bool(args_el):
+    try:
+        if (isinstance(args_el, (np.bool_, bool)) or
+                args_el.dtype == 'bool'):
+            raise TypeError('AdvancedSubtensor does not support boolean '
+                            'masks for indexing. Use AdvancedBooleanSubtensor '
+                            'instead. ')
+    except AttributeError:
+        pass
+
+    if (not isinstance(args_el, theano.tensor.Variable) and
+            isinstance(args_el, collections.Iterable)):
+        for el in args_el:
+            check_and_reject_bool(el)
+
+
+class BaseAdvancedSubtensor(Op):
+    """
+    Abstract base class for AdvancedSubtensor and AdvancedBooleanSubtensor.
+    Implements advanced indexing with boolean masks.
 
     """
 
-    # Should be used by __getitem__ and __getslice__, as follow:
-    # AdvancedSubtensor()(self, *args),
+    # Should be used by __getitem__ and __getslice__, as follows:
+    # AdvancedSubtensor()(self, *args) or
+    # AdvancedBooleanSubtensor()(self, *args),
     # if args contains and advanced indexing pattern
     __props__ = ()
 
@@ -2128,24 +2181,12 @@ class AdvancedSubtensor(Op):
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def infer_shape(self, node, ishapes):
-        # Really special case
-        if len(ishapes) == 3:
-            xshp, ind1shp, ind2shp = ishapes
-            if (len(xshp) == 2 and
-                    ind1shp is not None and len(ind1shp) == 1 and
-                    ind2shp is not None and len(ind2shp) == 1):
-                # if the graph is correct, we can assume ind1shp[0] and
-                # ind2shp[0] will have the same value.
-                # Try to return the one closest to the graph input.
-                if node.inputs[2].owner is None:
-                    return [ind2shp]
-                else:
-                    return [ind1shp]
         # Default case, we don't know
         raise theano.tensor.basic.ShapeError("case not implemented")
 
     def perform(self, node, inputs, out_):
         out, = out_
+        check_advanced_indexing_dimensions(inputs[0], inputs[1:])
         rval = inputs[0].__getitem__(inputs[1:])
         # When there are no arrays, we are not actually doing advanced
         # indexing, so __getitem__ will not return a copy.
@@ -2163,6 +2204,37 @@ class AdvancedSubtensor(Op):
 
         return rval
 
+
+class AdvancedSubtensor(BaseAdvancedSubtensor):
+    """
+    Return a subtensor copy, using advanced indexing.
+
+    """
+
+    # Should be used by __getitem__ and __getslice__, as follows:
+    # AdvancedSubtensor()(self, *args),
+    # if args contains and advanced indexing pattern
+
+    def make_node(self, x, *index):
+        check_and_reject_bool(index)
+        return super(AdvancedSubtensor, self).make_node(x, *index)
+
+    def infer_shape(self, node, ishapes):
+        # Really special case
+        if len(ishapes) == 3:
+            xshp, ind1shp, ind2shp = ishapes
+            if (len(xshp) == 2 and
+                    ind1shp is not None and len(ind1shp) == 1 and
+                    ind2shp is not None and len(ind2shp) == 1):
+                # if the graph is correct, we can assume ind1shp[0] and
+                # ind2shp[0] will have the same value.
+                # Try to return the one closest to the graph input.
+                if node.inputs[2].owner is None:
+                    return [ind2shp]
+                else:
+                    return [ind1shp]
+        return super(AdvancedSubtensor, self).infer_shape(node, ishapes)
+
     def grad(self, inputs, grads):
         gz, = grads
         x = inputs[0]
@@ -2173,8 +2245,29 @@ class AdvancedSubtensor(Op):
 advanced_subtensor = AdvancedSubtensor()
 
 
-class AdvancedIncSubtensor(Op):
+class AdvancedBooleanSubtensor(BaseAdvancedSubtensor):
     """
+    Return a subtensor copy, using advanced indexing with boolean masks.
+
+    """
+
+    # Should be used by __getitem__ and __getslice__, as follows:
+    # AdvancedBooleanSubtensor()(self, *args),
+    # if args contains and advanced indexing pattern with boolean masks
+
+    def grad(self, inputs, grads):
+        gz, = grads
+        x = inputs[0]
+        rest = inputs[1:]
+        return [advanced_boolean_inc_subtensor(theano.tensor.zeros_like(x), gz,
+                                               *rest)] + \
+            [DisconnectedType()()] * len(rest)
+advanced_boolean_subtensor = AdvancedBooleanSubtensor()
+
+
+class BaseAdvancedIncSubtensor(Op):
+    """
+    Base class for AdvancedIncSubtensor and AdvancedBooleanIncSubtensor.
     Increments a subtensor using advanced indexing.
     """
 
@@ -2215,6 +2308,8 @@ class AdvancedIncSubtensor(Op):
         # TODO: 1. opt to make this in place 2. generalize as described in
         # AdvancedSubtensor's perform TODO
 
+        check_advanced_indexing_dimensions(inputs[0], inputs[2:])
+
         out, = out_
         if not self.inplace:
             out[0] = inputs[0].copy()
@@ -2237,6 +2332,22 @@ class AdvancedIncSubtensor(Op):
             rval.append([False])
 
         return rval
+
+    def R_op(self, inputs, eval_points):
+        if None in eval_points[:2]:
+            return [None]
+        return self.make_node(eval_points[0], eval_points[1],
+                              *inputs[2:]).outputs
+
+
+class AdvancedIncSubtensor(BaseAdvancedIncSubtensor):
+    """
+    Increments a subtensor using advanced indexing.
+    """
+
+    def make_node(self, x, y, *inputs):
+        check_and_reject_bool(inputs)
+        return super(AdvancedIncSubtensor, self).make_node(x, y, *inputs)
 
     def grad(self, inpt, output_gradients):
         x, y = inpt[:2]
@@ -2265,14 +2376,44 @@ class AdvancedIncSubtensor(Op):
             gy = _sum_grad_over_bcasted_dims(y, gy)
         return [gx, gy] + \
             [DisconnectedType()() for _ in idxs]
-
-    def R_op(self, inputs, eval_points):
-        if None in eval_points[:2]:
-            return [None]
-        return self.make_node(eval_points[0], eval_points[1],
-                              *inputs[2:]).outputs
 advanced_inc_subtensor = AdvancedIncSubtensor()
 advanced_set_subtensor = AdvancedIncSubtensor(set_instead_of_inc=True)
+
+
+class AdvancedBooleanIncSubtensor(BaseAdvancedIncSubtensor):
+    """
+    Increments a subtensor using advanced indexing with boolean masks.
+    """
+
+    def grad(self, inpt, output_gradients):
+        x, y = inpt[:2]
+        idxs = inpt[2:]
+        outgrad, = output_gradients
+        if x.dtype in theano.tensor.discrete_dtypes:
+            # The output dtype is the same as x
+            gx = x.zeros_like(dtype=theano.config.floatX)
+            if y.dtype in theano.tensor.discrete_dtypes:
+                gy = y.zeros_like(dtype=theano.config.floatX)
+            else:
+                gy = y.zeros_like()
+        elif x.dtype in theano.tensor.complex_dtypes:
+            raise NotImplementedError("No support for complex grad yet")
+        else:
+            if self.set_instead_of_inc:
+                gx = advanced_set_subtensor(
+                    outgrad,
+                    y.zeros_like(),
+                    *idxs)
+            else:
+                gx = outgrad
+            gy = advanced_boolean_subtensor(outgrad, *idxs)
+            # Make sure to sum gy over the dimensions of y that have been
+            # added or broadcasted
+            gy = _sum_grad_over_bcasted_dims(y, gy)
+        return [gx, gy] + \
+            [DisconnectedType()() for _ in idxs]
+advanced_boolean_inc_subtensor = AdvancedBooleanIncSubtensor()
+advanced_boolean_set_subtensor = AdvancedBooleanIncSubtensor(set_instead_of_inc=True)
 
 
 def take(a, indices, axis=None, mode='raise'):

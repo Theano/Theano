@@ -71,7 +71,6 @@ MyOp = MyOp()
 
 
 class NoInputOp(Op):
-
     """An Op to test the corner-case of an Op with no input."""
     __props__ = ()
 
@@ -238,7 +237,6 @@ class TestMakeThunk(unittest.TestCase):
     def test_no_make_node(self):
         class DoubleOp(Op):
             """An Op without make_node"""
-
             __props__ = ()
 
             itypes = [T.dmatrix]
@@ -310,8 +308,8 @@ def test_get_debug_values_no_debugger():
 
 
 def test_get_det_debug_values_ignore():
-    """get_debug_values should return [] when debugger is ignore
-        and some values are missing """
+    # get_debug_values should return [] when debugger is ignore
+    # and some values are missing
 
     prev_value = config.compute_test_value
     try:
@@ -327,8 +325,8 @@ def test_get_det_debug_values_ignore():
 
 
 def test_get_debug_values_success():
-    """tests that get_debug_value returns values when available
-    (and the debugger is on)"""
+    # tests that get_debug_value returns values when available
+    # (and the debugger is on)
 
     prev_value = config.compute_test_value
     for mode in ['ignore', 'warn', 'raise']:
@@ -356,8 +354,8 @@ def test_get_debug_values_success():
 
 
 def test_get_debug_values_exc():
-    """tests that get_debug_value raises an exception when
-        debugger is set to raise and a value is missing """
+    # tests that get_debug_value raises an exception when
+    # debugger is set to raise and a value is missing
 
     prev_value = config.compute_test_value
     try:
@@ -384,8 +382,8 @@ def test_get_debug_values_exc():
 
 
 def test_debug_error_message():
-    """tests that debug_error_message raises an
-    exception when it should."""
+    # tests that debug_error_message raises an
+    # exception when it should.
 
     prev_value = config.compute_test_value
 

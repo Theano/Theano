@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
-import numpy as np
 from nose.tools import assert_raises
+import numpy as np
 
 import theano
 from theano import tensor
@@ -8,12 +8,13 @@ import theano.tensor.slinalg as slinalg
 from theano.tests.breakpoint import PdbBreakpoint
 from theano.tests import unittest_tools as utt, test_ifelse
 from theano.tensor.tests import test_basic
+from theano.gof.opt import check_stack_trace
 
 import theano.gpuarray
 from .. import basic_ops
 from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
 from ..basic_ops import (
-    GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, host_from_gpu)
+    GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, HostFromGpu, host_from_gpu)
 from ..blas import GpuGemm
 from ..elemwise import (
     GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise, Elemwise, max_inputs_to_GpuElemwise)
@@ -25,6 +26,28 @@ from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, SkipTest
 import unittest
 from theano.tensor.nnet import abstract_conv
 from theano.gpuarray import dnn, blas
+
+
+def _check_stack_trace(thing):
+    def _ops_to_check(op):
+        if not isinstance(op, theano.gof.Op):
+            op = op.op  # assume it is an apply node
+        return not isinstance(op, (theano.compile.ops.Shape_i,
+                                   theano.compile.ops.Shape,
+                                   theano.compile.ops.DeepCopyOp,
+                                   theano.tensor.opt.MakeVector,
+                                   theano.tensor.subtensor.Subtensor,
+                                   theano.tensor.elemwise.Elemwise,
+                                   theano.ifelse.IfElse,
+                                   GpuFromHost, HostFromGpu,
+                                   GpuCAReduceCuda,
+                                   basic_ops.GpuContiguous,
+                                   GpuElemwise,
+                                   theano.printing.Print,
+                                   PdbBreakpoint,
+                                   ))
+    return check_stack_trace(thing, ops_to_check=_ops_to_check,
+                             bug_print="ignore")
 
 
 def test_local_assert():
@@ -70,6 +93,8 @@ def test_local_gpu_contiguous_gpu_contiguous():
                      if isinstance(node.op, basic_ops.GpuContiguous)])
     assert 1 == len([node for node in f2.maker.fgraph.toposort()
                      if isinstance(node.op, basic_ops.GpuContiguous)])
+    assert _check_stack_trace(f1)
+    assert _check_stack_trace(f2)
 
 
 def test_local_gpu_contiguous():
@@ -79,6 +104,7 @@ def test_local_gpu_contiguous():
     assert 1 == len([node for node in f.maker.fgraph.toposort()
                      if isinstance(node.op, basic_ops.GpuContiguous)])
     f([[2.]])
+    assert _check_stack_trace(f)
 
 
 def test_flatten():
@@ -96,6 +122,7 @@ def test_flatten():
     assert res.shape == val.flatten().shape
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]
+    assert _check_stack_trace(f)
 
     f = theano.function([m], m.flatten(ndim=2),
                         mode=mode_with_gpu.excluding("local_useless_reshape"))
@@ -105,6 +132,7 @@ def test_flatten():
     assert res.shape == val.shape
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]
+    assert _check_stack_trace(f)
 
     m = theano.tensor.tensor3()
     f = theano.function([m], m.flatten(ndim=2), mode=mode_with_gpu)
@@ -114,6 +142,7 @@ def test_flatten():
     assert res.shape == val.reshape(10, -1).shape
     assert GpuReshape in [type(node.op)
                           for node in f.maker.fgraph.toposort()]
+    assert _check_stack_trace(f)
 
 
 def test_reduce():
@@ -126,6 +155,9 @@ def test_reduce():
         f = theano.function([m], getattr(m, method)(axis=0,
                                                     **param),
                             mode=mode_with_gpu)
+        # assert _check_stack_trace(f) this op is ok but since
+        # it is using GpuCAReduceCuda that has an empty stack
+        # trace, this assertion gives error.
         val = np.random.rand(10, 11).astype("float32")
         res = f(val)
         utt.assert_allclose(res, getattr(val, method)(axis=0))
@@ -157,6 +189,7 @@ def test_local_gpualloc_memset_0():
     assert len(topo) == 1
     assert isinstance(topo[0].op, theano.tensor.Alloc)
     assert (np.asarray(f(6)) == 0).all()
+    assert _check_stack_trace(f)
 
     # Test with 0 from CPU op.
     # Should be transfered as it is used by another op.
@@ -166,6 +199,7 @@ def test_local_gpualloc_memset_0():
     assert len(topo) == 3
     assert isinstance(topo[0].op, GpuAlloc)
     assert (np.asarray(f(6)) == 0).all()
+    assert _check_stack_trace(f)
 
     # Test with 0
     a = GpuAlloc(test_ctx_name)(z, i)
@@ -174,6 +208,7 @@ def test_local_gpualloc_memset_0():
     assert len(topo) == 1
     assert isinstance(topo[0].op, GpuAlloc) and topo[0].op.memset_0
     assert (np.asarray(f(6)) == 0).all()
+    assert _check_stack_trace(f)
 
     # Test with 1
     a = GpuAlloc(test_ctx_name)(o, i)
@@ -183,6 +218,7 @@ def test_local_gpualloc_memset_0():
     assert isinstance(topo[0].op, GpuAlloc)
     assert not topo[0].op.memset_0
     assert (np.asarray(f(6)) == 1).all()
+    assert _check_stack_trace(f)
 
     # Test with 1, 1
     a = GpuAlloc(test_ctx_name)(ones, i)
@@ -192,6 +228,7 @@ def test_local_gpualloc_memset_0():
     assert isinstance(topo[0].op, GpuAlloc)
     assert not topo[0].op.memset_0
     assert (np.asarray(f(2)) == 1).all()
+    assert _check_stack_trace(f)
 
 
 def test_local_gpualloc_empty():
@@ -207,6 +244,7 @@ def test_local_gpualloc_empty():
     assert isinstance(topo[0].op, theano.tensor.AllocEmpty)
     # This return not initilized data, so we can only check the shape
     assert f(3).shape == (3,)
+    assert _check_stack_trace(f)
 
     # Test with vector
     # Should be moved
@@ -217,6 +255,7 @@ def test_local_gpualloc_empty():
     assert isinstance(topo[0].op, GpuAllocEmpty)
     # This return not initilized data, so we can only check the shape
     assert f(3).shape == (3,)
+    assert _check_stack_trace(f)
 
     # Test with matrix
     a = tensor.AllocEmpty('float32')(i, ii)
@@ -226,6 +265,7 @@ def test_local_gpualloc_empty():
     assert isinstance(topo[0].op, GpuAllocEmpty)
     # This return not initilized data, so we can only check the shape
     assert f(3, 4).shape == (3, 4)
+    assert _check_stack_trace(f)
 
 
 def test_rebroadcast():
@@ -243,6 +283,7 @@ def test_rebroadcast():
 
     assert isinstance(rebr.inputs[0].type, GpuArrayType)
     assert isinstance(rebr.outputs[0].type, GpuArrayType)
+    assert _check_stack_trace(f)
 
 
 class TestSpecifyShape(test_basic.TestSpecifyShape):
@@ -268,6 +309,7 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
                             theano.ifelse.ifelse(cond, x.mean(), x.sum()),
                             mode=mode_with_gpu)
         assert f(np.float32([1, 2, 3]), 0) == 6
+        assert _check_stack_trace(f)
 
         x = tensor.vector()
         cond = tensor.scalar()
@@ -275,6 +317,7 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
                             theano.ifelse.ifelse(cond, x.mean(), x.sum()),
                             mode=mode_with_gpu)
         assert f(np.float32([1, 2, 3]), 0) == 6
+        assert _check_stack_trace(f)
 
     def test_lifter_with_shared_var(self):
         x = tensor.lscalar('x')
@@ -283,12 +326,12 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
         z = tensor.constant(2.)
 
         a = theano.ifelse.ifelse(x, y, z)
-        with theano.configparser.change_flags(on_opt_error='raise'):
+        with theano.change_flags(on_opt_error='raise'):
             theano.function([x], [a], mode=mode_with_gpu)
 
 
 def test_print_op():
-    """ Test that print ops don't block gpu optimization"""
+    # Test that print ops don't block gpu optimization
     b = tensor.fmatrix()
     f = theano.function([b], theano.printing.Print()(b) * 2,
                         mode=mode_with_gpu)
@@ -297,11 +340,12 @@ def test_print_op():
     assert isinstance(topo[1].op, theano.printing.Print)
     assert isinstance(topo[2].op, GpuElemwise)
     assert topo[3].op == host_from_gpu
+    assert _check_stack_trace(f)
     f(np.random.random((5, 5)).astype('float32'))
 
 
 def test_pdbbreakpoint_op():
-    """ Test that PdbBreakpoint ops don't block gpu optimization"""
+    # Test that PdbBreakpoint ops don't block gpu optimization
     b = tensor.fmatrix()
 
     # Create a function composed of a breakpoint followed by
@@ -317,6 +361,7 @@ def test_pdbbreakpoint_op():
     topo = f.maker.fgraph.toposort()
     assert isinstance(topo[-2].op, GpuElemwise)
     assert topo[-1].op == host_from_gpu
+    assert _check_stack_trace(f)
 
 
 def test_local_gpu_elemwise_careduce():
@@ -326,6 +371,7 @@ def test_local_gpu_elemwise_careduce():
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 3
     assert topo[1].op.pre_scalar_op == theano.scalar.sqr
+    assert _check_stack_trace(f)
     data = np.random.rand(3, 4).astype(theano.config.floatX)
     utt.assert_allclose(f(data), (data * data).sum())
 
@@ -334,6 +380,7 @@ def test_local_gpu_elemwise_careduce():
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 3
     assert topo[1].op.pre_scalar_op == theano.scalar.sqr
+    assert _check_stack_trace(f)
     utt.assert_allclose(f(data), (data * data).sum(axis=1))
 
 
@@ -352,6 +399,7 @@ def test_local_lift_dot22scalar():
     y_val = np.random.random((3, 4)).astype(theano.config.floatX)
     a_val = 0.5
     utt.assert_allclose(f_cpu(x_val, y_val, a_val), f_gpu(x_val, y_val, a_val))
+    assert _check_stack_trace(f_gpu)
 
 
 def test_local_gpu_subtensor():
@@ -361,6 +409,7 @@ def test_local_gpu_subtensor():
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])
+    assert _check_stack_trace(f)
 
     # Test graph input.
     t = tensor.fmatrix()
@@ -368,6 +417,7 @@ def test_local_gpu_subtensor():
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])
+    assert _check_stack_trace(f)
 
     # Test multiple use of the input
     # We want the subtensor to be on the GPU to prevent multiple transfer.
@@ -376,6 +426,7 @@ def test_local_gpu_subtensor():
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
     assert any([isinstance(node.op, GpuSubtensor) for node in topo])
+    assert _check_stack_trace(f)
 
     # Test multiple use of the input + input as output
     # We want the subtensor to be on the GPU to prevent multiple transfer.
@@ -384,6 +435,7 @@ def test_local_gpu_subtensor():
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
     assert any([isinstance(node.op, GpuSubtensor) for node in topo])
+    assert _check_stack_trace(f)
 
     # Test shared forced on CPU end we do computation on the output of
     # the subtensor.
@@ -396,12 +448,12 @@ def test_local_gpu_subtensor():
     # If it where just a little bit smarter, it could wrongly move it to the GPU.
     # If it where super smart, it would know it should not move it to the GPU.
     assert any([isinstance(node.op, tensor.Elemwise) for node in topo])
+    assert _check_stack_trace(f)
 
 
 def test_local_gpu_elemwise():
-    """
-    Test local_gpu_elemwise when there is a dtype upcastable to float32
-    """
+    # Test local_gpu_elemwise when there is a dtype upcastable to float32
+
     a = tensor.bmatrix()
     b = tensor.fmatrix()
     c = tensor.fmatrix()
@@ -417,6 +469,7 @@ def test_local_gpu_elemwise():
     assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
     assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
     utt.assert_allclose(f(a_v, b_v, c_v), a_v + b_v + c_v)
+    assert _check_stack_trace(f)
 
     # Now test with the composite already on the cpu before we move it
     # to the gpu
@@ -430,6 +483,7 @@ def test_local_gpu_elemwise():
     assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
     assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
     utt.assert_allclose(f(a_v, b_v, c_v), a_v + b_v + c_v)
+    assert _check_stack_trace(f)
 
     return  # Not yet implemeted
     # Test multiple output
@@ -447,6 +501,7 @@ def test_local_gpu_elemwise():
     utt.assert_allclose(out[0], a_v)
     utt.assert_allclose(out[1], c_v)
     utt.assert_allclose(out[2], b_v)
+    assert _check_stack_trace(f)
 
     # Test multiple output
     out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s, a_s * b_s])
@@ -458,6 +513,7 @@ def test_local_gpu_elemwise():
     out = f(a_v, b_v, c_v)
     utt.assert_allclose(out[0], a_v + b_v)
     utt.assert_allclose(out[1], a_v * c_v)
+    assert _check_stack_trace(f)
 
     # Test non-contiguous input
     c = gpuarray_shared_constructor(np.asarray(c_v, dtype='float32'))
@@ -466,6 +522,7 @@ def test_local_gpu_elemwise():
     out = f(a_v, b_v)
     utt.assert_allclose(out[0], a_v[::2] + b_v[::2])
     utt.assert_allclose(out[1], a_v[::2] * c_v[::2])
+    assert _check_stack_trace(f)
 
 
 def test_many_arg_elemwise():
@@ -516,7 +573,7 @@ def test_not_useless_scalar_gpuelemwise():
     # We don't want to move elemwise on scalar on the GPU when the
     # result will not be used on the GPU!
 
-    with theano.configparser.change_flags(warn_float64='ignore'):
+    with theano.change_flags(warn_float64='ignore'):
         X = tensor.fmatrix()
         x = np.random.randn(32, 32).astype(np.float32)
         m1 = theano.shared(np.random.randn(32, 32).astype(np.float32))
@@ -541,7 +598,8 @@ def test_local_lift_abstractconv_gpu_shape():
         a = tensor.ftensor4()
         b = tensor.ftensor4()
         c = tensor.nnet.abstract_conv.AbstractConv2d_gradWeights()(a, b, s)
-        theano.function([s, a, b], c, mode=mode_with_gpu)
+        f = theano.function([s, a, b], c, mode=mode_with_gpu)
+        assert _check_stack_trace(f)
     finally:
         theano.config.on_opt_error = prev
 
@@ -571,7 +629,8 @@ def test_local_assert_no_cpu_op():
     # If the flag is ignore
     try:
         theano.config.assert_no_cpu_op = 'ignore'
-        theano.function([], out, mode=mode_local_assert)
+        f = theano.function([], out, mode=mode_local_assert)
+        assert _check_stack_trace(f)
     finally:
         theano.config.assert_no_cpu_op = old
 
@@ -581,10 +640,12 @@ def test_no_complex():
     freq_var = tensor.fscalar()
     signal_var = tensor.fscalar()
     stft_out = tensor.exp(width_var * freq_var) * signal_var
-    theano.function([width_var, freq_var, signal_var], stft_out,
-                    mode=mode_with_gpu)
+    f = theano.function([width_var, freq_var, signal_var], stft_out,
+                        mode=mode_with_gpu)
+    assert _check_stack_trace(f)
 
 
+@utt.assertFailure_fast
 def test_local_lift_solve():
     if not cusolver_available:
         raise SkipTest('No cuSolver')
@@ -600,6 +661,7 @@ def test_local_lift_solve():
     A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
     b_val = np.random.uniform(-0.4, 0.4, (5, 3)).astype("float32")
     utt.assert_allclose(f_cpu(A_val, b_val), f_gpu(A_val, b_val))
+    assert _check_stack_trace(f_gpu)
 
 
 def test_gpu_solve_not_inplace():
@@ -619,6 +681,7 @@ def test_gpu_solve_not_inplace():
     utt.assert_allclose(f_cpu(A_val, b_val), f_gpu(A_val, b_val))
 
 
+@utt.assertFailure_fast
 def test_local_lift_cholesky():
     if not cusolver_available:
         raise SkipTest('No cuSolver')
@@ -663,7 +726,8 @@ def test_local_gpua_advanced_incsubtensor():
     w = tensor.ones_like(y)
     w = tensor.set_subtensor(w[tensor.eq(y, 1.0).nonzero()], 100)
     w = tensor.set_subtensor(w[tensor.eq(y, -1.0).nonzero()], 0)
-    theano.function([target], w)
+    f = theano.function([target], w)
+    assert _check_stack_trace(f)
 
 
 def test_batched_dot_lifter():
@@ -688,6 +752,7 @@ def test_batched_dot_lifter():
         z = tensor.batched_dot(x, y)
         f = theano.function([x, y], z, mode=mode_with_gpu)
         f(x_val, y_val)
+        assert check_stack_trace(f, ops_to_check='all')
 
 
 def test_crossentropycategorical1hot_lifter():
@@ -707,7 +772,8 @@ def test_crossentropycategorical1hot_lifter():
 class Conv_opt_test(unittest.TestCase):
 
     def optimizer_2d(self, input_shapes, direction, include_tags, exclude_tags,
-                     op, border_mode='valid', subsample=(1, 1), filter_dilation=(1, 1)):
+                     op, border_mode='valid', subsample=(1, 1),
+                     filter_dilation=(1, 1), num_groups=1):
 
         inp1 = theano.shared(np.random.random(input_shapes[0]).astype(theano.config.floatX))
         inp2 = theano.shared(np.random.random(input_shapes[1]).astype(theano.config.floatX))
@@ -718,7 +784,8 @@ class Conv_opt_test(unittest.TestCase):
                                            input_shapes[1],
                                            border_mode=border_mode,
                                            subsample=subsample,
-                                           filter_dilation=filter_dilation)
+                                           filter_dilation=filter_dilation,
+                                           num_groups=num_groups)
 
         if(direction == 1):
             conv_op = abstract_conv.conv2d_grad_wrt_weights(inp1,
@@ -727,7 +794,8 @@ class Conv_opt_test(unittest.TestCase):
                                                             input_shapes[0],
                                                             border_mode=border_mode,
                                                             subsample=subsample,
-                                                            filter_dilation=filter_dilation)
+                                                            filter_dilation=filter_dilation,
+                                                            num_groups=num_groups)
 
         if(direction == 2):
             conv_op = abstract_conv.conv2d_grad_wrt_inputs(inp1,
@@ -736,21 +804,33 @@ class Conv_opt_test(unittest.TestCase):
                                                            input_shapes[1],
                                                            border_mode=border_mode,
                                                            subsample=subsample,
-                                                           filter_dilation=filter_dilation)
+                                                           filter_dilation=filter_dilation,
+                                                           num_groups=num_groups)
 
         theano.config.metaopt.optimizer_including = include_tags
         theano.config.metaopt.optimizer_excluding = exclude_tags
-        mode = mode_with_gpu.including('conv_meta')
+        mode = mode_with_gpu.including('conv_meta').excluding('conv_dnn').excluding('conv_gemm')
 
         ref_func = theano.function([], conv_op, mode=mode_with_gpu)
-        conv_func = theano.function([], conv_op, mode=mode)
-        assert any([isinstance(node.op, op)
-                    for node in conv_func.maker.fgraph.toposort()])
-        utt.assert_allclose(conv_func(), ref_func())
+        # All meta optimizer compile a new function. This need to know
+        # the current linker, but this information is not available,
+        # so it use the default mode.
+        if op is None:
+            # No convolutions optimization takes place
+            with theano.change_flags(mode=mode):
+                with self.assertRaises(AssertionError):
+                    theano.function([], conv_op, mode=mode)
+            return
+        else:
+            with theano.change_flags(mode=mode):
+                conv_func = theano.function([], conv_op, mode=mode)
+            assert any([isinstance(node.op, op)
+                        for node in conv_func.maker.fgraph.toposort()])
+            utt.assert_allclose(conv_func(), ref_func())
 
     def optimizer_3d(self, input_shapes, direction, include_tags, exclude_tags,
                      op, border_mode='valid', subsample=(1, 1, 1),
-                     filter_dilation=(1, 1, 1)):
+                     filter_dilation=(1, 1, 1), num_groups=1):
         inp1 = theano.shared(np.random.random(input_shapes[0]).astype(theano.config.floatX))
         inp2 = theano.shared(np.random.random(input_shapes[1]).astype(theano.config.floatX))
         if(direction == 0):
@@ -760,7 +840,8 @@ class Conv_opt_test(unittest.TestCase):
                                            input_shapes[1],
                                            border_mode=border_mode,
                                            subsample=subsample,
-                                           filter_dilation=filter_dilation)
+                                           filter_dilation=filter_dilation,
+                                           num_groups=num_groups)
 
         if(direction == 1):
             conv_op = abstract_conv.conv3d_grad_wrt_weights(inp1,
@@ -769,7 +850,8 @@ class Conv_opt_test(unittest.TestCase):
                                                             input_shapes[0],
                                                             border_mode=border_mode,
                                                             subsample=subsample,
-                                                            filter_dilation=filter_dilation)
+                                                            filter_dilation=filter_dilation,
+                                                            num_groups=num_groups)
 
         if(direction == 2):
             conv_op = abstract_conv.conv3d_grad_wrt_inputs(inp1,
@@ -778,20 +860,40 @@ class Conv_opt_test(unittest.TestCase):
                                                            input_shapes[1],
                                                            border_mode=border_mode,
                                                            subsample=subsample,
-                                                           filter_dilation=filter_dilation)
+                                                           filter_dilation=filter_dilation,
+                                                           num_groups=num_groups)
 
         theano.config.metaopt.optimizer_including = include_tags
         theano.config.metaopt.optimizer_excluding = exclude_tags
-        mode = mode_with_gpu.including('conv_meta')
+        mode = mode_with_gpu.including('conv_meta').excluding('conv_dnn').excluding('conv_gemm')
 
         ref_func = theano.function([], conv_op, mode=mode_with_gpu)
-        conv_func = theano.function([], conv_op, mode=mode)
-        if op is not None:
+        # All meta optimizer compile a new function. This need to know
+        # the current linker, but this information is not available,
+        # so it use the default mode.
+        if op is None:
+            # No convolutions optimization takes place
+            with theano.change_flags(mode=mode):
+                with self.assertRaises(AssertionError):
+                    theano.function([], conv_op, mode=mode)
+            return
+        elif op != 'conv3d2d':
+            with theano.change_flags(mode=mode):
+                conv_func = theano.function([], conv_op, mode=mode)
             assert any([isinstance(node.op, op)
                        for node in conv_func.maker.fgraph.toposort()])
+        else:
+            with theano.change_flags(mode=mode):
+                conv_func = theano.function(
+                    [], conv_op,
+                    mode=mode_with_gpu.including('conv_meta'))
+
         utt.assert_allclose(conv_func(), ref_func())
 
-    def test_optimizers(self):
+    def test_optimizers_2d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
+
         imshp2d = [(2, 3, 5, 5), (2, 2, 5, 7), (2, 1, 3, 3)]
         kshp2d = [(4, 3, 3, 3), (3, 2, 3, 5), (4, 1, 1, 1)]
         tshp2d = [(2, 4, 3, 3), (2, 3, 3, 3), (2, 4, 3, 3)]
@@ -799,31 +901,59 @@ class Conv_opt_test(unittest.TestCase):
         for imshp, kshp, tshp in zip(imshp2d, kshp2d, tshp2d):
             # forward passes
             self.optimizer_2d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM)
+            self.optimizer_2d([imshp, kshp, tshp], 0,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorrMM_gradWeights)
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConv)
             self.optimizer_2d([imshp, kshp, tshp], 0,
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConvGradW)
             # backwards wrt weights
             self.optimizer_2d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM_gradWeights)
+            self.optimizer_2d([imshp, tshp, kshp], 1,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorrMM)
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradW)
             self.optimizer_2d([imshp, tshp, kshp], 1,
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
             # backwards wrt to inputs
             self.optimizer_2d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM_gradInputs)
+            self.optimizer_2d([tshp, kshp, imshp], 2,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorrMM)
             self.optimizer_2d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradI)
+            self.optimizer_2d([tshp, kshp, imshp], 2,
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
+
+    def test_optimizers_3d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
 
         imshp3d = [(2, 3, 5, 5, 5), (2, 2, 5, 7, 5), (2, 1, 3, 3, 3)]
         kshp3d = [(4, 3, 3, 3, 3), (3, 2, 3, 5, 3), (4, 1, 1, 1, 1)]
@@ -832,18 +962,30 @@ class Conv_opt_test(unittest.TestCase):
         for imshp, kshp, tshp in zip(imshp3d, kshp3d, tshp3d):
             # forwards passes
             self.optimizer_3d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_dnn:alternative:conv3d2d',
+                              blas.GpuCorr3dMM)
+            self.optimizer_3d([imshp, kshp, tshp], 0,
                               'alternative',
                               'conv_dnn:default:conv3d2d',
                               blas.GpuCorr3dMM_gradWeights)
             self.optimizer_3d([imshp, kshp, tshp], 0,
                               'conv3d2d',
                               'default',
-                              None)
+                              'conv3d2d')
             self.optimizer_3d([imshp, kshp, tshp], 0,
                               'alternative',
                               'conv_gemm:default:conv3d2d',
                               dnn.GpuDnnConvGradW)
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_gemm:alternative:conv3d2d',
+                              dnn.GpuDnnConv)
             # backward pass wrt weight
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorr3dMM_gradWeights)
             self.optimizer_3d([imshp, tshp, kshp], 1,
                               'alternative',
                               'conv_dnn:default',
@@ -852,9 +994,17 @@ class Conv_opt_test(unittest.TestCase):
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradW)
 
             # backward pass wrt inputs
             self.optimizer_3d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorr3dMM_gradInputs)
+            self.optimizer_3d([tshp, kshp, imshp], 2,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorr3dMM)
@@ -862,19 +1012,37 @@ class Conv_opt_test(unittest.TestCase):
                               'alternative',
                               'conv_gemm:default',
                               dnn.GpuDnnConv)
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradI)
 
+    def test_optimizers_non_default(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
         # conv2d forward pass with Non-default border_mode and filter_dilation
         imshp2d = [(2, 3, 5, 5), (4, 2, 5, 5)]
         kshp2d = [(4, 3, 3, 3), (3, 2, 3, 3)]
         filter_dilation = [(1, 1), (2, 2)]
         for imshp, kshp, fdil in zip(imshp2d, kshp2d, filter_dilation):
             self.optimizer_2d([imshp, kshp], 0,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            self.optimizer_2d([imshp, kshp], 0,
                               'alternative',
                               'conv_dnn:default',
                               blas.GpuCorrMM_gradInputs,
                               border_mode='full',
                               filter_dilation=fdil)
-            # works only for cudnn > 6.0
+            self.optimizer_2d([imshp, kshp], 0,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConv,
+                              border_mode='full',
+                              filter_dilation=fdil)
             self.optimizer_2d([imshp, kshp], 0,
                               'alternative',
                               'conv_gemm:default',
@@ -887,15 +1055,194 @@ class Conv_opt_test(unittest.TestCase):
         filter_dilation = [(1, 1, 1), (2, 2, 2)]
         for imshp, kshp, fdil in zip(imshp3d, kshp3d, filter_dilation):
             self.optimizer_3d([imshp, kshp], 0,
+                              '',
+                              'conv_dnn:alternative:conv3d2d',
+                              blas.GpuCorr3dMM,
+                              border_mode='full',
+                              filter_dilation=fdil)
+            self.optimizer_3d([imshp, kshp], 0,
                               'alternative',
                               'conv_dnn:default:conv3d2d',
                               blas.GpuCorr3dMM_gradInputs,
                               border_mode='full',
                               filter_dilation=fdil)
-            # works only for cudnn > 6.0
+            self.optimizer_3d([imshp, kshp], 0,
+                              '',
+                              'conv_gemm:alternative:conv3d2d',
+                              dnn.GpuDnnConv,
+                              border_mode='full',
+                              filter_dilation=fdil)
             self.optimizer_3d([imshp, kshp], 0,
                               'alternative',
                               'conv_gemm:default:conv3d2d',
                               dnn.GpuDnnConvGradI,
                               border_mode='full',
                               filter_dilation=fdil)
+
+        # test non default num_groups for default optimizers
+        imshp2d = [(2, 6, 5, 5), (2, 4, 5, 5)]
+        kshp2d = [(3, 2, 3, 3), (2, 2, 3, 3)]
+        tshp2d = [(2, 3, 3, 3), (2, 2, 3, 3)]
+        num_groups = [3, 2]
+        for imshp, kshp, tshp, groups in zip(imshp2d, kshp2d, tshp2d, num_groups):
+            # forward pass
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM,
+                              num_groups=groups)
+            self.optimizer_2d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConv,
+                              num_groups=groups)
+            # grad with respect to weights
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM_gradWeights,
+                              num_groups=groups)
+            self.optimizer_2d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradW,
+                              num_groups=groups)
+            # grad with respect to inputs
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_dnn:alternative',
+                              blas.GpuCorrMM_gradInputs,
+                              num_groups=groups)
+            self.optimizer_2d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_gemm:alternative',
+                              dnn.GpuDnnConvGradI,
+                              num_groups=groups)
+
+        imshp3d = [(2, 6, 5, 5, 5), (2, 4, 5, 5, 5)]
+        kshp3d = [(3, 2, 3, 3, 3), (2, 2, 3, 3, 3)]
+        tshp3d = [(2, 3, 3, 3, 3), (2, 2, 3, 3, 3)]
+        num_groups = [3, 2]
+        for imshp, kshp, tshp, groups in zip(imshp3d, kshp3d, tshp3d, num_groups):
+            # forward pass
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_dnn:alternative:conv3d2d',
+                              blas.GpuCorr3dMM,
+                              num_groups=groups)
+            self.optimizer_3d([imshp, kshp, tshp], 0,
+                              '',
+                              'conv_gemm:alternative:conv3d2d',
+                              dnn.GpuDnnConv,
+                              num_groups=groups)
+            # grad with respect to weights
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_dnn:alternative:conv3d2d',
+                              blas.GpuCorr3dMM_gradWeights,
+                              num_groups=groups)
+            self.optimizer_3d([imshp, tshp, kshp], 1,
+                              '',
+                              'conv_gemm:alternative:conv3d2d',
+                              dnn.GpuDnnConvGradW,
+                              num_groups=groups)
+            # grad with respect to inputs
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_dnn:alternative:conv3d2d',
+                              blas.GpuCorr3dMM_gradInputs,
+                              num_groups=groups)
+            self.optimizer_3d([tshp, kshp, imshp], 2,
+                              '',
+                              'conv_gemm:alternative:conv3d2d',
+                              dnn.GpuDnnConvGradI,
+                              num_groups=groups)
+
+    def test_returns_none(self):
+        if theano.config.cxx == "":
+            raise SkipTest("Need a c compiler.")
+        # values given dont matter since it returns None
+        imshp = (2, 3, 5, 5)
+        kshp = (4, 3, 3, 3)
+        tshp = (2, 4, 3, 3)
+        exclude_string = ['conv_dnn:default', 'conv_gemm:default']
+        conv_direction = [0, 1, 2]
+        # test that non default subsample returns None
+        for string in exclude_string:
+            for direction in conv_direction:
+                self.optimizer_2d([imshp, kshp, tshp],
+                                  direction,
+                                  'alternative',
+                                  string,
+                                  None,
+                                  subsample=(2, 2))
+        # test that non default num_groups returns None
+        for string in exclude_string:
+            for direction in conv_direction:
+                self.optimizer_2d([imshp, kshp, tshp],
+                                  direction,
+                                  'alternative',
+                                  string,
+                                  None,
+                                  num_groups=3)
+        # test that border_mode=half returns None
+        for string in exclude_string:
+            for direction in conv_direction:
+                self.optimizer_2d([imshp, kshp, tshp],
+                                  direction,
+                                  'alternative',
+                                  string,
+                                  None,
+                                  border_mode='half')
+        # test that Non-default filter dilation return None for
+        # direction 1
+        for string in exclude_string:
+            direction = 1
+            self.optimizer_2d([imshp, kshp, tshp],
+                              direction,
+                              'alternative',
+                              'conv_dnn:default',
+                              None,
+                              filter_dilation=(2, 2))
+
+        imshp = (2, 3, 5, 5, 5)
+        kshp = (4, 3, 3, 3, 3)
+        tshp = (2, 4, 3, 3, 3)
+        exclude_string = ['conv_dnn:default', 'conv_gemm:default']
+        # test that non default subsample returns None
+        for string in exclude_string:
+            for direction in conv_direction:
+                self.optimizer_3d([imshp, kshp, tshp],
+                                  direction,
+                                  'alternative',
+                                  string,
+                                  None,
+                                  subsample=(2, 2, 2))
+        # test that non default num_groups returns None
+        for string in exclude_string:
+            for direction in conv_direction:
+                self.optimizer_3d([imshp, kshp, tshp],
+                                  direction,
+                                  'alternative',
+                                  string,
+                                  None,
+                                  num_groups=3)
+        # test that border_mode=half returns None
+        for string in exclude_string:
+            for direction in conv_direction:
+                self.optimizer_3d([imshp, kshp, tshp],
+                                  direction,
+                                  'alternative',
+                                  string,
+                                  None,
+                                  border_mode='half')
+        # test that Non-default filter dilation return None for
+        # direction 1
+        for string in exclude_string:
+            direction = 1
+            self.optimizer_3d([imshp, kshp, tshp],
+                              direction,
+                              'alternative',
+                              string,
+                              None,
+                              filter_dilation=(2, 2, 2))

@@ -18,7 +18,7 @@ def test_bug_2009_06_02_trac_387():
 
 
 def test_bug_2009_07_17_borrowed_output():
-    """Regression test for a bug where output was borrowed by mistake."""
+    # Regression test for a bug where output was borrowed by mistake.
     a = theano.tensor.dmatrix()
     b = theano.tensor.dmatrix()
     # The output should *NOT* be borrowed.

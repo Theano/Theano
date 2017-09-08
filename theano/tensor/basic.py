@@ -12,7 +12,7 @@ import numbers
 
 import theano
 from theano.compat import izip
-from theano.configparser import config
+from theano import config
 from theano import gof
 from theano.gof import Apply, Constant, Op, Variable, ParamsType
 from theano.gof.type import Generic
@@ -900,6 +900,62 @@ def tensor5(name=None, dtype=None):
     return type(name)
 tensor5s, ftensor5s, dtensor5s, itensor5s, ltensor5s = _multi(
     tensor5, ftensor5, dtensor5, itensor5, ltensor5)
+
+ctensor6 = TensorType('complex64', ((False,) * 6))
+ztensor6 = TensorType('complex128', ((False,) * 6))
+ftensor6 = TensorType('float32', ((False,) * 6))
+dtensor6 = TensorType('float64', ((False,) * 6))
+btensor6 = TensorType('int8', ((False,) * 6))
+wtensor6 = TensorType('int16', ((False,) * 6))
+itensor6 = TensorType('int32', ((False,) * 6))
+ltensor6 = TensorType('int64', ((False,) * 6))
+
+
+def tensor6(name=None, dtype=None):
+    """Return a symbolic 6-D variable.
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = TensorType(dtype, (False,) * 6)
+    return type(name)
+tensor6s, ftensor6s, dtensor6s, itensor6s, ltensor6s = _multi(
+    tensor6, ftensor6, dtensor6, itensor6, ltensor6)
+
+ctensor7 = TensorType('complex64', ((False,) * 7))
+ztensor7 = TensorType('complex128', ((False,) * 7))
+ftensor7 = TensorType('float32', ((False,) * 7))
+dtensor7 = TensorType('float64', ((False,) * 7))
+btensor7 = TensorType('int8', ((False,) * 7))
+wtensor7 = TensorType('int16', ((False,) * 7))
+itensor7 = TensorType('int32', ((False,) * 7))
+ltensor7 = TensorType('int64', ((False,) * 7))
+
+
+def tensor7(name=None, dtype=None):
+    """Return a symbolic 7-D variable.
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = TensorType(dtype, (False,) * 7)
+    return type(name)
+tensor7s, ftensor7s, dtensor7s, itensor7s, ltensor7s = _multi(
+    tensor7, ftensor7, dtensor7, itensor7, ltensor7)
 
 
 Tensor = TensorType
@@ -2143,6 +2199,67 @@ def sqr(a):
 
 # alias to sqr, included to maintain similarity with numpy interface
 square = sqr
+
+
+def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=None):
+    """Calculate the covariance matrix.
+    Covariance indicates the level to which two variables vary together.
+    If we examine N-dimensional samples, :math:`m = [x_1, x_2, ... x_N]^T`,
+    then the covariance matrix element :math:`C_{ij}` is the covariance of
+    :math:`x_i` and :math:`x_j`. The element :math:`C_{ii}` is the variance
+    of :math:`x_i`. Code and docstring ported from numpy.
+    ----------
+    m : array_like
+        A 2-D array containing multiple variables and observations.
+        Each row of `m` represents a variable, and each column is
+        observations of all those variables.
+    y : array_like, optional
+        An additional set of variables and observations. `y` has the same form
+        as that of `m`.
+    rowvar : bool, optional
+        If `rowvar` is True (default), then each row represents a
+        variable, with observations in the columns. Otherwise, the relationship
+        is transposed: each column represents a variable, while the rows
+        contain observations.
+    bias : bool, optional
+        Default normalization (False) is by ``(N - 1)``, where ``N`` is the
+        number of observations given (unbiased estimate). If `bias` is True, then
+        normalization is by ``N``. These values can be overridden by using the
+        keyword ``ddof``.
+    ddof : int, optional
+        If not ``None`` the default value implied by `bias` is overridden.
+        The default value is ``None``.
+    Returns
+    -------
+    out : The covariance matrix of the variables.
+    """
+
+    if fweights is not None:
+        raise NotImplementedError('fweights are not implemented')
+    if aweights is not None:
+        raise NotImplementedError('aweights are not implemented')
+
+    if not rowvar and m.shape[0] != 1:
+        m = m.T
+
+    if y is not None:
+        if not rowvar and y.shape[0] != 1:
+            y = y.T
+        m = theano.tensor.concatenate((m, y), axis=0)
+
+    if ddof is None:
+        if not bias:
+            ddof = 1
+        else:
+            ddof = 0
+
+    # Determine the normalization
+    fact = m.shape[1] - ddof
+
+    m -= m.mean(axis=1, keepdims=1)
+    c = m.dot(m.T)
+    c *= theano.tensor.constant(1) / fact
+    return c.squeeze()
 
 
 @_scal_elemwise

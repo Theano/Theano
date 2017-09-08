@@ -12,6 +12,7 @@ import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr3d, conv
+from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv3d_noOptim
 
 
 class TestCorr3D(utt.InferShapeTester):
@@ -416,6 +417,15 @@ class TestCorr3D(utt.InferShapeTester):
         self.validate((3, 1, 7, 5, 5), (2, 1, 2, 3, 3), (1, 1, 2), non_contiguous=True)
         self.validate((3, 1, 7, 5, 5), (2, 1, 2, 3, 3), (1, 2, 1), non_contiguous=True)
         self.validate((3, 1, 7, 5, 5), (2, 1, 2, 3, 3), (2, 1, 1), non_contiguous=True)
+
+
+class TestGroupCorr3d(Grouped_conv3d_noOptim):
+    mode = theano.compile.get_mode("FAST_RUN")
+    conv_op = corr3d.Corr3dMM
+    conv_gradw_op = corr3d.Corr3dMM_gradWeights
+    conv_gradi_op = corr3d.Corr3dMM_gradInputs
+    flip_filter = True
+    is_dnn = False
 
 
 if __name__ == '__main__':

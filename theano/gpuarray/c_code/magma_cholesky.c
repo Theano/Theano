@@ -1,6 +1,7 @@
 #section kernels
 
 #kernel tril_kernel : size, size, size, *:
+#include "cluda.h"
 
 KERNEL void tril_kernel(const ga_size nthreads, const ga_size ncols,
                         const ga_size a_off, GLOBAL_MEM DTYPE_INPUT_0 *a) {
@@ -17,6 +18,7 @@ KERNEL void tril_kernel(const ga_size nthreads, const ga_size ncols,
 }
 
 #kernel triu_kernel : size, size, size, *:
+#include "cluda.h"
 
 KERNEL void triu_kernel(const ga_size nthreads, const ga_size ncols,
                         const ga_size a_off, GLOBAL_MEM DTYPE_INPUT_0 *a) {

@@ -55,6 +55,13 @@ AddConfigVar('warn_float64',
              in_c_key=False,
              )
 
+AddConfigVar('pickle_test_value',
+             "Dump test values while pickling model. "
+             "If True, test values will be dumped with model.",
+             BoolParam(True),
+             in_c_key=False,
+             )
+
 AddConfigVar('cast_policy',
              'Rules for implicit type casting',
              EnumStr('custom', 'numpy+floatX',
@@ -466,12 +473,24 @@ AddConfigVar(
 # scalable.
 # Also, please be careful not to modify the first item in the enum when adding
 # new modes, since it is the default mode.
+def filter_mode(val):
+    if val in ['Mode', 'DebugMode', 'FAST_RUN',
+               'NanGuardMode',
+               'FAST_COMPILE', 'DEBUG_MODE']:
+        return val
+    # This can be executed before Theano is completly imported, so
+    # theano.Mode is not always available.
+    elif hasattr(theano, 'Mode') and isinstance(val, theano.Mode):
+        return val
+    else:
+        raise ValueError("Expected one of those string 'Mode', 'DebugMode',"
+                         " 'FAST_RUN', 'NanGuardMode', 'FAST_COMPILE',"
+                         " 'DEBUG_MODE' or an instance of Mode.")
+
 AddConfigVar(
     'mode',
     "Default compilation mode",
-    EnumStr('Mode', 'DebugMode', 'FAST_RUN',
-            'NanGuardMode',
-            'FAST_COMPILE', 'DEBUG_MODE'),
+    ConfigParam('Mode', filter_mode),
     in_c_key=False)
 
 param = "g++"
@@ -1340,7 +1359,7 @@ def default_blas_ldflags():
         else:
             # This branch is executed if no exception was raised
             if sys.platform == "win32":
-                lib_path = [os.path.join(sys.prefix, 'Library', 'bin')]
+                lib_path = os.path.join(sys.prefix, 'Library', 'bin')
                 flags = ['-L"%s"' % lib_path]
             else:
                 lib_path = blas_info.get('library_dirs', [])
@@ -1575,7 +1594,7 @@ AddConfigVar('cycle_detection',
 
              "The interaction of which one give the lower peak memory usage is"
              "complicated and not predictable, so if you are close to the peak"
-             "memory usage, triyng both could give you a small gain. ",
+             "memory usage, triyng both could give you a small gain.",
              EnumStr('regular', 'fast'),
              in_c_key=False)
 

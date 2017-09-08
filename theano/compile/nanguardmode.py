@@ -6,7 +6,7 @@ from six.moves import StringIO
 import numpy as np
 
 import theano
-from theano.configparser import config
+from theano import config
 import theano.tensor as T
 from theano.compile import Mode
 from .mode import get_mode

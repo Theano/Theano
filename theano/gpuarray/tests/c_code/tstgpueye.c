@@ -1,6 +1,7 @@
 #section kernels
 
 #kernel eye : *, size, size, size :
+#include <cluda.h>
 /* The eye name will be used to generate supporting objects.  The only
    you probably need to care about is the kernel object which will be
    named 'k_' + <the name above> (k_eye in this case).  This name also

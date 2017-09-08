@@ -30,9 +30,6 @@ from theano.tensor import opt
 
 # Cpu implementation
 from theano.tensor.nnet.conv import conv2d, ConvOp
-from theano.tensor.nnet.Conv3D import conv3D
-from theano.tensor.nnet.ConvGrad3D import convGrad3D
-from theano.tensor.nnet.ConvTransp3D import convTransp3D
 
 
 @gof.local_optimizer([SparseBlockGemv], inplace=True)
@@ -85,12 +82,14 @@ def local_abstractconv_gemm(node):
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (kern.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        kern = kern[flip]
     rval = CorrMM(border_mode=node.op.border_mode,
                   subsample=node.op.subsample,
                   filter_dilation=node.op.filter_dilation,
-                  num_groups=node.op.num_groups)(img, kern)
-
+                  num_groups=node.op.num_groups,
+                  unshared=node.op.unshared)(img, kern)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -114,7 +113,8 @@ def local_abstractconv3d_gemm(node):
         kern = kern[:, :, ::-1, ::-1, ::-1]
     rval = Corr3dMM(border_mode=node.op.border_mode,
                     subsample=node.op.subsample,
-                    filter_dilation=node.op.filter_dilation)(img, kern)
+                    filter_dilation=node.op.filter_dilation,
+                    num_groups=node.op.num_groups)(img, kern)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -136,12 +136,15 @@ def local_abstractconv_gradweight_gemm(node):
     rval = CorrMM_gradWeights(border_mode=node.op.border_mode,
                               subsample=node.op.subsample,
                               filter_dilation=node.op.filter_dilation,
-                              num_groups=node.op.num_groups)(img, topgrad, shape)
+                              num_groups=node.op.num_groups,
+                              unshared=node.op.unshared)(img, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
-        rval = rval[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (rval.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        rval = rval[flip]
     rval = theano.tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
     copy_stack_trace(node.outputs[0], rval)
 
@@ -163,7 +166,8 @@ def local_abstractconv3d_gradweight_gemm(node):
 
     rval = Corr3dMM_gradWeights(border_mode=node.op.border_mode,
                                 subsample=node.op.subsample,
-                                filter_dilation=node.op.filter_dilation)(img, topgrad, shape)
+                                filter_dilation=node.op.filter_dilation,
+                                num_groups=node.op.num_groups)(img, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     # need to flip the kernel if necessary
@@ -190,12 +194,14 @@ def local_abstractconv_gradinputs_gemm(node):
 
     # need to flip the kernel if necessary
     if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1]
+        flip = (slice(None),) * (kern.ndim - 2) + \
+            (slice(None, None, -1),) * 2
+        kern = kern[flip]
     rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
                              filter_dilation=node.op.filter_dilation,
-                             num_groups=node.op.num_groups)(kern, topgrad,
-                                                            shape)
+                             num_groups=node.op.num_groups,
+                             unshared=node.op.unshared)(kern, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -219,8 +225,9 @@ def local_abstractconv3d_gradinputs_gemm(node):
         kern = kern[:, :, ::-1, ::-1, ::-1]
     rval = Corr3dMM_gradInputs(border_mode=node.op.border_mode,
                                subsample=node.op.subsample,
-                               filter_dilation=node.op.filter_dilation)(kern, topgrad,
-                                                                        shape)
+                               filter_dilation=node.op.filter_dilation,
+                               num_groups=node.op.num_groups)(kern, topgrad,
+                                                              shape)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -242,7 +249,7 @@ def local_conv2d_cpu(node):
     if not node.op.filter_flip:
         # Not tested yet
         return None
-    if node.op.num_groups > 1:
+    if node.op.num_groups > 1 or node.op.unshared:
         return None
 
     rval = conv2d(img, kern,
@@ -251,37 +258,6 @@ def local_conv2d_cpu(node):
                   subsample=node.op.subsample)
 
     copy_stack_trace(node.outputs[0], rval)
-    return [rval]
-
-
-@local_optimizer([AbstractConv3d])
-def local_conv3d_cpu(node):
-    if not isinstance(node.op, AbstractConv3d):
-        return None
-
-    img, kern = node.inputs
-    if ((not isinstance(img.type, TensorType) or
-         not isinstance(kern.type, TensorType))):
-        return None
-    if node.op.border_mode not in ['valid', (0, 0, 0)]:
-        return None
-    if node.op.filter_dilation != (1, 1, 1):
-        return None
-
-    bias = theano.tensor.zeros_like(kern[:, 0, 0, 0, 0])
-
-    # need to flip the kernel if necessary (conv3D does not flip)
-    if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1, ::-1]
-
-    # conv3D expects shape (batch, row, column, time, channel)
-    img = img.dimshuffle(0, 2, 3, 4, 1)
-    kern = kern.dimshuffle(0, 2, 3, 4, 1)
-
-    rval = conv3D(img, kern, bias, node.op.subsample)
-    copy_stack_trace(node.outputs[0], rval)
-    rval = rval.dimshuffle(0, 4, 1, 2, 3)
-
     return [rval]
 
 
@@ -301,33 +277,12 @@ def local_conv2d_gradweight_cpu(node):
     if not node.op.filter_flip:
         # Not tested yet
         return
-    if node.op.num_groups > 1:
+    if node.op.num_groups > 1 or node.op.unshared:
         return None
 
     if node.op.border_mode == 'valid' and \
             (node.op.subsample != (1, 1)):
-        # Use the gradient as defined in conv3D, because the implementation
-        # by Conv is slow (about 3x slower than conv3D, and probably 10x
-        # slower than it could be), and incorrect when subsample > 2.
-        # build a "node", that should be equivalent to the one given by
-        # self.make_node, but using convGrad3D instead.
-        shuffled_img = img.dimshuffle(0, 2, 3, 'x', 1)
-        shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
-        rval = convGrad3D(V=shuffled_img,
-                          d=(node.op.subsample[0], node.op.subsample[1], 1),
-                          WShape=(shuffled_topgrad.shape[4],
-                                  shape[0], shape[1], 1,
-                                  shuffled_img.shape[4]),
-                          dCdH=shuffled_topgrad)
-        copy_stack_trace(node.outputs[0], rval)
-
-        rval = theano.tensor.addbroadcast(rval, 3)
-        rval = rval.dimshuffle(0, 4, 1, 2)
-        rval = rval[:, :, ::-1, ::-1]
-        rval = theano.tensor.patternbroadcast(rval,
-                                              node.outputs[0].broadcastable)
-        copy_stack_trace(node.outputs[0], rval)
-        return [rval]
+        return None
 
     dx, dy = node.op.subsample
     if dx not in (1, 2) or dy not in (1, 2):
@@ -406,39 +361,6 @@ def local_conv2d_gradweight_cpu(node):
     return [res]
 
 
-@local_optimizer([AbstractConv3d_gradWeights])
-def local_conv3d_gradweight_cpu(node):
-    if not isinstance(node.op, AbstractConv3d_gradWeights):
-        return None
-
-    img, topgrad, shape = node.inputs
-    if ((not isinstance(img.type, TensorType) or
-         not isinstance(topgrad.type, TensorType))):
-        return None
-    if node.op.border_mode not in ['valid', (0, 0, 0)]:
-        return None
-    if node.op.filter_dilation != (1, 1, 1):
-        return None
-
-    # conv3D expects shape (batch, row, column, time, channel)
-    img = img.dimshuffle(0, 2, 3, 4, 1)
-    topgrad = topgrad.dimshuffle(0, 2, 3, 4, 1)
-
-    W_shape = (topgrad.shape[4], shape[0], shape[1], shape[2], img.shape[4])
-
-    rval = convGrad3D(img, node.op.subsample, W_shape, topgrad)
-    copy_stack_trace(node.outputs[0], rval)
-    rval = rval.dimshuffle(0, 4, 1, 2, 3)
-
-    # need to flip the kernel if necessary (conv3D does not flip)
-    if node.op.filter_flip:
-        rval = rval[:, :, ::-1, ::-1, ::-1]
-
-    rval = theano.tensor.patternbroadcast(rval,
-                                          node.outputs[0].broadcastable)
-    return [rval]
-
-
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_conv2d_gradinputs_cpu(node):
     if (not isinstance(node.op, AbstractConv2d_gradInputs) or
@@ -455,27 +377,13 @@ def local_conv2d_gradinputs_cpu(node):
     if not node.op.filter_flip:
         # Not tested yet
         return None
-    if node.op.num_groups > 1:
+    if node.op.num_groups > 1 or node.op.unshared:
         return None
 
     # Conv 3d implementation, needed when subsample > 2
     if node.op.border_mode == 'valid' and node.op.subsample != (1, 1):
-        kern = kern[:, :, ::-1, ::-1]
-        shuffled_kern = kern.dimshuffle(0, 2, 3, 'x', 1)
-        shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
-        b = theano.tensor.zeros_like(shuffled_kern[0, 0, 0, 0, :])
-        rval = convTransp3D(W=shuffled_kern, b=b,
-                            d=(node.op.subsample[0], node.op.subsample[1], 1),
-                            H=shuffled_topgrad,
-                            RShape=(shape[0], shape[1], 1))
-        copy_stack_trace(node.outputs[0], rval)
-        rval = theano.tensor.addbroadcast(rval, 3)
-        rval = rval.dimshuffle(0, 4, 1, 2)
-        rval = theano.tensor.patternbroadcast(rval,
-                                              node.outputs[0].broadcastable)
-
-        copy_stack_trace(node.outputs[0], rval)
-        return [rval]
+        # The op don't support that anymore.
+        return False
 
     # Conv2d Implementation
     dx, dy = node.op.subsample
@@ -531,38 +439,6 @@ def local_conv2d_gradinputs_cpu(node):
     return [din]
 
 
-@local_optimizer([AbstractConv3d_gradInputs])
-def local_conv3d_gradinputs_cpu(node):
-    if not isinstance(node.op, AbstractConv3d_gradInputs):
-        return None
-
-    kern, topgrad, shape = node.inputs
-    if ((not isinstance(kern.type, TensorType) or
-         not isinstance(topgrad.type, TensorType))):
-        return None
-    if node.op.border_mode not in ['valid', (0, 0, 0)]:
-        return None
-    if node.op.filter_dilation != (1, 1, 1):
-        return None
-
-    # need to flip the kernel if necessary (conv3D does not flip)
-    if node.op.filter_flip:
-        kern = kern[:, :, ::-1, ::-1, ::-1]
-
-    # conv3D expects shape (batch, row, column, time, channel)
-    kern = kern.dimshuffle(0, 2, 3, 4, 1)
-    topgrad = topgrad.dimshuffle(0, 2, 3, 4, 1)
-    bias = theano.tensor.zeros_like(kern[0, 0, 0, 0, :])
-
-    rval = convTransp3D(kern, bias, node.op.subsample, topgrad, shape)
-    copy_stack_trace(node.outputs[0], rval)
-    rval = rval.dimshuffle(0, 4, 1, 2, 3)
-
-    rval = theano.tensor.patternbroadcast(rval,
-                                          node.outputs[0].broadcastable)
-    return [rval]
-
-
 # Register Cpu Optmization
 conv_groupopt = theano.gof.optdb.LocalGroupDB()
 conv_groupopt.__name__ = "conv_opts"
@@ -586,6 +462,7 @@ conv_groupopt.register('local_abstractconv3d_gradweight_gemm',
 conv_groupopt.register('local_abstractconv3d_gradinputs_gemm',
                        local_abstractconv3d_gradinputs_gemm, 30,
                        'conv_gemm', 'fast_compile', 'fast_run')
+
 # Legacy convolution
 conv_groupopt.register('local_conv2d_cpu', local_conv2d_cpu, 40,
                        'fast_compile', 'fast_run')
@@ -594,14 +471,6 @@ conv_groupopt.register('local_conv2d_gradweight_cpu',
                        'fast_compile', 'fast_run')
 conv_groupopt.register('local_conv2d_gradinputs_cpu',
                        local_conv2d_gradinputs_cpu, 40,
-                       'fast_compile', 'fast_run')
-conv_groupopt.register('local_conv3d_cpu', local_conv3d_cpu, 40,
-                       'fast_compile', 'fast_run')
-conv_groupopt.register('local_conv3d_gradweight_cpu',
-                       local_conv3d_gradweight_cpu, 40,
-                       'fast_compile', 'fast_run')
-conv_groupopt.register('local_conv3d_gradinputs_cpu',
-                       local_conv3d_gradinputs_cpu, 40,
                        'fast_compile', 'fast_run')
 
 
