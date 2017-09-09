@@ -3021,10 +3021,16 @@ class T_Scan(unittest.TestCase):
         nwo_u = theano.tensor.Rop(o, _u, eu)
         nwo_h0 = theano.tensor.Rop(o, _h0, eh0)
         nwo_W = theano.tensor.Rop(o, _W, eW)
+        # TODO Fails because of the Random State
+        nwo_u2 = theano.tensor.Rop_via_Lop(o, _u, eu)
+        nwo_h02 = theano.tensor.Rop_via_Lop(o, _h0, eh0)
+        nwo_W2 = theano.tensor.Rop_via_Lop(o, _W, eW)
         fn_rop = theano.function([u, h0, W, eu, eh0, eW],
-                                 [nwo_u, nwo_h0, nwo_W, o],
+                                 [nwo_u, nwo_h0, nwo_W,
+                                  nwo_u2, nwo_h02, nwo_W2, o],
                                  on_unused_input='ignore')
-        vnu, vnh0, vnW, vno = fn_rop(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
+        vnu, vnh0, vnW, vnu2, vnh02, vnW2, vno = fn_rop(
+            v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
 
         n2o_u, _ = theano.scan(lambda i, o, u, h0, W, eu: \
                                 (theano.tensor.grad(o[i], u) * eu).sum(),
@@ -3052,6 +3058,9 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(vnu, tnu, atol=1e-6)
         utt.assert_allclose(vnh0, tnh0, atol=1e-6)
         utt.assert_allclose(vnW, tnW, atol=2e-6)
+        utt.assert_allclose(vnu2, tnu, atol=1e-6)
+        utt.assert_allclose(vnh02, tnh0, atol=1e-6)
+        utt.assert_allclose(vnW2, tnW, atol=2e-6)
 
     def test_rop(self):
         seed = utt.fetch_seed()
@@ -3093,8 +3102,12 @@ class T_Scan(unittest.TestCase):
         nwo_u = theano.tensor.Rop(o, _u, eu)
         nwo_h0 = theano.tensor.Rop(o, _h0, eh0)
         nwo_W = theano.tensor.Rop(o, _W, eW)
+        nwo_u2 = theano.tensor.Rop_via_Lop(o, _u, eu)
+        nwo_h02 = theano.tensor.Rop_via_Lop(o, _h0, eh0)
+        nwo_W2 = theano.tensor.Rop_via_Lop(o, _W, eW)
         fn_rop = theano.function([u, h0, W, eu, eh0, eW],
-                                 [nwo_u, nwo_h0, nwo_W],
+                                 [nwo_u, nwo_h0, nwo_W,
+                                  nwo_u2, nwo_h02, nwo_W2],
                                  on_unused_input='ignore')
 
         n2o_u, _ = theano.scan(lambda i, o, u, h0, W, eu: \
@@ -3119,12 +3132,16 @@ class T_Scan(unittest.TestCase):
                                   [n2o_u, n2o_h0, n2o_W],
                                   on_unused_input='ignore')
 
-        vnu, vnh0, vnW = fn_rop(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
+        vnu, vnh0, vnW, vnu2, vnh02, vnW2 = fn_rop(
+            v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
         tnu, tnh0, tnW = fn_test(v_u, v_h0, v_W, v_eu, v_eh0, v_eW)
 
         utt.assert_allclose(vnu, tnu, atol=1e-6)
         utt.assert_allclose(vnh0, tnh0, atol=1e-6)
         utt.assert_allclose(vnW, tnW, atol=1e-6)
+        utt.assert_allclose(vnu2, tnu, atol=1e-6)
+        utt.assert_allclose(vnh02, tnh0, atol=1e-6)
+        utt.assert_allclose(vnW2, tnW, atol=1e-6)
 
     def test_pushout_dot(self):
         W = tensor.matrix('W')

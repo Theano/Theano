@@ -32,7 +32,8 @@ def test_rop_lop():
     y = matrix_inverse(mx).sum(axis=0)
 
     yv = tensor.Rop(y, mx, mv)
-    rop_f = function([mx, mv], yv)
+    yv2 = tensor.Rop_via_Lop(y, mx, mv)
+    rop_f = function([mx, mv], [yv, yv2])
 
     sy, _ = theano.scan(lambda i, y, x, v: (tensor.grad(y[i], x) * v).sum(),
                         sequences=tensor.arange(y.shape[0]),
@@ -43,10 +44,11 @@ def test_rop_lop():
     vx = np.asarray(rng.randn(4, 4), theano.config.floatX)
     vv = np.asarray(rng.randn(4, 4), theano.config.floatX)
 
-    v1 = rop_f(vx, vv)
-    v2 = scan_f(vx, vv)
+    v1 = scan_f(vx, vv)
+    v2, v3 = rop_f(vx, vv)
 
-    assert _allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
+    assert _allclose(v2, v1), ('Rop mismatch: %s %s' % (v2, v1))
+    assert _allclose(v3, v1), ('Rop_via_Lop mismatch: %s %s' % (v3, v1))
 
     raised = False
     try:
@@ -59,6 +61,21 @@ def test_rop_lop():
     if not raised:
         raise Exception((
             'Op did not raised an error even though the function'
+            ' is not differentiable'))
+
+    try:
+        tensor.Rop_via_Lop(
+            theano.clone(y, replace={mx: break_op(mx)}),
+            mx,
+            mv)
+    except theano.gradient.NullTypeGradError:
+        raised = True
+    except theano.gradient.DisconnectedInputError:
+        raised = True
+
+    if not raised:
+        raise Exception((
+            'Rop_via_Lop for Op did not raise an error even though the function'
             ' is not differentiable'))
 
     vv = np.asarray(rng.uniform(size=(4,)), theano.config.floatX)

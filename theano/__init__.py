@@ -136,7 +136,7 @@ from theano.updates import OrderedUpdates
 
 # import sparse
 
-from theano.gradient import Rop, Lop, grad, subgraph_grad
+from theano.gradient import Rop, Rop_via_Lop, Lop, grad, subgraph_grad
 
 # This need to be before the init of GPU, as it add config variable
 # needed during that phase.
