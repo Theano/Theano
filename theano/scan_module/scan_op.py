@@ -71,6 +71,7 @@ from theano.tensor.opt import Shape_i
 from theano.gradient import grad_undefined, DisconnectedType, NullType
 from six import string_types
 from theano.compile.profiling import ScanProfileStats
+from theano.tensor.raw_random import random_state_type
 
 from theano.scan_module import scan_utils
 from theano.scan_module.scan_utils import safe_new, forced_replace
@@ -2128,7 +2129,11 @@ class Scan(PureOp):
         # mask inputs that get no gradients
         for dx in xrange(len(dC_dinps_t)):
             if not dC_dinps_t[dx]:
-                dC_dinps_t[dx] = tensor.zeros_like(diff_inputs[dx])
+                # For random_state_type inputs we can't provide even zeros
+                if diff_inputs[dx].type == random_state_type:
+                    dC_dinps_t[dx] = DisconnectedType()()
+                else:
+                    dC_dinps_t[dx] = tensor.zeros_like(diff_inputs[dx])
             else:
                 disconnected_dC_dinps_t[dx] = False
                 for Xt, Xt_placeholder in zip(
@@ -2443,10 +2448,11 @@ class Scan(PureOp):
             if isinstance(vl.type, NullType):
                 type_outs.append(vl.type.why_null)
                 # Replace the inner output with a zero tensor of
-                # the right shape
-                inner_out_sitsot[_p] = tensor.zeros(
-                    diff_inputs[ins_pos + _p].shape,
-                    dtype=theano.config.floatX)
+                # the right shape if it is not of random_state_type
+                if diff_inputs[ins_pos + _p].type != random_state_type:
+                    inner_out_sitsot[_p] = tensor.zeros(
+                        diff_inputs[ins_pos + _p].shape,
+                        dtype=theano.config.floatX)
             elif through_shared:
                 type_outs.append('through_shared')
             elif disconnected_dC_dinps_t[_p + ins_pos]:
@@ -2480,14 +2486,20 @@ class Scan(PureOp):
             x = self.outer_non_seqs(inputs)[_idx]
             if isinstance(y.type, NullType):
                 # Cannot use dC_dXtm1s.dtype, so we use floatX instead.
-                outer_inp_sitsot.append(
-                    tensor.zeros([grad_steps + 1] +
-                                 [x.shape[i] for i in xrange(x.ndim)],
-                                 dtype=theano.config.floatX))
+                # This of course is not valid if x is random_state_type
+                if x.type == random_state_type:
+                    outer_inp_sitsot.append(DisconnectedType()())
+                else:
+                    outer_inp_sitsot.append(
+                        tensor.zeros([grad_steps + 1] +
+                                     [x.shape[i] for i in xrange(x.ndim)],
+                                     dtype=theano.config.floatX))
                 # replace y by a zero tensor of the right shape
-                inner_inp_sitsot[_idx] = tensor.zeros(
-                    diff_inputs[ins_pos + _idx].shape,
-                    dtype=theano.config.floatX)
+                # Again not valid if y is random_state_type
+                if diff_inputs[ins_pos + _idx].type != random_state_type:
+                    inner_inp_sitsot[_idx] = tensor.zeros(
+                        diff_inputs[ins_pos + _idx].shape,
+                        dtype=theano.config.floatX)
 
             else:
                 outer_inp_sitsot.append(
@@ -2539,6 +2551,14 @@ class Scan(PureOp):
                           inner_out_sitsot +
                           inner_out_nitsot)
 
+        # We need to filter any random_state_type variables and null_type
+        # variables from both the inner inputs and the outer inputs
+        inner_gfn_ins = list(filter(lambda x: x.type not in (random_state_type, theano.gradient.null_type),
+                                    inner_gfn_ins))
+        outer_inputs = list(filter(lambda x: x.type not in (random_state_type, theano.gradient.null_type),
+                                   outer_inputs))
+
+        # Apply the Scan op
         local_op = Scan(inner_gfn_ins, inner_gfn_outs, info)
         outputs = local_op(*outer_inputs)
         if type(outputs) not in (list, tuple):

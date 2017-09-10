@@ -3021,7 +3021,6 @@ class T_Scan(unittest.TestCase):
         nwo_u = theano.tensor.Rop(o, _u, eu)
         nwo_h0 = theano.tensor.Rop(o, _h0, eh0)
         nwo_W = theano.tensor.Rop(o, _W, eW)
-        # TODO Fails because of the Random State
         nwo_u2 = theano.tensor.Rop_via_Lop(o, _u, eu)
         nwo_h02 = theano.tensor.Rop_via_Lop(o, _h0, eh0)
         nwo_W2 = theano.tensor.Rop_via_Lop(o, _W, eW)
