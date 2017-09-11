@@ -924,6 +924,7 @@ def local_logsoftmax(node):
             if isinstance(node.inputs[0].owner.op, list_classes):
                 subtensor_op = node.inputs[0].owner.op
                 subtensor_input = node.inputs[0].owner.inputs[0]
+
                 # We check if the subtensor input is a softmax
                 if subtensor_input.owner is not None and isinstance(subtensor_input.owner.op, tensor.elemwise.DimShuffle):
                     subtensor_input = subtensor_input.owner.inputs[0]
@@ -965,9 +966,10 @@ def local_logsoftmax_grad(node):
     """
     list_classes_IncSubtensor = ((IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
     list_classes_Subtensor = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
+    list_classes = ((tensor.elemwise.DimShuffle, tensor.Reshape))
     if (isinstance(node.op, SoftmaxGrad) and
             len(node.inputs) == 2 and
-            node.inputs[0].owner is not None and
+            node.inputs[1].owner is not None and
             isinstance(node.inputs[1].owner.op, Softmax)):
 
         d_sm, sm = node.inputs
