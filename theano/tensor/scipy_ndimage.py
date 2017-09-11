@@ -1,7 +1,11 @@
+from __future__ import absolute_import, print_function, division
+
+import numpy as np
+from scipy.ndimage.interpolation import zoom
+
 import theano
 from theano.gradient import DisconnectedType
-from scipy.ndimage.interpolation import zoom
-import numpy as np
+
 
 class Zoom(theano.Op):
     # Properties attribute
@@ -32,7 +36,7 @@ class Zoom(theano.Op):
 
         # Loop over channels
         for i in range(x.shape[1]):
-            z[0][0,i] = zoom(x[0,i], resize_factors, order=0)
+            z[0][0, i] = zoom(x[0, i], resize_factors, order=0)
 
     def infer_shape(self, node, i0_shapes):
         return i0_shapes[1],
@@ -43,5 +47,4 @@ class Zoom(theano.Op):
     def grad(self, inputs, output_grads):
         op = Zoom()
         x, ref = inputs
-        grads = output_grads[0]
         return op(output_grads[0], x), DisconnectedType()()
