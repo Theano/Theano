@@ -969,6 +969,7 @@ def local_logsoftmax_grad(node):
     list_classes = ((tensor.elemwise.DimShuffle, tensor.Reshape))
     if (isinstance(node.op, SoftmaxGrad) and
             len(node.inputs) == 2 and
+            node.inputs[0].owner is not None and
             node.inputs[1].owner is not None and
             isinstance(node.inputs[1].owner.op, Softmax)):
 
