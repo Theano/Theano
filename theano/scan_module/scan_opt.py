@@ -744,6 +744,16 @@ class PushOutScanOutput(gof.Optimizer):
                             self.push_out_inner_vars(fgraph, inner_dot_inputs,
                                                      node, args)
 
+                        # Here we cut the sequences to n_steps to make this
+                        # optimization work even when we truncate the
+                        # gradients.
+                        # Breaks scanOp_save_mem
+                        #import ipdb; ipdb.set_trace()
+                        if outer_dot_inputs[0].shape[0] != args.n_steps:
+                            outer_dot_inputs[0] = outer_dot_inputs[0][:args.n_steps]
+                        if outer_dot_inputs[1].shape[0] != args.n_steps:
+                            outer_dot_inputs[1] = outer_dot_inputs[1][:args.n_steps]
+
                         # Collapse some of the dimensions of the tensors
                         # so that they become matrices. This is because a
                         # dot is usually faster on two large matrices than
