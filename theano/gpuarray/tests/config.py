@@ -7,15 +7,20 @@ import theano.gpuarray
 if theano.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
 
+
+init_error = None
 if (not theano.gpuarray.pygpu_activated and
         not theano.config.force_device):
     try:
         theano.gpuarray.init_dev('cuda')
-    except Exception:
-        pass
+    except Exception as e:
+        init_error = e
 
 if not theano.gpuarray.pygpu_activated:
-    raise SkipTest("pygpu disabled")
+    if init_error:
+        raise SkipTest(e)
+    else:
+        raise SkipTest("pygpu disabled")
 
 test_ctx_name = None
 
