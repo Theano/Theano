@@ -2747,7 +2747,7 @@ def test_conv_guess_once_with_dtypes():
         f_true_half_config()
     except RuntimeError as e:
         # float16 precision is not supported on all GPU cards.
-        assert 'CUDNN_STATUS_ARCH_MISMATCH' in e.message
+        assert 'CUDNN_STATUS_ARCH_MISMATCH' in str(e)
     f_pseudo_half_config()
     f_float_config()
     f_double_config()
