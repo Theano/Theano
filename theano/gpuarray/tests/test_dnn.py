@@ -2620,7 +2620,10 @@ class TestDnnConv2DRuntimeAlgorithms(object):
                     filters_val = np.random.random(filters_shape).astype(dtype)
                     gpu_res = f(inputs_val, filters_val)
                     cpu_res = f_ref(inputs_val, filters_val)
-                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
+                    # rtol is needed for the test to be more robust to
+                    # different seed.
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res),
+                                        rtol=2e-5)
 
         for algo in self.runtime_algorithms:
             yield (run_fwd_runtime_algorithm, algo)
