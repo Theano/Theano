@@ -23,7 +23,9 @@ from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
 from theano.tensor.nnet.abstract_conv import bilinear_upsampling
+from theano.tensor.nnet.abstract_conv import frac_bilinear_upsampling
 from theano.tensor.nnet.abstract_conv import separable_conv2d, separable_conv3d
+from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
 from theano.tensor.nnet.corr3d import (Corr3dMM, Corr3dMM_gradWeights,
@@ -1288,6 +1290,33 @@ class TestBilinearUpsampling(unittest.TestCase):
         f_1D = theano.function([], mat_1D, mode=self.compile_mode)
         f_2D = theano.function([], mat_2D, mode=self.compile_mode)
         utt.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
+
+    def test_fractional_bilinear_upsampling(self):
+        """Test bilinear upsampling with nonsimilar fractional
+        row and col ratios
+        """
+        input_x = np.array([[[1, 2], [3, 4]],
+                            [[5, 6], [7, 8]],
+                            [[9, 10], [11, 12]]],
+                           ndmin=4).astype(theano.config.floatX)
+        up_x = frac_bilinear_upsampling(input=input_x,
+                                        frac_ratio=((7, 4), (5, 3)))
+        num_up_x = np.array(
+            [[[[1., 1.2, 1.8, 2.],
+              [1.28571429, 1.48571429, 2.08571429, 2.28571429],
+              [2.42857143, 2.62857143, 3.22857143, 3.42857143],
+              [3., 3.2, 3.8, 4.]],
+             [[5., 5.2, 5.8, 6.],
+              [5.28571429, 5.48571429, 6.08571429, 6.28571429],
+              [6.42857143, 6.62857143, 7.22857143, 7.42857143],
+              [7., 7.2, 7.8, 8.]],
+             [[9., 9.2, 9.8, 10.],
+              [9.28571429, 9.48571429, 10.08571429, 10.28571429],
+              [10.42857143, 10.62857143, 11.22857143, 11.42857143],
+              [11., 11.2, 11.8, 12.]]]]
+            ).astype(theano.config.floatX)
+        f_up_x = theano.function([], up_x, mode=self.compile_mode)
+        utt.assert_allclose(f_up_x(), num_up_x, rtol=1e-6)
 
 
 class TestConv2dTranspose(unittest.TestCase):
