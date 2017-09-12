@@ -12,7 +12,6 @@ from theano.sandbox.tests.test_rng_mrg import test_f16_nonzero as cpu_f16_nonzer
 from theano.tests import unittest_tools as utt
 
 from .config import mode_with_gpu as mode
-from .config import test_ctx_name
 from ..type import gpuarray_shared_constructor
 from ..rng_mrg import GPUA_mrg_uniform
 
