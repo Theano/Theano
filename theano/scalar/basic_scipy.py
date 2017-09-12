@@ -26,6 +26,8 @@ except (ImportError, ValueError):
 
 
 class Erf(UnaryScalarOp):
+    nfunc_spec = ('scipy.special.erf', 1, 1)
+
     def impl(self, x):
         if imported_scipy_special:
             return scipy.special.erf(x)
@@ -58,6 +60,8 @@ erf = Erf(upgrade_to_float, name='erf')
 
 
 class Erfc(UnaryScalarOp):
+    nfunc_spec = ('scipy.special.erfc', 1, 1)
+
     def impl(self, x):
         if imported_scipy_special:
             return scipy.special.erfc(x)
@@ -105,6 +109,8 @@ class Erfcx(UnaryScalarOp):
     running on GPU an optimization will replace it with a gpu version.
 
     """
+    nfunc_spec = ('scipy.special.erfcx', 1, 1)
+
     def impl(self, x):
         if imported_scipy_special:
             return scipy.special.erfcx(x)
@@ -140,6 +146,8 @@ class Erfinv(UnaryScalarOp):
 
     (TODO) Find a C implementation of erfinv for CPU.
     """
+    nfunc_spec = ('scipy.special.erfinv', 1, 1)
+
     def impl(self, x):
         if imported_scipy_special:
             return scipy.special.erfinv(x)
@@ -173,6 +181,8 @@ erfinv = Erfinv(upgrade_to_float_no_complex, name='erfinv')
 
 
 class Erfcinv(UnaryScalarOp):
+    nfunc_spec = ('scipy.special.erfcinv', 1, 1)
+
     def impl(self, x):
         if imported_scipy_special:
             return scipy.special.erfcinv(x)
@@ -206,6 +216,8 @@ erfcinv = Erfcinv(upgrade_to_float_no_complex, name='erfcinv')
 
 
 class Gamma(UnaryScalarOp):
+    nfunc_spec = ('scipy.special.gamma', 1, 1)
+
     @staticmethod
     def st_impl(x):
         return scipy.special.gamma(x)
@@ -243,6 +255,8 @@ class GammaLn(UnaryScalarOp):
     Log gamma function.
 
     """
+    nfunc_spec = ('scipy.special.gammaln', 1, 1)
+
     @staticmethod
     def st_impl(x):
         return scipy.special.gammaln(x)
@@ -287,6 +301,8 @@ class Psi(UnaryScalarOp):
     Derivative of log gamma function.
 
     """
+    nfunc_spec = ('scipy.special.psi', 1, 1)
+
     @staticmethod
     def st_impl(x):
         return scipy.special.psi(x)
@@ -472,6 +488,7 @@ class Chi2SF(BinaryScalarOp):
     https://github.com/Theano/Theano_lgpl.git
 
     """
+    nfunc_spec = ('scipy.stats.chi2.sf', 2, 1)
 
     @staticmethod
     def st_impl(x, k):
@@ -489,6 +506,7 @@ class Jv(BinaryScalarOp):
     """
     Bessel function of the first kind of order v (real).
     """
+    nfunc_spec = ('scipy.special.jv', 2, 1)
 
     @staticmethod
     def st_impl(v, x):
@@ -513,6 +531,7 @@ class J1(UnaryScalarOp):
     """
     Bessel function of the first kind of order 1.
     """
+    nfunc_spec = ('scipy.special.j1', 1, 1)
 
     @staticmethod
     def st_impl(x):
@@ -544,6 +563,7 @@ class J0(UnaryScalarOp):
     """
     Bessel function of the first kind of order 0.
     """
+    nfunc_spec = ('scipy.special.j0', 1, 1)
 
     @staticmethod
     def st_impl(x):
@@ -575,6 +595,7 @@ class Iv(BinaryScalarOp):
     """
     Modified Bessel function of the first kind of order v (real).
     """
+    nfunc_spec = ('scipy.special.iv', 2, 1)
 
     @staticmethod
     def st_impl(v, x):
@@ -599,6 +620,7 @@ class I1(UnaryScalarOp):
     """
     Modified Bessel function of the first kind of order 1.
     """
+    nfunc_spec = ('scipy.special.i1', 1, 1)
 
     @staticmethod
     def st_impl(x):
@@ -622,6 +644,7 @@ class I0(UnaryScalarOp):
     """
     Modified Bessel function of the first kind of order 0.
     """
+    nfunc_spec = ('scipy.special.i0', 1, 1)
 
     @staticmethod
     def st_impl(x):
