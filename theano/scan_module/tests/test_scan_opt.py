@@ -436,11 +436,10 @@ class TestPushOutputTruncatedGradient(unittest.TestCase):
         h0 = theano.shared(np.zeros((4, nhu), config.floatX), name='h0')
         seq = T.dot(x, Wxh)
 
-        y, _ = theano.scan(
-                fn=lambda i, h: i + T.dot(h, Whh),
-                sequences=[seq],
-                outputs_info=h0,
-                truncate_gradient=3)
+        y, _ = theano.scan(fn=lambda i, h: i + T.dot(h, Whh),
+                           sequences=[seq],
+                           outputs_info=h0,
+                           truncate_gradient=3)
         grad = theano.grad(y.sum(), Whh)
         fn = theano.function([x], grad)
         g1 = grad.tag.test_value

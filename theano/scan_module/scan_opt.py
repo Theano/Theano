@@ -748,7 +748,6 @@ class PushOutScanOutput(gof.Optimizer):
                         # optimization work even when we truncate the
                         # gradients.
                         # Breaks scanOp_save_mem
-                        #import ipdb; ipdb.set_trace()
                         if outer_dot_inputs[0].shape[0] != args.n_steps:
                             outer_dot_inputs[0] = outer_dot_inputs[0][:args.n_steps]
                         if outer_dot_inputs[1].shape[0] != args.n_steps:
