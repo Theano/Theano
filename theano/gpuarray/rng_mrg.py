@@ -310,8 +310,9 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
 def local_gpua_mrg_graph(op, context_name, inputs, outputs):
     if (type(op) == mrg_uniform and
             isinstance(inputs[0].type, GpuArrayType) and
-            not isinstance(inputs[0].owner.op, GpuFromHost)
-        ):
+            (inputs[0].owner is None or
+             not isinstance(inputs[0].owner.op,
+                            GpuFromHost))):
         outs = GPUA_mrg_uniform.new(inputs[0],
                                     op.output_type.ndim,
                                     op.output_type.dtype,

@@ -11,7 +11,7 @@ from six.moves import xrange
 import theano
 from theano import change_flags, config, tensor
 from theano.sandbox import rng_mrg
-from theano.sandbox.rng_mrg import MRG_RandomStreams, mrg_uniform
+from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
 
@@ -740,7 +740,8 @@ def test_f16_nonzero(mode=None, op_to_check=rng_mrg.mrg_uniform):
     m = srng.uniform(size=(1000, 1000), dtype='float16')
     assert m.dtype == 'float16', m.type
     f = theano.function([], m, mode=mode)
-    assert any(isinstance(n.op, op_to_check) for n in f.maker.fgraph.apply_nodes)
+    assert any(isinstance(n.op, op_to_check)
+               for n in f.maker.fgraph.apply_nodes)
     m_val = f()
     assert np.all((0 < m_val) & (m_val < 1))
 
@@ -758,21 +759,6 @@ def test_target_parameter():
     basic_target_parameter_test(srng.multinomial(pvals=pvals.astype('float32'), target='cpu'))
     basic_target_parameter_test(srng.choice(p=pvals.astype('float32'), replace=False, target='cpu'))
     basic_target_parameter_test(srng.multinomial_wo_replacement(pvals=pvals.astype('float32'), target='cpu'))
-
-
-def test_cpu_target_with_shared_variable():
-    srng = MRG_RandomStreams()
-
-    x = theano.shared(np.random.rand(2,3).astype('float32'), name='x')
-    y = srng.uniform(x.shape, target='cpu')
-    y.name = 'y'
-    z = (x * y).sum()
-    z.name = 'z'
-
-    fz = theano.function([], z)
-
-    nodes = fz.maker.fgraph.toposort()
-    assert any([isinstance(node.op, mrg_uniform) for node in nodes])
 
 
 if __name__ == "__main__":
