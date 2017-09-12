@@ -6365,10 +6365,8 @@ class ExtractDiag(Op):
     Returns
     -------
     array_of_diagonals:
-        If x is 2-D and not a matrix, a 1-D array of the
-        same type as a containing the diagonal is returned.
-        If x is a matrix, a 1-D array containing the diagonal
-        is returned in order to maintain backward compatibility.
+        If x is 2-D, a 1-D array of the same type as a
+        containing the diagonal is returned.
         If the dimension of x is greater than two, then an
         array of diagonals is returned, "packed" from left-most
         dimension to right-most (e.g., if x is 3-D, then the
