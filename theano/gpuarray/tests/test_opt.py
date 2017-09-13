@@ -44,7 +44,6 @@ def _check_stack_trace(thing):
                                    basic_ops.GpuContiguous,
                                    GpuElemwise,
                                    theano.printing.Print,
-                                   PdbBreakpoint,
                                    ))
     return check_stack_trace(thing, ops_to_check=_ops_to_check,
                              bug_print="ignore")

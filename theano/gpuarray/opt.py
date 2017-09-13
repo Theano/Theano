@@ -962,18 +962,19 @@ def local_gpu_pdbbreakpoint_op(node):
             return False
 
         # Apply the op on the new inputs
-        new_op_outputs = node.op(*new_inputs, return_list=True)
+        with inherit_stack_trace(node.outputs):
+            new_op_outputs = node.op(*new_inputs, return_list=True)
 
-        # Propagate the transfer to the gpu through the outputs that require
-        # it
-        new_outputs = []
-        for i in range(len(new_op_outputs)):
-            if input_transfered[i]:
-                new_outputs.append(new_op_outputs[i].transfer('cpu'))
-            else:
-                new_outputs.append(new_op_outputs[i])
+            # Propagate the transfer to the gpu through the outputs that require
+            # it
+            new_outputs = []
+            for i in range(len(new_op_outputs)):
+                if input_transfered[i]:
+                    new_outputs.append(new_op_outputs[i].transfer('cpu'))
+                else:
+                    new_outputs.append(new_op_outputs[i])
 
-        return new_outputs
+            return new_outputs
 
     return False
 
