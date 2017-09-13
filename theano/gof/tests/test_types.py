@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+import os
 import numpy as np
 
 import theano
@@ -148,13 +149,11 @@ class MyOpCEnumType(Op):
     __props__ = ('ctype_index',)
     params_type = CEnumType('SIZE_INT', 'SIZE_FLOAT', 'SIZE_LONG_LONG', ctype='size_t')
 
-    # Just for testing, we define our own macros.
-    def c_support_code(self):
-        return """
-        #define SIZE_INT sizeof(int)
-        #define SIZE_FLOAT sizeof(float)
-        #define SIZE_LONG_LONG sizeof(long long)
-        """
+    def c_header_dirs(self):
+        return [os.path.join(os.path.dirname(__file__), 'c_code')]
+
+    def c_headers(self):
+        return ['test_cenum.h']
 
     def __init__(self, ctype):
         # As we see, Python values of constants are not related to real C values
@@ -174,14 +173,14 @@ class MyOpCEnumType(Op):
         return Apply(self, [], [scalar.uint32()])
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
-        %(o)s = %(sizeof_ctype)s;
+        %(o)s = type_sizes[%(typecode)s];
         """ % dict(o=outputs[0],
                    # params in C code will already contains expected C constant value.
-                   sizeof_ctype=sub['params'])
+                   typecode=sub['params'])
 
 
 class TestEnumTypes(TestCase):
@@ -260,3 +259,7 @@ class TestEnumTypes(TestCase):
         f = theano.function([], [sizeof_int, sizeof_float, sizeof_long_long])
         out = f()
         print('(sizeof(int): ', out[0], ', sizeof(float): ', out[1], ', sizeof(long long): ', out[2], ') ', sep='')
+
+    @theano.change_flags(**{'cmodule.debug': True})
+    def test_op_with_cenumtype_debug(self):
+        self.test_op_with_cenumtype()
