@@ -1182,3 +1182,175 @@ class Unique(theano.Op):
             ret[1] = shape
             return ret
         return ret
+
+
+class UnravelIndex(gof.Op):
+    __props__ = ('ndim', 'order')
+
+    def __init__(self, ndim, order='C'):
+        assert order in ('C', 'F')
+        if not isinstance(ndim, int) or ndim < 1:
+            raise ValueError('ndim must be an integer greater than 0')
+        self.ndim = int(ndim)
+        self.order = order
+
+    def make_node(self, indices, dims):
+        indices = basic.as_tensor_variable(indices)
+        dims = basic.as_tensor_variable(dims)
+
+        if indices.dtype not in basic.int_dtypes:
+            raise TypeError("'%s' object cannot be interpreted as an index" % str(indices.dtype))
+        if dims.dtype not in basic.int_dtypes:
+            raise TypeError("'%s' object cannot be interpreted as an index" % str(dims.dtype))
+        if dims.ndim != 1:
+            raise TypeError("dims must be a 1D array")
+
+        return gof.Apply(
+            self, [indices, dims],
+            [basic.TensorType(dtype=indices.dtype, broadcastable=(False,) * indices.ndim)()
+             for i in xrange(self.ndim)])
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]] * len(node.outputs)
+
+    def perform(self, node, inp, out):
+        indices, dims = inp
+        res = np.unravel_index(indices, dims)
+        assert len(res) == len(out)
+        for i in xrange(len(out)):
+            out[i][0] = res[i]
+
+
+def unravel_index(indices, dims, order='C', ndim=None):
+    """
+    Converts a flat index or array of flat indices into a tuple
+    of coordinate arrays.
+
+    This method is similar to the NumPy version, except for the
+    additional ``ndim`` parameter. This parameter is required if
+    the length of ``dims`` cannot be determined automatically.
+
+    For example:
+
+    >>> x = T.matrix()
+    >>> idx = T.ivector()
+    >>> unraveled_idx = T.unravel_index(idx, x.shape, ndim=x.ndim)
+
+    Parameters
+    ----------
+    indices : Theano or NumPy array
+        An integer array whose elements are indices into the flattened
+        version of an array of dimensions ``dims``.
+    dims : tuple of ints
+        The shape of the array to use for unraveling ``indices``.
+    order : {'C', 'F'}, optional
+        Determines whether the indices should be viewed as indexing in
+        row-major (C-style) or column-major (Fortran-style) order.
+    ndim : int, optional
+        Specifies the number of dimensions, i.e., the length of
+        ``dims``. This is required if the dimensions cannot be determined
+        automatically from ``dims`` itself.
+
+    Returns
+    -------
+    unraveled_coords : tuple of ndarray
+        Each array in the tuple has the same shape as the ``indices``
+        array.
+
+    See Also
+    --------
+    ravel_multi_index
+
+    """
+    if ndim is None:
+        try:
+            ndim = basic.get_vector_length(dims)
+        except ValueError:
+            raise ValueError(
+                "The length of the provided dimension list (%s) cannot "
+                "be automatically determined, so Theano is not able "
+                "to know what the number of dimensions of the unraveled "
+                "index will be. You can provide the 'ndim' keyword "
+                "argument to 'unravel_index' to avoid this problem." % str(dims))
+
+    res = UnravelIndex(ndim=ndim, order=order)(indices, dims)
+    if ndim == 1:
+        return (res,)
+    else:
+        return tuple(res)
+
+
+class RavelMultiIndex(gof.Op):
+    __props__ = ('mode', 'order')
+
+    def __init__(self, mode='raise', order='C'):
+        assert mode in ('raise', 'wrap', 'clip')
+        assert order in ('C', 'F')
+        self.mode = mode
+        self.order = order
+
+    def make_node(self, *inp):
+        multi_index = [basic.as_tensor_variable(i) for i in inp[:-1]]
+        dims = basic.as_tensor_variable(inp[-1])
+
+        for i in multi_index:
+            if i.dtype not in basic.int_dtypes:
+                raise TypeError("'%s' object cannot be interpreted as an index" % str(i.dtype))
+        if dims.dtype not in basic.int_dtypes:
+            raise TypeError("'%s' object cannot be interpreted as an index" % str(dims.dtype))
+        if dims.ndim != 1:
+            raise TypeError("dims must be a 1D array")
+
+        return gof.Apply(
+            self, multi_index + [dims],
+            [basic.TensorType(dtype=multi_index[0].dtype,
+                              broadcastable=(False,) * multi_index[0].ndim)()])
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
+
+    def perform(self, node, inp, out):
+        multi_index, dims = inp[:-1], inp[-1]
+        out[0][0] = np.ravel_multi_index(multi_index, dims,
+                                         mode=self.mode, order=self.order)
+
+
+def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
+    """
+    Converts a tuple of index arrays into an array of flat
+    indices, applying boundary modes to the multi-index.
+
+    Parameters
+    ----------
+    multi_index : tuple of Theano or NumPy arrays
+        A tuple of integer arrays, one array for each dimension.
+    dims : tuple of ints
+        The shape of array into which the indices from ``multi_index`` apply.
+    mode : {'raise', 'wrap', 'clip'}, optional
+        Specifies how out-of-bounds indices are handled.  Can specify
+        either one mode or a tuple of modes, one mode per index.
+        * 'raise' -- raise an error (default)
+        * 'wrap' -- wrap around
+        * 'clip' -- clip to the range
+        In 'clip' mode, a negative index which would normally
+        wrap will clip to 0 instead.
+    order : {'C', 'F'}, optional
+        Determines whether the multi-index should be viewed as
+        indexing in row-major (C-style) or column-major
+        (Fortran-style) order.
+
+    Returns
+    -------
+    raveled_indices : Theano array
+        An array of indices into the flattened version of an array
+        of dimensions ``dims``.
+
+    See Also
+    --------
+    unravel_index
+
+    """
+    if not isinstance(multi_index, (tuple, list)):
+        raise TypeError('multi_index must be a tuple or a list.')
+    args = tuple(multi_index) + (dims,)
+    return RavelMultiIndex(mode=mode, order=order)(*args)

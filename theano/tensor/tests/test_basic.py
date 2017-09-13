@@ -50,7 +50,6 @@ from theano.tensor import (
     dtensor3, SpecifyShape, Mean,
     itensor3, Tile, switch, ExtractDiag, AllocDiag,
     nonzero, flatnonzero, nonzero_values,
-    unravel_index, UnravelIndex, ravel_multi_index, RavelMultiIndex,
     stacklists, DimShuffle, hessian, ptp, power,
     swapaxes, choose, Choose, NoneConst, AllocEmpty,
     isclose, allclose, mgrid, ogrid, extract_constant,
@@ -2743,128 +2742,6 @@ class test_nonzero(unittest.TestCase):
         rand4d = rand(8, 9, 10, 11)
         rand4d[:4] = 0
         check(rand4d)
-
-
-class test_unravel_index(utt.InferShapeTester):
-    def test_unravel_index(self):
-        def check(shape, index_ndim, order):
-            indices = np.arange(np.product(shape))
-            # test with scalars and higher-dimensional indices
-            if index_ndim == 0:
-                indices = indices[-1]
-            elif index_ndim == 2:
-                indices = indices[:, np.newaxis]
-            indices_symb = theano.shared(indices)
-
-            # reference result
-            ref = np.unravel_index(indices, shape)
-
-            def fn(i, d, nd=None):
-                if nd is None:
-                    return function([], unravel_index(i, d, order=order))
-                else:
-                    return function([], unravel_index(i, d, order=order, ndim=nd))
-
-            # shape given as a tuple
-            f_array_tuple = fn(indices, shape)
-            f_symb_tuple = fn(indices_symb, shape)
-            np.testing.assert_equal(ref, f_array_tuple())
-            np.testing.assert_equal(ref, f_symb_tuple())
-
-            # shape given as an array
-            shape_array = np.array(shape)
-            f_array_array = fn(indices, shape_array)
-            np.testing.assert_equal(ref, f_array_array())
-
-            # shape given as a theano variable
-            shape_symb = theano.shared(shape_array)
-            f_array_symb = fn(indices, shape_symb, len(shape))
-            np.testing.assert_equal(ref, f_array_symb())
-
-            # shape given as a Shape op (unravel_index will use get_vector_length
-            # to infer the number of dimensions)
-            indexed_array = theano.shared(np.random.uniform(size=shape_array))
-            f_array_shape = fn(indices, indexed_array.shape)
-            np.testing.assert_equal(ref, f_array_shape())
-
-            # shape testing
-            self._compile_and_check([],
-                                    unravel_index(indices, shape_symb, order=order, ndim=len(shape)),
-                                    [], UnravelIndex)
-
-        for order in ('C', 'F'):
-            for index_ndim in (0, 1, 2):
-                check((3,), index_ndim, order)
-                check((3, 4), index_ndim, order)
-                check((3, 4, 5), index_ndim, order)
-
-        # must specify ndim if length of dims is not fixed
-        self.assertRaises(ValueError, unravel_index, ivector(), ivector())
-
-        # must provide integers
-        self.assertRaises(TypeError, unravel_index, fvector(), (3, 4))
-        self.assertRaises(TypeError, unravel_index, (3, 4), (3.4, 3.2))
-        self.assertRaises(ValueError, unravel_index, (3, 4), (3, 3), ndim=5.4)
-
-        # dims must be a 1D sequence
-        self.assertRaises(TypeError, unravel_index, (3, 4), 3)
-        self.assertRaises(TypeError, unravel_index, (3, 4), ((3, 4),))
-
-
-class test_ravel_multi_index(utt.InferShapeTester):
-    def test_ravel_multi_index(self):
-        def check(shape, index_ndim, mode, order):
-            multi_index = np.unravel_index(np.arange(np.product(shape)), shape, order=order)
-            # create some invalid indices to test the mode
-            if mode in ('wrap', 'clip'):
-                multi_index = (multi_index[0] - 1,) + multi_index[1:]
-            # test with scalars and higher-dimensional indices
-            if index_ndim == 0:
-                multi_index = tuple(i[-1] for i in multi_index)
-            elif index_ndim == 2:
-                multi_index = tuple(i[:, np.newaxis] for i in multi_index)
-            multi_index_symb = [theano.shared(i) for i in multi_index]
-
-            # reference result
-            ref = np.ravel_multi_index(multi_index, shape, mode, order)
-
-            def fn(mi, s):
-                return function([], ravel_multi_index(mi, s, mode, order))
-
-            # shape given as a tuple
-            f_array_tuple = fn(multi_index, shape)
-            f_symb_tuple = fn(multi_index_symb, shape)
-            np.testing.assert_equal(ref, f_array_tuple())
-            np.testing.assert_equal(ref, f_symb_tuple())
-
-            # shape given as an array
-            shape_array = np.array(shape)
-            f_array_array = fn(multi_index, shape_array)
-            np.testing.assert_equal(ref, f_array_array())
-
-            # shape given as a theano variable
-            shape_symb = theano.shared(shape_array)
-            f_array_symb = fn(multi_index, shape_symb)
-            np.testing.assert_equal(ref, f_array_symb())
-
-            # shape testing
-            self._compile_and_check([],
-                                    [ravel_multi_index(multi_index, shape_symb, mode, order)],
-                                    [], RavelMultiIndex)
-
-        for mode in ('raise', 'wrap', 'clip'):
-            for order in ('C', 'F'):
-                for index_ndim in (0, 1, 2):
-                    check((3,), index_ndim, mode, order)
-                    check((3, 4), index_ndim, mode, order)
-                    check((3, 4, 5), index_ndim, mode, order)
-
-        # must provide integers
-        self.assertRaises(TypeError, ravel_multi_index, (fvector(), ivector()), (3, 4))
-        self.assertRaises(TypeError, ravel_multi_index, ((3, 4), ivector()), (3.4, 3.2))
-
-        # dims must be a 1D sequence
-        self.assertRaises(TypeError, ravel_multi_index, ((3, 4),), ((3, 4),))
 
 
 def test_identity():
