@@ -1207,7 +1207,7 @@ class UnravelIndex(gof.Op):
 
         return gof.Apply(
             self, [indices, dims],
-            [basic.TensorType(dtype=indices.dtype, broadcastable=(False,) * indices.ndim)()
+            [basic.TensorType(dtype='int64', broadcastable=(False,) * indices.ndim)()
              for i in xrange(self.ndim)])
 
     def infer_shape(self, node, input_shapes):
@@ -1303,8 +1303,7 @@ class RavelMultiIndex(gof.Op):
 
         return gof.Apply(
             self, multi_index + [dims],
-            [basic.TensorType(dtype=multi_index[0].dtype,
-                              broadcastable=(False,) * multi_index[0].ndim)()])
+            [basic.TensorType(dtype='int64', broadcastable=(False,) * multi_index[0].ndim)()])
 
     def infer_shape(self, node, input_shapes):
         return [input_shapes[0]]
