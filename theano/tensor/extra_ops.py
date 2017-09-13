@@ -1230,12 +1230,6 @@ def unravel_index(indices, dims, order='C', ndim=None):
     additional ``ndim`` parameter. This parameter is required if
     the length of ``dims`` cannot be determined automatically.
 
-    For example:
-
-    >>> x = T.matrix()
-    >>> idx = T.ivector()
-    >>> unraveled_idx = T.unravel_index(idx, x.shape, ndim=x.ndim)
-
     Parameters
     ----------
     indices : Theano or NumPy array
