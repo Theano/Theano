@@ -18,7 +18,7 @@ if (not theano.gpuarray.pygpu_activated and
 
 if not theano.gpuarray.pygpu_activated:
     if init_error:
-        raise SkipTest(e)
+        raise SkipTest(init_error)
     else:
         raise SkipTest("pygpu disabled")
 

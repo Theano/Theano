@@ -166,7 +166,7 @@ def test_validate_input_types_gpuarray_backend():
 
 def test_f16_nonzero():
     try:
-        # To have theano.shared(x
+        # To have theano.shared(x) try to move on the GPU
         theano.compile.shared_constructor(gpuarray_shared_constructor)
         cpu_f16_nonzero(mode=mode, op_to_check=GPUA_mrg_uniform)
     finally:
@@ -178,12 +178,18 @@ def test_cpu_target_with_shared_variable():
     srng = MRG_RandomStreams()
     s = np.random.rand(2, 3).astype('float32')
     x = gpuarray_shared_constructor(s, name='x')
-    y = srng.uniform(x.shape, target='cpu')
-    y.name = 'y'
-    z = (x * y).sum()
-    z.name = 'z'
+    try:
+        # To have theano.shared(x) try to move on the GPU
+        theano.compile.shared_constructor(gpuarray_shared_constructor)
+        y = srng.uniform(x.shape, target='cpu')
+        y.name = 'y'
+        z = (x * y).sum()
+        z.name = 'z'
 
-    fz = theano.function([], z, mode=mode)
+        fz = theano.function([], z, mode=mode)
 
-    nodes = fz.maker.fgraph.toposort()
-    assert not any([isinstance(node.op, GPUA_mrg_uniform) for node in nodes])
+        nodes = fz.maker.fgraph.toposort()
+        assert not any([isinstance(node.op, GPUA_mrg_uniform) for node in nodes])
+    finally:
+        theano.compile.shared_constructor(gpuarray_shared_constructor,
+                                          remove=True)
