@@ -1031,9 +1031,12 @@ def local_logsoftmax_grad(node):
                 num, denom = incr.owner.inputs
                 if num.owner is not None and isinstance(num.owner.op, theano.tensor.DimShuffle):
                     num = num.owner.inputs[0]
+                out_grad *= -num
                 subtensor_op = None
                 if isinstance(denom.owner.op, list_classes_Subtensor):
                     subtensor_op = denom
+                elif isinstance(denom.owner.op, theano.tensor.DimShuffle) and isinstance(denom.owner.inputs[0].owner.op, list_classes_Subtensor):
+                    subtensor_op = denom.owner.inputs[0]
                 elif denom.owner.op == tensor.mul:
                     # Try to find the AdvancedSubtensor node mentionned above,
                     # and the output gradient
@@ -1048,7 +1051,6 @@ def local_logsoftmax_grad(node):
                             out_grad /= rest
                             break
 
-                out_grad *= -num
                 # And we verify that the subtensor_op(softmax(x), *idx)
                 # that is inside the denominator match the subtensor_op(softmax(x), *idx)
                 # that is the second argument of the SoftmaxGrad
