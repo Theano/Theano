@@ -2408,8 +2408,8 @@ def local_gpu_elemwise_careduce(node):
         inp = node.inputs[0].owner.inputs[0]
         props = node.op._props_dict()
         props["pre_scalar_op"] = scalar.basic.sqr
-        out = GpuCAReduceCuda(**props)(inp)
         with inherit_stack_trace(node.outputs):
+            out = GpuCAReduceCuda(**props)(inp)
             return [out]
 
 

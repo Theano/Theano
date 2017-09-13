@@ -40,7 +40,6 @@ def _check_stack_trace(thing):
                                    theano.tensor.elemwise.Elemwise,
                                    theano.ifelse.IfElse,
                                    GpuFromHost, HostFromGpu,
-                                   GpuCAReduceCuda,
                                    basic_ops.GpuContiguous,
                                    GpuElemwise,
                                    theano.printing.Print,
