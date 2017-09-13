@@ -2810,7 +2810,7 @@ class test_unravel_index(utt.InferShapeTester):
         # must provide integers
         self.assertRaises(TypeError, unravel_index, fvector(), (3, 4))
         self.assertRaises(TypeError, unravel_index, (3, 4), (3.4, 3.2))
-        self.assertRaises(TypeError, unravel_index, (3, 4), (3, 3), ndim=5.4)
+        self.assertRaises(ValueError, unravel_index, (3, 4), (3, 3), ndim=5.4)
 
         # dims must be a 1D sequence
         self.assertRaises(TypeError, unravel_index, (3, 4), 3)
