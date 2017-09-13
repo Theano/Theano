@@ -2774,24 +2774,18 @@ class test_unravel_index(utt.InferShapeTester):
             # shape given as an array
             shape_array = np.array(shape)
             f_array_array = fn(indices, shape_array)
-            f_symb_array = fn(indices_symb, shape_array)
             np.testing.assert_equal(ref, f_array_array())
-            np.testing.assert_equal(ref, f_symb_array())
 
             # shape given as a theano variable
             shape_symb = theano.shared(shape_array)
             f_array_symb = fn(indices, shape_symb, len(shape))
-            f_symb_symb = fn(indices_symb, shape_symb, len(shape))
             np.testing.assert_equal(ref, f_array_symb())
-            np.testing.assert_equal(ref, f_symb_symb())
 
             # shape given as a Shape op (unravel_index will use get_vector_length
             # to infer the number of dimensions)
             indexed_array = theano.shared(np.random.uniform(size=shape_array))
             f_array_shape = fn(indices, indexed_array.shape)
-            f_symb_shape = fn(indices_symb, indexed_array.shape)
             np.testing.assert_equal(ref, f_array_shape())
-            np.testing.assert_equal(ref, f_symb_shape())
 
             # shape testing
             self._compile_and_check([],
@@ -2846,16 +2840,12 @@ class test_ravel_multi_index(utt.InferShapeTester):
             # shape given as an array
             shape_array = np.array(shape)
             f_array_array = fn(multi_index, shape_array)
-            f_symb_array = fn(multi_index_symb, shape_array)
             np.testing.assert_equal(ref, f_array_array())
-            np.testing.assert_equal(ref, f_symb_array())
 
             # shape given as a theano variable
             shape_symb = theano.shared(shape_array)
             f_array_symb = fn(multi_index, shape_symb)
-            f_symb_symb = fn(multi_index_symb, shape_symb)
             np.testing.assert_equal(ref, f_array_symb())
-            np.testing.assert_equal(ref, f_symb_symb())
 
             # shape testing
             self._compile_and_check([],
