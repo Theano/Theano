@@ -2785,6 +2785,14 @@ class test_unravel_index(utt.InferShapeTester):
             np.testing.assert_equal(ref, f_array_symb())
             np.testing.assert_equal(ref, f_symb_symb())
 
+            # shape given as a Shape op (unravel_index will use get_vector_length
+            # to infer the number of dimensions)
+            indexed_array = theano.shared(np.random.uniform(size=shape_array))
+            f_array_shape = fn(indices, indexed_array.shape)
+            f_symb_shape = fn(indices_symb, indexed_array.shape)
+            np.testing.assert_equal(ref, f_array_shape())
+            np.testing.assert_equal(ref, f_symb_shape())
+
             # shape testing
             self._compile_and_check([],
                                     unravel_index(indices, shape_symb, order=order, ndim=len(shape)),
@@ -2797,7 +2805,7 @@ class test_unravel_index(utt.InferShapeTester):
                 check((3, 4, 5), index_ndim, order)
 
         # must specify ndim if length of dims is not fixed
-        self.assertRaises(TypeError, unravel_index, ivector(), ivector())
+        self.assertRaises(ValueError, unravel_index, ivector(), ivector())
 
         # must provide integers
         self.assertRaises(TypeError, unravel_index, fvector(), (3, 4))

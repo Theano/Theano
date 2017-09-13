@@ -2630,8 +2630,7 @@ def unravel_index(indices, dims, order='C', ndim=None):
 
     This method is similar to the NumPy version, except for the
     additional ``ndim`` parameter. This parameter is required if
-    the length of ``dims`` cannot be determined automatically, for
-    example because ``dims`` is a Theano vector.
+    the length of ``dims`` cannot be determined automatically.
 
     For example:
 
@@ -2652,7 +2651,7 @@ def unravel_index(indices, dims, order='C', ndim=None):
     ndim : int, optional
         Specifies the number of dimensions, i.e., the length of
         ``dims``. This is required if the dimensions cannot be determined
-        from ``dims`` itself, for example, if ``dims`` is a Theano vector.
+        automatically from ``dims`` itself.
 
     Returns
     -------
@@ -2666,15 +2665,15 @@ def unravel_index(indices, dims, order='C', ndim=None):
 
     """
     if ndim is None:
-        if isinstance(dims, (tuple, list)):
-            ndim = len(dims)
-        elif isinstance(dims, np.ndarray) and dims.ndim == 1:
-            ndim = dims.shape[0]
-        else:
-            raise TypeError('unravel_index was called with a dimension '
-                            'list with an unspecified length (dim = %s). '
-                            'Use the ndim parameter of unravel_index to '
-                            'set the number of dimensions. ' % str(dims))
+        try:
+            ndim = get_vector_length(dims)
+        except ValueError:
+            raise ValueError(
+                "The length of the provided dimension list (%s) cannot "
+                "be automatically determined, so Theano is not able "
+                "to know what the number of dimensions of the unraveled "
+                "index will be. You can provide the 'ndim' keyword "
+                "argument to 'unravel_index' to avoid this problem." % str(dims))
 
     res = UnravelIndex(order=order)(indices, dims, ndim)
     if ndim == 1:
