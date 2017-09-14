@@ -26,6 +26,7 @@ import theano
 
 theano_path = os.path.join(os.path.dirname(__file__), os.pardir)
 sys.path.append(os.path.abspath(theano_path))
+import versioneer
 
 # General configuration
 # ---------------------
@@ -71,10 +72,17 @@ copyright = '2008--2017, LISA lab'
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
 #
-# The short X.Y version.
-version = '0.10'
+
+# We need this hokey-pokey because versioneer needs the current
+# directory to be the root of the project to work.
+_curpath = os.getcwd()
+os.chdir(os.path.dirname(os.path.dirname(__file__)))
 # The full version, including alpha/beta/rc tags.
-release = '0.10.0beta2'
+release = versioneer.get_version()
+# The short X.Y version.
+version = '.'.join(release.split('.')[:2])
+os.chdir(_curpath)
+del _curpath
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
