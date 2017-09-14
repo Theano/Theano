@@ -1,8 +1,6 @@
-{% set version = env.get('THEANO_VERSION') %}
-
 package:
   name: theano
-  version: {{ version }}
+  version: {{ environ.get('THEANO_VERSION') }}
 
 source:
   path: ../
