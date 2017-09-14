@@ -15,6 +15,7 @@
 
 from __future__ import absolute_import, print_function, division
 
+import math
 import sys
 from itertools import product, chain
 
@@ -557,6 +558,29 @@ class BaseTestDnnConv(object):
 
     # Utility methods.
 
+    def _next_ten_exponent(self, val):
+        # Return exponent for the next ten power that follows val.
+        # val should be a positive integer.
+        # Examples:
+        # for 0 to 9, returns 1 (=> 10**1 == 10)
+        # for 10 to 99, returns 2 (=> 10**2 == 100)
+        ten_exponent = 1
+        while val // 10 > 0:
+            ten_exponent += 1
+            val //= 10
+        return ten_exponent
+
+    def scale_numpy_arrays_inplace(self, A, B):
+        # Normalize A and B simultaneously so that any values in these tensors are in interval [0, 1)
+        max_a = math.floor(abs(A.max()))
+        max_b = math.floor(abs(B.max()))
+        if max_a > 0 or max_b > 0:
+            m_a = self._next_ten_exponent(max_a)
+            m_b = self._next_ten_exponent(max_b)
+            max_m = max(m_a, m_b)
+            A /= 10 ** max_m
+            B /= 10 ** max_m
+
     def __init__(self):
         utt.seed_rng(1234)
         self.rand = MRG_RandomStreams()
@@ -617,9 +641,11 @@ class BaseTestDnnConv(object):
         # Raise tolerance for float16
         rtol = 6e-2 if dtype == 'float16' else None
         if beta == 0:
-            utt.assert_allclose(alpha * res_ref, res, rtol=rtol)
+            cpu_res = alpha * res_ref
         else:
-            utt.assert_allclose(alpha * res_ref + beta * out, res, rtol=rtol)
+            cpu_res = alpha * res_ref + beta * out
+        self.scale_numpy_arrays_inplace(cpu_res, res)
+        utt.assert_allclose(cpu_res, res, rtol=rtol)
 
     def run_conv_gradinput(self, algo, dtype, precision, parameters):
         inputs_shape, filters_shape, subsample, dilation, border_mode, conv_mode, alpha, beta = parameters
@@ -672,9 +698,11 @@ class BaseTestDnnConv(object):
         # Raise tolerance for float16
         rtol = 5e-2 if dtype == 'float16' else None
         if beta == 0:
-            utt.assert_allclose(alpha * res_ref, res, rtol=rtol)
+            cpu_res = alpha * res_ref
         else:
-            utt.assert_allclose(alpha * res_ref + beta * inputs_val, res, rtol=rtol)
+            cpu_res = alpha * res_ref + beta * inputs_val
+        self.scale_numpy_arrays_inplace(cpu_res, res)
+        utt.assert_allclose(cpu_res, res, rtol=rtol)
 
     def run_conv_gradweight(self, algo, dtype, precision, parameters):
         inputs_shape, filters_shape, subsample, dilation, border_mode, conv_mode, alpha, beta = parameters
@@ -722,9 +750,11 @@ class BaseTestDnnConv(object):
         # Raise tolerance for float16
         rtol = 5e-2 if dtype == 'float16' else None
         if beta == 0:
-            utt.assert_allclose(alpha * res_ref, res, rtol=rtol)
+            cpu_res = alpha * res_ref
         else:
-            utt.assert_allclose(alpha * res_ref + beta * filters_val, res, rtol=rtol)
+            cpu_res = alpha * res_ref + beta * filters_val
+        self.scale_numpy_arrays_inplace(cpu_res, res)
+        utt.assert_allclose(cpu_res, res, rtol=rtol)
 
     def should_fail(self, function, *args):
         try:
@@ -854,9 +884,10 @@ class BaseTestDnnConv(object):
                 for i in range(ntimes):
                     inputs_val = np.random.random(inputs_shape).astype(dtype)
                     filters_val = np.random.random(filters_shape).astype(dtype)
-                    gpu_res = f(inputs_val, filters_val)
+                    gpu_res = np.asarray(f(inputs_val, filters_val))
                     cpu_res = f_ref(inputs_val, filters_val)
-                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
+                    self.scale_numpy_arrays_inplace(cpu_res, gpu_res)
+                    utt.assert_allclose(cpu_res, gpu_res)
 
         for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
             yield (run_fwd_runtime_algorithm, algo)
