@@ -545,8 +545,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
                 t = op(n[:z, :z], m)
                 gn, gm = theano.tensor.grad(theano.tensor.sum(t), [n, m])
-                utt.verify_grad(lambda m: op(n[:z, :z], m), [mv])
-                utt.verify_grad(lambda nn: op(nn[:z, :z], mv), [data])
+                utt.verify_grad(lambda m: op(n[:z, :z], m), [mv], mode=self.mode)
+                utt.verify_grad(lambda nn: op(nn[:z, :z], mv), [data], mode=self.mode)
 
     def test_grad_0d(self):
         data = np.asarray(rand(2, 3), dtype=self.dtype)
