@@ -904,10 +904,11 @@ def gpu_print_wrapper(op, cnda):
 @register_opt2([tensor.printing.Print], 'fast_compile')
 def local_gpua_print_op(op, context_name, inputs, outputs):
     x, = inputs
-    gpu_x = as_gpuarray_variable(x, context_name=context_name)
-    new_op = op.__class__(global_fn=gpu_print_wrapper)
-    new_op.old_op = op
-    return new_op(gpu_x)
+    with inherit_stack_trace(outputs):
+        gpu_x = as_gpuarray_variable(x, context_name=context_name)
+        new_op = op.__class__(global_fn=gpu_print_wrapper)
+        new_op.old_op = op
+        return new_op(gpu_x)
 
 
 @register_opt('fast_compile')

@@ -42,7 +42,6 @@ def _check_stack_trace(thing):
                                    GpuFromHost, HostFromGpu,
                                    basic_ops.GpuContiguous,
                                    GpuElemwise,
-                                   theano.printing.Print,
                                    ))
     return check_stack_trace(thing, ops_to_check=_ops_to_check,
                              bug_print="ignore")
@@ -338,7 +337,9 @@ def test_print_op():
     assert isinstance(topo[1].op, theano.printing.Print)
     assert isinstance(topo[2].op, GpuElemwise)
     assert topo[3].op == host_from_gpu
-    assert _check_stack_trace(f)
+    # gpu print_op copies the stack trace
+    # but _print_fn has an empty stack.
+    # assert _check_stack_trace(f)
     f(np.random.random((5, 5)).astype('float32'))
 
 
