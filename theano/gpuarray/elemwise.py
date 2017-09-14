@@ -248,6 +248,11 @@ class GpuElemwise(HideC, Elemwise):
 
         return res
 
+    def c_cleanup_code_struct(self, node, name):
+        return """
+        GpuElemwise_free(ge);
+        """
+
     def c_code(self, node, name, inputs, outputs, sub):
         nd = node.outputs[0].ndim
         fail = sub["fail"]
@@ -386,7 +391,7 @@ class GpuElemwise(HideC, Elemwise):
     def c_code_cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (9, ver)
+            return (10, ver)
         else:
             return ver
 
