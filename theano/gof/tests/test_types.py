@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+import os
 import numpy as np
 
 import theano
@@ -145,43 +146,39 @@ class MyOpEnumList(Op):
 
 
 class MyOpCEnumType(Op):
-    __props__ = ('ctype_index',)
-    params_type = CEnumType('SIZE_INT', 'SIZE_FLOAT', 'SIZE_LONG_LONG', ctype='size_t')
+    __props__ = ('python_value',)
+    params_type = CEnumType(('MILLION', 'million'), ('BILLION', 'billion'), ('TWO_BILLIONS', 'two_billions'),
+                            ctype='size_t')
 
-    # Just for testing, we define our own macros.
-    def c_support_code(self):
-        return """
-        #define SIZE_INT sizeof(int)
-        #define SIZE_FLOAT sizeof(float)
-        #define SIZE_LONG_LONG sizeof(long long)
-        """
+    def c_header_dirs(self):
+        return [os.path.join(os.path.dirname(__file__), 'c_code')]
 
-    def __init__(self, ctype):
-        # As we see, Python values of constants are not related to real C values
-        # (sizeof(int) will never be 0).
-        assert self.params_type.SIZE_INT == 0
-        assert self.params_type.SIZE_FLOAT == 1
-        assert self.params_type.SIZE_LONG_LONG == 2
-        d = {'int': self.params_type.SIZE_INT,
-             'float': self.params_type.SIZE_FLOAT,
-             'long long': self.params_type.SIZE_LONG_LONG}
-        self.ctype_index = d[ctype]
+    def c_headers(self):
+        return ['test_cenum.h']
+
+    def __init__(self, value_name):
+        # As we see, Python values of constants are not related to real C values.
+        assert self.params_type.MILLION == 0
+        assert self.params_type.BILLION == 1
+        assert self.params_type.TWO_BILLIONS == 2
+        assert self.params_type.has_alias(value_name)
+        self.python_value = self.params_type.fromalias(value_name)
 
     def get_params(self, node):
-        return self.ctype_index
+        return self.python_value
 
     def make_node(self):
         return Apply(self, [], [scalar.uint32()])
 
     def c_code_cache_version(self):
-        return (1,)
+        return (3,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
-        %(o)s = %(sizeof_ctype)s;
+        %(o)s = %(val)s;
         """ % dict(o=outputs[0],
                    # params in C code will already contains expected C constant value.
-                   sizeof_ctype=sub['params'])
+                   val=sub['params'])
 
 
 class TestEnumTypes(TestCase):
@@ -254,9 +251,15 @@ class TestEnumTypes(TestCase):
     def test_op_with_cenumtype(self):
         if theano.config.cxx == '':
             raise SkipTest('need c++')
-        sizeof_int = MyOpCEnumType('int')()
-        sizeof_float = MyOpCEnumType('float')()
-        sizeof_long_long = MyOpCEnumType('long long')()
-        f = theano.function([], [sizeof_int, sizeof_float, sizeof_long_long])
-        out = f()
-        print('(sizeof(int): ', out[0], ', sizeof(float): ', out[1], ', sizeof(long long): ', out[2], ') ', sep='')
+        million = MyOpCEnumType('million')()
+        billion = MyOpCEnumType('billion')()
+        two_billions = MyOpCEnumType('two_billions')()
+        f = theano.function([], [million, billion, two_billions])
+        val_million, val_billion, val_two_billions = f()
+        assert val_million == 1000000
+        assert val_billion == val_million * 1000
+        assert val_two_billions == val_billion * 2
+
+    @theano.change_flags(**{'cmodule.debug': True})
+    def test_op_with_cenumtype_debug(self):
+        self.test_op_with_cenumtype()
