@@ -36,6 +36,7 @@ Programming Language :: Python :: 2.7
 Programming Language :: Python :: 3
 Programming Language :: Python :: 3.4
 Programming Language :: Python :: 3.5
+Programming Language :: Python :: 3.6
 """
 NAME                = 'Theano'
 MAINTAINER          = "LISA laboratory, University of Montreal"
@@ -92,7 +93,7 @@ def do_setup():
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
                    '*.h', '*.cpp', 'ChangeLog', 'c_code/*'],
               'theano.misc': ['*.sh'],
-              'theano.d3viz' : ['html/*','css/*','js/*']
+              'theano.d3viz': ['html/*', 'css/*', 'js/*']
           },
           entry_points={
               'console_scripts': ['theano-cache = bin.theano_cache:main',
@@ -103,5 +104,7 @@ def do_setup():
               'numpy', 'gpu', 'autodiff', 'differentiation'
           ]),
     )
+
+
 if __name__ == "__main__":
     do_setup()
