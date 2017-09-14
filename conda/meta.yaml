@@ -16,9 +16,6 @@ requirements:
     - python
     - setuptools
     - six >=1.9.0
-    - numpy >=1.9.1
-    - scipy >=0.14.0
-    - pygpu >=0.7
   run:
     - python
     - mkl-service
@@ -27,7 +24,7 @@ requirements:
     - six >=1.9.0
     - numpy >=1.9.1
     - scipy >=0.14.0
-    - {{ pin_compatible('pygpu', '0.7', max_pin='0.8') }}
+    - {{ pin_compatible('pygpu', '0.7', max_pin='0.8') }}   # [not osx]
 
 test:
   requires:
