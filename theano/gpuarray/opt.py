@@ -424,7 +424,8 @@ class GraphToGPU(Optimizer):
             outputs = []
 
             if isinstance(new_ops, theano.Op):
-                outputs = new_ops(*[mapping[i] for i in node.inputs], return_list=True)
+                with inherit_stack_trace(node.outputs):
+                    outputs = new_ops(*[mapping[i] for i in node.inputs], return_list=True)
             elif not new_ops:
                 newnode = node.clone_with_new_inputs([mapping.get(i) for i in node.inputs])
                 outputs = newnode.outputs
