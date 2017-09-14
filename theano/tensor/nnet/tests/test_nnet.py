@@ -436,8 +436,9 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         # grad and that the new operation does not explode for big inputs.
         # Note that only the grad is checked.
 
-        m = theano.config.mode
-        m = theano.compile.get_mode(m)
+        m = theano.compile.mode.get_default_mode()
+        if m == theano.compile.mode.get_mode('FAST_COMPILE'):
+            m = 'FAST_RUN'
         m.check_isfinite = False
         # some inputs that are large to make the gradient explode in the non
         # optimized case
@@ -491,6 +492,7 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         mode = theano.compile.mode.get_default_mode()
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
+        mode.check_isfinite = False
         x_val = np.array([-1000, -1000, 1000, -1000], dtype=config.floatX)
         y_val = 2
 
