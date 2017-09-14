@@ -6333,18 +6333,57 @@ del x
 
 
 class ExtractDiag(Op):
-    """Return specified diagonals.
+    """
+    Return specified diagonals.
+
+    If x is 2-D, returns the diagonal of x with the given offset,
+    i.e., the collection of elements of the form x[i, i+offset].
+    If x has more than two dimensions, then the axes specified by
+    axis1 and axis2 are used to determine the 2-D sub-array whose
+    diagonal is returned. The shape of the resulting array can be
+    determined by removing axis1 and axis2 and appending an index
+    to the right equal to the size of the resulting diagonals.
 
     Parameters
     ----------
-    x
-        A tensor variable with x.ndim >= 2.
+    x: A tensor variable with x.ndim >= 2.
+
+    offset: Offset of the diagonal from the main diagonal.
+        Can be positive or negative.
+        Defaults to main diagonal (0).
+
+    axis1: Axis to be used as the first axis of the 2-D
+        sub-arrays from which the diagonals should be taken.
+        Defaults to first axis (0).
+
+    axis2: Axis to be used as the second axis of the 2-D
+        sub-arrays from which the diagonals should be taken.
+        Defaults to second axis (1).
+
+
 
     Returns
     -------
-    vector
-        A vector representing the diagonal elements.
+    array_of_diagonals:
+        If x is 2-D, a 1-D array of the same type as a
+        containing the diagonal is returned.
+        If the dimension of x is greater than two, then an
+        array of diagonals is returned, "packed" from left-most
+        dimension to right-most (e.g., if x is 3-D, then the
+        diagonals are "packed" along rows).
 
+
+
+    Raises
+    ------
+    ValueError
+        If the dimension of x is less than 2.
+
+
+    See Also
+    --------
+    numpy.diagonal:
+        https://docs.scipy.org/doc/numpy-dev/reference/generated/numpy.diagonal.html
     """
     __props__ = ("offset", "axis1", "axis2", "view")
 
@@ -6385,14 +6424,12 @@ class ExtractDiag(Op):
         (gz,) = gout
 
         if x.ndim == 2:
-            # The following code is moved from tensor.nlinalg.ExtractDiag, only
-            # works for matrices.
             x = theano.tensor.zeros_like(x)
             xdiag = theano.tensor.AllocDiag(offset=self.offset)(gz)
             return [theano.tensor.set_subtensor(
                 x[:xdiag.shape[0], :xdiag.shape[1]], xdiag)]
         else:
-            warnings.warn("gradient of theano.tensor.nlinalg.ExtractDiag only"
+            warnings.warn("gradient of theano.tensor.basic.ExtractDiag only"
                           "works for matrices.")
             return [grad_not_implemented(self, 0, x)]
 
@@ -6412,6 +6449,26 @@ class ExtractDiag(Op):
             diag_size = minimum(dim1, dim2)
         out_shape.append(diag_size)
         return [tuple(out_shape)]
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if self.view and not numpy_diagonal_return_view:
+            warnings.warn("View will forced to False. ExtractDiag property view is "
+                          "set to True but numpy version %s and prior versions of "
+                          "numpy.diagonal() do not return a view. Update "
+                          "numpy to use ExtractDiag(view=True)" %
+                          np.version.version)
+            self.view = False
+
+        if self.view:
+            self.view_map = {0: [0]}
+
+        if "offset" not in state:
+            self.offset = 0
+        if "axis1" not in state:
+            self.axis1 = 0
+        if "axis2" not in state:
+            self.axis2 = 1
 
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
