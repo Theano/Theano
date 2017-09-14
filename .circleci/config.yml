@@ -1,0 +1,41 @@
+version: 2
+
+jobs:
+  build_pkgs:
+    docker:
+      - image: milaudem/theano:0
+
+    steps:
+      - checkout
+      - run:
+          name: "Checkout Merge Commit"
+          command: |
+            if [[ -n "${CIRCLE_PR_NUMBER}" ]]
+            then
+                git fetch -u origin "+refs/pull/${CIRCLE_PR_NUMBER}/merge:pr/${CIRCLE_PR_NUMBER}/merge"
+                git checkout -qf "pr/${CIRCLE_PR_NUMBER}/merge"
+            fi
+      - run:
+          name: "Build Recipe"
+          command: |
+            export THEANO_VERSION=`python -c 'import versioneer; print(versio\
+neer.get_version())'`
+            conda build conda
+      - run:
+          name: "Upload Tagged Versions"
+          command: |
+            if [[ -n "${CIRCLE_TAG}" ]]
+            then
+                anaconda -t $BINSTAR_TOKEN upload --user=mila-udem /miniconda/conda-bld/noarch/theano*
+            fi
+      - store_artifacts:
+          path: /miniconda/conda-bld/noarch
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build_pkgs:
+          filters:
+            tags:
+              only: /.*/

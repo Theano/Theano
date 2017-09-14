@@ -1,4 +1,4 @@
-{% set version = "0.10.0beta1" %}
+{% set version = env.get('THEANO_VERSION') %}
 
 package:
   name: theano
