@@ -28,7 +28,7 @@ LIBDIR=${WORKSPACE}/local
 
 # Make fresh clones of libgpuarray (with no history since we don't need it)
 rm -rf libgpuarray
-git clone -b `cat .jenkins/gpuarray-branch` --depth 1 "https://github.com/Theano/libgpuarray.git"
+git clone -b `cat .jenkins/gpuarray-branch` "https://github.com/Theano/libgpuarray.git"
 
 # Clean up previous installs (to make sure no old files are left)
 rm -rf $LIBDIR

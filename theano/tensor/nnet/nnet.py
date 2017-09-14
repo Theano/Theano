@@ -911,11 +911,18 @@ def local_logsoftmax(node):
                 copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
                 return [ret]
 
+            if isinstance(node.inputs[0].owner.op, tensor.elemwise.DimShuffle) and isinstance(node.inputs[0].owner.inputs[0].owner.op, list_classes):
+                node = node.inputs[0].owner
+
             # Case log(softmax(x)[*idx])
-            elif isinstance(node.inputs[0].owner.op, list_classes):
+            if isinstance(node.inputs[0].owner.op, list_classes):
                 subtensor_op = node.inputs[0].owner.op
                 subtensor_input = node.inputs[0].owner.inputs[0]
+
                 # We check if the subtensor input is a softmax
+                if subtensor_input.owner is not None and isinstance(subtensor_input.owner.op, tensor.elemwise.DimShuffle):
+                    subtensor_input = subtensor_input.owner.inputs[0]
+
                 if subtensor_input.owner is not None and isinstance(subtensor_input.owner.op, Softmax):
                     subtensor_idx = node.inputs[0].owner.inputs[1:]
                     softmax_op = subtensor_input.owner.op
@@ -953,13 +960,14 @@ def local_logsoftmax_grad(node):
     """
     list_classes_IncSubtensor = ((IncSubtensor, AdvancedIncSubtensor1, AdvancedIncSubtensor))
     list_classes_Subtensor = ((Subtensor, AdvancedSubtensor1, AdvancedSubtensor))
+    list_classes = ((tensor.elemwise.DimShuffle, tensor.Reshape))
     if (isinstance(node.op, SoftmaxGrad) and
             len(node.inputs) == 2 and
             node.inputs[0].owner is not None and
-            len(node.inputs[0].owner.inputs) >= 2 and
-            node.inputs[0].owner.inputs[1].owner is not None and
+            node.inputs[1].owner is not None and
             isinstance(node.inputs[1].owner.op, Softmax)):
 
+        d_sm, sm = node.inputs
         # Case where d_sm = (grads / softmax(x))
         if (node.inputs[0].owner.op == tensor.true_div and
                 isinstance(node.inputs[0].owner.inputs[1].owner.op, Softmax) and
@@ -977,10 +985,15 @@ def local_logsoftmax_grad(node):
             copy_stack_trace(node.outputs[0], ret)
             return [ret]
 
+        if isinstance(d_sm.owner.op, list_classes):
+            for i, input in enumerate(d_sm.owner.inputs):
+                if input.owner and isinstance(input.owner.op, list_classes_IncSubtensor):
+                    d_sm = input
+                    break
+
         # Case where d_sm = IncSubtensor_op(zeros_like(softmax(x)), -out_grad /
         # subtensor_op(softmax(x), *idx),, *idx)
-        if(isinstance(node.inputs[0].owner.op, list_classes_IncSubtensor)):
-            d_sm, sm = node.inputs
+        if isinstance(d_sm.owner.op, list_classes_IncSubtensor) and d_sm.owner.inputs[1].owner is not None:
             incr = d_sm.owner.inputs[1]
             subtensor_idx = d_sm.owner.inputs[2:]
             out_grad = 1.
@@ -1000,14 +1013,24 @@ def local_logsoftmax_grad(node):
                 incr = incr.owner.inputs[0]
                 out_grad = - out_grad
 
+            if incr.owner.op != tensor.true_div:
+                for i, input in enumerate(incr.owner.inputs):
+                    if input.owner is not None and input.owner.op == tensor.true_div:
+                        incr = input
+                        break
+
             # Here, we try to find the subtensor_op(softmax(x), *idx)
             # that is inside the denominator of the IncSubtensor
             if incr.owner.op == tensor.true_div and incr.owner.inputs[1].owner is not None:
                 num, denom = incr.owner.inputs
+                if num.owner is not None and isinstance(num.owner.op, theano.tensor.DimShuffle):
+                    num = num.owner.inputs[0]
                 out_grad *= -num
                 subtensor_op = None
                 if isinstance(denom.owner.op, list_classes_Subtensor):
                     subtensor_op = denom
+                elif isinstance(denom.owner.op, theano.tensor.DimShuffle) and isinstance(denom.owner.inputs[0].owner.op, list_classes_Subtensor):
+                    subtensor_op = denom.owner.inputs[0]
                 elif denom.owner.op == tensor.mul:
                     # Try to find the AdvancedSubtensor node mentionned above,
                     # and the output gradient
@@ -1025,10 +1048,18 @@ def local_logsoftmax_grad(node):
                 # And we verify that the subtensor_op(softmax(x), *idx)
                 # that is inside the denominator match the subtensor_op(softmax(x), *idx)
                 # that is the second argument of the SoftmaxGrad
-                if (subtensor_op is not None and
-                        len(subtensor_op.owner.inputs) >= 2 and
-                        subtensor_op.owner.inputs[0] is sm and
-                        subtensor_op.owner.inputs[1:] == subtensor_idx):
+                if (subtensor_op is not None and subtensor_op.owner.inputs[1:] == subtensor_idx):
+                    # Check case if dimshuffle before softmax
+                    if(subtensor_op.owner.inputs[0] is not sm):
+                        for i, input in enumerate(subtensor_op.owner.inputs[0].owner.inputs):
+                            if isinstance(input.owner.op, Softmax):
+                                sub_sm = input
+                                subtensor_op = subtensor_op.owner.op(sub_sm, *subtensor_idx)
+                                break
+
+                    # Check if the subtensor input is the same as SoftmaxGrad input
+                    assert subtensor_op.owner.inputs[0] is sm
+
                     # Spetial vector case
                     if x_var.type.ndim == 1:
                         ret = out_grad - out_grad * subtensor_op
