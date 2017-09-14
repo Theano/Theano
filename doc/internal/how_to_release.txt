@@ -53,6 +53,9 @@ following::
     git push
     git push --tags
 
+This will trigger and build and upload of the conda package to the
+mila-udem channel.
+
 The documentation will be automatically regenerated in the next few hours.
 
 Generate and upload the package
