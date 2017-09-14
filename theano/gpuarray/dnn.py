@@ -119,7 +119,8 @@ def _make_handle(ctx):
     with ctx:
         err = cudnn.cudnnCreate(ctypes.byref(handle))
     if err != 0:
-        raise RuntimeError("error creating cudnn handle")
+        raise RuntimeError("Error creating cudnn handle. "
+                           "This can be a sign of a too old driver.", err)
     return handle
 
 
