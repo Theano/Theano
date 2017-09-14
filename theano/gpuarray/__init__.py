@@ -92,9 +92,17 @@ def init_dev(dev, name=None, preallocate=None):
         init_dev.devmap[dev] = context
         reg_context(name, context)
 
+        MB = (1024 * 1024)
         if dev.startswith('cuda'):
             avail = dnn.dnn_available(name)
-            if avail:
+            # If we try to enable cudnn and there isn't enough GPU
+            # memory, there will be an unclear error message. So do
+            # not even try a clear error.
+            if avail and context.free_gmem < 75 * MB:
+                raise RuntimeError(
+                    "Can not enable cuDNN as there is only %d MB of free GPU memory." %
+                    (context.free_gmem/MB))
+            elif avail:
                 context.cudnn_handle = dnn._make_handle(context)
             elif config.dnn.enabled == 'True':
                 raise RuntimeError(
@@ -110,12 +118,16 @@ def init_dev(dev, name=None, preallocate=None):
         if preallocate < 0:
             print("Disabling allocation cache on %s" % (dev,))
         elif preallocate > 0:
-            MB = (1024 * 1024)
             if preallocate <= 1:
                 gmem = min(preallocate, 0.95) * context.total_gmem
             else:
                 gmem = preallocate * MB
-            if gmem > context.free_gmem - 50 * MB:
+            if gmem > context.free_gmem:
+                raise RuntimeError(
+                    "Trying to preallocate %d MB of GPU memory while only"
+                    " %d MB are available." % (gmem / MB,
+                                                     context.free_gmem / MB))
+            elif gmem > context.free_gmem - 50 * MB:
                 print(
                     "WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
 
