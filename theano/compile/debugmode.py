@@ -1388,7 +1388,7 @@ class _FunctionGraphEvent(object):
             self.node = node
             self.op = node.op
         self.idx = idx
-        self.reason = reason
+        self.reason = str(reason)
 
     def __str__(self):
         if self.kind == 'change':
@@ -1472,7 +1472,7 @@ class _VariableEquivalenceTracker(object):
 
     def on_prune(self, fgraph, node, reason):
         self.event_list.append(_FunctionGraphEvent('prune', node,
-                                                   reason=reason))
+                                                   reason=str(reason)))
         assert node in self.active_nodes
         assert node not in self.inactive_nodes
         self.active_nodes.remove(node)
@@ -1480,7 +1480,7 @@ class _VariableEquivalenceTracker(object):
 
     def on_import(self, fgraph, node, reason):
         self.event_list.append(_FunctionGraphEvent('import', node,
-                                                   reason=reason))
+                                                   reason=str(reason)))
 
         assert node not in self.active_nodes
         self.active_nodes.add(node)
@@ -1501,8 +1501,9 @@ class _VariableEquivalenceTracker(object):
                 self.replaced_by.setdefault(r, [])
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
+        reason = str(reason)
         self.event_list.append(_FunctionGraphEvent('change', node,
-                                                   reason=str(reason), idx=i))
+                                                   reason=reason, idx=i))
 
         self.reasons.setdefault(new_r, [])
         self.replaced_by.setdefault(new_r, [])
