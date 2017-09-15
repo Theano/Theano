@@ -5,7 +5,7 @@ import os.path
 import numpy as np
 
 import theano
-import theano.tensor as T
+from theano.tensor import basic as T
 from theano.gradient import DisconnectedType
 
 try:
