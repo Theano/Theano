@@ -645,7 +645,7 @@ class T_picklefunction(unittest.TestCase):
         self.assertTrue(len(f.defaults) == len(g.defaults))
         self.assertTrue(f._check_for_aliased_inputs is g._check_for_aliased_inputs)
         self.assertTrue(f.name == g.name)
-        self.assertTrue(f.maker.fgraph.name == f.maker.fgraph.name)
+        self.assertTrue(f.maker.fgraph.name == g.maker.fgraph.name)
         # print 'f.defaults = %s' % (f.defaults, )
         # print 'g.defaults = %s' % (g.defaults, )
         self.assertTrue(all([f_req == g_req and f_feed == g_feed and
@@ -681,9 +681,11 @@ class T_picklefunction(unittest.TestCase):
                 raise
         self.assertTrue(f.trust_input is g.trust_input)
         f(np.asarray(2.))
-        self.assertRaises((ValueError, AttributeError), f, 2.)
+        self.assertRaises((ValueError, AttributeError,
+                           theano.compile.debugmode.InvalidValueError), f, 2.)
         g(np.asarray(2.))
-        self.assertRaises((ValueError, AttributeError), g, 2.)
+        self.assertRaises((ValueError, AttributeError,
+                           theano.compile.debugmode.InvalidValueError), g, 2.)
 
     def test_output_keys(self):
         x = T.vector()
@@ -1026,7 +1028,9 @@ def test_sync_update():
         f.sync_shared()
         # Sync to make sure all computation are finished.
         t_2 = time.time()
-        assert (t_1 - t_0) > (t_2 - t_1)
+        d1 = (t_1 - t_0)
+        d2 = (t_2 - t_1)
+        assert d1 > d2, (d1, d2)
     else:
         raise SkipTest("Sync is only availble when pygpu is activated.")
 
