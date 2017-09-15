@@ -1,6 +1,6 @@
-
-# Tests of printing functionality
-
+"""
+Tests of printing functionality
+"""
 from __future__ import absolute_import, print_function, division
 import logging
 
