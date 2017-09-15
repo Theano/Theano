@@ -640,7 +640,7 @@ class T_picklefunction(unittest.TestCase):
         self.assertTrue(len(f.defaults) == len(g.defaults))
         self.assertTrue(f._check_for_aliased_inputs is g._check_for_aliased_inputs)
         self.assertTrue(f.name == g.name)
-        self.assertTrue(f.maker.fgraph.name == f.maker.fgraph.name)
+        self.assertTrue(f.maker.fgraph.name == g.maker.fgraph.name)
         # print 'f.defaults = %s' % (f.defaults, )
         # print 'g.defaults = %s' % (g.defaults, )
         self.assertTrue(all([f_req == g_req and f_feed == g_feed and
