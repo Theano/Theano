@@ -2,11 +2,8 @@ from __future__ import absolute_import, print_function, division
 
 import os.path
 
-import numpy as np
-
 import theano
 from theano.tensor import basic as T
-from theano.gradient import DisconnectedType
 
 try:
     import scipy.ndimage
@@ -20,12 +17,12 @@ def scipy_ndimage_helper_inc_dir():
     return os.path.join(os.path.dirname(__file__), 'c_code/scipy_ndimage')
 
 
-
 ZoomShiftMode = theano.gof.EnumList(('NI_NEAREST', 'nearest'),    # 0
                                     ('NI_WRAP', 'wrap'),          # 1
                                     ('NI_REFLECT', 'reflect'),    # 2
                                     ('NI_MIRROR', 'mirror'),      # 3
                                     ('NI_CONSTANT', 'constant'))  # 4
+
 
 class ZoomShift(theano.gof.COp):
     """
@@ -79,7 +76,7 @@ class ZoomShift(theano.gof.COp):
         # TODO broadcastable?
         return theano.gof.Apply(self, [input, output_shape, zoom_ar, shift_ar, cval],
                                 [T.TensorType(dtype=input.type.dtype,
-                                                          broadcastable=(False,) * input.ndim)()])
+                                              broadcastable=(False,) * input.ndim)()])
 
     def infer_shape(self, node, shapes):
         return node.inputs[1],
@@ -157,7 +154,7 @@ class ZoomShiftGrad(theano.gof.COp):
         # TODO broadcastable?
         return theano.gof.Apply(self, [input, bottom_shape, zoom_ar, shift_ar, cval],
                                 [T.TensorType(dtype=input.type.dtype,
-                                                          broadcastable=(False,) * input.ndim)()])
+                                              broadcastable=(False,) * input.ndim)()])
 
     def infer_shape(self, node, shapes):
         return node.inputs[1],
@@ -185,7 +182,7 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
 
     Parameters
     ----------
-    input : tensor 
+    input : tensor
         The input array.
     zoom : scalar or vector, optional
         The zoom factor along the axes. If a scalar, `zoom` is the same for each
@@ -240,9 +237,9 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
     # Zooming to non-finite values is unpredictable, so just choose
     # zoom factor 1 instead
     a = T.switch(T.le(output_shape, 1),
-                             1, input.shape - 1)
+                 1, input.shape - 1)
     b = T.switch(T.le(output_shape, 1),
-                             1, output_shape - 1)
+                 1, output_shape - 1)
     zoom = a.astype('float64') / b.astype('float64')
 
     return ZoomShift(order, mode)(filtered, output_shape, zoom, None, cval)

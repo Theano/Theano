@@ -61,12 +61,12 @@ class TestSplineFilter1D(unittest.TestCase):
 
 class TestZoomShift(unittest.TestCase):
     def test_zoom(self):
-        test_cases = (([1, 1],   'constant', 2.0, True),
+        test_cases = (([1, 1], 'constant', 2.0, True),
                       ([0.5, 2], 'constant', 2.0, True),
-                      ([0.3, 1], 'nearest',  0.0, True),
-                      ([1, 2.3], 'reflect',  0.0, False),
-                      ([2, 2],   'mirror',   0.0, False),
-                      ([2, 2],   'wrap',     0.0, False))
+                      ([0.3, 1], 'nearest', 0.0, True),
+                      ([1, 2.3], 'reflect', 0.0, False),
+                      ([2, 2], 'mirror', 0.0, False),
+                      ([2, 2], 'wrap', 0.0, False))
 
         x = T.matrix()
         for shape in ((4, 3), (10, 15), (1, 1)):
@@ -81,7 +81,7 @@ class TestZoomShift(unittest.TestCase):
                     if imported_scipy:
                         # Compare with SciPy function
                         res_ref = scipy.ndimage.zoom(x_val, zoom=zoom_ar, order=order, mode=mode,
-                                                      cval=cval, prefilter=prefilter)
+                                                     cval=cval, prefilter=prefilter)
                         utt.assert_allclose(res, res_ref)
 
                     if len(res) > 0:
@@ -100,5 +100,5 @@ class TestZoomShift(unittest.TestCase):
                         # Second-order gradient
                         def fn_grad(y_):
                             return ZoomShiftGrad(order=order, mode=mode)(
-                                    y_, x_val.shape, zoom_ar_in_op, None, cval=cval)
+                                y_, x_val.shape, zoom_ar_in_op, None, cval=cval)
                         utt.verify_grad(fn_grad, [res])
