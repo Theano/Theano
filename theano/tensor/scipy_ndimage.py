@@ -117,8 +117,12 @@ class ZoomShiftGrad(theano.gof.COp):
         return node.inputs[1],
 
 
-# TODO this doesn't do anything for order < 2
 class SplineFilter1D(theano.gof.COp):
+    """
+    Calculates a one-dimensional spline filter along the given axis.
+
+    Wrapper for SciPy's ndimage.interpolation.spline_filter1d function.
+    """
     # TODO _f16_ok and check_input ?
     __props__ = ('order', 'axis')
     params_type = theano.gof.ParamsType(order=theano.scalar.int32,
@@ -129,11 +133,14 @@ class SplineFilter1D(theano.gof.COp):
     def __init__(self, order=0, axis=-1):
         if order < 0 or order > 5:
             raise ValueError('spline order %d not supported' % order)
+        if order < 2:
+            raise ValueError('spline filter with order < 2 does nothing')
         self.order = order
         self.axis = axis
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
+        # TODO
         import time
         return (time.time(),)
 
@@ -146,7 +153,13 @@ class SplineFilter1D(theano.gof.COp):
     def make_node(self, input):
         input = theano.tensor.as_tensor_variable(input)
 
-        # TODO broadcastable?
+        if input.ndim < 1:
+            raise ValueError('SplineFilter1D does not work for scalars.')
+        if self.axis != -1 and self.axis < 0 or self.axis >= input.ndim:
+            raise ValueError('Invalid value axis=%d for an input '
+                             'with %d dimensions.' % (self.axis, input.ndim))
+
+         # TODO broadcastable?
         return theano.gof.Apply(self, [input],
                                 [theano.tensor.TensorType(dtype=input.type.dtype,
                                                           broadcastable=(False,) * input.ndim)()])
@@ -158,8 +171,10 @@ class SplineFilter1D(theano.gof.COp):
         return SplineFilter1DGrad(order=self.order, axis=self.axis)(output_grads[0]),
 
 
-# TODO this doesn't do anything for order < 2
 class SplineFilter1DGrad(theano.gof.COp):
+    """
+    Gradient for SplineFilter1D.
+    """
     # TODO _f16_ok and check_input ?
     __props__ = ('order', 'axis')
     params_type = theano.gof.ParamsType(order=theano.scalar.int32,
@@ -170,11 +185,14 @@ class SplineFilter1DGrad(theano.gof.COp):
     def __init__(self, order=0, axis=-1):
         if order < 0 or order > 5:
             raise ValueError('spline order %d not supported' % order)
+        if order < 2:
+            raise ValueError('spline filter with order < 2 does nothing')
         self.order = order
         self.axis = axis
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
+        # TODO
         import time
         return (time.time(),)
 
@@ -187,11 +205,18 @@ class SplineFilter1DGrad(theano.gof.COp):
     def make_node(self, input):
         input = theano.tensor.as_tensor_variable(input)
 
-        # TODO broadcastable?
+        if input.ndim < 1:
+            raise ValueError('SplineFilter1DGrad does not work for scalars.')
+        if self.axis != -1 and self.axis < 0 or self.axis >= input.ndim:
+            raise ValueError('Invalid value axis=%d for an input '
+                             'with %d dimensions.' % (self.axis, input.ndim))
+
         return theano.gof.Apply(self, [input],
                                 [theano.tensor.TensorType(dtype=input.type.dtype,
                                                           broadcastable=(False,) * input.ndim)()])
 
     def infer_shape(self, node, in_shapes):
         return in_shapes
+
+
 
