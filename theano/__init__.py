@@ -245,3 +245,7 @@ def sparse_grad(var):
 
 
 __import__('theano.tensor.shared_randomstreams')
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions

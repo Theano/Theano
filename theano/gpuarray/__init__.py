@@ -87,6 +87,7 @@ def init_dev(dev, name=None, preallocate=None):
         context = pygpu.init(
             dev,
             sched=config.gpuarray.sched,
+            single_stream=config.gpuarray.single_stream,
             **args)
         context.dev = dev
         init_dev.devmap[dev] = context
