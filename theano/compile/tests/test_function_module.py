@@ -676,9 +676,11 @@ class T_picklefunction(unittest.TestCase):
                 raise
         self.assertTrue(f.trust_input is g.trust_input)
         f(np.asarray(2.))
-        self.assertRaises((ValueError, AttributeError), f, 2.)
+        self.assertRaises((ValueError, AttributeError,
+                           theano.compile.debugmode.InvalidValueError), f, 2.)
         g(np.asarray(2.))
-        self.assertRaises((ValueError, AttributeError), g, 2.)
+        self.assertRaises((ValueError, AttributeError,
+                           theano.compile.debugmode.InvalidValueError), g, 2.)
 
     def test_output_keys(self):
         x = T.vector()
