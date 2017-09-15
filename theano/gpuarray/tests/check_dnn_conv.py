@@ -587,6 +587,15 @@ class BaseTestDnnConv(object):
             A /= scale_factor
             B /= scale_factor
 
+    def get_atol_rtol(self, algo, dtype, precision):
+        if dtype == 'float16':
+            # Raise tolerance for float16
+            return (1e-2, 5e-2)
+        if algo == 'winograd_non_fused' and dtype == precision == 'float32':
+            # Raise tolerance for winograd_non_fused in FLOAT_CONFIG.
+            return (1e-4, 1e-4)
+        return None, None
+
     def __init__(self):
         utt.seed_rng(1234)
         self.rand = MRG_RandomStreams()
@@ -644,14 +653,13 @@ class BaseTestDnnConv(object):
         if algo in cudnn.deterministic_fwd_algorithms:
             utt.assert_allclose(res, np.asarray(f()))
 
-        # Raise tolerance for float16
-        rtol = 6e-2 if dtype == 'float16' else None
+        atol, rtol = self.get_atol_rtol(algo, dtype, precision)
         if beta == 0:
             cpu_res = alpha * res_ref
         else:
             cpu_res = alpha * res_ref + beta * out
         self.scale_numpy_arrays_inplace(cpu_res, res, alpha)
-        utt.assert_allclose(cpu_res, res, rtol=rtol)
+        utt.assert_allclose(cpu_res, res, rtol=rtol, atol=atol)
 
     def run_conv_gradinput(self, algo, dtype, precision, parameters):
         inputs_shape, filters_shape, subsample, dilation, border_mode, conv_mode, alpha, beta = parameters
@@ -701,14 +709,13 @@ class BaseTestDnnConv(object):
         if algo in cudnn.deterministic_bwd_data_algorithms:
             utt.assert_allclose(res, np.asarray(f()))
 
-        # Raise tolerance for float16
-        rtol = 5e-2 if dtype == 'float16' else None
+        atol, rtol = self.get_atol_rtol(algo, dtype, precision)
         if beta == 0:
             cpu_res = alpha * res_ref
         else:
             cpu_res = alpha * res_ref + beta * inputs_val
         self.scale_numpy_arrays_inplace(cpu_res, res, alpha)
-        utt.assert_allclose(cpu_res, res, rtol=rtol)
+        utt.assert_allclose(cpu_res, res, rtol=rtol, atol=atol)
 
     def run_conv_gradweight(self, algo, dtype, precision, parameters):
         inputs_shape, filters_shape, subsample, dilation, border_mode, conv_mode, alpha, beta = parameters
@@ -753,14 +760,13 @@ class BaseTestDnnConv(object):
         if algo in cudnn.deterministic_bwd_filter_algorithms:
             utt.assert_allclose(res, np.asarray(f()))
 
-        # Raise tolerance for float16
-        rtol = 5e-2 if dtype == 'float16' else None
+        atol, rtol = self.get_atol_rtol(algo, dtype, precision)
         if beta == 0:
             cpu_res = alpha * res_ref
         else:
             cpu_res = alpha * res_ref + beta * filters_val
         self.scale_numpy_arrays_inplace(cpu_res, res, alpha)
-        utt.assert_allclose(cpu_res, res, rtol=rtol)
+        utt.assert_allclose(cpu_res, res, rtol=rtol, atol=atol)
 
     def should_fail(self, function, *args):
         try:
