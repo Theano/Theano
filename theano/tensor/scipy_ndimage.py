@@ -135,14 +135,12 @@ class SplineFilter1D(theano.gof.COp):
             raise ValueError('spline order %d not supported' % order)
         if order < 2:
             raise ValueError('spline filter with order < 2 does nothing')
-        self.order = order
-        self.axis = axis
+        self.order = int(order)
+        self.axis = int(axis)
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        # TODO
-        import time
-        return (time.time(),)
+        return (1,)
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
@@ -152,23 +150,23 @@ class SplineFilter1D(theano.gof.COp):
 
     def make_node(self, input):
         input = theano.tensor.as_tensor_variable(input)
-
         if input.ndim < 1:
             raise ValueError('SplineFilter1D does not work for scalars.')
         if self.axis != -1 and self.axis < 0 or self.axis >= input.ndim:
             raise ValueError('Invalid value axis=%d for an input '
                              'with %d dimensions.' % (self.axis, input.ndim))
-
-         # TODO broadcastable?
-        return theano.gof.Apply(self, [input],
-                                [theano.tensor.TensorType(dtype=input.type.dtype,
-                                                          broadcastable=(False,) * input.ndim)()])
+        return theano.gof.Apply(self, [input], [input.type()])
 
     def infer_shape(self, node, in_shapes):
         return in_shapes
 
     def grad(self, inputs, output_grads):
         return SplineFilter1DGrad(order=self.order, axis=self.axis)(output_grads[0]),
+
+    def perform(self, node, inputs, out, params):
+        input, = inputs
+        out[0][0] = scipy.ndimage.spline_filter1d(input, output=input.dtype,
+                                                  order=params.order, axis=params.axis)
 
 
 class SplineFilter1DGrad(theano.gof.COp):
@@ -187,14 +185,12 @@ class SplineFilter1DGrad(theano.gof.COp):
             raise ValueError('spline order %d not supported' % order)
         if order < 2:
             raise ValueError('spline filter with order < 2 does nothing')
-        self.order = order
-        self.axis = axis
+        self.order = int(order)
+        self.axis = int(axis)
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        # TODO
-        import time
-        return (time.time(),)
+        return (1,)
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
@@ -204,19 +200,73 @@ class SplineFilter1DGrad(theano.gof.COp):
 
     def make_node(self, input):
         input = theano.tensor.as_tensor_variable(input)
-
         if input.ndim < 1:
             raise ValueError('SplineFilter1DGrad does not work for scalars.')
-        if self.axis != -1 and self.axis < 0 or self.axis >= input.ndim:
-            raise ValueError('Invalid value axis=%d for an input '
-                             'with %d dimensions.' % (self.axis, input.ndim))
-
-        return theano.gof.Apply(self, [input],
-                                [theano.tensor.TensorType(dtype=input.type.dtype,
-                                                          broadcastable=(False,) * input.ndim)()])
+        return theano.gof.Apply(self, [input], [input.type()])
 
     def infer_shape(self, node, in_shapes):
         return in_shapes
 
+    def grad(self, inputs, output_grads):
+        return SplineFilter1D(order=self.order, axis=self.axis)(output_grads[0]),
 
 
+def spline_filter1d(input, order=3, axis=-1):
+    """
+    Calculates a one-dimensional spline filter along the given axis.
+
+    The lines of the array along the given axis are filtered by a
+    spline filter. The order of the spline must be >= 2 and <= 5.
+
+    This function is equivalent to `scipy.ndimage.interpolation.spline_filter1d`.
+
+    Parameters
+    ----------
+    input : tensor
+        The input array.
+    order : int, optional
+        The order of the spline, default is 3.
+    axis : int, optional
+        The axis along which the spline filter is applied. Default is the last
+        axis.
+
+    Returns
+    -------
+    spline_filter1d : tensor
+        The filtered input.
+
+    """
+    if order < 0 or order > 5:
+        raise RuntimeError('spline order not supported')
+    if order in [0, 1]:
+        return input
+    else:
+        return SplineFilter1D(order, axis)(input)
+
+
+def spline_filter(input, order=3):
+    """
+    Multi-dimensional spline filter.
+
+    For more details, see `spline_filter1d`.
+
+    See Also
+    --------
+    spline_filter1d
+
+    Notes
+    -----
+    The multi-dimensional filter is implemented as a sequence of
+    one-dimensional spline filters. The intermediate arrays are stored
+    in the same data type as the output. Therefore, for output types
+    with a limited precision, the results may be imprecise because
+    intermediate results may be stored with insufficient precision.
+
+    """
+    if order < 0 or order > 5:
+        raise RuntimeError('spline order not supported')
+    if order in [0, 1]:
+        return input
+    for axis in range(input.ndim):
+        input = spline_filter1d(input, order, axis)
+    return input
