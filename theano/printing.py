@@ -506,7 +506,7 @@ class DefaultPrinter:
         if output in pstate.memo:
             return pstate.memo[output]
         pprinter = pstate.pprinter
-        node = output.owner
+        node = getattr(output, 'owner', None)
         if node is None:
             return leaf_printer.process(output, pstate)
         new_precedence = -1000
