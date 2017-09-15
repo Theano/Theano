@@ -5,6 +5,7 @@
 //
 // There are some modifications to make it work in Theano.
 //  - added some casts to malloc statements
+//  - added NI_SplineFilter1DGrad
 //
 
 /* Copyright (C) 2003-2005 Peter J. Verveer
@@ -309,6 +310,129 @@ int NI_SplineFilter1D(PyArrayObject *input, int order, int axis,
                     for(ll = len - 2; ll >= 0; ll--)
                         ln[ll] = p * (ln[ll + 1] - ln[ll]);
                 }
+            }
+        }
+        /* copy lines from buffer to array: */
+        if (!NI_LineBufferToArray(&oline_buffer)) {
+            goto exit;
+        }
+    } while(more);
+
+ exit:
+    NPY_END_THREADS;
+    free(buffer);
+    return PyErr_Occurred() ? 0 : 1;
+}
+
+// added for Theano
+/* gradient of one-dimensional spline filter: */
+int NI_SplineFilter1DGrad(PyArrayObject *input, int order, int axis,
+                                                PyArrayObject *output)
+{
+    int hh, npoles = 0, more;
+    npy_intp kk, ll, lines, len;
+    double *buffer = NULL, weight, pole[2];
+    NI_LineBuffer iline_buffer, oline_buffer;
+    NPY_BEGIN_THREADS_DEF;
+
+    len = PyArray_NDIM(input) > 0 ? PyArray_DIM(input, axis) : 1;
+    if (len < 1)
+        goto exit;
+
+    /* these are used in the spline filter calculation below: */
+    switch (order) {
+    case 2:
+        npoles = 1;
+        pole[0] = sqrt(8.0) - 3.0;
+        break;
+    case 3:
+        npoles = 1;
+        pole[0] = sqrt(3.0) - 2.0;
+        break;
+    case 4:
+        npoles = 2;
+        pole[0] = sqrt(664.0 - sqrt(438976.0)) + sqrt(304.0) - 19.0;
+        pole[1] = sqrt(664.0 + sqrt(438976.0)) - sqrt(304.0) - 19.0;
+        break;
+    case 5:
+        npoles = 2;
+        pole[0] = sqrt(67.5 - sqrt(4436.25)) + sqrt(26.25) - 6.5;
+        pole[1] = sqrt(67.5 + sqrt(4436.25)) - sqrt(26.25) - 6.5;
+        break;
+    default:
+        break;
+    }
+
+    weight = 1.0;
+    for(hh = 0; hh < npoles; hh++)
+        weight *= (1.0 - pole[hh]) * (1.0 - 1.0 / pole[hh]);
+
+    /* allocate an initialize the line buffer, only a single one is used,
+         because the calculation is in-place: */
+    lines = -1;
+    if (!NI_AllocateLineBuffer(input, axis, 0, 0, &lines, BUFFER_SIZE,
+                                                         &buffer))
+        goto exit;
+    if (!NI_InitLineBuffer(input, axis, 0, 0, lines, buffer,
+                                                 NI_EXTEND_DEFAULT, 0.0, &iline_buffer))
+        goto exit;
+    if (!NI_InitLineBuffer(output, axis, 0, 0, lines, buffer,
+                                                 NI_EXTEND_DEFAULT, 0.0, &oline_buffer))
+        goto exit;
+
+    NPY_BEGIN_THREADS;
+
+    /* iterate over all the array lines: */
+    do {
+        /* copy lines from array to buffer: */
+        if (!NI_ArrayToLineBuffer(&iline_buffer, &lines, &more)) {
+            goto exit;
+        }
+        /* iterate over the lines in the buffer: */
+        for(kk = 0; kk < lines; kk++) {
+            /* get line: */
+            double *ln = NI_GET_LINE(iline_buffer, kk);
+            /* spline filter: */
+            if (len > 1) {
+                for(hh = 0; hh < npoles; hh++) {
+                    double p = pole[hh];
+                    int max = (int)ceil(log(TOLERANCE) / log(fabs(p)));
+
+                    double sum = p * ln[0];
+                    ln[0] = -p * ln[0];
+                    for(ll = 1; ll < len - 1; ll++) {
+                        sum = p * (sum + ln[ll]);
+                        ln[ll] = p * (ln[ll - 1] - ln[ll]);
+                    }
+                    sum = (p / (p * p - 1.0)) * (sum + ln[len - 1]);
+                    ln[len - 2] += p * sum;
+                    ln[len - 1] = sum;
+
+                    for(ll = len - 2; ll >= 0; ll--)
+                        ln[ll] += p * ln[ll + 1];
+
+                    if (max < len) {
+                        double zn = p;
+                        for(ll = 1; ll < len; ll++) {
+                            ln[ll] += zn * ln[0];
+                            zn *= p;
+                        }
+                    } else {
+                        double zn = p;
+                        double iz = 1.0 / p;
+                        double z2n = pow(p, (double)(len - 1));
+                        ln[0] = ln[0] / (1.0 - z2n * z2n);
+                        ln[len - 1] += z2n * ln[0];
+                        z2n *= z2n * iz;
+                        for(ll = 1; ll <= len - 2; ll++) {
+                            ln[ll] += (zn + z2n) * ln[0];
+                            zn *= p;
+                            z2n *= iz;
+                        }
+                    }
+                }
+                for(ll = 0; ll < len; ll++)
+                    ln[ll] *= weight;
             }
         }
         /* copy lines from buffer to array: */
