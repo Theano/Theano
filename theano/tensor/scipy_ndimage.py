@@ -3,11 +3,17 @@ from __future__ import absolute_import, print_function, division
 import os.path
 
 import numpy as np
-import scipy.ndimage
 
 import theano
 import theano.tensor as T
 from theano.gradient import DisconnectedType
+
+try:
+    import scipy.ndimage
+    imported_scipy = True
+except ImportError:
+    # some tests won't work
+    imported_scipy = False
 
 
 def scipy_ndimage_helper_inc_dir():
@@ -91,6 +97,9 @@ class ZoomShift(theano.gof.COp):
                 theano.gradient.grad_not_implemented(self, 4, cval)]
 
     def perform(self, node, inputs, out, params):
+        assert imported_scipy, (
+            "SciPy ndimage not available. Scipy is needed for ZoomShift.perform")
+
         input, output_shape, zoom_ar, shift_ar, cval = inputs
         zoom = [(ii / jj) for ii, jj in zip(output_shape, input.shape)]
         out[0][0] = scipy.ndimage.zoom(input, zoom, order=params.order,
@@ -157,6 +166,9 @@ class ZoomShiftGrad(theano.gof.COp):
         return [[True], [False], [False], [False], [False]]
 
     def grad(self, inputs, output_grads):
+        assert imported_scipy, (
+            "SciPy ndimage not available. Scipy is needed for ZoomShiftGrad.perform")
+
         input, bottom_shape, zoom_ar, shift_ar, cval = inputs
         grad = ZoomShift(order=self.order, mode=self.mode)(output_grads[0], input.shape, zoom_ar, shift_ar, 0.0)
         return [grad] + [theano.gradient.DisconnectedType()() for i in range(4)]
@@ -283,6 +295,9 @@ class SplineFilter1D(theano.gof.COp):
         return SplineFilter1DGrad(order=self.order, axis=self.axis)(output_grads[0]),
 
     def perform(self, node, inputs, out, params):
+        assert imported_scipy, (
+            "SciPy ndimage not available. Scipy is needed for SplineFilter1D.perform")
+
         input, = inputs
         out[0][0] = scipy.ndimage.spline_filter1d(input, output=input.dtype,
                                                   order=params.order, axis=params.axis)

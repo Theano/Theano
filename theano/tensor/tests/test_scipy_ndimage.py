@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 
 import unittest
-import scipy.ndimage
+from nose.plugins.skip import SkipTest
 import numpy as np
 
 import theano
@@ -10,6 +10,13 @@ from theano.tensor.scipy_ndimage import (zoom, ZoomShiftGrad,
                                          spline_filter1d, spline_filter,
                                          SplineFilter1DGrad)
 import theano.tests.unittest_tools as utt
+
+try:
+    import scipy.ndimage
+    imported_scipy = True
+except ImportError:
+    # some tests won't work
+    imported_scipy = False
 
 
 class TestSplineFilter1D(unittest.TestCase):
@@ -23,9 +30,10 @@ class TestSplineFilter1D(unittest.TestCase):
                     f = theano.function([x], spline_filter1d(x, order, axis))
                     res = f(x_val)
 
-                    # Compare with SciPy function
-                    res_ref = scipy.ndimage.spline_filter1d(x_val, order, axis)
-                    utt.assert_allclose(res, res_ref)
+                    if imported_scipy:
+                        # Compare with SciPy function
+                        res_ref = scipy.ndimage.spline_filter1d(x_val, order, axis)
+                        utt.assert_allclose(res, res_ref)
 
                     # First-order gradient
                     def fn(x_):
@@ -39,6 +47,9 @@ class TestSplineFilter1D(unittest.TestCase):
                         utt.verify_grad(fn_grad, [x_val])
 
     def test_spline_filter(self):
+        if not imported_scipy:
+            raise SkipTest('SciPy ndimage not available')
+
         x = T.tensor3()
         x_val = np.random.uniform(size=(4, 3, 9)).astype(theano.config.floatX)
         order = 2
@@ -67,10 +78,11 @@ class TestZoomShift(unittest.TestCase):
                                                   cval=cval, prefilter=prefilter))
                     res = f(x_val)
 
-                    # Compare with SciPy function
-                    res_ref = scipy.ndimage.zoom(x_val, zoom=zoom_ar, order=order, mode=mode,
-                                                  cval=cval, prefilter=prefilter)
-                    utt.assert_allclose(res, res_ref)
+                    if imported_scipy:
+                        # Compare with SciPy function
+                        res_ref = scipy.ndimage.zoom(x_val, zoom=zoom_ar, order=order, mode=mode,
+                                                      cval=cval, prefilter=prefilter)
+                        utt.assert_allclose(res, res_ref)
 
                     if len(res) > 0:
                         # First-order gradient
