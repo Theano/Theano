@@ -72,7 +72,7 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         You can give ``None`` for any element of the list to specify that this
         element is not known at compile time.
 
-    border_mode: str, int or tuple of two int
+    border_mode: str, int or a tuple of two ints or pairs of ints
         Either of the following:
 
         ``'valid'``: apply filter wherever it completely overlaps with the
@@ -85,8 +85,11 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
             leads to the output shape being equal to the input shape.
         ``int``: pad input with a symmetric border of zeros of the given
             width, then perform a valid convolution.
-        ``(int1, int2)``: pad input with a symmetric border of ``int1`` rows
-            and ``int2`` columns, then perform a valid convolution.
+        ``(int1, int2)``: (for 2D) pad input with a symmetric border of ``int1``,
+            ``int2``, then perform a valid convolution.
+        ``(int1, (int2, int3))`` or ``((int1, int2), int3)``: (for 2D)
+            pad input with one symmetric border of `int1`` or ``int3``, and
+            one asymmetric border of ``(int2, int3)`` or ``(int1, int2)``.
 
     subsample: tuple of len 2
         Factor by which to subsample the output.

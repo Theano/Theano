@@ -3084,6 +3084,10 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     if op.unshared:
         return None
 
+    if isinstance(op.border_mode, tuple) and any(isinstance(p, tuple) for p in op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
+
     inp1 = inputs[0]
     inp2 = inputs[1]
 
@@ -3180,6 +3184,9 @@ def local_abstractconv_cudnn(node):
         return
     if node.op.unshared:
         return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
     if isinstance(node.op, AbstractConv2d):
         with inherit_stack_trace(node.outputs):
             return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
@@ -3197,6 +3204,9 @@ def local_abstractconv_cudnn_alt(node):
     if version(raises=False) < 6000 and node.op.filter_dilation != (1, 1):
         return None
     if node.op.unshared:
+        return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
         return None
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
@@ -3407,6 +3417,9 @@ def local_abstractconv_gw_cudnn(node):
         return
     if node.op.unshared:
         return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
     if isinstance(node.op, AbstractConv2d_gradWeights):
         with inherit_stack_trace(node.outputs):
             return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
@@ -3421,6 +3434,9 @@ def local_abstractconv_gi_cudnn(node):
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
     if node.op.unshared:
+        return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
         return None
     if isinstance(node.op, AbstractConv2d_gradInputs):
         with inherit_stack_trace(node.outputs):

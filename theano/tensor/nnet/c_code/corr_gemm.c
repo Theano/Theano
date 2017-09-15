@@ -31,23 +31,23 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void im2col(const %(float_type)s* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int dilation_h, const int dilation_w,
-    const int pad_h, const int pad_w,
+    const int pad_hl, const int pad_hr, const int pad_wl, const int pad_wr,
     const int stride_h, const int stride_w,
     %(float_type)s* data_col) {
   // Implicit dilated kernel size
   int dil_kernel_h = (kernel_h - 1) * dilation_h + 1;
   int dil_kernel_w = (kernel_w - 1) * dilation_w + 1;
-  int height_col = (height + 2 * pad_h - dil_kernel_h) / stride_h + 1;
-  int width_col = (width + 2 * pad_w - dil_kernel_w) / stride_w + 1;
+  int height_col = (height + pad_hl + pad_hr - dil_kernel_h) / stride_h + 1;
+  int width_col = (width + pad_wl + pad_wr - dil_kernel_w) / stride_w + 1;
   int channels_col = channels * kernel_h * kernel_w;
   for (int c = 0; c < channels_col; ++c) {
     int w_offset = c %% kernel_w;
     int h_offset = (c / kernel_w) %% kernel_h;
     int c_im = c / kernel_h / kernel_w;
     for (int h = 0; h < height_col; ++h) {
-      int h_pad = h * stride_h - pad_h + h_offset * dilation_h;
+      int h_pad = h * stride_h - pad_hl + h_offset * dilation_h;
       for (int w = 0; w < width_col; ++w) {
-        int w_pad = w * stride_w - pad_w + w_offset * dilation_w;
+        int w_pad = w * stride_w - pad_wl + w_offset * dilation_w;
         if (h_pad >= 0 && h_pad < height && w_pad >= 0 && w_pad < width)
           data_col[(npy_intp)(c * height_col + h) * width_col + w] =
             data_im[(npy_intp)(c_im * height + h_pad) * width + w_pad];
@@ -64,13 +64,14 @@ void im2col(const %(float_type)s* data_im, const int channels,
 void col2im(const %(float_type)s* data_col, const int channels,
     const int height, const int width, const int patch_h, const int patch_w,
     const int dilation_h, const int dilation_w,
-    const int pad_h, const int pad_w, const int stride_h,
-    const int stride_w, %(float_type)s* data_im) {
+    const int pad_hl, const int pad_hr, const int pad_wl, const int pad_wr,
+    const int stride_h, const int stride_w,
+    %(float_type)s* data_im) {
   // Implicit dilated patch
   int dil_patch_h = (patch_h - 1) * dilation_h + 1;
   int dil_patch_w = (patch_w - 1) * dilation_w + 1;
-  int height_col = (height + 2 * pad_h - dil_patch_h) / stride_h + 1;
-  int width_col = (width + 2 * pad_w - dil_patch_w) / stride_w + 1;
+  int height_col = (height + pad_hl + pad_hr - dil_patch_h) / stride_h + 1;
+  int width_col = (width + pad_wl + pad_wr - dil_patch_w) / stride_w + 1;
   int num_kernels = channels * height * width;
   int channels_col = channels * patch_h * patch_w;
   for (int c = 0; c < channels_col; ++c) {
@@ -78,9 +79,9 @@ void col2im(const %(float_type)s* data_col, const int channels,
     int h_offset = (c / patch_w) %% patch_h;
     int c_im = c / patch_h / patch_w;
     for (int h = 0; h < height_col; ++h) {
-      int h_pad = h * stride_h - pad_h + h_offset * dilation_h;
+      int h_pad = h * stride_h - pad_hl + h_offset * dilation_h;
       for (int w = 0; w < width_col; ++w) {
-        int w_pad = w * stride_w - pad_w + w_offset * dilation_w;
+        int w_pad = w * stride_w - pad_wl + w_offset * dilation_w;
         if (h_pad >= 0 && h_pad < height && w_pad >= 0 && w_pad < width)
           data_im[(npy_intp)(c_im * height + h_pad) * width + w_pad] +=
             data_col[(npy_intp)(c * height_col + h) * width_col + w];
@@ -105,8 +106,10 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                       const int dW = 1,
                       const int dilH = 1,
                       const int dilW = 1,
-                      const int padH = 0,
-                      const int padW = 0,
+                      const int padH_l = 0,
+                      const int padH_r = 0,
+                      const int padW_l = 0,
+                      const int padW_r = 0,
                       const int numgroups = 1,
                       const int unshared = 0)
 {
@@ -172,8 +175,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int dil_kH = (kH - 1) * dilH + 1;
     const int dil_kW = (kW - 1) * dilW + 1;
     // top: (batchSize, nFilters, topHeight, topWidth)
-    const int topHeightNoDH = (bottomHeight + 2*padH - dil_kH);
-    const int topWidthNoDW  = (bottomWidth + 2*padW - dil_kW);
+    const int topHeightNoDH = (bottomHeight + padH_l + padH_r - dil_kH);
+    const int topWidthNoDW  = (bottomWidth + padW_l + padW_r - dil_kW);
     // the above values might be negative so we need to use Python-like
     // flooring integer division to be compatible with get_conv_output.
     // note: this macro implements Python's // for negative x only
@@ -303,7 +306,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             int tid = %(omp_get_thread_num)s;
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * batch_bottom_stride, nChannels,
-                   bottomHeight,bottomWidth, kH, kW, dilH, dilW, padH, padW, dH, dW,
+                   bottomHeight,bottomWidth, kH, kW, dilH, dilW, padH_l, padH_r, padW_l, padW_r, dH, dW,
                    (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
             // Second, gemm
             if (unshared) {
@@ -396,7 +399,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             int tid = %(omp_get_thread_num)s;
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * batch_bottom_stride,
-                   nChannels, bottomHeight,bottomWidth, kH, kW, dilH, dilW, padH, padW, dH, dW,
+                   nChannels, bottomHeight,bottomWidth, kH, kW, dilH, dilW, padH_l, padH_r, padW_l, padW_r, dH, dW,
                    (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
             // Second, gemm
             // Note that we accumulate into weight. We do so by setting beta = 0
@@ -519,7 +522,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             }
             // col2im back to the data
             col2im((%(float_type)s*)PyArray_DATA(col) + tid * col_stride, nChannels, bottomHeight, bottomWidth,
-                   kH, kW, dilH, dilW, padH, padW,
+                   kH, kW, dilH, dilW, padH_l, padH_r, padW_l, padW_r,
                    dH, dW, (%(float_type)s*)PyArray_DATA(bottom) + n * batch_bottom_stride);
         }
         // Restore to previous blas threads
