@@ -47,6 +47,9 @@ REM Then install
 python setup.py install --home=%LIBDIR%
 cd ..
 
+REM Exit if theano.gpuarray import fails
+python -c "import theano.gpuarray; theano.gpuarray.use('%DEVICE%')" || exit /b
+
 set THEANO_PARAM=theano --with-timer --timer-top-n 10 --with-xunit --xunit-file=theano_win_pr_tests.xml
 set NAME=pr_win
 set THEANO_FLAGS=%THEANO_FLAGS%,mode=FAST_RUN,floatX=float32,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,compiledir=%COMPILEDIR:\=\\%,dnn.base_path="%CUDNNPATH%",gcc.cxxflags='-I%LIBDIR:\=\\%\\include -L%LIBDIR:\=\\%\\lib'

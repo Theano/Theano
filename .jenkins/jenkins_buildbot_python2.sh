@@ -66,6 +66,9 @@ export PYTHONPATH=${WORKSPACE}:$PYTHONPATH
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 
+# Exit if theano.gpuarray import fails
+python -c "import theano.gpuarray; theano.gpuarray.use('${DEVICE}')" || { echo 'theano.gpuarray import failed, exiting'; exit 1; }
+
 # We don't want warnings in the buildbot for errors already fixed.
 FLAGS=${THEANO_FLAGS},warn.ignore_bug_before=all,$FLAGS
 
