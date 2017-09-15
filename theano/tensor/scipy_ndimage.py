@@ -3,6 +3,7 @@ from __future__ import absolute_import, print_function, division
 import os.path
 
 import numpy as np
+import scipy.ndimage
 
 import theano
 from theano.gradient import DisconnectedType
@@ -12,15 +13,25 @@ def scipy_ndimage_helper_inc_dir():
     return os.path.join(os.path.dirname(__file__), 'c_code/scipy_ndimage')
 
 
+
+ZoomShiftMode = theano.gof.EnumList(('NI_NEAREST', 'nearest'),    # 0
+                                    ('NI_WRAP', 'wrap'),          # 1
+                                    ('NI_REFLECT', 'reflect'),    # 2
+                                    ('NI_MIRROR', 'mirror'),      # 3
+                                    ('NI_CONSTANT', 'constant'))  # 4
+
 class ZoomShift(theano.gof.COp):
+    """
+    Uses spline interpolation to zoom and shift an array.
+
+    Wrapper for SciPy's ndimage.interpolation.zoomshift function.
+    See `zoom` for more information.
+
+    """
     # TODO _f16_ok and check_input ?
     __props__ = ('order', 'mode')
     params_type = theano.gof.ParamsType(order=theano.scalar.int32,
-                                        mode=theano.gof.EnumList(('NI_NEAREST', 'nearest'),  # 0
-                                                                 ('NI_WRAP', 'wrap'),        # 1
-                                                                 ('NI_REFLECT', 'reflect'),  # 2
-                                                                 ('NI_MIRROR', 'mirror'),    # 3),
-                                                                 ('NI_CONSTANT', 'constant')))
+                                        mode=ZoomShiftMode)
     c_func_file = 'c_code/scipy_ndimage_zoomshift.c'
     c_func_name = 'cpu_zoomshift'
 
@@ -33,8 +44,7 @@ class ZoomShift(theano.gof.COp):
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        import time
-        return (time.time(),)
+        return (1,)
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
@@ -45,10 +55,16 @@ class ZoomShift(theano.gof.COp):
     def make_node(self, input, output_shape, zoom_ar, shift_ar, cval=0.):
         input = theano.tensor.as_tensor_variable(input)
         output_shape = theano.tensor.as_tensor_variable(output_shape).astype('int64')
-        zoom_ar = theano.tensor.as_tensor_variable(zoom_ar).astype('float64')
-        shift_ar = theano.tensor.as_tensor_variable(shift_ar).astype('float64')
+        if zoom_ar is None:
+            zoom_ar = theano.tensor.zeros((input.ndim,), 'float64')
+        else:
+            zoom_ar = theano.tensor.as_tensor_variable(zoom_ar).astype('float64')
+        if shift_ar is None:
+            shift_ar = theano.tensor.zeros((input.ndim,), 'float64')
+        else:
+            shift_ar = theano.tensor.as_tensor_variable(shift_ar).astype('float64')
         cval = theano.tensor.as_tensor_variable(cval).astype('float64')
-        assert output_shape.ndim == 1  # TODO dtype is int
+        assert output_shape.ndim == 1
         assert zoom_ar.ndim == 1
         assert shift_ar.ndim == 1
         assert cval.ndim == 0
@@ -61,21 +77,36 @@ class ZoomShift(theano.gof.COp):
     def infer_shape(self, node, shapes):
         return node.inputs[1],
 
+    def connection_pattern(self, node):
+        return [[True], [False], [False], [False], [True]]
+
     def grad(self, inputs, output_grads):
         input, output_shape, zoom_ar, shift_ar, cval = inputs
         grad = ZoomShiftGrad(order=self.order, mode=self.mode)(output_grads[0], input.shape, zoom_ar, shift_ar, cval)
-        return [grad] + [theano.gradient.DisconnectedType()() for i in range(4)]
+        return [grad,
+                theano.gradient.DisconnectedType()(),
+                theano.gradient.DisconnectedType()(),
+                theano.gradient.DisconnectedType()(),
+                theano.gradient.grad_not_implemented(self, 4, cval)]
+
+    def perform(self, node, inputs, out, params):
+        input, output_shape, zoom_ar, shift_ar, cval = inputs
+        zoom = [(ii / jj) for ii, jj in zip(output_shape, input.shape)]
+        out[0][0] = scipy.ndimage.zoom(input, zoom, order=params.order,
+                                       mode=self.mode, cval=cval,
+                                       prefilter=False,
+                                       output=input.dtype)
 
 
 class ZoomShiftGrad(theano.gof.COp):
+    """
+    Gradient for ZoomShift.
+
+    """
     # TODO _f16_ok and check_input ?
     __props__ = ('order', 'mode')
     params_type = theano.gof.ParamsType(order=theano.scalar.int32,
-                                        mode=theano.gof.EnumList(('NI_NEAREST', 'nearest'),  # 0
-                                                                 ('NI_WRAP', 'wrap'),        # 1
-                                                                 ('NI_REFLECT', 'reflect'),  # 2
-                                                                 ('NI_MIRROR', 'mirror'),    # 3),
-                                                                 ('NI_CONSTANT', 'constant')))
+                                        mode=ZoomShiftMode)
     c_func_file = 'c_code/scipy_ndimage_zoomshift.c'
     c_func_name = 'cpu_zoomshift_grad'
 
@@ -88,8 +119,7 @@ class ZoomShiftGrad(theano.gof.COp):
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        import time
-        return (time.time(),)
+        return (1,)
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
@@ -100,10 +130,16 @@ class ZoomShiftGrad(theano.gof.COp):
     def make_node(self, input, bottom_shape, zoom_ar, shift_ar, cval=0.):
         input = theano.tensor.as_tensor_variable(input)
         bottom_shape = theano.tensor.as_tensor_variable(bottom_shape).astype('int64')
-        zoom_ar = theano.tensor.as_tensor_variable(zoom_ar).astype('float64')
-        shift_ar = theano.tensor.as_tensor_variable(shift_ar).astype('float64')
+        if zoom_ar is None:
+            zoom_ar = theano.tensor.zeros((input.ndim,), 'float64')
+        else:
+            zoom_ar = theano.tensor.as_tensor_variable(zoom_ar).astype('float64')
+        if shift_ar is None:
+            shift_ar = theano.tensor.zeros((input.ndim,), 'float64')
+        else:
+            shift_ar = theano.tensor.as_tensor_variable(shift_ar).astype('float64')
         cval = theano.tensor.as_tensor_variable(cval).astype('float64')
-        assert bottom_shape.ndim == 1  # TODO dtype is int
+        assert bottom_shape.ndim == 1
         assert zoom_ar.ndim == 1
         assert shift_ar.ndim == 1
         assert cval.ndim == 0
@@ -115,6 +151,88 @@ class ZoomShiftGrad(theano.gof.COp):
 
     def infer_shape(self, node, shapes):
         return node.inputs[1],
+
+    def connection_pattern(self, node):
+        return [[True], [False], [False], [False], [False]]
+
+    def grad(self, inputs, output_grads):
+        input, bottom_shape, zoom_ar, shift_ar, cval = inputs
+        grad = ZoomShift(order=self.order, mode=self.mode)(output_grads[0], input.shape, zoom_ar, shift_ar, 0.0)
+        return [grad] + [theano.gradient.DisconnectedType()() for i in range(4)]
+
+
+def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
+         prefilter=True):
+    """
+    Zoom an array.
+
+    The array is zoomed using spline interpolation of the requested order.
+
+    This function is equivalent to `scipy.ndimage.interpolation.zoom`.
+
+    Parameters
+    ----------
+    input : tensor 
+        The input array.
+    zoom : scalar or vector, optional
+        The zoom factor along the axes. If a scalar, `zoom` is the same for each
+        axis. If a vector, `zoom` should contain one value for each axis.
+    order : int, optional
+        The order of the spline interpolation, default is 3.
+        The order has to be in the range 0-5.
+    mode : str, optional
+        Points outside the boundaries of the input are filled according
+        to the given mode ('constant', 'nearest', 'reflect', 'mirror' or 'wrap').
+        Default is 'constant'.
+    cval : scalar, optional
+        Value used for points outside the boundaries of the input if
+        ``mode='constant'``. Default is 0.0
+    prefilter : bool, optional
+        The parameter prefilter determines if the input is pre-filtered with
+        `spline_filter` before interpolation (necessary for spline
+        interpolation of order > 1).  If False, it is assumed that the input is
+        already filtered. Default is True.
+
+    Returns
+    -------
+    zoom : Tensor
+        The zoomed input.
+
+    """
+    if order < 0 or order > 5:
+        raise RuntimeError('spline order not supported')
+    if input.ndim < 1:
+        raise RuntimeError('input rank must be > 0')
+    if mode not in ('nearest', 'wrap', 'reflect', 'mirror', 'constant'):
+        raise RuntimeError('invalid mode')
+    if prefilter and order > 1:
+        filtered = spline_filter(input, order)
+    else:
+        filtered = input
+
+    input = theano.tensor.as_tensor_variable(input)
+    zoom = theano.tensor.as_tensor_variable(zoom).astype('float64')
+    if zoom.ndim == 0:
+        zoom = theano.tensor.repeat(zoom, input.ndim)
+    if zoom.ndim != 1:
+        raise ValueError('zoom should be a scalar or vector')
+
+    # scipy.ndimage.zoom uses Python's round() to compute the output shape,
+    # this gives different results on Python 3.
+    if round(0.5) == 1.0:
+        output_shape = theano.tensor.iround(input.shape * zoom, mode='half_away_from_zero')
+    else:
+        output_shape = theano.tensor.iround(input.shape * zoom, mode='half_to_even')
+
+    # Zooming to non-finite values is unpredictable, so just choose
+    # zoom factor 1 instead
+    a = theano.tensor.switch(theano.tensor.le(output_shape, 1),
+                             1, input.shape - 1)
+    b = theano.tensor.switch(theano.tensor.le(output_shape, 1),
+                             1, output_shape - 1)
+    zoom = a.astype('float64') / b.astype('float64')
+
+    return ZoomShift(order, mode)(filtered, output_shape, zoom, None, cval)
 
 
 class SplineFilter1D(theano.gof.COp):

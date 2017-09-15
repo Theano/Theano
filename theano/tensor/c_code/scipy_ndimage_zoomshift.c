@@ -5,20 +5,33 @@ int cpu_zoomshift(PyArrayObject* input, PyArrayObject* output_shape,
                   PyArrayObject* cval, PyArrayObject** output,
                   PARAMS_TYPE* params) {
 
-    // TODO check that PyARRAY_NDIM(input) == PyArray_DIMS(output_shape[0]) etc.
-    // TODO check that output shape is int64
-    // TODO check that zoom_ar and shift_ar have the right float type
-
     int order = params->order;
+    int mode = params->mode;
     if (order < 0 || order > 5) {
         PyErr_SetString(PyExc_RuntimeError, "spline order not supported");
         return 1;
     }
-    int mode = params->mode;
+    if (mode < 0 || mode > 4) {
+        PyErr_SetString(PyExc_RuntimeError, "mode not supported");
+        return 1;
+    }
 
     npy_intp ndim = PyArray_NDIM(input);
-    npy_intp* out_dims = (npy_intp*)malloc(ndim * sizeof(npy_intp));
 
+    if (PyArray_NDIM(output_shape) != 1 || PyArray_DIMS(output_shape)[0] != ndim) {
+        PyErr_SetString(PyExc_RuntimeError, "invalid output shape");
+        return 1;
+    }
+    if (PyArray_NDIM(zoom_ar) != 1 || PyArray_DIMS(zoom_ar)[0] != ndim) {
+        PyErr_SetString(PyExc_RuntimeError, "invalid zoom argument");
+        return 1;
+    }
+    if (PyArray_NDIM(shift_ar) != 1 || PyArray_DIMS(shift_ar)[0] != ndim) {
+        PyErr_SetString(PyExc_RuntimeError, "invalid shift argument");
+        return 1;
+    }
+
+    npy_intp* out_dims = (npy_intp*)malloc(ndim * sizeof(npy_intp));
     for (int i=0; i<ndim; i++) {
         out_dims[i] = *((npy_intp*)PyArray_GETPTR1(output_shape, i));
     }
@@ -28,26 +41,21 @@ int cpu_zoomshift(PyArrayObject* input, PyArrayObject* output_shape,
         Py_XDECREF(*output);
     *output = (PyArrayObject*)PyArray_ZEROS(ndim, out_dims,
                                             PyArray_TYPE(input), 0);
-    // TODO check that output is not NULL
+    free(out_dims);
+    if (*output == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "cpu_zoomshift failed to initialize output array");
+        return 1;
+    }
 
-    // TODO check type, dim
     double const_val = *((double*)PyArray_GETPTR1(cval, 0));
 
-//  printf("zoom_ar = %d(%d) [%f %f]\n", PyArray_NDIM(zoom_ar), PyArray_DIMS(zoom_ar)[0],
-//                                       *((double*)PyArray_GETPTR1(zoom_ar, 0)),
-//                                       *((double*)PyArray_GETPTR1(zoom_ar, 1)));
-//  printf("shift_ar = %d(%d) [%f %f]\n", PyArray_NDIM(shift_ar), PyArray_DIMS(shift_ar)[0],
-//                                       *((double*)PyArray_GETPTR1(shift_ar, 0)),
-//                                       *((double*)PyArray_GETPTR1(shift_ar, 1)));
-//  printf("order = %ld\n", order);
-//  printf("mode = %ld\n", mode);
-//  printf("const_val = %f\n", const_val);
+    zoom_ar = PyArray_GETCONTIGUOUS(zoom_ar);
+    shift_ar = PyArray_GETCONTIGUOUS(shift_ar);
 
-    int res = NI_ZoomShift(input, zoom_ar, shift_ar, *output, order, mode, const_val, false);
-    // TODO check that res == 0
-
-    free(out_dims);
-
+    // NI_ZoomShift will set a Python error if necessary
+    if (!NI_ZoomShift(input, zoom_ar, shift_ar, *output, order, mode, const_val, false)) {
+        return 1;
+    }
     return 0;
 }
 
@@ -56,20 +64,33 @@ int cpu_zoomshift_grad(PyArrayObject* input, PyArrayObject* bottom_shape,
                        PyArrayObject* cval, PyArrayObject** output,
                        PARAMS_TYPE* params) {
 
-    // TODO check that PyARRAY_NDIM(input) == PyArray_DIMS(output_shape[0]) etc.
-    // TODO check that output shape is int64
-    // TODO check that zoom_ar and shift_ar have the right float type
-
     int order = params->order;
+    int mode = params->mode;
     if (order < 0 || order > 5) {
         PyErr_SetString(PyExc_RuntimeError, "spline order not supported");
         return 1;
     }
-    int mode = params->mode;
+    if (mode < 0 || mode > 4) {
+        PyErr_SetString(PyExc_RuntimeError, "mode not supported");
+        return 1;
+    }
 
     npy_intp ndim = PyArray_NDIM(input);
-    npy_intp* out_dims = (npy_intp*)malloc(ndim * sizeof(npy_intp));
 
+    if (PyArray_NDIM(bottom_shape) != 1 || PyArray_DIMS(bottom_shape)[0] != ndim) {
+        PyErr_SetString(PyExc_RuntimeError, "invalid bottom shape");
+        return 1;
+    }
+    if (PyArray_NDIM(zoom_ar) != 1 || PyArray_DIMS(zoom_ar)[0] != ndim) {
+        PyErr_SetString(PyExc_RuntimeError, "invalid zoom argument");
+        return 1;
+    }
+    if (PyArray_NDIM(shift_ar) != 1 || PyArray_DIMS(shift_ar)[0] != ndim) {
+        PyErr_SetString(PyExc_RuntimeError, "invalid shift argument");
+        return 1;
+    }
+
+    npy_intp* out_dims = (npy_intp*)malloc(ndim * sizeof(npy_intp));
     for (int i=0; i<ndim; i++) {
         out_dims[i] = *((npy_intp*)PyArray_GETPTR1(bottom_shape, i));
     }
@@ -79,26 +100,21 @@ int cpu_zoomshift_grad(PyArrayObject* input, PyArrayObject* bottom_shape,
         Py_XDECREF(*output);
     *output = (PyArrayObject*)PyArray_ZEROS(ndim, out_dims,
                                             PyArray_TYPE(input), 0);
-    // TODO check that output is not NULL
+    free(out_dims);
+    if (*output == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "cpu_zoomshift_grad failed to initialize output array");
+        return 1;
+    }
 
-    // TODO check type, dim
     double const_val = *((double*)PyArray_GETPTR1(cval, 0));
 
-//  printf("zoom_ar = %d(%d) [%f %f]\n", PyArray_NDIM(zoom_ar), PyArray_DIMS(zoom_ar)[0],
-//                                       *((double*)PyArray_GETPTR1(zoom_ar, 0)),
-//                                       *((double*)PyArray_GETPTR1(zoom_ar, 1)));
-//  printf("shift_ar = %d(%d) [%f %f]\n", PyArray_NDIM(shift_ar), PyArray_DIMS(shift_ar)[0],
-//                                       *((double*)PyArray_GETPTR1(shift_ar, 0)),
-//                                       *((double*)PyArray_GETPTR1(shift_ar, 1)));
-//  printf("order = %ld\n", order);
-//  printf("mode = %ld\n", mode);
-//  printf("const_val = %f\n", const_val);
+    zoom_ar = PyArray_GETCONTIGUOUS(zoom_ar);
+    shift_ar = PyArray_GETCONTIGUOUS(shift_ar);
 
-    int res = NI_ZoomShift(*output, zoom_ar, shift_ar, input, order, mode, const_val, true);
-    // TODO check that res == 0
-
-    free(out_dims);
-
+    // NI_ZoomShift will set a Python error if necessary
+    if (!NI_ZoomShift(*output, zoom_ar, shift_ar, input, order, mode, const_val, true)) {
+        return 1;
+    }
     return 0;
 }
 
