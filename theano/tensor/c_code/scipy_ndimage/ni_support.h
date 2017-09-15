@@ -1,3 +1,12 @@
+//
+// This file was part of SciPi (scipy/ndimage/src/ni_support.h),
+// copied from SciPi commit 7c28f602c6bff1548ffaa4afa7597606cdd7cf9e
+// on 15 September 2017.
+//
+// There are some modifications to make it work in Theano.
+//  - added some casts to malloc statements
+//
+
 /* Copyright (C) 2003-2005 Peter J. Verveer
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,7 +48,8 @@
  * must bypass this by explicitly including nd_image.h before ni_support.h.
  */
 #define NO_IMPORT_ARRAY
-#include "nd_image.h"
+// disabled for Theano
+// #include "nd_image.h"
 #undef NO_IMPORT_ARRAY
 
 #include <stdlib.h>

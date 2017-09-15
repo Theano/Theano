@@ -1,3 +1,12 @@
+//
+// This file was part of SciPi (scipy/ndimage/src/ni_support.c),
+// copied from SciPi commit 7c28f602c6bff1548ffaa4afa7597606cdd7cf9e
+// on 15 September 2017.
+//
+// There are some modifications to make it work in Theano.
+//  - added some casts to malloc statements
+//
+
 /* Copyright (C) 2003-2005 Peter J. Verveer
  *
  * Redistribution and use in source and binary forms, with or without
@@ -109,7 +118,7 @@ int NI_AllocateLineBuffer(PyArrayObject* array, int axis, npy_intp size1,
     if (*lines > max_lines)
         *lines = max_lines;
     /* allocate data for the buffer: */
-    *buffer = malloc(*lines * line_size);
+    *buffer = (double*)malloc(*lines * line_size);
     if (!*buffer) {
         PyErr_NoMemory();
         return 0;
@@ -175,10 +184,10 @@ int NI_InitLineBuffer(PyArrayObject *array, int axis, npy_intp size1,
         array_lines = line_length > 0 ? size / line_length : 1;
     }
     /* initialize the buffer structure: */
-    buffer->array_data = (void *)PyArray_DATA(array);
+    buffer->array_data = (char *)PyArray_DATA(array);
     buffer->buffer_data = buffer_data;
     buffer->buffer_lines = buffer_lines;
-    buffer->array_type = NI_CanonicalType(PyArray_TYPE(array));
+    buffer->array_type = (NPY_TYPES)NI_CanonicalType(PyArray_TYPE(array));
     buffer->array_lines = array_lines;
     buffer->next_line = 0;
     buffer->size1 = size1;
@@ -519,13 +528,13 @@ int NI_InitFilterOffsets(PyArrayObject *array, npy_bool *footprint,
     for(ii = 0; ii < rank; ii++)
         offsets_size *= (ashape[ii] < fshape[ii] ? ashape[ii] : fshape[ii]);
     /* allocate offsets data: */
-    *offsets = malloc(offsets_size * footprint_size * sizeof(npy_intp));
+    *offsets = (npy_intp*)malloc(offsets_size * footprint_size * sizeof(npy_intp));
     if (!*offsets) {
         PyErr_NoMemory();
         goto exit;
     }
     if (coordinate_offsets) {
-        *coordinate_offsets = malloc(offsets_size * rank
+        *coordinate_offsets = (npy_intp*)malloc(offsets_size * rank
                                      * footprint_size * sizeof(npy_intp));
         if (!*coordinate_offsets) {
             PyErr_NoMemory();
@@ -709,7 +718,7 @@ int NI_InitFilterOffsets(PyArrayObject *array, npy_bool *footprint,
 
 NI_CoordinateList* NI_InitCoordinateList(int size, int rank)
 {
-    NI_CoordinateList *list = malloc(sizeof(NI_CoordinateList));
+    NI_CoordinateList *list = (NI_CoordinateList*)malloc(sizeof(NI_CoordinateList));
     if (!list) {
         return NULL;
     }
@@ -739,11 +748,11 @@ int NI_CoordinateListStealBlocks(NI_CoordinateList *list1,
 NI_CoordinateBlock* NI_CoordinateListAddBlock(NI_CoordinateList *list)
 {
     NI_CoordinateBlock* block = NULL;
-    block = malloc(sizeof(NI_CoordinateBlock));
+    block = (NI_CoordinateBlock*)malloc(sizeof(NI_CoordinateBlock));
     if (!block) {
         return NULL;
     }
-    block->coordinates = malloc(list->block_size * list->rank
+    block->coordinates = (npy_intp*)malloc(list->block_size * list->rank
                                 * sizeof(npy_intp));
     if (!block->coordinates) {
         free(block);
@@ -758,22 +767,22 @@ NI_CoordinateBlock* NI_CoordinateListAddBlock(NI_CoordinateList *list)
 
 NI_CoordinateBlock* NI_CoordinateListDeleteBlock(NI_CoordinateList *list)
 {
-    NI_CoordinateBlock* block = list->blocks;
+    NI_CoordinateBlock* block = (NI_CoordinateBlock*)list->blocks;
     if (block) {
         list->blocks = block->next;
         free(block->coordinates);
         free(block);
     }
-    return list->blocks;
+    return (NI_CoordinateBlock*)list->blocks;
 }
 
 void NI_FreeCoordinateList(NI_CoordinateList *list)
 {
     if (list) {
-        NI_CoordinateBlock *block = list->blocks;
+        NI_CoordinateBlock *block = (NI_CoordinateBlock*)list->blocks;
         while (block) {
             NI_CoordinateBlock *tmp = block;
-            block = block->next;
+            block = (NI_CoordinateBlock*)block->next;
             free(tmp->coordinates);
             free(tmp);
         }
