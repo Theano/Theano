@@ -1020,7 +1020,9 @@ def test_sync_update():
         f.sync_shared()
         # Sync to make sure all computation are finished.
         t_2 = time.time()
-        assert (t_1 - t_0) > (t_2 - t_1)
+        d1 = (t_1 - t_0)
+        d2 = (t_2 - t_1)
+        assert d1 > d2, (d1, d2)
     else:
         raise SkipTest("Sync is only availble when pygpu is activated.")
 
