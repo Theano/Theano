@@ -570,16 +570,22 @@ class BaseTestDnnConv(object):
             val //= 10
         return ten_exponent
 
-    def scale_numpy_arrays_inplace(self, A, B):
+    def scale_numpy_arrays_inplace(self, A, B, alpha):
+        scale_factor = 1
+        # Scale down simultaneously A and B if alpha is not 1.
+        if alpha != 1:
+            scale_factor *= alpha
         # Normalize A and B simultaneously so that any values in these tensors are in interval [0, 1)
         max_a = math.floor(abs(A.max()))
         max_b = math.floor(abs(B.max()))
-        if max_a > 0 or max_b > 0:
+        if max_a or max_b:
             m_a = self._next_ten_exponent(max_a)
             m_b = self._next_ten_exponent(max_b)
             max_m = max(m_a, m_b)
-            A /= 10 ** max_m
-            B /= 10 ** max_m
+            scale_factor *= 10 ** max_m
+        if scale_factor != 1:
+            A /= scale_factor
+            B /= scale_factor
 
     def __init__(self):
         utt.seed_rng(1234)
@@ -644,7 +650,7 @@ class BaseTestDnnConv(object):
             cpu_res = alpha * res_ref
         else:
             cpu_res = alpha * res_ref + beta * out
-        self.scale_numpy_arrays_inplace(cpu_res, res)
+        self.scale_numpy_arrays_inplace(cpu_res, res, alpha)
         utt.assert_allclose(cpu_res, res, rtol=rtol)
 
     def run_conv_gradinput(self, algo, dtype, precision, parameters):
@@ -701,7 +707,7 @@ class BaseTestDnnConv(object):
             cpu_res = alpha * res_ref
         else:
             cpu_res = alpha * res_ref + beta * inputs_val
-        self.scale_numpy_arrays_inplace(cpu_res, res)
+        self.scale_numpy_arrays_inplace(cpu_res, res, alpha)
         utt.assert_allclose(cpu_res, res, rtol=rtol)
 
     def run_conv_gradweight(self, algo, dtype, precision, parameters):
@@ -753,7 +759,7 @@ class BaseTestDnnConv(object):
             cpu_res = alpha * res_ref
         else:
             cpu_res = alpha * res_ref + beta * filters_val
-        self.scale_numpy_arrays_inplace(cpu_res, res)
+        self.scale_numpy_arrays_inplace(cpu_res, res, alpha)
         utt.assert_allclose(cpu_res, res, rtol=rtol)
 
     def should_fail(self, function, *args):
@@ -886,7 +892,7 @@ class BaseTestDnnConv(object):
                     filters_val = np.random.random(filters_shape).astype(dtype)
                     gpu_res = np.asarray(f(inputs_val, filters_val))
                     cpu_res = f_ref(inputs_val, filters_val)
-                    self.scale_numpy_arrays_inplace(cpu_res, gpu_res)
+                    self.scale_numpy_arrays_inplace(cpu_res, gpu_res, 1)
                     utt.assert_allclose(cpu_res, gpu_res)
 
         for algo in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
