@@ -6,6 +6,7 @@ import numpy as np
 import scipy.ndimage
 
 import theano
+import theano.tensor as T
 from theano.gradient import DisconnectedType
 
 
@@ -53,17 +54,17 @@ class ZoomShift(theano.gof.COp):
         return [scipy_ndimage_helper_inc_dir()]
 
     def make_node(self, input, output_shape, zoom_ar, shift_ar, cval=0.):
-        input = theano.tensor.as_tensor_variable(input)
-        output_shape = theano.tensor.as_tensor_variable(output_shape).astype('int64')
+        input = T.as_tensor_variable(input)
+        output_shape = T.as_tensor_variable(output_shape).astype('int64')
         if zoom_ar is None:
-            zoom_ar = theano.tensor.zeros((input.ndim,), 'float64')
+            zoom_ar = T.zeros((input.ndim,), 'float64')
         else:
-            zoom_ar = theano.tensor.as_tensor_variable(zoom_ar).astype('float64')
+            zoom_ar = T.as_tensor_variable(zoom_ar).astype('float64')
         if shift_ar is None:
-            shift_ar = theano.tensor.zeros((input.ndim,), 'float64')
+            shift_ar = T.zeros((input.ndim,), 'float64')
         else:
-            shift_ar = theano.tensor.as_tensor_variable(shift_ar).astype('float64')
-        cval = theano.tensor.as_tensor_variable(cval).astype('float64')
+            shift_ar = T.as_tensor_variable(shift_ar).astype('float64')
+        cval = T.as_tensor_variable(cval).astype('float64')
         assert output_shape.ndim == 1
         assert zoom_ar.ndim == 1
         assert shift_ar.ndim == 1
@@ -71,7 +72,7 @@ class ZoomShift(theano.gof.COp):
 
         # TODO broadcastable?
         return theano.gof.Apply(self, [input, output_shape, zoom_ar, shift_ar, cval],
-                                [theano.tensor.TensorType(dtype=input.type.dtype,
+                                [T.TensorType(dtype=input.type.dtype,
                                                           broadcastable=(False,) * input.ndim)()])
 
     def infer_shape(self, node, shapes):
@@ -128,17 +129,17 @@ class ZoomShiftGrad(theano.gof.COp):
         return [scipy_ndimage_helper_inc_dir()]
 
     def make_node(self, input, bottom_shape, zoom_ar, shift_ar, cval=0.):
-        input = theano.tensor.as_tensor_variable(input)
-        bottom_shape = theano.tensor.as_tensor_variable(bottom_shape).astype('int64')
+        input = T.as_tensor_variable(input)
+        bottom_shape = T.as_tensor_variable(bottom_shape).astype('int64')
         if zoom_ar is None:
-            zoom_ar = theano.tensor.zeros((input.ndim,), 'float64')
+            zoom_ar = T.zeros((input.ndim,), 'float64')
         else:
-            zoom_ar = theano.tensor.as_tensor_variable(zoom_ar).astype('float64')
+            zoom_ar = T.as_tensor_variable(zoom_ar).astype('float64')
         if shift_ar is None:
-            shift_ar = theano.tensor.zeros((input.ndim,), 'float64')
+            shift_ar = T.zeros((input.ndim,), 'float64')
         else:
-            shift_ar = theano.tensor.as_tensor_variable(shift_ar).astype('float64')
-        cval = theano.tensor.as_tensor_variable(cval).astype('float64')
+            shift_ar = T.as_tensor_variable(shift_ar).astype('float64')
+        cval = T.as_tensor_variable(cval).astype('float64')
         assert bottom_shape.ndim == 1
         assert zoom_ar.ndim == 1
         assert shift_ar.ndim == 1
@@ -146,7 +147,7 @@ class ZoomShiftGrad(theano.gof.COp):
 
         # TODO broadcastable?
         return theano.gof.Apply(self, [input, bottom_shape, zoom_ar, shift_ar, cval],
-                                [theano.tensor.TensorType(dtype=input.type.dtype,
+                                [T.TensorType(dtype=input.type.dtype,
                                                           broadcastable=(False,) * input.ndim)()])
 
     def infer_shape(self, node, shapes):
@@ -210,25 +211,25 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
     else:
         filtered = input
 
-    input = theano.tensor.as_tensor_variable(input)
-    zoom = theano.tensor.as_tensor_variable(zoom).astype('float64')
+    input = T.as_tensor_variable(input)
+    zoom = T.as_tensor_variable(zoom).astype('float64')
     if zoom.ndim == 0:
-        zoom = theano.tensor.repeat(zoom, input.ndim)
+        zoom = T.repeat(zoom, input.ndim)
     if zoom.ndim != 1:
         raise ValueError('zoom should be a scalar or vector')
 
     # scipy.ndimage.zoom uses Python's round() to compute the output shape,
     # this gives different results on Python 3.
     if round(0.5) == 1.0:
-        output_shape = theano.tensor.iround(input.shape * zoom, mode='half_away_from_zero')
+        output_shape = T.iround(input.shape * zoom, mode='half_away_from_zero')
     else:
-        output_shape = theano.tensor.iround(input.shape * zoom, mode='half_to_even')
+        output_shape = T.iround(input.shape * zoom, mode='half_to_even')
 
     # Zooming to non-finite values is unpredictable, so just choose
     # zoom factor 1 instead
-    a = theano.tensor.switch(theano.tensor.le(output_shape, 1),
+    a = T.switch(T.le(output_shape, 1),
                              1, input.shape - 1)
-    b = theano.tensor.switch(theano.tensor.le(output_shape, 1),
+    b = T.switch(T.le(output_shape, 1),
                              1, output_shape - 1)
     zoom = a.astype('float64') / b.astype('float64')
 
@@ -267,7 +268,7 @@ class SplineFilter1D(theano.gof.COp):
         return [scipy_ndimage_helper_inc_dir()]
 
     def make_node(self, input):
-        input = theano.tensor.as_tensor_variable(input)
+        input = T.as_tensor_variable(input)
         if input.ndim < 1:
             raise ValueError('SplineFilter1D does not work for scalars.')
         if self.axis != -1 and self.axis < 0 or self.axis >= input.ndim:
@@ -317,7 +318,7 @@ class SplineFilter1DGrad(theano.gof.COp):
         return [scipy_ndimage_helper_inc_dir()]
 
     def make_node(self, input):
-        input = theano.tensor.as_tensor_variable(input)
+        input = T.as_tensor_variable(input)
         if input.ndim < 1:
             raise ValueError('SplineFilter1DGrad does not work for scalars.')
         return theano.gof.Apply(self, [input], [input.type()])
