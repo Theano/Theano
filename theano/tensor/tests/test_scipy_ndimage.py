@@ -3,14 +3,13 @@ from __future__ import absolute_import, print_function, division
 import unittest
 import scipy.ndimage
 import numpy as np
-from numpy.testing import assert_array_equal
 
 import theano
 import theano.tensor as T
 from theano.tensor.scipy_ndimage import (zoom, ZoomShiftGrad,
                                          spline_filter1d, spline_filter,
                                          SplineFilter1DGrad)
-from theano.tests.unittest_tools import verify_grad
+import theano.tests.unittest_tools as utt
 
 
 class TestSplineFilter1D(unittest.TestCase):
@@ -26,18 +25,18 @@ class TestSplineFilter1D(unittest.TestCase):
 
                     # Compare with SciPy function
                     res_ref = scipy.ndimage.spline_filter1d(x_val, order, axis)
-                    assert_array_equal(res, res_ref)
+                    utt.assert_allclose(res, res_ref)
 
                     # First-order gradient
                     def fn(x_):
                         return spline_filter1d(x_, order, axis)
-                    verify_grad(fn, [x_val])
+                    utt.verify_grad(fn, [x_val])
 
                     # Second-order gradient
                     if order > 1:
                         def fn_grad(x_):
                             return SplineFilter1DGrad(order, axis)(x_)
-                        verify_grad(fn_grad, [x_val])
+                        utt.verify_grad(fn_grad, [x_val])
 
     def test_spline_filter(self):
         x = T.tensor3()
@@ -46,7 +45,7 @@ class TestSplineFilter1D(unittest.TestCase):
         f = theano.function([x], spline_filter(x, order))
         res = f(x_val)
         res_ref = scipy.ndimage.spline_filter(x_val, order)
-        assert_array_equal(res, res_ref)
+        utt.assert_allclose(res, res_ref)
 
 
 class TestZoomShift(unittest.TestCase):
@@ -71,14 +70,14 @@ class TestZoomShift(unittest.TestCase):
                     # Compare with SciPy function
                     res_ref = scipy.ndimage.zoom(x_val, zoom=zoom_ar, order=order, mode=mode,
                                                   cval=cval, prefilter=prefilter)
-                    assert_array_equal(res, res_ref)
+                    utt.assert_allclose(res, res_ref)
 
                     if len(res) > 0:
                         # First-order gradient
                         def fn(x_):
                             return zoom(x_, zoom=zoom_ar, order=order, mode=mode,
                                         cval=cval, prefilter=prefilter)
-                        verify_grad(fn, [x_val])
+                        utt.verify_grad(fn, [x_val])
 
                         # The ops work internally use inverted values for zoom_ar.
                         # This is usually handled by the zoom(...) helper,
@@ -90,4 +89,4 @@ class TestZoomShift(unittest.TestCase):
                         def fn_grad(y_):
                             return ZoomShiftGrad(order=order, mode=mode)(
                                     y_, x_val.shape, zoom_ar_in_op, None, cval=cval)
-                        verify_grad(fn_grad, [res])
+                        utt.verify_grad(fn_grad, [res])
