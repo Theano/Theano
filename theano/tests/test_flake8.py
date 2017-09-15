@@ -108,7 +108,6 @@ whitelist_flake8 = [
 
 
 def list_files(dir_path=theano.__path__[0], pattern='*.py', no_match=".#"):
-    
     # List all files under theano's path.
 
     files_list = []
@@ -171,7 +170,6 @@ def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
     # flake8 format, save all the error-formatted files into
     # theano_filelist.txt. This function is used for generating
     # the "whitelist_flake8" in this file.
-
 
     with open('theano_filelist.txt', 'a') as f_txt:
         for (dir, _, files) in os.walk(dir_path):
