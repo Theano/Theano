@@ -119,6 +119,46 @@ class TestZoomShift(utt.InferShapeTester):
                                 y_, x_val.shape, zoom_ar_in_op, None, cval=cval)
                         utt.verify_grad(fn_grad, [res])
 
+    def test_zoom_axis(self):
+        x = T.tensor4()
+        shape = (4, 3, 2, 5)
+        zoom_ar = [2, 3]
+        axes = [1, 3]
+        x_val = np.random.uniform(size=shape).astype(theano.config.floatX)
+
+        # compute result
+        f = theano.function([x], zoom(x, zoom=zoom_ar, order=2, axes=axes))
+        res = f(x_val)
+
+        # reference: loop over all images
+        zoom_factors = [1] * len(shape)
+        for axis, zoom_factor in zip(axes, zoom_ar):
+            zoom_factors[axis] = zoom_factor
+        expected_shape = [ss * ff for ss, ff in zip(shape, zoom_factors)]
+        no_zoom_axes = [axis for axis in range(len(shape)) if axis not in axes]
+
+        img = T.TensorType(theano.config.floatX, ((False,) * len(no_zoom_axes)))()
+        f_single = theano.function([img], zoom(img, zoom=zoom_ar, order=2))
+
+        res_ref = np.zeros(expected_shape)
+        # iterate over the images
+        for no_zoom_idx in np.ndindex(*[shape[axis] for axis in no_zoom_axes]):
+            # find out where this image lives
+            image_slice = [slice(None)] * len(shape)
+            for axis, idx in zip(no_zoom_axes, no_zoom_idx):
+                image_slice[axis] = idx
+            # process single image
+            res_ref[image_slice] = f_single(x_val[image_slice])
+
+        # compare with reference output
+        utt.assert_allclose(res, res_ref)
+
+        if len(res) > 0 and theano.config.mode != 'FAST_COMPILE':
+            # First-order gradient
+            def fn(x_):
+                return zoom(x_, zoom=zoom_ar, order=2, axes=axes)
+            utt.verify_grad(fn, [x_val])
+
     def test_zoom_infer_shape(self):
         x = T.matrix()
         y = T.matrix()
