@@ -79,7 +79,8 @@ class ZoomShift(theano.gof.COp):
                                               broadcastable=(False,) * input.ndim)()])
 
     def infer_shape(self, node, shapes):
-        return node.inputs[1],
+        input, output_shape = node.inputs[:2]
+        return [[output_shape[i] for i in range(input.ndim)]]
 
     def connection_pattern(self, node):
         return [[True], [False], [False], [False], [True]]
@@ -157,7 +158,8 @@ class ZoomShiftGrad(theano.gof.COp):
                                               broadcastable=(False,) * input.ndim)()])
 
     def infer_shape(self, node, shapes):
-        return node.inputs[1],
+        input, bottom_shape = node.inputs[:2]
+        return [[bottom_shape[i] for i in range(input.ndim)]]
 
     def connection_pattern(self, node):
         return [[True], [False], [False], [False], [False]]
