@@ -35,16 +35,17 @@ class TestSplineFilter1D(utt.InferShapeTester):
                         res_ref = scipy.ndimage.spline_filter1d(x_val, order, axis)
                         utt.assert_allclose(res, res_ref)
 
-                    # First-order gradient
-                    def fn(x_):
-                        return spline_filter1d(x_, order, axis)
-                    utt.verify_grad(fn, [x_val])
+                    if theano.config.mode != 'FAST_COMPILE':
+                        # First-order gradient
+                        def fn(x_):
+                            return spline_filter1d(x_, order, axis)
+                        utt.verify_grad(fn, [x_val])
 
-                    # Second-order gradient
-                    if order > 1:
-                        def fn_grad(x_):
-                            return SplineFilter1DGrad(order, axis)(x_)
-                        utt.verify_grad(fn_grad, [x_val])
+                        # Second-order gradient
+                        if order > 1:
+                            def fn_grad(x_):
+                                return SplineFilter1DGrad(order, axis)(x_)
+                            utt.verify_grad(fn_grad, [x_val])
 
     def test_spline_filter1d_infer_shape(self):
         x = T.matrix()
@@ -52,9 +53,10 @@ class TestSplineFilter1D(utt.InferShapeTester):
         self._compile_and_check([x],
                                 [spline_filter1d(x, order=2, axis=0)],
                                 [x_val], SplineFilter1D)
-        self._compile_and_check([x],
-                                [SplineFilter1DGrad(order=2, axis=0)(x)],
-                                [x_val], SplineFilter1DGrad)
+        if theano.config.mode != 'FAST_COMPILE':
+            self._compile_and_check([x],
+                                    [SplineFilter1DGrad(order=2, axis=0)(x)],
+                                    [x_val], SplineFilter1DGrad)
 
     def test_spline_filter(self):
         if not imported_scipy:
@@ -99,7 +101,7 @@ class TestZoomShift(utt.InferShapeTester):
                                                      cval=cval, prefilter=prefilter)
                         utt.assert_allclose(res, res_ref)
 
-                    if len(res) > 0:
+                    if len(res) > 0 and theano.config.mode != 'FAST_COMPILE':
                         # First-order gradient
                         def fn(x_):
                             return zoom(x_, zoom=zoom_ar, order=order, mode=mode,
@@ -127,12 +129,14 @@ class TestZoomShift(utt.InferShapeTester):
                                     [zoom(x, zoom=zoom_ar, order=0)],
                                     [x_val], ZoomShift)
 
-            # compute the output shape of the forward op
-            y_val_shape = zoom(x, zoom=zoom_ar, order=0).shape.eval({x: x_val})
-            y_val = np.random.uniform(size=y_val_shape).astype(theano.config.floatX)
+            if theano.config.mode != 'FAST_COMPILE':
+                # compute the output shape of the forward op
+                y_val_shape = zoom(x, zoom=zoom_ar, order=0).shape.eval({x: x_val})
+                y_val = np.random.uniform(size=y_val_shape).astype(theano.config.floatX)
 
-            # test shape of gradient
-            zoom_ar_in_op = self._compute_zoom_for_op(x_val.shape, y_val.shape)
-            self._compile_and_check([y],
-                                    [ZoomShiftGrad(order=0)(y, x_val.shape, zoom_ar_in_op, None)],
-                                    [y_val], ZoomShiftGrad)
+                # test shape of gradient
+                zoom_ar_in_op = self._compute_zoom_for_op(x_val.shape, y_val.shape)
+                self._compile_and_check([y],
+                                        [ZoomShiftGrad(order=0)(y, x_val.shape,
+                                                                zoom_ar_in_op, None)],
+                                        [y_val], ZoomShiftGrad)
