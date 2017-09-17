@@ -307,7 +307,7 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
 
     zoom = T.as_tensor_variable(zoom).astype('float64')
     if zoom.ndim == 0:
-        zoom = T.repeat(zoom, len(axes))
+        zoom = theano.tensor.extra_ops.repeat(zoom, len(axes))
     if zoom.ndim != 1:
         raise ValueError('zoom should be a scalar or vector')
 

@@ -82,8 +82,8 @@ class TestZoomShift(utt.InferShapeTester):
                       ([0.5, 2], 'constant', 2.0, True),
                       ([0.3, 1], 'nearest', 0.0, True),
                       ([1, 2.3], 'reflect', 0.0, False),
-                      ([2, 2], 'mirror', 0.0, False),
-                      ([2, 2], 'wrap', 0.0, False))
+                      (2, 'mirror', 0.0, False),
+                      (2, 'wrap', 0.0, False))
 
         x = T.matrix()
         for shape in ((4, 3), (10, 15), (1, 1)):
@@ -98,7 +98,7 @@ class TestZoomShift(utt.InferShapeTester):
                     if imported_scipy:
                         # Recompute the zoom factors to avoid Python 2.7/3 rounding differences
                         adjusted_zoom_ar = (np.round(np.array(x_val.shape).astype('float64') *
-                                                         np.array(zoom_ar).astype('float64')) /
+                                                     np.array(zoom_ar).astype('float64')) /
                                             np.array(x_val.shape).astype('float64'))
 
                         # Compare with SciPy function
