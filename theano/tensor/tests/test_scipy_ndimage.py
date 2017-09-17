@@ -96,8 +96,14 @@ class TestZoomShift(utt.InferShapeTester):
                     res = f(x_val)
 
                     if imported_scipy:
+                        # Recompute the zoom factors to avoid Python 2.7/3 rounding differences
+                        adjusted_zoom_ar = (np.round(np.array(x_val.shape).astype('float64') *
+                                                         np.array(zoom_ar).astype('float64')) /
+                                            np.array(x_val.shape).astype('float64'))
+
                         # Compare with SciPy function
-                        res_ref = scipy.ndimage.zoom(x_val, zoom=zoom_ar, order=order, mode=mode,
+                        res_ref = scipy.ndimage.zoom(x_val, zoom=adjusted_zoom_ar,
+                                                     order=order, mode=mode,
                                                      cval=cval, prefilter=prefilter)
                         utt.assert_allclose(res, res_ref)
 

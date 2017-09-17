@@ -278,7 +278,19 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
     Returns
     -------
     zoom : Tensor
-        The zoomed input.
+        The zoomed input. For the zooming axes in `axes`, the output dimension
+        is computed as `round(input_shape * zoom)`. The non-zooming axes have
+        the same length as the input.
+
+    Notes
+    -----
+    The SciPy function `scipy.ndimage.interpolation.zoom` uses a different
+    rounding method to compute the output shape in Python 2.7 and Python 3.
+    For some combinations of input shapes and zoom factors, this can lead
+    to one-pixel differences in the output shape. This Theano function
+    always uses the same (Python 3) rounding mode, so with Python 2.7 the
+    output shape of `theano.tensor.scipy_ndimage.zoom` might be one
+    pixel smaller than that of `scipy.ndimage.interpolation.zoom`.
 
     """
     if order < 0 or order > 5:
@@ -302,11 +314,7 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
     # scipy.ndimage.zoom uses Python's round() to compute the output shape,
     # this gives different results on Python 3.
     img_shape = input.shape[axes]
-    if round(0.5) == 1.0:
-        round_mode = 'half_away_from_zero'
-    else:
-        round_mode = 'half_to_even'
-    zoom_output_shape = T.iround(img_shape * zoom, mode=round_mode)
+    zoom_output_shape = T.iround(img_shape * zoom, mode='half_to_even')
 
     # Zooming to non-finite values is unpredictable, so just choose
     # zoom factor 1 instead
