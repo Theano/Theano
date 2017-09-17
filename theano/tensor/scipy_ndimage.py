@@ -96,10 +96,11 @@ class ZoomShift(theano.gof.COp):
         assert shift_ar.ndim == 1
         assert cval.ndim == 0
 
-        # TODO broadcastable?
+        broadcastable = [False if axes == [] or axis in axes else input.broadcastable[axis]
+                         for axis in range(input.ndim)]
         return theano.gof.Apply(self, [input, zoom_output_shape, zoom_ar, shift_ar, cval],
                                 [T.TensorType(dtype=input.type.dtype,
-                                              broadcastable=(False,) * input.ndim)()])
+                                              broadcastable=broadcastable)()])
 
     def infer_shape(self, node, shapes):
         input, zoom_output_shape = node.inputs[:2]
@@ -209,10 +210,11 @@ class ZoomShiftGrad(theano.gof.COp):
         assert shift_ar.ndim == 1
         assert cval.ndim == 0
 
-        # TODO broadcastable?
+        broadcastable = [False if axes == [] or axis in axes else input.broadcastable[axis]
+                         for axis in range(input.ndim)]
         return theano.gof.Apply(self, [input, bottom_shape, zoom_ar, shift_ar, cval],
                                 [T.TensorType(dtype=input.type.dtype,
-                                              broadcastable=(False,) * input.ndim)()])
+                                              broadcastable=broadcastable)()])
 
     def infer_shape(self, node, shapes):
         input, zoom_bottom_shape = node.inputs[:2]

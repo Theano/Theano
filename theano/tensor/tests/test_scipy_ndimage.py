@@ -133,7 +133,8 @@ class TestZoomShift(utt.InferShapeTester):
         x_val = np.random.uniform(size=shape).astype(theano.config.floatX)
 
         # compute result
-        f = theano.function([x], zoom(x, zoom=zoom_ar, order=2, axes=axes))
+        y = zoom(x.dimshuffle(0, 1, 2, 3, 'x'), zoom=zoom_ar, order=2, axes=axes)
+        f = theano.function([x], y.dimshuffle(0, 1, 2, 3))
         res = f(x_val)
 
         # reference: loop over all images
@@ -162,7 +163,8 @@ class TestZoomShift(utt.InferShapeTester):
         if len(res) > 0 and theano.config.mode != 'FAST_COMPILE':
             # First-order gradient
             def fn(x_):
-                return zoom(x_, zoom=zoom_ar, order=2, axes=axes)
+                return zoom(x_.dimshuffle(0, 1, 2, 3, 'x'), zoom=zoom_ar,
+                            order=2, axes=axes).dimshuffle(0, 1, 2, 3)
             utt.verify_grad(fn, [x_val])
 
     def test_zoom_infer_shape(self):
