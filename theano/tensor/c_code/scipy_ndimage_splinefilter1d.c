@@ -20,8 +20,13 @@ int cpu_splinefilter1d(PyArrayObject* input, PyArrayObject** output,
     // create output array
     if (*output)
         Py_XDECREF(*output);
-    *output = (PyArrayObject*)PyArray_ZEROS(PyArray_NDIM(input), PyArray_DIMS(input),
-                                            PyArray_TYPE(input), 0);
+    if (params->inplace) {
+        *output = input;
+        Py_INCREF(*output);
+    } else {
+        *output = (PyArrayObject*)PyArray_ZEROS(PyArray_NDIM(input), PyArray_DIMS(input),
+                                                PyArray_TYPE(input), 0);
+    }
     if (*output == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "cpu_splinefilter1d failed to initialize output array");
         return 1;
@@ -54,8 +59,13 @@ int cpu_splinefilter1d_grad(PyArrayObject* input, PyArrayObject** output,
     // create output array
     if (*output)
         Py_XDECREF(*output);
-    *output = (PyArrayObject*)PyArray_ZEROS(PyArray_NDIM(input), PyArray_DIMS(input),
-                                            PyArray_TYPE(input), 0);
+    if (params->inplace) {
+        *output = input;
+        Py_INCREF(*output);
+    } else {
+        *output = (PyArrayObject*)PyArray_ZEROS(PyArray_NDIM(input), PyArray_DIMS(input),
+                                                PyArray_TYPE(input), 0);
+    }
     if (*output == NULL) {
         PyErr_SetString(PyExc_RuntimeError, "cpu_splinefilter1d_grad failed to initialize output array");
         return 1;

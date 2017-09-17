@@ -343,23 +343,27 @@ class SplineFilter1D(theano.gof.COp):
     Wrapper for SciPy's ndimage.interpolation.spline_filter1d function.
     """
     # TODO _f16_ok and check_input ?
-    __props__ = ('order', 'axis')
+    __props__ = ('order', 'axis', 'inplace')
     params_type = theano.gof.ParamsType(order=theano.scalar.int32,
-                                        axis=theano.scalar.int32)
+                                        axis=theano.scalar.int32,
+                                        inplace=theano.scalar.bool)
     c_func_file = 'c_code/scipy_ndimage_splinefilter1d.c'
     c_func_name = 'cpu_splinefilter1d'
 
-    def __init__(self, order=0, axis=-1):
+    def __init__(self, order=0, axis=-1, inplace=False):
         if order < 0 or order > 5:
             raise ValueError('spline order %d not supported' % order)
         if order < 2:
             raise ValueError('spline filter with order < 2 does nothing')
         self.order = int(order)
         self.axis = int(axis)
+        self.inplace = bool(inplace)
+        if self.inplace:
+            self.destroy_map = {0: [0]}
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
@@ -387,8 +391,10 @@ class SplineFilter1D(theano.gof.COp):
             "SciPy ndimage not available. Scipy is needed for SplineFilter1D.perform")
 
         input, = inputs
-        out[0][0] = scipy.ndimage.spline_filter1d(input, output=input.dtype,
+        out[0][0] = scipy.ndimage.spline_filter1d(input, output=(input if self.inplace else input.dtype),
                                                   order=params.order, axis=params.axis)
+        if self.inplace:
+            out[0][0] = input
 
 
 class SplineFilter1DGrad(theano.gof.COp):
@@ -396,23 +402,27 @@ class SplineFilter1DGrad(theano.gof.COp):
     Gradient for SplineFilter1D.
     """
     # TODO _f16_ok and check_input ?
-    __props__ = ('order', 'axis')
+    __props__ = ('order', 'axis', 'inplace')
     params_type = theano.gof.ParamsType(order=theano.scalar.int32,
-                                        axis=theano.scalar.int32)
+                                        axis=theano.scalar.int32,
+                                        inplace=theano.scalar.bool)
     c_func_file = 'c_code/scipy_ndimage_splinefilter1d.c'
     c_func_name = 'cpu_splinefilter1d_grad'
 
-    def __init__(self, order=0, axis=-1):
+    def __init__(self, order=0, axis=-1, inplace=False):
         if order < 0 or order > 5:
             raise ValueError('spline order %d not supported' % order)
         if order < 2:
             raise ValueError('spline filter with order < 2 does nothing')
         self.order = int(order)
         self.axis = int(axis)
+        self.inplace = bool(inplace)
+        if self.inplace:
+            self.destroy_map = {0: [0]}
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
@@ -492,3 +502,28 @@ def spline_filter(input, order=3):
     for axis in range(input.ndim):
         input = spline_filter1d(input, order, axis)
     return input
+
+
+def register_inplace(*tags, **kwargs):
+    def f(local_opt):
+        name = (kwargs and kwargs.pop('name')) or local_opt.__name__
+        theano.compile.optdb.register(
+            name, theano.gof.TopoOptimizer(
+                local_opt, failure_callback=theano.gof.TopoOptimizer.warn_inplace),
+            60, 'fast_run', 'inplace', *tags)
+        return local_opt
+    return f
+
+
+@register_inplace()
+@theano.gof.local_optimizer([SplineFilter1D], inplace=True)
+def local_spline_filter1d_inplace(node):
+    if isinstance(node.op, SplineFilter1D) and not node.op.inplace:
+        return [SplineFilter1D(order=node.op.order, axis=node.op.axis, inplace=True)(*node.inputs)]
+
+
+@register_inplace()
+@theano.gof.local_optimizer([SplineFilter1DGrad], inplace=True)
+def local_spline_filter1d_grad_inplace(node):
+    if isinstance(node.op, SplineFilter1DGrad) and not node.op.inplace:
+        return [SplineFilter1DGrad(order=node.op.order, axis=node.op.axis, inplace=True)(*node.inputs)]

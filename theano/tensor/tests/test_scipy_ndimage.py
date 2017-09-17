@@ -65,10 +65,27 @@ class TestSplineFilter1D(utt.InferShapeTester):
         x = T.tensor3()
         x_val = np.random.uniform(size=(4, 3, 9)).astype(theano.config.floatX)
         order = 2
-        f = theano.function([x], spline_filter(x, order))
+        y = spline_filter(x, order)
+        f = theano.function([x], y)
         res = f(x_val)
         res_ref = scipy.ndimage.spline_filter(x_val, order)
         utt.assert_allclose(res, res_ref)
+
+        if theano.config.mode != 'FAST_COMPILE':
+            # some of the ops should be inplace
+            nodes = [n for n in f.maker.fgraph.toposort()
+                     if isinstance(n.op, SplineFilter1D)]
+            assert any(n.op.inplace for n in nodes)
+
+        y_grad = T.tensor3()
+        x_grad = T.grad(None, wrt=x, known_grads={y: y_grad})
+        fg = theano.function([y_grad], x_grad)
+
+        if theano.config.mode != 'FAST_COMPILE':
+            # some of the ops should be inplace
+            nodes = [n for n in fg.maker.fgraph.toposort()
+                     if isinstance(n.op, SplineFilter1DGrad)]
+            assert any(n.op.inplace for n in nodes)
 
 
 class TestZoomShift(utt.InferShapeTester):
