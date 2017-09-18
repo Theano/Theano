@@ -7502,6 +7502,9 @@ register_canonicalize(gof.OpRemove(theano.gradient.disconnected_grad_),
                       'fast_compile', 'fast_run',
                       name='remove_disconnected_grad')
 
+register_canonicalize(gof.OpRemove(theano.gradient.undefined_grad_),
+                      'fast_compile', 'fast_run',
+                      name='remove_undefined_grad')
 
 register_canonicalize(gof.OpRemove(theano.gradient.GradClip),
                       'fast_compile', 'fast_run',
