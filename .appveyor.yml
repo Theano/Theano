@@ -1,4 +1,4 @@
-version '1.0.{build}' # This number doesn't matter.
+version: '1.0.{build}' # This number doesn't matter.
 
 pull_requests:
   do_not_increment_build_number: true
@@ -8,7 +8,7 @@ platform:
 
 clone_folder: C:\projects\theano
 
-environement:
+environment:
   BINSTAR_TOKEN:
     secure: 58KqJcKtfCBVCuIzpnkLm4XZLQqKq95Hs8Ly20HWaMSla67nusrp3y4sy6XzZOBQ
   CONDA_LOC: "C:\\Miniconda-x64"
