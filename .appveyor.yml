@@ -1,0 +1,38 @@
+version '1.0.{build}' # This number doesn't matter.
+
+pull_requests:
+  do_not_increment_build_number: true
+
+platform:
+ - x64
+
+clone_folder: C:\projects\theano
+
+environement:
+  BINSTAR_TOKEN:
+    secure: 58KqJcKtfCBVCuIzpnkLm4XZLQqKq95Hs8Ly20HWaMSla67nusrp3y4sy6XzZOBQ
+  CONDA_LOC: "C:\\Miniconda-x64"
+
+install:
+  # This breaks conda-build because of git
+  - cmd: rmdir C:\cygwin /s /q
+  - cmd: call %CONDA_LOC%\Scripts\activate.bat
+  - cmd: set PYTHONUNBUFFERED=1
+  - cmd: conda install -n root --yes conda conda-env conda-build anaconda-client
+
+build: off
+
+test_script:
+  - cmd: for /f "tokens=*" %%i in ('python -c "import versioneer; print(versioneer.get_version())"') do set THEANO_VERSION=%%i
+  - cmd: echo %THEANO_VERSION%
+  - cmd: conda build --py 2.7 --py 3.5 --py 3.6 conda
+  - cmd: mkdir pkgs
+  - cmd: xcopy "%CONDA_LOC%"\conda-bld\win-64\theano* pkgs\ /Y
+  - ps: |
+      if($env:appveyor_repo_tag -eq 'True') {
+        cmd /c "anaconda -t $env:BINSTAR_TOKEN upload --user=mila-udem pkgs/* 2>&1"
+      }
+
+artifacts:
+  - path: pkgs/*
+    name: "Conda Packages"
