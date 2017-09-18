@@ -48,7 +48,10 @@ def pygpu_parse_version(version_string):
     assert len(pieces) == 3
     major = int(pieces[0])
     minor = int(pieces[1])
-    patch = int(pieces[2].split('+', 1)[0])
+    if "+" in pieces[2]:  # It contain a git commit.
+        patch = int(pieces[2].split('+', 1)[0])
+    else:  # Maybe it end with .devN
+        patch = int(pieces[2].split('.', 1)[0])
     fullversion = '%d.%d.%s' % (major, minor, pieces[2])
     return version_type(major=major, minor=minor, patch=patch, fullversion=fullversion)
 
