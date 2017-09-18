@@ -131,7 +131,7 @@ class TestZoomShift(utt.InferShapeTester):
                                         cval=cval, prefilter=prefilter)
                         utt.verify_grad(fn, [x_val])
 
-                        # The ops work internally use inverted values for zoom_ar.
+                        # The ops internally use inverted values for zoom_ar.
                         # This is usually handled by the zoom(...) helper,
                         # but we compute it here so we can call ZoomShiftGrad directly.
                         zoom_ar_in_op = self._compute_zoom_for_op(shape, res.shape)

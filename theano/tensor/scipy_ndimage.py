@@ -239,7 +239,7 @@ class ZoomShiftGrad(theano.gof.COp):
         return [grad] + [theano.gradient.DisconnectedType()() for i in range(4)]
 
 
-def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
+def zoom(input, zoom, order=3, mode='constant', cval=0.0,
          prefilter=True, axes=None):
     """
     Zoom an array.
@@ -252,7 +252,7 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
     ----------
     input : tensor
         The input array.
-    zoom : scalar or vector, optional
+    zoom : scalar or vector
         The zoom factor along the axes. If a scalar, `zoom` is the same for each
         axis. If a vector, `zoom` should contain one value for each axis.
     order : int, optional
@@ -279,7 +279,7 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
 
     Returns
     -------
-    zoom : Tensor
+    zoom : tensor
         The zoomed input. For the zooming axes in `axes`, the output dimension
         is computed as `round(input_shape * zoom)`. The non-zooming axes have
         the same length as the input.
