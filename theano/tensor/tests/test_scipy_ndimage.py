@@ -5,7 +5,8 @@ import numpy as np
 
 import theano
 import theano.tensor as T
-from theano.tensor.scipy_ndimage import (zoom, ZoomShift, ZoomShiftGrad,
+from theano.tensor.scipy_ndimage import (zoom, shift,
+                                         ZoomShift, ZoomShiftGrad,
                                          spline_filter1d, spline_filter,
                                          SplineFilter1D,
                                          SplineFilter1DGrad)
@@ -205,3 +206,109 @@ class TestZoomShift(utt.InferShapeTester):
                                         [ZoomShiftGrad(order=0)(y, x_val.shape,
                                                                 zoom_ar_in_op, None)],
                                         [y_val], ZoomShiftGrad)
+
+    def test_shift(self):
+        test_cases = (([1, 1], 'constant', 2.0, True),
+                      ([-0.5, 2], 'constant', 2.0, True),
+                      ([-0.3, 1], 'nearest', 0.0, True),
+                      ([1, -2.3], 'reflect', 0.0, False),
+                      (2, 'mirror', 0.0, False),
+                      (2, 'wrap', 0.0, False))
+
+        x = T.matrix()
+        for shape in ((4, 3), (10, 15), (1, 1)):
+            x_val = np.random.uniform(size=shape).astype(theano.config.floatX)
+            for (shift_ar, mode, cval, prefilter) in test_cases:
+                for order in range(5):
+                    # Theano implementation
+                    f = theano.function([x], shift(x, shift=shift_ar, order=order, mode=mode,
+                                                   cval=cval, prefilter=prefilter))
+                    res = f(x_val)
+
+                    if imported_scipy:
+                        # Compare with SciPy function
+                        res_ref = scipy.ndimage.shift(x_val, shift=shift_ar,
+                                                      order=order, mode=mode,
+                                                      cval=cval, prefilter=prefilter)
+                        utt.assert_allclose(res, res_ref)
+
+                    if len(res) > 0 and theano.config.mode != 'FAST_COMPILE':
+                        # First-order gradient
+                        def fn(x_):
+                            return shift(x_, shift=shift_ar, order=order, mode=mode,
+                                         cval=cval, prefilter=prefilter)
+                        utt.verify_grad(fn, [x_val])
+
+                        # The ops internally use negated values for shift_ar.
+                        # This is usually handled by the shift(...) helper,
+                        # but we compute it here so we can call ZoomShiftGrad directly.
+                        if isinstance(shift_ar, list):
+                            shift_ar_in_op = -np.array(shift_ar)
+                        else:
+                            shift_ar_in_op = -np.array([shift_ar] * x_val.ndim)
+
+                        # Second-order gradient
+                        def fn_grad(y_):
+                            return ZoomShiftGrad(order=order, mode=mode)(
+                                y_, x_val.shape, None, shift_ar_in_op, cval=cval)
+                        utt.verify_grad(fn_grad, [res])
+
+    def test_shift_axis(self):
+        x = T.tensor4()
+        shape = (4, 3, 2, 5)
+        shift_ar = [2, 3]
+        axes = [1, 3]
+        x_val = np.random.uniform(size=shape).astype(theano.config.floatX)
+
+        # compute result
+        y = shift(x.dimshuffle(0, 1, 2, 3, 'x'), shift=shift_ar, order=2, axes=axes)
+        f = theano.function([x], y.dimshuffle(0, 1, 2, 3))
+        res = f(x_val)
+
+        # reference: loop over all images
+        no_shift_axes = [axis for axis in range(len(shape)) if axis not in axes]
+
+        img = T.TensorType(theano.config.floatX, ((False,) * len(no_shift_axes)))()
+        f_single = theano.function([img], shift(img, shift=shift_ar, order=2))
+
+        res_ref = np.zeros(x_val.shape)
+        # iterate over the images
+        for no_shift_idx in np.ndindex(*[shape[axis] for axis in no_shift_axes]):
+            # find out where this image lives
+            image_slice = [slice(None)] * len(shape)
+            for axis, idx in zip(no_shift_axes, no_shift_idx):
+                image_slice[axis] = idx
+            # process single image
+            res_ref[image_slice] = f_single(x_val[image_slice])
+
+        # compare with reference output
+        utt.assert_allclose(res, res_ref)
+
+        if len(res) > 0 and theano.config.mode != 'FAST_COMPILE':
+            # First-order gradient
+            def fn(x_):
+                return shift(x_.dimshuffle(0, 1, 2, 3, 'x'), shift=shift_ar,
+                             order=2, axes=axes).dimshuffle(0, 1, 2, 3)
+            utt.verify_grad(fn, [x_val])
+
+    def test_shift_infer_shape(self):
+        x = T.matrix()
+        y = T.matrix()
+        x_val = np.random.uniform(size=(4, 3)).astype(theano.config.floatX)
+        shift_ar = [-0.5, 1]
+        # test shape of forward op
+        self._compile_and_check([x],
+                                [shift(x, shift=shift_ar, order=0)],
+                                [x_val], ZoomShift)
+
+        if theano.config.mode != 'FAST_COMPILE':
+            # compute the output shape of the forward op
+            y_val_shape = shift(x, shift=shift_ar, order=0).shape.eval({x: x_val})
+            y_val = np.random.uniform(size=y_val_shape).astype(theano.config.floatX)
+
+            # test shape of gradient
+            shift_ar_in_op = [-s for s in shift_ar]
+            self._compile_and_check([y],
+                                    [ZoomShiftGrad(order=0)(y, x_val.shape,
+                                                            None, shift_ar_in_op)],
+                                    [y_val], ZoomShiftGrad)

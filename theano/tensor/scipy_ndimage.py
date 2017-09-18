@@ -69,7 +69,7 @@ class ZoomShift(theano.gof.COp):
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
@@ -81,13 +81,12 @@ class ZoomShift(theano.gof.COp):
         input = T.as_tensor_variable(input)
         zoom_output_shape = T.as_tensor_variable(zoom_output_shape).astype('int64')
         axes = _normalize_zoomshift_axes_list(self.axes, input.ndim)
-        naxes = input.ndim if axes == [] else len(axes)
         if zoom_ar is None:
-            zoom_ar = T.zeros((naxes,), 'float64')
+            zoom_ar = T.ones((0,), 'float64')
         else:
             zoom_ar = T.as_tensor_variable(zoom_ar).astype('float64')
         if shift_ar is None:
-            shift_ar = T.zeros((naxes,), 'float64')
+            shift_ar = T.zeros((0,), 'float64')
         else:
             shift_ar = T.as_tensor_variable(shift_ar).astype('float64')
         cval = T.as_tensor_variable(cval).astype('float64')
@@ -132,14 +131,31 @@ class ZoomShift(theano.gof.COp):
         input, zoom_output_shape, zoom_ar, shift_ar, cval = inputs
         if len(self.axes) in (0, input.ndim):
             # simple: zoom over all axes
+            assert input.ndim == zoom_output_shape.shape[0]
+            assert zoom_ar.shape[0] in (0, input.ndim)
+            assert shift_ar.shape[0] in (0, input.ndim)
             img_shape = [input.shape[axis] for axis in range(input.ndim)]
             zoom = [(ii / jj) for ii, jj in zip(zoom_output_shape, img_shape)]
-            out[0][0] = scipy.ndimage.zoom(input, zoom, order=params.order,
-                                           mode=self.mode, cval=cval,
-                                           prefilter=False,
-                                           output=input.dtype)
+            if zoom_ar.shape[0] != 0:
+                out[0][0] = scipy.ndimage.zoom(input, zoom, order=params.order,
+                                               mode=self.mode, cval=cval,
+                                               prefilter=False,
+                                               output=input.dtype)
+                if shift_ar.shape[0] != 0:
+                    raise NotImplementedError("The Python implementation of ZoomShift does "
+                                              "not support zoom and shift at the same time.")
+            elif shift_ar.shape[0] != 0:
+                out[0][0] = scipy.ndimage.shift(input, -shift_ar, order=params.order,
+                                                mode=self.mode, cval=cval,
+                                                prefilter=False,
+                                                output=input.dtype)
+            else:
+                out[0][0] = input.copy()
         else:
             # zoom over specific axes only
+            assert len(self.axes) == zoom_output_shape.shape[0]
+            assert zoom_ar.shape[0] in (0, len(self.axes))
+            assert shift_ar.shape[0] in (0, len(self.axes))
             img_shape = [input.shape[axis] for axis in self.axes]
             zoom = [(ii / jj) for ii, jj in zip(zoom_output_shape, img_shape)]
             output_shape = [zoom_output_shape[self.axes.index(axis)] if axis in self.axes else input.shape[axis]
@@ -153,10 +169,21 @@ class ZoomShift(theano.gof.COp):
                 for axis, idx in zip(no_zoom_axes, no_zoom_idx):
                     image_slice[axis] = idx
                 # process single image
-                scipy.ndimage.zoom(input[image_slice], zoom, order=params.order,
-                                   mode=self.mode, cval=cval,
-                                   prefilter=False,
-                                   output=res[image_slice])
+                if zoom_ar.shape[0] != 0:
+                    scipy.ndimage.zoom(input[image_slice], zoom, order=params.order,
+                                       mode=self.mode, cval=cval,
+                                       prefilter=False,
+                                       output=res[image_slice])
+                    if shift_ar.shape[0] != 0:
+                        raise NotImplementedError("The Python implementation of ZoomShift does "
+                                                  "not support zoom and shift at the same time.")
+                elif shift_ar.shape[0] != 0:
+                    scipy.ndimage.shift(input[image_slice], -shift_ar, order=params.order,
+                                        mode=self.mode, cval=cval,
+                                        prefilter=False,
+                                        output=res[image_slice])
+                else:
+                    res[image_slice] = input[image_slice]
             out[0][0] = res
 
 
@@ -183,7 +210,7 @@ class ZoomShiftGrad(theano.gof.COp):
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
@@ -195,13 +222,12 @@ class ZoomShiftGrad(theano.gof.COp):
         input = T.as_tensor_variable(input)
         bottom_shape = T.as_tensor_variable(bottom_shape).astype('int64')
         axes = _normalize_zoomshift_axes_list(self.axes, input.ndim)
-        naxes = input.ndim if axes == [] else len(axes)
         if zoom_ar is None:
-            zoom_ar = T.zeros((naxes,), 'float64')
+            zoom_ar = T.ones((0,), 'float64')
         else:
             zoom_ar = T.as_tensor_variable(zoom_ar).astype('float64')
         if shift_ar is None:
-            shift_ar = T.zeros((naxes,), 'float64')
+            shift_ar = T.zeros((0,), 'float64')
         else:
             shift_ar = T.as_tensor_variable(shift_ar).astype('float64')
         cval = T.as_tensor_variable(cval).astype('float64')
@@ -237,6 +263,83 @@ class ZoomShiftGrad(theano.gof.COp):
         grad = ZoomShift(order=self.order, mode=self.mode, axes=self.axes)(
             output_grads[0], zoom_output_shape, zoom_ar, shift_ar, 0.0)
         return [grad] + [theano.gradient.DisconnectedType()() for i in range(4)]
+
+
+def shift(input, shift, order=3, mode='constant', cval=0.0,
+          prefilter=True, axes=None):
+    """
+    Shift an array.
+
+    The array is shifted using spline interpolation of the requested order.
+    Points outside the boundaries of the input are filled according to the
+    given mode.
+
+    This function is equivalent to `scipy.ndimage.interpolation.shift`.
+
+    Parameters
+    ----------
+    input : ndarray
+        The input array.
+    shift : scalar or vector
+        The shift along the axes. If a scalar, `shift` is the same for each
+        axis. If a sequence, `shift` should contain one value for each axis.
+    order : int, optional
+        The order of the spline interpolation, default is 3.
+        The order has to be in the range 0-5.
+    mode : str, optional
+        Points outside the boundaries of the input are filled according
+        to the given mode ('constant', 'nearest', 'reflect', 'mirror' or 'wrap').
+        Default is 'constant'.
+    cval : scalar, optional
+        Value used for points outside the boundaries of the input if
+        ``mode='constant'``. Default is 0.0
+    prefilter : bool, optional
+        The parameter prefilter determines if the input is pre-filtered with
+        `spline_filter` before interpolation (necessary for spline
+        interpolation of order > 1).  If False, it is assumed that the input is
+        already filtered. Default is True.
+    axes : tuple of int, optional
+        Specifies which axes of the input are shifted. The shift operation will
+        loop over the axes not in this list. If `axes` is None (the default)
+        the shift operation will work on all axes. `axes` can only be given
+        in ascending order and should be matched with corresponding shift
+        offsets in `shift`.
+
+    Returns
+    -------
+    shift : tensor
+        The shifted input.
+
+    """
+    if order < 0 or order > 5:
+        raise RuntimeError('spline order not supported')
+    if input.ndim < 1:
+        raise RuntimeError('input rank must be > 0')
+    if mode not in ('nearest', 'wrap', 'reflect', 'mirror', 'constant'):
+        raise RuntimeError('invalid mode')
+    input = T.as_tensor_variable(input)
+
+    axes = _normalize_zoomshift_axes_list(axes, input.ndim)
+    if axes == []:
+        axes = list(range(input.ndim))
+
+    shift = T.as_tensor_variable(shift).astype('float64')
+    if shift.ndim == 0:
+        shift = theano.tensor.extra_ops.repeat(shift, len(axes))
+    if shift.ndim != 1:
+        raise ValueError('shift should be a scalar or vector')
+    shift = -shift
+
+    if prefilter and order > 1:
+        filtered = input
+        for axis in axes:
+            filtered = spline_filter1d(filtered, order, axis=axis)
+    else:
+        filtered = input
+
+    output_shape = input.shape[axes]
+
+    return ZoomShift(order, mode, axes=axes)(filtered, output_shape, None, shift, cval)
 
 
 def zoom(input, zoom, order=3, mode='constant', cval=0.0,

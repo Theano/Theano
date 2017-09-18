@@ -113,13 +113,21 @@ int cpu_zoomshift_or_grad(PyArrayObject** input, PyArrayObject* output_shape,
         PyErr_SetString(PyExc_RuntimeError, "invalid output shape");
         return 1;
     }
-    if (PyArray_NDIM(zoom_ar) != 1 || PyArray_DIMS(zoom_ar)[0] != naxes) {
+    if (PyArray_SIZE(zoom_ar) == 0) {
+        zoom_ar = NULL;
+    } else if (PyArray_NDIM(zoom_ar) != 1 || PyArray_DIMS(zoom_ar)[0] != naxes) {
         PyErr_SetString(PyExc_RuntimeError, "invalid zoom argument");
         return 1;
+    } else {
+        zoom_ar = PyArray_GETCONTIGUOUS(zoom_ar);
     }
-    if (PyArray_NDIM(shift_ar) != 1 || PyArray_DIMS(shift_ar)[0] != naxes) {
+    if (PyArray_SIZE(shift_ar) == 0) {
+        shift_ar = NULL;
+    } else if (PyArray_NDIM(shift_ar) != 1 || PyArray_DIMS(shift_ar)[0] != naxes) {
         PyErr_SetString(PyExc_RuntimeError, "invalid shift argument");
         return 1;
+    } else {
+        shift_ar = PyArray_GETCONTIGUOUS(shift_ar);
     }
 
     npy_intp* axes = (npy_intp*)malloc(naxes * sizeof(npy_intp));
@@ -172,9 +180,6 @@ int cpu_zoomshift_or_grad(PyArrayObject** input, PyArrayObject* output_shape,
     }
 
     double const_val = *((double*)PyArray_GETPTR1(cval, 0));
-
-    zoom_ar = PyArray_GETCONTIGUOUS(zoom_ar);
-    shift_ar = PyArray_GETCONTIGUOUS(shift_ar);
 
     int ret = 1;
 
