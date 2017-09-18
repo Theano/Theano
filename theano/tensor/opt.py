@@ -7490,20 +7490,20 @@ def local_useless_composite(node):
 # Although the ops ConsiderConstant, ZeroGrad and DisconnectedGrad
 # just returns the input, it should be removed from the graph to
 # make sure all possible optimizations can be applied.
-for opt, name in [(gof.OpRemove(theano.gradient.consider_constant_),
-                   "remove_consider_constant"),
-                  (gof.OpRemove(theano.gradient.zero_grad_),
-                   'remove_zero_grad'),
-                  (gof.OpRemove(theano.gradient.disconnected_grad_),
-                   'remove_disconnected_grad'),
-                  (gof.OpRemove(theano.gradient.undefined_grad_),
-                  'remove_undefined_grad'),
-                  (gof.OpRemove(theano.gradient.GradClip),
-                  'remove_grad_clip'),
-                  (gof.OpRemove(theano.gradient.GradScale),
-                  'remove_grad_scale')]:
-    register_canonicalize(opt, 'fast_compile', 'fast_run', name=name)
-    register_useless(opt, 'fast_compile', 'fast_run', name=name)
+for o, name in [(gof.OpRemove(theano.gradient.consider_constant_),
+                 "remove_consider_constant"),
+                (gof.OpRemove(theano.gradient.zero_grad_),
+                 'remove_zero_grad'),
+                (gof.OpRemove(theano.gradient.disconnected_grad_),
+                 'remove_disconnected_grad'),
+                (gof.OpRemove(theano.gradient.undefined_grad_),
+                 'remove_undefined_grad'),
+                (gof.OpRemove(theano.gradient.GradClip),
+                 'remove_grad_clip'),
+                (gof.OpRemove(theano.gradient.GradScale),
+                 'remove_grad_scale')]:
+    register_canonicalize(o, 'fast_compile', 'fast_run', name=name)
+    register_useless(o, 'fast_compile', 'fast_run', name=name)
 
 
 @register_useless
