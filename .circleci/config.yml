@@ -19,7 +19,9 @@ jobs:
           name: "Build Recipe"
           command: |
             export THEANO_VERSION=`python -c 'import versioneer; print(versioneer.get_version())'`
-            conda build --py 2.7 --py 3.5 --py 3.6 conda
+            conda build --py 2.7 conda
+            conda build --py 3.5 conda
+            conda build --py 3.6 conda
       - run:
           name: "Upload Tagged Versions"
           command: |

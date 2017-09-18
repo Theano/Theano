@@ -4,7 +4,7 @@ pull_requests:
   do_not_increment_build_number: true
 
 platform:
- - x64
+  - x64
 
 clone_folder: C:\projects\theano
 
@@ -25,7 +25,9 @@ build: off
 test_script:
   - cmd: for /f "tokens=*" %%i in ('python -c "import versioneer; print(versioneer.get_version())"') do set THEANO_VERSION=%%i
   - cmd: echo %THEANO_VERSION%
-  - cmd: conda build --py 2.7 --py 3.5 --py 3.6 conda
+  - cmd: conda build --py 2.7 conda
+  - cmd: conda build --py 3.5 conda
+  - cmd: conda build --py 3.6 conda
   - cmd: mkdir pkgs
   - cmd: xcopy "%CONDA_LOC%"\conda-bld\win-64\theano* pkgs\ /Y
   - ps: |
