@@ -784,5 +784,23 @@ def test_grad_clip():
     assert np.allclose(out, (1, 4))
     assert not np.allclose(out[0], out[1])
 
+
+def test_grad_scale():
+    x = theano.tensor.scalar()
+
+    z = theano.tensor.grad(gradient.grad_scale(x, 2)**2, x)
+    z2 = theano.tensor.grad(x**2, x)
+
+    f = theano.function([x], outputs=[z, z2])
+
+    if theano.config.mode != "FAST_COMPILE":
+        topo = f.maker.fgraph.toposort()
+        assert not any([isinstance(node.op, gradient.GradScale)
+                        for node in topo])
+    out = f(2.)
+
+    assert np.allclose(out, (8, 4))
+
+
 if __name__ == '__main__':
     unittest.main()
