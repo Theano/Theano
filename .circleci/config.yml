@@ -30,7 +30,7 @@ jobs:
                 anaconda -t $BINSTAR_TOKEN upload --user=mila-udem /miniconda/conda-bld/noarch/theano*
             fi
       - store_artifacts:
-          path: /miniconda/conda-bld/noarch
+          path: /miniconda/conda-bld/linux-x64
 
 workflows:
   version: 2
