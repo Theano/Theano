@@ -7502,11 +7502,9 @@ register_canonicalize(gof.OpRemove(theano.gradient.disconnected_grad_),
                       name='remove_disconnected_grad')
 
 
-@register_canonicalize
-@gof.local_optimizer([theano.gradient.GradClip])
-def local_grad_clip(node):
-    if isinstance(node.op, theano.gradient.GradClip):
-        return node.inputs
+register_canonicalize(gof.OpRemove(theano.gradient.GradClip),
+                      'fast_compile', 'fast_run',
+                      name='remove_grad_clip')
 
 
 @register_useless
