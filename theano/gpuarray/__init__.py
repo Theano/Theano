@@ -20,8 +20,10 @@ pygpu_activated = False
 try:
     import pygpu
     import pygpu.gpuarray
-except ImportError:
+    import pygpu.version
+except ImportError as e:
     pygpu = None
+    pygpu_error = e
 
 # This is for documentation not to depend on the availability of pygpu
 from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
@@ -214,26 +216,22 @@ def use(device,
 
 
 if pygpu:
-    try:
-        if (config.device.startswith('cuda') or
-                config.device.startswith('opencl')):
-            use(config.device)
-        elif (config.init_gpu_device.startswith('cuda') or
-              config.init_gpu_device.startswith('opencl')):
-            if config.device != 'cpu':
-                raise ValueError(
-                    'you must set device=cpu to use init_gpu_device.')
-            if config.contexts != '':
-                print("Using contexts will make init_gpu_device act like device and move all computations by default, which might not be what you want.")
-            init_dev(config.init_gpu_device)
+    if (config.device.startswith('cuda') or
+            config.device.startswith('opencl')):
+        use(config.device)
+    elif (config.init_gpu_device.startswith('cuda') or
+          config.init_gpu_device.startswith('opencl')):
+        if config.device != 'cpu':
+            raise ValueError(
+                'you must set device=cpu to use init_gpu_device.')
         if config.contexts != '':
-            for n, d in (c.split('->') for c in config.contexts.split(';')):
-                init_dev(d.strip(), n.strip())
-            # To have shared var default on the GPU and opt to move to the GPU.
-            use("")
-
-    except Exception:
-        error("Could not initialize pygpu, support disabled", exc_info=True)
+            print("Using contexts will make init_gpu_device act like device and move all computations by default, which might not be what you want.")
+        init_dev(config.init_gpu_device)
+    if config.contexts != '':
+        for n, d in (c.split('->') for c in config.contexts.split(';')):
+            init_dev(d.strip(), n.strip())
+        # To have shared var default on the GPU and opt to move to the GPU.
+        use("")
 
     from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
                             GpuFromHost, GpuJoin, GpuReshape, GpuSplit,
@@ -248,5 +246,4 @@ else:
             config.device.startswith('opencl') or
             config.device.startswith('cuda') or
             config.contexts != ''):
-        error("pygpu was configured but could not be imported or is too old (version 0.7 or higher required)",
-              exc_info=True)
+        raise pygpu_error
