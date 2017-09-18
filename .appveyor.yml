@@ -19,6 +19,7 @@ install:
   - cmd: call %CONDA_LOC%\Scripts\activate.bat
   - cmd: set PYTHONUNBUFFERED=1
   - cmd: conda install -n root --yes conda conda-env conda-build anaconda-client
+  - cmd: conda config --append channels mila-udem
 
 build: off
 
