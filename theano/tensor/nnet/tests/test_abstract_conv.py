@@ -23,7 +23,6 @@ from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
 from theano.tensor.nnet.abstract_conv import bilinear_upsampling
-from theano.tensor.nnet.abstract_conv import frac_bilinear_upsampling
 from theano.tensor.nnet.abstract_conv import separable_conv2d, separable_conv3d
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
@@ -1299,8 +1298,9 @@ class TestBilinearUpsampling(unittest.TestCase):
                             [[5, 6], [7, 8]],
                             [[9, 10], [11, 12]]],
                            ndmin=4).astype(theano.config.floatX)
-        up_x = frac_bilinear_upsampling(input=input_x,
-                                        frac_ratio=((7, 4), (5, 3)))
+        up_x = bilinear_upsampling(input=input_x,
+                                   frac_ratio=((7, 4), (5, 3)))#,
+                                #    use_1D_kernel=False)
         num_up_x = np.array(
             [[[[1., 1.2, 1.8, 2.],
               [1.28571429, 1.48571429, 2.08571429, 2.28571429],
