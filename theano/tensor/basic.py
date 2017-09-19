@@ -6531,27 +6531,63 @@ class AllocDiag(Op):
 
     """
 
-    __props__ = ("offset", )
-    default_offset = 0
+    __props__ = ("offset", "axis1", "axis2")
 
-    def __init__(self, offset=0):
-        if numpy_diagonal_return_view:
-            self.view_map = {0: [0]}
+    def __init__(self, offset=0, axis1=0, axis2=1):
+        self.view_map = {0: [0]}
         self.offset = offset
+        self.axis1 = axis1
+        self.axis2 = axis2
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
-        if diag.type.ndim != 1:
-            raise TypeError('data argument must be a vector', diag.type)
-        return Apply(self, [diag], [matrix(dtype=diag.dtype)])
+        if diag.type.ndim < 1:
+            raise ValueError('AllocDiag needs an input with 1 or more '
+                             'dimensions', diag.type)
+        return Apply(
+            self, [diag],[
+            diag.type.__class__(
+                dtype=diag.dtype,
+                broadcastable=[False] * (diag.ndim + 1)
+             )()
+        ])
 
     def perform(self, node, inputs, outputs):
+        (x,) = inputs
         (z,) = outputs
-        z[0] = np.diag(inputs[0], self.offset)
+
+
+        axis1 = min(axis1, axis2)
+        axis2 = max(axis1, axis2)
+
+        # Create array with one extra dimension for resulting matrix
+        result_shape = x.shape[:-1] + (x.shape[-1],) * 2
+        result = np.zeros(result_shape, dtype=x.dtype)
+
+        # Create slice for diagonal in final 2 axes
+        diagonal_slice = ((len(result_shape) - 2)  * [slice(None)] +
+                          [np.arange(x.shape[-1])] * 2)
+
+        # Fill in final 2 axes with x
+        result[diagonal_slice] = x
+
+        # Re-order axes so they correspond to diagonals at axis1, axis2
+        axes = range(len(x.shape[:-1]))
+        axes = axes[:axis1] + [axes[-1] + 1] + axes[axis1:]
+        axes = axes[:axis2] + [axes[-1] + 2] + axes[axis2:]
+        result = result.transpose(axes)
+
+        z[0] = result
+
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        return [diagonal(gz, offset=self.offset, axis1=0, axis2=1)]
+        return [diagonal(
+            gz,
+            offset=self.offset,
+            axis1=self.axis1,
+            axis2=self.axis2
+        )]
 
     def infer_shape(self, nodes, shapes):
         return [(shapes[0][0],) * 2]
