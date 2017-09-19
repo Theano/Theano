@@ -1782,14 +1782,16 @@ ErfcxTester = makeBroadcastTester(
     good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
     grad=_grad_broadcast_unary_normal_small_neg_range,
     eps=2e-10,
-    mode=mode_no_scipy)
+    mode=mode_no_scipy,
+    skip=skip_scipy)
 ErfcxInplaceTester = makeBroadcastTester(
     op=inplace.erfcx_inplace,
     expected=expected_erfcx,
     good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
     eps=2e-10,
     mode=mode_no_scipy,
-    inplace=True)
+    inplace=True,
+    skip=skip_scipy)
 
 ErfinvTester = makeBroadcastTester(
     op=tensor.erfinv,
@@ -2015,7 +2017,8 @@ def test_verify_jv_grad():
     # Verify Jv gradient.
     # Implemented separately due to need to fix first input for which grad is
     # not defined.
-
+    if skip_scipy:
+        raise SkipTest("SciPy needed")
     v_val, x_val = _grad_broadcast_binary_bessel['normal']
 
     def fixed_first_input_jv(x):
@@ -2082,6 +2085,8 @@ def test_verify_iv_grad():
     # Verify Iv gradient.
     # Implemented separately due to need to fix first input for which grad is
     # not defined.
+    if skip_scipy:
+        raise SkipTest("SciPy needed")
 
     v_val, x_val = _grad_broadcast_binary_bessel['normal']
 

@@ -349,15 +349,6 @@ class test_diag(unittest.TestCase):
         y = extract_diag(x)
         assert y.owner.op.__class__ == ExtractDiag
 
-        # other types should raise error
-        x = theano.tensor.tensor3()
-        ok = False
-        try:
-            y = extract_diag(x)
-        except TypeError:
-            ok = True
-        assert ok
-
     # not testing the view=True case since it is not used anywhere.
     def test_extract_diag(self):
         rng = np.random.RandomState(utt.fetch_seed())
@@ -383,6 +374,8 @@ class test_diag(unittest.TestCase):
         try:
             extract_diag(xx)
         except TypeError:
+            ok = True
+        except ValueError:
             ok = True
         assert ok
 
@@ -429,6 +422,9 @@ def test_trace():
         trace(xx)
     except TypeError:
         ok = True
+    except ValueError:
+        ok = True
+
     assert ok
 
 

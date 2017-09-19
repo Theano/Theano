@@ -43,7 +43,7 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
     const ga_size height, const ga_size width,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size dilation_h, const ga_size dilation_w,
-    const ga_size pad_h, const ga_size pad_w,
+    const ga_size pad_hl, const ga_size pad_wl,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
     GLOBAL_MEM DTYPE_INPUT_0 * data_col,
@@ -58,8 +58,8 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
     const ga_size w_col = index % width_col;
     const ga_size c_im = h_index / height_col;
     const ga_size c_col = c_im * kernel_h * kernel_w;
-    const ga_size h_offset = h_col * stride_h - pad_h;
-    const ga_size w_offset = w_col * stride_w - pad_w;
+    const ga_size h_offset = h_col * stride_h - pad_hl;
+    const ga_size w_offset = w_col * stride_w - pad_wl;
     GLOBAL_MEM DTYPE_INPUT_0 * data_col_ptr = data_col;
     data_col_ptr += (c_col * height_col + h_col) * width_col + w_col;
     GLOBAL_MEM const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
@@ -88,7 +88,7 @@ KERNEL void im2col_kernel(const ga_size n,
     // data_im_offset is an offset of elements in the array
     const ga_size height, const ga_size width,
     const ga_size kernel_h, const ga_size kernel_w,
-    const ga_size pad_h, const ga_size pad_w,
+    const ga_size pad_hl, const ga_size pad_wl,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
     GLOBAL_MEM DTYPE_INPUT_0 * data_col,
@@ -103,8 +103,8 @@ KERNEL void im2col_kernel(const ga_size n,
     const ga_size w_col = index % width_col;
     const ga_size c_im = h_index / height_col;
     const ga_size c_col = c_im * kernel_h * kernel_w;
-    const ga_size h_offset = h_col * stride_h - pad_h;
-    const ga_size w_offset = w_col * stride_w - pad_w;
+    const ga_size h_offset = h_col * stride_h - pad_hl;
+    const ga_size w_offset = w_col * stride_w - pad_wl;
     GLOBAL_MEM DTYPE_INPUT_0 * data_col_ptr = data_col;
     data_col_ptr += (c_col * height_col + h_col) * width_col + w_col;
     GLOBAL_MEM const DTYPE_INPUT_0 * data_im_ptr = data_im + data_im_offset;
@@ -131,7 +131,7 @@ KERNEL void dilated_col2im_kernel(const ga_size n,
     const ga_size height, const ga_size width, const ga_size channels,
     const ga_size kernel_h, const ga_size kernel_w,
     const ga_size dilation_h, const ga_size dilation_w,
-    const ga_size pad_h, const ga_size pad_w,
+    const ga_size pad_hl, const ga_size pad_wl,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
     GLOBAL_MEM DTYPE_INPUT_0 * data_im,
@@ -145,8 +145,8 @@ KERNEL void dilated_col2im_kernel(const ga_size n,
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
     DTYPE_INPUT_0 val = 0;
-    const ga_size w_im = index % width + pad_w;
-    const ga_size h_im = (index / width) % height + pad_h;
+    const ga_size w_im = index % width + pad_wl;
+    const ga_size h_im = (index / width) % height + pad_hl;
     const ga_size c_im = index / (width * height);
     ga_size kernel_extent_w = (kernel_w - 1) * dilation_w + 1;
     ga_size kernel_extent_h = (kernel_h - 1) * dilation_h + 1;
@@ -182,7 +182,7 @@ KERNEL void col2im_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_INPUT_0 * data_col, const ga_size offset_col,
     const ga_size height, const ga_size width, const ga_size channels,
     const ga_size kernel_h, const ga_size kernel_w,
-    const ga_size pad_h, const ga_size pad_w,
+    const ga_size pad_hl, const ga_size pad_wl,
     const ga_size stride_h, const ga_size stride_w,
     const ga_size height_col, const ga_size width_col,
     GLOBAL_MEM DTYPE_INPUT_0 * data_im,
@@ -196,8 +196,8 @@ KERNEL void col2im_kernel(const ga_size n,
   for (ga_size index = GID_0 * LDIM_0 + LID_0;
        index < (n); index += LDIM_0 * GDIM_0) {
     DTYPE_INPUT_0 val = 0;
-    const ga_size w_im = index % width + pad_w;
-    const ga_size h_im = (index / width) % height + pad_h;
+    const ga_size w_im = index % width + pad_wl;
+    const ga_size h_im = (index / width) % height + pad_hl;
     const ga_size c_im = index / (width * height);
     // compute the start and end of the output
     const ga_size w_col_start =
@@ -259,15 +259,16 @@ int rgemm(cb_order o, cb_transpose tA, cb_transpose tB,
 int im2col(GpuArray *data_im, const size_t data_im_offset, const size_t channels,
     const size_t height, const size_t width, const size_t kernel_h, const size_t kernel_w,
     const size_t dilation_h, const size_t dilation_w,
-    const size_t pad_h, const size_t pad_w,
+    const size_t pad_hl, const size_t pad_hr,
+    const size_t pad_wl, const size_t pad_wr,
     const size_t stride_h, const size_t stride_w,
     GpuArray *data_col) {
   // We are going to launch channels * height_col * width_col kernels, each
   // kernel responsible for copying a single-channel grid.
   size_t dil_kernel_h = (kernel_h - 1) * dilation_h + 1;
   size_t dil_kernel_w = (kernel_w - 1) * dilation_w + 1;
-  size_t height_col = (height + 2 * pad_h - dil_kernel_h) / stride_h + 1;
-  size_t width_col = (width + 2 * pad_w - dil_kernel_w) / stride_w + 1;
+  size_t height_col = (height + pad_hl + pad_hr - dil_kernel_h) / stride_h + 1;
+  size_t width_col = (width + pad_wl + pad_wr - dil_kernel_w) / stride_w + 1;
   size_t num_kernels = channels * height_col * width_col;
   int err;
   if (dilation_h != 1 || dilation_w != 1) {
@@ -275,7 +276,7 @@ int im2col(GpuArray *data_im, const size_t data_im_offset, const size_t channels
       1, &num_kernels, 0,
       num_kernels, data_im->data, data_im->offset, data_im_offset,
       height, width, kernel_h, kernel_w,
-      dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w, height_col,
+      dilation_h, dilation_w, pad_hl, pad_wl, stride_h, stride_w, height_col,
       width_col, data_col->data, data_col->offset);
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
@@ -287,7 +288,7 @@ int im2col(GpuArray *data_im, const size_t data_im_offset, const size_t channels
       1, &num_kernels, 0,
       num_kernels, data_im->data, data_im->offset, data_im_offset,
       height, width, kernel_h, kernel_w,
-      pad_h, pad_w, stride_h, stride_w, height_col,
+      pad_hl, pad_wl, stride_h, stride_w, height_col,
       width_col, data_col->data, data_col->offset);
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
@@ -301,12 +302,12 @@ int im2col(GpuArray *data_im, const size_t data_im_offset, const size_t channels
 int col2im(GpuArray *data_col, const size_t channels,
     const size_t height, const size_t width, const size_t patch_h, const size_t patch_w,
     const size_t dilation_h, const size_t dilation_w,
-    const size_t pad_h, const size_t pad_w, const size_t stride_h,
-    const size_t stride_w, GpuArray *data_im, const size_t data_im_offset) {
+    const size_t pad_hl, const size_t pad_hr, const size_t pad_wl, const size_t pad_wr,
+    const size_t stride_h, const size_t stride_w, GpuArray *data_im, const size_t data_im_offset) {
   size_t dil_patch_h = (patch_h - 1) * dilation_h + 1;
   size_t dil_patch_w = (patch_w - 1) * dilation_w + 1;
-  size_t height_col = (height + 2 * pad_h - dil_patch_h) / stride_h + 1;
-  size_t width_col = (width + 2 * pad_w - dil_patch_w) / stride_w + 1;
+  size_t height_col = (height + pad_hl + pad_hr - dil_patch_h) / stride_h + 1;
+  size_t width_col = (width + pad_wl + pad_wr - dil_patch_w) / stride_w + 1;
   size_t num_kernels = channels * height * width;
   // To avoid involving atomic operations, we will launch one kernel per
   // bottom dimension, and then in the kernel add up the top dimensions.
@@ -316,7 +317,7 @@ int col2im(GpuArray *data_col, const size_t channels,
       1, &num_kernels, 0,
       num_kernels, data_col->data, data_col->offset,
       height, width, channels, patch_h, patch_w,
-      dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w,
+      dilation_h, dilation_w, pad_hl, pad_wl, stride_h, stride_w,
       height_col, width_col, data_im->data, data_im->offset, data_im_offset);
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
@@ -328,7 +329,7 @@ int col2im(GpuArray *data_col, const size_t channels,
       1, &num_kernels, 0,
       num_kernels, data_col->data, data_col->offset,
       height, width, channels, patch_h, patch_w,
-      pad_h, pad_w, stride_h, stride_w,
+      pad_hl, pad_wl, stride_h, stride_w,
       height_col, width_col, data_im->data, data_im->offset, data_im_offset);
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
@@ -352,8 +353,10 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                          const size_t dW = 1,
                          const size_t dilH = 1,
                          const size_t dilW = 1,
-                         const size_t padH = 0,
-                         const size_t padW = 0,
+                         const size_t padH_l = 0,
+                         const size_t padH_r = 0,
+                         const size_t padW_l = 0,
+                         const size_t padW_r = 0,
                          const size_t numgroups = 1,
                          const size_t unshared = 0)
 {
@@ -448,8 +451,8 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     const size_t dil_kH = (kH - 1) * dilH + 1;
     const size_t dil_kW = (kW - 1) * dilW + 1;
     // top: (batchSize, nFilters, topHeight, topWidth)
-    const size_t topHeightNoDH = (bottomHeight + 2*padH - dil_kH);
-    const size_t topWidthNoDW  = (bottomWidth + 2*padW - dil_kW);
+    const size_t topHeightNoDH = (bottomHeight + padH_l + padH_r - dil_kH);
+    const size_t topWidthNoDW  = (bottomWidth + padW_l + padW_r - dil_kW);
     // the above values might be negative so we need to use Python-like
     // flooring integer division to be compatible with get_conv_output.
     // note: this macro implements Python's // for negative x only
@@ -563,7 +566,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             err = im2col(&bottom->ga, n * batch_bottom_stride,
                          nChannels, bottomHeight,
                          bottomWidth, kH, kW, dilH, dilW,
-                         padH, padW, dH, dW, &col->ga);
+                         padH_l, padH_r, padW_l, padW_r, dH, dW, &col->ga);
             if (err != GA_NO_ERROR) {
                 Py_DECREF(col);
                 return NULL;
@@ -623,7 +626,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             err = im2col(&bottom->ga, n * batch_bottom_stride,
                          nChannels, bottomHeight,
                          bottomWidth, kH, kW, dilH, dilW,
-                         padH, padW, dH, dW, &col->ga);
+                         padH_l, padH_r, padW_l, padW_r, dH, dW, &col->ga);
             if (err != GA_NO_ERROR) {
                 Py_DECREF(col);
                 return NULL;
@@ -717,7 +720,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             }
             // col2im back to the data
             err = col2im(&col->ga, nChannels, bottomHeight, bottomWidth,
-                         kH, kW, dilH, dilW, padH, padW,
+                         kH, kW, dilH, dilW, padH_l, padH_r, padW_l, padW_r,
                          dH, dW, &bottom->ga, n * batch_bottom_stride);
             if (err != GA_NO_ERROR) {
                 Py_DECREF(col);

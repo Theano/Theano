@@ -1211,7 +1211,7 @@ class CEnumType(EnumList):
 
     Like :class:`EnumList`, you can also add an alias to a constant, with same syntax as in :class:`EnumList`.
 
-    See test class :class:`theano.gof.tests.test_types.TestOpCEnumType` for a working example.
+    See test :func:`theano.gof.tests.test_types.TestEnumTypes.test_op_with_cenumtype` for a working example.
 
     .. note::
 

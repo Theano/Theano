@@ -1452,7 +1452,6 @@ class FunctionMaker(object):
             theano.gof.cc.get_module_cache().refresh()
         # Handle the case where inputs and/or outputs is a single
         # Variable (not in a list)
-        self.orig_outputs = outputs
         unpack_single = False
         return_none = False
         if outputs is None:

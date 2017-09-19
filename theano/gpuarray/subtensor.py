@@ -387,7 +387,7 @@ int sub_setarray(GpuArray *dst, GpuArray *src) {
           void *args[2];
           args[0] = &zview->ga;
           args[1] = &%(x)s->ga;
-          if (GpuElemwise_call(iadd, args, GE_BROADCAST) != GA_NO_ERROR) {
+          if (GpuElemwise_call(iadd, args, GE_BROADCAST | GE_PADSHAPE) != GA_NO_ERROR) {
             PyErr_SetString(PyExc_RuntimeError, "Error doing inplace add");
             Py_DECREF(zview);
             %(fail)s
@@ -399,7 +399,7 @@ int sub_setarray(GpuArray *dst, GpuArray *src) {
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
         if not parent_version:
             return
-        return parent_version + (9,)
+        return parent_version + (10,)
 
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
@@ -1009,7 +1009,7 @@ class GpuAdvancedIncSubtensor1(Op):
               void *args[2];
               args[0] = (void *)&row_x->ga;
               args[1] = (void *)&row_y->ga;
-              ret = GpuElemwise_call(iadd, args, GE_BROADCAST);
+              ret = GpuElemwise_call(iadd, args, GE_BROADCAST | GE_PADSHAPE);
             }
             Py_DECREF(row_x);
             Py_DECREF(row_y);
@@ -1031,7 +1031,7 @@ class GpuAdvancedIncSubtensor1(Op):
                    """ % dict(fail=sub['fail']))
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,

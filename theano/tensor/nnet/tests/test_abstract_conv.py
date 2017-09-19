@@ -24,7 +24,7 @@ from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
 from theano.tensor.nnet.abstract_conv import bilinear_upsampling
 from theano.tensor.nnet.abstract_conv import separable_conv2d, separable_conv3d
-from theano.tensor.nnet.conv import ConvOp
+from theano.tensor.nnet.abstract_conv import causal_conv1d
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
 from theano.tensor.nnet.corr3d import (Corr3dMM, Corr3dMM_gradWeights,
@@ -1299,8 +1299,8 @@ class TestBilinearUpsampling(unittest.TestCase):
                             [[9, 10], [11, 12]]],
                            ndmin=4).astype(theano.config.floatX)
         up_x = bilinear_upsampling(input=input_x,
-                                   frac_ratio=((7, 4), (5, 3)))#,
-                                #    use_1D_kernel=False)
+                                   frac_ratio=((7, 4), (5, 3)),
+                                   use_1D_kernel=False)
         num_up_x = np.array(
             [[[[1., 1.2, 1.8, 2.],
               [1.28571429, 1.48571429, 2.08571429, 2.28571429],
@@ -1923,3 +1923,156 @@ class TestUnsharedConv(unittest.TestCase):
 
             if verify:
                 utt.verify_grad(conv_gradinputs, [kern, top], mode=self.mode, eps=1)
+
+
+class TestAsymmetricPadding(unittest.TestCase):
+    conv2d = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+    conv2d_op = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+
+    mode = theano.compile.mode.Mode(optimizer='None')
+
+    img_shape = [(2, 2, 4, 4), (3, 2, 4, 2), (3, 3, 5, 3)]
+    kern_shape = [(4, 2, 2, 2), (2, 2, 4, 2), (2, 3, 3, 3)]
+    topgrad_shape = [(2, 4, 6, 6), (3, 2, 3, 4), (3, 2, 6, 1)]
+    border_mode = [((1, 2), (2, 1)), ((1, 1), (0, 3)), ((2, 1), (0, 0))]
+
+    def test_fwd(self):
+        img_sym = theano.tensor.tensor4('img')
+        kern_sym = theano.tensor.tensor4('kern')
+
+        for imshp, kshp, pad in zip(self.img_shape, self.kern_shape, self.border_mode):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+
+            asymmetric_conv_op = self.conv2d(border_mode=pad, subsample=(1, 1),
+                                             filter_dilation=(1, 1))
+            asymmetric_out_sym = asymmetric_conv_op(img_sym, kern_sym)
+            asymmetric_func = theano.function([img_sym, kern_sym], asymmetric_out_sym, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_op)
+                        for node in asymmetric_func.maker.fgraph.toposort()])
+            asymmetric_output = asymmetric_func(img, kern)
+
+            ref_conv_op = self.conv2d(border_mode="valid", subsample=(1, 1),
+                                      filter_dilation=(1, 1))
+            ref_out_sym = ref_conv_op(img_sym, kern_sym)
+            ref_func = theano.function([img_sym, kern_sym], ref_out_sym, mode=self.mode)
+
+            exp_imshp = (imshp[0], imshp[1],
+                         imshp[2] + pad[0][0] + pad[0][1],
+                         imshp[3] + pad[1][0] + pad[1][1])
+
+            exp_img = np.zeros(exp_imshp, dtype=theano.config.floatX)
+            exp_img[:, :, pad[0][0]:imshp[2] + pad[0][0],
+                    pad[1][0]:imshp[3] + pad[1][0]] = img
+            ref_output = ref_func(exp_img, kern)
+
+            utt.assert_allclose(asymmetric_output, ref_output)
+
+            utt.verify_grad(asymmetric_conv_op, [img, kern], mode=self.mode, eps=1)
+
+    def test_gradweight(self):
+        img_sym = theano.tensor.tensor4('img')
+        top_sym = theano.tensor.tensor4('top')
+
+        for imshp, kshp, topshp, pad in zip(self.img_shape, self.kern_shape, self.topgrad_shape, self.border_mode):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            top = np.random.random(topshp).astype(theano.config.floatX)
+
+            asymmetric_conv_op = self.conv2d_gradw(border_mode=pad, subsample=(1, 1),
+                                                   filter_dilation=(1, 1))
+            asymmetric_out_sym = asymmetric_conv_op(img_sym, top_sym, kshp[-2:])
+            asymmetric_func = theano.function([img_sym, top_sym], asymmetric_out_sym, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_gradw_op)
+                        for node in asymmetric_func.maker.fgraph.toposort()])
+            asymmetric_output = asymmetric_func(img, top)
+
+            ref_conv_op = self.conv2d_gradw(border_mode="valid", subsample=(1, 1),
+                                            filter_dilation=(1, 1))
+            ref_out_sym = ref_conv_op(img_sym, top_sym, kshp[-2:])
+            ref_func = theano.function([img_sym, top_sym], ref_out_sym, mode=self.mode)
+
+            exp_imshp = (imshp[0], imshp[1],
+                         imshp[2] + pad[0][0] + pad[0][1],
+                         imshp[3] + pad[1][0] + pad[1][1])
+
+            exp_img = np.zeros(exp_imshp, dtype=theano.config.floatX)
+            exp_img[:, :, pad[0][0]:imshp[2] + pad[0][0],
+                    pad[1][0]:imshp[3] + pad[1][0]] = img
+            ref_output = ref_func(exp_img, top)
+
+            utt.assert_allclose(asymmetric_output, ref_output)
+
+            def conv_gradweight(inputs_val, output_val):
+                return asymmetric_conv_op(inputs_val, output_val, tensor.as_tensor_variable(kshp[-2:]))
+
+            utt.verify_grad(conv_gradweight, [img, top], mode=self.mode, eps=1)
+
+    def test_gradinput(self):
+        kern_sym = theano.tensor.tensor4('kern')
+        top_sym = theano.tensor.tensor4('top')
+
+        for imshp, kshp, topshp, pad in zip(self.img_shape, self.kern_shape, self.topgrad_shape, self.border_mode):
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+            top = np.random.random(topshp).astype(theano.config.floatX)
+
+            asymmetric_conv_op = self.conv2d_gradi(border_mode=pad, subsample=(1, 1),
+                                                   filter_dilation=(1, 1))
+            asymmetric_out_sym = asymmetric_conv_op(kern_sym, top_sym, imshp[-2:])
+            asymmetric_func = theano.function([kern_sym, top_sym], asymmetric_out_sym, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_gradi_op)
+                        for node in asymmetric_func.maker.fgraph.toposort()])
+            asymmetric_output = asymmetric_func(kern, top)
+
+            ref_conv_op = self.conv2d_gradi(border_mode="valid", subsample=(1, 1),
+                                            filter_dilation=(1, 1))
+            exp_imshp = [imshp[2] + pad[0][0] + pad[0][1],
+                         imshp[3] + pad[1][0] + pad[1][1]]
+            ref_out_sym = ref_conv_op(kern_sym, top_sym, exp_imshp)
+            ref_func = theano.function([kern_sym, top_sym], ref_out_sym, mode=self.mode)
+
+            ref_output = ref_func(kern, top)
+
+            ref_output = ref_output[:, :, pad[0][0]:imshp[2] + pad[0][0],
+                                    pad[1][0]:imshp[3] + pad[1][0]]
+
+            utt.assert_allclose(asymmetric_output, ref_output)
+
+            def conv_gradinputs(filters_val, output_val):
+                return asymmetric_conv_op(filters_val, output_val, tensor.as_tensor_variable(imshp[-2:]))
+
+            utt.verify_grad(conv_gradinputs, [kern, top], mode=self.mode, eps=1)
+
+
+class TestCausalConv(unittest.TestCase):
+    mode = theano.compile.mode.Mode(optimizer='None')
+
+    img = np.array([[[2, 4, 9, 5, 8], [0, 0, 4, 0, 5]],
+                    [[2, 5, 8, 5, 5], [1, 3, 0, 7, 9]],
+                    [[7, 0, 7, 1, 0], [0, 1, 4, 7, 2]]]).astype(theano.config.floatX)
+    kern = np.array([[[5, 3, 1], [3, 1, 0]],
+                     [[6, 4, 9], [2, 2, 7]]]).astype(theano.config.floatX)
+    dilation = 2
+    precomp_top = np.array([[[10, 20, 63, 37, 88], [12, 24, 70, 46, 120]],
+                            [[13, 34, 47, 64, 78], [14, 36, 58, 70, 105]],
+                            [[35, 3, 68, 27, 38], [42, 2, 78, 22, 103]]]).astype(theano.config.floatX)
+
+    def test_interface(self):
+        img_sym = theano.tensor.tensor3('img')
+        kern_sym = theano.tensor.tensor3('kern')
+
+        sym_out = causal_conv1d(img_sym, kern_sym, self.kern.shape, filter_dilation=self.dilation)
+
+        causal_func = theano.function([img_sym, kern_sym], sym_out, mode=self.mode)
+
+        output = causal_func(self.img, self.kern)
+
+        utt.assert_allclose(output, self.precomp_top)
+
+        def causal_conv_fn(inputs_val, filters_val):
+            return causal_conv1d(inputs_val, filters_val, self.kern.shape, filter_dilation=1)
+
+        utt.verify_grad(causal_conv_fn, [self.img, self.kern], mode=self.mode, eps=1)

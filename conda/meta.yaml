@@ -1,28 +1,18 @@
-{% set version = "0.10.0beta1" %}
-
 package:
   name: theano
-  version: {{ version }}
+  version: {{ environ.get('THEANO_VERSION') }}
 
 source:
-  git_url: https://github.com/Theano/Theano.git
-  git_tag: rel-{{ version }}
+  path: ../
 
 build:
-  noarch: python
   script: python setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
   build:
-    - m2-filesystem    [win]
-    - m2-git           [win]
-    - git              [not win]
     - python
     - setuptools
     - six >=1.9.0
-    - numpy >=1.9.1
-    - scipy >=0.14.0
-    - pygpu >=0.6,<0.7
   run:
     - python
     - mkl-service
@@ -31,7 +21,7 @@ requirements:
     - six >=1.9.0
     - numpy >=1.9.1
     - scipy >=0.14.0
-    - pygpu >=0.6,<0.7
+    - {{ pin_compatible('pygpu', '0.7', max_pin='0.8') }}   # [not osx]
 
 test:
   requires:

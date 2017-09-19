@@ -119,7 +119,8 @@ def _make_handle(ctx):
     with ctx:
         err = cudnn.cudnnCreate(ctypes.byref(handle))
     if err != 0:
-        raise RuntimeError("error creating cudnn handle")
+        raise RuntimeError("Error creating cudnn handle. "
+                           "This can be a sign of a too old driver.", err)
     return handle
 
 
@@ -2518,17 +2519,28 @@ class RNNBlock(object):
     ----------
     dtype : data type of computation
     hidden_size : int
+        hidden layer dimension.
     num_layers : int
+        number of the recurrent layer you want to set.
     rnn_mode : {'rnn_relu', 'rnn_tanh', 'lstm', 'gru'}
-        See cudnn documentation for ``cudnnRNNMode_t``.
+        rnn_relu: A single-gate recurrent neural network with a ReLU activation function.
 
+        .. math::
+
+        h_t=ReLU(W_ix_t+U_ih_{t-1}+b_{wi}+b_{Ri})
+        rnn_tanh: A single-gate recurrent neural network with a tanh activation function.
+
+        .. math::
+
+        h_t=tanh(W_ix_t+U_ih_{t-1}+b_{wi}+b_{Ri})
+
+        lstm: A four-gate Long Short-Term Memory network with no peephole connections.
+        gru: A three-gate network consisting of Gated Recurrent Units.
     input_mode : {'linear', 'skip'}
         linear: input will be multiplied by a biased matrix
         skip: No operation is performed on the input.  The size must match the hidden size.
     direction_mode : {'unidirectional', 'bidirectional'}
-        unidirectional: The network operates recurrently from the
-                        first input to the last.
-
+        unidirectional: The network operates recurrently from the first input to the last.
         bidirectional: The network operates from first to last then from last to first and concatenates the results at each layer.
 
     """
@@ -3072,6 +3084,10 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     if op.unshared:
         return None
 
+    if isinstance(op.border_mode, tuple) and any(isinstance(p, tuple) for p in op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
+
     inp1 = inputs[0]
     inp2 = inputs[1]
 
@@ -3168,6 +3184,9 @@ def local_abstractconv_cudnn(node):
         return
     if node.op.unshared:
         return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
     if isinstance(node.op, AbstractConv2d):
         with inherit_stack_trace(node.outputs):
             return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
@@ -3185,6 +3204,9 @@ def local_abstractconv_cudnn_alt(node):
     if version(raises=False) < 6000 and node.op.filter_dilation != (1, 1):
         return None
     if node.op.unshared:
+        return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
         return None
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
@@ -3395,6 +3417,9 @@ def local_abstractconv_gw_cudnn(node):
         return
     if node.op.unshared:
         return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
     if isinstance(node.op, AbstractConv2d_gradWeights):
         with inherit_stack_trace(node.outputs):
             return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
@@ -3409,6 +3434,9 @@ def local_abstractconv_gi_cudnn(node):
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
     if node.op.unshared:
+        return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
         return None
     if isinstance(node.op, AbstractConv2d_gradInputs):
         with inherit_stack_trace(node.outputs):

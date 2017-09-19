@@ -2620,7 +2620,10 @@ class TestDnnConv2DRuntimeAlgorithms(object):
                     filters_val = np.random.random(filters_shape).astype(dtype)
                     gpu_res = f(inputs_val, filters_val)
                     cpu_res = f_ref(inputs_val, filters_val)
-                    utt.assert_allclose(cpu_res, np.asarray(gpu_res))
+                    # rtol is needed for the test to be more robust to
+                    # different seed.
+                    utt.assert_allclose(cpu_res, np.asarray(gpu_res),
+                                        rtol=2e-5)
 
         for algo in self.runtime_algorithms:
             yield (run_fwd_runtime_algorithm, algo)
@@ -2747,7 +2750,7 @@ def test_conv_guess_once_with_dtypes():
         f_true_half_config()
     except RuntimeError as e:
         # float16 precision is not supported on all GPU cards.
-        assert 'CUDNN_STATUS_ARCH_MISMATCH' in e.message
+        assert 'CUDNN_STATUS_ARCH_MISMATCH' in str(e)
     f_pseudo_half_config()
     f_float_config()
     f_double_config()

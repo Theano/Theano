@@ -223,16 +223,16 @@ theano-dev_ mailing list.
 
 
 
-.. _LISA:  http://www.iro.umontreal.ca/rubrique.php3?id_rubrique=27
+.. _LISA:  https://mila.umontreal.ca/
 .. _Greek mathematician: http://en.wikipedia.org/wiki/Theano_(mathematician)
 .. _numpy: http://numpy.scipy.org/
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 
 .. _sympy: http://www.sympy.org/
 .. _MATLAB: http://www.mathworks.com/products/matlab/
-.. _Mathematica: http://www.wolfram.com/products/mathematica/index.html
+.. _Mathematica: http://www.wolfram.com/mathematica/
 
-.. _theano-users: http://groups.google.com/group/theano-users?pli=1
-.. _theano-dev: http://groups.google.com/group/theano-dev?pli=1
+.. _theano-users: http://groups.google.com/forum/#!forum/theano-users
+.. _theano-dev: http://groups.google.com/forum/#!forum/theano-dev
 
 

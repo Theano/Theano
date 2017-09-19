@@ -48,7 +48,10 @@ def pygpu_parse_version(version_string):
     assert len(pieces) == 3
     major = int(pieces[0])
     minor = int(pieces[1])
-    patch = int(pieces[2].split('+', 1)[0])
+    if "+" in pieces[2]:  # It contain a git commit.
+        patch = int(pieces[2].split('+', 1)[0])
+    else:  # Maybe it end with .devN
+        patch = int(pieces[2].split('.', 1)[0])
     fullversion = '%d.%d.%s' % (major, minor, pieces[2])
     return version_type(major=major, minor=minor, patch=patch, fullversion=fullversion)
 
@@ -87,14 +90,23 @@ def init_dev(dev, name=None, preallocate=None):
         context = pygpu.init(
             dev,
             sched=config.gpuarray.sched,
+            single_stream=config.gpuarray.single_stream,
             **args)
         context.dev = dev
         init_dev.devmap[dev] = context
         reg_context(name, context)
 
+        MB = (1024 * 1024)
         if dev.startswith('cuda'):
             avail = dnn.dnn_available(name)
-            if avail:
+            # If we try to enable cudnn and there isn't enough GPU
+            # memory, there will be an unclear error message. So do
+            # not even try a clear error.
+            if avail and context.free_gmem < 75 * MB:
+                raise RuntimeError(
+                    "Can not enable cuDNN as there is only %d MB of free GPU memory." %
+                    (context.free_gmem/MB))
+            elif avail:
                 context.cudnn_handle = dnn._make_handle(context)
             elif config.dnn.enabled == 'True':
                 raise RuntimeError(
@@ -110,12 +122,16 @@ def init_dev(dev, name=None, preallocate=None):
         if preallocate < 0:
             print("Disabling allocation cache on %s" % (dev,))
         elif preallocate > 0:
-            MB = (1024 * 1024)
             if preallocate <= 1:
                 gmem = min(preallocate, 0.95) * context.total_gmem
             else:
                 gmem = preallocate * MB
-            if gmem > context.free_gmem - 50 * MB:
+            if gmem > context.free_gmem:
+                raise RuntimeError(
+                    "Trying to preallocate %d MB of GPU memory while only"
+                    " %d MB are available." % (gmem / MB,
+                                                     context.free_gmem / MB))
+            elif gmem > context.free_gmem - 50 * MB:
                 print(
                     "WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
 

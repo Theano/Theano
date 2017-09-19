@@ -676,6 +676,23 @@ class TestZeroGrad(unittest.TestCase):
 
             assert np.allclose(f(a), f2(a))
 
+    def test_rop(self):
+        T = theano.tensor
+
+        x = T.vector()
+        v = T.vector()
+        y = gradient.zero_grad(x)
+
+        rop = T.Rop(y, x, v)
+        f = theano.function([x, v], rop, on_unused_input='ignore')
+
+        a = np.asarray(self.rng.randn(5),
+                       dtype=config.floatX)
+        u = np.asarray(self.rng.randn(5),
+                       dtype=config.floatX)
+
+        assert np.count_nonzero(f(a, u)) == 0
+
 
 class TestDisconnectedGrad(unittest.TestCase):
 
