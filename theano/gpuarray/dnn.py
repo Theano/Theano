@@ -3642,19 +3642,23 @@ def convert_softmax_and_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
         # to add broadcastable dimensions
         if inp.type.ndim == 1:
             inp = inp.dimshuffle('x', 'x', 'x', 0)
+            out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(3), out.type.context_name)
         # Not sure this case is usefull since it should be managed
         # by gpuarray
         elif inp.type.ndim == 2:
             inp = inp.dimshuffle('x', 'x', 0, 1)
+            out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(2, 3), out.type.context_name)
         elif inp.type.ndim == 3:
             inp = inp.dimshuffle('x', 0, 1, 2)
+            out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(1, 2, 3), out.type.context_name)
         elif inp.type.ndim == 4:
-            inp = inp.dimshuffle(0, 1, 2, 3)
+            out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out, out.type.context_name)
         else:
             return
-        ins = gpu_contiguous(inp)
-        out = GpuDnnSoftmax(algo, 'instance')(ins)
-        out = as_gpuarray_variable(out, out.type.context_name)
         return [out]
     # Channel mode if we apply the softmax on the first axis
     elif op.axis == 1:
@@ -3662,13 +3666,13 @@ def convert_softmax_and_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
         # condition above when axis == -1
         if inp.type.ndim == 3:
             inp = inp.dimshuffle(0, 1, 2, 'x')
+            out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(0, 1, 2), out.type.context_name)
         elif inp.type.ndim == 4:
-            inp = inp.dimshuffle(0, 1, 2, 3)
+            out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out, out.type.context_name)
         else:
             return
-        ins = gpu_contiguous(inp)
-        out = GpuDnnSoftmax(algo, 'channel')(ins)
-        out = as_gpuarray_variable(out, out.type.context_name)
         return [out]
     # If you have the first axis, we need to dimshuffle the axis
     elif op.axis == 0:
@@ -3713,18 +3717,90 @@ def local_gpua_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
 @op_lifter([SoftmaxGrad])
 @register_opt2([SoftmaxGrad], 'cudnn', 'fast_compile')
 def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
+    algo = 'accurate'
+    # Transform the input in the format expected by GpuDnnSoftmax
+    inp = inputs
     if not dnn_available(ctx_name):
         return
-    ins = []
-    for n in inputs:
-        n = as_gpuarray_variable(n, ctx_name)
-        if n.ndim != 2:
+    inp[0].tag.context_name = ctx_name
+    inp[1].tag.context_name = ctx_name
+    if inp[0].type.ndim > 4:
+        raise ValueError("Cudnn manages only 4d tensors as inputs, got %d tensor" % inp.type.ndim)
+    if op.axis >= inp[0].type.ndim:
+        raise ValueError("The selected axis %d has to be lower than the dimension of the input (%d)" % op.axis, inp.type.ndim)
+    assert inp[0].type.ndim == inp[1].type.ndim
+    # Instance mode if we apply the softmax on the last axis
+    if op.axis == -1 or (op.axis == inp[0].type.ndim - 1):
+        # We check different cases depending on the dim of the
+        # tensor. Cudnn need to have 4d tensor as inputs, so we need
+        # to add broadcastable dimensions
+        if inp[0].type.ndim == 1:
+            ins_dy = inp[0].dimshuffle('x', 'x', 'x', 0)
+            ins_sm = inp[1].dimshuffle('x', 'x', 'x', 0)
+            out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+            out = as_gpuarray_variable(out.dimshuffle(3), out.type.context_name)
+        # Not sure this case is usefull since it should be managed
+        # by gpuarray
+        elif inp[0].type.ndim == 2:
+            ins_dy = inp[0].dimshuffle('x', 'x', 0, 1)
+            ins_sm = inp[1].dimshuffle('x', 'x', 0, 1)
+            out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+            out = as_gpuarray_variable(out.dimshuffle(2, 3), out.type.context_name)
+        elif inp[0].type.ndim == 3:
+            ins_dy = inp[0].dimshuffle('x', 0, 1, 2)
+            ins_sm = inp[1].dimshuffle('x', 0, 1, 2)
+            out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+            out = as_gpuarray_variable(out.dimshuffle(1, 2, 3), out.type.context_name)
+        elif inp[0].type.ndim == 4:
+            ins_dy = inp[0]
+            ins_sm = inp[1]
+            out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+            out = as_gpuarray_variable(out, out.type.context_name)
+        else:
             return
-        ins.append(n.dimshuffle(0, 'x', 1, 'x'))
-
-    out = GpuDnnSoftmaxGrad('accurate', 'instance')(
-        gpu_contiguous(ins[0]), gpu_contiguous(ins[1]))
-    return [out.dimshuffle(0, 2)]
+        return [out]
+    # Channel mode if we apply the softmax on the first axis
+    elif op.axis == 1:
+        # Note: 1d is meaningless and 2d case is managed on the
+            # condition above when axis == -1
+            if inp[0].type.ndim == 3:
+                ins_dy = inp[0].dimshuffle(0, 1, 2, 'x')
+                ins_sm = inp[1].dimshuffle(0, 1, 2, 'x')
+                out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+                out = as_gpuarray_variable(out.dimshuffle(0, 1, 2), out.type.context_name)
+            elif inp[0].type.ndim == 4:
+                out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+                out = as_gpuarray_variable(out, out.type.context_name)
+            else:
+                return
+            return [out]
+        # If you have the first axis, we need to dimshuffle the axis
+    elif op.axis == 0:
+            if inp[0].type.ndim == 2:
+                ins_dy = inp[0].dimshuffle(1, 0, 'x', 'x')
+                ins_sm = inp[1].dimshuffle(1, 0, 'x', 'x')
+                out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+                out = as_gpuarray_variable(out.dimshuffle(1, 0), out.type.context_name)
+            elif inp[0].type.ndim == 3:
+                ins_dy = inp[0].dimshuffle(1, 0, 2, 'x')
+                ins_sm = inp[1].dimshuffle(1, 0, 2, 'x')
+                out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+                out = as_gpuarray_variable(out.dimshuffle(1, 0, 2), out.type.context_name)
+            elif inp[0].type.ndim == 4:
+                ins_dy = inp[0].dimshuffle(1, 0, 2, 3)
+                ins_sm = inp[1].dimshuffle(1, 0, 2, 3)
+                out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+                out = as_gpuarray_variable(out.dimshuffle(1, 0, 2, 3), out.type.context_name)
+            return [out]
+        # Only meaningfull in 4d case
+    elif op.axis == 2:
+        ins_dy = inp[0].dimshuffle(0, 1, 3, 2)
+        ins_sm = inp[1].dimshuffle(0, 1, 3, 2)
+        out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+        out = as_gpuarray_variable(out.dimshuffle(0, 1, 3, 2), out.type.context_name)
+        return [out]
+    else:
+        return
 
 
 @register_opt('cudnn')
