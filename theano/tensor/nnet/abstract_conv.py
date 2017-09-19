@@ -1719,8 +1719,10 @@ def bilinear_kernel_2D(ratio, normalize=True):
     else:
         ratio_h = ratio
         ratio_v = ratio
-    hkern = bilinear_kernel_1D(ratio=ratio_h, normalize=normalize).dimshuffle('x', 0)
-    vkern = bilinear_kernel_1D(ratio=ratio_v, normalize=normalize).dimshuffle(0, 'x')
+    hkern = bilinear_kernel_1D(ratio=ratio_h,
+                               normalize=normalize).dimshuffle('x', 0)
+    vkern = bilinear_kernel_1D(ratio=ratio_v,
+                               normalize=normalize).dimshuffle(0, 'x')
     kern = hkern * vkern
     return kern
 
@@ -1841,11 +1843,11 @@ def frac_bilinear_upsampling(input,
     # add corresponding padding
     pad_kern = T.concatenate((T.zeros(tuple(kern.shape[:2]) + (pad[0], kern.shape[-1])),
                               kern,
-                              T.zeros(tuple(kern.shape[:2]) + (double_pad[0]-pad[0], kern.shape[-1]))),
+                              T.zeros(tuple(kern.shape[:2]) + (double_pad[0] - pad[0], kern.shape[-1]))),
                              axis=2)
     pad_kern = T.concatenate((T.zeros(tuple(pad_kern.shape[:3]) + (pad[1],)),
                               pad_kern,
-                              T.zeros(tuple(pad_kern.shape[:3]) + (double_pad[1]-pad[1],))),
+                              T.zeros(tuple(pad_kern.shape[:3]) + (double_pad[1] - pad[1],))),
                              axis=3)
 
     # upsample the input by passing it as kernl of conv and using filter_dilation
