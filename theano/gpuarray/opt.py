@@ -1426,6 +1426,9 @@ def local_gpua_crossentropysoftmax1hotwithbiasdx(op, context_name, inputs, outpu
 @op_lifter([tensor.nnet.Softmax])
 @register_opt2([tensor.nnet.Softmax], 'fast_compile')
 def local_gpua_softmax(op, context_name, inputs, outputs):
+    # Gpuarray support only matrices and softmax over the last axis
+    if inputs[0].type.ndim != 2 or (op.axis != -1 and op.axis != (inputs[0].type.ndim - 1)):
+        return
     return gpu_softmax
 
 
