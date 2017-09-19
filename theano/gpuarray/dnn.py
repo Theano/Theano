@@ -3619,69 +3619,94 @@ def local_log_softmax_dnn(node):
         return [new_softmax(softmax_node.inputs[0])]
 
 
+def convert_softmax_and_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
+    if isinstance(op, Softmax):
+        algo = 'accurate'
+    elif isinstance(op, LogSoftmax):
+        algo = 'log'
+    else:
+        return
+    # Transform the input in the format expected by GpuDnnSoftmax
+    inp = inputs[0]
+    if not dnn_available(ctx_name):
+        return
+    inp.tag.context_name = ctx_name
+    if inp.type.ndim > 4:
+        raise ValueError("Cudnn manages only 4d tensors as inputs, got %d tensor" % inp.type.ndim)
+    if op.axis >= inp.type.ndim:
+        raise ValueError("The selected axis %d has to be lower than the dimension of the input (%d)" % op.axis, inp.type.ndim)
+    # Instance mode if we apply the softmax on the last axis
+    if op.axis == -1 or (op.axis == inp.type.ndim - 1):
+        # We check different cases depending on the dim of the
+        # tensor. Cudnn need to have 4d tensor as inputs, so we need
+        # to add broadcastable dimensions
+        if inp.type.ndim == 1:
+            inp = inp.dimshuffle('x', 'x', 'x', 0)
+        # Not sure this case is usefull since it should be managed
+        # by gpuarray
+        elif inp.type.ndim == 2:
+            inp = inp.dimshuffle('x', 'x', 0, 1)
+        elif inp.type.ndim == 3:
+            inp = inp.dimshuffle('x', 0, 1, 2)
+        elif inp.type.ndim == 4:
+            inp = inp.dimshuffle(0, 1, 2, 3)
+        else:
+            return
+        ins = gpu_contiguous(inp)
+        out = GpuDnnSoftmax(algo, 'instance')(ins)
+        out = as_gpuarray_variable(out, out.type.context_name)
+        return [out]
+    # Channel mode if we apply the softmax on the first axis
+    elif op.axis == 1:
+        # Note: 1d is meaningless and 2d case is managed on the
+        # condition above when axis == -1
+        if inp.type.ndim == 3:
+            inp = inp.dimshuffle(0, 1, 2, 'x')
+        elif inp.type.ndim == 4:
+            inp = inp.dimshuffle(0, 1, 2, 3)
+        else:
+            return
+        ins = gpu_contiguous(inp)
+        out = GpuDnnSoftmax(algo, 'channel')(ins)
+        out = as_gpuarray_variable(out, out.type.context_name)
+        return [out]
+    # If you have the first axis, we need to dimshuffle the axis
+    elif op.axis == 0:
+        if inp.type.ndim == 2:
+            inp = inp.dimshuffle(1, 0, 'x', 'x')
+            out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(1, 0), out.type.context_name)
+        elif inp.type.ndim == 3:
+            inp = inp.dimshuffle(1, 0, 2, 'x')
+            out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(1, 0, 2), out.type.context_name)
+        elif inp.type.ndim == 4:
+            inp = inp.dimshuffle(1, 0, 2, 3)
+            out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(1, 0, 2, 3), out.type.context_name)
+        return [out]
+    # Only meaningfull in 4d case
+    elif op.axis == 2:
+        inp = inp.dimshuffle(0, 1, 3, 2)
+        out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
+        out = as_gpuarray_variable(out.dimshuffle(0, 1, 3, 2), out.type.context_name)
+        return [out]
+    else:
+        return
+
+
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([Softmax])
 @register_opt2([Softmax], 'fast_compile', 'cudnn')
 def local_gpua_softmax_to_dnn(op, ctx_name, inputs, outputs):
-    if isinstance(op, Softmax):
-        # Transform the input in the format expected by GpuDnnSoftmax
-        inp = inputs[0]
-        if not dnn_available(ctx_name):
-            return
-        inp.tag.context_name = ctx_name
-        if op.axis >= inp.type.ndim:
-                raise ValueError("The selected axis %d has to be lower than the dimension of the inputs (%d)" % op.axis, inp.type.ndim)
-        # Instance mode if we apply the softmax on the last axis
-        if op.axis == -1 or (op.axis == inp.type.ndim - 1):
-            # We check different cases depending on the dim of the
-            # tensor. Cudnn need to have 4d tensor as inputs
-            if inp.type.ndim == 1:
-                inp = inp.dimshuffle('x', 'x', 'x', 1)
-            elif inp.type.ndim == 2:
-                inp = inp.dimshuffle('x', 'x', 0, 1)
-            elif inp.type.ndim == 3:
-                inp = inp.dimshuffle('x', 0, 1, 2)
-            elif inp.type.ndim == 4:
-                inp = inp
-            else:
-                return
-            ins = gpu_contiguous(inp)
-            out = GpuDnnSoftmax('accurate', 'instance')(ins)
-            out = as_gpuarray_variable(out, out.type.context_name)
-            return [out]
-        # Channel mode if we apply the softmax on the first axis
-        elif op.axis == 1:
-            # Note: 1d is meaningless and 2d case is managed on the
-            # condition above when axis == -1
-            if inp.type.ndim == 3:
-                inp = inp.dimshuffle(0, 1, 2, 'x')
-            elif inp.type.ndim == 4:
-                inp = inp
-            else:
-                return
-            ins = gpu_contiguous(inp)
-            out = GpuDnnSoftmax('accurate', 'channel')(ins)
-            out = as_gpuarray_variable(out, out.type.context_name)
-            return [out]
+    return convert_softmax_and_logsoftmax_to_dnn(op, ctx_name, inputs, outputs)
 
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([LogSoftmax])
 @register_opt2([LogSoftmax], 'fast_compile', 'cudnn')
 def local_gpua_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
-    # Transform the input in the format expected by GpuDnnSoftmax
-    inp = inputs[0]
-    if inp.ndim != 2:
-        return
-    if not dnn_available(ctx_name):
-        return
-
-    inp = inp.dimshuffle(0, 1, 'x', 'x')
-    inp.tag.context_name = ctx_name
-
-    # Apply GpuDnnSoftmax and return the result
-    out = GpuDnnSoftmax('log', 'channel')(gpu_contiguous(inp))
-    return [out.dimshuffle(0, 1)]
+    return convert_softmax_and_logsoftmax_to_dnn(op, ctx_name, inputs, outputs)
 
 
 @register_opt('cudnn', 'fast_compile')
