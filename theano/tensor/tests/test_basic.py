@@ -3609,16 +3609,20 @@ class T_min_max(unittest.TestCase):
             itype = np.iinfo(dtype)
             data = np.array([itype.min + 3, itype.min, itype.max - 5, itype.max], dtype)
             n = as_tensor_variable(data)
+            self.assertEqual(min(n).dtype, dtype)
             i = eval_outputs(min(n))
             self.assertEqual(i, itype.min)
+            self.assertEqual(max(n).dtype, dtype)
             i = eval_outputs(max(n))
             self.assertEqual(i, itype.max)
 
     def test_bool(self):
         data = np.array([True, False], 'bool')
         n = as_tensor_variable(data)
+        self.assertEqual(min(n).dtype, 'bool')
         i = eval_outputs(min(n))
         self.assertEqual(i, False)
+        self.assertEqual(max(n).dtype, 'bool')
         i = eval_outputs(max(n))
         self.assertEqual(i, True)
 

@@ -1717,7 +1717,8 @@ def min(x, axis=None, keepdims=False):
         return -max(-x, axis=axis, keepdims=keepdims)
     elif str_x_type in uint_dtypes:
         itype = np.iinfo(x.dtype)
-        return itype.max - max(itype.max - x, axis=axis, keepdims=keepdims)
+        max_val = np.array(itype.max, dtype=itype.dtype)
+        return max_val - max(max_val - x, axis=axis, keepdims=keepdims)
     elif str_x_type == 'bool':
         return ~max(~x, axis=axis, keepdims=keepdims)
     else:
