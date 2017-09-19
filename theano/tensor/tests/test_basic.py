@@ -3401,6 +3401,24 @@ class T_argmin_argmax(unittest.TestCase):
         except TypeError:
             pass
 
+    def test_uint(self):
+        for dtype in ('uint8', 'uint16', 'uint32', 'uint64'):
+            itype = np.iinfo(dtype)
+            data = np.array([itype.min + 3, itype.min, itype.max - 5, itype.max], dtype)
+            n = as_tensor_variable(data)
+            i = eval_outputs(argmin(n))
+            self.assertEqual(i, 1)
+            i = eval_outputs(argmax(n))
+            self.assertEqual(i, 3)
+
+    def test_bool(self):
+        data = np.array([True, False], 'bool')
+        n = as_tensor_variable(data)
+        i = eval_outputs(argmin(n))
+        self.assertEqual(i, 1)
+        i = eval_outputs(argmax(n))
+        self.assertEqual(i, 0)
+
 
 class T_min_max(unittest.TestCase):
     def setUp(self):
@@ -3585,6 +3603,24 @@ class T_min_max(unittest.TestCase):
         # n = as_tensor_variable(data)
         # check_grad_max(data, eval_outputs(grad(max_and_argmax(n,
         # axis=1)[0], n)),axis=1)
+
+    def test_uint(self):
+        for dtype in ('uint8', 'uint16', 'uint32', 'uint64'):
+            itype = np.iinfo(dtype)
+            data = np.array([itype.min + 3, itype.min, itype.max - 5, itype.max], dtype)
+            n = as_tensor_variable(data)
+            i = eval_outputs(min(n))
+            self.assertEqual(i, itype.min)
+            i = eval_outputs(max(n))
+            self.assertEqual(i, itype.max)
+
+    def test_bool(self):
+        data = np.array([True, False], 'bool')
+        n = as_tensor_variable(data)
+        i = eval_outputs(min(n))
+        self.assertEqual(i, False)
+        i = eval_outputs(max(n))
+        self.assertEqual(i, True)
 
 
 def test_basic_allclose():
