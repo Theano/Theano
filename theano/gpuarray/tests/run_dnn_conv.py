@@ -141,10 +141,13 @@ print('======================')
 print('Running', test, algo, dtype, precision, *parameters)
 if test == FWD:
     tests.run_conv_fwd(algo, dtype, precision, parameters)
+    expected_output_shape = get_conv_output_shape(args.input_shape, args.filter_shape, args.border_mode,
+                                                  args.subsample, args.dilation)
 if test == BWD_FILTER:
     tests.run_conv_gradweight(algo, dtype, precision, parameters)
+    expected_output_shape = args.filter_shape
 if test == BWD_DATA:
     tests.run_conv_gradinput(algo, dtype, precision, parameters)
-print('Output shape:', get_conv_output_shape(args.input_shape, args.filter_shape, args.border_mode,
-                                             args.subsample, args.dilation))
+    expected_output_shape = args.input_shape
+print('Computed shape:', expected_output_shape)
 print('... OK')
