@@ -21,7 +21,7 @@ from theano.gof.type import CDataType, Generic
 from theano.gof.opt import inherit_stack_trace
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
-from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
+from theano.tensor.nnet import Softmax, LogSoftmax, SoftmaxGrad
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs,
@@ -3594,7 +3594,7 @@ pool_db2.register("local_gpua_avg_pool_dnn_grad_stride",
 
 @register_opt('cudnn', 'fast_compile')
 @local_optimizer([GpuSoftmax])
-def local_softmax_dnn(node):
+def local_softmax_2d_dnn(node):
     if isinstance(node.op, GpuSoftmax):
         if not dnn_available(node.outputs[0].type.context_name):
             return
@@ -3617,6 +3617,52 @@ def local_log_softmax_dnn(node):
         softmax_node = node.inputs[0].owner
         new_softmax = GpuDnnSoftmax('log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([Softmax])
+@register_opt2([Softmax], 'fast_compile', 'cudnn')
+def local_gpua_softmax_to_dnn(op, ctx_name, inputs, outputs):
+    if isinstance(op, Softmax):
+        # Transform the input in the format expected by GpuDnnSoftmax
+        inp = inputs[0]
+        if not dnn_available(ctx_name):
+            return
+        inp.tag.context_name = ctx_name
+        if op.axis >= inp.type.ndim:
+                raise ValueError("The selected axis %d has to be lower than the dimension of the inputs (%d)" % op.axis, inp.type.ndim)
+        # Instance mode if we apply the softmax on the last axis
+        if op.axis == -1 or (op.axis == inp.type.ndim - 1):
+            # We check different cases depending on the dim of the
+            # tensor. Cudnn need to have 4d tensor as inputs
+            if inp.type.ndim == 1:
+                inp = inp.dimshuffle('x', 'x', 'x', 1)
+            elif inp.type.ndim == 2:
+                inp = inp.dimshuffle('x', 'x', 0, 1)
+            elif inp.type.ndim == 3:
+                inp = inp.dimshuffle('x', 0, 1, 2)
+            elif inp.type.ndim == 4:
+                inp = inp
+            else:
+                return
+            ins = gpu_contiguous(inp)
+            out = GpuDnnSoftmax('accurate', 'instance')(ins)
+            out = as_gpuarray_variable(out, out.type.context_name)
+            return [out]
+        # Channel mode if we apply the softmax on the first axis
+        elif op.axis == 1:
+            # Note: 1d is meaningless and 2d case is managed on the
+            # condition above when axis == -1
+            if inp.type.ndim == 3:
+                inp = inp.dimshuffle(0, 1, 2, 'x')
+            elif inp.type.ndim == 4:
+                inp = inp
+            else:
+                return
+            ins = gpu_contiguous(inp)
+            out = GpuDnnSoftmax('accurate', 'channel')(ins)
+            out = as_gpuarray_variable(out, out.type.context_name)
+            return [out]
 
 
 @register_opt('cudnn', 'fast_compile')
