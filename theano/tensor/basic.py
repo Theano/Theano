@@ -6564,9 +6564,9 @@ class AllocDiag(Op):
         result = np.zeros(result_shape, dtype=x.dtype)
 
         # Create slice for diagonal in final 2 axes
-        diagonal_slice = ((len(result_shape) - 2)  * [slice(None)] +
-                          [np.arange(x.shape[-1]) + max(0, -offset),
-                           np.arange(x.shape[-1]) + max(0, offset)])
+        diagonal_slice = ((len(result_shape) - 2) * [slice(None)] +
+                          [np.arange(x.shape[-1]) + np.maximum(0, -offset),
+                           np.arange(x.shape[-1]) + np.maximum(0, offset)])
 
         # Fill in final 2 axes with x
         result[diagonal_slice] = x
