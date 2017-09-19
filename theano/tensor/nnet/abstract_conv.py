@@ -1914,8 +1914,6 @@ def bilinear_upsampling(input,
             raise ValueError('For fractional ratios 1D kernel'
                              'method not implemented. You may want to pass '
                              'use_1D_kernel as False')
-
-    if not use_1D_kernel:
         return frac_bilinear_upsampling(input,
                                         ratio=ratio,
                                         frac_ratio=frac_ratio)
