@@ -590,7 +590,7 @@ class BaseTestDnnConv(object):
     def get_atol_rtol(self, algo, dtype, precision):
         if dtype == 'float16':
             # Raise tolerance for float16
-            return (1e-2, 5e-2)
+            return (5e-2, 5e-2)
         if algo == 'winograd_non_fused' and dtype == precision == 'float32':
             # Raise tolerance for winograd_non_fused in FLOAT_CONFIG.
             return (1e-4, 1e-4)
