@@ -1838,7 +1838,7 @@ def frac_bilinear_upsampling(input,
     pad = double_pad // 2
 
     # build pyramidal kernel
-    kern = bilinear_kernel_2D(ratio=ratio)[np.newaxis, np.newaxis, :, :]
+    kern = bilinear_kernel_2D(ratio=ratio)[np.newaxis, np.newaxis, :, :].astype(theano.config.floatX)
 
     # add corresponding padding
     pad_kern = T.concatenate((T.zeros(tuple(kern.shape[:2]) + (pad[0], kern.shape[-1]),
