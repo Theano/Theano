@@ -1764,6 +1764,12 @@ def min(x, axis=None, keepdims=False):
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return -max(-x, axis=axis, keepdims=keepdims)
+    elif str_x_type in uint_dtypes:
+        itype = np.iinfo(x.dtype)
+        max_val = np.array(itype.max, dtype=itype.dtype)
+        return max_val - max(max_val - x, axis=axis, keepdims=keepdims)
+    elif str_x_type == 'bool':
+        return ~max(~x, axis=axis, keepdims=keepdims)
     else:
         # Be careful about unsigned integers, complex
         raise NotImplementedError()
@@ -1789,6 +1795,11 @@ def argmin(x, axis=None, keepdims=False):
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return argmax(-x, axis=axis, keepdims=keepdims)
+    elif str_x_type in uint_dtypes:
+        itype = np.iinfo(x.dtype)
+        return argmax(itype.max - x, axis=axis, keepdims=keepdims)
+    elif str_x_type == 'bool':
+        return argmax(~x, axis=axis, keepdims=keepdims)
     else:
         # Be careful about unsigned integers, complex
         raise NotImplementedError()
