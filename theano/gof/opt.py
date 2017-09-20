@@ -1333,9 +1333,12 @@ class LocalOptGroup(LocalOptimizer):
                 self.process_count.setdefault(o, 0)
                 self.applied_true.setdefault(o, 0)
                 self.node_created.setdefault(o, 0)
-
-            for c in o.tracks():
-                self.track_map[c].append(o)
+            tracks = o.tracks()
+            if tracks is None:
+                self.track_map[None].append(o)
+            else:
+                for c in tracks:
+                    self.track_map[c].append(o)
 
     def __str__(self):
         return getattr(self, '__name__',
