@@ -19,7 +19,7 @@ TODO: better Theano conv doc
 # NB: Following notes contains infos since 0.9.0.
 
 Highlights:
- - conda packages for releases now available and updated in our own conda channel ``mila-udem``.
+ - conda packages now available and updated in our own conda channel ``mila-udem``.
    To install it: ``conda install -c mila-udem/label/pre theano pygpu``
  - Support NumPy ``1.13``
  - Support pygpu ``0.7``

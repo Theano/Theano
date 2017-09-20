@@ -11,7 +11,7 @@ This release contains new features, improvements and bug fixes to prepare the up
 We recommend that every developer updates to this version.
 
 Highlights:
- - conda packages for releases now available and updated in our own conda channel ``mila-udem``.
+ - conda packages now available and updated in our own conda channel ``mila-udem``.
    To install it: ``conda install -c mila-udem/label/pre theano pygpu``
 
  - Improved elemwise operations
