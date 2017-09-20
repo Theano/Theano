@@ -1271,6 +1271,107 @@ class test_SoftMax(test_nnet.test_SoftMax):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
+    def _test_softmax_nd(self, x, f_z, cmp):
+        # This is basic test for GpuDnnSoftmax
+        #
+        # We check that we loop when there is too much block
+        # We use slower code when there isn't enough shared memory
+
+        f_z_out = f_z(x)
+        f_gpu_z_out = f_z(x)
+
+        # Cpu op
+        f = theano.function([x], f_z_out, mode=mode_without_gpu)
+        # Optimization with cudnn
+        f_gpu = theano.function([x], f_gpu_z_out, mode=mode_with_gpu)
+        sorted_f_gpu = f_gpu.maker.fgraph.toposort()
+        assert(len([i for i in sorted_f_gpu if isinstance(i.op, self.gpu_op)]) == 1)
+
+        self._check_types(f, f_gpu, T.nnet.Softmax, self.gpu_op)
+        if x.type.ndim == 1:
+            # we need to test n>32*1024 to check that we make the block loop.
+            cmp((5,), f, f_gpu)
+            cmp((10,), f, f_gpu)
+            cmp((50,), f, f_gpu)
+            cmp((500,), f, f_gpu)
+            cmp((5000,), f, f_gpu)
+            cmp((50000,), f, f_gpu)
+            cmp((4074 * 20 * 20,), f, f_gpu)
+            # cudnn permits no more than 2^15 - 1 rows
+            cmp(((2 << 15,)), f, f_gpu)
+        elif x.type.ndim == 2:
+            # we need to test n>32*1024 to check that we make the block loop.
+            cmp((1, 5), f, f_gpu)
+            cmp((2, 5), f, f_gpu)
+            cmp((10, 5), f, f_gpu)
+            cmp((100, 5), f, f_gpu)
+            cmp((1000, 5), f, f_gpu)
+            cmp((10000, 5), f, f_gpu)
+            cmp((4074, 400), f, f_gpu)
+            cmp((784, 784), f, f_gpu)
+            cmp((4, 1000), f, f_gpu)
+            cmp((4, 1024), f, f_gpu)
+            cmp((4, 2000), f, f_gpu)
+            cmp((4, 2024), f, f_gpu)
+            # The GTX285 don't have enough shared memory.
+            cmp((4, 4074), f, f_gpu)
+            # The GTX580, 680 and kepler don't have enough shared memory.
+            cmp((2, 10000), f, f_gpu)
+            cmp((128, 16 * 1024), f, f_gpu)
+            cmp((128, 64 * 1024), f, f_gpu)
+            # cudnn permits no more than 2^15 - 1 rows
+            cmp(((2 << 15) - 1, 5), f, f_gpu)
+            cmp((5, 2 << 15), f, f_gpu)
+        elif x.type.ndim == 3:
+            # we need to test n>32*1024 to check that we make the block loop.
+            cmp((1, 1, 5), f, f_gpu)
+            # cmp((1, 2, 5), f, f_gpu)
+            cmp((5, 5, 5), f, f_gpu)
+            cmp((10, 10, 5), f, f_gpu)
+            cmp((100, 10, 5), f, f_gpu)
+            cmp((100, 100, 5), f, f_gpu)
+            cmp((4074, 20, 20), f, f_gpu)
+            cmp((784, 28, 28), f, f_gpu)
+            cmp((4, 10, 100), f, f_gpu)
+            cmp((4, 4, 256), f, f_gpu)
+            cmp((4, 4, 500), f, f_gpu)
+            cmp((4, 2, 1024), f, f_gpu)
+            # The GTX285 don't have enough shared memory.
+            cmp((4, 4, 2048), f, f_gpu)
+            # The GTX580, 680 and kepler don't have enough shared memory.
+            cmp((2, 100, 100), f, f_gpu)
+            cmp((128, 1, 16 * 1024), f, f_gpu)
+            cmp((128, 1, 64 * 1024), f, f_gpu)
+            # cudnn permits no more than 2^15 - 1 rows
+            cmp((1, 5, (2 << 15) - 1), f, f_gpu)
+            cmp((2 << 15, 1, 5), f, f_gpu)
+        elif x.type.ndim == 4:
+            # we need to test n>32*1024 to check that we make the block loop.
+            cmp((2, 1, 5, 1), f, f_gpu)
+            cmp((1, 1, 2, 5), f, f_gpu)
+            cmp((1, 5, 5, 5), f, f_gpu)
+            cmp((1, 10, 10, 5), f, f_gpu)
+            cmp((10, 10, 10, 5), f, f_gpu)
+            cmp((10, 10, 100, 5), f, f_gpu)
+            cmp((2048, 2, 20, 20), f, f_gpu)
+            cmp((28, 28, 28, 28), f, f_gpu)
+            cmp((2, 2, 10, 100), f, f_gpu)
+            cmp((4, 2, 2, 256), f, f_gpu)
+            cmp((1, 1, 8, 500), f, f_gpu)
+            cmp((2, 2, 2, 1024), f, f_gpu)
+            # The GTX285 don't have enough shared memory.
+            cmp((8, 1, 1, 2048), f, f_gpu)
+            # The GTX580, 680 and kepler don't have enough shared memory.
+            cmp((2, 10, 10, 100), f, f_gpu)
+            cmp((128, 1, 1, 16 * 1024), f, f_gpu)
+            cmp((1, 128, 1, 64 * 1024), f, f_gpu)
+            # cudnn permits no more than 2^15 - 1 rows
+            cmp((1, 1, 5, (2 << 15) - 1), f, f_gpu)
+            cmp((1, 2 << 15, 1, 5), f, f_gpu)
+        else:
+            raise ValueError("TensorDim should be between 1 and 4, got %d" % x.type.ndim)
+        return f, f_gpu
+
     def test_softmax_shape_0(self):
         dims = (2, 0, 4, 5)
         data = np.arange(
@@ -1294,7 +1395,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
     def test_softmax_f16(self):
         x = T.matrix('x', 'float16')
         x_gpu = T.tensor4('x_gpu', 'float16')
-        f_z = T.nnet.softmax_op
+        f_z = T.nnet.softmax
         f_gpu = dnn.GpuDnnSoftmax(
             'accurate',
             'channel'
@@ -1310,6 +1411,24 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         self._test_softmax(x, x_gpu, f_z, f_gpu, cmp)
 
+    def test_forward_optimization_softmax_to_cudnn_nd(self):
+        def cmp(shape, f, f_gpu):
+            data = np.random.random(shape).astype(theano.config.floatX)
+            out = f(data)
+            gout = np.asarray(f_gpu(data))
+            utt.assert_allclose(out, gout)
+
+        dims = 4
+        f_z = T.nnet.softmax
+        # Check for differents dimensions
+        for d in xrange(1, dims + 1):
+            x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
+            self._test_softmax_nd(
+                x,
+                f_z,
+                cmp
+                )
+
     def test_softmax_grad(self):
         def cmp(n, m, f, f_gpu):
             data = np.arange(n * m, dtype=theano.config.floatX).reshape(n, m)
@@ -1321,7 +1440,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         x = T.matrix('x')
         x_gpu = T.tensor4('x_gpu')
-        f_z = T.nnet.softmax_op
+        f_z = T.nnet.softmax
         f_gpu = dnn.GpuDnnSoftmax(
             'accurate',
             'channel'
