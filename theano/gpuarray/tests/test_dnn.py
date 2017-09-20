@@ -1419,15 +1419,17 @@ class test_SoftMax(test_nnet.test_SoftMax):
             utt.assert_allclose(out, gout)
 
         dims = 4
-        f_z = T.nnet.softmax
         # Check for differents dimensions
         for d in xrange(1, dims + 1):
-            x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
-            self._test_softmax_nd(
-                x,
-                f_z,
-                cmp
-                )
+            for ax in range(0, d):
+                # Check for different axis
+                f_z = T.nnet.Softmax(ax)
+                x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
+                self._test_softmax_nd(
+                    x,
+                    f_z,
+                    cmp
+                    )
 
     def test_softmax_grad(self):
         def cmp(n, m, f, f_gpu):
