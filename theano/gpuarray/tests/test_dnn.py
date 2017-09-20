@@ -1431,6 +1431,55 @@ class test_SoftMax(test_nnet.test_SoftMax):
                     cmp
                     )
 
+    def test_optimization_softmaxGrad_to_cudnnGrad_nd(self):
+        dims = 4
+        # Check for differents dimensions
+        for d in xrange(1, dims + 1):
+            # Check for different axis
+            for ax in range(0, d):
+                print(ax)
+                shape = (5,) * d
+                print(shape)
+                val = np.random.rand(*shape).astype(theano.config.floatX)
+                # First, we chack that SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
+                # optimization is applied when cudnn is required
+                x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
+                f = theano.function(
+                    [x],
+                    T.grad(T.nnet.Softmax(ax)(x).mean(), x),
+                    mode=mode_with_gpu
+                )
+                out_dnn = f(val)
+                sorted_f = f.maker.fgraph.toposort()
+                # val = np.random.rand(*shape).astype(theano.config.floatX)
+                assert(len([i for i in sorted_f if isinstance(i.op, self.gpu_grad_op)]) == 1)
+                assert(len([i for i in sorted_f if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 0)
+
+                # Second, we verify that the SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
+                # optimization is not applied when cudnn is excluded or not
+                # available and we check that the values of the cpu op
+                # are the same than the cudnn op
+                mode_wo_cudnn = mode_with_gpu.excluding("cudnn")
+                f = theano.function(
+                    [x],
+                    T.grad(T.nnet.Softmax(ax)(x).mean(), x),
+                    mode=mode_wo_cudnn
+                )
+                sorted_f = f.maker.fgraph.toposort()
+                out_cpu = f(val)
+                utt.assert_allclose(out_dnn, out_cpu)
+                theano.printing.debugprint(sorted_f)
+                assert(len([i for i in sorted_f if isinstance(i.op, self.gpu_grad_op)]) == 0)
+                assert(len([i for i in sorted_f if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 1)
+
+                # Third, we verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad do not
+                # crash with manual graph
+                o = theano.tensor.nnet.SoftmaxGrad(ax)(x, x * 2)
+                f = theano.function([x], o, mode=mode_with_gpu)
+                sorted_f = f.maker.fgraph.toposort()
+                assert(len([i for i in sorted_f if isinstance(i.op, self.gpu_grad_op)]) == 1)
+                assert(len([i for i in sorted_f if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 0)
+
     def test_softmax_grad(self):
         def cmp(n, m, f, f_gpu):
             data = np.arange(n * m, dtype=theano.config.floatX).reshape(n, m)
