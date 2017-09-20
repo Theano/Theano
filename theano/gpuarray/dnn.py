@@ -3647,16 +3647,17 @@ def convert_softmax_and_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
         # Not sure this case is usefull since it should be managed
         # by gpuarray
         elif inp.type.ndim == 2:
-            inp = inp.dimshuffle('x', 'x', 0, 1)
-            out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
-            out = as_gpuarray_variable(out.dimshuffle(2, 3), out.type.context_name)
+            inp = inp.dimshuffle(0, 1, 'x', 'x')
+            out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(0, 1), out.type.context_name)
         elif inp.type.ndim == 3:
-            inp = inp.dimshuffle('x', 0, 1, 2)
-            out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
-            out = as_gpuarray_variable(out.dimshuffle(1, 2, 3), out.type.context_name)
+            inp = inp.dimshuffle('x', 2, 0, 1)
+            out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(2, 3, 1), out.type.context_name)
         elif inp.type.ndim == 4:
-            out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
-            out = as_gpuarray_variable(out, out.type.context_name)
+            inp = inp.dimshuffle(0, 3, 1, 2)
+            out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
+            out = as_gpuarray_variable(out.dimshuffle(0, 2, 3, 1), out.type.context_name)
         else:
             return
         return [out]
@@ -3666,7 +3667,7 @@ def convert_softmax_and_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
         # condition above when axis == -1
         if inp.type.ndim == 3:
             inp = inp.dimshuffle(0, 1, 2, 'x')
-            out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
+            out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
             out = as_gpuarray_variable(out.dimshuffle(0, 1, 2), out.type.context_name)
         elif inp.type.ndim == 4:
             out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
@@ -3691,9 +3692,9 @@ def convert_softmax_and_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
         return [out]
     # Only meaningfull in 4d case
     elif op.axis == 2:
-        inp = inp.dimshuffle(0, 1, 3, 2)
-        out = GpuDnnSoftmax(algo, 'instance')(gpu_contiguous(inp))
-        out = as_gpuarray_variable(out.dimshuffle(0, 1, 3, 2), out.type.context_name)
+        inp = inp.dimshuffle(0, 2, 1, 3)
+        out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(inp))
+        out = as_gpuarray_variable(out.dimshuffle(0, 2, 1, 3), out.type.context_name)
         return [out]
     else:
         return
@@ -3742,20 +3743,20 @@ def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
         # Not sure this case is usefull since it should be managed
         # by gpuarray
         elif inp[0].type.ndim == 2:
-            ins_dy = inp[0].dimshuffle('x', 'x', 0, 1)
-            ins_sm = inp[1].dimshuffle('x', 'x', 0, 1)
-            out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
-            out = as_gpuarray_variable(out.dimshuffle(2, 3), out.type.context_name)
+            ins_dy = inp[0].dimshuffle(0, 1, 'x', 'x')
+            ins_sm = inp[1].dimshuffle(0, 1, 'x', 'x')
+            out = GpuDnnSoftmaxGrad(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+            out = as_gpuarray_variable(out.dimshuffle(0, 1), out.type.context_name)
         elif inp[0].type.ndim == 3:
-            ins_dy = inp[0].dimshuffle('x', 0, 1, 2)
-            ins_sm = inp[1].dimshuffle('x', 0, 1, 2)
-            out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
-            out = as_gpuarray_variable(out.dimshuffle(1, 2, 3), out.type.context_name)
+            ins_dy = inp[0].dimshuffle(0, 2, 1, 'x')
+            ins_sm = inp[1].dimshuffle(0, 2, 1, 'x')
+            out = GpuDnnSoftmaxGrad(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+            out = as_gpuarray_variable(out.dimshuffle(0, 2, 1), out.type.context_name)
         elif inp[0].type.ndim == 4:
-            ins_dy = inp[0]
-            ins_sm = inp[1]
-            out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
-            out = as_gpuarray_variable(out, out.type.context_name)
+            ins_dy = inp[0].dimshuffle(0, 3, 1, 2)
+            ins_sm = inp[1].dimshuffle(0, 3, 1, 2)
+            out = GpuDnnSoftmaxGrad(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+            out = as_gpuarray_variable(out.dimshuffle(0, 2, 3, 1), out.type.context_name)
         else:
             return
         return [out]
@@ -3766,7 +3767,7 @@ def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
             if inp[0].type.ndim == 3:
                 ins_dy = inp[0].dimshuffle(0, 1, 2, 'x')
                 ins_sm = inp[1].dimshuffle(0, 1, 2, 'x')
-                out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+                out = GpuDnnSoftmaxGrad(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
                 out = as_gpuarray_variable(out.dimshuffle(0, 1, 2), out.type.context_name)
             elif inp[0].type.ndim == 4:
                 out = GpuDnnSoftmax(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
@@ -3794,10 +3795,10 @@ def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
             return [out]
         # Only meaningfull in 4d case
     elif op.axis == 2:
-        ins_dy = inp[0].dimshuffle(0, 1, 3, 2)
-        ins_sm = inp[1].dimshuffle(0, 1, 3, 2)
-        out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
-        out = as_gpuarray_variable(out.dimshuffle(0, 1, 3, 2), out.type.context_name)
+        ins_dy = inp[0].dimshuffle(0, 3, 1, 2)
+        ins_sm = inp[1].dimshuffle(0, 3, 1, 2)
+        out = GpuDnnSoftmaxGrad(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+        out = as_gpuarray_variable(out.dimshuffle(0, 2, 3, 1), out.type.context_name)
         return [out]
     else:
         return
