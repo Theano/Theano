@@ -7569,12 +7569,15 @@ def test_alloc_diag():
         # Create a TensorType of the same dimensions as
         # as the data we want to test.
         x = TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+
         # Make a slice of the test data that has the
         # dimensions we need by doing xv[0,...,0]
         # For example, for an array of shape (5,), we
         # need to do xv[0, 0, 0, 0].
         test_val = xv[((0,) * (dims - d))]
-        for offset, axis1, axis2 in [(0, 0, 1), (0, 1, 2), (1, 0, 1)]:
+        for offset, axis1, axis2 in [(0, 0, 1), (0, 1, 2), (1, 0, 1),
+                                     (0, 1, 3), (0, 2, 3), (1, 2, 3),
+                                     (-1, 0, 1), (-2, 0, 1), (-1, 1, 2)]:
             if np.maximum(axis1, axis2) > len(test_val.shape):
                 continue
             adiag_op = AllocDiag(offset=offset,
