@@ -7597,21 +7597,20 @@ def test_alloc_diag():
             )
             assert np.all(rediag == test_val)
 
-
             # Test infer_shape
             f_shape = theano.function([x], adiag_op(x).shape)
-            theano.printing.debugprint(f_shape.maker.fgraph.outputs[0]) 
+            theano.printing.debugprint(f_shape.maker.fgraph.outputs[0])
             output_shape = f_shape(test_val)
-            assert diag_arr.shape == output_shape
+            assert np.all(diag_arr.shape == output_shape)
             rediag_shape = np.diagonal(
                 np.ones(output_shape),
                 offset=offset,
                 axis1=axis1,
                 axis2=axis2
-            )
-            assert rediag_shape == test_val.shape
-
-
+            ).shape
+            print(rediag_shape)
+            print(test_val.shape)
+            assert np.all(rediag_shape == test_val.shape)
 
 
 class test_numpy_assumptions(unittest.TestCase):
