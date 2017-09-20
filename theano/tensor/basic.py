@@ -6518,8 +6518,18 @@ class AllocDiag(Op):
 
     Parameters
     ----------
-    offset : int
-        Indicates which diagonal to put `x` into. Defaults to `0`.
+    axis1: Axis to be used as the first axis of the 2-D
+        sub-arrays to which the diagonals will be allocated.
+        Defaults to first axis (0).
+
+    axis2: Axis to be used as the second axis of the 2-D
+        sub-arrays to which the diagonals will be allocated.
+        Defaults to second axis (1).
+
+    offset: Offset of the diagonal from the main diagonal defined by `axis1`
+        and `axis2`.
+        Can be positive or negative.
+        Defaults to main diagonal (0).
 
     x: symbolic vector
         A tensor vector consists of diagonal values.
@@ -6527,7 +6537,7 @@ class AllocDiag(Op):
     Returns
     -------
     tensor : symbolic tenstor
-        A tensor with passed vector values at its corresponding diagonal.
+        A tensor with passed tensor values at their corresponding diagonals.
 
     """
 
