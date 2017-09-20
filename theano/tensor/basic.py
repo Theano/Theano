@@ -6573,8 +6573,9 @@ class AllocDiag(Op):
         if len(x.shape) > 1:
             # Re-order axes so they correspond to diagonals at axis1, axis2
             axes = range(len(x.shape[:-1]))
-            axes = axes[:axis1] + [axes[-1] + 1] + axes[axis1:]
-            axes = axes[:axis2] + [axes[-1] + 2] + axes[axis2:]
+            last_idx = axes[-1]
+            axes = axes[:axis1] + [last_idx + 1] + axes[axis1:]
+            axes = axes[:axis2] + [last_idx + 2] + axes[axis2:]
             result = result.transpose(axes)
 
         z[0] = result
@@ -6589,7 +6590,15 @@ class AllocDiag(Op):
         )]
 
     def infer_shape(self, nodes, shapes):
-        return [(shapes[0][0],) * 2]
+        (x_shape,) = shapes
+        axis1 = np.minimum(self.axis1, self.axis2)
+        axis2 = np.maximum(self.axis1, self.axis2)
+
+        result_shape = list(x_shape[:-1])
+        diag_shape = x_shape[-1] + abs(self.offset)
+        result_shape = result_shape[:axis1] + [diag_shape] + result_shape[axis1:]
+        result_shape = result_shape[:axis2] + [diag_shape] + result_shape[axis2:]
+        return [tuple(result_shape)]
 
 
 def diag(v, k=0):

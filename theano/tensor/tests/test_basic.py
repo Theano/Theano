@@ -7561,33 +7561,37 @@ class test_diag(unittest.TestCase):
         tensor.verify_grad(diag, [x], rng=rng)
 
 
-def test_alloc_diag(self):
+def test_alloc_diag():
     dims = 4
     shape = (5,) * dims
     xv = np.random.randn(*shape).astype(config.floatX)
     for d in xrange(1, dims + 1):
         # Create a TensorType of the same dimensions as
         # as the data we want to test.
-        x = T.TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+        x = TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
         # Make a slice of the test data that has the
         # dimensions we need by doing xv[0,...,0]
         # For example, for an array of shape (5,), we
         # need to do xv[0, 0, 0, 0].
         test_val = xv[((0,) * (dims - d))]
-        for offset, axis1, axis2 in [(0, 0, 1),]:
+        for offset, axis1, axis2 in [(0, 0, 1), (0, 1, 2), (1, 0, 1)]:
+            if np.maximum(axis1, axis2) > len(test_val.shape):
+                continue
             adiag_op = AllocDiag(offset=offset,
                                  axis1=axis1,
                                  axis2=axis2)
             f = theano.function([x], adiag_op(x))
             # AllocDiag and extract the diagonal again
             # to check
+            diag_arr = f(test_val)
             rediag = np.diagonal(
-                f(xv),
+                diag_arr,
                 offset=offset,
                 axis1=axis1,
                 axis2=axis2
             )
-            assert (rediag == x).all()
+            assert np.all(rediag == test_val)
+
 
 class test_numpy_assumptions(unittest.TestCase):
     # Verify that some assumptions Theano makes on Numpy's behavior still hold.
