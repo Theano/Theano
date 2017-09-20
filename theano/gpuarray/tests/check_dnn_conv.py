@@ -32,7 +32,6 @@ from theano.gpuarray import cudnn_defs
 from theano.gpuarray.basic_ops import infer_context_name, as_gpuarray_variable, gpu_contiguous, GpuAllocEmpty
 from theano.gpuarray.dnn import GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI, version, get_precision
 from theano.gpuarray.tests.config import mode_with_gpu, ref_cast
-from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape, assert_conv_shape
 from theano.tensor.nnet.corr import CorrMM, CorrMM_gradInputs, CorrMM_gradWeights
 from theano.tensor.nnet.corr3d import Corr3dMM, Corr3dMM_gradInputs, Corr3dMM_gradWeights
@@ -598,7 +597,6 @@ class BaseTestDnnConv(object):
 
     def __init__(self):
         utt.seed_rng(1234)
-        self.rand = MRG_RandomStreams()
         self.dtype_configs = cudnn.get_supported_dtype_configs(check_dtype_config_support)
 
     def array_like_conv_output(self, inputs_shape, filters_shape, border_mode, subsample, dilation, dtype):
