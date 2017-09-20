@@ -6560,7 +6560,7 @@ class AllocDiag(Op):
         offset = self.offset
 
         # Create array with one extra dimension for resulting matrix
-        result_shape = x.shape[:-1] + (x.shape[-1] + offset,) * 2
+        result_shape = x.shape[:-1] + (x.shape[-1] + abs(offset),) * 2
         result = np.zeros(result_shape, dtype=x.dtype)
 
         # Create slice for diagonal in final 2 axes
