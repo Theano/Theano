@@ -6572,7 +6572,7 @@ class AllocDiag(Op):
         result[diagonal_slice] = x
         if len(x.shape) > 1:
             # Re-order axes so they correspond to diagonals at axis1, axis2
-            axes = range(len(x.shape[:-1]))
+            axes = list(range(len(x.shape[:-1])))
             last_idx = axes[-1]
             axes = axes[:axis1] + [last_idx + 1] + axes[axis1:]
             axes = axes[:axis2] + [last_idx + 2] + axes[axis2:]
