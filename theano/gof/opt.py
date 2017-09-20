@@ -1545,11 +1545,9 @@ class OpRemove(LocalOptimizer):
         return [self.op]
 
     def transform(self, node):
-        if inspect.isclass(self.op):
-            if isinstance(node.op, self.op):
-                return node.inputs
-        elif node.op == self.op:
-            return node.inputs
+        if node.op != self.op:
+            return False
+        return node.inputs
 
     def __str__(self):
         return "%s(x) -> x" % (self.op)
