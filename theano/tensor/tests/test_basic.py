@@ -7599,17 +7599,18 @@ def test_alloc_diag():
 
             # Test infer_shape
             f_shape = theano.function([x], adiag_op(x).shape)
+            assert isinstance(topo[0].op, DeepCopyOp)
+
             theano.printing.debugprint(f_shape.maker.fgraph.outputs[0])
             output_shape = f_shape(test_val)
-            assert np.all(diag_arr.shape == output_shape)
+            assert any(isinstance(node.op, AllocDiag)
+                       for node in f_shape.maker.fgraph.toposort()])
             rediag_shape = np.diagonal(
                 np.ones(output_shape),
                 offset=offset,
                 axis1=axis1,
                 axis2=axis2
             ).shape
-            print(rediag_shape)
-            print(test_val.shape)
             assert np.all(rediag_shape == test_val.shape)
 
 
