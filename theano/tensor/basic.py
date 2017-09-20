@@ -6544,7 +6544,6 @@ class AllocDiag(Op):
     __props__ = ("offset", "axis1", "axis2")
 
     def __init__(self, offset=0, axis1=0, axis2=1):
-        self.view_map = {0: [0]}
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
@@ -6580,6 +6579,7 @@ class AllocDiag(Op):
 
         # Fill in final 2 axes with x
         result[diagonal_slice] = x
+
         if len(x.shape) > 1:
             # Re-order axes so they correspond to diagonals at axis1, axis2
             axes = list(range(len(x.shape[:-1])))
@@ -6609,6 +6609,20 @@ class AllocDiag(Op):
         result_shape = result_shape[:axis1] + [diag_shape] + result_shape[axis1:]
         result_shape = result_shape[:axis2] + [diag_shape] + result_shape[axis2:]
         return [tuple(result_shape)]
+
+    def __setstate__(self, state):
+        if "view_map" in state:
+            del state["view_map"]
+
+        self.__dict__.update(state)
+
+        if "offset" not in state:
+            self.offset = 0
+        if "axis1" not in state:
+            self.axis1 = 0
+        if "axis2" not in state:
+            self.axis2 = 1
+
 
 
 def diag(v, k=0):
