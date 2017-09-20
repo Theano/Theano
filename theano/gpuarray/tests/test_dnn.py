@@ -1421,8 +1421,8 @@ class test_SoftMax(test_nnet.test_SoftMax):
         dims = 4
         # Check for differents dimensions
         for d in xrange(1, dims + 1):
+            # Check for different axis
             for ax in range(0, d):
-                # Check for different axis
                 f_z = T.nnet.Softmax(ax)
                 x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
                 self._test_softmax_nd(
@@ -1588,36 +1588,40 @@ class test_SoftMax(test_nnet.test_SoftMax):
         if dnn.version(raises=False) < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
-        # Compile a reference function, on the CPU, to be used to validate the
-        # results of the other function.
-        x = T.matrix()
-        f_ref = theano.function([x], T.nnet.LogSoftmax()(x))
+        dims = 4
+        # Check for differents dimensions
+        for d in xrange(1, dims + 1):
+            # Check for different axis
+            for ax in range(0, d):
+                shape = (5,) * d
+                x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
+                # Compile a reference function, on the CPU, to be used to validate the
+                # results of the other function.
+                f_ref = theano.function([x], T.nnet.LogSoftmax(ax)(x))
 
-        # Build the first graph and ensure that the optimization is applied
-        log_softmax_out = T.nnet.LogSoftmax()(x)
-        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+                # Build the graph with LogSoftmax and ensure that the optimization is applied
+                log_softmax_out = T.nnet.LogSoftmax(ax)(x)
+                f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
 
-        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
-                             isinstance(n.op, dnn.GpuDnnSoftmax)]
-        assert len(dnn_softmax_nodes) == 1
-        assert dnn_softmax_nodes[0].op.algo == "log"
+                dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if isinstance(n.op, dnn.GpuDnnSoftmax)]
+                assert len(dnn_softmax_nodes) == 1
+                assert dnn_softmax_nodes[0].op.algo == "log"
 
-        # Compare the output of the function with the reference function
-        inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
-        utt.assert_allclose(f(inp), f_ref(inp))
+                # Compare the output of the function with the reference function
+                inp = np.random.normal(0, 1, shape).astype(theano.config.floatX)
+                utt.assert_allclose(f(inp), f_ref(inp))
 
-        # Build the first graph and ensure that the optimization is applied
-        log_softmax_out = T.log(T.nnet.Softmax()(x))
-        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+                # Build the graph with Log(Softmax) and ensure that the optimization is applied
+                log_softmax_out = T.log(T.nnet.Softmax(ax)(x))
+                f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
 
-        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
-                             isinstance(n.op, dnn.GpuDnnSoftmax)]
-        assert len(dnn_softmax_nodes) == 1
-        assert dnn_softmax_nodes[0].op.algo == "log"
+                dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if isinstance(n.op, dnn.GpuDnnSoftmax)]
+                assert len(dnn_softmax_nodes) == 1
+                assert dnn_softmax_nodes[0].op.algo == "log"
 
-        # Compare the output of the function with the reference function
-        inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
-        utt.assert_allclose(f(inp), f_ref(inp))
+                # Compare the output of the function with the reference function
+                inp = np.random.normal(0, 1, shape).astype(theano.config.floatX)
+                utt.assert_allclose(f(inp), f_ref(inp))
 
 
 def dnn_reduction(nd, idtype, acc_dtype, odtype):
