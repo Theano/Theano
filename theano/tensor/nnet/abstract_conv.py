@@ -1841,13 +1841,16 @@ def frac_bilinear_upsampling(input,
     kern = bilinear_kernel_2D(ratio=ratio)[np.newaxis, np.newaxis, :, :]
 
     # add corresponding padding
-    pad_kern = T.concatenate((T.zeros(tuple(kern.shape[:2]) + (pad[0], kern.shape[-1])),
+    pad_kern = T.concatenate((T.zeros(tuple(kern.shape[:2]) + (pad[0], kern.shape[-1]),
+                                      dtype=theano.config.floatX),
                               kern,
-                              T.zeros(tuple(kern.shape[:2]) + (double_pad[0] - pad[0], kern.shape[-1]))),
+                              T.zeros(tuple(kern.shape[:2]) + (double_pad[0] - pad[0], kern.shape[-1]),
+                                      dtype=theano.config.floatX)),
                              axis=2)
-    pad_kern = T.concatenate((T.zeros(tuple(pad_kern.shape[:3]) + (pad[1],)),
+    pad_kern = T.concatenate((T.zeros(tuple(pad_kern.shape[:3]) + (pad[1],), dtype=theano.config.floatX),
                               pad_kern,
-                              T.zeros(tuple(pad_kern.shape[:3]) + (double_pad[1] - pad[1],))),
+                              T.zeros(tuple(pad_kern.shape[:3]) + (double_pad[1] - pad[1],),
+                                      dtype=theano.config.floatX)),
                              axis=3)
 
     # upsample the input by passing it as kernl of conv and using filter_dilation
