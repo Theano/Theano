@@ -7598,7 +7598,7 @@ def test_alloc_diag():
             assert np.all(rediag == test_val)
 
             # Test infer_shape
-            f_shape = theano.function([x], adiag_op(x).shape)
+            f_shape = theano.function([x], adiag_op(x).shape, mode='FAST_RUN')
 
             theano.printing.debugprint(f_shape.maker.fgraph.outputs[0])
             output_shape = f_shape(test_val)
