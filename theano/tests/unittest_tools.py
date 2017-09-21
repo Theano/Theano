@@ -83,7 +83,7 @@ def seed_rng(pseed=None):
 
 def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
     """
-    Wrapper for tensor/basic.py:verify_grad
+    Wrapper for gradient.py:verify_grad
     Takes care of seeding the random number generator if None is given
     """
     if rng is None:
