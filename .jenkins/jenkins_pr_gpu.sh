@@ -51,9 +51,9 @@ export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
 
 python -c 'import pygpu; print(pygpu.__file__)'
 
-# Allow subprocess created by test able to find Theano.
+# Allow subprocess created by tests to find Theano.
 # Keep it in the workspace
-PYTHONPATH=$PYTHONPATH:${WORKSPACE}
+export PYTHONPATH=$PYTHONPATH:${WORKSPACE}
 
 # Testing theano (the gpuarray parts)
 THEANO_GPUARRAY_TESTS="theano/gpuarray/tests \

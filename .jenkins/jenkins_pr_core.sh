@@ -11,6 +11,10 @@ rsync -a $HOME/cache/ $HOME/.theano/pr_theano
 
 echo "===== Testing theano core"
 
+# Allow subprocess created by tests to find Theano.
+# Keep it in the workspace
+export PYTHONPATH=$PYTHONPATH:${WORKSPACE}
+
 # Test theano core
 PARTS="theano -e gpuarray"
 THEANO_PARAM="${PARTS} --with-timer --timer-top-n 10 --with-xunit --xunit-file=theanocore_tests.xml"
