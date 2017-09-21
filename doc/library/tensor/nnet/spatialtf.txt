@@ -4,9 +4,13 @@
 :mod:`theano.tensor.nnet.spatialtf` -- Spatial Transformer
 ===========================================================
 
-.. note::
+.. warning::
 
-    Currently, only bilinear interpolation is implemented as the sampling method.
+    Currently:
+
+     - Only 2D inputs are supported
+     - Only bilinear interpolation is implemented as the sampling method.
+     - Gradients that depend on grid are not well computed on CPU.
 
 .. note::
 
@@ -15,7 +19,7 @@
 
 .. module:: theano.tensor.nnet.spatialtf
    :platform: Unix, Windows
-   :synopsis: Spatial transformer (by Jaderberg et. al)
+   :synopsis: Spatial transformer (by `Jaderberg et. al <http://arxiv.org/abs/1506.02025>`)
 .. moduleauthor:: `João Victor Risso <https://github.com/joaovictortr>`_
 
 .. autofunction:: theano.tensor.nnet.spatialtf.spatialtf

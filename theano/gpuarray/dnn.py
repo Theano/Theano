@@ -2934,7 +2934,7 @@ class GpuDnnTransformerSampler(DnnBase):
 
         grid : GpuDnnTransformerGrid
             Grid that contains the coordinates of the pixels to be sampled from
-            the input images.
+            the inputs images.
         """
         context_name = infer_context_name(img, grid)
 
@@ -3814,12 +3814,6 @@ def local_dnn_spatialtf_grid(op, ctx_name, inputs, outputs):
 
     theta, out_dims = inputs
 
-    if theta.ndim != 3:
-        return
-
-    if out_dims.ndim != 4:
-        return
-
     grid = GpuDnnTransformerGrid()(theta, out_dims)
 
     return [grid]
@@ -3833,12 +3827,6 @@ def local_dnn_spatialtf_sampler(op, ctx_name, inputs, outputs):
         return
 
     inp, grid = inputs
-
-    if inp.ndim != 4:
-        return
-
-    if grid.ndim != 4:
-        return
 
     sampler = GpuDnnTransformerSampler()(inp, grid)
 
@@ -3854,15 +3842,6 @@ def local_dnn_spatialtf_gradi(op, ctx_name, inputs, outputs):
 
     inp, grid, grad_outputs = inputs
 
-    if inp.ndim != 4:
-        return
-
-    if grid.ndim != 4:
-        return
-
-    if grad_outputs.ndim != 4:
-        return
-
     dimg, dgrid = GpuDnnTransformerGradI()(inp, grid, grad_outputs)
 
     return [dimg, dgrid]
@@ -3876,9 +3855,6 @@ def local_dnn_spatialtf_gradt(op, ctx_name, inputs, outputs):
         return
 
     theta, grad_grid = inputs
-
-    if grad_grid.ndim != 4:
-        return
 
     gradt = GpuDnnTransformerGradT()(grad_grid)
 
