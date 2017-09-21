@@ -335,9 +335,7 @@ def test_print_op():
     assert isinstance(topo[1].op, theano.printing.Print)
     assert isinstance(topo[2].op, GpuElemwise)
     assert topo[3].op == host_from_gpu
-    # gpu print_op copies the stack trace
-    # but _print_fn has an empty stack.
-    # assert _check_stack_trace(f)
+    assert _check_stack_trace(f)
     f(np.random.random((5, 5)).astype('float32'))
 
 
