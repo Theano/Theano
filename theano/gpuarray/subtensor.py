@@ -1357,34 +1357,71 @@ class GpuExtractDiag(Op):
 
 
 class GpuAllocDiag(Op):
-    __props__ = ("offset",)
+    __props__ = ("offset", "axis1", "axis2")
 
-    def __init__(self, offset=0):
+    def __init__(self, offset=0, axis1=0, axis2=1):
         self.offset = offset
+        self.axis1 = axis1
+        self.axis2 = axis2
 
-    def make_node(self, _x):
-        ctx_name = infer_context_name(_x)
-        x = as_gpuarray_variable(_x, ctx_name)
-
-        if x.ndim != 1:
-            raise ValueError('AllocDiag argument must be a vector!', x)
-
-        return gof.Apply(self, [x], [x.type.clone(broadcastable=(False, False))()])
+    def make_node(self, diag):
+        ctx_name = infer_context_name(diag)
+        diag = as_gpuarray_variable(diag, ctx_name)
+        if diag.type.ndim < 1:
+            raise ValueError('AllocDiag needs an input with 1 or more '
+                             'dimensions', diag.type)
+        return gof.Apply(
+            self, [diag],
+            [diag.type.__class__(
+                dtype=diag.dtype,
+                broadcastable=[False] * (diag.ndim + 1))()]
+        )
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
+        axis1 = np.minimum(self.axis1, self.axis2)
+        axis2 = np.maximum(self.axis1, self.axis2)
+        offset = self.offset
 
-        dim = x.shape[0] + abs(self.offset)
-        z[0] = gpuarray.zeros((dim, dim), dtype=x.dtype, context=x.context)
+        result_shape = x.shape[:-1] + (x.shape[-1] + abs(offset),) * 2
+        result_buffer_shape = ((np.prod(x.shape[:-1]).astype(np.int64),) +
+                               ((x.shape[-1] + abs(offset)) ** 2,))
+        result_buffer = gpuarray.zeros(result_buffer_shape,
+                                       dtype=x.dtype,
+                                       context=x.context)
 
-        if self.offset <= 0:  # diag in the lower triangle
-            diag_z = z[0][-self.offset, :(dim + self.offset)]
-        else:  # diag in the upper triangle
-            diag_z = z[0][:(dim - self.offset), self.offset]
-        diag_z.strides = (sum(z[0].strides),)
+        if offset != 0:
+            row_size = x.shape[-1] + abs(offset)
+            if offset >= 0:
+                start_flattened_offset = abs(offset)
+                end_flattened_offset = row_size * abs(offset)
+            else:
+                start_flattened_offset = row_size * abs(offset)
+                end_flattened_offset = abs(offset)
 
-        diag_z[:] = x[:]
+            diag_view = result_buffer[:, start_flattened_offset:-end_flattened_offset:row_size + 1]
+            # print("offset", offset)
+            # print("buffer shape:", result_buffer.shape)
+            # print("result_buffer[%d:%d:%d]" % (start_flattened_offset, -end_flattened_offset, row_size + 1), diag_view.shape)
+            # print("input_shape:", x.shape)
+        else:
+            diag_view = result_buffer[:, ::x.shape[-1] + 1]
+
+        diag_view[:] = x.reshape(diag_view.shape)[:]
+
+        result = result_buffer.reshape(result_shape)
+        # print(result)
+        # Fill in final 2 axes with x
+        if len(x.shape) > 1:
+            # Re-order axes so they correspond to diagonals at axis1, axis2
+            axes = list(range(len(x.shape[:-1])))
+            last_idx = axes[-1]
+            axes = axes[:axis1] + [last_idx + 1] + axes[axis1:]
+            axes = axes[:axis2] + [last_idx + 2] + axes[axis2:]
+            result = result.transpose(axes)
+
+        z[0] = result
 
     def grad(self, inputs, gout):
         (gz,) = gout
