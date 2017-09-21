@@ -84,6 +84,9 @@ def test_pydotprint_profile():
     if not theano.printing.pydot_imported:
         raise SkipTest('pydot not available')
 
+    if theano.config.mode in ("DebugMode", "DEBUG_MODE"):
+        raise SkipTest("Can't profile in DebugMode")
+
     A = tensor.matrix()
     prof = theano.compile.ProfileStats(atexit_print=False, gpu_checks=False)
     f = theano.function([A], A + 1, profile=prof)
