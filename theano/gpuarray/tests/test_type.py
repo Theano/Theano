@@ -39,7 +39,8 @@ def test_view():
         a = rand_gpuarray(20, dtype=dtype)
         g = GpuArrayType(dtype=dtype, broadcastable=(False,))('g')
 
-        f = theano.function([g], ViewOp()(g))
+        m = theano.compile.get_default_mode().excluding("local_view_op")
+        f = theano.function([g], ViewOp()(g), mode=m)
 
         assert isinstance(f.maker.fgraph.toposort()[0].op, ViewOp)
 
