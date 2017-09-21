@@ -8,6 +8,8 @@ from theano.gof.sched import sort_schedule_fn
 
 from theano import change_flags
 
+from nose.plugins.skip import SkipTest
+
 mpi_scheduler = sort_schedule_fn(*mpi_cmps)
 mpi_linker = theano.OpWiseCLinker(schedule=mpi_scheduler)
 mpi_mode = theano.Mode(linker=mpi_linker)
@@ -41,7 +43,7 @@ def test_can_make_function():
 
 def test_mpi_roundtrip():
     if not mpi_enabled:
-        return
+        raise SkipTest('MPI not enabled')
     theano_root = theano.__file__.split('__init__')[0]
     p = subprocess.Popen("mpiexec -np 2 python " + theano_root +
                          "tensor/tests/_test_mpi_roundtrip.py",

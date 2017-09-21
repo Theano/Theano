@@ -5,7 +5,7 @@ DRAFT Release Notes
 ===================
 
 git log -p rel-0.9.0... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
-git log -p rel-0.10.0beta1... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
+git log -p rel-0.10.0beta2... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
 
 # Commit count per user
 git shortlog -sn rel-0.9.0..
@@ -19,6 +19,8 @@ TODO: better Theano conv doc
 # NB: Following notes contains infos since 0.9.0.
 
 Highlights:
+ - conda packages now available and updated in our own conda channel ``mila-udem``.
+   To install it: ``conda install -c mila-udem/label/pre theano pygpu``
  - Support NumPy ``1.13``
  - Support pygpu ``0.7``
  - Added conda recipe
@@ -27,6 +29,11 @@ Highlights:
  - Theano now internally uses ``sha256`` instead of ``md5`` to work on systems that forbide ``md5`` for security reason
  - Removed old GPU backend ``theano.sandbox.cuda``. New backend ``theano.gpuarray`` is now the official GPU backend
  - Support more debuggers for ``PdbBreakpoint``
+
+ - Improved elemwise operations
+
+   - Speed-up elemwise ops based on SciPy
+   - Fixed memory leak related to elemwise ops on GPU
 
  - Scan improvements
 
@@ -40,6 +47,7 @@ Highlights:
 
    - Added documentation for RNNBlock
 
+ - Improved pickling and tests in debug mode
  - Many bug fixes, crash fixes and warning improvements
 
 Interface changes:
@@ -60,6 +68,7 @@ Interface changes:
    - ``pycuda.init``
 
  - Changed ``grad()`` method to ``L_op()`` in ops that need the outputs to compute gradient
+ - Removed op ``ExtractDiag`` from ``theano.tensor.nlinalg``, now only in ``theano.tensor.basic``
 
 Convolution updates:
  - Removed old ``conv3d`` interface
@@ -69,6 +78,7 @@ Convolution updates:
  - Added unshared convolutions
  - Implemented separable convolutions for 2D and 3D
  - Implemented grouped convolutions for 2D and 3D
+ - Added dilated causal convolutions for 2D
  - Automatic addition of cuDNN DLL path to ``PATH`` environment variable on Windows
 
 GPU:
@@ -105,6 +115,7 @@ GPU:
    - Started to use ``float32`` precision for computations that don't support ``float16`` on GPU
 
 New features:
+ - Implemented ``max()`` and ``min()`` functions for booleans and unsigned integers types
  - Added ``tensor6()`` and ``tensor7()`` in ``theano.tensor`` module
  - Added boolean indexing for sub-tensors
  - Added covariance matrix function ``theano.tensor.cov``
@@ -113,6 +124,7 @@ New features:
  - Added Scaled Exponential Linear Unit (SELU) activation
  - Added sigmoid_binary_crossentropy function
  - Added tri-gamma function
+ - Added ``unravel_index`` and ``ravel_multi_index`` functions on CPU
  - Added modes ``half`` and ``full`` for ``Images2Neibs`` ops
  - Implemented gradient for ``AbstractBatchNormTrainGrad``
  - Implemented gradient for matrix pseudoinverse op
@@ -129,6 +141,8 @@ Others:
  - Kept stack trace for optimizations in new GPU backend
  - Added deprecation warning for the softmax and logsoftmax vector case
  - Added a warning to announce that C++ compiler will become mandatory in next Theano release ``0.11``
+ - Added ``R_op()`` for ``ZeroGrad``
+ - Added decsription for rnnblock
 
 Other more detailed changes:
  - Removed useless warning when profile is manually disabled
@@ -143,6 +157,29 @@ Other more detailed changes:
  - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/6005
+* https://github.com/Theano/Theano/pull/6427
+* https://github.com/Theano/Theano/pull/6424
+* https://github.com/Theano/Theano/pull/6419
+* https://github.com/Theano/Theano/pull/6415
+* https://github.com/Theano/Theano/pull/6418
+* https://github.com/Theano/Theano/pull/5891
+* https://github.com/Theano/Theano/pull/6316
+* https://github.com/Theano/Theano/pull/6331
+* https://github.com/Theano/Theano/pull/6100
+* https://github.com/Theano/Theano/pull/6412
+* https://github.com/Theano/Theano/pull/6221
+* https://github.com/Theano/Theano/pull/6386
+* https://github.com/Theano/Theano/pull/6411
+* https://github.com/Theano/Theano/pull/6405
+* https://github.com/Theano/Theano/pull/6410
+* https://github.com/Theano/Theano/pull/6413
+* https://github.com/Theano/Theano/pull/6389
+* https://github.com/Theano/Theano/pull/6409
+* https://github.com/Theano/Theano/pull/6406
+* https://github.com/Theano/Theano/pull/6396
+* https://github.com/Theano/Theano/pull/6392
+* https://github.com/Theano/Theano/pull/6393
 * https://github.com/Theano/Theano/pull/6384
 * https://github.com/Theano/Theano/pull/6326
 * https://github.com/Theano/Theano/pull/6317
