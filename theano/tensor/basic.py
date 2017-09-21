@@ -6624,7 +6624,6 @@ class AllocDiag(Op):
             self.axis2 = 1
 
 
-
 def diag(v, k=0):
     """
     A helper function for two ops: `theano.tensor.ExtractDiag` and
