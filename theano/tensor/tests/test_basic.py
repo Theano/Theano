@@ -7561,15 +7561,15 @@ class test_diag(unittest.TestCase):
         tensor.verify_grad(diag, [x], rng=rng)
 
 
-class test_alloc_diag(unittest.TestCase):
+class TestAllocDiag(unittest.TestCase):
     def __init__(self, name, alloc_diag=AllocDiag, mode=None):
-        self.alloc_diag = AllocDiag
+        self.alloc_diag = alloc_diag
 
         if mode is None:
             mode = theano.compile.mode.get_default_mode()
         self.mode = mode
 
-        return super(test_alloc_diag, self).__init__(name)
+        return super(TestAllocDiag, self).__init__(name)
 
     def _generator(self):
         dims = 4

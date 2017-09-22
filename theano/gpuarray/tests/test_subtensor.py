@@ -318,9 +318,9 @@ class test_gpuextractdiag(unittest.TestCase):
                 np_x.diagonal(offset, axis1, axis2))
 
 
-class test_gpu_alloc_diag(test_basic.test_alloc_diag):
+class TestGpuAllocDiag(test_basic.TestAllocDiag):
     def __init__(self, name):
-        return test_basic.test_alloc_diag.__init__(
+        return test_basic.TestAllocDiag.__init__(
             self, name,
             alloc_diag=GpuAllocDiag,
             mode=mode_with_gpu
