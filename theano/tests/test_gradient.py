@@ -16,6 +16,7 @@ from theano.tests import unittest_tools as utt
 from theano import gradient
 from theano import config
 from theano.gof.null_type import NullType
+from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 one = theano.tensor.as_tensor_variable(1.)
 
@@ -783,6 +784,39 @@ def test_grad_clip():
     out = f(2.)
     assert np.allclose(out, (1, 4))
     assert not np.allclose(out[0], out[1])
+
+
+def test_grad_scale():
+    x = theano.tensor.scalar()
+
+    z = theano.tensor.grad(gradient.grad_scale(x, 2)**2, x)
+    z2 = theano.tensor.grad(x**2, x)
+
+    f = theano.function([x], outputs=[z, z2])
+
+    if theano.config.mode != "FAST_COMPILE":
+        topo = f.maker.fgraph.toposort()
+        assert not any([isinstance(node.op, gradient.GradScale)
+                        for node in topo])
+    out = f(2.)
+
+    assert np.allclose(out, (8, 4))
+
+
+def test_undefined_grad_opt():
+    # Make sure that undefined grad get removed in optimized graph.
+    random = RandomStreams(np.random.randint(1, 2147462579))
+    pvals = theano.shared(np.random.rand(10, 20).astype(theano.config.floatX))
+    pvals = pvals / pvals.sum(axis=1)
+    pvals = gradient.zero_grad(pvals)
+    samples = random.multinomial(pvals=pvals, n=1)
+    samples = theano.tensor.cast(samples, pvals.dtype)
+    samples = gradient.zero_grad(samples)
+    cost = theano.tensor.sum(samples + pvals)
+    grad = theano.tensor.grad(cost, samples)
+    f = theano.function([], grad)
+    theano.printing.debugprint(f)
+    assert not any([isinstance(node.op, gradient.UndefinedGrad) for node in f.maker.fgraph.apply_nodes])
 
 if __name__ == '__main__':
     unittest.main()
