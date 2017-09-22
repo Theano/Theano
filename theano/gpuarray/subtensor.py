@@ -1388,30 +1388,28 @@ class GpuAllocDiag(AllocDiag):
         # Initialise a buffer the same size as the output
         result_shape = x.shape[:-1] + (x.shape[-1] + abs(offset),) * 2
         result_buffer_shape = ((np.prod(x.shape[:-1]).astype(np.int64),) +
-                               ((x.shape[-1] + abs(offset)) ** 2,))
+                               (x.shape[-1] + abs(offset),) * 2)
         result_buffer = gpuarray.zeros(result_buffer_shape,
                                        dtype=x.dtype,
                                        context=x.context)
 
         # Slice out a view of the diagonals
-        if offset != 0:
-            row_size = x.shape[-1] + abs(offset)
-            if offset >= 0:
-                start_flattened_offset = abs(offset)
-                end_flattened_offset = row_size * abs(offset)
-            else:
-                start_flattened_offset = row_size * abs(offset)
-                end_flattened_offset = abs(offset)
-
-            diag_view = result_buffer[:, start_flattened_offset:-end_flattened_offset:row_size + 1]
-        else:
-            diag_view = result_buffer[:, ::x.shape[-1] + 1]
+        row_size = abs(offset) + x.shape[-1]
+        if offset <= 0:  # diag in the lower triangle
+            diag_view = result_buffer[:, abs(offset), :x.shape[-1]]
+            diag_view.strides = (diag_view.strides[0],
+                                 (row_size + 1) * x.dtype.itemsize)
+        else:  # diag in the upper triangle
+            diag_view = result_buffer[:, :x.shape[-1], abs(offset)]
+            diag_view.strides = (diag_view.strides[0],
+                                 diag_view.strides[1] + x.dtype.itemsize)
 
         # Fill view with flattened array of diagonals
         diag_view[:] = x.reshape(diag_view.shape)[:]
 
         # Unflatten buffer into output size
         result = result_buffer.reshape(result_shape)
+        print(result)
 
         if len(x.shape) > 1:
             # Re-order axes so they correspond to diagonals at axis1, axis2
