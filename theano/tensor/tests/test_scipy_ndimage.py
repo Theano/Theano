@@ -128,6 +128,8 @@ class TestZoomShift(utt.InferShapeTester):
                     if len(res) > 0 and theano.config.mode != 'FAST_COMPILE':
                         # First-order gradient
                         def fn(x_):
+                            # verify_grad makes the any axis with length == 1 broadcastable
+                            x_ = T.patternbroadcast(x_, (False,) * x_.ndim)
                             return zoom(x_, zoom=zoom_ar, order=order, mode=mode,
                                         cval=cval, prefilter=prefilter)
                         utt.verify_grad(fn, [x_val])
@@ -139,6 +141,8 @@ class TestZoomShift(utt.InferShapeTester):
 
                         # Second-order gradient
                         def fn_grad(y_):
+                            # verify_grad makes the any axis with length == 1 broadcastable
+                            y_ = T.patternbroadcast(y_, (False,) * y_.ndim)
                             return ZoomShiftGrad(order=order, mode=mode)(
                                 y_, x_val.shape, zoom_ar_in_op, None, cval=cval)
                         utt.verify_grad(fn_grad, [res])
@@ -184,6 +188,12 @@ class TestZoomShift(utt.InferShapeTester):
                 return zoom(x_.dimshuffle(0, 1, 2, 3, 'x'), zoom=zoom_ar,
                             order=2, axes=axes).dimshuffle(0, 1, 2, 3)
             utt.verify_grad(fn, [x_val])
+
+    def test_no_zoom_on_broadcastable_axis(self):
+        x = T.vector()
+        x_bc = x.dimshuffle(['x', 0])
+        self.assertRaises(ValueError, T.scipy_ndimage.zoom, x_bc, [2, 2])
+        self.assertRaises(ValueError, T.scipy_ndimage.zoom, x_bc, [2], axes=[0])
 
     def test_zoom_infer_shape(self):
         x = T.matrix()
@@ -235,6 +245,8 @@ class TestZoomShift(utt.InferShapeTester):
                     if len(res) > 0 and theano.config.mode != 'FAST_COMPILE':
                         # First-order gradient
                         def fn(x_):
+                            # verify_grad makes the any axis with length == 1 broadcastable
+                            x_ = T.patternbroadcast(x_, (False,) * x_.ndim)
                             return shift(x_, shift=shift_ar, order=order, mode=mode,
                                          cval=cval, prefilter=prefilter)
                         utt.verify_grad(fn, [x_val])
@@ -249,6 +261,8 @@ class TestZoomShift(utt.InferShapeTester):
 
                         # Second-order gradient
                         def fn_grad(y_):
+                            # verify_grad makes the any axis with length == 1 broadcastable
+                            y_ = T.patternbroadcast(y_, (False,) * y_.ndim)
                             return ZoomShiftGrad(order=order, mode=mode)(
                                 y_, x_val.shape, None, shift_ar_in_op, cval=cval)
                         utt.verify_grad(fn_grad, [res])
