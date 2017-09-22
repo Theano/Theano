@@ -89,19 +89,14 @@ typedef std::unordered_map<std::string, AlgoRec> AlgoCache;
 
 #if __cplusplus < 201103L
 
-#include <plf_nanotimer/plf_nanotimer.h>
-const char* const _cppver = "Using plf_nanotimer: http://www.plflib.org/nanotimer.htm";
-struct TheanoTimer {
-    double milliseconds;
-    plf::nanotimer timer;
-    void start() {timer.start();}
-    void end() {milliseconds = timer.get_elapsed_ms();}
-};
+const char* const _cppver = "No timing available: C++11 or later is required.";
 
 #else
 
+#define DEBUG_TIMING
+
 #include <chrono>
-const char* const _cppver = "Using C++11 chrono";
+const char* const _cppver = NULL;
 struct TheanoTimer {
     double milliseconds;
     std::chrono::steady_clock::time_point base;

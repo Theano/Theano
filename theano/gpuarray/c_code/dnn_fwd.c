@@ -3,7 +3,7 @@ prev_algo.algo = PARAMS->conv_algo;
 prev_algo.mathType = CUDNN_DEFAULT_MATH;
 reuse_algo = 0;
 hash_prefix = std::string("FWD|GPU#");
-#ifdef DEBUG
+#ifdef DEBUG_TIMING
 total_computation_time = 0;
 total_selection_time = 0;
 n_computations = 0;
@@ -27,6 +27,8 @@ std::string hash_prefix;
 
 #ifdef DEBUG
 char algorithm_name[128];
+#endif
+#ifdef DEBUG_TIMING
 double total_computation_time;
 double total_selection_time;
 size_t n_computations;
@@ -140,8 +142,10 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
   bool use_cached = 0;
   #ifdef DEBUG
+  if (_cppver) fprintf(stderr, "%s\n", _cppver);
+  #endif
+  #ifdef DEBUG_TIMING
   TheanoTimer timer;
-  fprintf(stderr, "%s\n", _cppver);
   #endif
 
   if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(kerns)[1] * params->num_groups) {
@@ -263,17 +267,17 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
             o = pygpu_empty(PyGpuArray_NDIM(*output), PyGpuArray_DIMS(*output), (*output)->ga.typecode, GA_C_ORDER, c, Py_None);
         }
 
-        // We don't sync the buffer as we don't care about the values.
-        #ifdef DEBUG
+        #ifdef DEBUG_TIMING
         timer.start();
         #endif
+        // We don't sync the buffer as we don't care about the values.
         err = cudnnFindConvolutionForwardAlgorithmEx(
           params->handle, APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
           APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
           desc, APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(o),
           1, &count, &choice, *(void **)tmpmem,
           maxfree);
-        #ifdef DEBUG
+        #ifdef DEBUG_TIMING
         timer.end();
         #endif
         gpudata_release(tmpmem);
@@ -310,14 +314,14 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
           mathtype = choice.mathType;
 #endif
       } else {
-        #ifdef DEBUG
+        #ifdef DEBUG_TIMING
         timer.start();
         #endif
         err = cudnnGetConvolutionForwardAlgorithm(
           params->handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
           desc, APPLY_SPECIFIC(output),
           CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, maxfree, &algo);
-        #ifdef DEBUG
+        #ifdef DEBUG_TIMING
         timer.end();
         #endif
         if (err != CUDNN_STATUS_SUCCESS) {
@@ -328,7 +332,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
           return 1;
         }
       }
-      #ifdef DEBUG
+      #ifdef DEBUG_TIMING
       total_selection_time += timer.milliseconds;
       ++n_selections;
       #endif
@@ -395,6 +399,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
             worksize,
             hashkey.c_str()
     );
+#endif
+#ifdef DEBUG_TIMING
     if (!(reuse_algo || use_cached)) {
         // We have selected an algorithm at runtime.
         // `timer` still contains timing about selection step.
@@ -422,49 +428,51 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
   } // params->choose_algo
 
-  gpudata *workspace = 0;
-  if (worksize != 0) {
-    workspace = gpudata_alloc(c->ctx, worksize, NULL, 0, NULL);
-    if (workspace == NULL) {
-      PyErr_SetString(PyExc_RuntimeError, "Could not allocate working memory");
-      cuda_exit(c->ctx);
-      return 1;
+  {
+    gpudata *workspace = 0;
+    if (worksize != 0) {
+      workspace = gpudata_alloc(c->ctx, worksize, NULL, 0, NULL);
+      if (workspace == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "Could not allocate working memory");
+        cuda_exit(c->ctx);
+        return 1;
+      }
     }
+
+    if (worksize != 0)
+      cuda_wait(workspace, GPUARRAY_CUDA_WAIT_WRITE);
+    cuda_wait(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
+
+    #ifdef DEBUG_TIMING
+    GpuArray_sync(&(*output)->ga);
+    timer.start();
+    #endif
+
+    for ( int g = 0; g < groups; g++) {
+      err = cudnnConvolutionForward(
+        params->handle,
+        alpha_p,
+        APPLY_SPECIFIC(input), ((char *)PyGpuArray_DEV_DATA(input)) + input_offset * g,
+        APPLY_SPECIFIC(kerns), ((char *)PyGpuArray_DEV_DATA(kerns)) + kern_offset * g,
+        desc, algo,
+        worksize == 0 ? NULL : *(void **)workspace, worksize,
+        beta_p,
+        APPLY_SPECIFIC(output), ((char *)PyGpuArray_DEV_DATA(*output)) + output_offset * g);
+    }
+
+    if (worksize != 0) {
+      cuda_record(workspace, GPUARRAY_CUDA_WAIT_WRITE);
+      gpudata_release(workspace);
+    }
+
+    cuda_record(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
   }
 
-  if (worksize != 0)
-    cuda_wait(workspace, GPUARRAY_CUDA_WAIT_WRITE);
-  cuda_wait(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
-  cuda_wait(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
-  cuda_wait((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
-
-  #ifdef DEBUG
-  GpuArray_sync(&(*output)->ga);
-  timer.start();
-  #endif
-
-  for ( int g = 0; g < groups; g++) {
-    err = cudnnConvolutionForward(
-      params->handle,
-      alpha_p,
-      APPLY_SPECIFIC(input), ((char *)PyGpuArray_DEV_DATA(input)) + input_offset * g,
-      APPLY_SPECIFIC(kerns), ((char *)PyGpuArray_DEV_DATA(kerns)) + kern_offset * g,
-      desc, algo,
-      worksize == 0 ? NULL : *(void **)workspace, worksize,
-      beta_p,
-      APPLY_SPECIFIC(output), ((char *)PyGpuArray_DEV_DATA(*output)) + output_offset * g);
-  }
-
-  if (worksize != 0) {
-    cuda_record(workspace, GPUARRAY_CUDA_WAIT_WRITE);
-    gpudata_release(workspace);
-  }
-
-  cuda_record(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
-  cuda_record(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
-  cuda_record((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
-
-  #ifdef DEBUG
+  #ifdef DEBUG_TIMING
   GpuArray_sync(&(*output)->ga);
   timer.end();
   total_computation_time += timer.milliseconds;
@@ -478,7 +486,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 		 cudnnGetErrorString(err));
     return 1;
   }
-  #ifdef DEBUG
+  #ifdef DEBUG_TIMING
   fprintf(stderr, "\t(ran fwd algo in %g milliseconds)\n", timer.milliseconds);
   if (n_computations > 1) {
     fprintf(stderr, "\t(ran %lu fwd computations in %g milliseconds (average: %g milliseconds per call))\n",
