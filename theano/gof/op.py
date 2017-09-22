@@ -613,7 +613,6 @@ class PureOp(object):
         """
         return_list = kwargs.pop('return_list', False)
         node = self.make_node(*inputs, **kwargs)
-        utils.add_tag_trace(node)
 
         if config.compute_test_value != 'off':
             run_perform = True

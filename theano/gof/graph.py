@@ -97,7 +97,6 @@ class Apply(Node):
         self.op = op
         self.inputs = []
         self.tag = utils.scratchpad()
-        utils.add_tag_trace(self)
 
         if not isinstance(inputs, (list, tuple)):
             raise TypeError("The inputs of an Apply must be a list or tuple")
@@ -118,7 +117,8 @@ class Apply(Node):
                 if output.owner is None:
                     output.owner = self
                     output.index = i
-                    output.tag = utils.scratchpad()
+                    if not hasattr(output, "tag"):
+                        output.tag = utils.scratchpad()
                     utils.add_tag_trace(output)
                 elif output.owner is not self or output.index != i:
                     raise ValueError("All output variables passed to Apply must belong to it.")

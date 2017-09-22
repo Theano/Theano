@@ -308,8 +308,6 @@ class Print(Op):
         self.message = message
         self.attrs = tuple(attrs)  # attrs should be a hashable iterable
         self.global_fn = global_fn
-        self.tag = gof.utils.scratchpad()
-        gof.utils.add_tag_trace(self)
 
     def make_node(self, xin):
         xout = xin.type.make_variable()
