@@ -7561,56 +7561,86 @@ class test_diag(unittest.TestCase):
         tensor.verify_grad(diag, [x], rng=rng)
 
 
-def test_alloc_diag():
-    dims = 4
-    shape = (5,) * dims
-    xv = np.random.randn(*shape).astype(config.floatX)
-    for d in xrange(1, dims + 1):
-        # Create a TensorType of the same dimensions as
-        # as the data we want to test.
-        x = TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+class test_alloc_diag(unittest.TestCase):
+    def __init__(self, name, alloc_diag=AllocDiag, mode=None):
+        self.alloc_diag = AllocDiag
 
-        # Make a slice of the test data that has the
-        # dimensions we need by doing xv[0,...,0]
-        # For example, for an array of shape (5,), we
-        # need to do xv[0, 0, 0, 0].
-        test_val = xv[((0,) * (dims - d))]
-        for offset, axis1, axis2 in [(0, 0, 1), (0, 1, 2), (1, 0, 1),
-                                     (0, 1, 3), (0, 2, 3), (1, 2, 3),
-                                     (-1, 0, 1), (-2, 0, 1), (-1, 1, 2)]:
+        if mode is None:
+            mode = theano.compile.mode.get_default_mode()
+        self.mode = mode
 
-            # Test AllocDiag values
-            if np.maximum(axis1, axis2) > len(test_val.shape):
-                continue
-            adiag_op = AllocDiag(offset=offset,
-                                 axis1=axis1,
-                                 axis2=axis2)
-            f = theano.function([x], adiag_op(x))
-            # AllocDiag and extract the diagonal again
-            # to check
-            diag_arr = f(test_val)
-            rediag = np.diagonal(
-                diag_arr,
-                offset=offset,
-                axis1=axis1,
-                axis2=axis2
-            )
-            assert np.all(rediag == test_val)
+        return super(test_alloc_diag, self).__init__(name)
 
-            # Test infer_shape
-            f_shape = theano.function([x], adiag_op(x).shape, mode='FAST_RUN')
+    def _generator(self):
+        dims = 4
+        shape = (5,) * dims
+        xv = np.random.randn(*shape).astype(config.floatX)
+        for d in xrange(1, dims + 1):
+            # Create a TensorType of the same dimensions as
+            # as the data we want to test.
+            x = TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
 
-            theano.printing.debugprint(f_shape.maker.fgraph.outputs[0])
-            output_shape = f_shape(test_val)
-            assert not any(isinstance(node.op, AllocDiag)
-                           for node in f_shape.maker.fgraph.toposort())
-            rediag_shape = np.diagonal(
-                np.ones(output_shape),
-                offset=offset,
-                axis1=axis1,
-                axis2=axis2
-            ).shape
-            assert np.all(rediag_shape == test_val.shape)
+            # Make a slice of the test data that has the
+            # dimensions we need by doing xv[0,...,0]
+            # For example, for an array of shape (5,), we
+            # need to do xv[0, 0, 0, 0].
+            test_val = xv[((0,) * (dims - d))]
+            yield x, test_val
+
+    def test_alloc_diag_values(self):
+        for x, test_val in self._generator():
+            for offset, axis1, axis2 in [(0, 0, 1), (0, 1, 2), (1, 0, 1),
+                                         (0, 1, 3), (0, 2, 3), (1, 2, 3),
+                                         (-1, 0, 1), (-2, 0, 1), (-1, 1, 2)]:
+                # Test AllocDiag values
+                if np.maximum(axis1, axis2) > len(test_val.shape):
+                    continue
+                adiag_op = self.alloc_diag(offset=offset,
+                                           axis1=axis1,
+                                           axis2=axis2)
+                f = theano.function([x], adiag_op(x))
+                # AllocDiag and extract the diagonal again
+                # to check
+                diag_arr = f(test_val)
+                rediag = np.diagonal(
+                    diag_arr,
+                    offset=offset,
+                    axis1=axis1,
+                    axis2=axis2
+                )
+                assert np.all(rediag == test_val)
+
+                # Test infer_shape
+                f_shape = theano.function([x], adiag_op(x).shape, mode='FAST_RUN')
+
+                theano.printing.debugprint(f_shape.maker.fgraph.outputs[0])
+                output_shape = f_shape(test_val)
+                assert not any(isinstance(node.op, self.alloc_diag)
+                               for node in f_shape.maker.fgraph.toposort())
+                rediag_shape = np.diagonal(
+                    np.ones(output_shape),
+                    offset=offset,
+                    axis1=axis1,
+                    axis2=axis2
+                ).shape
+                assert np.all(rediag_shape == test_val.shape)
+
+                diag_x = adiag_op(x)
+                sum_diag_x = tensor.sum(diag_x)
+                grad_x = tensor.grad(sum_diag_x, x)
+                grad_diag_x = tensor.grad(sum_diag_x, diag_x)
+                f_grad_x = theano.function([x], grad_x, mode=self.mode)
+                f_grad_diag_x = theano.function([x], grad_diag_x, mode=self.mode)
+                grad_input = f_grad_x(test_val)
+                grad_diag_input = f_grad_diag_x(test_val)
+                true_grad_input = np.diagonal(
+                    grad_diag_input,
+                    offset=offset,
+                    axis1=axis1,
+                    axis2=axis2
+                )
+
+                assert np.all(true_grad_input == grad_input)
 
 
 class test_numpy_assumptions(unittest.TestCase):

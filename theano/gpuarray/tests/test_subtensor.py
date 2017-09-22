@@ -5,7 +5,7 @@ import unittest
 import theano
 from theano import tensor
 from theano.compile import DeepCopyOp
-from theano.tensor.tests import test_subtensor
+from theano.tensor.tests import test_subtensor, test_basic
 from theano.tests import unittest_tools as utt
 
 from ..basic_ops import HostFromGpu, GpuFromHost, GpuContiguous
@@ -316,6 +316,15 @@ class test_gpuextractdiag(unittest.TestCase):
             assert np.allclose(
                 GpuExtractDiag(offset, axis1, axis2)(x).eval({x: np_x}),
                 np_x.diagonal(offset, axis1, axis2))
+
+
+class test_gpu_alloc_diag(test_basic.test_alloc_diag):
+    def __init__(self, name):
+        return test_basic.test_alloc_diag.__init__(
+            self, name,
+            alloc_diag=GpuAllocDiag,
+            mode=mode_with_gpu
+        )
 
 
 class test_gpuallocdiag(unittest.TestCase):
