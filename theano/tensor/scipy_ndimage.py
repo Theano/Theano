@@ -22,6 +22,8 @@ def scipy_ndimage_helper_inc_dir():
 def _normalize_zoomshift_axes_list(axes, ndim=None):
     if axes is None:
         return []
+    if isinstance(axes, int):
+        axes = [axes]
     if not isinstance(axes, (tuple, list)):
         raise ValueError('axes should be a tuple or list of ints')
     axes = [int(axis) for axis in axes]
@@ -306,7 +308,7 @@ def shift(input, shift, order=3, mode='constant', cval=0.0,
         `spline_filter` before interpolation (necessary for spline
         interpolation of order > 1).  If False, it is assumed that the input is
         already filtered. Default is True.
-    axes : tuple of int, optional
+    axes : int or tuple of int, optional
         Specifies which axes of the input are shifted. The shift operation will
         loop over the axes not in this list. If `axes` is None (the default)
         the shift operation will work on all axes. `axes` can only be given
@@ -330,6 +332,12 @@ def shift(input, shift, order=3, mode='constant', cval=0.0,
     axes = _normalize_zoomshift_axes_list(axes, input.ndim)
     if axes == []:
         axes = list(range(input.ndim))
+
+    if ((isinstance(shift, (list, tuple)) or
+         isinstance(shift, np.ndarray) and shift.ndim != 0) and len(shift) != len(axes)):
+        raise ValueError('the number of elements in the shift vector (%d) does '
+                         'not match the number of axes to shift over (%d)'
+                         % (len(shift), len(axes)))
 
     shift = T.as_tensor_variable(shift).astype('float64')
     if shift.ndim == 0:
@@ -381,7 +389,7 @@ def zoom(input, zoom, order=3, mode='constant', cval=0.0,
         `spline_filter` before interpolation (necessary for spline
         interpolation of order > 1).  If False, it is assumed that the input is
         already filtered. Default is True.
-    axes : tuple of int, optional
+    axes : int or tuple of int, optional
         Specifies which axes of the input are zoomed. The zoom operation will
         loop over the axes not in this list. If `axes` is None (the default)
         the zoom operation will work on all axes. `axes` can only be given
@@ -417,6 +425,12 @@ def zoom(input, zoom, order=3, mode='constant', cval=0.0,
     axes = _normalize_zoomshift_axes_list(axes, input.ndim)
     if axes == []:
         axes = list(range(input.ndim))
+
+    if ((isinstance(zoom, (list, tuple)) or
+         isinstance(zoom, np.ndarray) and zoom.ndim != 0) and len(zoom) != len(axes)):
+        raise ValueError('the number of elements in the zoom vector (%d) does '
+                         'not match the number of axes to zoom over (%d)'
+                         % (len(zoom), len(axes)))
 
     zoom = T.as_tensor_variable(zoom).astype('float64')
     if zoom.ndim == 0:

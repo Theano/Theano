@@ -189,6 +189,12 @@ class TestZoomShift(utt.InferShapeTester):
                             order=2, axes=axes).dimshuffle(0, 1, 2, 3)
             utt.verify_grad(fn, [x_val])
 
+    def test_zoom_single_axis(self):
+        x = T.matrix()
+        zoom_ar = [1.5]
+        out = zoom(x, zoom_ar, axes=1)
+        self.assertEqual(out.owner.op.axes, [1])
+
     def test_no_zoom_on_broadcastable_axis(self):
         x = T.vector()
         x_bc = x.dimshuffle(['x', 0])
@@ -304,6 +310,12 @@ class TestZoomShift(utt.InferShapeTester):
                 return shift(x_.dimshuffle(0, 1, 2, 3, 'x'), shift=shift_ar,
                              order=2, axes=axes).dimshuffle(0, 1, 2, 3)
             utt.verify_grad(fn, [x_val])
+
+    def test_shift_single_axis(self):
+        x = T.matrix()
+        shift_ar = [1.5]
+        out = shift(x, shift_ar, axes=1)
+        self.assertEqual(out.owner.op.axes, [1])
 
     def test_shift_infer_shape(self):
         x = T.matrix()
