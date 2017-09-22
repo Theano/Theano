@@ -731,29 +731,26 @@ def cblas_header_text():
 def blas_header_text():
     """C header for the fortran blas interface"""
 
-    gemm_code = ""
-    const = "const"
+    blas_code = ""
     if not config.blas.ldflags:
         # Include the Numpy version implementation of [sd]gemm_.
         current_filedir = dirname(__file__)
-        gemm_common_filepath = os.path.join(current_filedir, 'c_code', 'alt_gemm_common.c')
-        gemm_template_filepath = os.path.join(current_filedir, 'c_code', 'alt_gemm_template.c')
+        blas_common_filepath = os.path.join(current_filedir, 'c_code', 'alt_blas_common.h')
+        blas_template_filepath = os.path.join(current_filedir, 'c_code', 'alt_blas_template.c')
         common_code = ""
-        sgemm_code = ""
-        dgemm_code = ""
-        with open(gemm_common_filepath) as code:
+        sblas_code = ""
+        dblas_code = ""
+        with open(blas_common_filepath) as code:
             common_code = code.read()
-        with open(gemm_template_filepath) as code:
+        with open(blas_template_filepath) as code:
             template_code = code.read()
-            sgemm_code = template_code % {"float_type": "float", "float_size": 4, "npy_float": "NPY_FLOAT32", "name": "sgemm_"}
-            dgemm_code = template_code % {"float_type": "double", "float_size": 8, "npy_float": "NPY_FLOAT64", "name": "dgemm_"}
-        if not common_code or not sgemm_code:
-            raise IOError("Unable to load NumPy implementation of gemm code from C source files.")
-        else:
-            const = ""
-        gemm_code += common_code
-        gemm_code += sgemm_code
-        gemm_code += dgemm_code
+            sblas_code = template_code % {"float_type": "float", "float_size": 4, "npy_float": "NPY_FLOAT32", "precision": "s"}
+            dblas_code = template_code % {"float_type": "double", "float_size": 8, "npy_float": "NPY_FLOAT64", "precision": "d"}
+        if not common_code or not template_code:
+            raise IOError("Unable to load NumPy implementation of BLAS functions from C source files.")
+        blas_code += common_code
+        blas_code += sblas_code
+        blas_code += dblas_code
 
     header = """
     extern "C"
@@ -916,7 +913,7 @@ def blas_header_text():
 
     /* Single Precision */
 
-        void sgemm_(char*, char*, const int*, const int*, const int*, const float *, %(const)s float *, const int*, %(const)s float *, const int*, const float *, float *, const int*);
+        void sgemm_(char*, char*, const int*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
         void ssymm_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
         void ssyrk_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, float *, const int*);
         void ssyr2k_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
@@ -925,7 +922,7 @@ def blas_header_text():
 
     /* Double Precision */
 
-        void dgemm_(char*, char*, const int*, const int*, const int*, const double *, %(const)s double *, const int*, %(const)s double *, const int*, const double *, double *, const int*);
+        void dgemm_(char*, char*, const int*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
         void dsymm_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
         void dsyrk_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, double *, const int*);
         void dsyr2k_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
@@ -984,7 +981,11 @@ def blas_header_text():
                     }
                     """)
 
-    return (header % {'const': const}) + gemm_code
+    return header + blas_code
+
+
+if not config.blas.ldflags:
+    _logger.warning('Using NumPy C-API based implementation for BLAS functions.')
 
 
 def mkl_threads_text():
@@ -1032,7 +1033,7 @@ def openblas_threads_text():
 
 def blas_header_version():
     # Version for the base header
-    version = (2,)
+    version = (5,)
     if detect_macos_sdot_bug():
         if detect_macos_sdot_bug.fix_works:
             # Version with fix
