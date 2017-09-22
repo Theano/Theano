@@ -1,5 +1,5 @@
 """
- Tests fof the lazy conditiona
+Tests fof the lazy conditiona
 """
 
 from __future__ import absolute_import, print_function, division

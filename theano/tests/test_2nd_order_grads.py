@@ -146,7 +146,6 @@ def test004_hessian():
 
 def test_jacobian_disconnected_inputs():
     # Test that disconnected inputs are properly handled by jacobian.
-
     v1 = tensor.vector()
     v2 = tensor.vector()
     jacobian_v = theano.gradient.jacobian(1 + v1, v2, disconnected_inputs='ignore')
