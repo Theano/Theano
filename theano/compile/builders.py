@@ -2,16 +2,37 @@
 from __future__ import absolute_import, division, print_function
 from functools import reduce, partial
 from collections import OrderedDict
+import logging
 
 import theano
-from theano import gof
+from theano import gof, config
 from theano.compat import izip
 from theano.compile.function_module import orig_function
-from theano.compile import SharedVariable, rebuild_collect_shared, optdb
+from theano.compile import SharedVariable, Mode, rebuild_collect_shared, optdb
 from theano.gof import Variable, ops_with_inner_function
 from theano.gof.graph import io_connection_pattern
 from theano.gof.null_type import NullType
 from theano.gradient import DisconnectedType
+
+_logger = logging.getLogger('theano.compile.builders')
+
+OFG_FAST_RUN_CPU = gof.Query(
+    include=['fast_run'], exclude=['gpuarray_opt'])
+OFG_FAST_COMPILE_CPU = gof.Query(
+    include=['fast_compile'], exclude=['gpuarray_opt'])
+
+# useful when global config.device is on GPU but OfG device is forced on CPU
+# the query should be done at compile time, to make sure every opt is loaded
+ofg_cpu_opt_qs = dict(
+    FAST_RUN=OFG_FAST_RUN_CPU,
+    FAST_COMPILE=OFG_FAST_COMPILE_CPU)
+
+if config.device.startswith('cpu'):
+    OFG_GLOBAL_DEVICE = 'cpu'
+elif config.device.startswith('cuda') or config.device.startswith('opencl'):
+    OFG_GLOBAL_DEVICE = 'gpu'
+else:
+    OFG_GLOBAL_DEVICE = config.device
 
 
 class OpFromGraph(gof.Op):
@@ -22,23 +43,26 @@ class OpFromGraph(gof.Op):
 
         orig_function(inputs, outputs, **kwargs)
 
-    Currently does not support ``updates`` or ``givens`` argument.
+    A few differences to `theano.function <theano.function>`:
+        - Currently does not support ``updates`` or ``givens`` parameter.
+        - The optimized inner graph may be on the specific device totally,
+          without inter-device transfer nodes inserted.
 
     Parameters
     ----------
 
     inputs: list of :class:`Variable <theano.gof.Variable>`
 
-    outputs: list of :class:`Variable <theano.gof.Variable>`
+    outputs: list or single of :class:`Variable <theano.gof.Variable>`
 
     inline: bool, optional
         Defaults to ``False``
 
-        ``True`` : Cause the Op's original graph being used during
-        compilation, the Op will not be visible in the compiled
-        graph but rather its internal graph.
+        ``False`` : Use a pre-compiled function inside.
 
-        ``False`` : will use a pre-compiled function inside.
+        ``True`` : At compile time, expand the internal graph and merge
+        it with the outer one. The OpFromGraph itself will not be visible
+        from the outer graph. However gradient/Rop overrides still works.
 
     grad_overrides : single or list of {'default', OpFromGraph, callable, Variable with special type}, optional
         Defaults to ``'default'``.
@@ -47,7 +71,7 @@ class OpFromGraph(gof.Op):
 
         OpFromGraph instance : Override with another OpFromGraph, should
         accept inputs as the same order and types of "inputs" and "output_grads"
-        arguments as one would specify in grad() method.
+        parameters as one would specify in grad() method.
 
         callable : similar to OpFromGraph instance, must return list of
         :class:`Variable <theano.gof.Variable>`.
@@ -67,7 +91,7 @@ class OpFromGraph(gof.Op):
 
         OpFromGraph instance : Override with another OpFromGraph, should
         accept inputs as the same order and types of "inputs" and "output_grads"
-        arguments as one would specify in grad() method.
+        parameter as one would specify in grad() method.
 
         callable : similar to OpFromGraph instance, must return list of
         :class:`Variable <theano.gof.Variable>`.
@@ -83,10 +107,39 @@ class OpFromGraph(gof.Op):
     name : string, optional
         A name for debugging purposes
 
+    device : string, optional
+        Defaults to ``'global'``
+        Select device for the inner graph to perform computation.
+        This parameter has no effect when ``inline=True``.
+
+        ``'global'`` : Force device according to ``theano.config.device``,
+            transfers will be insert into outer graph if needed.
+            May change types of inner graph's input/output variables.
+
+        ``'local'`` : Just compiles inner graph itself, the
+            behavior would be same as a full function call.
+            Won't change types of inner graph's input/output variables.
+            Choose this if you know what you are doing.
+
+        ``'cpu'`` : Force computation on CPU,
+            transfers will be insert into outer graph if needed,
+            May change types of inner graph's input/output variables.
+
+        ``'gpu'`` : Force computation on GPU device,
+            the actual physical device depends on libgpuarray config
+            Transfers will be insert into outer graph if needed.
+            May change types of inner graph's input/output variables.
+
+    mode : string or Mode instance, optional
+        Compilation mode, defaults to ``None``, will be using
+        ``theano.config.mode``.
+        This parameter has no effect when inline=True.
+        When given Mode instance, the ``device`` parameter must be ``'local'``
+
     \*\*kwargs : optional
         Check
         :func:`orig_function <theano.compile.function_module.orig_function>`
-        for more arguments, only works when not inline.
+        for more parameters, only works when not inline.
 
 
     .. TODO:
@@ -100,7 +153,6 @@ class OpFromGraph(gof.Op):
         - add support for NullType and DisconnectedType when R_op supports them
         - check how it works with updates.
         - add test with constant as input or inside the inner graph.
-        - Add support for the GPU? Probably just need an opt to remove transfer
         - Add support to pickle this Op.
         - Add support/test with random generator
         - Add optimization to removing unused inputs/outputs
@@ -120,6 +172,9 @@ class OpFromGraph(gof.Op):
       setting global variable) as callable(s). The callable(s) supplied
       for overriding gradient/rop will be called only once at the first
       call to grad/R_op, and will be converted to OpFromGraph instances.
+    - Setting ``device='local'`` may cause inner function do
+      CPU |=> GPU |compute> GPU |=> CPU. If the outer function is supposed
+      to be on GPU, this generates redundant transfer.
 
     Examples
     --------
@@ -163,7 +218,7 @@ class OpFromGraph(gof.Op):
             g, = grads
             return z*2
         op = OpFromGraph(
-            [x, y, z], [e], grad_overrides=['default', rescale_dy, 'default']
+            [x, y, z], [e], grad_overrides=['default', rescale_dy, 'default'])
         e2 = op(x, y, z)
         dx, dy, dz = grad(e2, [x, y, z])
         fn = function([x, y, z], [dx, dy, dz])
@@ -215,10 +270,16 @@ class OpFromGraph(gof.Op):
             self, inputs, outputs,
             inline=False,
             grad_overrides='default', rop_overrides='default',
-            name=None, **kwargs
+            name=None, device='global', mode=None,
+            **kwargs
     ):
         if not isinstance(outputs, list):
-            raise TypeError('outputs must be list, got %s' % type(outputs))
+            if isinstance(outputs, Variable):
+                outputs = [outputs]
+            else:
+                raise TypeError(
+                    'outputs must be'
+                    ' list or Variable instance, got %s' % type(outputs))
         for i in inputs + outputs:
             if not isinstance(i, gof.Variable):
                 raise TypeError(
@@ -226,16 +287,29 @@ class OpFromGraph(gof.Op):
         if 'updates' in kwargs or 'givens' in kwargs:
             raise TypeError('updates and givens are not allowed here')
         self.is_inline = inline
+
+        if device == 'global':
+            device = config.device
+            if device.startswith('cpu'):
+                device = device[:3]
+            elif device.startswith('cuda') or device.startswith('opencl'):
+                device = 'gpu'
+            else:
+                _logger.warn(
+                    'OpFromGraph: unknown device %s in theano.config.device,'
+                    ' will switch to "local" device', device)
+                device = 'local'
+
         # To correctly support shared variables the inner fct should
         # not see them. Otherwise there is a problem with the gradient.
         self.shared_inputs = [var for var in gof.graph.inputs(outputs)
                               if isinstance(var, SharedVariable)]
         shared_vars = [var.type() for var in self.shared_inputs]
 
-        new = rebuild_collect_shared(outputs, inputs=inputs + shared_vars,
-                                     replace=dict(izip(
-                                         self.shared_inputs, shared_vars)),
-                                     copy_inputs_over=False)
+        new = rebuild_collect_shared(
+            outputs, inputs=inputs + shared_vars,
+            replace=dict(izip(self.shared_inputs, shared_vars)),
+            copy_inputs_over=False)
         (local_inputs, local_outputs,
          [clone_d, update_d, update_expr, shared_inputs]) = new
         assert len(local_inputs) == len(inputs) + len(self.shared_inputs)
@@ -249,14 +323,20 @@ class OpFromGraph(gof.Op):
         self.inputs = inputs
         self.outputs = outputs
         self.kwargs = kwargs
-        self.input_types = [inp.type for inp in inputs]
-        self.output_types = [out.type for out in outputs]
+        self.input_types = [inp.type for inp in local_inputs]
+        self.output_types = [out.type for out in local_outputs]
         self.set_grad_overrides(grad_overrides)
         self.set_rop_overrides(rop_overrides)
 
         if name is not None:
             assert isinstance(name, str), 'name must be None or string object'
         self.name = name
+        self.device = device
+        if not isinstance(mode, (str, type(None))):
+            if device != 'local':
+                raise ValueError(
+                    'custom compilation mode must use device="local"')
+        self.mode = mode
 
     def __eq__(self, other):
         # TODO: recognize a copy
@@ -268,8 +348,11 @@ class OpFromGraph(gof.Op):
 
     def __str__(self):
         name = self.__class__.__name__ if self.name is None else self.name
-        is_inline = self.is_inline
-        return '%(name)s{inline=%(is_inline)s}' % locals()
+        if self.is_inline:
+            device = 'inline'
+        else:
+            device = self.device
+        return '%(name)s{%(device)s}' % locals()
 
     @theano.change_flags(compute_test_value='off')
     def _recompute_grad_op(self):
@@ -605,9 +688,37 @@ class OpFromGraph(gof.Op):
         return ret
 
     def prepare_node(self, node, storage_map, compute_map, impl):
+        global ofg_cpu_opt_qs
         if not hasattr(self, "fn") and impl == 'py':
+            if self.device == 'local':
+                force_device = None
+            elif self.device == 'global':
+                force_device = OFG_GLOBAL_DEVICE
+            else:
+                force_device = self.device
+
+            if force_device == 'gpu':
+                _logger.warn(
+                    'OpFromGraph with device "gpu" did not have'
+                    ' inner graph moved, using "local" device.')
+                mode = self.mode
+            elif force_device == 'cpu':
+                if self.mode is None:
+                    key = theano.config.mode
+                else:
+                    key = self.mode
+                mode = Mode(optimizer=optdb.query(ofg_cpu_opt_qs[key]))
+            elif force_device is None:
+                mode = self.mode
+            else:
+                _logger.warn(
+                    'OpFromGraph: unknown forced device %s,'
+                    ' will use "local" device.', force_device)
+                mode = self.mode
+
             self.fn = orig_function(self.local_inputs,
                                     self.local_outputs,
+                                    mode=mode,
                                     **self.kwargs)
             self.fn.trust_input = True
 
@@ -637,10 +748,11 @@ def inline_ofg_expansion(node):
             u: v for u, v in izip(
                 node.op.local_inputs, node.inputs)})
 
+
 # We want to run this before the first merge optimizer
 # and before the first scan optimizer.
 optdb.register(
-    'inline_ofg_expansion',
+    'op_from_graph',
     gof.opt.in2out(inline_ofg_expansion),
     -0.01, 'fast_compile', 'fast_run')
 
