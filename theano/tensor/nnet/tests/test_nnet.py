@@ -413,7 +413,6 @@ class T_LogSoftmax(utt.InferShapeTester, unittest.TestCase):
         m = theano.compile.mode.get_default_mode()
         if m == theano.compile.mode.get_mode('FAST_COMPILE'):
             m = 'FAST_RUN'
-        m.check_isfinite = False
         # some inputs that are large to make the gradient explode in the non
         # optimized case
         dims = 2
