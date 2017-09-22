@@ -1394,22 +1394,18 @@ class GpuAllocDiag(AllocDiag):
                                        context=x.context)
 
         # Slice out a view of the diagonals
-        row_size = abs(offset) + x.shape[-1]
-        if offset <= 0:  # diag in the lower triangle
-            diag_view = result_buffer[:, abs(offset), :x.shape[-1]]
-            diag_view.strides = (diag_view.strides[0],
-                                 (row_size + 1) * x.dtype.itemsize)
+        if offset < 0:  # diag in the lower triangle
+            diag_view = result_buffer[:, abs(offset):, 0]
         else:  # diag in the upper triangle
             diag_view = result_buffer[:, :x.shape[-1], abs(offset)]
-            diag_view.strides = (diag_view.strides[0],
-                                 diag_view.strides[1] + x.dtype.itemsize)
+        diag_view.strides = (diag_view.strides[0],
+                             diag_view.strides[1] + x.dtype.itemsize)
 
         # Fill view with flattened array of diagonals
         diag_view[:] = x.reshape(diag_view.shape)[:]
 
         # Unflatten buffer into output size
         result = result_buffer.reshape(result_shape)
-        print(result)
 
         if len(x.shape) > 1:
             # Re-order axes so they correspond to diagonals at axis1, axis2
