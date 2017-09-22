@@ -1111,6 +1111,10 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
         """ % dict(x=inputs[0], y=inputs[1], ind=inputs[2], out=outputs[0], fail=sub['fail'], params=sub['params'])
 
     def gpu_kernels(self, node, nodename):
+        # We can't rely on numpy for this, it changes with the OS
+        CHARMAP = dict(int32='i', uint32='I',
+                       int64='l', uint64='L',
+                       float16='e', float32='f', float64='d')
         dtype_x = node.inputs[0].dtype
         dtype_y = node.inputs[1].dtype
         dtype_ind = node.inputs[2].dtype
@@ -1168,7 +1172,7 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
              return;
         }
         """ % dict(type_x=type_x, type_y=type_y, type_ind=type_ind,
-                   tc=np.dtype(dtype_x).char)
+                   tc=CHARMAP[dtype_x])
         from pygpu.gpuarray import SIZE, SSIZE
         params = [
             SIZE, SIZE, SSIZE, SSIZE, gpuarray.GpuArray, SIZE,

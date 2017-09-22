@@ -38,6 +38,8 @@ class TestD3Viz(unittest.TestCase):
         self.check(f)
 
     def test_mlp_profiled(self):
+        if th.config.mode in ("DebugMode", "DEBUG_MODE"):
+            raise SkipTest("Can't profile in DebugMode")
         m = models.Mlp()
         profile = th.compile.profiling.ProfileStats(False)
         f = th.function(m.inputs, m.outputs, profile=profile)

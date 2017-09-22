@@ -1532,6 +1532,8 @@ class Dot22(GemmRelated):
     check_input = False
 
     def make_node(self, x, y):
+        x = T.as_tensor_variable(x)
+        y = T.as_tensor_variable(y)
         dtypes = ('float16', 'float32', 'float64', 'complex64', 'complex128')
         if x.type.ndim != 2 or x.type.dtype not in dtypes:
             raise TypeError(x)
