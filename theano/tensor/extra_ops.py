@@ -1218,7 +1218,7 @@ class UnravelIndex(gof.Op):
         res = np.unravel_index(indices, dims)
         assert len(res) == len(out)
         for i in xrange(len(out)):
-            out[i][0] = theano._asarray(res[i])
+            out[i][0] = theano._asarray(res[i], node.outputs[0].dtype)
 
 
 def unravel_index(indices, dims, order='C', ndim=None):
@@ -1306,7 +1306,7 @@ class RavelMultiIndex(gof.Op):
         multi_index, dims = inp[:-1], inp[-1]
         res = np.ravel_multi_index(multi_index, dims,
                                    mode=self.mode, order=self.order)
-        out[0][0] = theano._asarray(res)
+        out[0][0] = theano._asarray(res, node.outputs[0].dtype)
 
 
 def ravel_multi_index(multi_index, dims, mode='raise', order='C'):
