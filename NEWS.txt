@@ -32,6 +32,7 @@ Convolution updates:
  - Added dilated causal convolutions for 2D
 
 New features:
+ - Implemented ``topk`` and ``argtopk`` on CPU and GPU
  - Added ``unravel_index`` and ``ravel_multi_index`` functions on CPU
  - Implemented ``max()`` and ``min()`` functions for booleans and unsigned integers types
 
@@ -50,6 +51,7 @@ Commiters since 0.9.0:
  - Reyhane Askari
  - Alexander Matyasko
  - Simon Lefrancois
+ - Adam Becker
  - Shawn Tan
  - Vikram
  - Gijs van Tulder
@@ -91,7 +93,6 @@ Commiters since 0.9.0:
  - fo40225
  - wyjw
  - Aarni Koskela
- - Adam Becker
  - Adam Geitgey
  - Adrian Keet
  - Adrian Seyboldt

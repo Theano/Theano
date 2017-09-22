@@ -115,6 +115,7 @@ GPU:
    - Started to use ``float32`` precision for computations that don't support ``float16`` on GPU
 
 New features:
+ - Implemented ``topk`` and ``argtopk`` on CPU and GPU
  - Implemented ``max()`` and ``min()`` functions for booleans and unsigned integers types
  - Added ``tensor6()`` and ``tensor7()`` in ``theano.tensor`` module
  - Added boolean indexing for sub-tensors
@@ -157,6 +158,8 @@ Other more detailed changes:
  - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/6434
+* https://github.com/Theano/Theano/pull/5959
 * https://github.com/Theano/Theano/pull/6005
 * https://github.com/Theano/Theano/pull/6427
 * https://github.com/Theano/Theano/pull/6424
