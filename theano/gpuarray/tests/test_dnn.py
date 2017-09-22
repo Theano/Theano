@@ -1429,7 +1429,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
                     x,
                     f_z,
                     cmp
-                    )
+                )
 
     def test_optimization_softmaxGrad_to_cudnnGrad_nd(self):
         dims = 4
@@ -1437,9 +1437,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         for d in xrange(1, dims + 1):
             # Check for different axis
             for ax in range(0, d):
-                print(ax)
                 shape = (5,) * d
-                print(shape)
                 val = np.random.rand(*shape).astype(theano.config.floatX)
                 # First, we chack that SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
                 # optimization is applied when cudnn is required
@@ -1451,9 +1449,33 @@ class test_SoftMax(test_nnet.test_SoftMax):
                 )
                 out_dnn = f(val)
                 sorted_f = f.maker.fgraph.toposort()
-                # val = np.random.rand(*shape).astype(theano.config.floatX)
                 assert(len([i for i in sorted_f if isinstance(i.op, self.gpu_grad_op)]) == 1)
                 assert(len([i for i in sorted_f if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 0)
+                # Then, verify that the gradients values are correct
+
+                def f_grad(a):
+                    return T.nnet.Softmax(ax)(a)
+                T.verify_grad(f_grad, [val], rng=np.random, mode=mode_with_gpu)
+
+                # Second, we chack that Log(SoftmaxGrad) ->
+                # Gpu[Dnn]SoftmaxGrad with algo log
+                # optimization is applied when cudnn is required
+                x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
+                f = theano.function(
+                    [x],
+                    T.grad(T.log(T.nnet.Softmax(ax)(x)).mean(), x),
+                    mode=mode_with_gpu
+                    )
+                # theano.printing.debugprint(f.maker.fgraph)
+                # dnn_softmax_grad_nodes = [n for n in f.maker.fgraph.toposort() if isinstance(n.op, self.gpu_grad_op)]
+                # assert len(dnn_softmax_grad_nodes) == 1
+                # assert dnn_softmax_grad_nodes[0].op.algo == "log"
+                assert(len([i for i in f.maker.fgraph.toposort() if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 0)
+                # Then, verify that the gradients values are correct
+
+                def f_grad(a):
+                    return T.log(T.nnet.Softmax(ax)(a))
+                T.verify_grad(f_grad, [val], rng=np.random, mode=mode_with_gpu)
 
                 # Second, we verify that the SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
                 # optimization is not applied when cudnn is excluded or not
@@ -1468,7 +1490,6 @@ class test_SoftMax(test_nnet.test_SoftMax):
                 sorted_f = f.maker.fgraph.toposort()
                 out_cpu = f(val)
                 utt.assert_allclose(out_dnn, out_cpu)
-                theano.printing.debugprint(sorted_f)
                 assert(len([i for i in sorted_f if isinstance(i.op, self.gpu_grad_op)]) == 0)
                 assert(len([i for i in sorted_f if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 1)
 

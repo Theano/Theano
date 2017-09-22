@@ -295,7 +295,7 @@ class test_SoftMax(unittest.TestCase):
 
     def test_softmax(self):
         x = T.fmatrix('x')
-        z = T.nnet.softmax_op
+        z = T.nnet.softmax
 
         f, f_gpu = self._test_softmax(
             x,
@@ -309,7 +309,7 @@ class test_SoftMax(unittest.TestCase):
 
     def test_softmax_shape_0(self):
         x = T.fmatrix('x')
-        z = T.nnet.softmax_op
+        z = T.nnet.softmax
 
         f, f_gpu = self._test_softmax(x, x, z, z, self._cmp)
         # Theano can handle that case, but cudnn can't
