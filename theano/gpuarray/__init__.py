@@ -64,7 +64,7 @@ def init_dev(dev, name=None, preallocate=None):
     if (pygpu_version.major != 0 or pygpu_version.minor != 7 or
             pygpu_version.patch < 0):
         raise ValueError(
-            "Your installed version of pygpu(%s) is too old, please upgrade to 0.7.0 or later" %
+            "Your installed version of pygpu(%s) is too old, please upgrade to 0.7.0 or later (but below 0.8.0)" %
             pygpu_version.fullversion)
     # This is for the C headers API, we need to match the exact version.
     gpuarray_version_major_supported = 2
