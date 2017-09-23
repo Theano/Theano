@@ -1033,7 +1033,7 @@ def openblas_threads_text():
 
 def blas_header_version():
     # Version for the base header
-    version = (5,)
+    version = (6,)
     if detect_macos_sdot_bug():
         if detect_macos_sdot_bug.fix_works:
             # Version with fix

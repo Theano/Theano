@@ -307,6 +307,8 @@ void %(precision)sgemv_(
     PyArray_MatrixProduct2(vector_x, vector_y, dot_product);
     if (PyErr_Occurred())
         alt_fatal_error("NumPy %(precision)sdot_ implementation: unable to compute dot.");
+    // PyArray_MatrixProduct2 adds an extra reference to the output array.
+    Py_XDECREF(dot_product);
     // Get result.
     Py_XDECREF(dot_product);
     Py_XDECREF(vector_y);
