@@ -56,6 +56,9 @@ echo "Directory of stdout/stderr ${BUILDBOT_DIR}"
 echo
 echo
 
+# Exit if theano.gpuarray import fails
+python -c "import theano.gpuarray; theano.gpuarray.use('${DEVICE}')" || { echo 'theano.gpuarray import failed, exiting'; exit 1; }
+
 set -x
 
 # Fast compile and float64

@@ -53,6 +53,9 @@ cd ..
 mkdir %BUILDBOT_DIR%
 echo "Directory of stdout/stderr %BUILDBOT_DIR%"
 
+REM Exit if theano.gpuarray import fails
+python -c "import theano.gpuarray; theano.gpuarray.use('%DEVICE%')" || exit /b
+
 REM Fast run and float32
 set FILE=%BUILDBOT_DIR%\theano_python2_fastrun_f32_tests.xml
 set NAME=win_fastrun_f32

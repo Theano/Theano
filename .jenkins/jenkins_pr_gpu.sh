@@ -18,7 +18,7 @@ export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
 echo "===== Testing gpuarray backend"
 
 GPUARRAY_CONFIG="Release"
-DEVICE=cuda0
+DEVICE=cuda
 LIBDIR=${WORKSPACE}/local
 
 # Make fresh clones of libgpuarray (with no history since we don't need it)
@@ -54,6 +54,9 @@ python -c 'import pygpu; print(pygpu.__file__)'
 # Allow subprocess created by tests to find Theano.
 # Keep it in the workspace
 export PYTHONPATH=$PYTHONPATH:${WORKSPACE}
+
+# Exit if theano.gpuarray import fails
+python -c "import theano.gpuarray; theano.gpuarray.use('${DEVICE}')" || { echo 'theano.gpuarray import failed, exiting'; exit 1; }
 
 # Testing theano (the gpuarray parts)
 THEANO_GPUARRAY_TESTS="theano/gpuarray/tests \
