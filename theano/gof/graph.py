@@ -117,9 +117,6 @@ class Apply(Node):
                 if output.owner is None:
                     output.owner = self
                     output.index = i
-                    if not hasattr(output, "tag"):
-                        output.tag = utils.scratchpad()
-                    utils.add_tag_trace(output)
                 elif output.owner is not self or output.index != i:
                     raise ValueError("All output variables passed to Apply must belong to it.")
                 self.outputs.append(output)

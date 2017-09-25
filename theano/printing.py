@@ -310,7 +310,7 @@ class Print(Op):
         self.global_fn = global_fn
 
     def make_node(self, xin):
-        xout = xin.type.make_variable()
+        xout = xin.type()
         return Apply(op=self, inputs=[xin], outputs=[xout])
 
     def perform(self, node, inputs, output_storage):
