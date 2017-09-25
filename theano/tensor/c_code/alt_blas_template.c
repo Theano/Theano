@@ -305,9 +305,12 @@ void %(precision)sgemv_(
 
     // Compute matrix product: (1, N) * (N, 1) => (1, 1)
     PyArray_MatrixProduct2(vector_x, vector_y, dot_product);
+    // PyArray_MatrixProduct2 adds an extra reference to the output array.
+    Py_XDECREF(dot_product);
+
     if (PyErr_Occurred())
         alt_fatal_error("NumPy %(precision)sdot_ implementation: unable to compute dot.");
-    // Get result.
+
     Py_XDECREF(dot_product);
     Py_XDECREF(vector_y);
     Py_XDECREF(vector_x);
