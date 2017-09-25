@@ -744,6 +744,18 @@ class PushOutScanOutput(gof.Optimizer):
                             self.push_out_inner_vars(fgraph, inner_dot_inputs,
                                                      node, args)
 
+                        # If truncate_gradient is used, then some sequences
+                        # don't have the same length as args.n_steps. Thus,
+                        # it causes a shape mismatch in the dot product
+                        # pushed outside of scan. Simply cutting the sequences
+                        # breaks scanOp_save_mem. Since saving memory is the
+                        # main reason for using truncate_gradient, we don't
+                        # apply the push when truncate_gradient is used.
+                        if outer_dot_inputs[0].shape[0] != args.n_steps:
+                            return None
+                        if outer_dot_inputs[1].shape[0] != args.n_steps:
+                            return None
+
                         # Collapse some of the dimensions of the tensors
                         # so that they become matrices. This is because a
                         # dot is usually faster on two large matrices than
