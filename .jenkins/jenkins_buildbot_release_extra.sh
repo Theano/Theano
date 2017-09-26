@@ -75,6 +75,18 @@ echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 echo
 
+echo "Executing tests with mode=FAST_RUN, no scipy"
+NAME=python2_fastrun_noscipy
+FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
+echo "THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
+date
+source activate no_scipy
+THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
+source deactivate
+echo "Number of elements in the compiledir:"
+ls ${COMPILEDIR}|wc -l
+echo
+
 # Test shortcut to default test suite
 echo "Running tests using theano.test()"
 mkdir -p test_default
