@@ -645,8 +645,8 @@ def test_no_complex():
 
 @utt.assertFailure_fast
 def test_local_lift_solve():
-    if not cusolver_available:
-        raise SkipTest('No cuSolver')
+    if not cusolver_available or not slinalg.imported_scipy:
+        raise SkipTest('No cuSolver or SciPy')
     A = tensor.fmatrix()
     b = tensor.fmatrix()
     o = slinalg.solve(A, b)
@@ -663,8 +663,8 @@ def test_local_lift_solve():
 
 
 def test_gpu_solve_not_inplace():
-    if not cusolver_available:
-        raise SkipTest('No cuSolver')
+    if not cusolver_available or not slinalg.imported_scipy:
+        raise SkipTest('No cuSolver or Scipy')
     A = tensor.fmatrix()
     b = tensor.fmatrix()
     s = slinalg.solve(A, b)
@@ -681,8 +681,8 @@ def test_gpu_solve_not_inplace():
 
 @utt.assertFailure_fast
 def test_local_lift_cholesky():
-    if not cusolver_available:
-        raise SkipTest('No cuSolver')
+    if not cusolver_available or not slinalg.imported_scipy:
+        raise SkipTest('No cuSolver or Scipy')
     A = tensor.fmatrix()
     o = slinalg.cholesky(A)
     f_cpu = theano.function([A], o, mode=mode_without_gpu)
@@ -699,8 +699,8 @@ def test_local_lift_cholesky():
 
 
 def test_gpu_cholesky_not_inplace():
-    if not cusolver_available:
-        raise SkipTest('No cuSolver')
+    if not cusolver_available or not slinalg.imported_scipy:
+        raise SkipTest('No cuSolver or SciPy')
     A = tensor.fmatrix()
     A_squared = A**2
     B = slinalg.cholesky(A_squared)
