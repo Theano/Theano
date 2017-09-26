@@ -3,7 +3,12 @@ from copy import copy
 from unittest import TestCase
 
 import numpy as np
-import scipy.special
+imported_scipy_special = False
+try:
+    import scipy.special
+    imported_scipy_special = True
+except ImportError:
+    pass
 
 import theano
 from theano import scalar, gof, tensor
@@ -73,6 +78,8 @@ class TestMathErrorFunctions(TestCase):
 
     @classmethod
     def setUpClass(cls):
+        if not imported_scipy_special:
+            raise SkipTest("scipy.special needed")
         # NB: erfinv is defined in ]-1;1[, and erfcinv is defined in ]0;2[,
         # so we just take some values in an interval that covers both domains
         # (this will also allow to test some values outside the domains).
