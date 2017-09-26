@@ -461,6 +461,9 @@ if (%(out)s == NULL || !GpuArray_IS_C_CONTIGUOUS(&%(out)s->ga) ||
   %(v)s->ga.dimensions[0] = %(idx)s->ga.dimensions[0];
   %(out)s = pygpu_empty(%(v)s->ga.nd, %(v)s->ga.dimensions, %(v)s->ga.typecode,
                         GA_C_ORDER, %(v)s->context, Py_None);
+  if (%(out)s == NULL) {
+    %(fail)s;
+  }
   %(v)s->ga.dimensions[0] = tmp; // Don't remove this line
 }
 
@@ -476,7 +479,7 @@ if (err != GA_NO_ERROR) {
 """ % dict(out=outputs[0], v=inputs[0], idx=inputs[1], fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 
 def check_and_convert_boolean_masks(input, idx_list):
