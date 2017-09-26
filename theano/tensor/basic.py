@@ -5475,6 +5475,7 @@ class ARange(Op):
 
         inputs = [start, stop, step]
         outputs = [tensor(self.dtype, (False,))]
+
         return Apply(self, inputs, outputs)
 
     @theano.configparser.change_flags(warn_float64='ignore')
@@ -5534,9 +5535,16 @@ class ARange(Op):
         # no gradient through them
         # stop does not affect the output values,
         # just the output shape, so it is disconnected
-        return [start.zeros_like(),
-                DisconnectedType()(),
-                step.zeros_like()]
+
+        if (self.dtype in discrete_dtypes) and (step > 0):
+            return [start.zeros_like(),
+                    DisconnectedType()(),
+                    step.zeros_like()]
+        else:
+            num_steps_taken = (stop-start)/step
+            return [gz.sum(dtype=config.floatX),
+                    stop.zeros_like(dtype=config.floatX),
+                    (gz*arange(num_steps_taken+1)).sum(dtype=config.floatX)]
 
     def R_op(self, inputs, eval_points):
         return [None]
