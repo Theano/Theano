@@ -1360,11 +1360,6 @@ class GpuExtractDiag(Op):
 class GpuAllocDiag(AllocDiag):
     __props__ = ("offset", "axis1", "axis2")
 
-    def __init__(self, offset=0, axis1=0, axis2=1):
-        self.offset = offset
-        self.axis1 = axis1
-        self.axis2 = axis2
-
     def make_node(self, diag):
         ctx_name = infer_context_name(diag)
         diag = as_gpuarray_variable(diag, ctx_name)
