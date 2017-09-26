@@ -1991,6 +1991,8 @@ class TestAsymmetricPadding(unittest.TestCase):
             utt.verify_grad(conv_gradweight, [img, top], mode=self.mode, eps=1)
 
     def test_gradinput(self):
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
         kern_sym = theano.tensor.tensor4('kern')
         top_sym = theano.tensor.tensor4('top')
 
