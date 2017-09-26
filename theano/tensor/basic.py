@@ -6518,8 +6518,18 @@ class AllocDiag(Op):
 
     Parameters
     ----------
-    offset : int
-        Indicates which diagonal to put `x` into. Defaults to `0`.
+    axis1: Axis to be used as the first axis of the 2-D
+        sub-arrays to which the diagonals will be allocated.
+        Defaults to first axis (0).
+
+    axis2: Axis to be used as the second axis of the 2-D
+        sub-arrays to which the diagonals will be allocated.
+        Defaults to second axis (1).
+
+    offset: Offset of the diagonal from the main diagonal defined by `axis1`
+        and `axis2`.
+        Can be positive or negative.
+        Defaults to main diagonal (0).
 
     x: symbolic vector
         A tensor vector consists of diagonal values.
@@ -6527,34 +6537,92 @@ class AllocDiag(Op):
     Returns
     -------
     tensor : symbolic tenstor
-        A tensor with passed vector values at its corresponding diagonal.
+        A tensor with passed tensor values at their corresponding diagonals.
 
     """
 
-    __props__ = ("offset", )
-    default_offset = 0
+    __props__ = ("offset", "axis1", "axis2")
 
-    def __init__(self, offset=0):
-        if numpy_diagonal_return_view:
-            self.view_map = {0: [0]}
+    def __init__(self, offset=0, axis1=0, axis2=1):
         self.offset = offset
+        self.axis1 = axis1
+        self.axis2 = axis2
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
-        if diag.type.ndim != 1:
-            raise TypeError('data argument must be a vector', diag.type)
-        return Apply(self, [diag], [matrix(dtype=diag.dtype)])
+        if diag.type.ndim < 1:
+            raise ValueError('AllocDiag needs an input with 1 or more '
+                             'dimensions', diag.type)
+        return Apply(
+            self, [diag],
+            [diag.type.__class__(
+                dtype=diag.dtype,
+                broadcastable=[False] * (diag.ndim + 1))()]
+        )
 
     def perform(self, node, inputs, outputs):
+        (x,) = inputs
         (z,) = outputs
-        z[0] = np.diag(inputs[0], self.offset)
+
+        axis1 = np.minimum(self.axis1, self.axis2)
+        axis2 = np.maximum(self.axis1, self.axis2)
+        offset = self.offset
+
+        # Create array with one extra dimension for resulting matrix
+        result_shape = x.shape[:-1] + (x.shape[-1] + abs(offset),) * 2
+        result = np.zeros(result_shape, dtype=x.dtype)
+
+        # Create slice for diagonal in final 2 axes
+        idxs = np.arange(x.shape[-1])
+        diagonal_slice = ((len(result_shape) - 2) * [slice(None)] +
+                          [idxs + np.maximum(0, -offset),
+                           idxs + np.maximum(0, offset)])
+
+        # Fill in final 2 axes with x
+        result[diagonal_slice] = x
+
+        if len(x.shape) > 1:
+            # Re-order axes so they correspond to diagonals at axis1, axis2
+            axes = list(range(len(x.shape[:-1])))
+            last_idx = axes[-1]
+            axes = axes[:axis1] + [last_idx + 1] + axes[axis1:]
+            axes = axes[:axis2] + [last_idx + 2] + axes[axis2:]
+            result = result.transpose(axes)
+
+        z[0] = result
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        return [diagonal(gz, offset=self.offset, axis1=0, axis2=1)]
+        return [diagonal(
+            gz,
+            offset=self.offset,
+            axis1=self.axis1,
+            axis2=self.axis2
+        )]
 
     def infer_shape(self, nodes, shapes):
-        return [(shapes[0][0],) * 2]
+        (x_shape,) = shapes
+        axis1 = np.minimum(self.axis1, self.axis2)
+        axis2 = np.maximum(self.axis1, self.axis2)
+
+        result_shape = list(x_shape[:-1])
+        diag_shape = x_shape[-1] + abs(self.offset)
+        result_shape = result_shape[:axis1] + [diag_shape] + result_shape[axis1:]
+        result_shape = result_shape[:axis2] + [diag_shape] + result_shape[axis2:]
+        return [tuple(result_shape)]
+
+    def __setstate__(self, state):
+        if "view_map" in state:
+            del state["view_map"]
+
+        self.__dict__.update(state)
+
+        if "offset" not in state:
+            self.offset = 0
+        if "axis1" not in state:
+            self.axis1 = 0
+        if "axis2" not in state:
+            self.axis2 = 1
 
 
 def diag(v, k=0):

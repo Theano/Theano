@@ -9,6 +9,7 @@ from theano.gof import ParamsType
 from theano.gradient import grad_not_implemented
 import theano.tensor as T
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
+from theano.tensor import AllocDiag
 from theano.scalar import bool as bool_t, int32 as int_t, uint32 as size_t
 
 try:
@@ -1356,40 +1357,61 @@ class GpuExtractDiag(Op):
         return [tuple(out_shape)]
 
 
-class GpuAllocDiag(Op):
-    __props__ = ("offset",)
+class GpuAllocDiag(AllocDiag):
+    __props__ = ("offset", "axis1", "axis2")
 
-    def __init__(self, offset=0):
-        self.offset = offset
-
-    def make_node(self, _x):
-        ctx_name = infer_context_name(_x)
-        x = as_gpuarray_variable(_x, ctx_name)
-
-        if x.ndim != 1:
-            raise ValueError('AllocDiag argument must be a vector!', x)
-
-        return gof.Apply(self, [x], [x.type.clone(broadcastable=(False, False))()])
+    def make_node(self, diag):
+        ctx_name = infer_context_name(diag)
+        diag = as_gpuarray_variable(diag, ctx_name)
+        if diag.type.ndim < 1:
+            raise ValueError('AllocDiag needs an input with 1 or more '
+                             'dimensions', diag.type)
+        return gof.Apply(
+            self, [diag],
+            [diag.type.__class__(
+                dtype=diag.dtype,
+                broadcastable=[False] * (diag.ndim + 1))()]
+        )
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
+        axis1 = np.minimum(self.axis1, self.axis2)
+        axis2 = np.maximum(self.axis1, self.axis2)
+        offset = self.offset
 
-        dim = x.shape[0] + abs(self.offset)
-        z[0] = gpuarray.zeros((dim, dim), dtype=x.dtype, context=x.context)
+        # Initialise a buffer the same size as the output
+        result_shape = x.shape[:-1] + (x.shape[-1] + abs(offset),) * 2
+        result_buffer_shape = ((np.prod(x.shape[:-1]).astype(np.int64),) +
+                               (x.shape[-1] + abs(offset),) * 2)
+        result_buffer = gpuarray.zeros(result_buffer_shape,
+                                       dtype=x.dtype,
+                                       context=x.context)
 
-        if self.offset <= 0:  # diag in the lower triangle
-            diag_z = z[0][-self.offset, :(dim + self.offset)]
+        # Slice out a view of the diagonals
+        if offset < 0:  # diag in the lower triangle
+            diag_view = result_buffer[:, abs(offset):, 0]
         else:  # diag in the upper triangle
-            diag_z = z[0][:(dim - self.offset), self.offset]
-        diag_z.strides = (sum(z[0].strides),)
+            diag_view = result_buffer[:, :x.shape[-1], abs(offset)]
+        diag_view.strides = (diag_view.strides[0],
+                             diag_view.strides[1] + x.dtype.itemsize)
 
-        diag_z[:] = x[:]
+        # Fill view with flattened array of diagonals
+        diag_view[:] = x.reshape(diag_view.shape)[:]
+
+        # Unflatten buffer into output size
+        result = result_buffer.reshape(result_shape)
+
+        if len(x.shape) > 1:
+            # Re-order axes so they correspond to diagonals at axis1, axis2
+            axes = list(range(len(x.shape[:-1])))
+            last_idx = axes[-1]
+            axes = axes[:axis1] + [last_idx + 1] + axes[axis1:]
+            axes = axes[:axis2] + [last_idx + 2] + axes[axis2:]
+            result = result.transpose(axes)
+
+        z[0] = result
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        return [GpuExtractDiag(offset=self.offset, axis1=0, axis2=1)(gz)]
-
-    def infer_shape(self, node, shapes):
-        dim = shapes[0][0] + abs(self.offset)
-        return [[dim, dim]]
+        return [GpuExtractDiag(offset=self.offset, axis1=self.axis1, axis2=self.axis2)(gz)]
