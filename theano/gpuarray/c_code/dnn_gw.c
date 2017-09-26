@@ -176,7 +176,10 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   cuda_enter(c->ctx);
 
   size_t maxfree = c_get_largest_free_block_size(c);
-  if (PyErr_Occurred()) return 1;
+  if (PyErr_Occurred()) {
+    cuda_exit(c->ctx);
+    return 1;
+  }
 
   if (params->choose_algo) {
 
