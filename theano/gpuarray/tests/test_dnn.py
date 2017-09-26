@@ -2639,7 +2639,7 @@ class TestDnnConv2DRuntimeAlgorithms(object):
             filters = theano.tensor.TensorType(dtype, _broadcastable)()
             conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
                                 subsample=unit_shape, dilation=unit_shape)
-            grad_i = theano.tensor.grad(conv.sum(), [inputs])
+            grad_i, = theano.tensor.grad(conv.sum(), [inputs])
             f = theano.function([inputs, filters], grad_i, mode=mode_with_gpu)
             assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, dnn.GpuDnnConvGradI)])
             assert not any(isinstance(node.op, dnn.GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
@@ -2649,7 +2649,7 @@ class TestDnnConv2DRuntimeAlgorithms(object):
             else:
                 flipped_filters = filters[:, :, ::-1, ::-1]
             conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
-            grad_i_ref = theano.tensor.grad(conv_ref.sum(), [inputs])
+            grad_i_ref, = theano.tensor.grad(conv_ref.sum(), [inputs])
             f_ref = theano.function([inputs, filters], grad_i_ref, mode='FAST_RUN')
             runtime_shapes = self.runtime_shapes
             if algo in ('time_once', 'guess_once'):
@@ -2677,7 +2677,7 @@ class TestDnnConv2DRuntimeAlgorithms(object):
             filters = theano.tensor.TensorType(dtype, _broadcastable)()
             conv = dnn.dnn_conv(img=inputs, kerns=filters, algo=algo, precision=dtype,
                                 subsample=unit_shape, dilation=unit_shape)
-            grad_w = theano.tensor.grad(conv.sum(), [filters])
+            grad_w, = theano.tensor.grad(conv.sum(), [filters])
             f = theano.function([inputs, filters], grad_w, mode=mode_with_gpu)
             assert 1 == len([node for node in f.maker.fgraph.apply_nodes if isinstance(node.op, dnn.GpuDnnConvGradW)])
             assert not any(isinstance(node.op, dnn.GpuDnnConv) for node in f.maker.fgraph.apply_nodes)
@@ -2687,7 +2687,7 @@ class TestDnnConv2DRuntimeAlgorithms(object):
             else:
                 flipped_filters = filters[:, :, ::-1, ::-1]
             conv_ref = self.cpu_conv_class(subsample=unit_shape)(ref_cast(inputs), flipped_filters)
-            grad_w_ref = theano.tensor.grad(conv_ref.sum(), [filters])
+            grad_w_ref, = theano.tensor.grad(conv_ref.sum(), [filters])
             f_ref = theano.function([inputs, filters], grad_w_ref, mode='FAST_RUN')
             runtime_shapes = self.runtime_shapes
             if algo in ('time_once', 'guess_once'):
