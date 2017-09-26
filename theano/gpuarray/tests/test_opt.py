@@ -40,9 +40,6 @@ def _check_stack_trace(thing):
                                    theano.tensor.elemwise.Elemwise,
                                    theano.ifelse.IfElse,
                                    GpuFromHost, HostFromGpu,
-                                   basic_ops.GpuContiguous,
-                                   GpuElemwise,
-                                   theano.printing.Print,
                                    ))
     return check_stack_trace(thing, ops_to_check=_ops_to_check,
                              bug_print="ignore")
