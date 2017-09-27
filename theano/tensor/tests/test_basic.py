@@ -5911,6 +5911,20 @@ class TestARange(unittest.TestCase):
         assert np.all(f(10, 2, 2) == np.arange(10, 2, 2))
         assert np.all(f(0, 0, 1) == np.arange(0, 0, 1))
 
+    def test_grads(self):
+        def f(start, stop, step):
+            return ARange(start.type.dtype)(start, stop, step)
+
+        rng = np.random.RandomState(utt.fetch_seed())
+        # Due to the random projection, we should not use the exact
+        # point that shage the shape of the output.
+        for start, stop, step in [(0, 4.9, 1),
+                                  (1, 5.1, 0.5)]:
+            utt.verify_grad(f, [np.float32(start),
+                                np.float32(stop),
+                                np.float32(step)],
+                            rng=rng)
+
     def test_integers(self):
         # Test arange constructor, on integer outputs
         start, stop, step = iscalars('start', 'stop', 'step')
