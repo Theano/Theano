@@ -2471,7 +2471,7 @@ class MaxPoolRop(OpenMPOp):
 class RoIPoolOp(gof.COp):
 
     __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
-    func_file = "./roi_pool.c"
+    func_file = "./c_code/roi_pool.c"
     func_name = "APPLY_SPECIFIC(CPUFwd)"
 
     def __init__(self, pooled_h, pooled_w, spatial_scale):
@@ -2564,7 +2564,7 @@ class RoIPoolOp(gof.COp):
 class RoIPoolGradOp(gof.COp):
 
     __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
-    func_file = "./roi_pool.c"
+    func_file = "./c_code/roi_pool.c"
     func_name = "APPLY_SPECIFIC(CPUBackward)"
 
     def __init__(self, pooled_h, pooled_w, spatial_scale):

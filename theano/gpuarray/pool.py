@@ -440,7 +440,7 @@ class GpuRoIPoolOp(CGpuKernelBase):
         self.pooled_h = pooled_h
         self.pooled_w = pooled_w
         self.spatial_scale = spatial_scale
-        CGpuKernelBase.__init__(self, ['ROIPoolGPUFwd.c'], 'APPLY_SPECIFIC(ROIPoolGPUFwd)')
+        CGpuKernelBase.__init__(self, ['./c_code/ROIPoolGPUFwd.c'], 'APPLY_SPECIFIC(ROIPoolGPUFwd)')
 
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include()]
@@ -497,7 +497,7 @@ class GpuRoIPoolGradOp(CGpuKernelBase):
         self.pooled_h = pooled_h
         self.pooled_w = pooled_w
         self.spatial_scale = spatial_scale
-        CGpuKernelBase.__init__(self, ['ROIPoolGPUBkwd.c'], 'APPLY_SPECIFIC(ROIPoolGPUBkwd)')
+        CGpuKernelBase.__init__(self, ['./c_code/ROIPoolGPUBkwd.c'], 'APPLY_SPECIFIC(ROIPoolGPUBkwd)')
 
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include()]
