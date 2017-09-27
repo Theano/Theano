@@ -21,7 +21,7 @@ from theano.gof.type import CDataType, Generic
 from theano.gof.opt import inherit_stack_trace
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
-from theano.tensor.nnet import LogSoftmax, SoftmaxGrad, Instance_Softmax
+from theano.tensor.nnet import LogSoftmax, SoftmaxGrad, Instance_Softmax, Instance_LogSoftmax
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs,
@@ -3619,6 +3619,23 @@ def local_gpua_instancesoftmax_to_dnn(op, ctx_name, inputs, outputs):
     inp.tag.context_name = ctx_name
     # Apply GpuDnnSoftmax and return the result
     out = GpuDnnSoftmax('accurate', 'instance')(gpu_contiguous(inp))
+    return [out]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([Instance_LogSoftmax])
+@register_opt2([Instance_LogSoftmax], 'fast_compile', 'cudnn')
+def local_gpua_instancesoftmax_to_dnn(op, ctx_name, inputs, outputs):
+    # Transform the input in the format expected by GpuDnnSoftmax
+    inp = inputs[0]
+    if inp.ndim != 4:
+        return
+    if not dnn_available(ctx_name):
+        return
+
+    inp.tag.context_name = ctx_name
+    # Apply GpuDnnSoftmax and return the result
+    out = GpuDnnSoftmax('log', 'instance')(gpu_contiguous(inp))
     return [out]
 
 
