@@ -5527,7 +5527,7 @@ class ARange(Op):
 
         return [[True], [False], [True]]
 
-    def grad(self, inputs, grads):
+    def L_op(self, inputs, outputs, grads):
         start, stop, step = inputs
         gz, = grads
         # start and step affect the output values
@@ -5541,10 +5541,11 @@ class ARange(Op):
                     DisconnectedType()(),
                     step.zeros_like()]
         else:
-            num_steps_taken = (stop-start)/step
+            num_steps_taken = outputs[0].shape[0]  # (stop-start)/step
             return [gz.sum(dtype=config.floatX),
-                    stop.zeros_like(dtype=config.floatX),
-                    (gz*arange(num_steps_taken+1)).sum(dtype=config.floatX)]
+                    DisconnectedType()(),
+                    (gz * arange(num_steps_taken, dtype=self.dtype)).sum(
+                        dtype=config.floatX)]
 
     def R_op(self, inputs, eval_points):
         return [None]
