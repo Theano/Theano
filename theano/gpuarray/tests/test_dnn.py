@@ -1644,7 +1644,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         dims = 4
         # Check for differents dimensions
-        for d in xrange(1, dims + 1):
+        for d in range(1, dims + 1):
             # Check for different axis
             for ax in range(0, d):
                 shape = (5,) * d
