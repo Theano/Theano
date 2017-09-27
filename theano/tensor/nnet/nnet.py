@@ -599,6 +599,36 @@ class Softmax(gof.Op):
 softmax_op = Softmax()
 
 
+class Instance_Softmax(gof.Op):
+    """
+    Softmax op that match the instance mode of Cudnn Softmax
+    This op manages only the case where the input is a 4d tensor
+    and when the softmax is apllied if the last three axis such that
+    in case of 4d tensor represented as 'bc01', softmax will be apllied
+    over 'c01'.
+    """
+
+    nin = 1
+    nout = 1
+    __props__ = ()
+
+    def make_node(self, x):
+        x = tensor.as_tensor_variable(x)
+        if x.type.dtype not in tensor.float_dtypes:
+            raise ValueError('x must be tensor of floats. Got ', x.type)
+        if x.type.ndim != 4:
+            raise ValueError('x must be a 4d tensor. Got ', x.type.ndinm)
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, input_storage, output_storage, param):
+        x, = input_storage
+        axis = (1, 2, 3)
+        # Apply softmax on the specified dimension
+        e_x = np.exp(x - x.max(axis=axis, keepdims=True))
+        sm = e_x / e_x.sum(axis=axis, keepdims=True)
+        output_storage[0][0] = sm
+
+
 class LogSoftmax(gof.Op):
     """
     LogSoftmax activation function
