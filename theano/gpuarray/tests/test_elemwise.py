@@ -3,12 +3,6 @@ from copy import copy
 from unittest import TestCase
 
 import numpy as np
-imported_scipy_special = False
-try:
-    import scipy.special
-    imported_scipy_special = True
-except ImportError:
-    pass
 
 import theano
 from theano import scalar, gof, tensor
@@ -26,6 +20,13 @@ from ..type import GpuArrayType, get_context, gpuarray_shared_constructor
 
 
 from pygpu import ndgpuarray as gpuarray
+
+imported_scipy_special = False
+try:
+    import scipy.special
+    imported_scipy_special = True
+except ImportError:
+    pass
 
 
 # This is actually a test for GpuElemwise
