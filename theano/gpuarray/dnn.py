@@ -3605,9 +3605,7 @@ def local_softmax_dnn(node):
         return [out]
 
 
-@register_opt('cudnn', 'fast_compile')
 @op_lifter([Instance_Softmax])
-@register_opt2([Instance_Softmax], 'fast_compile', 'cudnn')
 def local_gpua_instancesoftmax_to_dnn(op, ctx_name, inputs, outputs):
     # Check we got a 4d tensor as input
     inp = inputs[0]

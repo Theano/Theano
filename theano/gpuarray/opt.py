@@ -1432,9 +1432,7 @@ def local_gpua_softmax(op, context_name, inputs, outputs):
         return gpu_softmax
 
 
-@register_opt('fast_compile')
 @op_lifter([tensor.nnet.Instance_Softmax])
-@register_opt2([tensor.nnet.Instance_Softmax], 'fast_compile')
 def local_gpua_instancesoftmax(op, context_name, inputs, outputs):
     if inputs[0].type.ndim == 4:
         old_shape = inputs[0].shape
