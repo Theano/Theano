@@ -1420,7 +1420,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         dims = 4
         # Check for differents dimensions
-        for d in xrange(1, dims + 1):
+        for d in range(1, dims + 1):
             # Check for different axis
             for ax in range(0, d):
                 f_z = T.nnet.Softmax(ax)
@@ -1434,7 +1434,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
     def test_optimization_softmaxGrad_to_cudnnGrad_nd(self):
         dims = 4
         # Check for differents dimensions
-        for d in xrange(1, dims + 1):
+        for d in range(1, dims + 1):
             # Check for different axis
             for ax in range(0, d):
                 shape = (5,) * d
@@ -1457,24 +1457,8 @@ class test_SoftMax(test_nnet.test_SoftMax):
                     return T.nnet.Softmax(ax)(a)
                 T.verify_grad(f_grad, [val], rng=np.random, mode=mode_with_gpu)
 
-                # Second, we chack that Log(SoftmaxGrad) ->
-                # Gpu[Dnn]SoftmaxGrad with algo log
-                # optimization is applied when cudnn is required
-                x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
-                f = theano.function(
-                    [x],
-                    T.grad(T.log(T.nnet.Softmax(ax)(x)).mean(), x),
-                    mode=mode_with_gpu
-                    )
-                # theano.printing.debugprint(f.maker.fgraph)
-                # dnn_softmax_grad_nodes = [n for n in f.maker.fgraph.toposort() if isinstance(n.op, self.gpu_grad_op)]
-                # assert len(dnn_softmax_grad_nodes) == 1
-                # assert dnn_softmax_grad_nodes[0].op.algo == "log"
-                assert(len([i for i in f.maker.fgraph.toposort() if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 0)
-                # Then, verify that the gradients values are correct
-
-                def f_grad(a):
-                    return T.log(T.nnet.Softmax(ax)(a))
+                # Second, we verify that grad(Log(CudnnSoftmax)) give a
+                # correct grad
                 T.verify_grad(f_grad, [val], rng=np.random, mode=mode_with_gpu)
 
                 # Second, we verify that the SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
