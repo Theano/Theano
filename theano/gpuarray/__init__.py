@@ -45,7 +45,7 @@ def pygpu_parse_version(version_string):
     from collections import namedtuple
     version_type = namedtuple('version_type', ('major', 'minor', 'patch', 'fullversion'))
     pieces = version_string.split('.', 2)
-    assert len(pieces) == 3
+    assert len(pieces) == 3, version_string
     major = int(pieces[0])
     minor = int(pieces[1])
     if "+" in pieces[2]:  # It contain a git commit.

@@ -139,7 +139,7 @@ def test_format_flake8():
         raise AssertionError("FLAKE8 Format not respected")
 
 
-def print_files_information_flake8():
+def print_files_information_flake8(files):
     """
     Print the list of files which can be removed from the whitelist and the
     list of files which do not respect FLAKE8 formatting that aren't in the
@@ -147,7 +147,9 @@ def print_files_information_flake8():
     """
     infracting_files = []
     non_infracting_files = []
-    for path in list_files():
+    if not files:
+        files = list_files()
+    for path in files:
         rel_path = os.path.relpath(path, theano.__path__[0])
         number_of_infractions = flake8.main.check_file(path,
                                                        ignore=ignore)
@@ -186,4 +188,4 @@ def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
 
 
 if __name__ == "__main__":
-    print_files_information_flake8()
+    print_files_information_flake8(sys.argv[1:])

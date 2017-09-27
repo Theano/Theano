@@ -15,6 +15,9 @@ try:
     release = True
 except ValueError:
     release = False
+except IndexError:
+    print(short_version)
+    raise
 
 if release:
     version = short_version

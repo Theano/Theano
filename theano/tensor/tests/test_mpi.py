@@ -1,14 +1,15 @@
 from __future__ import absolute_import, print_function, division
-from theano.tensor.io import (send, recv, mpi_cmps, MPISend, MPISendWait,
-        mpi_send_wait_cmp, mpi_tag_cmp, mpi_enabled)
-import theano
-import subprocess
 import os
-from theano.gof.sched import sort_schedule_fn
-
-from theano import change_flags
+import subprocess
 
 from nose.plugins.skip import SkipTest
+
+import theano
+from theano import change_flags
+from theano.compat import PY3
+from theano.gof.sched import sort_schedule_fn
+from theano.tensor.io import (send, recv, mpi_cmps, MPISend, MPISendWait,
+                              mpi_send_wait_cmp, mpi_tag_cmp, mpi_enabled)
 
 mpi_scheduler = sort_schedule_fn(*mpi_cmps)
 mpi_linker = theano.OpWiseCLinker(schedule=mpi_scheduler)
@@ -45,15 +46,21 @@ def test_mpi_roundtrip():
     if not mpi_enabled:
         raise SkipTest('MPI not enabled')
     theano_root = theano.__file__.split('__init__')[0]
+    d = {}
+    if PY3:
+        # Is some not understood cases, the subprocess never finish.
+        d = dict(timeout=5*60)
     p = subprocess.Popen("mpiexec -np 2 python " + theano_root +
                          "tensor/tests/_test_mpi_roundtrip.py",
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         close_fds=True)
-    result = theano.compat.decode(p.stdout.read())
-    assert "True" in result, theano.compat.decode(p.stderr.read())
+                         close_fds=True, **d)
+    (stdout, stderr) = p.communicate()
+
+    result = theano.compat.decode(stdout)
+    assert "True" in result, theano.compat.decode(stderr)
 
 
 def test_mpi_send_wait_cmp():

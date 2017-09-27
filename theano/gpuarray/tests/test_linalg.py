@@ -14,7 +14,7 @@ from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaCholesky,
                                     gpu_solve, gpu_svd, gpu_qr)
 from theano.tensor.nlinalg import (SVD, MatrixInverse, QRFull,
                                    QRIncomplete, eigh, matrix_inverse, qr)
-from theano.tensor.slinalg import Cholesky, cholesky
+from theano.tensor.slinalg import Cholesky, cholesky, imported_scipy
 from theano.tests import unittest_tools as utt
 
 from .. import gpuarray_shared_constructor
@@ -149,6 +149,8 @@ class TestGpuCholesky(unittest.TestCase):
         utt.assert_allclose(chol_A_res, chol_A_val)
 
     def test_gpu_cholesky_opt(self):
+        if not imported_scipy:
+            self.skipTest('SciPy is not enabled, skipping test')
         A = theano.tensor.matrix("A", dtype="float32")
         fn = theano.function([A], cholesky(A), mode=mode_with_gpu)
         assert any([isinstance(node.op, GpuCholesky)

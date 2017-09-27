@@ -741,6 +741,8 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
         cls.border_modes = ["valid", "half", "full"]
         cls.filter_flip = [True]
         cls.provide_shape = [False]
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         o = self.get_output_shape(i, f, s, b, fd)
@@ -1454,8 +1456,8 @@ class Grouped_conv_noOptim(unittest.TestCase):
         self.corr_fwd = conv2d_corr
         self.corr_gradw = conv2d_corr_gw
         self.corr_gradi = conv2d_corr_gi
-        if theano.config.cxx == "":
-            raise SkipTest("CorrMM needs cxx")
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("CorrMM needs cxx and SciPy")
 
     def test_fwd(self):
         if self.convdim == 2:
@@ -1621,7 +1623,7 @@ class Grouped_conv3d_noOptim(Grouped_conv_noOptim):
         self.corr_fwd = conv3d_corr
         self.corr_gradw = conv3d_corr_gw
         self.corr_gradi = conv3d_corr_gi
-        if theano.config.cxx == "":
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
             raise SkipTest("CorrMM needs cxx")
 
 
@@ -1770,8 +1772,8 @@ class TestUnsharedConv(unittest.TestCase):
         self.verify_flags = [True] * 4
 
         self.ref_mode = 'FAST_RUN'
-        if theano.config.cxx == "":
-            raise SkipTest("CorrMM needs cxx")
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("CorrMM needs cxx or SciPy")
 
     def test_fwd(self):
         tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
@@ -1913,6 +1915,8 @@ class TestAsymmetricPadding(unittest.TestCase):
     border_mode = [((1, 2), (2, 1)), ((1, 1), (0, 3)), ((2, 1), (0, 0))]
 
     def test_fwd(self):
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
         img_sym = theano.tensor.tensor4('img')
         kern_sym = theano.tensor.tensor4('kern')
 
@@ -1947,6 +1951,9 @@ class TestAsymmetricPadding(unittest.TestCase):
             utt.verify_grad(asymmetric_conv_op, [img, kern], mode=self.mode, eps=1)
 
     def test_gradweight(self):
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
+
         img_sym = theano.tensor.tensor4('img')
         top_sym = theano.tensor.tensor4('top')
 
@@ -1984,6 +1991,8 @@ class TestAsymmetricPadding(unittest.TestCase):
             utt.verify_grad(conv_gradweight, [img, top], mode=self.mode, eps=1)
 
     def test_gradinput(self):
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
         kern_sym = theano.tensor.tensor4('kern')
         top_sym = theano.tensor.tensor4('top')
 
@@ -2035,7 +2044,8 @@ class TestCausalConv(unittest.TestCase):
     def test_interface(self):
         img_sym = theano.tensor.tensor3('img')
         kern_sym = theano.tensor.tensor3('kern')
-
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
         sym_out = causal_conv1d(img_sym, kern_sym, self.kern.shape, filter_dilation=self.dilation)
 
         causal_func = theano.function([img_sym, kern_sym], sym_out, mode=self.mode)

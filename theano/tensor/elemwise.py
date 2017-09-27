@@ -649,7 +649,7 @@ second dimension
         # - NumPy ufunc support only up to 31 inputs.
         #   But our c code support more.
         # - nfunc is reused for scipy and scipy is optional
-        if getattr(self, 'nfunc_spec', None):
+        if getattr(self, 'nfunc_spec', None) and impl != 'c':
             self.nfunc = getattr(np, self.nfunc_spec[0], None)
             if self.nfunc is None:
                 # Not inside NumPy. So probably another package like scipy.
