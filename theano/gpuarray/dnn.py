@@ -3714,9 +3714,12 @@ def local_gpua_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
     return convert_softmax_and_logsoftmax_to_dnn(op, ctx_name, inputs, outputs)
 
 
-def convert_gradsoftmax_and_gradlogsoftmax_to_dnnGrad(op, ctx_name, inputs, outputs, algo):
-    assert algo == 'accurate' or algo == 'log'
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([SoftmaxGrad])
+@register_opt2([SoftmaxGrad], 'cudnn', 'fast_compile')
+def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
     # Transform the input in the format expected by GpuDnnSoftmax
+    algo = 'accurate'
     inp = inputs
     if not dnn_available(ctx_name):
         return
@@ -3740,10 +3743,10 @@ def convert_gradsoftmax_and_gradlogsoftmax_to_dnnGrad(op, ctx_name, inputs, outp
         # Not sure this case is usefull since it should be managed
         # by gpuarray
         elif inp[0].type.ndim == 2:
-            ins_dy = inp[0].dimshuffle(0, 1, 'x', 'x')
-            ins_sm = inp[1].dimshuffle(0, 1, 'x', 'x')
-            out = GpuDnnSoftmaxGrad(algo, 'channel')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
-            out = as_gpuarray_variable(out.dimshuffle(0, 1), out.type.context_name)
+            ins_dy = inp[0].dimshuffle(0, 'x', 1, 'x')
+            ins_sm = inp[1].dimshuffle(0, 'x', 1, 'x')
+            out = GpuDnnSoftmaxGrad(algo, 'instance')(gpu_contiguous(ins_dy), gpu_contiguous(ins_sm))
+            out = as_gpuarray_variable(out.dimshuffle(0, 2), out.type.context_name)
         elif inp[0].type.ndim == 3:
             ins_dy = inp[0].dimshuffle(0, 2, 1, 'x')
             ins_sm = inp[1].dimshuffle(0, 2, 1, 'x')
@@ -3776,7 +3779,6 @@ def convert_gradsoftmax_and_gradlogsoftmax_to_dnnGrad(op, ctx_name, inputs, outp
             return [out]
         # If you have the first axis, we need to dimshuffle the axis
     elif op.axis == 0:
-        print("OPD")
         if inp[0].type.ndim == 2:
             ins_dy = inp[0].dimshuffle(1, 0, 'x', 'x')
             ins_sm = inp[1].dimshuffle(1, 0, 'x', 'x')
@@ -3802,13 +3804,6 @@ def convert_gradsoftmax_and_gradlogsoftmax_to_dnnGrad(op, ctx_name, inputs, outp
         return [out]
     else:
         return
-
-
-@register_opt('cudnn', 'fast_compile')
-@op_lifter([SoftmaxGrad])
-@register_opt2([SoftmaxGrad], 'cudnn', 'fast_compile')
-def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
-    return convert_gradsoftmax_and_gradlogsoftmax_to_dnnGrad(op, ctx_name, inputs, outputs, 'accurate')
 
 
 @register_opt('cudnn')
