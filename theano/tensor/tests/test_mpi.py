@@ -52,8 +52,10 @@ def test_mpi_roundtrip():
                          stderr=subprocess.PIPE,
                          shell=True,
                          close_fds=True)
-    result = theano.compat.decode(p.stdout.read())
-    assert "True" in result, theano.compat.decode(p.stderr.read())
+    (stdout, stderr) = p.communicate()
+
+    result = theano.compat.decode(stdout)
+    assert "True" in result, theano.compat.decode(stderr)
 
 
 def test_mpi_send_wait_cmp():

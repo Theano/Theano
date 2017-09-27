@@ -42,6 +42,7 @@ if rank == 0:
     _, zz = f(xx)
 
     same = np.linalg.norm(zz - expected) < .001
+    # The parent test will look for "True" in the output
     stdout.write(str(same))
 
 if rank == 1:
