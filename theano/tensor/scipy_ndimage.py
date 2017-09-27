@@ -16,7 +16,7 @@ except ImportError:
 
 
 def scipy_ndimage_helper_inc_dir():
-    return os.path.join(os.path.dirname(__file__), 'c_code/scipy_ndimage')
+    return os.path.join(os.path.dirname(__file__), 'c_code', 'scipy_ndimage')
 
 
 def _normalize_zoomshift_axes_list(axes, ndim=None):
