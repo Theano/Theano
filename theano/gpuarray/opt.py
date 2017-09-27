@@ -67,7 +67,7 @@ from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
                           gpu_sparse_block_gemv, gpu_sparse_block_gemv_inplace)
 from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_crossentropy_softmax_argmax_1hot_with_bias,
-                   gpu_softmax_with_bias, gpu_softmax)
+                   gpu_softmax_with_bias, gpu_softmax, GpuSoftmax)
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
                        GpuCAReduceCPY, gpu_erfinv, gpu_erfcinv,
                        max_inputs_to_GpuElemwise)
@@ -1426,7 +1426,21 @@ def local_gpua_crossentropysoftmax1hotwithbiasdx(op, context_name, inputs, outpu
 @op_lifter([tensor.nnet.Softmax])
 @register_opt2([tensor.nnet.Softmax], 'fast_compile')
 def local_gpua_softmax(op, context_name, inputs, outputs):
-    return gpu_softmax
+    if inputs[0].type.ndim != 2:
+        return
+    else:
+        return gpu_softmax
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.nnet.Instance_Softmax])
+@register_opt2([tensor.nnet.Instance_Softmax], 'fast_compile')
+def local_gpua_instancesoftmax(op, context_name, inputs, outputs):
+    if inputs[0].type.ndim == 4:
+        old_shape = inputs[0].shape
+        new_input = inputs[0].flatten(ndim=2)
+        gpu_op = GpuSoftmax(new_input)
+        return [gpu_op.reshape(old_shape)]
 
 
 @register_opt('fast_compile')

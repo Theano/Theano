@@ -2,7 +2,8 @@ from __future__ import absolute_import, print_function, division
 from .nnet import (
     CrossentropyCategorical1Hot, CrossentropyCategorical1HotGrad,
     CrossentropySoftmax1HotWithBiasDx, CrossentropySoftmaxArgmax1HotWithBias,
-    LogSoftmax, Prepend_scalar_constant_to_each_row,
+    Instance_Softmax, Instance_LogSoftmax, Instance_SoftmaxGrad, LogSoftmax,
+    Prepend_scalar_constant_to_each_row,
     Prepend_scalar_to_each_row, Softmax,
     SoftmaxGrad, SoftmaxWithBias,
     binary_crossentropy, sigmoid_binary_crossentropy,
