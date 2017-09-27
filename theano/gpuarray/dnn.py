@@ -21,7 +21,7 @@ from theano.gof.type import CDataType, Generic
 from theano.gof.opt import inherit_stack_trace
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
-from theano.tensor.nnet import LogSoftmax, SoftmaxGrad, Instance_Softmax, Instance_LogSoftmax
+from theano.tensor.nnet import LogSoftmax, SoftmaxGrad, Instance_Softmax, Instance_LogSoftmax, Instance_SoftmaxGrad
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs,
@@ -3609,7 +3609,7 @@ def local_softmax_dnn(node):
 @op_lifter([Instance_Softmax])
 @register_opt2([Instance_Softmax], 'fast_compile', 'cudnn')
 def local_gpua_instancesoftmax_to_dnn(op, ctx_name, inputs, outputs):
-    # Transform the input in the format expected by GpuDnnSoftmax
+    # Check we got a 4d tensor as input
     inp = inputs[0]
     if inp.ndim != 4:
         return
@@ -3623,10 +3623,27 @@ def local_gpua_instancesoftmax_to_dnn(op, ctx_name, inputs, outputs):
 
 
 @register_opt('cudnn', 'fast_compile')
+@op_lifter([Instance_SoftmaxGrad])
+@register_opt2([Instance_SoftmaxGrad], 'fast_compile', 'cudnn')
+def local_gpua_instancesoftmaxgrad_to_dnn(op, ctx_name, inputs, outputs):
+    # Check we got a 4d tensor as input
+    inp = inputs[0]
+    if inp.ndim != 4:
+        return
+    if not dnn_available(ctx_name):
+        return
+
+    inp.tag.context_name = ctx_name
+    # Apply GpuDnnSoftmax and return the result
+    out = GpuDnnSoftmaxGrad('accurate', 'instance')(gpu_contiguous(inp))
+    return [out]
+
+
+@register_opt('cudnn', 'fast_compile')
 @op_lifter([Instance_LogSoftmax])
 @register_opt2([Instance_LogSoftmax], 'fast_compile', 'cudnn')
-def local_gpua_instancesoftmax_to_dnn(op, ctx_name, inputs, outputs):
-    # Transform the input in the format expected by GpuDnnSoftmax
+def local_gpua_instancelogsoftmax_to_dnn(op, ctx_name, inputs, outputs):
+    # Check we got a 4d tensor as input
     inp = inputs[0]
     if inp.ndim != 4:
         return
