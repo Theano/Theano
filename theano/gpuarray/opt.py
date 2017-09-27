@@ -2942,9 +2942,7 @@ for op, fct, cpu in [(bn.AbstractBatchNormTrain,
 
 
 # Register cuDnn Instance Softmax omplementation
-from .dnn import (local_gpua_instancesoftmax_to_dnn,
-                  local_gpua_instancesoftmaxgrad_to_dnn,
-                  local_gpua_instancelogsoftmax_to_dnn)
+from .dnn import (local_gpua_instancesoftmax_to_dnn)    # noqa: 402
 
 instanceSoftmax_groupopt = theano.gof.optdb.LocalGroupDB()
 instanceSoftmax_groupopt.__name__ = "InstanceSoftmax GroupOp"
