@@ -947,8 +947,16 @@ def softmax(c, mode='channel'):
         raise ValueError('Only two mode supported: channel and instance Got ', mode)
 
 
-def logsoftmax(c):
-    return logsoftmax_op(c)
+def logsoftmax(c, mode='channel'):
+    c = as_tensor_variable(c)
+    if c.broadcastable[-1]:
+        warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
+    if mode == 'channel':
+        return logsoftmax_op(c)
+    elif mode == 'instance':
+        return Instance_LogSoftmax()(c)
+    else:
+        raise ValueError('Only two mode supported: channel and instance Got ', mode)
 
 
 @opt.register_specialize('fast_compile_gpu')
