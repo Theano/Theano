@@ -838,11 +838,16 @@ def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
 
-def softmax(c):
+def softmax(c, mode='channel'):
     c = as_tensor_variable(c)
     if c.broadcastable[-1]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    return softmax_op(c)
+    if mode == 'channel':
+        return softmax_op(c)
+    elif mode == 'instance':
+        return Instance_Softmax(c)
+    else:
+        raise ValueError('Only two mode supported: channel and instance Got ', mode)
 
 
 def logsoftmax(c):
