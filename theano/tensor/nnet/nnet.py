@@ -599,6 +599,48 @@ class Softmax(gof.Op):
 softmax_op = Softmax()
 
 
+class Instance_SoftmaxGrad(gof.Op):
+    """
+    Gradient wrt x of the Softmax Op.
+    """
+
+    nin = 2
+    nout = 1
+
+    def make_node(self, dy, sm):
+        dy = tensor.as_tensor_variable(dy)
+        sm = tensor.as_tensor_variable(sm)
+        if dy.type.dtype not in tensor.float_dtypes:
+            raise ValueError('dy must be tensor of floats. Got ', dy.type)
+        if sm.type.ndim != 4:
+            raise ValueError('softmax must be a 4d tensor. Got ', sm.type.ndinm)
+        return Apply(self, [dy, sm], [sm.type()])
+
+    def perform(self, node, input_storage, output_storage, param):
+        dy, sm = input_storage
+        axis = (1, 2, 3)
+        if (dy.shape != sm.shape):
+            raise ValueError('dy and the softmax output should have the same shape.')
+        dx = np.zeros_like(sm)
+        # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
+        dy_times_sm = dy * sm
+        dx = dy_times_sm - (np.sum(dy_times_sm, axis=axis, keepdims=True) * sm)
+        output_storage[0][0] = dx
+
+    def grad(self, inp, grads):
+        dy, sm = inp
+        g, = grads
+        axis = (1, 2, 3)
+        tmp = g + tensor.neg(tensor.sum(g * sm, axis=axis, keepdims=True))
+        g_dy = tmp * sm
+        tmp2 = tensor.sum(dy * sm, axis=axis, keepdims=True)
+        g_sm = tmp * dy - g * tmp2
+        return g_dy, g_sm
+
+    def infer_shape(self, node, shape):
+        return [shape[1]]
+
+
 class Instance_Softmax(gof.Op):
     """
     Softmax op that match the instance mode of Cudnn Softmax
@@ -627,6 +669,17 @@ class Instance_Softmax(gof.Op):
         e_x = np.exp(x - x.max(axis=axis, keepdims=True))
         sm = e_x / e_x.sum(axis=axis, keepdims=True)
         output_storage[0][0] = sm
+
+    def L_op(self, inp, outputs, grads):
+        x, = inp
+        g_sm, = grads
+        return [Instance_SoftmaxGrad()(g_sm, outputs[0])]
+
+    def R_op(self, inputs, eval_points):
+        # The Jacobian is symmetric so the R_op is the same as the grad
+        if None in eval_points:
+            return [None]
+        return self.L_op(inputs, [self(*inputs)], eval_points)
 
 
 class LogSoftmax(gof.Op):
@@ -845,7 +898,7 @@ def softmax(c, mode='channel'):
     if mode == 'channel':
         return softmax_op(c)
     elif mode == 'instance':
-        return Instance_Softmax(c)
+        return Instance_Softmax()(c)
     else:
         raise ValueError('Only two mode supported: channel and instance Got ', mode)
 
