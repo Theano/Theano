@@ -2941,3 +2941,25 @@ for op, fct, cpu in [(bn.AbstractBatchNormTrain,
     abstract_batch_norm_db.register(cpu.__name__, cpu,
                                     'gpuarray', 'fast_compile', 'fast_run',
                                     position='last')
+
+
+# Register cuDnn Instance Softmax omplementation
+from .dnn import (local_gpua_instancesoftmax_to_dnn,
+                  local_gpua_instancesoftmaxgrad_to_dnn,
+                  local_gpua_instancelogsoftmax_to_dnn)
+
+instanceSoftmax_groupopt = theano.gof.optdb.LocalGroupDB()
+instanceSoftmax_groupopt.__name__ = "InstanceSoftmax GroupOp"
+register_opt('fast_compile')(instanceSoftmax_groupopt)
+instanceSoftmax_groupopt.register('local_gpua_instancesoftmax_to_dnn',
+                                  local_gpua_instancesoftmax_to_dnn, 20,
+                                  'instance_softmax',
+                                  'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
+instanceSoftmax_groupopt.register('local_gpua_instancesoftmax',
+                                  local_gpua_instancesoftmax, 30,
+                                  'instance_softmax',
+                                  'gpuarray', 'fast_compile', 'fast_run')
+instanceSoftmax_groupopt.register('local_instancesoftmax',
+                                  tensor.nnet.nnet.local_instancesoftmax, 40,
+                                  'instance_softmax',
+                                  'fast_compile', 'fast_run')
