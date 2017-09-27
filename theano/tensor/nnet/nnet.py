@@ -682,6 +682,50 @@ class Instance_Softmax(gof.Op):
         return self.L_op(inputs, [self(*inputs)], eval_points)
 
 
+class Instance_LogSoftmax(gof.Op):
+    """
+    LogSoftmax op that match the instance mode of Cudnn Softmax
+    This op manages only the case where the input is a 4d tensor
+    and when the softmax is apllied if the last three axis such that
+    in case of 4d tensor represented as 'bc01', softmax will be apllied
+    over 'c01'.
+    """
+    nin = 1
+    nout = 1
+
+    def make_node(self, x):
+        x = tensor.as_tensor_variable(x)
+        if x.type.dtype not in tensor.float_dtypes:
+            raise ValueError('x must be tensor of floats. Got %s' % x.type)
+        if x.type.ndim != 4:
+            raise ValueError('x must be a 4d tensor. Got ', x.type.ndinm)
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, input_storage, output_storage, param):
+        x, = input_storage
+        axis = (1, 2, 3)
+        # Apply logsoftmax on the specified dimension
+        xdev = x - x.max(axis=axis, keepdims=True)
+        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axis, keepdims=True))
+        output_storage[0][0] = lsm
+
+    def L_op(self, inp, outputs, grads):
+        x, = inp
+        lsm, = outputs
+        axis = (1, 2, 3)
+        return [grads[0] - tensor.sum(grads[0], axis=axis, keepdims=True) * np.exp(lsm)]
+
+    def R_op(self, inputs, eval_points):
+        # I think the Jacobian is symmetric so the R_op
+        # is the same as the grad
+        if None in eval_points:
+            return [None]
+        return self.grad(inputs, eval_points)
+
+    def infer_shape(self, node, shape):
+        return shape
+
+
 class LogSoftmax(gof.Op):
     """
     LogSoftmax activation function
