@@ -5530,22 +5530,23 @@ class ARange(Op):
     def L_op(self, inputs, outputs, grads):
         start, stop, step = inputs
         gz, = grads
-        # start and step affect the output values
+        # `start` and `step` affect the output values
         # but the outputs are integers so there's
-        # no gradient through them
-        # stop does not affect the output values,
-        # just the output shape, so it is disconnected
+        # no gradient through them.
+        # When they are not integers, the gradients are
+        # as expressed below.
+        # `stop` does not affect the output values,
+        # just the output shape, so it is disconnected.
 
-        if (self.dtype in discrete_dtypes) and (step > 0):
-            return [start.zeros_like(),
+        if self.dtype in discrete_dtypes:
+            return [start.zeros_like(dtype=config.floatX),
                     DisconnectedType()(),
-                    step.zeros_like()]
+                    step.zeros_like(dtype=config.floatX)]
         else:
-            num_steps_taken = outputs[0].shape[0]  # (stop-start)/step
-            return [gz.sum(dtype=config.floatX),
+            num_steps_taken = outputs[0].shape[0]
+            return [gz.sum(),
                     DisconnectedType()(),
-                    (gz * arange(num_steps_taken, dtype=self.dtype)).sum(
-                        dtype=config.floatX)]
+                    (gz * arange(num_steps_taken, dtype=self.dtype)).sum()]
 
     def R_op(self, inputs, eval_points):
         return [None]

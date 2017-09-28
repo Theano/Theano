@@ -5917,12 +5917,13 @@ class TestARange(unittest.TestCase):
 
         rng = np.random.RandomState(utt.fetch_seed())
         # Due to the random projection, we should not use the exact
-        # point that shage the shape of the output.
+        # point that change the shape of the output.
         for start, stop, step in [(0, 4.9, 1),
+                                  (5.1, 0, -0.5),
                                   (1, 5.1, 0.5)]:
-            utt.verify_grad(f, [np.float32(start),
-                                np.float32(stop),
-                                np.float32(step)],
+            utt.verify_grad(f, [np.asarray(start).astype(config.floatX),
+                                np.asarray(stop).astype(config.floatX),
+                                np.asarray(step).astype(config.floatX)],
                             rng=rng)
 
     def test_integers(self):
