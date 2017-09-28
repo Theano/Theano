@@ -392,17 +392,13 @@ second dimension
             inplace_pattern = frozendict({})
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = frozendict(inplace_pattern)
+        self.inplace_pattern = inplace_pattern
         self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
 
-        self.ufunc = None
-        self.nfunc = None
         if nfunc_spec is None:
             nfunc_spec = getattr(scalar_op, 'nfunc_spec', None)
         self.nfunc_spec = nfunc_spec
-        if nfunc_spec:
-            self.nfunc = getattr(np, nfunc_spec[0])
-
+        self.__setstate__(self.__dict__)
         super(Elemwise, self).__init__(openmp=openmp)
 
     def __getstate__(self):
@@ -417,12 +413,6 @@ second dimension
         self.ufunc = None
         self.nfunc = None
         self.inplace_pattern = frozendict(self.inplace_pattern)
-        if getattr(self, 'nfunc_spec', None):
-            self.nfunc = getattr(np, self.nfunc_spec[0])
-        elif 0 < self.scalar_op.nin < 32:
-            self.ufunc = np.frompyfunc(self.scalar_op.impl,
-                                       self.scalar_op.nin,
-                                       self.scalar_op.nout)
 
     def get_output_info(self, dim_shuffle, *inputs):
         """Return the outputs dtype and broadcastable pattern and the
@@ -655,9 +645,28 @@ second dimension
         return ret
 
     def prepare_node(self, node, storage_map, compute_map, impl):
-        # Postpone the ufunc building to the last minutes
-        # NumPy ufunc support only up to 31 inputs.
-        # But our c code support more.
+        # Postpone the ufunc building to the last minutes due to:
+        # - NumPy ufunc support only up to 31 inputs.
+        #   But our c code support more.
+        # - nfunc is reused for scipy and scipy is optional
+        if getattr(self, 'nfunc_spec', None) and impl != 'c':
+            self.nfunc = getattr(np, self.nfunc_spec[0], None)
+            if self.nfunc is None:
+                # Not inside NumPy. So probably another package like scipy.
+                symb = self.nfunc_spec[0].split(".")
+                for idx in range(1, len(self.nfunc_spec[0])):
+                    try:
+                        module = __import__('.'.join(symb[:idx]))
+                    except ImportError:
+                        break
+                for sub in symb[1:]:
+                    try:
+                        module = getattr(module, sub)
+                    except AttributeError:
+                        module = None
+                        break
+                self.nfunc = module
+
         if (len(node.inputs) < 32 and
                 (self.nfunc is None or
                  self.scalar_op.nin != len(node.inputs)) and
@@ -743,6 +752,10 @@ second dimension
 
         ufunc_args = inputs
         ufunc_kwargs = {}
+        # We supported in the past calling manually op.perform.
+        # To keep that support we need to sometimes call self.prepare_node
+        if self.nfunc is None and self.ufunc is None:
+            self.prepare_node(node, None, None, 'py')
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
             ufunc = self.nfunc
             nout = self.nfunc_spec[2]

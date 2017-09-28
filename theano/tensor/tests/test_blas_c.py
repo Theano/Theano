@@ -115,11 +115,11 @@ class TestCGer(TestCase, TestOptimizationMixin):
 
 
 class TestCGemv(TestCase, TestOptimizationMixin):
-    """Tests of CGemv specifically.
+    """
+    Tests of CGemv specifically.
 
     Generic tests of Gemv-compatibility, including both dtypes are
     done below in TestCGemvFloat32 and TestCGemvFloat64
-
     """
     def setUp(self, dtype='float64'):
         # This tests can run even when theano.config.blas.ldflags is empty.
@@ -314,6 +314,93 @@ class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
 
     def setUp(self):
         skip_if_blas_ldflags_empty()
+
+
+class TestCGemvNoFlags(object):
+    mode = mode_blas_opt
+    gemv = CGemv(inplace=False)
+    M = 4
+    N = 5
+    slice_step = 3
+
+    def setUp(self):
+        unittest_tools.seed_rng()
+
+    def get_function(self, dtype, transpose_A=False, slice_tensors=False):
+        alpha = theano.tensor.scalar(dtype=dtype)
+        beta = theano.tensor.scalar(dtype=dtype)
+        A = theano.tensor.matrix(dtype=dtype)
+        x = theano.tensor.vector(dtype=dtype)
+        y = theano.tensor.vector(dtype=dtype)
+        if transpose_A:
+            A_1 = A.T
+        else:
+            A_1 = A
+        if slice_tensors:
+            A_2 = A_1[::-self.slice_step]
+            x_2 = x[::-self.slice_step]
+            y_2 = y[::-self.slice_step]
+        else:
+            A_2 = A_1
+            x_2 = x
+            y_2 = y
+        return theano.function([alpha, A, x, beta, y], self.gemv(y_2, alpha, A_2, x_2, beta))
+
+    def get_data(self, dtype, alpha, beta, transpose_A=False, slice_tensors=False):
+        if slice_tensors:
+            if transpose_A:
+                A_shape = (self.N, self.M * self.slice_step)
+            else:
+                A_shape = (self.M * self.slice_step, self.N)
+            x_shape = (self.N * self.slice_step,)
+            y_shape = (self.M * self.slice_step,)
+        else:
+            if transpose_A:
+                A_shape = (self.N, self.M)
+            else:
+                A_shape = (self.M, self.N)
+            x_shape = (self.N,)
+            y_shape = (self.M,)
+        A = np.random.random(A_shape).astype(dtype)
+        x = np.random.random(x_shape).astype(dtype)
+        y = np.random.random(y_shape).astype(dtype)
+        return (alpha, A, x, beta, y)
+
+    def compute_ref(self, alpha, A, x, beta, y, transpose_A, slice_tensors):
+        if transpose_A:
+            A = A.T
+        if slice_tensors:
+            A = A[::-self.slice_step]
+            x = x[::-self.slice_step]
+            y = y[::-self.slice_step]
+        ref_val = alpha * np.dot(A, x)
+        if beta != 0:
+            ref_val += beta * y
+        return ref_val
+
+    @theano.change_flags({'blas.ldflags': ''})
+    def run_cgemv(self, dtype, ALPHA, BETA, transpose_A, slice_tensors):
+        f = self.get_function(dtype, transpose_A=transpose_A, slice_tensors=slice_tensors)
+        values = self.get_data(dtype, ALPHA, BETA, transpose_A=transpose_A, slice_tensors=slice_tensors)
+        assert any(isinstance(node.op, CGemv) for node in f.maker.fgraph.apply_nodes)
+        z_val = f(*values)
+        assert z_val.dtype == dtype
+        assert z_val.ndim == 1
+        assert z_val.shape[0] == self.M
+        ref_val = self.compute_ref(*(values + (transpose_A, slice_tensors)))
+        unittest_tools.assert_allclose(ref_val, z_val)
+
+    def test_cgemv(self):
+        for dtype in ('float32', 'float64'):
+            for alpha in (0, 1, -2):
+                for beta in (0, 1, -2):
+                    for transpose_A in (False, True):
+                        for slice_tensors in (False, True):
+                            yield (self.run_cgemv, dtype, alpha, beta, transpose_A, slice_tensors)
+
+
+class TestSdotNoFlags(TestCGemvNoFlags):
+    M = 1
 
 
 class TestBlasStridesC(TestBlasStrides):

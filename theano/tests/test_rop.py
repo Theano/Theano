@@ -1,15 +1,14 @@
 """
- WRITE ME
+WRITE ME
 
- Tests for the R operator / L operator
+Tests for the R operator / L operator
 
- For the list of op with r op defined, with or without missing test
- see this file: doc/library/tensor/basic.txt
+For the list of op with r op defined, with or without missing test
+see this file: doc/library/tensor/basic.txt
 
- For function to automatically test your Rop implementation, look at
- the docstring of the functions: check_mat_rop_lop, check_rop_lop,
- check_nondiff_rop,
-
+For function to automatically test your Rop implementation, look at
+the docstring of the functions: check_mat_rop_lop, check_rop_lop,
+check_nondiff_rop,
 """
 from __future__ import absolute_import, print_function, division
 import unittest
@@ -55,9 +54,10 @@ break_op = BreakRop()
 
 
 class RopLop_checker(unittest.TestCase):
-    """ Don't peform any test, but provide the function to test the
-    Rop to class that inherit from it."""
-
+    """
+    Don't peform any test, but provide the function to test the
+    Rop to class that inherit from it.
+    """
     def setUp(self):
         utt.seed_rng()
         # Using vectors make things a lot simpler for generating the same
@@ -72,8 +72,10 @@ class RopLop_checker(unittest.TestCase):
                              5 + self.rng.randint(3))
 
     def check_nondiff_rop(self, y):
-        """ If your op is not differentiable(so you can't define Rop)
-        test that an error is raised."""
+        """
+        If your op is not differentiable(so you can't define Rop)
+        test that an error is raised.
+        """
         raised = False
         try:
             tensor.Rop(y, self.x, self.v)
@@ -85,7 +87,8 @@ class RopLop_checker(unittest.TestCase):
                 ' is not differentiable'))
 
     def check_mat_rop_lop(self, y, out_shape):
-        """ Test the Rop/Lop when input is a matrix and the output is a vector
+        """
+        Test the Rop/Lop when input is a matrix and the output is a vector
 
         :param y: the output variable of the op applied to self.mx
         :param out_shape: Used to generate a random tensor
@@ -137,7 +140,6 @@ class RopLop_checker(unittest.TestCase):
         """
         As check_mat_rop_lop, except the input is self.x which is a
         vector. The output is still a vector.
-
         """
         # TEST ROP
         vx = np.asarray(self.rng.uniform(size=self.in_shape),
@@ -198,9 +200,8 @@ class test_RopLop(RopLop_checker):
 
     def test_max(self):
         # If we call max directly, we will return an CAReduce object
-        # and he don't have R_op implemented!
-        # self.check_mat_rop_lop(tensor.max(self.mx, axis=[0,1])[0],
-        #                       ())
+        # which doesn't have R_op implemented!
+        # self.check_mat_rop_lop(tensor.max(self.mx, axis=[0,1])[0], ())
         self.check_mat_rop_lop(tensor.max(self.mx, axis=0),
                                (self.mat_in_shape[1],))
         self.check_mat_rop_lop(tensor.max(self.mx, axis=1),

@@ -1764,6 +1764,12 @@ def min(x, axis=None, keepdims=False):
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return -max(-x, axis=axis, keepdims=keepdims)
+    elif str_x_type in uint_dtypes:
+        itype = np.iinfo(x.dtype)
+        max_val = np.array(itype.max, dtype=itype.dtype)
+        return max_val - max(max_val - x, axis=axis, keepdims=keepdims)
+    elif str_x_type == 'bool':
+        return ~max(~x, axis=axis, keepdims=keepdims)
     else:
         # Be careful about unsigned integers, complex
         raise NotImplementedError()
@@ -1789,6 +1795,11 @@ def argmin(x, axis=None, keepdims=False):
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return argmax(-x, axis=axis, keepdims=keepdims)
+    elif str_x_type in uint_dtypes:
+        itype = np.iinfo(x.dtype)
+        return argmax(itype.max - x, axis=axis, keepdims=keepdims)
+    elif str_x_type == 'bool':
+        return argmax(~x, axis=axis, keepdims=keepdims)
     else:
         # Be careful about unsigned integers, complex
         raise NotImplementedError()
@@ -5516,24 +5527,26 @@ class ARange(Op):
 
         return [[True], [False], [True]]
 
-    def grad(self, inputs, grads):
+    def L_op(self, inputs, outputs, grads):
         start, stop, step = inputs
         gz, = grads
-        # start and step affect the output values
+        # `start` and `step` affect the output values
         # but the outputs are integers so there's
-        # no gradient through them
-        # stop does not affect the output values,
-        # just the output shape, so it is disconnected
+        # no gradient through them.
+        # When they are not integers, the gradients are
+        # as expressed below.
+        # `stop` does not affect the output values,
+        # just the output shape, so it is disconnected.
 
-        if (self.dtype in discrete_dtypes) and (step > 0):
-            return [start.zeros_like(),
+        if self.dtype in discrete_dtypes:
+            return [start.zeros_like(dtype=config.floatX),
                     DisconnectedType()(),
-                    step.zeros_like()]
+                    step.zeros_like(dtype=config.floatX)]
         else:
-            num_steps_taken = (stop-start)/step
-            return [gz.sum(dtype=config.floatX),
-                    stop.zeros_like(dtype=config.floatX),
-                    (gz*arange(num_steps_taken+1)).sum(dtype=config.floatX)]
+            num_steps_taken = outputs[0].shape[0]
+            return [gz.sum(),
+                    DisconnectedType()(),
+                    (gz * arange(num_steps_taken, dtype=self.dtype)).sum()]
 
     def R_op(self, inputs, eval_points):
         return [None]
@@ -6341,18 +6354,57 @@ del x
 
 
 class ExtractDiag(Op):
-    """Return specified diagonals.
+    """
+    Return specified diagonals.
+
+    If x is 2-D, returns the diagonal of x with the given offset,
+    i.e., the collection of elements of the form x[i, i+offset].
+    If x has more than two dimensions, then the axes specified by
+    axis1 and axis2 are used to determine the 2-D sub-array whose
+    diagonal is returned. The shape of the resulting array can be
+    determined by removing axis1 and axis2 and appending an index
+    to the right equal to the size of the resulting diagonals.
 
     Parameters
     ----------
-    x
-        A tensor variable with x.ndim >= 2.
+    x: A tensor variable with x.ndim >= 2.
+
+    offset: Offset of the diagonal from the main diagonal.
+        Can be positive or negative.
+        Defaults to main diagonal (0).
+
+    axis1: Axis to be used as the first axis of the 2-D
+        sub-arrays from which the diagonals should be taken.
+        Defaults to first axis (0).
+
+    axis2: Axis to be used as the second axis of the 2-D
+        sub-arrays from which the diagonals should be taken.
+        Defaults to second axis (1).
+
+
 
     Returns
     -------
-    vector
-        A vector representing the diagonal elements.
+    array_of_diagonals:
+        If x is 2-D, a 1-D array of the same type as a
+        containing the diagonal is returned.
+        If the dimension of x is greater than two, then an
+        array of diagonals is returned, "packed" from left-most
+        dimension to right-most (e.g., if x is 3-D, then the
+        diagonals are "packed" along rows).
 
+
+
+    Raises
+    ------
+    ValueError
+        If the dimension of x is less than 2.
+
+
+    See Also
+    --------
+    numpy.diagonal:
+        https://docs.scipy.org/doc/numpy-dev/reference/generated/numpy.diagonal.html
     """
     __props__ = ("offset", "axis1", "axis2", "view")
 
@@ -6393,14 +6445,12 @@ class ExtractDiag(Op):
         (gz,) = gout
 
         if x.ndim == 2:
-            # The following code is moved from tensor.nlinalg.ExtractDiag, only
-            # works for matrices.
             x = theano.tensor.zeros_like(x)
             xdiag = theano.tensor.AllocDiag(offset=self.offset)(gz)
             return [theano.tensor.set_subtensor(
                 x[:xdiag.shape[0], :xdiag.shape[1]], xdiag)]
         else:
-            warnings.warn("gradient of theano.tensor.nlinalg.ExtractDiag only"
+            warnings.warn("gradient of theano.tensor.basic.ExtractDiag only"
                           "works for matrices.")
             return [grad_not_implemented(self, 0, x)]
 
@@ -6420,6 +6470,26 @@ class ExtractDiag(Op):
             diag_size = minimum(dim1, dim2)
         out_shape.append(diag_size)
         return [tuple(out_shape)]
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if self.view and not numpy_diagonal_return_view:
+            warnings.warn("View will forced to False. ExtractDiag property view is "
+                          "set to True but numpy version %s and prior versions of "
+                          "numpy.diagonal() do not return a view. Update "
+                          "numpy to use ExtractDiag(view=True)" %
+                          np.version.version)
+            self.view = False
+
+        if self.view:
+            self.view_map = {0: [0]}
+
+        if "offset" not in state:
+            self.offset = 0
+        if "axis1" not in state:
+            self.axis1 = 0
+        if "axis2" not in state:
+            self.axis2 = 1
 
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
@@ -6458,8 +6528,18 @@ class AllocDiag(Op):
 
     Parameters
     ----------
-    offset : int
-        Indicates which diagonal to put `x` into. Defaults to `0`.
+    axis1: Axis to be used as the first axis of the 2-D
+        sub-arrays to which the diagonals will be allocated.
+        Defaults to first axis (0).
+
+    axis2: Axis to be used as the second axis of the 2-D
+        sub-arrays to which the diagonals will be allocated.
+        Defaults to second axis (1).
+
+    offset: Offset of the diagonal from the main diagonal defined by `axis1`
+        and `axis2`.
+        Can be positive or negative.
+        Defaults to main diagonal (0).
 
     x: symbolic vector
         A tensor vector consists of diagonal values.
@@ -6467,34 +6547,92 @@ class AllocDiag(Op):
     Returns
     -------
     tensor : symbolic tenstor
-        A tensor with passed vector values at its corresponding diagonal.
+        A tensor with passed tensor values at their corresponding diagonals.
 
     """
 
-    __props__ = ("offset", )
-    default_offset = 0
+    __props__ = ("offset", "axis1", "axis2")
 
-    def __init__(self, offset=0):
-        if numpy_diagonal_return_view:
-            self.view_map = {0: [0]}
+    def __init__(self, offset=0, axis1=0, axis2=1):
         self.offset = offset
+        self.axis1 = axis1
+        self.axis2 = axis2
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
-        if diag.type.ndim != 1:
-            raise TypeError('data argument must be a vector', diag.type)
-        return Apply(self, [diag], [matrix(dtype=diag.dtype)])
+        if diag.type.ndim < 1:
+            raise ValueError('AllocDiag needs an input with 1 or more '
+                             'dimensions', diag.type)
+        return Apply(
+            self, [diag],
+            [diag.type.__class__(
+                dtype=diag.dtype,
+                broadcastable=[False] * (diag.ndim + 1))()]
+        )
 
     def perform(self, node, inputs, outputs):
+        (x,) = inputs
         (z,) = outputs
-        z[0] = np.diag(inputs[0], self.offset)
+
+        axis1 = np.minimum(self.axis1, self.axis2)
+        axis2 = np.maximum(self.axis1, self.axis2)
+        offset = self.offset
+
+        # Create array with one extra dimension for resulting matrix
+        result_shape = x.shape[:-1] + (x.shape[-1] + abs(offset),) * 2
+        result = np.zeros(result_shape, dtype=x.dtype)
+
+        # Create slice for diagonal in final 2 axes
+        idxs = np.arange(x.shape[-1])
+        diagonal_slice = ((len(result_shape) - 2) * [slice(None)] +
+                          [idxs + np.maximum(0, -offset),
+                           idxs + np.maximum(0, offset)])
+
+        # Fill in final 2 axes with x
+        result[diagonal_slice] = x
+
+        if len(x.shape) > 1:
+            # Re-order axes so they correspond to diagonals at axis1, axis2
+            axes = list(range(len(x.shape[:-1])))
+            last_idx = axes[-1]
+            axes = axes[:axis1] + [last_idx + 1] + axes[axis1:]
+            axes = axes[:axis2] + [last_idx + 2] + axes[axis2:]
+            result = result.transpose(axes)
+
+        z[0] = result
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        return [diagonal(gz, offset=self.offset, axis1=0, axis2=1)]
+        return [diagonal(
+            gz,
+            offset=self.offset,
+            axis1=self.axis1,
+            axis2=self.axis2
+        )]
 
     def infer_shape(self, nodes, shapes):
-        return [(shapes[0][0],) * 2]
+        (x_shape,) = shapes
+        axis1 = np.minimum(self.axis1, self.axis2)
+        axis2 = np.maximum(self.axis1, self.axis2)
+
+        result_shape = list(x_shape[:-1])
+        diag_shape = x_shape[-1] + abs(self.offset)
+        result_shape = result_shape[:axis1] + [diag_shape] + result_shape[axis1:]
+        result_shape = result_shape[:axis2] + [diag_shape] + result_shape[axis2:]
+        return [tuple(result_shape)]
+
+    def __setstate__(self, state):
+        if "view_map" in state:
+            del state["view_map"]
+
+        self.__dict__.update(state)
+
+        if "offset" not in state:
+            self.offset = 0
+        if "axis1" not in state:
+            self.axis1 = 0
+        if "axis2" not in state:
+            self.axis2 = 1
 
 
 def diag(v, k=0):

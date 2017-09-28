@@ -5,6 +5,314 @@
 Old Release Notes
 =================
 
+=============
+Release Notes
+=============
+
+Theano 0.10.0beta2 (7th of September, 2017)
+===========================================
+
+This release contains new features, improvements and bug fixes to prepare the upcoming release candidate.
+
+We recommend that every developer updates to this version.
+
+Highlights:
+ - Support NumPy ``1.13``
+ - Support pygpu ``0.7``
+ - Added conda recipe
+ - Optional faster optimization step with new destroy handler
+ - Added documentation for RNNBlock
+ - Bug fixes, crash fixes, warning improvements and documentation updates
+
+A total of 67 people contributed to this release since 0.9.0, see list below.
+
+Interface changes:
+ - Added new parameter ``target`` for MRG functions
+
+Convolution updates:
+ - Added unshared convolutions
+ - Added 3D separable convolutions
+ - Added 3D grouped convolutions
+ - Removed old ``conv3d`` interface
+ - Deprecated old ``conv2d`` interface
+ - Updated ``conv`` documentation
+
+GPU:
+ - Added a meta-optimizer to select the fastest GPU implementations for convolutions
+
+ - cuDNN:
+
+   - Official support for ``v6.*`` and ``v7.*``, support for ``v5.*`` will be removed in next release
+   - Added spatial transformation operation based on cuDNN
+   - Updated and improved caching system for runtime-chosen cuDNN convolution algorithms
+   - Support cuDNN v7 tensor core operations for convolutions with runtime timed algorithms
+   - Restricted cuDNN reductions to contiguous inputs
+   - Automatic addition of cuDNN DLL path to ``PATH`` environment variable on Windows
+
+New features:
+ - Added ``tensor6()`` and ``tensor7()`` in ``theano.tensor`` module
+ - Added boolean indexing for sub-tensors
+ - Added covariance matrix function ``theano.tensor.cov``
+ - Added new Theano flag ``pickle_test_value`` to help disable pickling test values
+
+Others:
+ - Kept stack trace for optimizations in new GPU backend
+
+Other more detailed changes:
+ - Moved all C code files into separate folder ``c_code`` in every Theano module
+ - Improvements for Jenkins tests
+
+Commiters since 0.9.0:
+ - Frederic Bastien
+ - João Victor Tozatti Risso
+ - Arnaud Bergeron
+ - Steven Bocco
+ - Mohammed Affan
+ - amrithasuresh
+ - Pascal Lamblin
+ - Reyhane Askari
+ - Alexander Matyasko
+ - Simon Lefrancois
+ - Shawn Tan
+ - Gijs van Tulder
+ - Thomas George
+ - Vikram
+ - Andrei Costinescu
+ - Faruk Ahmed
+ - Boris Fomitchev
+ - Zhouhan LIN
+ - Aleksandar Botev
+ - jhelie
+ - xiaoqie
+ - Tegan Maharaj
+ - Matt Graham
+ - Cesar Laurent
+ - Gabe Schwartz
+ - Juan Camilo Gamboa Higuera
+ - Tim Cooijmans
+ - Anirudh Goyal
+ - Saizheng Zhang
+ - vipulraheja
+ - Florian Bordes
+ - Sina Honari
+ - Yikang Shen
+ - erakra
+ - Chiheb Trabelsi
+ - Shubh Vachher
+ - Daren Eiri
+ - Joseph Paul Cohen
+ - Laurent Dinh
+ - Mohamed Ishmael Diwan Belghazi
+ - Jeff Donahue
+ - Ramana Subramanyam
+ - Bogdan Budescu
+ - Dzmitry Bahdanau
+ - Ghislain Antony Vaillant
+ - Jan Schlüter
+ - Xavier Bouthillier
+ - fo40225
+ - Aarni Koskela
+ - Adam Becker
+ - Adam Geitgey
+ - Adrian Keet
+ - Adrian Seyboldt
+ - Anmol Sahoo
+ - Chong Wu
+ - Holger Kohr
+ - Jayanth Koushik
+ - Lilian Besson
+ - Lv Tao
+ - Michael Manukyan
+ - Murugesh Marvel
+ - NALEPA
+ - Zotov Yuriy
+ - dareneiri
+ - lrast
+ - morrme
+ - wyjw
+
+
+Theano 0.10.0beta1 (9th of August, 2017)
+========================================
+
+This release contains a lot of bug fixes, improvements and new features to prepare the upcoming release candidate.
+
+We recommend that every developer updates to this version.
+
+Highlights:
+ - Moved Python 3.* minimum supported version from 3.3 to 3.4
+ - Replaced deprecated package ``nose-parameterized`` with up-to-date package ``parameterized`` for Theano requirements
+ - Theano now internally uses ``sha256`` instead of ``md5`` to work on systems that forbide ``md5`` for security reason
+ - Removed old GPU backend ``theano.sandbox.cuda``. New backend ``theano.gpuarray`` is now the official GPU backend
+ - Support more debuggers for ``PdbBreakpoint``
+
+ - Scan improvements
+
+   - Speed up Theano scan compilation and gradient computation
+   - Added meaningful message when missing inputs to scan
+
+ - Speed up graph toposort algorithm
+ - Faster C compilation by massively using a new interface for op params
+ - Faster optimization step
+ - Documentation updated and more complete
+ - Many bug fixes, crash fixes and warning improvements
+
+A total of 65 people contributed to this release since 0.9.0, see list below.
+
+Interface changes:
+ - Merged duplicated diagonal functions into two ops: ``ExtractDiag`` (extract a diagonal to a vector),
+   and ``AllocDiag`` (set a vector as a diagonal of an empty array)
+ - Renamed ``MultinomialWOReplacementFromUniform`` to ``ChoiceFromUniform``
+
+ - Removed or deprecated Theano flags:
+
+   - ``cublas.lib``
+   - ``cuda.enabled``
+   - ``enable_initial_driver_test``
+   - ``gpuarray.sync``
+   - ``home``
+   - ``lib.cnmem``
+   - ``nvcc.*`` flags
+   - ``pycuda.init``
+
+ - Changed ``grad()`` method to ``L_op()`` in ops that need the outputs to compute gradient
+
+Convolution updates:
+ - Extended Theano flag ``dnn.enabled`` with new option ``no_check`` to help speed up cuDNN importation
+ - Implemented separable convolutions
+ - Implemented grouped convolutions
+
+GPU:
+ - Prevent GPU initialization when not required
+ - Added disk caching option for kernels
+ - Added method ``my_theano_function.sync_shared()`` to help synchronize GPU Theano functions
+ - Added useful stats for GPU in profile mode
+ - Added Cholesky op based on ``cusolver`` backend
+ - Added GPU ops based on `magma library <http://icl.cs.utk.edu/magma/software/>`_:
+   SVD, matrix inverse, QR, cholesky and eigh
+ - Added ``GpuCublasTriangularSolve``
+ - Added atomic addition and exchange for ``long long`` values in ``GpuAdvancedIncSubtensor1_dev20``
+ - Support log gamma function for all non-complex types
+ - Support GPU SoftMax in both OpenCL and CUDA
+ - Support offset parameter ``k`` for ``GpuEye``
+ - ``CrossentropyCategorical1Hot`` and its gradient are now lifted to GPU
+
+ - Better cuDNN support
+
+   - Official support for ``v5.*`` and ``v6.*``
+   - Better support and loading on Windows and Mac
+   - Support cuDNN v6 dilated convolutions
+   - Support cuDNN v6 reductions
+   - Added new Theano flags ``cuda.include_path``, ``dnn.base_path`` and ``dnn.bin_path``
+     to help configure Theano when CUDA and cuDNN can not be found automatically.
+
+ - Updated ``float16`` support
+
+   - Added documentation for GPU float16 ops
+   - Support ``float16`` for ``GpuGemmBatch``
+   - Started to use ``float32`` precision for computations that don't support ``float16`` on GPU
+
+New features:
+ - Added a wrapper for `Baidu's CTC <https://github.com/baidu-research/warp-ctc>`_ cost and gradient functions
+ - Added scalar and elemwise CPU ops for modified Bessel function of order 0 and 1 from ``scipy.special``.
+ - Added Scaled Exponential Linear Unit (SELU) activation
+ - Added sigmoid_binary_crossentropy function
+ - Added tri-gamma function
+ - Added modes ``half`` and ``full`` for ``Images2Neibs`` ops
+ - Implemented gradient for ``AbstractBatchNormTrainGrad``
+ - Implemented gradient for matrix pseudoinverse op
+ - Added new prop `replace` for ``ChoiceFromUniform`` op
+ - Added new prop ``on_error`` for CPU ``Cholesky`` op
+ - Added new Theano flag ``deterministic`` to help control how Theano optimize certain ops that have deterministic versions.
+   Currently used for subtensor Ops only.
+ - Added new Theano flag ``cycle_detection`` to speed-up optimization step by reducing time spending in inplace optimizations
+ - Added new Theano flag ``check_stack_trace`` to help check the stack trace during optimization process
+ - Added new Theano flag ``cmodule.debug`` to allow a debug mode for Theano C code. Currently used for cuDNN convolutions only.
+
+Others:
+ - Added deprecation warning for the softmax and logsoftmax vector case
+ - Added a warning to announce that C++ compiler will become mandatory in next Theano release ``0.11``
+
+Other more detailed changes:
+ - Removed useless warning when profile is manually disabled
+ - Added tests for abstract conv
+ - Added options for `disconnected_outputs` to Rop
+ - Removed ``theano/compat/six.py``
+ - Removed ``COp.get_op_params()``
+ - Support of list of strings for ``Op.c_support_code()``, to help not duplicate support codes
+ - Macro names provided for array properties are now standardized in both CPU and GPU C codes
+ - Started to move C code files into separate folder ``c_code`` in every Theano module
+ - Many improvements for Travis CI tests (with better splitting for faster testing)
+ - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
+
+Commiters since 0.9.0:
+ - Frederic Bastien
+ - Arnaud Bergeron
+ - amrithasuresh
+ - João Victor Tozatti Risso
+ - Steven Bocco
+ - Pascal Lamblin
+ - Mohammed Affan
+ - Reyhane Askari
+ - Alexander Matyasko
+ - Simon Lefrancois
+ - Shawn Tan
+ - Thomas George
+ - Faruk Ahmed
+ - Zhouhan LIN
+ - Aleksandar Botev
+ - jhelie
+ - xiaoqie
+ - Tegan Maharaj
+ - Matt Graham
+ - Cesar Laurent
+ - Gabe Schwartz
+ - Juan Camilo Gamboa Higuera
+ - AndroidCloud
+ - Saizheng Zhang
+ - vipulraheja
+ - Florian Bordes
+ - Sina Honari
+ - Vikram
+ - erakra
+ - Chiheb Trabelsi
+ - Shubh Vachher
+ - Daren Eiri
+ - Gijs van Tulder
+ - Laurent Dinh
+ - Mohamed Ishmael Diwan Belghazi
+ - mila
+ - Jeff Donahue
+ - Ramana Subramanyam
+ - Bogdan Budescu
+ - Ghislain Antony Vaillant
+ - Jan Schlüter
+ - Xavier Bouthillier
+ - fo40225
+ - Aarni Koskela
+ - Adam Becker
+ - Adam Geitgey
+ - Adrian Keet
+ - Adrian Seyboldt
+ - Andrei Costinescu
+ - Anmol Sahoo
+ - Chong Wu
+ - Holger Kohr
+ - Jayanth Koushik
+ - Jenkins
+ - Lilian Besson
+ - Lv Tao
+ - Michael Manukyan
+ - Murugesh Marvel
+ - NALEPA
+ - Ubuntu
+ - Zotov Yuriy
+ - dareneiri
+ - lrast
+ - morrme
+ - yikang
+
+
 Theano 0.9.0 (20th of March, 2017)
 ==================================
 
@@ -1365,7 +1673,7 @@ Interface Change:
 New Interface (reuse existing functionality):
  * tensor_var.sort() as a shortcut for theano.tensor.sort. (Jeremiah Lowin)
    We where already doing this for argsort.
- * Add theano.tensor.take() and a_tensor_var.take() to support NumPy syntax. (abalkin) 
+ * Add theano.tensor.take() and a_tensor_var.take() to support NumPy syntax. (abalkin)
  * Add a_tensor_variable.{dot,std,argmin,argmax,argsort,clip,conj,conjugate,repeat,round,trace,real,imag}. (abalkin)
 
 New debug feature:
@@ -1403,7 +1711,7 @@ Crash Fixes:
  * Make CrossentropySoftmax1HotWithBiasDx and CrossentropySoftmaxArgmax1HotWithBias support uint* dtype. (Frederic B., reported by Mark Fenner)
  * Fix GpuSoftmax and GpuSoftmaxWithBias crash on GTX285. (Frederic B.)
  * Fix crash due to a race condition when importing theano. (Ian G.)
- * Fix crash from path problem with `theano-nose --batch`. (Abalkin) 
+ * Fix crash from path problem with `theano-nose --batch`. (Abalkin)
  * Fix crash with tensor.roll(Var, iscalar). (Frederic B., reported by Jeremiah Lowin)
  * Fix compilation crash with llvm on Mac. (Abalkin)
  * Fix the grad of Scan that told wrongly that there is no connection between cost and parameters. (Razvan P.)
@@ -2268,7 +2576,7 @@ Optimizations:
  * IncSubtensor(x, zeros, idx) -> x
  * SetSubtensor(x, x[idx], idx) -> x (when x is a constant)
  * subtensor(alloc,...) -> alloc
- * Many new scan optimization 
+ * Many new scan optimization
 
    * Lower scan execution overhead with a Cython implementation
    * Removed scan double compilation (by using the new Op.make_thunk mechanism)
@@ -2331,10 +2639,10 @@ Deprecation (will be removed in Theano 0.5, warning generated if you use them):
 
         [outputs], [updates], [condition]. One can skip any of the three if not
         used, but the order has to stay unchanged.
- * tensor.grad(cost, wrt) will return an object of the "same type" as wrt 
+ * tensor.grad(cost, wrt) will return an object of the "same type" as wrt
    (list/tuple/TensorVariable).
 
-   * Currently tensor.grad return a type list when the wrt is a list/tuple of 
+   * Currently tensor.grad return a type list when the wrt is a list/tuple of
      more than 1 element.
 
 Decrecated in 0.4.0(Reminder, warning generated if you use them):
@@ -2445,7 +2753,7 @@ Bugs fixed:
    guaranteed to be of the specified dtype instead of potentially being of a
    higher-precision dtype.
  * The perform() method of DownsampleFactorMax did not give the right result
-   when reusing output storage. This happen only if you use the Theano flags 
+   when reusing output storage. This happen only if you use the Theano flags
    'linker=c|py_nogc' or manually specify the mode to be 'c|py_nogc'.
 
 Crash fixed:

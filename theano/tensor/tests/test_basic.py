@@ -1782,14 +1782,16 @@ ErfcxTester = makeBroadcastTester(
     good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
     grad=_grad_broadcast_unary_normal_small_neg_range,
     eps=2e-10,
-    mode=mode_no_scipy)
+    mode=mode_no_scipy,
+    skip=skip_scipy)
 ErfcxInplaceTester = makeBroadcastTester(
     op=inplace.erfcx_inplace,
     expected=expected_erfcx,
     good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
     eps=2e-10,
     mode=mode_no_scipy,
-    inplace=True)
+    inplace=True,
+    skip=skip_scipy)
 
 ErfinvTester = makeBroadcastTester(
     op=tensor.erfinv,
@@ -2012,11 +2014,11 @@ JvInplaceTester = makeBroadcastTester(
 
 
 def test_verify_jv_grad():
-    """Verify Jv gradient.
-
-    Implemented separately due to need to fix first input for which grad is
-    not defined.
-    """
+    # Verify Jv gradient.
+    # Implemented separately due to need to fix first input for which grad is
+    # not defined.
+    if skip_scipy:
+        raise SkipTest("SciPy needed")
     v_val, x_val = _grad_broadcast_binary_bessel['normal']
 
     def fixed_first_input_jv(x):
@@ -2080,11 +2082,12 @@ IvInplaceTester = makeBroadcastTester(
 
 
 def test_verify_iv_grad():
-    """Verify Iv gradient.
+    # Verify Iv gradient.
+    # Implemented separately due to need to fix first input for which grad is
+    # not defined.
+    if skip_scipy:
+        raise SkipTest("SciPy needed")
 
-    Implemented separately due to need to fix first input for which grad is
-    not defined.
-    """
     v_val, x_val = _grad_broadcast_binary_bessel['normal']
 
     def fixed_first_input_iv(x):
@@ -3451,6 +3454,24 @@ class T_argmin_argmax(unittest.TestCase):
         except TypeError:
             pass
 
+    def test_uint(self):
+        for dtype in ('uint8', 'uint16', 'uint32', 'uint64'):
+            itype = np.iinfo(dtype)
+            data = np.array([itype.min + 3, itype.min, itype.max - 5, itype.max], dtype)
+            n = as_tensor_variable(data)
+            i = eval_outputs(argmin(n))
+            self.assertEqual(i, 1)
+            i = eval_outputs(argmax(n))
+            self.assertEqual(i, 3)
+
+    def test_bool(self):
+        data = np.array([True, False], 'bool')
+        n = as_tensor_variable(data)
+        i = eval_outputs(argmin(n))
+        self.assertEqual(i, 1)
+        i = eval_outputs(argmax(n))
+        self.assertEqual(i, 0)
+
 
 class T_min_max(unittest.TestCase):
     def setUp(self):
@@ -3635,6 +3656,28 @@ class T_min_max(unittest.TestCase):
         # n = as_tensor_variable(data)
         # check_grad_max(data, eval_outputs(grad(max_and_argmax(n,
         # axis=1)[0], n)),axis=1)
+
+    def test_uint(self):
+        for dtype in ('uint8', 'uint16', 'uint32', 'uint64'):
+            itype = np.iinfo(dtype)
+            data = np.array([itype.min + 3, itype.min, itype.max - 5, itype.max], dtype)
+            n = as_tensor_variable(data)
+            self.assertEqual(min(n).dtype, dtype)
+            i = eval_outputs(min(n))
+            self.assertEqual(i, itype.min)
+            self.assertEqual(max(n).dtype, dtype)
+            i = eval_outputs(max(n))
+            self.assertEqual(i, itype.max)
+
+    def test_bool(self):
+        data = np.array([True, False], 'bool')
+        n = as_tensor_variable(data)
+        self.assertEqual(min(n).dtype, 'bool')
+        i = eval_outputs(min(n))
+        self.assertEqual(i, False)
+        self.assertEqual(max(n).dtype, 'bool')
+        i = eval_outputs(max(n))
+        self.assertEqual(i, True)
 
 
 def test_basic_allclose():
@@ -5869,15 +5912,19 @@ class TestARange(unittest.TestCase):
         assert np.all(f(0, 0, 1) == np.arange(0, 0, 1))
 
     def test_grads(self):
-        start, stop, step = fscalars('start', 'stop', 'step')
         def f(start, stop, step):
             return ARange(start.type.dtype)(start, stop, step)
 
         rng = np.random.RandomState(utt.fetch_seed())
-        utt.verify_grad(f, [np.float32(0),
-                            np.float32(5),
-                            np.float32(1)],
-                        rng=rng)
+        # Due to the random projection, we should not use the exact
+        # point that change the shape of the output.
+        for start, stop, step in [(0, 4.9, 1),
+                                  (5.1, 0, -0.5),
+                                  (1, 5.1, 0.5)]:
+            utt.verify_grad(f, [np.asarray(start).astype(config.floatX),
+                                np.asarray(stop).astype(config.floatX),
+                                np.asarray(step).astype(config.floatX)],
+                            rng=rng)
 
     def test_integers(self):
         # Test arange constructor, on integer outputs
@@ -7527,6 +7574,88 @@ class test_diag(unittest.TestCase):
         tensor.verify_grad(diag, [x], rng=rng)
         x = rng.rand(5, 3)
         tensor.verify_grad(diag, [x], rng=rng)
+
+
+class TestAllocDiag(unittest.TestCase):
+    def __init__(self, name, alloc_diag=AllocDiag, mode=None):
+        self.alloc_diag = alloc_diag
+
+        if mode is None:
+            mode = theano.compile.mode.get_default_mode()
+        self.mode = mode
+
+        return super(TestAllocDiag, self).__init__(name)
+
+    def _generator(self):
+        dims = 4
+        shape = (5,) * dims
+        xv = np.random.randn(*shape).astype(config.floatX)
+        for d in xrange(1, dims + 1):
+            # Create a TensorType of the same dimensions as
+            # as the data we want to test.
+            x = TensorType(dtype=config.floatX, broadcastable=(False,) * d)('x')
+
+            # Make a slice of the test data that has the
+            # dimensions we need by doing xv[0,...,0]
+            # For example, for an array of shape (5,), we
+            # need to do xv[0, 0, 0, 0].
+            test_val = xv[((0,) * (dims - d))]
+            yield x, test_val
+
+    def test_alloc_diag_values(self):
+        for x, test_val in self._generator():
+            for offset, axis1, axis2 in [(0, 0, 1), (0, 1, 2), (1, 0, 1),
+                                         (0, 1, 3), (0, 2, 3), (1, 2, 3),
+                                         (-1, 0, 1), (-2, 0, 1), (-1, 1, 2)]:
+                # Test AllocDiag values
+                if np.maximum(axis1, axis2) > len(test_val.shape):
+                    continue
+                adiag_op = self.alloc_diag(offset=offset,
+                                           axis1=axis1,
+                                           axis2=axis2)
+                f = theano.function([x], adiag_op(x))
+                # AllocDiag and extract the diagonal again
+                # to check
+                diag_arr = f(test_val)
+                rediag = np.diagonal(
+                    diag_arr,
+                    offset=offset,
+                    axis1=axis1,
+                    axis2=axis2
+                )
+                assert np.all(rediag == test_val)
+
+                # Test infer_shape
+                f_shape = theano.function([x], adiag_op(x).shape, mode='FAST_RUN')
+
+                theano.printing.debugprint(f_shape.maker.fgraph.outputs[0])
+                output_shape = f_shape(test_val)
+                assert not any(isinstance(node.op, self.alloc_diag)
+                               for node in f_shape.maker.fgraph.toposort())
+                rediag_shape = np.diagonal(
+                    np.ones(output_shape),
+                    offset=offset,
+                    axis1=axis1,
+                    axis2=axis2
+                ).shape
+                assert np.all(rediag_shape == test_val.shape)
+
+                diag_x = adiag_op(x)
+                sum_diag_x = tensor.sum(diag_x)
+                grad_x = tensor.grad(sum_diag_x, x)
+                grad_diag_x = tensor.grad(sum_diag_x, diag_x)
+                f_grad_x = theano.function([x], grad_x, mode=self.mode)
+                f_grad_diag_x = theano.function([x], grad_diag_x, mode=self.mode)
+                grad_input = f_grad_x(test_val)
+                grad_diag_input = f_grad_diag_x(test_val)
+                true_grad_input = np.diagonal(
+                    grad_diag_input,
+                    offset=offset,
+                    axis1=axis1,
+                    axis2=axis2
+                )
+
+                assert np.all(true_grad_input == grad_input)
 
 
 class test_numpy_assumptions(unittest.TestCase):

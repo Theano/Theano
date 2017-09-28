@@ -14,7 +14,7 @@ from theano.tensor import as_tensor_variable, get_vector_length
 from theano.scalar import int32 as int_t
 
 from .basic_ops import (GpuKernelBase, Kernel, infer_context_name,
-                        host_from_gpu, as_gpuarray_variable)
+                        GpuFromHost, host_from_gpu, as_gpuarray_variable)
 from .type import GpuArrayType, gpu_context_type
 from .fp16_help import write_w
 from .opt import register_opt, register_opt2
@@ -80,7 +80,8 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         else:
             raise ValueError('Unsupported data type for output',
                              self.output_type.dtype)
-        code = """
+        code = """#include "cluda.h"
+
         KERNEL void mrg_uniform(
                 GLOBAL_MEM %(otype)s *sample_data,
                 ga_size sample_offset,
@@ -308,7 +309,10 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
 @register_opt2([mrg_uniform], 'fast_compile')
 def local_gpua_mrg_graph(op, context_name, inputs, outputs):
     if (type(op) == mrg_uniform and
-            isinstance(inputs[0].type, GpuArrayType)):
+            isinstance(inputs[0].type, GpuArrayType) and
+            (inputs[0].owner is None or
+             not isinstance(inputs[0].owner.op,
+                            GpuFromHost))):
         outs = GPUA_mrg_uniform.new(inputs[0],
                                     op.output_type.ndim,
                                     op.output_type.dtype,

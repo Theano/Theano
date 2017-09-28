@@ -24,7 +24,7 @@ set PATH=%PATH%;%LIBDIR%\bin
 
 REM Make fresh clones of libgpuarray (with no history since we dont need it)
 rmdir libgpuarray /s/q
-git clone --depth 1 "https://github.com/Theano/libgpuarray.git"
+git clone "https://github.com/Theano/libgpuarray.git"
 
 REM Clean up previous installs (to make sure no old files are left)
 rmdir %LIBDIR% /s/q
@@ -52,6 +52,9 @@ cd ..
 
 mkdir %BUILDBOT_DIR%
 echo "Directory of stdout/stderr %BUILDBOT_DIR%"
+
+REM Exit if theano.gpuarray import fails
+python -c "import theano.gpuarray; theano.gpuarray.use('%DEVICE%')" || exit /b
 
 REM Fast run and float32
 set FILE=%BUILDBOT_DIR%\theano_python2_fastrun_f32_tests.xml

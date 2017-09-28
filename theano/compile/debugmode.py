@@ -1388,7 +1388,7 @@ class _FunctionGraphEvent(object):
             self.node = node
             self.op = node.op
         self.idx = idx
-        self.reason = reason
+        self.reason = str(reason)
 
     def __str__(self):
         if self.kind == 'change':
@@ -1472,7 +1472,7 @@ class _VariableEquivalenceTracker(object):
 
     def on_prune(self, fgraph, node, reason):
         self.event_list.append(_FunctionGraphEvent('prune', node,
-                                                   reason=reason))
+                                                   reason=str(reason)))
         assert node in self.active_nodes
         assert node not in self.inactive_nodes
         self.active_nodes.remove(node)
@@ -1480,7 +1480,7 @@ class _VariableEquivalenceTracker(object):
 
     def on_import(self, fgraph, node, reason):
         self.event_list.append(_FunctionGraphEvent('import', node,
-                                                   reason=reason))
+                                                   reason=str(reason)))
 
         assert node not in self.active_nodes
         self.active_nodes.add(node)
@@ -1501,8 +1501,9 @@ class _VariableEquivalenceTracker(object):
                 self.replaced_by.setdefault(r, [])
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
+        reason = str(reason)
         self.event_list.append(_FunctionGraphEvent('change', node,
-                                                   reason=str(reason), idx=i))
+                                                   reason=reason, idx=i))
 
         self.reasons.setdefault(new_r, [])
         self.replaced_by.setdefault(new_r, [])
@@ -2190,7 +2191,10 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                  fgraph=None,  # If present the optimized graph. we ignore it.
                  output_keys=None,
                  name=None):
+        self.mode = mode
         self.profile = profile
+        if profile:
+            raise Exception("DebugMode do not support profiling.")
         optimizer = mode.optimizer
         # Handle the case where inputs and/or outputs is a single
         # Variable (not in a list)
@@ -2298,18 +2302,15 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         # the 'no_borrow' outputs are the ones for which that we can't return
         # the internal storage pointer.
 
-        no_borrow = [
-            output
-            for output, spec in izip(fgraph.outputs,
-                                     outputs + additional_outputs)
-            if not spec.borrow]
+        no_borrow = [output for output, spec in
+                     izip(fgraph.outputs, outputs + additional_outputs)
+                     if not spec.borrow]
         if no_borrow:
             self.linker = linker.accept(
-                fgraph,
-                no_recycling=infer_reuse_pattern(fgraph, no_borrow))
+                fgraph, no_recycling=infer_reuse_pattern(fgraph, no_borrow))
         else:
             self.linker = linker.accept(fgraph)
-
+        fgraph.name = name
         self.indices = indices
         self.inputs = inputs
         self.expanded_inputs = inputs
@@ -2318,99 +2319,16 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.return_none = return_none
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
-        self.mode = mode
         self.on_unused_input = on_unused_input  # Used for the pickling/copy
         self.output_keys = output_keys
         self.name = name
 
-    def create(self, defaults=None, trustme=False, storage_map=None):
-        """
-        Create a function.
-
-        Parameters
-        ----------
-        defaults
-            A list matching the inputs list and providing default values if the
-            default for an input is None, then that input is a required input.
-            For an input with an update, the default acts as initialization.
-        trustme
-            Disables some exceptions, used internally.
-
-        """
-        if defaults is None:
-            defaults = [None] * len(self.inputs)
-        # List of independent one-element lists, will be passed to the linker.
-        input_storage = []
-        _defaults = []
-
-        # The following loop is to fill in the input_storage and _defaults
-        # lists.
-        for (input, indices, subinputs), default in izip(self.indices,
-                                                         defaults):
-            __default = default
-
-            if isinstance(default, gof.Container):
-                # If the default is a gof.Container, this means we want to
-                # share the same storage. This is done by appending
-                # default.storage to input_storage.
-                if indices is not None:
-                    raise TypeError("Cannot take a Container instance as "
-                                    "default for a SymbolicInput.")
-                input_storage.append(default.storage)
-                default = None
-            else:
-                # Normal case: one new, independent storage unit
-                input_storage.append([None])
-
-            # Filling _defaults. Each entry is a tuple of three elements:
-            # (required, refeed, value)
-            # - required means that the user must provide a value when calling
-            #   the function
-            # - refeed means that we want to put the default back in the
-            #   storage after each function call
-            # - value is the value that will be put in the storage initially
-
-            if input.update is not None:
-                # If the input has an update, then (logically) it is
-                # not required since it is just a parameter and of
-                # course we don't want to refeed the default back into
-                # the storage as it would defeat the point of updating
-                # it. We always do this policy.
-                if default is None:
-                    if trustme or isinstance(__default, gof.Container):
-                        _defaults.append((False, False, None))
-                    else:
-                        # This might catch some bugs early
-                        raise ValueError(
-                            "A default (initial) value is required for an "
-                            "input which can update itself.", input)
-                else:
-                    _defaults.append((False, False, default))
-            else:
-                if default is None:
-                    if trustme or isinstance(__default, gof.Container):
-                        _defaults.append((False, False, None))
-                    else:
-                        # No default, so this is a required
-                        # input. Nothing to feed back, initial value
-                        # is None.
-                        _defaults.append((True, False, None))
-                else:
-                    # Default value. It is not required, but we want
-                    # to put it back into the storage everytime so it
-                    # behaves like most programming languages' default
-                    # values
-                    _defaults.append((False, True, default))
-        defaults = _defaults
-
-        # Get a function instance
-        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage,
-                                             storage_map=storage_map)
-        fn = self.function_builder(_fn, _i, _o, self.indices,
-                                   self.outputs, defaults, self.unpack_single,
-                                   self.return_none, self.output_keys, self,
-                                   name=self.name)
-        return fn
+        self.required = [(i.value is None) for i in self.inputs]
+        self.refeed = [
+            (i.value is not None and
+             not isinstance(i.value, gof.Container) and
+             i.update is None)
+            for i in self.inputs]
 
 
 ########################

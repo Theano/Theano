@@ -46,8 +46,7 @@ else:
 
 class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     """
-    This is build in a way that allow to reuse it to test the
-    equivalent gpu op.
+    This is build in a way that allow to reuse it to test the equivalent gpu op.
     """
     def __init__(self, name, shared=tensor._shared,
                  sub=tensor.Subtensor,
@@ -85,7 +84,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def function(self, inputs, outputs, accept_inplace=False,
                  op=None, mode=None, N=1, N_fast=None):
-        """ wrapper around theano.function that also check the output
+        """
+        wrapper around theano.function that also check the output
 
         :param N: the number of op expected in the toposort
                   if tuple of length 2, (expected if fast_compile,
@@ -464,15 +464,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertRaises(TypeError, n.__getitem__, ([0, 1], [0, theano.shared(True)]))
 
     def test_newaxis(self):
-        """
-        newaxis support comes from logic in the __getitem__ of TensorType
-        Variables, which currently inserts dimshuffle to get the right number
-        of dimensions, and adjusts the slice tuple accordingly.
+        # newaxis support comes from logic in the __getitem__ of TensorType
+        # Variables, which currently inserts dimshuffle to get the right number
+        # of dimensions, and adjusts the slice tuple accordingly.
+        #
+        # So testing is done via square-bracket notation rather than direct
+        # interaction with the Subtensor Op (which has no support of its own for
+        # newaxis).
 
-        So testing is done via square-bracket notation rather than direct
-        interaction with the Subtensor Op (which has no support of its own for
-        newaxis).
-        """
         newaxis = np.newaxis
 
         n = self.shared(np.arange(24, dtype=self.dtype).reshape((2, 3, 4)))
@@ -546,8 +545,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
                 t = op(n[:z, :z], m)
                 gn, gm = theano.tensor.grad(theano.tensor.sum(t), [n, m])
-                utt.verify_grad(lambda m: op(n[:z, :z], m), [mv])
-                utt.verify_grad(lambda nn: op(nn[:z, :z], mv), [data])
+                utt.verify_grad(lambda m: op(n[:z, :z], m), [mv], mode=self.mode)
+                utt.verify_grad(lambda nn: op(nn[:z, :z], mv), [data], mode=self.mode)
 
     def test_grad_0d(self):
         data = np.asarray(rand(2, 3), dtype=self.dtype)
@@ -1073,9 +1072,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             mode=self.mode)
 
     def test_inc_and_set_subtensor(self):
-        """
-        Test increment and set with broadcast
-        """
+        # Test increment and set with broadcast
 
         X = self.shared(np.ones((9, 9)).astype(self.dtype))
         y = set_subtensor(X[1::, 1::], 0)
@@ -1089,9 +1086,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert np.allclose(out, res)
 
     def test_advanced1_inc_and_set(self):
-        """
-        Test advanced increment and set.
-        """
+        # Test advanced increment and set.
+
         rng = np.random.RandomState(seed=utt.fetch_seed())
         all_inputs_var = []
         all_inputs_num = []

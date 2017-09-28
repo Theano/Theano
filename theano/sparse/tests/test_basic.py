@@ -98,11 +98,10 @@ def random_lil(shape, dtype, nnz):
 
 def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
                          explicit_zero=False, unsorted_indices=False):
-    """Return a tuple containing everything needed to
-    perform a test.
+    """
+    Return a tuple containing everything needed to perform a test.
 
-    If `out_dtype` is `None`, theano.config.floatX is
-    used.
+    If `out_dtype` is `None`, theano.config.floatX is used.
 
     :param format: Sparse format.
     :param shape: Shape of data.
@@ -119,8 +118,7 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
     :param unsorted_indices: when True, we make sure there is
                              unsorted indices in the returned
                              sparse matrix.
-    :return: (variable, data) where both `variable`
-             and `data` are list.
+    :return: (variable, data) where both `variable` and `data` are list.
 
     :note: explicit_zero and unsorted_indices was added in Theano 0.6rc4
     """
@@ -203,7 +201,6 @@ def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
     Returns
     -------
     None
-
     """
 
     def conv_none(x):
@@ -845,10 +842,8 @@ class test_comparison(unittest.TestCase):
                               self.testsDic[op], sp.csr_matrix)
 
     def test_equality_case(self):
-        """
-        Test assuring normal behaviour when values
-        in the matrices are equal
-        """
+        # Test assuring normal behaviour when values
+        # in the matrices are equal
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
@@ -995,9 +990,8 @@ class test_csm(unittest.TestCase):
                     [spmat.data], structured=True)
 
     def test_csm_sparser(self):
-        """
-        Test support for gradients sparser than the input.
-        """
+        # Test support for gradients sparser than the input.
+
         sp_types = {'csc': sp.csc_matrix,
                     'csr': sp.csr_matrix}
 
@@ -1023,9 +1017,8 @@ class test_csm(unittest.TestCase):
                 assert len(spmat.data) == len(res)
 
     def test_csm_unsorted(self):
-        """
-        Test support for gradients of unsorted inputs.
-        """
+        # Test support for gradients of unsorted inputs.
+
         sp_types = {'csc': sp.csc_matrix,
                     'csr': sp.csr_matrix}
 
@@ -1435,7 +1428,9 @@ class DotTests(utt.InferShapeTester):
 
 
 class UsmmTests(unittest.TestCase):
-    """ Test the Usmm and UsmmCscDense class and related optimization """
+    """
+    Test the Usmm and UsmmCscDense class and related optimization
+    """
     def setUp(self):
         x_size = (10, 100)
         y_size = (100, 200)
@@ -1723,9 +1718,8 @@ def test_sparse_shared_memory():
 
 
 def test_size():
-    """
-    Ensure the `size` attribute of sparse matrices behaves as in numpy.
-    """
+    # Ensure the `size` attribute of sparse matrices behaves as in numpy.
+
     for sparse_type in ('csc_matrix', 'csr_matrix'):
         x = getattr(theano.sparse, sparse_type)()
         y = getattr(scipy.sparse, sparse_type)((5, 7)).astype(config.floatX)
@@ -2479,8 +2473,8 @@ def _format_info(nb):
 
 
 class _HVStackTester(utt.InferShapeTester):
-    """Test for both HStack and VStack.
-
+    """
+    Test for both HStack and VStack.
     """
     nb = 3  # Number of sparse matrix to stack
     x, mat = _format_info(nb)
@@ -2527,7 +2521,8 @@ class _HVStackTester(utt.InferShapeTester):
 
 
 def _hv_switch(op, expected_function):
-    """Return the right test class for HStack or VStack.
+    """
+    Return the right test class for HStack or VStack.
 
     :Parameters:
     - `op`: HStack or VStack class.
@@ -2596,7 +2591,8 @@ class AddSSDataTester(utt.InferShapeTester):
 
 def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
                      grad_test=True, name=None, gap_grad=None):
-    """Return the appropriate test class for the elemwise on sparse.
+    """
+    Return the appropriate test class for the elemwise on sparse.
 
     :param op: Op to test.
     :expected_f: Function use to compare. This function must act
@@ -2765,10 +2761,8 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
 
 
 def test_hstack_vstack():
-    """
-    Tests sparse.hstack and sparse.vstack (as opposed to the HStack and VStack
-    classes that they wrap).
-    """
+    # Tests sparse.hstack and sparse.vstack (as opposed to the HStack and VStack
+    # classes that they wrap).
 
     def make_block(dtype):
         return theano.sparse.csr_matrix(name="%s block" % dtype,
@@ -2796,7 +2790,8 @@ def test_hstack_vstack():
 
 
 def structure_function(f, index=0):
-    """Decorator to structure a function wich
+    """
+    Decorator to structure a function wich
     apply on dense matrix.
 
     Here, the inputs of the function must be

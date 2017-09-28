@@ -13,7 +13,7 @@ With ``conda``
 ^^^^^^^^^^^^^^
 
 If you use conda, you can directly install both theano and pygpu. Libgpuarray
-will be automatically installed as a dependency.
+will be automatically installed as a dependency of pygpu.
 
 .. code-block:: bash
 
@@ -21,7 +21,7 @@ will be automatically installed as a dependency.
 
 .. warning::
 
-    Last conda packages for theano (0.9) and pygpu (0.6*) currently don't support
+    Latest conda packages for theano (``>= 0.9``) and pygpu (``>= 0.6*``) currently don't support
     Python 3.4 branch.
 
 With ``pip``
@@ -91,6 +91,12 @@ libgpuarray
 Install the latest, development version of libgpuarray following the
 `Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.
 
+.. note::
+
+    Currently, you need ``libgpuarray`` version ``0.7.1`` that is not in conda default channel.
+    But you can install it with our own channel ``mila-udem`` (that support only Python 2.7 and 3.5)::
+
+        conda install -c mila-udem pygpu
 
 Developer Installation
 ----------------------
@@ -119,5 +125,4 @@ If you encountered any trouble, head to the :ref:`troubleshooting` page.
 libgpuarray
 ^^^^^^^^^^^
 
-Install the latest, development version of libgpuarray following the
-`Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.
+See instructions for bleeding-edge installation about ``libgpuarray``.

@@ -16,11 +16,8 @@ from theano.printing import min_informative_str, debugprint
 
 
 def test_pydotprint_cond_highlight():
-    """
-    This is a REALLY PARTIAL TEST.
-
-    I did them to help debug stuff.
-    """
+    # This is a REALLY PARTIAL TEST.
+    # I did them to help debug stuff.
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
@@ -59,13 +56,10 @@ def test_pydotprint_return_image():
 
 
 def test_pydotprint_long_name():
-    """This is a REALLY PARTIAL TEST.
-
-    It prints a graph where there are variable and apply nodes whose long
-    names are different, but not the shortened names.
-    We should not merge those nodes in the dot graph.
-
-    """
+    # This is a REALLY PARTIAL TEST.
+    # It prints a graph where there are variable and apply nodes whose long
+    # names are different, but not the shortened names.
+    # We should not merge those nodes in the dot graph.
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
@@ -84,11 +78,14 @@ def test_pydotprint_long_name():
 
 
 def test_pydotprint_profile():
-    """Just check that pydotprint does not crash with profile."""
+    # Just check that pydotprint does not crash with profile.
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
         raise SkipTest('pydot not available')
+
+    if theano.config.mode in ("DebugMode", "DEBUG_MODE"):
+        raise SkipTest("Can't profile in DebugMode")
 
     A = tensor.matrix()
     prof = theano.compile.ProfileStats(atexit_print=False, gpu_checks=False)
@@ -99,8 +96,8 @@ def test_pydotprint_profile():
 
 
 def test_min_informative_str():
-    """ evaluates a reference output to make sure the
-        min_informative_str function works as intended """
+    # evaluates a reference output to make sure the
+    # min_informative_str function works as intended
 
     A = tensor.matrix(name='A')
     B = tensor.matrix(name='B')

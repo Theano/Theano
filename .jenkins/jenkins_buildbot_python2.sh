@@ -16,7 +16,7 @@ LIBDIR=${WORKSPACE}/local
 
 # Make fresh clones of libgpuarray (with no history since we don't need it)
 rm -rf libgpuarray
-git clone --depth 1 "https://github.com/Theano/libgpuarray.git"
+git clone "https://github.com/Theano/libgpuarray.git"
 
 # Clean up previous installs (to make sure no old files are left)
 rm -rf $LIBDIR
@@ -65,6 +65,9 @@ export PYTHONPATH=${WORKSPACE}:$PYTHONPATH
 
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
+
+# Exit if theano.gpuarray import fails
+python -c "import theano.gpuarray; theano.gpuarray.use('${DEVICE}')" || { echo 'theano.gpuarray import failed, exiting'; exit 1; }
 
 # We don't want warnings in the buildbot for errors already fixed.
 FLAGS=${THEANO_FLAGS},warn.ignore_bug_before=all,$FLAGS

@@ -1,6 +1,7 @@
 #section kernels
 
 #kernel max_pool2d_grad_grad_kernel : size, size, size, size, size, size, size, *, size, *, size, *, size, size, size, size, size, size, size, *, size :
+#include "cluda.h"
 
 KERNEL void max_pool2d_grad_grad_kernel(const ga_size nthreads,
    const ga_size num, const ga_size channels, const ga_size pooled_height,
@@ -47,6 +48,7 @@ KERNEL void max_pool2d_grad_grad_kernel(const ga_size nthreads,
 }
 
 #kernel max_pool3d_grad_grad_kernel : size, size, size, size, size, size, size, size, size, *, size, *, size, *, size, size, size, size, size, size, size, size, size, size, *, size :
+#include "cluda.h"
 
 KERNEL void max_pool3d_grad_grad_kernel(const ga_size nthreads,
    const ga_size num, const ga_size channels, const ga_size pooled_depth,

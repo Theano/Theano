@@ -7,7 +7,7 @@ set PATH=%PATH%;%CUDNNPATH%\bin;C:\Program Files\CMake\bin
 
 REM Set cache dir and copy from master
 set COMPILEDIR=%WORKSPACE%\cache
-C:\Windows\System32\robocopy /E /purge C:\Jenkins\theano_cache\buildbot_windows %COMPILEDIR% > nul
+REM C:\Windows\System32\robocopy /E /purge C:\Jenkins\theano_cache\buildbot_windows %COMPILEDIR% > nul
 
 set THEANO_FLAGS=init_gpu_device=cuda
 
@@ -20,7 +20,7 @@ set PATH=%PATH%;%LIBDIR%\bin
 REM Make fresh clones of libgpuarray (with no history since we dont need it)
 rmdir libgpuarray /s/q
 set /p GPUARRAY_BRANCH=<.jenkins/gpuarray-branch
-git clone -b %GPUARRAY_BRANCH% --depth 1 "https://github.com/Theano/libgpuarray.git"
+git clone -b %GPUARRAY_BRANCH% "https://github.com/Theano/libgpuarray.git"
 
 REM Clean up previous installs (to make sure no old files are left)
 rmdir %LIBDIR% /s/q
@@ -46,6 +46,9 @@ set PYTHONPATH=%PYTHONPATH%;%LIBDIR%\lib\python
 REM Then install
 python setup.py install --home=%LIBDIR%
 cd ..
+
+REM Exit if theano.gpuarray import fails
+python -c "import theano.gpuarray; theano.gpuarray.use('%DEVICE%')" || exit /b
 
 set THEANO_PARAM=theano --with-timer --timer-top-n 10 --with-xunit --xunit-file=theano_win_pr_tests.xml
 set NAME=pr_win

@@ -6,6 +6,7 @@ amount of useful generic optimization tools.
 from __future__ import absolute_import, print_function, division
 
 from collections import deque, defaultdict, OrderedDict
+import contextlib
 import copy
 import inspect
 import logging
@@ -1332,9 +1333,12 @@ class LocalOptGroup(LocalOptimizer):
                 self.process_count.setdefault(o, 0)
                 self.applied_true.setdefault(o, 0)
                 self.node_created.setdefault(o, 0)
-
-            for c in o.tracks():
-                self.track_map[c].append(o)
+            tracks = o.tracks()
+            if tracks is None:
+                self.track_map[None].append(o)
+            else:
+                for c in tracks:
+                    self.track_map[c].append(o)
 
     def __str__(self):
         return getattr(self, '__name__',
@@ -1366,21 +1370,27 @@ class LocalOptGroup(LocalOptimizer):
                     self.process_count[opt] += 1
                 if not new_repl:
                     continue
-                else:
-                    if self.profile:
-                        self.node_created[opt] += len(graph.ops(fgraph.variables, new_repl))
-                        self.applied_true[opt] += 1
-                    break  # break from the for loop over optimization.
+                if isinstance(new_repl, (tuple, list)):
+                    new_vars = new_repl
+                else:  # It must be a dict
+                    new_vars = list(new_repl.values())
+                if self.profile:
+                    self.node_created[opt] += len(graph.ops(fgraph.variables, new_vars))
+                    self.applied_true[opt] += 1
+                break  # break from the for loop over optimization.
             if not new_repl:  # No optimization applied in the last iteration
                 return repl
-            # only 1 iteration or we are at the start of the graph.
-            if not self.apply_all_opts or not new_repl[0].owner:
+            # only 1 iteration
+            if not self.apply_all_opts:
+                return new_repl
+            if not new_vars[0].owner:
+                # We are at the start of the graph.
                 return new_repl
             if len(new_repl) > 1:
                 s = set([v.owner for v in new_repl])
                 assert len(s) == 1
             repl = new_repl
-            node = repl[0].owner
+            node = new_vars[0].owner
 
     @staticmethod
     def print_profile(stream, prof, level=0):
@@ -2902,7 +2912,7 @@ def pre_greedy_local_optimizer(list_optimizations, out):
 def copy_stack_trace(from_var, to_var):
     """
     Copies the stack trace from one or more tensor variables to
-    one or more tensor variables.
+    one or more tensor variables and returns the destination variables.
 
     Parameters
     ----------
@@ -2946,6 +2956,25 @@ def copy_stack_trace(from_var, to_var):
         # Copy over stack traces from from_var to each variable to
         # to_var, including the stack_trace of the to_var before
         to_var.tag.trace = getattr(to_var.tag, 'trace', []) + tr
+    return to_var
+
+
+@contextlib.contextmanager
+def inherit_stack_trace(from_var):
+    """
+    Contextmanager that copies the stack trace from one or more variable nodes to all
+    variable nodes constructed in the body. new_nodes is the list of all the newly created
+    variable nodes inside an optimization that is managed by graph.nodes_constructed().
+
+    Parameters
+    ----------
+    from_var
+        Variable node or a list of variable nodes to copy stack traces from.
+
+    """
+    with graph.nodes_constructed() as new_nodes:
+        yield
+    copy_stack_trace(from_var, new_nodes)
 
 
 def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):

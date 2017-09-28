@@ -24,6 +24,7 @@ from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
 from theano.tensor.nnet.abstract_conv import bilinear_upsampling
 from theano.tensor.nnet.abstract_conv import separable_conv2d, separable_conv3d
+from theano.tensor.nnet.abstract_conv import causal_conv1d
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
 from theano.tensor.nnet.corr3d import (Corr3dMM, Corr3dMM_gradWeights,
@@ -740,6 +741,8 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
         cls.border_modes = ["valid", "half", "full"]
         cls.filter_flip = [True]
         cls.provide_shape = [False]
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         o = self.get_output_shape(i, f, s, b, fd)
@@ -1097,24 +1100,27 @@ class TestBilinearUpsampling(unittest.TestCase):
         compile_mode = compile_mode.excluding('AbstractConvCheck')
 
     def numerical_kernel_1D(self, ratio):
-        """Gets numerical 1D kernel for bilinear upsampling"""
+        """
+        Gets numerical 1D kernel for bilinear upsampling
+        """
         return np.array(list(range(1, ratio + 1)) +
                         list(range(ratio - 1, 0, -1)))
 
     def numerical_kernel_2D(self, ratio):
-        """Gets numerical 2D kernel for bilinear upsampling"""
+        """
+        Gets numerical 2D kernel for bilinear upsampling
+        """
         return np.array([i * j for i in self.numerical_kernel_1D(ratio) for j
                          in self.numerical_kernel_1D(ratio)]).\
             reshape(2 * ratio - 1, 2 * ratio - 1)
 
     def test_bilinear_kernel_2D(self):
-        """Test 2D kernels used in bilinear upsampling
+        # Test 2D kernels used in bilinear upsampling
+        #
+        # This method tests the correctness of the
+        # 2D kernel values used in bilinear upsampling
+        # for some upsampling ratios.
 
-        This method tests the correctness of the
-        2D kernel values used in bilinear upsampling
-        for some upsampling ratios.
-
-        """
         for ratio in [2, 3, 4, 5, 6, 7, 8, 9]:
             # getting the un-normalized kernel
             kernel = bilinear_kernel_2D(ratio=ratio, normalize=False)
@@ -1129,13 +1135,12 @@ class TestBilinearUpsampling(unittest.TestCase):
             utt.assert_allclose(kernel_2D, f())
 
     def test_bilinear_kernel_1D(self):
-        """Test 1D kernels used in bilinear upsampling
+        # Test 1D kernels used in bilinear upsampling
+        #
+        # This method tests the correctness of the
+        # 1D kernel values used in bilinear upsampling
+        # for some upsampling ratios.
 
-        This method tests the correctness of the
-        1D kernel values used in bilinear upsampling
-        for some upsampling ratios.
-
-        """
         rat = tensor.iscalar()
         kernel_ten = bilinear_kernel_1D(ratio=rat, normalize=False)
         f_ten = theano.function([rat], kernel_ten)
@@ -1159,7 +1164,8 @@ class TestBilinearUpsampling(unittest.TestCase):
             utt.assert_allclose(kernel_1D, f_ten_norm(ratio))
 
     def numerical_upsampling_multiplier(self, ratio):
-        """Compute upsampling multiplier
+        """
+        Compute upsampling multiplier
 
         This method computes the multipliers of an array
         that will be upsampled using bilinear interpolation.
@@ -1177,13 +1183,13 @@ class TestBilinearUpsampling(unittest.TestCase):
 
         int
             The size of the multipliers array
-
         """
         kern = np.arange(ratio + 1)
         return kern, kern.shape[0]
 
     def get_upsampled_twobytwo_mat(self, two_by_two, ratio):
-        """Upsample 4D array with two rows and two columns
+        """
+        Upsample 4D array with two rows and two columns
 
         This method gets a 4D numpy array with two rows and two columns
         and computes its upsampled array by using bilinear interpolation
@@ -1203,7 +1209,6 @@ class TestBilinearUpsampling(unittest.TestCase):
         4D numpy array
             The array upsampled by using bilinear interpolation. Array
             is of shape (batch size, num channels, 2*ratio, 2*ratio).
-
         """
         kern, shp = self.numerical_upsampling_multiplier(ratio)
         up_1D = two_by_two[:, :, :, :1] * kern[::-1] + \
@@ -1222,12 +1227,11 @@ class TestBilinearUpsampling(unittest.TestCase):
         return up_2D / float(ratio)**2
 
     def test_bilinear_upsampling_1D(self):
-        """Test bilinear upsampling using 1D kernels
+        # Test bilinear upsampling using 1D kernels
+        #
+        # This method tests the bilinear_upsampling method
+        # when using 1D kernels for some upsampling ratios.
 
-        This method tests the bilinear_upsampling method
-        when using 1D kernels for some upsampling ratios.
-
-        """
         # upsampling for a ratio of two
         input_x = np.array([[[[1, 2], [3, 4]]]], dtype=theano.config.floatX)
 
@@ -1241,8 +1245,10 @@ class TestBilinearUpsampling(unittest.TestCase):
 
     def test_bilinear_upsampling_reshaping(self):
         # Test bilinear upsampling without giving shape information
+        #
         # This method tests the bilinear_upsampling method
         # without giving batch_size and num_input_channels
+
         # upsampling for a ratio of two
         input_x = np.array([[[[1, 2], [3, 4]]]], dtype=theano.config.floatX)
 
@@ -1257,12 +1263,11 @@ class TestBilinearUpsampling(unittest.TestCase):
                 utt.assert_allclose(f(), up_mat_2d, rtol=1e-06)
 
     def test_compare_1D_and_2D_upsampling_values(self):
-        """Compare 1D and 2D upsampling
+        # Compare 1D and 2D upsampling
+        #
+        # This method verifies the bilinear upsampling done by using
+        # 1D and 2D kernels will generate the same result.
 
-        This method verifies the bilinear upsampling done by using
-        1D and 2D kernels will generate the same result.
-
-        """
         # checking upsampling with ratio 5
         input_x = np.random.rand(5, 4, 6, 7).astype(theano.config.floatX)
         mat_1D = bilinear_upsampling(input=input_x, ratio=5,
@@ -1292,13 +1297,12 @@ class TestConv2dTranspose(unittest.TestCase):
     mode = None
 
     def test_interface(self):
-        """Test conv2d_transpose wrapper.
+        # Test conv2d_transpose wrapper.
+        #
+        # This method tests that the order of the filter's
+        # axes expected by the function produces the correct
+        # output shape.
 
-        This method tests that the order of the filter's
-        axes expected by the function produces the correct
-        output shape.
-
-        """
         mode = self.mode
         if theano.config.mode == "FAST_COMPILE":
             mode = theano.compile.get_mode(
@@ -1349,11 +1353,10 @@ class TestConv2dGrads(unittest.TestCase):
         self.w = theano.tensor.tensor4('w', theano.config.floatX)  # filter weights
 
     def test_conv2d_grad_wrt_inputs(self):
-        """Compares calculated abstract grads wrt inputs with the fwd grads
-        This method checks the outputs of conv2_grad_wrt_inputs against
-        the outputs of T.nnet.conv forward grads to make sure the
-        results are the same.
-        """
+        # Compares calculated abstract grads wrt inputs with the fwd grads
+        # This method checks the outputs of conv2_grad_wrt_inputs against
+        # the outputs of T.nnet.conv forward grads to make sure the
+        # results are the same.
 
         for (in_shape, fltr_shape) in zip(self.inputs_shapes, self.filters_shapes):
             for bm in self.border_modes:
@@ -1391,11 +1394,10 @@ class TestConv2dGrads(unittest.TestCase):
                         utt.assert_allclose(f_new(filter_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))
 
     def test_conv2d_grad_wrt_weights(self):
-        """Compares calculated abstract grads wrt weights with the fwd grads
-        This method checks the outputs of conv2_grad_wrt_weights against
-        the outputs of T.nnet.conv forward grads to make sure the
-        results are the same.
-        """
+        # Compares calculated abstract grads wrt weights with the fwd grads
+        # This method checks the outputs of conv2_grad_wrt_weights against
+        # the outputs of T.nnet.conv forward grads to make sure the
+        # results are the same.
 
         for (in_shape, fltr_shape) in zip(self.inputs_shapes, self.filters_shapes):
             for bm in self.border_modes:
@@ -1454,8 +1456,8 @@ class Grouped_conv_noOptim(unittest.TestCase):
         self.corr_fwd = conv2d_corr
         self.corr_gradw = conv2d_corr_gw
         self.corr_gradi = conv2d_corr_gi
-        if theano.config.cxx == "":
-            raise SkipTest("CorrMM needs cxx")
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("CorrMM needs cxx and SciPy")
 
     def test_fwd(self):
         if self.convdim == 2:
@@ -1621,7 +1623,7 @@ class Grouped_conv3d_noOptim(Grouped_conv_noOptim):
         self.corr_fwd = conv3d_corr
         self.corr_gradw = conv3d_corr_gw
         self.corr_gradi = conv3d_corr_gi
-        if theano.config.cxx == "":
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
             raise SkipTest("CorrMM needs cxx")
 
 
@@ -1770,8 +1772,8 @@ class TestUnsharedConv(unittest.TestCase):
         self.verify_flags = [True] * 4
 
         self.ref_mode = 'FAST_RUN'
-        if theano.config.cxx == "":
-            raise SkipTest("CorrMM needs cxx")
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("CorrMM needs cxx or SciPy")
 
     def test_fwd(self):
         tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
@@ -1895,3 +1897,164 @@ class TestUnsharedConv(unittest.TestCase):
 
             if verify:
                 utt.verify_grad(conv_gradinputs, [kern, top], mode=self.mode, eps=1)
+
+
+class TestAsymmetricPadding(unittest.TestCase):
+    conv2d = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+    conv2d_op = theano.tensor.nnet.abstract_conv.AbstractConv2d
+    conv2d_gradw_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradWeights
+    conv2d_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv2d_gradInputs
+
+    mode = theano.compile.mode.Mode(optimizer='None')
+
+    img_shape = [(2, 2, 4, 4), (3, 2, 4, 2), (3, 3, 5, 3)]
+    kern_shape = [(4, 2, 2, 2), (2, 2, 4, 2), (2, 3, 3, 3)]
+    topgrad_shape = [(2, 4, 6, 6), (3, 2, 3, 4), (3, 2, 6, 1)]
+    border_mode = [((1, 2), (2, 1)), ((1, 1), (0, 3)), ((2, 1), (0, 0))]
+
+    def test_fwd(self):
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
+        img_sym = theano.tensor.tensor4('img')
+        kern_sym = theano.tensor.tensor4('kern')
+
+        for imshp, kshp, pad in zip(self.img_shape, self.kern_shape, self.border_mode):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+
+            asymmetric_conv_op = self.conv2d(border_mode=pad, subsample=(1, 1),
+                                             filter_dilation=(1, 1))
+            asymmetric_out_sym = asymmetric_conv_op(img_sym, kern_sym)
+            asymmetric_func = theano.function([img_sym, kern_sym], asymmetric_out_sym, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_op)
+                        for node in asymmetric_func.maker.fgraph.toposort()])
+            asymmetric_output = asymmetric_func(img, kern)
+
+            ref_conv_op = self.conv2d(border_mode="valid", subsample=(1, 1),
+                                      filter_dilation=(1, 1))
+            ref_out_sym = ref_conv_op(img_sym, kern_sym)
+            ref_func = theano.function([img_sym, kern_sym], ref_out_sym, mode=self.mode)
+
+            exp_imshp = (imshp[0], imshp[1],
+                         imshp[2] + pad[0][0] + pad[0][1],
+                         imshp[3] + pad[1][0] + pad[1][1])
+
+            exp_img = np.zeros(exp_imshp, dtype=theano.config.floatX)
+            exp_img[:, :, pad[0][0]:imshp[2] + pad[0][0],
+                    pad[1][0]:imshp[3] + pad[1][0]] = img
+            ref_output = ref_func(exp_img, kern)
+
+            utt.assert_allclose(asymmetric_output, ref_output)
+
+            utt.verify_grad(asymmetric_conv_op, [img, kern], mode=self.mode, eps=1)
+
+    def test_gradweight(self):
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
+
+        img_sym = theano.tensor.tensor4('img')
+        top_sym = theano.tensor.tensor4('top')
+
+        for imshp, kshp, topshp, pad in zip(self.img_shape, self.kern_shape, self.topgrad_shape, self.border_mode):
+            img = np.random.random(imshp).astype(theano.config.floatX)
+            top = np.random.random(topshp).astype(theano.config.floatX)
+
+            asymmetric_conv_op = self.conv2d_gradw(border_mode=pad, subsample=(1, 1),
+                                                   filter_dilation=(1, 1))
+            asymmetric_out_sym = asymmetric_conv_op(img_sym, top_sym, kshp[-2:])
+            asymmetric_func = theano.function([img_sym, top_sym], asymmetric_out_sym, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_gradw_op)
+                        for node in asymmetric_func.maker.fgraph.toposort()])
+            asymmetric_output = asymmetric_func(img, top)
+
+            ref_conv_op = self.conv2d_gradw(border_mode="valid", subsample=(1, 1),
+                                            filter_dilation=(1, 1))
+            ref_out_sym = ref_conv_op(img_sym, top_sym, kshp[-2:])
+            ref_func = theano.function([img_sym, top_sym], ref_out_sym, mode=self.mode)
+
+            exp_imshp = (imshp[0], imshp[1],
+                         imshp[2] + pad[0][0] + pad[0][1],
+                         imshp[3] + pad[1][0] + pad[1][1])
+
+            exp_img = np.zeros(exp_imshp, dtype=theano.config.floatX)
+            exp_img[:, :, pad[0][0]:imshp[2] + pad[0][0],
+                    pad[1][0]:imshp[3] + pad[1][0]] = img
+            ref_output = ref_func(exp_img, top)
+
+            utt.assert_allclose(asymmetric_output, ref_output)
+
+            def conv_gradweight(inputs_val, output_val):
+                return asymmetric_conv_op(inputs_val, output_val, tensor.as_tensor_variable(kshp[-2:]))
+
+            utt.verify_grad(conv_gradweight, [img, top], mode=self.mode, eps=1)
+
+    def test_gradinput(self):
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
+        kern_sym = theano.tensor.tensor4('kern')
+        top_sym = theano.tensor.tensor4('top')
+
+        for imshp, kshp, topshp, pad in zip(self.img_shape, self.kern_shape, self.topgrad_shape, self.border_mode):
+            kern = np.random.random(kshp).astype(theano.config.floatX)
+            top = np.random.random(topshp).astype(theano.config.floatX)
+
+            asymmetric_conv_op = self.conv2d_gradi(border_mode=pad, subsample=(1, 1),
+                                                   filter_dilation=(1, 1))
+            asymmetric_out_sym = asymmetric_conv_op(kern_sym, top_sym, imshp[-2:])
+            asymmetric_func = theano.function([kern_sym, top_sym], asymmetric_out_sym, mode=self.mode)
+            assert any([isinstance(node.op, self.conv2d_gradi_op)
+                        for node in asymmetric_func.maker.fgraph.toposort()])
+            asymmetric_output = asymmetric_func(kern, top)
+
+            ref_conv_op = self.conv2d_gradi(border_mode="valid", subsample=(1, 1),
+                                            filter_dilation=(1, 1))
+            exp_imshp = [imshp[2] + pad[0][0] + pad[0][1],
+                         imshp[3] + pad[1][0] + pad[1][1]]
+            ref_out_sym = ref_conv_op(kern_sym, top_sym, exp_imshp)
+            ref_func = theano.function([kern_sym, top_sym], ref_out_sym, mode=self.mode)
+
+            ref_output = ref_func(kern, top)
+
+            ref_output = ref_output[:, :, pad[0][0]:imshp[2] + pad[0][0],
+                                    pad[1][0]:imshp[3] + pad[1][0]]
+
+            utt.assert_allclose(asymmetric_output, ref_output)
+
+            def conv_gradinputs(filters_val, output_val):
+                return asymmetric_conv_op(filters_val, output_val, tensor.as_tensor_variable(imshp[-2:]))
+
+            utt.verify_grad(conv_gradinputs, [kern, top], mode=self.mode, eps=1)
+
+
+class TestCausalConv(unittest.TestCase):
+    mode = theano.compile.mode.Mode(optimizer='None')
+
+    img = np.array([[[2, 4, 9, 5, 8], [0, 0, 4, 0, 5]],
+                    [[2, 5, 8, 5, 5], [1, 3, 0, 7, 9]],
+                    [[7, 0, 7, 1, 0], [0, 1, 4, 7, 2]]]).astype(theano.config.floatX)
+    kern = np.array([[[5, 3, 1], [3, 1, 0]],
+                     [[6, 4, 9], [2, 2, 7]]]).astype(theano.config.floatX)
+    dilation = 2
+    precomp_top = np.array([[[10, 20, 63, 37, 88], [12, 24, 70, 46, 120]],
+                            [[13, 34, 47, 64, 78], [14, 36, 58, 70, 105]],
+                            [[35, 3, 68, 27, 38], [42, 2, 78, 22, 103]]]).astype(theano.config.floatX)
+
+    def test_interface(self):
+        img_sym = theano.tensor.tensor3('img')
+        kern_sym = theano.tensor.tensor3('kern')
+        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy needed")
+        sym_out = causal_conv1d(img_sym, kern_sym, self.kern.shape, filter_dilation=self.dilation)
+
+        causal_func = theano.function([img_sym, kern_sym], sym_out, mode=self.mode)
+
+        output = causal_func(self.img, self.kern)
+
+        utt.assert_allclose(output, self.precomp_top)
+
+        def causal_conv_fn(inputs_val, filters_val):
+            return causal_conv1d(inputs_val, filters_val, self.kern.shape, filter_dilation=1)
+
+        utt.verify_grad(causal_conv_fn, [self.img, self.kern], mode=self.mode, eps=1)

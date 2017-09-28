@@ -11,3 +11,5 @@ include bin/theano-cache
 include bin/theano-nose
 prune .jenkins
 prune .travis
+include versioneer.py
+include theano/_version.py

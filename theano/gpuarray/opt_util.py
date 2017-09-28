@@ -5,13 +5,12 @@ import numpy as np
 
 from theano import tensor, scalar as scal, Constant
 from theano.gof import local_optimizer
+from theano.gof.opt import inherit_stack_trace
 from theano.tensor import (DimShuffle, get_scalar_constant_value,
                            NotScalarConstantError)
 
 from .basic_ops import GpuFromHost, HostFromGpu, GpuAllocEmpty, GpuReshape
 from .elemwise import GpuDimShuffle, GpuElemwise
-
-_one = scal.constant(np.asarray(1.0, dtype='float32'))
 
 
 def grab_cpu_scalar(v, nd):
@@ -184,7 +183,8 @@ def alpha_merge(cls, alpha_in, beta_in):
                 except NotScalarConstantError:
                     inputs[alpha_in] = lr * targ.inputs[alpha_in]
                     inputs[beta_in] = lr * targ.inputs[beta_in]
-                return maker(targ, *inputs)
+                with inherit_stack_trace(node.outputs):
+                    return maker(targ, *inputs)
         return opt
     return wrapper
 
@@ -271,8 +271,11 @@ def output_merge(cls, alpha_in, beta_in, out_in):
                     return None
                 inputs = list(targ.inputs)
                 inputs[out_in] = W
-                inputs[beta_in] = _one.clone()
-                return maker(targ, *inputs)
+                dtype = inputs[beta_in].dtype
+                one = scal.constant(np.asarray(1.0, dtype=dtype))
+                inputs[beta_in] = one
+                with inherit_stack_trace(node.outputs):
+                    return maker(targ, *inputs)
         return opt
     return wrapper
 
@@ -326,7 +329,8 @@ def inplace_allocempty(op, idx):
                     len(alloc.clients) > 1):
                 alloc_op = GpuAllocEmpty(alloc.owner.op.dtype, alloc.owner.op.context_name)
                 inputs[idx] = alloc_op(*alloc.owner.inputs)
-            return maker(node, inputs)
+            with inherit_stack_trace(node.outputs):
+                return maker(node, inputs)
         return opt
     return wrapper
 

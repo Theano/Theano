@@ -39,7 +39,8 @@ def test_view():
         a = rand_gpuarray(20, dtype=dtype)
         g = GpuArrayType(dtype=dtype, broadcastable=(False,))('g')
 
-        f = theano.function([g], ViewOp()(g))
+        m = theano.compile.get_default_mode().excluding("local_view_op")
+        f = theano.function([g], ViewOp()(g), mode=m)
 
         assert isinstance(f.maker.fgraph.toposort()[0].op, ViewOp)
 
@@ -118,7 +119,7 @@ def test_gpuarray_shared_scalar():
 
 
 def test_unpickle_gpuarray_as_numpy_ndarray_flag0():
-    """ Test when pygpu isn't there for unpickle are in test_pickle.py"""
+    # Test when pygpu isn't there for unpickle are in test_pickle.py
     oldflag = config.experimental.unpickle_gpu_on_cpu
     config.experimental.unpickle_gpu_on_cpu = False
 
@@ -138,7 +139,7 @@ def test_unpickle_gpuarray_as_numpy_ndarray_flag0():
         config.experimental.unpickle_gpu_on_cpu = oldflag
 
 # These tests are disabled because they expect the impossible
-"""
+'''
 @makeSharedTester(
     shared_constructor_=gpuarray_shared_constructor,
     dtype_=theano.config.floatX,
@@ -177,7 +178,7 @@ class test_shared_options(object):
                                       cls=pygpu._array.ndgpuarray))
 class test_shared_options2(object):
     pass
-"""
+'''
 
 
 def test_set_value_non_contiguous():

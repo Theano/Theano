@@ -35,6 +35,7 @@ from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
                                      advanced_subtensor,
                                      advanced_subtensor1,
                                      advanced_inc_subtensor1)
+from theano.tensor.sort import TopKOp
 from theano import scalar
 from theano.scalar import basic
 from theano.tensor import basic as T
@@ -7487,25 +7488,14 @@ def local_useless_composite(node):
 # # Remove consider_constant #
 # ############################
 
+
 # Although the ops ConsiderConstant, ZeroGrad and DisconnectedGrad
 # just returns the input, it should be removed from the graph to
-# make sure all possible optimizations can be applied.
-register_canonicalize(gof.OpRemove(theano.gradient.consider_constant_),
-                      'fast_compile', 'fast_run',
-                      name='remove_consider_constant')
-
-register_canonicalize(gof.OpRemove(theano.gradient.zero_grad_),
-                      'fast_compile', 'fast_run', name='remove_zero_grad')
-
-register_canonicalize(gof.OpRemove(theano.gradient.disconnected_grad_),
-                      'fast_compile', 'fast_run',
-                      name='remove_disconnected_grad')
-
-
-@register_canonicalize
-@gof.local_optimizer([theano.gradient.GradClip])
-def local_grad_clip(node):
-    if isinstance(node.op, theano.gradient.GradClip):
+@register_canonicalize('fast_compile')
+@register_useless('fast_compile')
+@gof.local_optimizer(None)
+def local_view_op(node):
+    if isinstance(node.op, theano.compile.ops.ViewOp):
         return node.inputs
 
 
@@ -7548,3 +7538,35 @@ def local_merge_alloc(node):
                     dim_outer, T.eq(dim_outer, dim_inner))
         i += 1
     return [T.alloc(inputs_inner[0], *dims_outer)]
+
+
+@register_useless('fast_compile')
+@gof.local_optimizer([TopKOp])
+def local_useless_topk(node):
+    """
+    TopKOp generates two outputs by default
+    This opt removes the useless ones
+
+    """
+    op = node.op
+    if not isinstance(op, TopKOp):
+        return
+    if not (op.return_values and op.return_indices):
+        return False
+
+    x, k = node.inputs
+    ret_val = bool(node.outputs[0].clients)
+    ret_idx = bool(node.outputs[1].clients)
+
+    if not (ret_val ^ ret_idx):
+        # both true -> nothing to remove
+        # both false -> let pruner handle
+        return False
+
+    old_output = node.outputs[ret_idx]
+    new_output = TopKOp(
+        axis=op.axis,
+        idx_dtype=op.idx_dtype,
+        return_values=ret_val,
+        return_indices=ret_idx)(x, k)
+    return {old_output: new_output}

@@ -1,0 +1,66 @@
+package:
+  name: theano
+  version: {{ environ.get('THEANO_VERSION') }}
+
+source:
+  path: ../
+
+build:
+  script: python setup.py install --single-version-externally-managed --record record.txt
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - six >=1.9.0
+  run:
+    - python
+    - mkl-service
+    - libpython >=2.0  [win]
+    - m2w64-toolchain  [win]
+    - six >=1.9.0
+    - numpy >=1.9.1
+    - scipy >=0.14.0
+    - {{ pin_compatible('pygpu', '0.7', max_pin='0.8') }}   # [not osx]
+
+test:
+  requires:
+    - nose >=1.3.0
+    - nose-parameterized >=0.5.0
+
+  imports:
+    - theano
+    - theano.compile
+    - theano.compile.sandbox
+    - theano.compile.tests
+    - theano.gof
+    - theano.gof.tests
+    - theano.gpuarray
+    - theano.gpuarray.tests
+    - theano.misc
+    - theano.sandbox
+    - theano.scalar
+    - theano.scalar.tests
+    - theano.sparse
+    - theano.sparse.tests
+    - theano.tensor
+    - theano.tensor.nnet
+    - theano.tensor.nnet.tests
+    - theano.tensor.signal
+    - theano.tensor.signal.tests
+    - theano.tensor.tests
+    - theano.tests
+
+about:
+  home: http://deeplearning.net/software/theano/
+  license: BSD 3-Clause
+  license_family: BSD
+  summary: Optimizing compiler for evaluating mathematical expressions on CPUs and GPUs.
+  description: |
+    Theano is a Python library that allows you to define, optimize, and
+    evaluate mathematical expressions involving multi-dimensional arrays
+    efficiently, featuring tight integration with NumPy, transparent use
+    of a GPU, efficient symbolic differentiation, speed and stability
+    optimizations and dynamic C code generation.
+  dev_url: https://github.com/Theano/Theano
+  doc_url: http://deeplearning.net/software/theano/

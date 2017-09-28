@@ -18,6 +18,7 @@ from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp, ParamsType, EnumList
 from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
+from theano.gof.opt import inherit_stack_trace
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
@@ -118,7 +119,8 @@ def _make_handle(ctx):
     with ctx:
         err = cudnn.cudnnCreate(ctypes.byref(handle))
     if err != 0:
-        raise RuntimeError("error creating cudnn handle")
+        raise RuntimeError("Error creating cudnn handle. "
+                           "This can be a sign of a too old driver.", err)
     return handle
 
 
@@ -2507,7 +2509,7 @@ class GpuDnnRNNGradWeights(DnnBase):
 
 class RNNBlock(object):
     """
-    An object that allow us to use CuDNN v5 RNN implementation.
+    An object that allow us to use CuDNN RNN implementation.
     TODO: make an example how to use. You can check Theano tests
     test_dnn_rnn_gru() and test_dnn_rnn_lstm() in the file
     theano/gpuarray/tests/test_dnn.py for now.
@@ -2517,17 +2519,28 @@ class RNNBlock(object):
     ----------
     dtype : data type of computation
     hidden_size : int
+        hidden layer dimension.
     num_layers : int
+        number of the recurrent layer you want to set.
     rnn_mode : {'rnn_relu', 'rnn_tanh', 'lstm', 'gru'}
-        See cudnn documentation for ``cudnnRNNMode_t``.
+        rnn_relu: A single-gate recurrent neural network with a ReLU activation function.
 
+        .. math::
+
+        h_t=ReLU(W_ix_t+U_ih_{t-1}+b_{wi}+b_{Ri})
+        rnn_tanh: A single-gate recurrent neural network with a tanh activation function.
+
+        .. math::
+
+        h_t=tanh(W_ix_t+U_ih_{t-1}+b_{wi}+b_{Ri})
+
+        lstm: A four-gate Long Short-Term Memory network with no peephole connections.
+        gru: A three-gate network consisting of Gated Recurrent Units.
     input_mode : {'linear', 'skip'}
         linear: input will be multiplied by a biased matrix
         skip: No operation is performed on the input.  The size must match the hidden size.
     direction_mode : {'unidirectional', 'bidirectional'}
-        unidirectional: The network operates recurrently from the
-                        first input to the last.
-
+        unidirectional: The network operates recurrently from the first input to the last.
         bidirectional: The network operates from first to last then from last to first and concatenates the results at each layer.
 
     """
@@ -2548,6 +2561,20 @@ class RNNBlock(object):
         self.dtype = dtype
 
     def get_param_size(self, input_size):
+        """
+        Get the size of the shared variable for the parameters of the RNN.
+
+        This will return a size (in items) necessary to store all the
+        parameters for the RNN.  You should allocate a variable of
+        that size to store those parameters.  The order and layout of
+        the parameters is opaque.
+
+        Parameters
+        ----------
+        input_size: (int, int)
+            Size of the input blocks
+
+        """
         bytesize = _get_param_size(self.desc, input_size, self.dtype,
                                    self.context_name)
         bytesize = int(bytesize)
@@ -2555,11 +2582,38 @@ class RNNBlock(object):
         return bytesize // np.dtype(self.dtype).itemsize
 
     def split_params(self, w, layer, input_size):
+        """
+        Split the opaque parameter block into components.
+
+        Parameters
+        ----------
+        w: GpuArraySharedVariable
+            opaque parameter block
+        layer: int
+            ID of the layer
+        input_size: (int, int)
+            Size of the input blocks
+
+        """
         if not isinstance(w, GpuArraySharedVariable):
             raise TypeError("split_params only works on gpuarray shared variables")
         return _split_rnn_params(w, self.desc, layer, input_size, self.dtype, self.rnn_mode)
 
     def apply(self, w, x, hx, cx=None):
+        """
+        Apply the RNN to some data
+
+        Parameters
+        ----------
+        w:
+            opaque parameter block
+        x:
+            input
+        hx:
+            initial hidden state
+        cx:
+            initial cell state (for LSTM)
+        """
         # Don't return the reserve as an output
         return GpuDnnRNNOp(self.rnn_mode, self.direction_mode)(
             rnndesc_type.make_constant(self.desc),
@@ -3030,6 +3084,10 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     if op.unshared:
         return None
 
+    if isinstance(op.border_mode, tuple) and any(isinstance(p, tuple) for p in op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
+
     inp1 = inputs[0]
     inp2 = inputs[1]
 
@@ -3126,10 +3184,15 @@ def local_abstractconv_cudnn(node):
         return
     if node.op.unshared:
         return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
     if isinstance(node.op, AbstractConv2d):
-        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d):
-        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
@@ -3141,6 +3204,9 @@ def local_abstractconv_cudnn_alt(node):
     if version(raises=False) < 6000 and node.op.filter_dilation != (1, 1):
         return None
     if node.op.unshared:
+        return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
         return None
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
@@ -3258,6 +3324,7 @@ def local_abstractconv3d_cudnn_alt(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
+    num_groups = node.op.num_groups
     precision = get_precision(None, [inp1, inp2])
 
     if node.op.filter_flip:
@@ -3266,7 +3333,7 @@ def local_abstractconv3d_cudnn_alt(node):
         conv_mode = 'cross'
 
     if isinstance(op, AbstractConv3d):
-        if border_mode == 'half' or subsample != (1, 1, 1):
+        if border_mode == 'half' or subsample != (1, 1, 1) or num_groups > 1:
             return None
         if border_mode == 'full':
             direction_hint = 'bprop inputs'
@@ -3284,7 +3351,7 @@ def local_abstractconv3d_cudnn_alt(node):
 
     elif isinstance(op, AbstractConv3d_gradWeights):
         if(border_mode == 'valid' and subsample == (1, 1, 1) and
-           filter_dilation == (1, 1, 1)):
+           filter_dilation == (1, 1, 1) and num_groups == 1):
             img = gpu_contiguous(inp1)
             topgrad = gpu_contiguous(inp2)
             ctx_name = infer_context_name(img, topgrad)
@@ -3315,7 +3382,7 @@ def local_abstractconv3d_cudnn_alt(node):
             return None
 
     elif isinstance(op, AbstractConv3d_gradInputs):
-        if border_mode == 'valid' and subsample == (1, 1, 1):
+        if border_mode == 'valid' and subsample == (1, 1, 1) and num_groups == 1:
             kerns = gpu_contiguous(inp1.dimshuffle(1, 0, 2, 3, 4))
             topgrad = gpu_contiguous(inp2)
             ctx_name = infer_context_name(kerns, topgrad)
@@ -3350,10 +3417,15 @@ def local_abstractconv_gw_cudnn(node):
         return
     if node.op.unshared:
         return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
     if isinstance(node.op, AbstractConv2d_gradWeights):
-        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d_gradWeights):
-        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @local_optimizer([AbstractConv2d_gradInputs, AbstractConv3d_gradInputs])
@@ -3363,10 +3435,15 @@ def local_abstractconv_gi_cudnn(node):
         return
     if node.op.unshared:
         return None
+    if isinstance(node.op.border_mode, tuple) and any(isinstance(p, tuple) for p in node.op.border_mode):
+        # Asymmetric padding not yet supported
+        return None
     if isinstance(node.op, AbstractConv2d_gradInputs):
-        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
     elif isinstance(node.op, AbstractConv3d_gradInputs):
-        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+        with inherit_stack_trace(node.outputs):
+            return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @inplace_allocempty(GpuDnnConv, 2)
@@ -3382,7 +3459,6 @@ def local_dnn_convgw_inplace(node, inputs):
 @inplace_allocempty(GpuDnnConvGradI, 2)
 def local_dnn_convgi_inplace(node, inputs):
     return [GpuDnnConvGradI(algo=node.op.algo, inplace=True, num_groups=node.op.num_groups)(*inputs)]
-
 
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
@@ -3653,11 +3729,12 @@ def local_dnn_reduction(node):
     if not cudnn.cudnnReduceTensorOp_t.has_alias(node.op.scalar_op.name):
         return
 
-    return (GpuDnnReduction(node.op.scalar_op.name,
-                            node.op.axis,
-                            node.op.acc_dtype,
-                            node.op.dtype,
-                            False)(node.inputs[0]),)
+    with inherit_stack_trace(node.outputs):
+        return (GpuDnnReduction(node.op.scalar_op.name,
+                                node.op.axis,
+                                node.op.acc_dtype,
+                                node.op.dtype,
+                                False)(node.inputs[0]),)
 
 
 @register_opt('cudnn')

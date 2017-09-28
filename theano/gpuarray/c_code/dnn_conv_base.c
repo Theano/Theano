@@ -85,6 +85,34 @@ typedef std::unordered_map<std::string, AlgoRec> AlgoCache;
 
 #line 87 "dnn_conv_base.c"
 
+#ifdef DEBUG
+
+#if __cplusplus < 201103L
+
+const char* const _cppver = "No timing available: C++11 or later is required.";
+
+#else
+
+#define DEBUG_TIMING
+
+#include <chrono>
+const char* const _cppver = NULL;
+struct TheanoTimer {
+    double milliseconds;
+    std::chrono::steady_clock::time_point base;
+    void start() {base = std::chrono::steady_clock::now();}
+    void end() {
+        milliseconds =
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - base
+            ).count() / 1000000.0;
+    }
+};
+
+#endif
+
+#endif
+
 pthread_mutex_t  algoMutex;
 AlgoCache        algoCache;
 

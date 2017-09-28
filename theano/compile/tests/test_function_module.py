@@ -340,6 +340,7 @@ class T_function(unittest.TestCase):
     def test_swap_SharedVariable_with_given(self):
         # A special testcase for logistic_sgd.py in Deep Learning Tutorial
         # This test assert that SharedVariable in different function have same storage
+
         train_x = theano.shared(value=np.random.rand(10, 10).astype(config.floatX))
         test_x = theano.shared(value=np.random.rand(10, 10).astype(config.floatX))
 
@@ -494,6 +495,7 @@ class T_function(unittest.TestCase):
         # impossible for outputs to be aliased to the input variables provided by the user,
         # either through a view-map or a destroy map. New tests should be added in the future
         # when borrow=True is implemented.
+
         a = T.dmatrix()
         aval = np.random.rand(3, 3)
 
@@ -547,12 +549,14 @@ class T_function(unittest.TestCase):
 
     def test_givens_input_var(self):
         # Ensure error is raised when trying to replace an input variable.
+
         x = T.scalar('x')
         y = x * 2
         self.assertRaises(RuntimeError, function, [x], y, givens={x: x + 1})
 
     def test_free(self):
         # Make test on free() function
+
         x = T.vector('x')
         func = function([x], x + 1)
         func.fn.allow_gc = False
@@ -573,6 +577,7 @@ class T_function(unittest.TestCase):
     def test_default_values(self):
         # Check that default values are restored
         # when an exception occurs in interactive mode.
+
         a, b = T.dscalars('a', 'b')
         c = a + b
         func = theano.function([theano.In(a, name='first'), theano.In(b, value=1, name='second')], c)
@@ -640,7 +645,7 @@ class T_picklefunction(unittest.TestCase):
         self.assertTrue(len(f.defaults) == len(g.defaults))
         self.assertTrue(f._check_for_aliased_inputs is g._check_for_aliased_inputs)
         self.assertTrue(f.name == g.name)
-        self.assertTrue(f.maker.fgraph.name == f.maker.fgraph.name)
+        self.assertTrue(f.maker.fgraph.name == g.maker.fgraph.name)
         # print 'f.defaults = %s' % (f.defaults, )
         # print 'g.defaults = %s' % (g.defaults, )
         self.assertTrue(all([f_req == g_req and f_feed == g_feed and
@@ -676,9 +681,11 @@ class T_picklefunction(unittest.TestCase):
                 raise
         self.assertTrue(f.trust_input is g.trust_input)
         f(np.asarray(2.))
-        self.assertRaises((ValueError, AttributeError), f, 2.)
+        self.assertRaises((ValueError, AttributeError,
+                           theano.compile.debugmode.InvalidValueError), f, 2.)
         g(np.asarray(2.))
-        self.assertRaises((ValueError, AttributeError), g, 2.)
+        self.assertRaises((ValueError, AttributeError,
+                           theano.compile.debugmode.InvalidValueError), g, 2.)
 
     def test_output_keys(self):
         x = T.vector()
@@ -952,6 +959,7 @@ class SomethingToPickle(object):
 
 def test_empty_givens_updates():
     # Regression test for bug fixed in 8625e03.
+
     # Empty givens / updates dictionaries were not properly detected before,
     # triggering useless crashes at compile time.
     x = T.scalar()
@@ -1020,7 +1028,9 @@ def test_sync_update():
         f.sync_shared()
         # Sync to make sure all computation are finished.
         t_2 = time.time()
-        assert (t_1 - t_0) > (t_2 - t_1)
+        d1 = (t_1 - t_0)
+        d2 = (t_2 - t_1)
+        assert d1 > d2, (d1, d2)
     else:
         raise SkipTest("Sync is only availble when pygpu is activated.")
 

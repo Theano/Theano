@@ -229,11 +229,10 @@ class T_sigmoid_opts(unittest.TestCase):
                 sigmoid_inplace])
 
     def test_local_sigm_times_exp(self):
-        """
-        Test the `local_sigm_times_exp` optimization.
-        exp(x) * sigm(-x) -> sigm(x)
-        exp(-x) * sigm(x) -> sigm(-x)
-        """
+        # Test the `local_sigm_times_exp` optimization.
+        # exp(x) * sigm(-x) -> sigm(x)
+        # exp(-x) * sigm(x) -> sigm(-x)
+
         def match(func, ops):
             # print [node.op.scalar_op for node in func.maker.fgraph.toposort()]
             assert [node.op for node in func.maker.fgraph.toposort()] == ops
@@ -264,12 +263,11 @@ class T_sigmoid_opts(unittest.TestCase):
         #                                           tensor.exp])
 
     def test_perform_sigm_times_exp(self):
-        """
-        Test the core function doing the `sigm_times_exp` optimization.
+        # Test the core function doing the `sigm_times_exp` optimization.
+        #
+        # It is easier to test different graph scenarios this way than by
+        # compiling a theano function.
 
-        It is easier to test different graph scenarios this way than by
-        compiling a theano function.
-        """
         x, y, z, t = tensor.vectors('x', 'y', 'z', 't')
         exp = tensor.exp
 
@@ -450,7 +448,6 @@ class T_softplus_opts(unittest.TestCase):
 
 
 class T_sigmoid_utils(unittest.TestCase):
-
     """
     Test utility functions found in 'sigm.py'.
     """

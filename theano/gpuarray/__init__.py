@@ -20,7 +20,6 @@ pygpu_activated = False
 try:
     import pygpu
     import pygpu.gpuarray
-    import pygpu.version
 except ImportError:
     pygpu = None
 
@@ -29,7 +28,7 @@ from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                    GpuArraySharedVariable, gpuarray_shared_constructor,
                    reg_context, get_context, ContextNotDefined)
 from .basic_ops import as_gpuarray_variable
-from . import fft, dnn, opt, extra_ops, multinomial, reduction, rng_mrg, ctc
+from . import fft, dnn, opt, extra_ops, multinomial, reduction, sort, rng_mrg, ctc
 
 
 def transfer(x, target):
@@ -42,34 +41,72 @@ def transfer(x, target):
 register_transfer(transfer)
 
 
+def pygpu_parse_version(version_string):
+    from collections import namedtuple
+    version_type = namedtuple('version_type', ('major', 'minor', 'patch', 'fullversion'))
+    pieces = version_string.split('.', 2)
+    assert len(pieces) == 3, version_string
+    major = int(pieces[0])
+    minor = int(pieces[1])
+    if "+" in pieces[2]:  # It contain a git commit.
+        patch = int(pieces[2].split('+', 1)[0])
+    else:  # Maybe it end with .devN
+        patch = int(pieces[2].split('.', 1)[0])
+    fullversion = '%d.%d.%s' % (major, minor, pieces[2])
+    return version_type(major=major, minor=minor, patch=patch, fullversion=fullversion)
+
+
 def init_dev(dev, name=None, preallocate=None):
     global pygpu_activated
     if not config.cxx:
         raise RuntimeError("The new gpu-backend need a c++ compiler.")
-    if (pygpu.version.major, pygpu.version.minor, pygpu.version.patch) < (0, 6, 1):
+    pygpu_version = pygpu_parse_version(pygpu.__version__)
+    if (pygpu_version.major != 0 or pygpu_version.minor != 7 or
+            pygpu_version.patch < 0):
         raise ValueError(
-            "Your installed version of pygpu is too old, please upgrade to 0.6.1 or later")
+            "Your installed version of pygpu(%s) is too old, please upgrade to 0.7.0 or later (but below 0.8.0)" %
+            pygpu_version.fullversion)
     # This is for the C headers API, we need to match the exact version.
-    if pygpu.gpuarray.api_version()[0] != 1:
+    gpuarray_version_major_supported = 2
+    gpuarray_version_major_detected = pygpu.gpuarray.api_version()[0]
+    if gpuarray_version_major_detected != gpuarray_version_major_supported:
         raise ValueError(
-            "Your installed libgpuarray is not in sync, please make sure to have the appropriate version")
+            "Your installed version of libgpuarray is not in sync with the current Theano"
+            " version. The installed libgpuarray version supports API version %d,"
+            " while current Theano supports API version %d. Change the version of"
+            " libgpuarray or Theano to fix this problem.",
+            gpuarray_version_major_detected,
+            gpuarray_version_major_supported)
     if dev not in init_dev.devmap:
+        args = dict()
         if config.gpuarray.cache_path != '':
-            os.environ['GPUARRAY_CACHE_PATH'] = config.gpuarray.cache_path
+            args['kernel_cache_path'] = config.gpuarray.cache_path
         if preallocate is None:
             preallocate = config.gpuarray.preallocate
+        if preallocate < 0:
+            args['max_cache_size'] = 0
+        else:
+            args['initial_cache_size'] = preallocate
         context = pygpu.init(
             dev,
-            disable_alloc_cache=preallocate < 0,
+            sched=config.gpuarray.sched,
             single_stream=config.gpuarray.single_stream,
-            sched=config.gpuarray.sched)
+            **args)
         context.dev = dev
         init_dev.devmap[dev] = context
         reg_context(name, context)
 
+        MB = (1024 * 1024)
         if dev.startswith('cuda'):
             avail = dnn.dnn_available(name)
-            if avail:
+            # If we try to enable cudnn and there isn't enough GPU
+            # memory, there will be an unclear error message. So do
+            # not even try a clear error.
+            if avail and context.free_gmem < 75 * MB:
+                raise RuntimeError(
+                    "Can not enable cuDNN as there is only %d MB of free GPU memory." %
+                    (context.free_gmem/MB))
+            elif avail:
                 context.cudnn_handle = dnn._make_handle(context)
             elif config.dnn.enabled == 'True':
                 raise RuntimeError(
@@ -85,12 +122,16 @@ def init_dev(dev, name=None, preallocate=None):
         if preallocate < 0:
             print("Disabling allocation cache on %s" % (dev,))
         elif preallocate > 0:
-            MB = (1024 * 1024)
             if preallocate <= 1:
                 gmem = min(preallocate, 0.95) * context.total_gmem
             else:
                 gmem = preallocate * MB
-            if gmem > context.free_gmem - 50 * MB:
+            if gmem > context.free_gmem:
+                raise RuntimeError(
+                    "Trying to preallocate %d MB of GPU memory while only"
+                    " %d MB are available." % (gmem / MB,
+                                                     context.free_gmem / MB))
+            elif gmem > context.free_gmem - 50 * MB:
                 print(
                     "WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
 
@@ -115,12 +156,12 @@ def init_dev(dev, name=None, preallocate=None):
     # This will map the context name to the real context object.
     if config.print_active_device:
         try:
-            pcibusid = '(' + context.pcibusid + ')'
+            unique_id = '(' + context.unique_id + ')'
         except pygpu.gpuarray.UnsupportedException:
-            pcibusid = ''
+            unique_id = ''
 
         print("Mapped name %s to device %s: %s %s" %
-              (name, dev, context.devname, pcibusid),
+              (name, dev, context.devname, unique_id),
               file=sys.stderr)
     pygpu_activated = True
 
@@ -207,5 +248,5 @@ else:
             config.device.startswith('opencl') or
             config.device.startswith('cuda') or
             config.contexts != ''):
-        error("pygpu was configured but could not be imported or is too old (version 0.6 or higher required)",
+        error("pygpu was configured but could not be imported or is too old (version 0.7 or higher required)",
               exc_info=True)

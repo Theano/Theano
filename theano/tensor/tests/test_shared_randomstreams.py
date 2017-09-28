@@ -116,7 +116,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert np.allclose(fn_val1, numpy_val1)
 
     def test_ndim(self):
-        """Test that the behaviour of 'ndim' optional parameter"""
+        # Test that the behaviour of 'ndim' optional parameter
         # 'ndim' is an optional integer parameter, specifying the length
         # of the 'shape', passed as a keyword argument.
 
@@ -137,7 +137,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         self.assertRaises(ValueError, random3.uniform, (2, 2), ndim=1)
 
     def test_uniform(self):
-        """Test that RandomStreams.uniform generates the same results as numpy"""
+        # Test that RandomStreams.uniform generates the same results as numpy
         # Check over two calls to see if the random state is correctly updated.
         random = RandomStreams(utt.fetch_seed())
         fn = function([], random.uniform((2, 2), -1, 1))
@@ -153,7 +153,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert np.allclose(fn_val1, numpy_val1)
 
     def test_normal(self):
-        """Test that RandomStreams.normal generates the same results as numpy"""
+        # Test that RandomStreams.normal generates the same results as numpy
         # Check over two calls to see if the random state is correctly updated.
 
         random = RandomStreams(utt.fetch_seed())
@@ -189,7 +189,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert np.all(fn_val1 == numpy_val1)
 
     def test_choice(self):
-        """Test that RandomStreams.choice generates the same results as numpy"""
+        # Test that RandomStreams.choice generates the same results as numpy
         # Check over two calls to see if the random state is correctly updated.
         random = RandomStreams(utt.fetch_seed())
         fn = function([], random.choice((11, 8), 10, 1, 0))
@@ -205,7 +205,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert np.all(fn_val1 == numpy_val1)
 
     def test_poisson(self):
-        """Test that RandomStreams.poisson generates the same results as numpy"""
+        # Test that RandomStreams.poisson generates the same results as numpy
 
         # Check over two calls to see if the random state is correctly updated.
         random = RandomStreams(utt.fetch_seed())
@@ -222,7 +222,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert np.all(fn_val1 == numpy_val1)
 
     def test_permutation(self):
-        """Test that RandomStreams.permutation generates the same results as numpy"""
+        # Test that RandomStreams.permutation generates the same results as numpy
         # Check over two calls to see if the random state is correctly updated.
         random = RandomStreams(utt.fetch_seed())
         fn = function([], random.permutation((20,), 10), updates=random.updates())
@@ -241,7 +241,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert np.all(fn_val1 == numpy_val1)
 
     def test_multinomial(self):
-        """Test that RandomStreams.multinomial generates the same results as numpy"""
+        # Test that RandomStreams.multinomial generates the same results as numpy
         # Check over two calls to see if the random state is correctly updated.
         random = RandomStreams(utt.fetch_seed())
         fn = function([], random.multinomial((4, 4), 1, [0.1]*10), updates=random.updates())
@@ -258,7 +258,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert np.all(fn_val1 == numpy_val1)
 
     def test_shuffle_row_elements(self):
-        """Test that RandomStreams.shuffle_row_elements generates the right results"""
+        # Test that RandomStreams.shuffle_row_elements generates the right results
         # Check over two calls to see if the random state is correctly updated.
 
         # On matrices, for each row, the elements of that row should be shuffled.
@@ -783,22 +783,20 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert rr is s_rng.container.storage[0]
 
     def test_multiple_rng_aliasing(self):
-        """
-        Test that when we have multiple random number generators, we do not alias
-        the state_updates member. `state_updates` can be useful when attempting to
-        copy the (random) state between two similar theano graphs. The test is
-        meant to detect a previous bug where state_updates was initialized as a
-        class-attribute, instead of the __init__ function.
-        """
+        # Test that when we have multiple random number generators, we do not alias
+        # the state_updates member. `state_updates` can be useful when attempting to
+        # copy the (random) state between two similar theano graphs. The test is
+        # meant to detect a previous bug where state_updates was initialized as a
+        # class-attribute, instead of the __init__ function.
+
         rng1 = RandomStreams(1234)
         rng2 = RandomStreams(2392)
         assert rng1.state_updates is not rng2.state_updates
         assert rng1.gen_seedgen is not rng2.gen_seedgen
 
     def test_random_state_transfer(self):
-        """
-        Test that random state can be transferred from one theano graph to another.
-        """
+        # Test that random state can be transferred from one theano graph to another.
+
         class Graph:
             def __init__(self, seed=123):
                 self.rng = RandomStreams(seed)

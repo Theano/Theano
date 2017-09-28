@@ -445,9 +445,7 @@ def test_gpueye():
 
 
 def test_hostfromgpu_shape_i():
-    """
-    Test that the shape is lifted over hostfromgpu
-    """
+    # Test that the shape is lifted over hostfromgpu
 
     m = mode_with_gpu.including('local_dot_to_dot22',
                                 'local_dot22_to_dot22scalar',

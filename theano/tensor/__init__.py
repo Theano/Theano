@@ -40,10 +40,10 @@ from theano.tensor import nnet  # used for softmax, sigmoid, etc.
 from theano.gradient import Rop, Lop, grad, numeric_grad, verify_grad, \
     jacobian, hessian, consider_constant
 
-from theano.tensor.sort import sort, argsort
+from theano.tensor.sort import sort, argsort, topk, argtopk, topk_and_argtopk
 from theano.tensor.extra_ops import (DiffOp, bincount, squeeze,
                        repeat, bartlett, fill_diagonal, fill_diagonal_offset,
-                       cumsum, cumprod)
+                       cumsum, cumprod, unravel_index, ravel_multi_index)
 
 # SpecifyShape is defined in theano.compile, but should be available in tensor
 from theano.compile import SpecifyShape, specify_shape
