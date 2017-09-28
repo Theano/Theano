@@ -251,6 +251,8 @@ def local_conv2d_cpu(node):
         return None
     if node.op.num_groups > 1 or node.op.unshared:
         return None
+    if node.op.filter_dilation != (1, 1):
+        return None
 
     rval = conv2d(img, kern,
                   node.op.imshp, node.op.kshp,
