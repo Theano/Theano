@@ -37,6 +37,8 @@ Update the year in the ``Theano/LICENSE.txt`` file too, if necessary.
 ``NEWS.txt`` usually contains the name and date of the release, change them
 too.
 
+Update the fallback version in ``setup.py``.
+
 Update the code and the documentation for the theano flags
 ``warn.ignore_bug_before`` to accept the new version. You must modify the
 file ``theano/configdefaults.py`` and ``doc/library/config.txt``.
@@ -48,7 +50,7 @@ You will need to commit the previous changes, tag the resulting version, and
 push that into the original repository. The syntax is something like the
 following::
 
-    git commit -m "Modifications for 0.X.Y release" doc/conf.py NEWS.txt HISTORY.txt theano/configdefaults.py doc/library/config.txt
+    git commit -m "Modifications for 0.X.Y release" setup.py doc/conf.py NEWS.txt HISTORY.txt theano/configdefaults.py doc/library/config.txt
     git tag -a rel-0.X.Y
     git push
     git push --tags
