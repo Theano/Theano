@@ -16,6 +16,7 @@ except ImportError:
 
 import versioneer
 
+FALLBACK_VERSION="0.10.0beta3+unknown"
 
 CLASSIFIERS = """\
 Development Status :: 4 - Beta
@@ -70,9 +71,15 @@ def find_packages(where='.', exclude=()):
     return out
 
 
+version_data = versioneer.get_versions()
+
+if version_data['error'] is not None:
+    version_data['version'] = FALLBACK_VERSION
+
+
 def do_setup():
     setup(name=NAME,
-          version=versioneer.get_version(),
+          version=version_data['version'],
           description=DESCRIPTION,
           long_description=LONG_DESCRIPTION,
           classifiers=CLASSIFIERS,
