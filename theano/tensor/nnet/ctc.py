@@ -4,6 +4,7 @@ import sys
 import theano.tensor as T
 from theano import config
 from theano import gof
+from theano.scalar import as_scalar
 from theano.gof import local_optimizer
 from theano.gof.cmodule import GCC_compiler
 from theano.tensor.opt import register_canonicalize
@@ -102,7 +103,7 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
     """
     __props__ = ('compute_grad',)
 
-    _cop_num_inputs = 3
+    _cop_num_inputs = 4
     _cop_num_outputs = 2
 
     func_file = os.path.join('c_code', 'ctc_wrapper.c')
@@ -175,13 +176,16 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         if t_input_lengths.ndim != 1:
             raise ValueError('input_lengths must have 1 dimension.')
 
+        openmp_enabled = 1 if gof.OpenMPOp(self).openmp is not None else 0
+        openmp_enabled = as_scalar(openmp_enabled).astype('int32')
+
         costs = T.fvector(name="ctc_cost")
         outputs = [costs]
         if self.compute_grad:
             gradients = T.ftensor3(name="ctc_grad")
             outputs += [gradients]
 
-        return gof.Apply(self, inputs=[t_activations, t_labels, t_input_lengths],
+        return gof.Apply(self, inputs=[t_activations, t_labels, t_input_lengths, openmp_enabled],
                          outputs=outputs)
 
     def L_op(self, inputs, outputs, output_grads):
@@ -193,7 +197,8 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         total_grad = T.basic.batched_dot(grad_op, gradients.dimshuffle(1, 0, 2)).dimshuffle(1, 0, 2)
         return [total_grad,
                 grad_undefined(self, 1, inputs[1]),
-                grad_undefined(self, 2, inputs[2])]
+                grad_undefined(self, 2, inputs[2]),
+                grad_undefined(self, 3, inputs[3])]
 
 
 def ctc(activations, labels, input_lengths):
@@ -239,5 +244,6 @@ def local_ctc_no_grad(node):
     if isinstance(node.op, ConnectionistTemporalClassification):
         if len(node.outputs) > 1:
             if len(node.outputs[1].clients) == 0:   # gradient is not used
-                return [ConnectionistTemporalClassification(compute_grad=False)(*node.inputs), None]
+                activations, labels, input_lengths, _ = node.inputs
+                return [ConnectionistTemporalClassification(compute_grad=False)(activations, labels, input_lengths), None]
     return False
