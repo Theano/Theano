@@ -14,7 +14,7 @@ void ctc_context_init(ctc_context_t * context)
     memset(options, 0, sizeof(struct ctcOptions));
     options->loc = CTC_CPU;
 #if defined(_OPENMP)
-    options->num_threads = omp_get_num_threads();
+    options->num_threads = omp_get_max_threads();
 #else
     options->num_threads = 1;
 #endif
