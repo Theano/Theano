@@ -110,10 +110,12 @@ void create_flat_labels( PyArrayObject * label_matrix, int ** flat_labels,
 int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
                                  PyArrayObject *  in_labels,
                                  PyArrayObject *  in_input_lengths,
-                                 const int openmp_enabled,
                                  PyArrayObject ** out_costs,
-                                 PyArrayObject ** out_gradients)
+                                 PyArrayObject ** out_gradients,
+                                 PARAMS_TYPE * params)
 {
+    const int openmp_enabled = params->openmp;
+
     ctc_context_t ctc_object;
     ctc_context_t * context = &ctc_object;
     ctc_context_init( context, openmp_enabled );
