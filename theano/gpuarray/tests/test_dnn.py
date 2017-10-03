@@ -171,6 +171,27 @@ def test_dnn_conv_inplace():
     assert len([n for n in topo if isinstance(n.op, GpuAllocEmpty)]) == 2
 
 
+def test_dnn_conv_invalid_precision():
+    img = T.tensor4()
+    kerns = T.tensor4()
+    topgrad = T.tensor4()
+    shape = (1, 2, 3, 4)
+
+    def dnn_gradw(precision):
+        return dnn.dnn_gradweight(img, topgrad, shape, precision=precision)
+
+    def dnn_gradi(precision):
+        return dnn.dnn_gradinput(kerns, topgrad, shape, precision=precision)
+
+    dnn_gradw('float64')
+    dnn_gradw('float32')
+    assert_raises(TypeError, dnn_gradw, 'float16')
+
+    dnn_gradi('float64')
+    dnn_gradi('float32')
+    assert_raises(TypeError, dnn_gradi, 'float16')
+
+
 def test_pooling():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
