@@ -285,7 +285,7 @@ static std::string shape(cudnnConvolutionDescriptor_t convDesc, int dataTypecode
 
 static bool all_aligned(cudnnDataType_t type, void* in, void* out, void* filter)
 {
-        size_t alignMask = (type == CUDNN_DATA_HALF) ? 0x7F : 0xFF ;
+        size_t alignMask = 0xF;
         // there have to be entries for both aligned and not
         if (((size_t)in | (size_t)out | (size_t)filter) & alignMask)
         {
