@@ -120,7 +120,6 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         gof.OpenMPOp.__init__(self, openmp=openmp)
 
         self.compute_grad = compute_grad
-        self.openmp = gof.OpenMPOp(self).openmp
         # Return only the cost. Gradient will be returned by grad()
         self.default_output = 0
 
