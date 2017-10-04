@@ -280,35 +280,44 @@ class TestZoomShift(utt.InferShapeTester):
         axes = [1, 3]
         x_val = np.random.uniform(size=shape).astype(theano.config.floatX)
 
+        print("py A")
         # compute result
         y = shift(x.dimshuffle(0, 1, 2, 3, 'x'), shift=shift_ar, order=2, axes=axes)
         f = theano.function([x], y.dimshuffle(0, 1, 2, 3))
         res = f(x_val)
+        print("py B")
 
         # reference: loop over all images
         no_shift_axes = [axis for axis in range(len(shape)) if axis not in axes]
+        print("py C")
 
         img = T.TensorType(theano.config.floatX, ((False,) * len(no_shift_axes)))()
         f_single = theano.function([img], shift(img, shift=shift_ar, order=2))
+        print("py D")
 
         res_ref = np.zeros(x_val.shape)
         # iterate over the images
+        print("py E")
         for no_shift_idx in np.ndindex(*[shape[axis] for axis in no_shift_axes]):
             # find out where this image lives
             image_slice = [slice(None)] * len(shape)
             for axis, idx in zip(no_shift_axes, no_shift_idx):
                 image_slice[axis] = idx
+            print("py F")
             # process single image
             res_ref[image_slice] = f_single(x_val[image_slice])
+            print("py G")
 
         # compare with reference output
         utt.assert_allclose(res, res_ref)
+        print("py H")
 
         if len(res) > 0 and theano.config.mode != 'FAST_COMPILE':
             # First-order gradient
             def fn(x_):
                 return shift(x_.dimshuffle(0, 1, 2, 3, 'x'), shift=shift_ar,
                              order=2, axes=axes).dimshuffle(0, 1, 2, 3)
+            print("py I")
             utt.verify_grad(fn, [x_val])
 
     def test_shift_single_axis(self):

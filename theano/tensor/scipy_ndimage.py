@@ -71,7 +71,8 @@ class ZoomShift(theano.gof.COp):
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        return (3,)
+        import time
+        return (3, time.time())
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
@@ -216,7 +217,8 @@ class ZoomShiftGrad(theano.gof.COp):
         theano.gof.COp.__init__(self, [self.c_func_file], self.c_func_name)
 
     def c_code_cache_version(self):
-        return (3,)
+        import time
+        return (3, time.time())
 
     def c_headers(self):
         return ['<stdlib.h>', '<math.h>', 'ni_support.h', 'ni_support.c', 'ni_interpolation.c']
