@@ -176,6 +176,9 @@ class CuDNNV51(object):
         return False
 
     def bwd_filter_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
+        # NB: Theano does not support float16 precision anymore for backward cuDNN convolutions.
+        if is_true_half_config(dtype, precision):
+            return False
         algorithms = self.cudnnConvolutionBwdFilterAlgo_t
         algo = algorithms.fromalias(algo)
         if algo == algorithms.CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0:
@@ -193,6 +196,9 @@ class CuDNNV51(object):
         return False
 
     def bwd_data_algo_supports_dtype_config(self, algo, dtype, precision, ndim):
+        # NB: Theano does not support float16 precision anymore for backward cuDNN convolutions.
+        if is_true_half_config(dtype, precision):
+            return False
         algorithms = self.cudnnConvolutionBwdDataAlgo_t
         algo = algorithms.fromalias(algo)
         if algo == algorithms.CUDNN_CONVOLUTION_BWD_DATA_ALGO_0:

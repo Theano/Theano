@@ -1,4 +1,5 @@
 # This script allows to run one specific cuDNN convolution test case.
+# This script should not be imported, but only used as a program.
 # python run_dnn_conv.py --help         # Print help.
 # python run_dnn_conv.py {fwd|bwd-filter|bwd-data} {2d|3d} -a <algo> -i <inputShape> -f <filterShape> ...
 
@@ -13,6 +14,9 @@ from theano.gpuarray.cudnn_defs import (HALF, FLOAT, DOUBLE,
                                         TRUE_HALF_CONFIG, PSEUDO_HALF_CONFIG, FLOAT_CONFIG, DOUBLE_CONFIG)
 from theano.gpuarray.tests.check_dnn_conv import (cudnn, TestDnnConv2D, TestDnnConv3D, CheckDnn)
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+
+if __name__ != '__main__':
+    raise ImportError('This script must not be imported.')
 
 
 class TupleAction(argparse.Action):
@@ -30,9 +34,6 @@ class BorderAction(TupleAction):
         else:
             setattr(namespace, self.dest, values)
 
-
-if __name__ != '__main__':
-    raise ImportError('This script must not be imported.')
 
 args = sys.argv[1:]
 computations = FWD, BWD_FILTER, BWD_DATA = ('fwd', 'gradweight', 'gradinput')
@@ -93,16 +94,19 @@ if len(args.input_shape) not in (4, 5):
 ndim = len(args.input_shape) - 2
 if ndim == 2:
     tests = TestDnnConv2D()
-if ndim == 3:
+elif ndim == 3:
     tests = TestDnnConv3D()
+
 if args.subsample is None:
     args.subsample = (1,) * ndim
 if args.dilation is None:
     args.dilation = (1,) * ndim
 if not (ndim == len(args.subsample) == len(args.dilation)):
     raise ValueError('Expected parameters sized for %d dimensions.' % ndim)
+
 if isinstance(args.border_mode, tuple) and ndim != len(args.border_mode):
     raise ValueError('Expected borders sized for %d dimensions.' % ndim)
+
 if args.alpha == 0:
     raise ValueError('Nothing could be computed if alpha is 0.')
 
@@ -118,17 +122,19 @@ else:
     args.dtype, args.precision = data_type_configurations[args.dtype_config]
 if (args.dtype, args.precision) not in cudnn.get_supported_dtype_configs():
     raise ValueError('Unsupported data type configuration %s %s.' % (args.dtype, args.precision))
+
 if args.algo not in SUPPORTED_DNN_CONV_ALGO_RUNTIME:
     check_config = False
     if test == FWD:
         check_config = cudnn.fwd_algo_supports_dtype_config(args.algo, args.dtype, args.precision, ndim)
-    if test == BWD_FILTER:
+    elif test == BWD_FILTER:
         check_config = cudnn.bwd_filter_algo_supports_dtype_config(args.algo, args.dtype, args.precision, ndim)
-    if test == BWD_DATA:
+    elif test == BWD_DATA:
         check_config = cudnn.bwd_data_algo_supports_dtype_config(args.algo, args.dtype, args.precision, ndim)
     if not check_config:
         print('Warning: %s computation does not normally support configuration (%s, %s) for algo %s.' % (
             test, args.dtype, args.precision, args.algo), file=sys.stderr)
+
 algo = args.algo
 dtype = args.dtype
 precision = args.precision
@@ -143,10 +149,10 @@ if test == FWD:
     tests.run_conv_fwd(algo, dtype, precision, parameters)
     expected_output_shape = get_conv_output_shape(args.input_shape, args.filter_shape, args.border_mode,
                                                   args.subsample, args.dilation)
-if test == BWD_FILTER:
+elif test == BWD_FILTER:
     tests.run_conv_gradweight(algo, dtype, precision, parameters)
     expected_output_shape = args.filter_shape
-if test == BWD_DATA:
+elif test == BWD_DATA:
     tests.run_conv_gradinput(algo, dtype, precision, parameters)
     expected_output_shape = args.input_shape
 print('Computed shape:', expected_output_shape)

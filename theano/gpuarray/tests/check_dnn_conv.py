@@ -76,7 +76,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, alpha=1, beta=0, out=None, border_mo
     topgrad = gpu_contiguous(as_gpuarray_variable(topgrad, ctx_name))
     kerns_shp = theano.tensor.as_tensor_variable(kerns_shp)
 
-    precision = get_precision(precision, [img, topgrad])
+    precision = get_precision(precision, [img, topgrad], for_grad=True)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision)(kerns_shp)
     if beta == 0:
@@ -97,7 +97,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, alpha=1, beta=0, out=None, border_mod
     topgrad = gpu_contiguous(as_gpuarray_variable(topgrad, ctx_name))
     img_shp = theano.tensor.as_tensor_variable(img_shp)
 
-    precision = get_precision(precision, [kerns, topgrad])
+    precision = get_precision(precision, [kerns, topgrad], for_grad=True)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision)(kerns.shape)
     if beta == 0:
