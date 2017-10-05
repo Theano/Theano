@@ -171,6 +171,55 @@ def test_dnn_conv_inplace():
     assert len([n for n in topo if isinstance(n.op, GpuAllocEmpty)]) == 2
 
 
+def run_dnn_conv_invalid_precision(ndim):
+    bc = (False,) * (ndim + 2)
+    img = T.tensor(theano.config.floatX, broadcastable=bc)
+    kerns = T.tensor(theano.config.floatX, broadcastable=bc)
+    topgrad = T.tensor(theano.config.floatX, broadcastable=bc)
+    shape = np.arange(ndim + 2)
+    if ndim == 2:
+        dnn_conv_func = dnn.dnn_conv
+        dnn_gradw_func = dnn.dnn_gradweight
+        dnn_gradi_func = dnn.dnn_gradinput
+    elif ndim == 3:
+        dnn_conv_func = dnn.dnn_conv3d
+        dnn_gradw_func = dnn.dnn_gradweight3d
+        dnn_gradi_func = dnn.dnn_gradinput3d
+
+    def dnn_gradw(precision):
+        return dnn_gradw_func(img, topgrad, shape, precision=precision)
+
+    def dnn_gradi(precision):
+        return dnn_gradi_func(kerns, topgrad, shape, precision=precision)
+
+    def dnn_conv(precision, border_mode, direction_hint):
+        return dnn_conv_func(img, kerns, border_mode=border_mode, direction_hint=direction_hint, precision=precision)
+
+    dnn_gradw('float64')
+    dnn_gradw('float32')
+    assert_raises(TypeError, dnn_gradw, 'float16')
+
+    dnn_gradi('float64')
+    dnn_gradi('float32')
+    assert_raises(TypeError, dnn_gradi, 'float16')
+
+    for precision in ('float64', 'float32'):
+        dnn_conv(precision, 'valid', None)
+        dnn_conv(precision, 'valid', 'bprop weights')
+        dnn_conv(precision, 'full', None)
+        dnn_conv(precision, 'full', 'forward!')
+
+    dnn_conv('float16', 'valid', None)
+    assert_raises(TypeError, dnn_conv, 'float16', 'valid', 'bprop weights')
+    assert_raises(TypeError, dnn_conv, 'float16', 'full', None)
+    dnn_conv('float16', 'full', 'forward!')
+
+
+def test_dnn_conv_invalid_precision():
+    yield (run_dnn_conv_invalid_precision, 2)
+    yield (run_dnn_conv_invalid_precision, 3)
+
+
 def test_pooling():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)

@@ -329,7 +329,7 @@ handle_type = CUDNNDataType('cudnnHandle_t', 'cudnnDestroy')
 cudnn = cudnn_defs.get_definitions(version(raises=False))
 
 
-def get_precision(precision, inputs):
+def get_precision(precision, inputs, for_grad=False):
     if precision is None:
         precision = theano.config.dnn.conv.precision
     if precision == 'as_input' or precision == 'as_input_f32':
@@ -338,6 +338,8 @@ def get_precision(precision, inputs):
             precision = 'float32'
         else:
             precision = nprec
+    if for_grad and precision == 'float16':
+        raise TypeError("Float16 precision is disabled for cuDNN backward convolutions due to computation errors.")
     return precision
 
 
@@ -980,9 +982,6 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
 
     """
 
-    # Establish dtype in which to perform the computation of the convolution
-    precision = get_precision(precision, [img, kerns])
-
     if workmem is not None:
         if algo is not None:
             raise ValueError("You can't use both algo and workmem")
@@ -1006,6 +1005,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                    shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1)
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
+        precision = get_precision(precision, [img, kerns], for_grad=True)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                               conv_mode='cross', precision=precision)(out.shape)
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
@@ -1025,6 +1025,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                    shape_i(img, 3, fgraph) + (shape_i(kerns, 3, fgraph) - 1) * dilation[1])
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
+        precision = get_precision(precision, [img, kerns], for_grad=True)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=dilation,
                               conv_mode=conv_mode, precision=precision)(kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
@@ -1034,6 +1035,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
     # if the img contains negative strides
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
+    # Establish dtype in which to perform the computation of the convolution
+    precision = get_precision(precision, [img, kerns])
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision,
                           num_groups=num_groups)(kerns.shape)
@@ -1107,9 +1110,6 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
 
     """
 
-    # Establish dtype in which to perform the computation of the convolution
-    precision = get_precision(precision, [img, kerns])
-
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     ctx_name = infer_context_name(img, kerns)
     if (border_mode == 'valid' and subsample == (1, 1, 1) and dilation == (1, 1, 1) and
@@ -1129,6 +1129,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
                    shape_i(img, 4, fgraph) - shape_i(kerns, 4, fgraph) + 1)
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
+        precision = get_precision(precision, [img, kerns], for_grad=True)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1), dilation=(1, 1, 1),
                               conv_mode='cross', precision=precision)(out.shape)
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
@@ -1149,6 +1150,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
                    shape_i(img, 4, fgraph) + (shape_i(kerns, 4, fgraph) - 1) * dilation[2])
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
+        precision = get_precision(precision, [img, kerns], for_grad=True)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1), dilation=dilation,
                               conv_mode=conv_mode, precision=precision)(kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
@@ -1158,6 +1160,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
     # if the img contains negative strides
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
+    # Establish dtype in which to perform the computation of the convolution
+    precision = get_precision(precision, [img, kerns])
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision,
                           num_groups=num_groups)(kerns.shape)
@@ -1187,7 +1191,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     img = gpu_contiguous(img)
     topgrad = gpu_contiguous(topgrad)
     kerns_shp = as_tensor_variable(kerns_shp)
-    precision = get_precision(precision, [img, topgrad])
+    precision = get_precision(precision, [img, topgrad], for_grad=True)
 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision,
@@ -1219,7 +1223,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     kerns = gpu_contiguous(kerns)
     topgrad = gpu_contiguous(topgrad)
     img_shp = as_tensor_variable(img_shp)
-    precision = get_precision(precision, [kerns, topgrad])
+    precision = get_precision(precision, [kerns, topgrad], for_grad=True)
 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision,
