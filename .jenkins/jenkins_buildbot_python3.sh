@@ -2,6 +2,8 @@
 
 BUILDBOT_DIR=$WORKSPACE/nightly_build
 THEANO_PARAM="theano --with-timer --timer-top-n 10"
+# Exclude MPI tests that cannot complete properly
+THEANO_PARAM="${THEANO_PARAM} -e test_mpi_roundtrip"
 COMPILEDIR=$HOME/.theano/buildbot_theano_python3
 # Set test reports using nosetests xunit
 XUNIT="--with-xunit --xunit-file="
