@@ -1761,8 +1761,7 @@ def bilinear_kernel_1D(ratio, normalize=True):
 
 
 def frac_bilinear_upsampling(input,
-                             ratio=None,
-                             frac_ratio=None):
+                             frac_ratio):
     """Compute bilinear upsampling
     This function will build the symbolic graph for upsampling
     a tensor by the given ratio using bilinear interpolation.
@@ -1772,10 +1771,7 @@ def frac_bilinear_upsampling(input,
     input: symbolic 4D tensor
         mini-batch of feature map stacks, of shape (batch size,
         input channels, input rows, input columns) that will be upsampled.
-    ratio: `int or Constant or Scalar Tensor of int* dtype`
-        the ratio by which the input is upsampled in the 2D space (row and
-        col size).
-    frac_ratio: None, tuple of int or tuple of tuples of int
+    frac_ratio: tuple of int or tuple of tuples of int
         The tuple defining the fractional ratio by which the input is
         upsampled in the 2D space. One fractional ratio should be
         represented as (numerator, denominator). If row and col ratios are
@@ -1794,38 +1790,30 @@ def frac_bilinear_upsampling(input,
         repeated one extra time compared to the first row and column which makes
         the upsampled tensor asymmetrical on both sides. This does not happen when
         the upsampling ratio is odd.
-    :note: This function must get either ratio or frac_ratio as parameter and
-        never both at once.
     """
 
     T = theano.tensor
     row, col = input.shape[2:]
     up_input = input.reshape((-1, 1, row, col))
 
-    # redefince the ratio depending on the case
-    if frac_ratio is None:
-        if not isinstance(ratio, tuple):
-            ratio = (ratio, ratio)
-        subsample = (1, 1)
+    if not isinstance(frac_ratio, tuple):
+        raise ValueError("frac_ratio must be a tuple")
     else:
-        if not isinstance(frac_ratio, tuple):
-            raise ValueError("frac_ratio must be a tuple")
+        if isinstance(frac_ratio[0], tuple):
+            frac_ratio_list = []
+            for i, fr in enumerate(frac_ratio):
+                numerator, denominator = fr
+                div = gcd(numerator, denominator)
+                frac_ratio_list.append(tuple(np.array(fr) // div))
+            frac_ratio = tuple(frac_ratio_list)
+            ratio = (frac_ratio[0][0], frac_ratio[1][0])
+            subsample = (frac_ratio[0][1], frac_ratio[1][1])
         else:
-            if isinstance(frac_ratio[0], tuple):
-                f_r = []
-                for i, fr in enumerate(frac_ratio):
-                    p, q = fr
-                    div = gcd(p, q)
-                    f_r.append(tuple(np.array(fr) // div))
-                frac_ratio = tuple(f_r)
-                ratio = (frac_ratio[0][0], frac_ratio[1][0])
-                subsample = (frac_ratio[0][1], frac_ratio[1][1])
-            else:
-                p, q = frac_ratio
-                div = gcd(p, q)
-                frac_ratio = tuple(np.array(frac_ratio) // div)
-                ratio = (frac_ratio[0], frac_ratio[0])
-                subsample = (frac_ratio[1], frac_ratio[1])
+            numerator, denominator = frac_ratio
+            div = gcd(numerator, denominator)
+            frac_ratio = tuple(np.array(frac_ratio) // div)
+            ratio = (frac_ratio[0], frac_ratio[0])
+            subsample = (frac_ratio[1], frac_ratio[1])
 
     # duplicate borders of the input
     concat_mat = T.concatenate((up_input[:, :, :1, :], up_input,
@@ -1918,7 +1906,6 @@ def bilinear_upsampling(input,
                              'method not implemented. You may want to pass '
                              'use_1D_kernel as False')
         return frac_bilinear_upsampling(input,
-                                        ratio=ratio,
                                         frac_ratio=frac_ratio)
 
     # the remaining case if integer ratio with use_1D_kernel
