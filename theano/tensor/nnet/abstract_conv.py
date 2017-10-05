@@ -1796,7 +1796,7 @@ def frac_bilinear_upsampling(input,
     row, col = input.shape[2:]
     up_input = input.reshape((-1, 1, row, col))
 
-    # defince the upsampling ratio depending on the case
+    # define the upsampling ratio depending on the case
     if not isinstance(frac_ratio, tuple):
         raise ValueError("frac_ratio must be a tuple")
     else:
@@ -1842,7 +1842,7 @@ def frac_bilinear_upsampling(input,
                                       dtype=theano.config.floatX)),
                              axis=3)
 
-    # upsample the input by passing it as kernl of conv and using filter_dilation
+    # upsample the input by passing it as kernel of conv and using filter_dilation
     upsamp = T.nnet.conv2d(pad_kern, concat_mat, border_mode='valid',
                            filter_dilation=ratio, subsample=subsample)
 
@@ -1906,6 +1906,7 @@ def bilinear_upsampling(input,
             raise ValueError('For fractional ratios 1D kernel '
                              'method not implemented. You may want to pass '
                              'use_1D_kernel as False')
+        # case of fractional 2D upsampling
         return frac_bilinear_upsampling(input, frac_ratio=frac_ratio)
 
     # the remaining case if integer ratio with use_1D_kernel
