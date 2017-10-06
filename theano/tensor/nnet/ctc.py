@@ -1,10 +1,11 @@
 from __future__ import (division, absolute_import, print_function)
 import os
 import sys
+import theano
 import theano.tensor as T
 from theano import config
 from theano import gof
-from theano.gof import local_optimizer
+from theano.gof import (local_optimizer, ParamsType)
 from theano.gof.cmodule import GCC_compiler
 from theano.tensor.opt import register_canonicalize
 from theano.tensor.extra_ops import cpu_contiguous
@@ -101,6 +102,7 @@ class ConnectionistTemporalClassification(gof.COp, gof.OpenMPOp):
         If set to True, enables the computation of gradients of the CTC loss function.
     """
     __props__ = ('compute_grad',)
+    params_type = ParamsType(openmp=theano.scalar.bool)
 
     _cop_num_inputs = 3
     _cop_num_outputs = 2

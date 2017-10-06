@@ -8,16 +8,19 @@ typedef struct ctc_context {
     int * label_lengths;
 } ctc_context_t;
 
-void ctc_context_init(ctc_context_t * context)
+void ctc_context_init(ctc_context_t * context, const int openmp_enabled)
 {
     struct ctcOptions * options = &(context->options);
     memset(options, 0, sizeof(struct ctcOptions));
     options->loc = CTC_CPU;
-#if defined(_OPENMP)
-    options->num_threads = omp_get_num_threads();
-#else
     options->num_threads = 1;
+
+#if defined(_OPENMP)
+    if (openmp_enabled) {
+        options->num_threads = omp_get_max_threads();
+    }
 #endif
+
     context->workspace = NULL;
     context->input_lengths = NULL;
     context->flat_labels = NULL;
@@ -108,11 +111,14 @@ int APPLY_SPECIFIC(ctc_cost_cpu)(PyArrayObject *  in_activations,
                                  PyArrayObject *  in_labels,
                                  PyArrayObject *  in_input_lengths,
                                  PyArrayObject ** out_costs,
-                                 PyArrayObject ** out_gradients)
+                                 PyArrayObject ** out_gradients,
+                                 PARAMS_TYPE * params)
 {
+    const int openmp_enabled = params->openmp;
+
     ctc_context_t ctc_object;
     ctc_context_t * context = &ctc_object;
-    ctc_context_init( context );
+    ctc_context_init( context, openmp_enabled );
 
     if ( !PyArray_IS_C_CONTIGUOUS( in_activations ) )
     {
