@@ -1,3 +1,8 @@
+============================================================================================================
+`MILA will stop developing Theano <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_.
+============================================================================================================
+
+
 To install the package, see this page:
    http://deeplearning.net/software/theano/install.html
 
