@@ -880,6 +880,25 @@ def local_instancesoftmax(node):
         return [new_op.reshape(old_shape)]
 
 
+@gof.local_optimizer([Instance_SoftmaxGrad])
+def local_instancesoftmax(node):
+    if node.owner.inputs[0].type.ndim == 4:
+        old_shape = node.owner.inputs[0].shape
+        new_input = node.owner.inputs[0].flatten(ndim=2)
+        new_op = SoftmaxGrad()(new_input)
+        return [new_op.reshape(old_shape)]
+
+
+@gof.local_optimizer([Instance_LogSoftmax])
+def local_instancelogsoftmax(node):
+    if node.owner.inputs[0].type.ndim == 4:
+        old_shape = node.owner.inputs[0].shape
+        new_input = node.owner.inputs[0].flatten(ndim=2)
+        new_op = LogSoftmax(new_input)
+        return [new_op.reshape(old_shape)]
+
+
+
 # This is not registered in stabilize, as it cause some crossentropy
 # optimization to not be inserted.
 @opt.register_specialize('stabilize', 'fast_compile')
