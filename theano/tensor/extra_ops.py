@@ -1218,7 +1218,12 @@ class UnravelIndex(gof.Op):
         res = np.unravel_index(indices, dims)
         assert len(res) == len(out)
         for i in xrange(len(out)):
-            out[i][0] = theano._asarray(res[i], node.outputs[0].dtype)
+            ret = theano._asarray(res[i], node.outputs[0].dtype)
+            if ret.base is not None:
+                # NumPy will return a view when it can.
+                # But we don't want that.
+                ret = ret.copy()
+            out[i][0] = ret
 
 
 def unravel_index(indices, dims, order='C', ndim=None):
