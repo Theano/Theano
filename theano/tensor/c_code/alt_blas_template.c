@@ -1,17 +1,17 @@
 /** Alternative template NumPy-based implementation of BLAS functions used in Theano. **/
 
-/* Compute tensor[i] = scalar for every position i in tensor. */
-void alt_numpy_memset_inplace_%(float_type)s(PyArrayObject* tensor, const %(float_type)s* scalar) {
-    if (PyArray_IS_C_CONTIGUOUS(tensor) && *scalar == (char)(*scalar)) {
+/* Compute matrix[i][j] = scalar for every position (i, j) in matrix. */
+void alt_numpy_memset_inplace_%(float_type)s(PyArrayObject* matrix, const %(float_type)s* scalar) {
+    if (PyArray_IS_C_CONTIGUOUS(matrix) && *scalar == (char)(*scalar)) {
         // This will use memset.
-        PyArray_FILLWBYTE(tensor, (char)(*scalar));
+        PyArray_FILLWBYTE(matrix, (char)(*scalar));
         return;
     }
-    NpyIter* iterator = NpyIter_New(tensor,
+    NpyIter* iterator = NpyIter_New(matrix,
         NPY_ITER_READWRITE | NPY_ITER_EXTERNAL_LOOP | NPY_ITER_REFS_OK,
         NPY_KEEPORDER, NPY_NO_CASTING, NULL);
     if(iterator == NULL)
-        alt_fatal_error("Unable to iterate over a tensor for a memory assignation.");
+        alt_fatal_error("Unable to iterate over a matrix for a memory assignation.");
     NpyIter_IterNextFunc* get_next = NpyIter_GetIterNext(iterator, NULL);
     char** data_ptr = NpyIter_GetDataPtrArray(iterator);
     npy_intp* stride_ptr = NpyIter_GetInnerStrideArray(iterator);

@@ -7,7 +7,7 @@ import numpy as np
 from numpy import (arange, array, common_type, complex64, complex128, float32,
                    float64, newaxis, shape, transpose, zeros)
 from numpy.testing import assert_array_almost_equal
-
+from itertools import product
 from six.moves import xrange
 
 import theano
@@ -373,7 +373,7 @@ class t_gemm(TestCase):
             1, 0, 2)), dt='float32')
 
 
-class t_gemm_no_flags(object):
+class TestGemmNoFlags(object):
     gemm = gemm_no_inplace
     M = 4
     N = 5
@@ -455,7 +455,6 @@ class t_gemm_no_flags(object):
         unittest_tools.assert_allclose(ref_val, z_val)
 
     def test_gemm(self):
-        from itertools import product
         dtypes = ('float32', 'float64')
         scalars = (0, 1, -2)
         booleans = (False, True)
