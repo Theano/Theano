@@ -881,7 +881,7 @@ def local_instancesoftmax(node):
 
 
 @gof.local_optimizer([Instance_SoftmaxGrad])
-def local_instancesoftmax(node):
+def local_instancesoftmax_grad(node):
     if node.owner.inputs[0].type.ndim == 4:
         old_shape = node.owner.inputs[0].shape
         new_input = node.owner.inputs[0].flatten(ndim=2)
