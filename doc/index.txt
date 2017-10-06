@@ -21,6 +21,8 @@ learning/machine learning <https://mila.umontreal.ca/en/cours/>`_ classes).
 News
 ====
 
+* 2017/09/28: IMPORTANT: `MILA will stop developing Theano <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_ and the next release (renamed to 1.0) will be the last main release.
+
 * 2017/03/20: Release of Theano 0.9.0. Everybody is encouraged to update.
 
 * 2017/03/13: Release of Theano 0.9.0rc4, with crash fixes and bug fixes.
