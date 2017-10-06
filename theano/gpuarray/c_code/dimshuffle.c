@@ -1,6 +1,6 @@
 #section support_code_apply
 
-int gpu_dimshuffle(PyGpuArrayObject* input, PyGpuArrayObject** out, PARAMS_TYPE* params) {
+int APPLY_SPECIFIC(gpu_dimshuffle)(PyGpuArrayObject* input, PyGpuArrayObject** out, PARAMS_TYPE* params) {
     PyGpuArrayObject *tmp = NULL;
     npy_intp nd_in = PyArray_SIZE(params->input_broadcastable);
     npy_intp nd_out = PyArray_SIZE(params->_new_order);
