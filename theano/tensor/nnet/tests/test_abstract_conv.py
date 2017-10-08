@@ -1955,7 +1955,7 @@ class TestAsymmetricPadding(unittest.TestCase):
     border_mode = [((1, 2), (2, 1)), ((1, 1), (0, 3)), ((2, 1), (0, 0))]
 
     def test_fwd(self):
-        if theano.config.cxx == ""  or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
             raise SkipTest("SciPy and cxx needed")
         img_sym = theano.tensor.tensor4('img')
         kern_sym = theano.tensor.tensor4('kern')
@@ -1991,7 +1991,7 @@ class TestAsymmetricPadding(unittest.TestCase):
             utt.verify_grad(asymmetric_conv_op, [img, kern], mode=self.mode, eps=1)
 
     def test_gradweight(self):
-        if theano.config.cxx == ""  or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
             raise SkipTest("SciPy and cxx needed")
 
         img_sym = theano.tensor.tensor4('img')
