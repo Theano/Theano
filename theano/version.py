@@ -16,6 +16,7 @@ try:
 except ValueError:
     release = False
 except IndexError:
+    print(full_version)
     print(short_version)
     raise
 
