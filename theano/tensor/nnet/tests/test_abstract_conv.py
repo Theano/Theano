@@ -263,6 +263,8 @@ class TestAssertShape(unittest.TestCase):
 
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("test needs cxx")
         input = tensor.tensor5()
         filters = tensor.tensor5()
 
@@ -295,6 +297,8 @@ class TestAssertShape(unittest.TestCase):
 
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d_grad_wrt_inputs(self):
+        if theano.config.cxx == "":
+            raise SkipTest("test needs cxx")
         output_grad = tensor.tensor5()
         filters = tensor.tensor5()
 
@@ -323,6 +327,8 @@ class TestAssertShape(unittest.TestCase):
 
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d_grad_wrt_weights(self):
+        if theano.config.cxx == "":
+            raise SkipTest("test needs cxx")
         input = tensor.tensor5()
         output_grad = tensor.tensor5()
 
@@ -1330,6 +1336,8 @@ class TestConv2dTranspose(unittest.TestCase):
         # This method tests that the order of the filter's
         # axes expected by the function produces the correct
         # output shape.
+        if theano.config.cxx == "":
+            raise SkipTest("test needs cxx")
 
         mode = self.mode
         if theano.config.mode == "FAST_COMPILE":
@@ -1681,6 +1689,8 @@ class Separable_conv(unittest.TestCase):
                                               [51, 110, 286, 299, 298]]]]).astype(theano.config.floatX)
 
     def test_interface2d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("test needs cxx")
         x_sym = theano.tensor.tensor4('x')
         dfilter_sym = theano.tensor.tensor4('d')
         pfilter_sym = theano.tensor.tensor4('p')
@@ -1725,6 +1735,8 @@ class Separable_conv(unittest.TestCase):
         utt.assert_allclose(top, self.precomp_output_full)
 
     def test_interface3d(self):
+        if theano.config.cxx == "":
+            raise SkipTest("test needs cxx")
         # Expand the filter along the depth
         x = np.tile(np.expand_dims(self.x, axis=2), (1, 1, 5, 1, 1))
         depthwise_filter = np.tile(np.expand_dims(self.depthwise_filter, axis=2), (1, 1, 3, 1, 1))
@@ -1943,8 +1955,8 @@ class TestAsymmetricPadding(unittest.TestCase):
     border_mode = [((1, 2), (2, 1)), ((1, 1), (0, 3)), ((2, 1), (0, 0))]
 
     def test_fwd(self):
-        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("SciPy needed")
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy and cxx needed")
         img_sym = theano.tensor.tensor4('img')
         kern_sym = theano.tensor.tensor4('kern')
 
@@ -1979,8 +1991,8 @@ class TestAsymmetricPadding(unittest.TestCase):
             utt.verify_grad(asymmetric_conv_op, [img, kern], mode=self.mode, eps=1)
 
     def test_gradweight(self):
-        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("SciPy needed")
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy and cxx needed")
 
         img_sym = theano.tensor.tensor4('img')
         top_sym = theano.tensor.tensor4('top')
@@ -2019,8 +2031,8 @@ class TestAsymmetricPadding(unittest.TestCase):
             utt.verify_grad(conv_gradweight, [img, top], mode=self.mode, eps=1)
 
     def test_gradinput(self):
-        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("SciPy needed")
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("test needs cxx and SciPy")
         kern_sym = theano.tensor.tensor4('kern')
         top_sym = theano.tensor.tensor4('top')
 
@@ -2072,8 +2084,8 @@ class TestCausalConv(unittest.TestCase):
     def test_interface(self):
         img_sym = theano.tensor.tensor3('img')
         kern_sym = theano.tensor.tensor3('kern')
-        if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("SciPy needed")
+        if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
+            raise SkipTest("SciPy and cxx needed")
         sym_out = causal_conv1d(img_sym, kern_sym, self.kern.shape, filter_dilation=self.dilation)
 
         causal_func = theano.function([img_sym, kern_sym], sym_out, mode=self.mode)
