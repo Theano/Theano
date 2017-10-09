@@ -1897,7 +1897,10 @@ class GCC_compiler(Compiler):
     @staticmethod
     def compile_args(march_flags=True):
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
-
+        if "-fopenmp" in cxxflags:
+            raise ValueError(
+                "Do not use -fopenmp in Theano flag gcc.cxxflags."
+                " To enable OpenMP, use the Theano flag openmp=True")
         # Add the equivalent of -march=native flag.  We can't use
         # -march=native as when the compiledir is shared by multiple
         # computers (for example, if the home directory is on NFS), this
