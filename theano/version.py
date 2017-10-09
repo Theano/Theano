@@ -13,12 +13,10 @@ short_version = full_version.split('+')[0]
 try:
     int(short_version.split('.')[2])
     release = True
-except ValueError:
+except (ValueError, IndexError):
+    # IndexError can happen with the version:
+    # 0+untagged.2896.g0560a7f for example
     release = False
-except IndexError:
-    print(full_version)
-    print(short_version)
-    raise
 
 if release:
     version = short_version
