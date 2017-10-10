@@ -633,6 +633,8 @@ class _make_cdata(Op):
         """ % dict(ctype=self.rtype.ctype, out=outputs[0], inp=inputs[0])
 
     def c_code_cache_version(self):
+        if self.rtype.version is None:
+            return None
         return (0, self.rtype.version)
 
 
@@ -674,7 +676,7 @@ class CDataType(Type):
         self.compile_args = tuple(compile_args)
         self.extra_support_code = extra_support_code
         self._fn = None
-        self.version = None
+        self.version = version
 
     def filter(self, data, strict=False, allow_downcast=None):
         if data is not None and not isinstance(data, _cdata_type):
