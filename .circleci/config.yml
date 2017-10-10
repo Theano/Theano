@@ -30,10 +30,10 @@ jobs:
           command: |
             if [[ -n "${CIRCLE_TAG}" ]]
             then
-                anaconda -t $BINSTAR_TOKEN upload --user=mila-udem /miniconda/conda-bld/linux-64/theano*
+                anaconda -t $BINSTAR_TOKEN upload --user=mila-udem /opt/conda/conda-bld/linux-64/theano*
             fi
       - store_artifacts:
-          path: /miniconda/conda-bld/linux-64
+          path: /opt/conda/conda-bld/linux-64
 
 workflows:
   version: 2
