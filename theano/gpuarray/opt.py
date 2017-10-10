@@ -2980,6 +2980,6 @@ instanceLogSoftmax_groupopt.register('local_gpua_instanceLogsoftmax_to_dnn',
         'instance_logsoftmax',
         'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
 instanceLogSoftmax_groupopt.register('local_instanceLogsoftmax',
-        tensor.nnet.nnet.local_instanceLogsoftmax, 30,
+        tensor.nnet.nnet.local_instancelogsoftmax, 30,
         'instance_logsoftmax',
         'fast_compile', 'fast_run')
