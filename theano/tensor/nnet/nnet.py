@@ -898,7 +898,6 @@ def local_instancelogsoftmax(node):
         return [new_op.reshape(old_shape)]
 
 
-
 # This is not registered in stabilize, as it cause some crossentropy
 # optimization to not be inserted.
 @opt.register_specialize('stabilize', 'fast_compile')
