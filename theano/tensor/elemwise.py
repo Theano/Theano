@@ -131,7 +131,7 @@ class DimShuffle(COp):
     check_input = False
     __props__ = ("input_broadcastable", "new_order", "inplace")
     c_func_file = 'c_code/dimshuffle.c'
-    c_func_name = 'cpu_dimshuffle'
+    c_func_name = 'APPLY_SPECIFIC(cpu_dimshuffle)'
 
     @property
     def params_type(self):

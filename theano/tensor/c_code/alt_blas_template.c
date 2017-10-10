@@ -1,8 +1,43 @@
 /** Alternative template NumPy-based implementation of BLAS functions used in Theano. **/
 
+/* Compute matrix[i][j] = scalar for every position (i, j) in matrix. */
+void alt_numpy_memset_inplace_%(float_type)s(PyArrayObject* matrix, const %(float_type)s* scalar) {
+    if (PyArray_IS_C_CONTIGUOUS(matrix) && *scalar == (char)(*scalar)) {
+        // This will use memset.
+        PyArray_FILLWBYTE(matrix, (char)(*scalar));
+        return;
+    }
+    NpyIter* iterator = NpyIter_New(matrix,
+        NPY_ITER_READWRITE | NPY_ITER_EXTERNAL_LOOP | NPY_ITER_REFS_OK,
+        NPY_KEEPORDER, NPY_NO_CASTING, NULL);
+    if(iterator == NULL)
+        alt_fatal_error("Unable to iterate over a matrix for a memory assignation.");
+    NpyIter_IterNextFunc* get_next = NpyIter_GetIterNext(iterator, NULL);
+    char** data_ptr = NpyIter_GetDataPtrArray(iterator);
+    npy_intp* stride_ptr = NpyIter_GetInnerStrideArray(iterator);
+    npy_intp* innersize_ptr = NpyIter_GetInnerLoopSizePtr(iterator);
+    do {
+        char* data = *data_ptr;
+        npy_intp stride = *stride_ptr;
+        npy_intp count = *innersize_ptr;
+        while(count) {
+            *((%(float_type)s*)data) = *scalar;
+            data += stride;
+            --count;
+        }
+    } while(get_next(iterator));
+    NpyIter_Deallocate(iterator);
+}
+
 /* Scalar * Matrix function.
  * Computes: matrix = scalar * matrix. */
 void alt_numpy_scale_matrix_inplace_%(float_type)s(const %(float_type)s* scalar, PyArrayObject* matrix) {
+    if (*scalar == 1)
+        return;
+    if (*scalar == 0) {
+        alt_numpy_memset_inplace_%(float_type)s(matrix, scalar);
+        return;
+    }
     NpyIter* iterator = NpyIter_New(matrix,
         NPY_ITER_READWRITE | NPY_ITER_EXTERNAL_LOOP | NPY_ITER_REFS_OK,
         NPY_KEEPORDER, NPY_NO_CASTING, NULL);
@@ -32,6 +67,14 @@ void alt_numpy_matrix_extended_sum_inplace_%(float_type)s(
         const %(float_type)s* scalar1, PyArrayObject* matrix1,
         const %(float_type)s* scalar2, PyArrayObject* matrix2
 ) {
+    if (*scalar1 == 0 && *scalar2 == 0) {
+        alt_numpy_memset_inplace_%(float_type)s(matrix2, scalar2);
+        return;
+    }
+    if (*scalar1 == 0) {
+        alt_numpy_scale_matrix_inplace_%(float_type)s(scalar2, matrix2);
+        return;
+    }
     PyArrayObject* op[2]       = {matrix1, matrix2};
     npy_uint32     op_flags[2] = {NPY_ITER_READONLY, NPY_ITER_READWRITE};
     npy_uint32     flags       = 0;
@@ -42,11 +85,19 @@ void alt_numpy_matrix_extended_sum_inplace_%(float_type)s(
                         "for matrix + matrix operation.");
     NpyIter_IterNextFunc* get_next = NpyIter_GetIterNext(iterators, NULL);
     char** data_ptr_array = NpyIter_GetDataPtrArray(iterators);
-    do {
-        %(float_type)s* from_matrix1 = (%(float_type)s*)data_ptr_array[0];
-        %(float_type)s* from_matrix2 = (%(float_type)s*)data_ptr_array[1];
-        *from_matrix2 = (*scalar1)*(*from_matrix1) + (*scalar2)*(*from_matrix2);
-    } while(get_next(iterators));
+    if (*scalar2 == 0) {
+        do {
+            %(float_type)s* from_matrix1 = (%(float_type)s*)data_ptr_array[0];
+            %(float_type)s* from_matrix2 = (%(float_type)s*)data_ptr_array[1];
+            *from_matrix2 = (*scalar1)*(*from_matrix1);
+        } while(get_next(iterators));
+    } else {
+        do {
+            %(float_type)s* from_matrix1 = (%(float_type)s*)data_ptr_array[0];
+            %(float_type)s* from_matrix2 = (%(float_type)s*)data_ptr_array[1];
+            *from_matrix2 = (*scalar1)*(*from_matrix1) + (*scalar2)*(*from_matrix2);
+        } while(get_next(iterators));
+    }
     NpyIter_Deallocate(iterators);
 }
 

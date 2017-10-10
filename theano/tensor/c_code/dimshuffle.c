@@ -1,6 +1,6 @@
 #section support_code_apply
 
-int cpu_dimshuffle(PyArrayObject* input, PyArrayObject** res, PARAMS_TYPE* params) {
+int APPLY_SPECIFIC(cpu_dimshuffle)(PyArrayObject* input, PyArrayObject** res, PARAMS_TYPE* params) {
     npy_bool* input_broadcastable;
     npy_int64* new_order;
     npy_intp nd_in;

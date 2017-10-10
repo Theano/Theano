@@ -344,7 +344,7 @@ class TestCGemvNoFlags(object):
             A_2 = A_1
             x_2 = x
             y_2 = y
-        return theano.function([alpha, A, x, beta, y], self.gemv(y_2, alpha, A_2, x_2, beta))
+        return theano.function([alpha, A, x, beta, y], self.gemv(y_2, alpha, A_2, x_2, beta), mode=self.mode)
 
     def get_data(self, dtype, alpha, beta, transpose_A=False, slice_tensors=False):
         if slice_tensors:

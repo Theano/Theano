@@ -409,7 +409,7 @@ class GpuDimShuffle(DimShuffle):
 
     """
     _f16_ok = True
-    c_func_name = 'gpu_dimshuffle'
+    c_func_name = 'APPLY_SPECIFIC(gpu_dimshuffle)'
 
     def make_node(self, input):
         ctx_name = infer_context_name(input)
