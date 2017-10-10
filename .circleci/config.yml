@@ -3,9 +3,12 @@ version: 2
 jobs:
   build_pkgs:
     docker:
-      - image: milaudem/theano:0
+      - image: joaander/conda-build:20170905
 
     steps:
+      - run:
+          name: "Configure conda"
+          command: "conda config --add channels mila-udem"
       - checkout
       - run:
           name: "Checkout Merge Commit"
