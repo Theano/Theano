@@ -3,9 +3,12 @@ version: 2
 jobs:
   build_pkgs:
     docker:
-      - image: milaudem/theano:0
+      - image: joaander/conda-build:20170905
 
     steps:
+      - run:
+          name: "Configure conda"
+          command: "conda config --add channels mila-udem"
       - checkout
       - run:
           name: "Checkout Merge Commit"
@@ -27,10 +30,10 @@ jobs:
           command: |
             if [[ -n "${CIRCLE_TAG}" ]]
             then
-                anaconda -t $BINSTAR_TOKEN upload --user=mila-udem /miniconda/conda-bld/linux-64/theano*
+                anaconda -t $BINSTAR_TOKEN upload --user=mila-udem /opt/conda/conda-bld/linux-64/theano*
             fi
       - store_artifacts:
-          path: /miniconda/conda-bld/linux-64
+          path: /opt/conda/conda-bld/linux-64
 
 workflows:
   version: 2
