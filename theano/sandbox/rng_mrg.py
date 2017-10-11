@@ -19,7 +19,6 @@ from theano.gradient import undefined_grad
 from theano import tensor
 from theano.tensor import (TensorType, as_tensor_variable, get_vector_length,
                            cast, opt, scal)
-from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer, ParamsType
 from theano.scalar import bool as bool_t, int32 as int_t
@@ -1029,93 +1028,175 @@ class MRG_RandomStreams(object):
         return self.choice(size=n, a=None, replace=False, p=pvals,
                            dtype=dtype, nstreams=nstreams, ndim=ndim, **kwargs)
 
-    def normal(self, size, avg=0.0, std=1.0, ndim=None,
-               dtype=None, nstreams=None):
-        # TODO : need description for method
+    def normal(self, size, avg=0.0, std=1.0, truncate=False,
+               ndim=None, dtype=None, nstreams=None, **kwargs):
         """
+        Sample a tensor of values from a normal distribution.
+
         Parameters
         ----------
-        size
-            Can be a list of integers or Theano variables (ex: the shape
-            of another Theano Variable).
-        dtype
-            The output data type. If dtype is not specified, it will be
-            inferred from the dtype of low and high, but will be at
-            least as precise as floatX.
-        nstreams
-            Number of streams.
+        size : int_vector_like
+            Array dimensions for the output tensor.
+        avg : float_like, optional
+            The mean value for the truncated normal to sample from (defaults to 0.0).
+        std : float_like, optional
+            The standard deviation for the truncated normal to sample from (defaults to 1.0).
+        truncate : bool, optional
+            Truncates the normal distribution at 2 standard deviations if True (defaults to False).
+            When this flag is set, the standard deviation of the result will be less than the one specified.
+        ndim : int, optional
+            The number of dimensions for the output tensor (defaults to None).
+            This argument is necessary if the size argument is ambiguous on the number of dimensions.
+        dtype : str, optional
+            The data-type for the output tensor. If not specified,
+            the dtype is inferred from avg and std, but it is at least as precise as floatX.
+        kwargs
+            Other keyword arguments for random number generation (see uniform).
+
+        Returns
+        -------
+        samples : TensorVariable
+            A Theano tensor of samples randomly drawn from a normal distribution.
 
         """
-        # We need an even number of ]0,1[ samples. Then we split them
-        # in two halves. First half becomes our U1's for Box-Muller,
-        # second half our U2's. See Wikipedia page:
-        # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
-        avg = as_tensor_variable(avg)
-        avg = undefined_grad(avg)
-        std = as_tensor_variable(std)
-        std = undefined_grad(std)
+        size = _check_size(size)
+        avg = undefined_grad(as_tensor_variable(avg))
+        std = undefined_grad(as_tensor_variable(std))
 
         if dtype is None:
             dtype = scal.upcast(config.floatX, avg.dtype, std.dtype)
 
-        avg = cast(avg, dtype)
-        std = cast(std, dtype)
+        avg = tensor.cast(avg, dtype=dtype)
+        std = tensor.cast(std, dtype=dtype)
 
-        evened = False
-        constant = False
-        if (isinstance(size, tuple) and
-                all([isinstance(i, (np.integer, integer_types)) for i in size])):
-            constant = True
-            # Force dtype because it defaults to float when size is empty
-            n_samples = np.prod(size, dtype='int64')
+        # generate even number of uniform samples
+        n_odd_samples = tensor.prod(size, dtype='int64')
+        n_even_samples = n_odd_samples + n_odd_samples % 2
+        uniform = self.uniform((n_even_samples, ), low=0., high=1.,
+                               ndim=1, dtype=dtype, nstreams=nstreams, **kwargs)
 
-            if n_samples % 2 == 1:
-                n_samples += 1
-                evened = True
+        # box-muller transform
+        u1 = uniform[:n_even_samples // 2]
+        u2 = uniform[n_even_samples // 2:]
+        r = tensor.sqrt(-2.0 * tensor.log(u1))
+        theta = np.array(2.0 * np.pi, dtype=dtype) * u2
+        cos_theta, sin_theta = tensor.cos(theta), tensor.sin(theta)
+        z0 = r * cos_theta
+        z1 = r * sin_theta
+
+        if truncate:
+            # use valid samples
+            to_fix0 = (z0 < -2.) | (z0 > 2.)
+            to_fix1 = (z1 < -2.) | (z1 > 2.)
+            z0_valid = z0[tensor.nonzero(~to_fix0)]
+            z1_valid = z1[tensor.nonzero(~to_fix1)]
+
+            # re-sample invalid samples
+            to_fix0 = tensor.nonzero(to_fix0)[0]
+            to_fix1 = tensor.nonzero(to_fix1)[0]
+            n_fix_samples = to_fix0.size + to_fix1.size
+            lower = tensor.constant(1. / np.e**2, dtype=dtype)
+            u_fix = self.uniform((n_fix_samples, ), low=lower, high=1.,
+                                 ndim=1, dtype=dtype, nstreams=nstreams, **kwargs)
+            r_fix = tensor.sqrt(-2. * tensor.log(u_fix))
+            z0_fixed = r_fix[:to_fix0.size] * cos_theta[to_fix0]
+            z1_fixed = r_fix[to_fix0.size:] * sin_theta[to_fix1]
+
+            # pack everything together to a useful result
+            norm_samples = tensor.join(0, z0_valid, z0_fixed, z1_valid, z1_fixed)
         else:
-            # if even, don't change, if odd, +1
-            n_samples = prod(size) + (prod(size) % 2)
-        flattened = self.uniform(size=(n_samples,), dtype=dtype,
-                                 nstreams=nstreams)
+            norm_samples = tensor.join(0, z0, z1)
 
-        if constant:
-            U1 = flattened[:n_samples // 2]
-            U2 = flattened[n_samples // 2:]
+        samples = norm_samples[:n_odd_samples]
+        samples = tensor.reshape(samples, newshape=size, ndim=ndim)
+        samples *= std
+        samples += avg
+
+        return samples
+
+    def truncated_normal(self, size, avg=0.0, std=1.0,
+                         ndim=None, dtype=None, nstreams=None, **kwargs):
+        """
+        Sample a tensor of values from a symmetrically truncated normal distribution.
+
+        Parameters
+        ----------
+        size : int_vector_like
+            Array dimensions for the output tensor.
+        avg : float_like, optional
+            The mean value for the truncated normal to sample from (defaults to 0.0).
+        std : float_like, optional
+            The standard deviation for the truncated normal to sample from (defaults to 1.0).
+        ndim : int, optional
+            The number of dimensions for the output tensor (defaults to None).
+            This argument is necessary if the size argument is ambiguous on the number of dimensions.
+        dtype : str, optional
+            The data-type for the output tensor. If not specified,
+            the dtype is inferred from avg and std, but it is at least as precise as floatX.
+        kwargs
+            Other keyword arguments for random number generation (see uniform).
+
+        Returns
+        -------
+        samples : TensorVariable
+            A Theano tensor of samples randomly drawn from a truncated normal distribution.
+
+        See Also
+        --------
+        normal
+        """
+        # constant taken from scipy.stats.truncnorm.std(a=-2, b=2, loc=0., scale=1.)
+        std = std / tensor.constant(.87962566103423978)
+        return self.normal(size=size, avg=avg, std=std, truncate=True,
+                           ndim=ndim, dtype=dtype, nstreams=nstreams, **kwargs)
+
+
+def _check_size(size):
+    """
+    Canonicalise inputs to get valid output sizes for Theano tensors.
+
+    Parameters
+    ----------
+    size : int_vector_like
+        Some variable that could serve as the shape for a Theano tensor.
+        This can be an int, a tuple of ints, a list of ints
+        or a Theano Variable with similar properties.
+
+    Returns
+    -------
+    size_var : int_vector
+        A one-dimensional Theano variable encapsulating the given size.
+
+    Raises
+    ------
+    ValueError
+        If this method can not build a valid size from the input.
+    """
+    # non-tuple checks and scalar-to-tuple transform
+    if isinstance(size, theano.Variable):
+        if size.ndim == 1:
+            return size
+        elif size.ndim == 0:
+            return tensor.stack([size], ndim=1)
         else:
-            U1 = flattened[:prod(flattened.shape) // 2]
-            U2 = flattened[prod(flattened.shape) // 2:]
+            raise ValueError("Theano variable must have 1 dimension to be a valid size.", size)
+    elif isinstance(size, (np.integer, integer_types)):
+        return tensor.constant([size], ndim=1)
+    elif not isinstance(size, (tuple, list)):
+        raise ValueError("Size must be a int, tuple, list or Theano variable.", size)
 
-        # normal_samples = zeros_like(flattened)
-        sqrt_ln_U1 = sqrt(-2.0 * log(U1))
-        # TypeError: 'TensorVariable' object does not support item assignment
-        # so this doesn't work...
-        # normal_samples[:n_samples/2] = sqrt_ln_U1 * cos(2.0*np.pi*U2)
-        # normal_samples[n_samples/2:] = sqrt_ln_U1 * sin(2.0*np.pi*U2)
-
-        # so trying this instead
-        first_half = sqrt_ln_U1 * cos(
-            np.array(2.0 * np.pi, dtype=dtype) * U2)
-        second_half = sqrt_ln_U1 * sin(
-            np.array(2.0 * np.pi, dtype=dtype) * U2)
-        normal_samples = join(0, first_half, second_half)
-
-        final_samples = None
-        if evened:
-            final_samples = normal_samples[:-1]
-        elif constant:
-            final_samples = normal_samples
+    # check entries of list or tuple
+    for i in size:
+        if isinstance(i, theano.Variable):
+            if i.ndim != 0:
+                raise ValueError("Non-scalar Theano variable in size", size, i)
+        elif isinstance(i, (np.integer, integer_types)):
+            if i <= 0:
+                raise ValueError("Non-positive dimensions not allowed in size.", size, i)
         else:
-            final_samples = normal_samples[:prod(size)]
+            raise ValueError("Only Theano variables and integers are allowed in a size-tuple.", size, i)
 
-        if not size:
-            # Force the dtype to be int64, otherwise reshape complains
-            size = tensor.constant(size, dtype='int64')
-        final_samples = final_samples.reshape(size)
-
-        final_samples = avg + std * final_samples
-
-        assert final_samples.dtype == dtype
-        return final_samples
+    return tensor.as_tensor_variable(size, ndim=1)
 
 
 @local_optimizer((mrg_uniform_base,))
