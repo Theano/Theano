@@ -99,17 +99,6 @@ def init_dev(dev, name=None, preallocate=None):
         MB = (1024 * 1024)
         if dev.startswith('cuda'):
             avail = dnn.dnn_available(name)
-            # On V100, cuDNN lower then 7002 don't raise error but
-            # takes hours to load! So raise a good user error.
-            if avail and dnn.version() < 7002:
-                bin_id = context.bin_id
-                assert bin_id.startswith("compute_"), context_bin_id
-                if int(bin_id[8:]) >= 70:
-                    raise RuntimeError(
-                        "You have cuDNN version %d, while the GPU is a Volta"
-                        " genaration or more recent. This cause extreme"
-                        " slowness, so we disable it."
-                        " Use cuDNN 7.0.2 or higher." % (dnn.version()))
             # If we try to enable cudnn and there isn't enough GPU
             # memory, there will be an unclear error message. So do
             # not even try a clear error.
