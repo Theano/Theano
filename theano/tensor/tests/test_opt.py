@@ -898,6 +898,25 @@ def test_const_type_in_mul_canonizer():
         f1(ival, wval, visbval, hidbval, betaval, aval))
 
 
+def test_cast_in_mul_canonizer():
+    x, y = tensor.vectors('xy')
+    m = tensor.minimum(x, y)
+    o = m.sum()
+    go = tensor.fill(o, 1)
+    e = tensor.eq(go, x)
+    o1 = (1 - e) * go
+    o2 = e * go
+    mode = theano.compile.get_default_mode().excluding('fusion').including('fast_run')
+    f = theano.function([x, y], [o1, o2], mode=mode)
+    theano.printing.debugprint(f, print_type=True)
+    nodes = f.maker.fgraph.apply_nodes
+    assert len([n for n in nodes if isinstance(getattr(n.op, 'scalar_op', None),
+                                               theano.scalar.Identity)]) == 0
+    assert len([n for n in nodes if isinstance(getattr(n.op, 'scalar_op'),
+                                               theano.scalar.Cast)]) == 1
+    f([1], [1])
+
+
 class test_fusion(unittest.TestCase):
     mode = copy.copy(compile.mode.get_default_mode())
     _shared = staticmethod(shared)

@@ -4998,10 +4998,7 @@ class Canonizer(gof.LocalOptimizer):
 
         new = self.merge_num_denum(num, denum)
         if new.type.dtype != out.type.dtype:
-            # new = T.fill(out, new)
-            elem_op = T.Elemwise(scalar.Identity(scalar.specific_out(
-                getattr(scalar, out.type.dtype))))
-            new = elem_op(new)
+            new = T.cast(new, out.type.dtype)
 
         assert (new.type == out.type) == (not (new.type != out.type))
 
