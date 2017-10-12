@@ -39,11 +39,11 @@ class GPUAMultinomialFromUniform(GpuKernelBase, Op):
         return [gpuarray_helper_inc_dir()]
 
     def make_node(self, pvals, unis):
-        assert unis.dtype == pvals.dtype
-        assert pvals.dtype in ['float32', 'float16', 'float64']
         ctx_name = infer_context_name(pvals, unis)
         pvals = as_gpuarray_variable(pvals, ctx_name)
         unis = as_gpuarray_variable(unis, ctx_name)
+        assert pvals.dtype in ['float32', 'float16', 'float64']
+        assert unis.dtype in ['float32', 'float16', 'float64']
 
         if pvals.ndim != 2:
             raise NotImplementedError('pvals ndim should be 2', pvals.ndim)
@@ -62,7 +62,8 @@ class GPUAMultinomialFromUniform(GpuKernelBase, Op):
 
     def gpu_kernels(self, node, name):
         out_ctype = pygpu.gpuarray.dtype_to_ctype(node.outputs[0].dtype)
-        in_ctype = pygpu.gpuarray.dtype_to_ctype(node.inputs[0].dtype)
+        pvals_ctype = pygpu.gpuarray.dtype_to_ctype(node.inputs[0].dtype)
+        unis_ctype = pygpu.gpuarray.dtype_to_ctype(node.inputs[1].dtype)
         work_ctype = pygpu.gpuarray.dtype_to_ctype(work_dtype(node.inputs[0].dtype))
         write_out_ctype = write_w(node.outputs[0].dtype)
         load_in_ctype = load_w(node.inputs[0].dtype)
@@ -71,11 +72,11 @@ class GPUAMultinomialFromUniform(GpuKernelBase, Op):
 KERNEL void k_multi_warp_multinomial(
     const ga_size nb_multi,
     const ga_size nb_outcomes,
-    GLOBAL_MEM %(in_ctype)s *global_pvals,
+    GLOBAL_MEM %(pvals_ctype)s *global_pvals,
     const ga_size global_pvals_offset,
     const ga_ssize pvals_row_stride,
     const ga_ssize pvals_col_stride,
-    GLOBAL_MEM %(in_ctype)s *global_unis,
+    GLOBAL_MEM %(unis_ctype)s *global_unis,
     const ga_size global_unis_offset,
     const ga_ssize unis_stride,
     GLOBAL_MEM %(out_ctype)s *global_outs,
@@ -84,8 +85,8 @@ KERNEL void k_multi_warp_multinomial(
     const ga_ssize outs_col_stride
 )
 {
-    global_pvals = (GLOBAL_MEM %(in_ctype)s *)(((GLOBAL_MEM char *)global_pvals) + global_pvals_offset);
-    global_unis = (GLOBAL_MEM %(in_ctype)s *)(((GLOBAL_MEM char *)global_unis) + global_unis_offset);
+    global_pvals = (GLOBAL_MEM %(pvals_ctype)s *)(((GLOBAL_MEM char *)global_pvals) + global_pvals_offset);
+    global_unis = (GLOBAL_MEM %(unis_ctype)s *)(((GLOBAL_MEM char *)global_unis) + global_unis_offset);
     global_outs = (GLOBAL_MEM %(out_ctype)s *)(((GLOBAL_MEM char *)global_outs) + global_outs_offset);
     // each thread takes care of one multinomial draw
     int n = LDIM_0*GID_0 + LID_0;
@@ -113,7 +114,8 @@ KERNEL void k_multi_warp_multinomial(
     }
 }
 """ % dict(out_ctype=out_ctype, write_out_ctype=write_out_ctype,
-           work_ctype=work_ctype, in_ctype=in_ctype, load_in_ctype=load_in_ctype)
+           work_ctype=work_ctype, pvals_ctype=pvals_ctype,
+           unis_ctype=unis_ctype, load_in_ctype=load_in_ctype)
         return [Kernel(
             code=code, name="k_multi_warp_multinomial",
             params=[pygpu.gpuarray.SIZE,
@@ -139,7 +141,8 @@ KERNEL void k_multi_warp_multinomial(
         ctx = sub['params']
         kname = self.gpu_kernels(node, name)[0].objvar
         out_typecode = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
-        in_typecode = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
+        pvals_typecode = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
+        unis_typecode = pygpu.gpuarray.dtype_to_typecode(node.inputs[1].dtype)
         s = """
         PyGpuArrayObject * pvals = %(pvals)s;
         PyGpuArrayObject * unis = %(unis)s;
@@ -201,7 +204,15 @@ KERNEL void k_multi_warp_multinomial(
 
         assert(nb_blocks*nb_threads >= nb_multi);
 
-        int err = k_multi_warp_multinomial_call(1, &nb_blocks, &nb_threads, 0,  PyGpuArray_DIMS(out)[1], PyGpuArray_DIMS(out)[0], pvals->ga.data, pvals->ga.offset, PyGpuArray_STRIDES(pvals)[0]/gpuarray_get_elsize(%(in_typecode)s), PyGpuArray_STRIDES(pvals)[1]/gpuarray_get_elsize(%(in_typecode)s), unis->ga.data, unis->ga.offset, PyGpuArray_STRIDES(unis)[0]/gpuarray_get_elsize(%(in_typecode)s), out->ga.data, out->ga.offset, PyGpuArray_STRIDES(out)[0]/gpuarray_get_elsize(%(out_typecode)s), PyGpuArray_STRIDES(out)[1]/gpuarray_get_elsize(%(out_typecode)s));
+        int err = k_multi_warp_multinomial_call(
+          1, &nb_blocks, &nb_threads, 0,
+          PyGpuArray_DIMS(out)[1], PyGpuArray_DIMS(out)[0], pvals->ga.data, pvals->ga.offset,
+          PyGpuArray_STRIDES(pvals)[0]/gpuarray_get_elsize(%(pvals_typecode)s),
+          PyGpuArray_STRIDES(pvals)[1]/gpuarray_get_elsize(%(pvals_typecode)s),
+          unis->ga.data, unis->ga.offset,
+          PyGpuArray_STRIDES(unis)[0]/gpuarray_get_elsize(%(unis_typecode)s), out->ga.data,
+          out->ga.offset, PyGpuArray_STRIDES(out)[0]/gpuarray_get_elsize(%(out_typecode)s),
+          PyGpuArray_STRIDES(out)[1]/gpuarray_get_elsize(%(out_typecode)s));
 
         if (err != GA_NO_ERROR) {
            PyErr_Format(
@@ -218,7 +229,7 @@ KERNEL void k_multi_warp_multinomial(
         return s
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
 
 class GPUAChoiceFromUniform(GpuKernelBase, Op):
