@@ -118,7 +118,7 @@ def get_symb_and_cpu_grad_functions(mode, for_grad, grid_op, sampler_op):
 
 class TestTransformer(object):
     mode = None
-    n_tests = 10
+    n_tests = 20
     transformer_grid_op = TransformerGrid
     transformer_sampler_op = TransformerSampler
     transformer_grad_i_op = TransformerGradI
@@ -208,8 +208,9 @@ class TestTransformer(object):
         # Compare CPU implementation with symbolic implementation.
         inp_shape = self.inp_cases[case_index]
         transform = self.transform_cases[case_index]
-        inp_shape = (1, 2, 3, 4)
-        transform = np.asarray([[1, 0, 0], [0, 1, 0]], dtype=theano.config.floatX)  # + 1e-8
+        # Special case.
+        # inp_shape = (1, 2, 3, 4)
+        # transform = np.asarray([[1, 0, 0], [0, 1, 0]], dtype=theano.config.floatX)  + 1e-5
         inp, theta, scale_width, scale_height = self.getInputs(inp_shape, transform)
 
         if for_grad is None:
