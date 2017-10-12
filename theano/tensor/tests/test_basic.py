@@ -817,13 +817,13 @@ def test_maximum_minimum_grad():
     # Test the discontinuity point.
     # We decided that we only pass the gradient to the first input in that case.
     x, y = tensor.vectors('xy')
-    for operator in [tensor.maximum, tensor.minimum]:
-        o = operator(x, y)
+    for op in [tensor.maximum, tensor.minimum]:
+        o = op(x, y)
         g = theano.grad(o.sum(), [x, y])
         theano.printing.debugprint(g)
         f = theano.function([x, y], g)
         theano.printing.debugprint(f, print_type=True)
-        assert np.allclose(f([1], [1]), [[1],[0]])
+        assert np.allclose(f([1], [1]), [[1], [0]])
         print()
 
 MinimumTester = makeBroadcastTester(
