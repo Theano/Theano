@@ -822,9 +822,8 @@ def test_maximum_minimum_grad():
         g = theano.grad(o.sum(), [x, y])
         theano.printing.debugprint(g)
         f = theano.function([x, y], g)
-        theano.printing.debugprint(f, print_type=True)
         assert np.allclose(f([1], [1]), [[1], [0]])
-        print()
+
 
 MinimumTester = makeBroadcastTester(
     op=minimum,
