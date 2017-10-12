@@ -10,7 +10,7 @@ if info['error'] is not None:
 
 full_version = info['version']
 git_revision = info['full-revisionid']
-del info, get_versions
+del get_versions
 
 short_version = full_version.split('+')[0]
 
@@ -26,3 +26,4 @@ if release and info['error'] is None:
     version = short_version
 else:
     version = full_version
+del info
