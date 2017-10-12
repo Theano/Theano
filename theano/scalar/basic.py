@@ -1650,9 +1650,11 @@ class Maximum(BinaryScalarOp):
         if outputs[0].type in discrete_types:
             return [x.zeros_like().astype(theano.config.floatX),
                     y.zeros_like().astype(theano.config.floatX)]
-
-        gx = eq(outputs[0], x) * gz
-        gy = eq(outputs[0], y) * gz
+        # This form handle the case when both value are the same.
+        # In that case, gx will be gz, gy will be 0.
+        e = eq(outputs[0], x)
+        gx = e * gz
+        gy = (constant(1, dtype=gz.dtype) - e) * gz
         return (gx, gy)
 
 maximum = Maximum(upcast_out, name='maximum')
@@ -1686,8 +1688,11 @@ class Minimum(BinaryScalarOp):
         if outputs[0].type in discrete_types:
             return [x.zeros_like().astype(theano.config.floatX),
                     y.zeros_like().astype(theano.config.floatX)]
-        gx = eq(outputs[0], x) * gz
-        gy = eq(outputs[0], y) * gz
+        # This form handle the case when both value are the same.
+        # In that case, gx will be gz, gy will be 0.
+        e = eq(outputs[0], x)
+        gx = e * gz
+        gy = (constant(1, dtype=gz.dtype) - e) * gz
         return (gx, gy)
 minimum = Minimum(upcast_out, name='minimum')
 
