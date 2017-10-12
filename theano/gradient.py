@@ -1490,6 +1490,7 @@ class numeric_grad(object):
 
         if eps is None:
             eps = builtins.max(self.type_eps[dt] for dt in dtypes)
+        self.eps = eps
 
         # set up aliases so that apt[i] is backed by memory in x
         # and self.gf is backed by memory in gx
@@ -1786,6 +1787,12 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 analytic_grad, abs_tol, rel_tol)
 
             if max_abs_err > abs_tol and max_rel_err > rel_tol:
+                print('Failing gradient case (argument %s/%s):' % (max_arg + 1, len(analytic_grad)))
+                print('Eps:', num_grad.eps)
+                print('Expected:', num_grad.gf[max_arg].dtype, num_grad.gf[max_arg].shape)
+                print(num_grad.gf[max_arg])
+                print('Value:', analytic_grad[max_arg].dtype, analytic_grad[max_arg].shape)
+                print(analytic_grad[max_arg])
 
                 raise verify_grad.E_grad(max_arg, max_err_pos,
                                          analytic_grad[max_arg].shape,
