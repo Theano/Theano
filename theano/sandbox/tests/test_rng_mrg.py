@@ -501,63 +501,6 @@ def test_normal_truncation():
                   prefix='mrg ', allow_01=True, inputs=input,
                   mean_rtol=rtol, std_tol=std_tol)
 
-        sys.stdout.flush()
-
-
-@attr('slow')
-def test_truncated_normal():
-    # just a copy of test_normal0 for truncated normal
-    steps = 50
-    std = 2.
-
-    if (config.mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
-            config.mode == 'Mode' and config.linker in ['py']):
-        sample_size = (25, 30)
-        default_rtol = .02
-    else:
-        sample_size = (999, 50)
-        default_rtol = .01
-    sample_size_odd = (sample_size[0], sample_size[1] - 1)
-    x = tensor.matrix()
-
-    test_cases = [
-        (sample_size, sample_size, [], [], -5., default_rtol, default_rtol),
-        (x.shape, sample_size, [x],
-         [np.zeros(sample_size, dtype=config.floatX)],
-         -5., default_rtol, default_rtol),
-        # test odd value
-        (x.shape, sample_size_odd, [x],
-         [np.zeros(sample_size_odd, dtype=config.floatX)],
-         -5., default_rtol, default_rtol),
-        (sample_size, sample_size, [], [],
-         np.arange(np.prod(sample_size),
-                   dtype='float32').reshape(sample_size),
-         10. * std / np.sqrt(steps), default_rtol),
-        # test empty size (scalar)
-        ((), (), [], [], -5., default_rtol, 0.02),
-        # test with few samples at the same time
-        ((1,), (1,), [], [], -5., default_rtol, 0.02),
-        ((3,), (3,), [], [], -5., default_rtol, 0.02),
-    ]
-
-    for size, const_size, var_input, input, avg, rtol, std_tol in test_cases:
-        R = MRG_RandomStreams(234)
-        # Note: we specify `nstreams` to avoid a warning.
-        n = R.truncated_normal(size=size, avg=avg, std=std,
-                               nstreams=rng_mrg.guess_n_streams(size, warn=False))
-        f = theano.function(var_input, n)
-
-        # Increase the number of steps if size implies only a few samples
-        if np.prod(const_size) < 10:
-            steps_ = steps * 60
-        else:
-            steps_ = steps
-        basictest(f, steps_, const_size, target_avg=avg, target_std=std,
-                  prefix='mrg ', allow_01=True, inputs=input,
-                  mean_rtol=rtol, std_tol=std_tol)
-
-        sys.stdout.flush()
-
 
 def basic_multinomialtest(f, steps, sample_size, target_pvals, n_samples,
                           prefix="", mean_rtol=0.04):
