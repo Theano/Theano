@@ -812,6 +812,19 @@ MaximumInplaceTester = makeBroadcastTester(
     bad_runtime=_bad_runtime_broadcast_binary_normal,
     inplace=True)
 
+
+def test_maximum_minimum_grad():
+    # Test the discontinuity point.
+    # We decided that we only pass the gradient to the first input in that case.
+    x, y = tensor.vectors('xy')
+    for op in [tensor.maximum, tensor.minimum]:
+        o = op(x, y)
+        g = theano.grad(o.sum(), [x, y])
+        theano.printing.debugprint(g)
+        f = theano.function([x, y], g)
+        assert np.allclose(f([1], [1]), [[1], [0]])
+
+
 MinimumTester = makeBroadcastTester(
     op=minimum,
     expected=lambda *inputs: check_floatX(inputs, np.minimum(*inputs)),
