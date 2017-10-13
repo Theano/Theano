@@ -2,8 +2,6 @@
 
 BUILDBOT_DIR=$WORKSPACE/nightly_build
 THEANO_PARAM="theano --with-timer --timer-top-n 10 -v"
-# Exclude MPI tests that cannot complete properly
-THEANO_PARAM="${THEANO_PARAM} -e test_mpi_roundtrip"
 export THEANO_FLAGS=init_gpu_device=cuda
 
 # CUDA
