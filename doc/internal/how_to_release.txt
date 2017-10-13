@@ -37,7 +37,7 @@ Update the year in the ``Theano/LICENSE.txt`` file too, if necessary.
 ``NEWS.txt`` usually contains the name and date of the release, change them
 too.
 
-Update the fallback version in ``setup.py``.
+Update the fallback version in ``theano/version.py``.
 
 Update the code and the documentation for the theano flags
 ``warn.ignore_bug_before`` to accept the new version. You must modify the

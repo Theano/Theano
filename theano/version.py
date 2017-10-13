@@ -2,12 +2,18 @@ from __future__ import absolute_import, print_function, division
 
 from theano._version import get_versions
 
+FALLBACK_VERSION = "0.10.0beta3+unknown"
+
 info = get_versions()
+if info['error'] is not None:
+    info['version'] = FALLBACK_VERSION
+
 full_version = info['version']
 git_revision = info['full-revisionid']
-del info, get_versions
+del get_versions
 
 short_version = full_version.split('+')[0]
+
 
 # This tries to catch a tag like beta2, rc1, ...
 try:
@@ -15,11 +21,9 @@ try:
     release = True
 except ValueError:
     release = False
-except IndexError:
-    print(short_version)
-    raise
 
-if release:
+if release and info['error'] is None:
     version = short_version
 else:
     version = full_version
+del info

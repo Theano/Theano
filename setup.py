@@ -16,8 +16,6 @@ except ImportError:
 
 import versioneer
 
-FALLBACK_VERSION="0.10.0beta3+unknown"
-
 CLASSIFIERS = """\
 Development Status :: 4 - Beta
 Intended Audience :: Education
@@ -74,6 +72,16 @@ def find_packages(where='.', exclude=()):
 version_data = versioneer.get_versions()
 
 if version_data['error'] is not None:
+    # Get the fallback version
+    # We can't import theano.version as it isn't yet installed, so parse it.
+    fname = os.path.join(os.path.split(__file__)[0], "theano", "version.py")
+    with open(fname, "r") as f:
+        lines = f.readlines()
+    lines = [l for l in lines if l.startswith("FALLBACK_VERSION")]
+    assert len(lines) == 1
+
+    FALLBACK_VERSION = lines[0].split("=")[1].strip().strip('""')
+
     version_data['version'] = FALLBACK_VERSION
 
 

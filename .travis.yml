@@ -110,14 +110,12 @@ script:
   - free -m
   - df -h
   - ulimit -a
-  # Move out of Theano so the import will use the installed version
-  - cd ..
-  # Move to the path of the installed version
-  - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
-  - cd -; cd Theano
+# Print information to help debug problems
+  - python -c 'import theano; print(theano.__version__)'
   - python -c 'import theano; print(theano.config.__str__(print_doc=False))'
   - python -c 'import theano; assert(theano.config.blas.ldflags != "")'
+# Run tests for the given part
   - theano-nose -v --with-timer --timer-top-n 10 $PART
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf --check; fi
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test --check; fi

@@ -222,10 +222,16 @@ def dnn_available(context_name):
 
     # This is a hack because bin_id is in the from of
     # "<something>_<major><minor>" for cuda devices.
-    if ctx.bin_id[-2:] < b'30':
+    if int(ctx.bin_id[-2:]) < 30:
         dnn_available.msg = "Device not supported"
         return False
 
+    # On V100, cuDNN lower then 7002 don't raise error but
+    # takes hours to load or execute! So raise a good user error.
+    if version() < 7002:
+        if int(ctx.bin_id[-2:]) >= 70:
+            dnn_available.msg = "Use cuDNN 7.0.2 or higher for Volta."
+            return False
     return True
 
 dnn_available.msg = None
