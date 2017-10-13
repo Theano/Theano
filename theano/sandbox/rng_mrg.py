@@ -1028,8 +1028,8 @@ class MRG_RandomStreams(object):
         return self.choice(size=n, a=None, replace=False, p=pvals,
                            dtype=dtype, nstreams=nstreams, ndim=ndim, **kwargs)
 
-    def normal(self, size, avg=0.0, std=1.0, truncate=False,
-               ndim=None, dtype=None, nstreams=None, **kwargs):
+    def normal(self, size, avg=0.0, std=1.0, ndim=None, dtype=None,
+               nstreams=None, truncate=False, **kwargs):
         """
         Sample a tensor of values from a normal distribution.
 
