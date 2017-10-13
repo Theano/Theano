@@ -1115,7 +1115,7 @@ class MRG_RandomStreams(object):
         elif n_odd_samples % 2 == 1:
             samples = norm_samples[:-1]
         else:
-            samples = nrom_samples
+            samples = norm_samples
         samples = tensor.reshape(samples, newshape=size, ndim=ndim)
         samples *= std
         samples += avg
