@@ -1070,7 +1070,11 @@ class MRG_RandomStreams(object):
         std = tensor.cast(std, dtype=dtype)
 
         # generate even number of uniform samples
-        n_odd_samples = tensor.prod(size, dtype='int64')
+        # Do manual constant folding to lower optiimizer work.
+        if isinstance(size, theano.Constant):
+            n_odd_samples = size.prod(dtype='int64')
+        else:
+            n_odd_samples = tensor.prod(size, dtype='int64')
         n_even_samples = n_odd_samples + n_odd_samples % 2
         uniform = self.uniform((n_even_samples, ), low=0., high=1.,
                                ndim=1, dtype=dtype, nstreams=nstreams, **kwargs)
@@ -1106,8 +1110,12 @@ class MRG_RandomStreams(object):
             norm_samples = tensor.join(0, z0_valid, z0_fixed, z1_valid, z1_fixed)
         else:
             norm_samples = tensor.join(0, z0, z1)
-
-        samples = norm_samples[:n_odd_samples]
+        if isinstance(n_odd_samples, theano.Variable):
+            samples = norm_samples[:n_odd_samples]
+        elif n_odd_samples % 2 == 1:
+            samples = norm_samples[:-1]
+        else:
+            samples = nrom_samples
         samples = tensor.reshape(samples, newshape=size, ndim=ndim)
         samples *= std
         samples += avg
