@@ -271,7 +271,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         if (n_streams > n_elements)
           n_streams = n_elements;
 
-        {
+        if (n_elements > 0){
           size_t ls = 0, gs = 0;
           int err = GpuKernel_sched(&%(kname)s, n_streams, &ls, &gs);
           if (err != GA_NO_ERROR) {
@@ -303,7 +303,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                    """ % dict(fail=sub['fail']))
 
     def c_code_cache_version(self):
-        return (16,)
+        return (17,)
 
 
 @register_opt2([mrg_uniform], 'fast_compile')
