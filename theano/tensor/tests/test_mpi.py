@@ -46,17 +46,18 @@ def test_mpi_roundtrip():
     if not mpi_enabled:
         raise SkipTest('MPI not enabled')
     theano_root = theano.__file__.split('__init__')[0]
-    d = {}
-    if PY3:
-        # Is some not understood cases, the subprocess never finish.
-        d = dict(timeout=5*60)
+    env = os.environ.copy()
+    flags = env['THEANO_FLAGS']
+    keep_flags = ','.join((f for f in flags.split(',') if not f.startswith('init_gpu_device')))
+    env['THEANO_FLAGS'] = keep_flags
     p = subprocess.Popen("mpiexec -np 2 python " + theano_root +
                          "tensor/tests/_test_mpi_roundtrip.py",
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
-                         close_fds=True, **d)
+                         close_fds=True,
+                         env=env)
     (stdout, stderr) = p.communicate()
 
     result = theano.compat.decode(stdout)
