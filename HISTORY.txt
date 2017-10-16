@@ -5,9 +5,114 @@
 Old Release Notes
 =================
 
-=============
-Release Notes
-=============
+Theano 0.10.0beta3 (20th of September, 2017)
+============================================
+
+This release contains new features, improvements and bug fixes to prepare the upcoming release candidate.
+
+We recommend that every developer updates to this version.
+
+Highlights:
+ - conda packages now available and updated in our own conda channel ``mila-udem``.
+   To install it: ``conda install -c mila-udem/label/pre theano pygpu``
+
+ - Improved elemwise operations
+
+   - Speed-up elemwise ops based on SciPy
+   - Fixed memory leak related to elemwise ops on GPU
+
+ - Improved pickling and tests in debug mode
+ - Fixed pygpu detection
+ - Bug fixes, crash fixes, warning improvements and documentation updates
+
+A total of 69 people contributed to this release since 0.9.0, see list below.
+
+Interface changes:
+ - Removed op ``ExtractDiag`` from ``theano.tensor.nlinalg``, now only in ``theano.tensor.basic``
+
+Convolution updates:
+ - Added dilated causal convolutions for 2D
+
+New features:
+ - Implemented ``topk`` and ``argtopk`` on CPU and GPU
+ - Added ``unravel_index`` and ``ravel_multi_index`` functions on CPU
+ - Implemented ``max()`` and ``min()`` functions for booleans and unsigned integers types
+
+Others:
+ - Added ``R_op()`` for ``ZeroGrad``
+ - Added description for rnnblock
+
+Commiters since 0.9.0:
+ - Frederic Bastien
+ - João Victor Tozatti Risso
+ - Arnaud Bergeron
+ - Steven Bocco
+ - Mohammed Affan
+ - amrithasuresh
+ - Pascal Lamblin
+ - Reyhane Askari
+ - Alexander Matyasko
+ - Simon Lefrancois
+ - Adam Becker
+ - Shawn Tan
+ - Vikram
+ - Gijs van Tulder
+ - Thomas George
+ - Andrei Costinescu
+ - Faruk Ahmed
+ - Boris Fomitchev
+ - Zhouhan LIN
+ - Aleksandar Botev
+ - jhelie
+ - xiaoqie
+ - Tegan Maharaj
+ - Matt Graham
+ - Cesar Laurent
+ - Gabe Schwartz
+ - Juan Camilo Gamboa Higuera
+ - Tim Cooijmans
+ - Anirudh Goyal
+ - Saizheng Zhang
+ - Yikang Shen
+ - vipulraheja
+ - Florian Bordes
+ - Sina Honari
+ - erakra
+ - Chiheb Trabelsi
+ - Shubh Vachher
+ - Daren Eiri
+ - Joseph Paul Cohen
+ - Laurent Dinh
+ - Mohamed Ishmael Diwan Belghazi
+ - Jeff Donahue
+ - Ramana Subramanyam
+ - Bogdan Budescu
+ - Dzmitry Bahdanau
+ - Ghislain Antony Vaillant
+ - Jan Schlüter
+ - Nan Jiang
+ - Xavier Bouthillier
+ - fo40225
+ - wyjw
+ - Aarni Koskela
+ - Adam Geitgey
+ - Adrian Keet
+ - Adrian Seyboldt
+ - Anmol Sahoo
+ - Chong Wu
+ - Holger Kohr
+ - Jayanth Koushik
+ - Lilian Besson
+ - Lv Tao
+ - Michael Manukyan
+ - Murugesh Marvel
+ - NALEPA
+ - Zotov Yuriy
+ - dareneiri
+ - lrast
+ - morrme
+ - naitonium
+
 
 Theano 0.10.0beta2 (7th of September, 2017)
 ===========================================
