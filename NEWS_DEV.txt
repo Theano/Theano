@@ -21,7 +21,7 @@ TODO: better Theano conv doc
 Highlights:
  - Announcing that `MILA will stop developing Theano <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_
  - conda packages now available and updated in our own conda channel ``mila-udem``.
-   To install it: ``conda install -c mila-udem/label/pre theano pygpu``
+   To install it: ``conda install -c mila-udem -c mila-udem/label/pre theano pygpu``
  - Support NumPy ``1.13``
  - Support pygpu ``0.7``
  - Added conda recipe
@@ -48,7 +48,6 @@ Highlights:
 
    - Added documentation for RNNBlock
 
- - Improved pickling and tests in debug mode
  - Many bug fixes, crash fixes and warning improvements
 
 Interface changes:
@@ -156,7 +155,7 @@ Others:
  - Added decsription for rnnblock
 
 Other more detailed changes:
- - Fixed gradient error for elemwise ``minimum`` and ``maximum``
+ - Fixed gradient error for elemwise ``minimum`` and ``maximum`` when compared values are the same
  - Fixed gradient for ``ARange``
  - Removed ``ViewOp`` subclass during optimization
  - Removed useless warning when profile is manually disabled

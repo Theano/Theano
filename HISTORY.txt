@@ -14,14 +14,13 @@ We recommend that every developer updates to this version.
 
 Highlights:
  - conda packages now available and updated in our own conda channel ``mila-udem``.
-   To install it: ``conda install -c mila-udem/label/pre theano pygpu``
+   To install it: ``conda install -c mila-udem -c mila-udem/label/pre theano pygpu``
 
  - Improved elemwise operations
 
    - Speed-up elemwise ops based on SciPy
    - Fixed memory leak related to elemwise ops on GPU
 
- - Improved pickling and tests in debug mode
  - Fixed pygpu detection
  - Bug fixes, crash fixes, warning improvements and documentation updates
 

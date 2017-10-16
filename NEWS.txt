@@ -34,7 +34,7 @@ New features:
 
 Other more detailed changes:
  - Improved stack trace follow-up for GPU optimizations
- - Fixed gradient error for elemwise ``minimum`` and ``maximum``
+ - Fixed gradient error for elemwise ``minimum`` and ``maximum`` when compared values are the same
  - Fixed gradient for ``ARange``
  - Removed ``ViewOp`` subclass during optimization
 
