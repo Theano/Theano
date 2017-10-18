@@ -42,7 +42,7 @@ from theano.tensor.opt import Assert
 # that support alpha, beta and out as parameters.
 
 def dnn_conv(img, kerns, alpha=1, beta=0, out=None, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
-             conv_mode='conv', algo=None, precision=None):
+             conv_mode='conv', algo=None, precision=None, num_groups=1):
     ctx_name = infer_context_name(img, kerns)
 
     img = gpu_contiguous(as_gpuarray_variable(img, ctx_name))
@@ -50,7 +50,7 @@ def dnn_conv(img, kerns, alpha=1, beta=0, out=None, border_mode='valid', subsamp
 
     precision = get_precision(precision, [img, kerns])
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
-                          conv_mode=conv_mode, precision=precision)(kerns.shape)
+                          conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns.shape)
     desc_op = desc.owner.op
     # We can use Shape_i and bypass the infer_shape here as this is on
     # the input of node and it will always be present.
@@ -65,11 +65,11 @@ def dnn_conv(img, kerns, alpha=1, beta=0, out=None, border_mode='valid', subsamp
         out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
         check = Assert('GpuDnnConv: qiven output (for beta not null) does not have expected shape')
         real_out = check(out, theano.tensor.all(theano.tensor.eq(out.shape, out_shp)))
-    return GpuDnnConv(algo=algo)(img, kerns, real_out, desc, alpha, beta)
+    return GpuDnnConv(algo=algo, num_groups=num_groups)(img, kerns, real_out, desc, alpha, beta)
 
 
 def dnn_gradweight(img, topgrad, kerns_shp, alpha=1, beta=0, out=None, border_mode='valid', subsample=(1, 1),
-                   dilation=(1, 1), conv_mode='conv', algo=None, precision=None):
+                   dilation=(1, 1), conv_mode='conv', algo=None, precision=None, num_groups=1):
     ctx_name = infer_context_name(img, topgrad)
 
     img = gpu_contiguous(as_gpuarray_variable(img, ctx_name))
@@ -78,7 +78,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, alpha=1, beta=0, out=None, border_mo
 
     precision = get_precision(precision, [img, topgrad], for_grad=True)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
-                          conv_mode=conv_mode, precision=precision)(kerns_shp)
+                          conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns_shp)
     if beta == 0:
         real_out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*kerns_shp)
     else:
@@ -86,11 +86,11 @@ def dnn_gradweight(img, topgrad, kerns_shp, alpha=1, beta=0, out=None, border_mo
         out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
         check = Assert('GpuDnnConvGradW: qiven output (for beta not null) does not have expected shape')
         real_out = check(out, theano.tensor.all(theano.tensor.eq(out.shape, kerns_shp)))
-    return GpuDnnConvGradW(algo=algo)(img, topgrad, real_out, desc, alpha, beta)
+    return GpuDnnConvGradW(algo=algo, num_groups=num_groups)(img, topgrad, real_out, desc, alpha, beta)
 
 
 def dnn_gradinput(kerns, topgrad, img_shp, alpha=1, beta=0, out=None, border_mode='valid', subsample=(1, 1),
-                  dilation=(1, 1), conv_mode='conv', algo=None, precision=None):
+                  dilation=(1, 1), conv_mode='conv', algo=None, precision=None, num_groups=1):
     ctx_name = infer_context_name(kerns, topgrad)
 
     kerns = gpu_contiguous(as_gpuarray_variable(kerns, ctx_name))
@@ -99,7 +99,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, alpha=1, beta=0, out=None, border_mod
 
     precision = get_precision(precision, [kerns, topgrad], for_grad=True)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
-                          conv_mode=conv_mode, precision=precision)(kerns.shape)
+                          conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns.shape)
     if beta == 0:
         real_out = GpuAllocEmpty(dtype=kerns.dtype, context_name=ctx_name)(*img_shp)
     else:
@@ -107,7 +107,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, alpha=1, beta=0, out=None, border_mod
         out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
         check = Assert('GpuDnnConvGradI: qiven output (for beta not null) does not have expected shape')
         real_out = check(out, theano.tensor.all(theano.tensor.eq(out.shape, img_shp)))
-    return GpuDnnConvGradI(algo=algo)(kerns, topgrad, real_out, desc, alpha, beta)
+    return GpuDnnConvGradI(algo=algo, num_groups=num_groups)(kerns, topgrad, real_out, desc, alpha, beta)
 
 
 def check_dtype_config_support(dtype, precision):
