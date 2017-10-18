@@ -19,6 +19,7 @@ from theano.gof import Optimizer, local_optimizer, COp, ParamsType, EnumList
 from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
 from theano.gof.opt import inherit_stack_trace
+from theano.tensor.opt import Assert
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
@@ -932,6 +933,79 @@ class GpuDnnConvGradI(DnnBase):
         return [shape[2]]
 
 
+# These internal implementations for dnn_conv, dnn_gradweight and dnn_gradinput
+# support alpha, beta and out as parameters. Public interfaces follow without
+# underscore prefix.
+
+def _dnn_conv(img, kerns, alpha=1, beta=0, out=None, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
+              conv_mode='conv', algo=None, precision=None, num_groups=1):
+    ctx_name = infer_context_name(img, kerns)
+
+    img = gpu_contiguous(as_gpuarray_variable(img, ctx_name))
+    kerns = gpu_contiguous(as_gpuarray_variable(kerns, ctx_name))
+
+    precision = get_precision(precision, [img, kerns])
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
+                          conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns.shape)
+    desc_op = desc.owner.op
+    # We can use Shape_i and bypass the infer_shape here as this is on
+    # the input of node and it will always be present.
+    ishape = [shape_i_op(i)(img) for i in range(img.ndim)]
+    kshape = [shape_i_op(i)(kerns) for i in range(kerns.ndim)]
+    out_shp = get_conv_output_shape(ishape, kshape, desc_op.border_mode, desc_op.subsample, filter_dilation=dilation)
+    out_shp = assert_conv_shape(out_shp)
+    if beta == 0:
+        real_out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
+    else:
+        assert out is not None
+        out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
+        check = Assert('GpuDnnConv: qiven output (for beta not null) does not have expected shape')
+        real_out = check(out, theano.tensor.all(theano.tensor.eq(out.shape, out_shp)))
+    return GpuDnnConv(algo=algo, num_groups=num_groups)(img, kerns, real_out, desc, alpha, beta)
+
+
+def _dnn_gradweight(img, topgrad, kerns_shp, alpha=1, beta=0, out=None, border_mode='valid', subsample=(1, 1),
+                    dilation=(1, 1), conv_mode='conv', algo=None, precision=None, num_groups=1):
+    ctx_name = infer_context_name(img, topgrad)
+
+    img = gpu_contiguous(as_gpuarray_variable(img, ctx_name))
+    topgrad = gpu_contiguous(as_gpuarray_variable(topgrad, ctx_name))
+    kerns_shp = theano.tensor.as_tensor_variable(kerns_shp)
+
+    precision = get_precision(precision, [img, topgrad], for_grad=True)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
+                          conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns_shp)
+    if beta == 0:
+        real_out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*kerns_shp)
+    else:
+        assert out is not None
+        out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
+        check = Assert('GpuDnnConvGradW: qiven output (for beta not null) does not have expected shape')
+        real_out = check(out, theano.tensor.all(theano.tensor.eq(out.shape, kerns_shp)))
+    return GpuDnnConvGradW(algo=algo, num_groups=num_groups)(img, topgrad, real_out, desc, alpha, beta)
+
+
+def _dnn_gradinput(kerns, topgrad, img_shp, alpha=1, beta=0, out=None, border_mode='valid', subsample=(1, 1),
+                   dilation=(1, 1), conv_mode='conv', algo=None, precision=None, num_groups=1):
+    ctx_name = infer_context_name(kerns, topgrad)
+
+    kerns = gpu_contiguous(as_gpuarray_variable(kerns, ctx_name))
+    topgrad = gpu_contiguous(as_gpuarray_variable(topgrad, ctx_name))
+    img_shp = theano.tensor.as_tensor_variable(img_shp)
+
+    precision = get_precision(precision, [kerns, topgrad], for_grad=True)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
+                          conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns.shape)
+    if beta == 0:
+        real_out = GpuAllocEmpty(dtype=kerns.dtype, context_name=ctx_name)(*img_shp)
+    else:
+        assert out is not None
+        out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
+        check = Assert('GpuDnnConvGradI: qiven output (for beta not null) does not have expected shape')
+        real_out = check(out, theano.tensor.all(theano.tensor.eq(out.shape, img_shp)))
+    return GpuDnnConvGradI(algo=algo, num_groups=num_groups)(kerns, topgrad, real_out, desc, alpha, beta)
+
+
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
              conv_mode='conv', direction_hint=None, workmem=None,
              algo=None, precision=None, num_groups=1):
@@ -1037,27 +1111,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
         return GpuDnnConvGradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
-    # contig_version will return a gpu_contiguous copy
-    # if the img contains negative strides
-    img = gpu_contiguous(img)
-    kerns = gpu_contiguous(kerns)
-    # Establish dtype in which to perform the computation of the convolution
-    precision = get_precision(precision, [img, kerns])
-    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
-                          conv_mode=conv_mode, precision=precision,
-                          num_groups=num_groups)(kerns.shape)
-    desc_op = desc.owner.op
-    # We can use Shape_i and bypass the infer_shape here as this is on
-    # the input of node and it will always be present.
-    ishape = [shape_i_op(i)(img) for i in range(img.ndim)]
-    kshape = [shape_i_op(i)(kerns) for i in range(kerns.ndim)]
-    out_shp = get_conv_output_shape(ishape, kshape,
-                                    desc_op.border_mode,
-                                    desc_op.subsample,
-                                    filter_dilation=dilation)
-    out_shp = assert_conv_shape(out_shp)
-    out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
-    return GpuDnnConv(algo=algo, num_groups=num_groups)(img, kerns, out, desc)
+    return _dnn_conv(img, kerns, algo=algo, border_mode=border_mode, subsample=subsample, dilation=dilation,
+                     conv_mode=conv_mode, precision=precision, num_groups=num_groups)
 
 
 def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1, 1, 1),
@@ -1162,27 +1217,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
         return GpuDnnConvGradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
-    # contig_version will return a gpu_contiguous copy
-    # if the img contains negative strides
-    img = gpu_contiguous(img)
-    kerns = gpu_contiguous(kerns)
-    # Establish dtype in which to perform the computation of the convolution
-    precision = get_precision(precision, [img, kerns])
-    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
-                          conv_mode=conv_mode, precision=precision,
-                          num_groups=num_groups)(kerns.shape)
-    desc_op = desc.owner.op
-    # We can use Shape_i and bypass the infer_shape here as this is on
-    # the input of node and it will always be present.
-    ishape = [shape_i_op(i)(img) for i in range(img.ndim)]
-    kshape = [shape_i_op(i)(kerns) for i in range(kerns.ndim)]
-    out_shp = get_conv_output_shape(ishape, kshape,
-                                    desc_op.border_mode,
-                                    desc_op.subsample,
-                                    filter_dilation=dilation)
-    out_shp = assert_conv_shape(out_shp)
-    out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
-    return GpuDnnConv(algo=algo, num_groups=num_groups)(img, kerns, out, desc)
+    return _dnn_conv(img, kerns, algo=algo, border_mode=border_mode, subsample=subsample, dilation=dilation,
+                     conv_mode=conv_mode, precision=precision, num_groups=num_groups)
 
 
 def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
@@ -1191,19 +1227,8 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     """
     TODO: document this
     """
-    ctx_name = infer_context_name(img, topgrad)
-    img = as_gpuarray_variable(img, ctx_name)
-    topgrad = as_gpuarray_variable(topgrad, ctx_name)
-    img = gpu_contiguous(img)
-    topgrad = gpu_contiguous(topgrad)
-    kerns_shp = as_tensor_variable(kerns_shp)
-    precision = get_precision(precision, [img, topgrad], for_grad=True)
-
-    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
-                          conv_mode=conv_mode, precision=precision,
-                          num_groups=num_groups)(kerns_shp)
-    out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*kerns_shp)
-    return GpuDnnConvGradW(algo=algo, num_groups=num_groups)(img, topgrad, out, desc)
+    return _dnn_gradweight(img, topgrad, kerns_shp, border_mode=border_mode, subsample=subsample, dilation=dilation,
+                           conv_mode=conv_mode, algo=algo, precision=precision, num_groups=num_groups)
 
 
 def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
@@ -1223,19 +1248,8 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     """
     TODO: document this
     """
-    ctx_name = infer_context_name(kerns, topgrad)
-    kerns = as_gpuarray_variable(kerns, ctx_name)
-    topgrad = as_gpuarray_variable(topgrad, ctx_name)
-    kerns = gpu_contiguous(kerns)
-    topgrad = gpu_contiguous(topgrad)
-    img_shp = as_tensor_variable(img_shp)
-    precision = get_precision(precision, [kerns, topgrad], for_grad=True)
-
-    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
-                          conv_mode=conv_mode, precision=precision,
-                          num_groups=num_groups)(kerns.shape)
-    out = GpuAllocEmpty(dtype=kerns.dtype, context_name=ctx_name)(*img_shp)
-    return GpuDnnConvGradI(algo=algo, num_groups=num_groups)(kerns, topgrad, out, desc)
+    return _dnn_gradinput(kerns, topgrad, img_shp, border_mode=border_mode, subsample=subsample, dilation=dilation,
+                          conv_mode=conv_mode, algo=algo, precision=precision, num_groups=num_groups)
 
 
 def dnn_gradinput3d(kerns, topgrad, img_shp, border_mode='valid',
