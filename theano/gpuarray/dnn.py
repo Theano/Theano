@@ -19,6 +19,8 @@ from theano.gof import Optimizer, local_optimizer, COp, ParamsType, EnumList
 from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
 from theano.gof.opt import inherit_stack_trace
+from theano.gradient import grad_undefined
+
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
@@ -31,8 +33,11 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               get_conv_output_shape,
                                               assert_conv_shape)
 from theano.tensor.signal.pool import (
-    Pool, MaxPoolGrad, AveragePoolGrad)
+    Pool, MaxPoolGrad, AveragePoolGrad, RoIPoolOp, RoIPoolGradOp)
 from . import pygpu, cudnn_defs
+
+from . import pygpu
+
 from .type import (get_context, gpu_context_type, list_contexts,
                    GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name, gpuarray_helper_inc_dir,

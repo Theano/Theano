@@ -14,7 +14,9 @@ from six.moves import xrange
 import six.moves.builtins as builtins
 import theano
 from theano import gof, OpenMPOp, tensor, Variable, Apply
+
 from theano.gof import ParamsType, EnumList
+
 from theano.gradient import DisconnectedType
 from theano.scalar import bool as bool_t
 
@@ -2464,3 +2466,185 @@ class MaxPoolRop(OpenMPOp):
 
     def c_code_cache_version(self):
         return (1, self.openmp)
+
+
+class RoIPoolOp(gof.COp):
+
+    __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
+    func_file = "./c_code/roi_pool.c"
+    func_name = "APPLY_SPECIFIC(CPUFwd)"
+
+    def __init__(self, pooled_h, pooled_w, spatial_scale):
+        super(RoIPoolOp, self).__init__(self.func_file,
+                                        self.func_name)
+        self.pooled_h = pooled_h
+        self.pooled_w = pooled_w
+        self.spatial_scale = spatial_scale
+
+    def get_op_params(self):
+        return [('POOLED_HEIGHT', str(self.pooled_h)),
+                ('POOLED_WIDTH', str(self.pooled_w)),
+                ('SPATIAL_SCALE', str(self.spatial_scale))]
+
+    def make_node(self, feature_maps, roi):
+        feature_maps = tensor.as_tensor_variable(feature_maps)
+        roi_tuples = tensor.as_tensor_variable(roi)
+        assert feature_maps.ndim == 4
+        assert roi.ndim == 2
+        return Apply(self, [feature_maps, roi_tuples], [feature_maps.type(), feature_maps.type()])
+
+    def perform(self, node, inp, out):
+        image_data, roi = inp
+        top_data, argmax_data, = out
+        num_roi = roi.shape[0]
+        spatial_scale = self.spatial_scale
+        pool_height = self.pooled_h
+        pool_width = self.pooled_w
+
+        batch_size = image_data.shape[0]
+        n_channels = image_data.shape[1]
+        image_width = image_data.shape[3]
+        assert image_data.ndim == 4
+        assert roi.ndim == 2
+        maxval_coordinates = []
+        max_vals = []
+        for b_in in range(batch_size):
+            for i in range(num_roi):
+                x_start = np.floor((roi[i, 1] * spatial_scale) + 0.5)
+                y_start = np.floor((roi[i, 2] * spatial_scale) + 0.5)
+                x_end = np.floor((roi[i, 3] * spatial_scale) + 0.5)
+                y_end = np.floor((roi[i, 4] * spatial_scale) + 0.5)
+
+                roi_height = max(y_end - y_start + 1, 1)
+                roi_width = max(x_end - x_start + 1, 1)
+                row_length = roi_width / pool_width
+                col_length = roi_height / pool_height
+
+                for cn in range(n_channels):
+                    for jy in range(pool_height):
+                        for ix in range(pool_width):
+                            x1 = int(np.floor(x_start + ix * row_length))
+                            x2 = int(np.ceil(x1 + row_length))
+                            y1 = int(np.floor(y_start + jy * col_length))
+                            y2 = int(np.ceil(y1 + col_length))
+                            interest_region = image_data[b_in, cn, y1:y2, x1:x2]
+                            max_vals.append(np.max(interest_region))
+                            argmax = np.unravel_index(np.argmax(interest_region), interest_region.shape)
+                            maxloc = argmax[1] + x1 + (argmax[0] + y1) * image_width
+                            maxval_coordinates.append(maxloc)
+        # Reshaped as (batch_index, num_roi, channels, pool_h * pool_w)
+        max_vals = np.reshape(np.array(max_vals), (batch_size, num_roi, n_channels, pool_height * pool_width))
+        maxval_coordinates = np.reshape(np.array(maxval_coordinates), (batch_size, num_roi, n_channels, pool_height * pool_width))
+        top_data[0] = max_vals
+        argmax_data[0] = maxval_coordinates
+
+    def infer_shape(self, node, in_shapes):
+        data_shape = tensor.shape(node.inputs[0])
+        rois_shape = tensor.shape(node.inputs[1])
+        batch_size = data_shape[0]
+        num_rois = rois_shape[0]
+        h = self.pooled_h
+        w = self.pooled_w
+        channels = data_shape[1]
+        out_shape = [num_rois, channels, h, w]
+        return [out_shape, out_shape]
+
+    def grad(self, inp, grads):
+        data, roi = inp
+        gz1, gz2 = grads
+        maxout, argmax = self(data, roi)
+        disc = [DisconnectedType()() for i in inp[1:]]
+        return [RoIPoolGradOp(self.pooled_h, self.pooled_w,
+                              self.spatial_scale)(data, roi, argmax, gz1)] + disc
+
+    def connection_pattern(self, node):
+        return [[1, 0], [0, 0]]
+
+
+class RoIPoolGradOp(gof.COp):
+
+    __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
+    func_file = "./c_code/roi_pool.c"
+    func_name = "APPLY_SPECIFIC(CPUBackward)"
+
+    def __init__(self, pooled_h, pooled_w, spatial_scale):
+        super(RoIPoolGradOp, self).__init__(self.func_file,
+                                            self.func_name)
+        self.pooled_h = pooled_h
+        self.pooled_w = pooled_w
+        self.spatial_scale = spatial_scale
+
+    def make_node(self, feature_maps, rois, argmax_data, out_grad):
+        feature_maps = tensor.as_tensor_variable(feature_maps)
+        roi_tuples = tensor.as_tensor_variable(rois)
+        argmax_data = tensor.as_tensor_variable(argmax_data)
+        out_grad = tensor.as_tensor_variable(out_grad)
+        assert feature_maps.ndim == 4
+        assert rois.ndim == 2
+        assert argmax_data.ndim == 4
+        assert out_grad.ndim == 4
+        return Apply(self, [feature_maps, roi_tuples, argmax_data, out_grad], [feature_maps.type()])
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
+    def get_op_params(self):
+        return [('POOLED_HEIGHT', str(self.pooled_h)),
+                ('POOLED_WIDTH', str(self.pooled_w)),
+                ('SPATIAL_SCALE', str(self.spatial_scale))]
+
+    def perform(self, node, inp, out):
+        image_data, roi, argmax, out_grad = inp
+        gx, = out
+        num_roi = roi.shape[0]
+        spatial_scale = self.spatial_scale
+        pool_height = self.pooled_h
+        pool_width = self.pooled_w
+        batch_size = image_data.shape[0]
+        n_channels = image_data.shape[1]
+        image_height = image_data.shape[2]
+        image_width = image_data.shape[3]
+        assert image_data.ndim == 4
+        assert roi.ndim == 2
+        gx[0] = np.zeros(image_data.shape)
+        gxx = gx[0]
+        for b_in in range(batch_size):
+            for i in range(num_roi):
+                x_start = np.floor((roi[i, 1] * spatial_scale) + 0.5)
+                y_start = np.floor((roi[i, 2] * spatial_scale) + 0.5)
+                x_end = np.floor((roi[i, 3] * spatial_scale) + 0.5)
+                y_end = np.floor((roi[i, 4] * spatial_scale) + 0.5)
+
+                roi_height = max(y_end - y_start + 1, 1)
+                roi_width = max(x_end - x_start + 1, 1)
+                row_length = roi_width / pool_width
+                col_length = roi_height / pool_height
+
+                for cn in range(n_channels):
+                    channel_grad = out_grad[b_in, i, cn]
+                    gxxx = gxx[b_in][cn]
+                    gxxx.shape = (image_height * image_width, )
+                    for jy in range(image_height):
+                        for ix in range(image_width):
+                            in_roi = (ix >= x_start and ix <= x_end and jy >= y_start and jy <= y_end)
+                            if not in_roi:
+                                continue
+                            bottom_index = (jy * image_width) + ix
+                            x1 = int(np.floor((ix - x_start) / row_length))
+                            x2 = int(np.ceil((ix - x_start + 1) / row_length))
+                            y1 = int(np.floor((jy - y_start) / col_length))
+                            y2 = int(np.ceil((jy - y_start + 1) / col_length))
+
+                            interest_region = argmax[b_in, i, cn, x1 + int(pool_width) * y1:x2 + int(pool_width) * y2]
+
+                            mp_index = np.where(interest_region == bottom_index)[0]
+                            if mp_index.size == 0:
+                                continue
+
+                            # incrementing cause it was extracted from sliced array
+                            mp_index = np.add(mp_index, x1 + (pool_width * y1))
+                            gxxx[bottom_index] += channel_grad[mp_index].sum()
+
+    def grad(self, inp, grads):
+        disc = [tensor.zeros_like(i) for i in inp]
+        return disc

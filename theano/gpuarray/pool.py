@@ -1,11 +1,17 @@
 from __future__ import absolute_import, print_function, division
 
 import theano
+
 from theano import Apply
 from theano.gof import ParamsType
 from theano.scalar import bool as bool_t
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.signal.pool import Pool, PoolingMode_t
+
+from theano import tensor, config
+
+from theano.tensor.basic import as_tensor_variable
+from theano.tensor.signal.pool import Pool
 
 from .type import gpu_context_type
 from .basic_ops import (CGpuKernelBase, infer_context_name, gpuarray_helper_inc_dir,
@@ -385,6 +391,9 @@ class GpuMaxPoolRop(CGpuKernelBase):
     def c_header_dirs(self):
         return [gpuarray_helper_inc_dir(), pygpu.get_include()]
 
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
     def make_node(self, inp, eval_point, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp)
         nd = self.ndim
@@ -422,8 +431,103 @@ class GpuMaxPoolRop(CGpuKernelBase):
 
         return Apply(self, [inp, eval_point, ws, stride, pad], [eval_point.type()])
 
+
+class GpuRoIPoolOp(CGpuKernelBase):
+
+    __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
+
+    def __init__(self, pooled_h, pooled_w, spatial_scale):
+        self.pooled_h = pooled_h
+        self.pooled_w = pooled_w
+        self.spatial_scale = spatial_scale
+        CGpuKernelBase.__init__(self, ['./c_code/ROIPoolGPUFwd.c'], 'APPLY_SPECIFIC(ROIPoolGPUFwd)')
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
+    def c_headers(self):
+        return ['gpuarray_helper.h', 'math.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h', 'limits.h']
+
+    def make_node(self, data, roi):
+        ctx_name = infer_context_name(data, roi)
+        data = as_gpuarray_variable(data, ctx_name)
+        roi = as_gpuarray_variable(roi, ctx_name)
+        assert data.ndim == 4
+        assert roi.ndim == 2
+        return Apply(self, [data, roi], [data.type(), data.type()])
+
+    def get_op_params(self):
+        return [('POOLED_HEIGHT', str(self.pooled_h)),
+                ('POOLED_WIDTH', str(self.pooled_w)),
+                ('SPATIAL_SCALE', str(self.spatial_scale))]
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
     def infer_shape(self, node, in_shapes):
-        ws, stride, pad = [node.inputs[2], node.inputs[3], node.inputs[4]]
-        shp = Pool.out_shape(in_shapes[0], ws, self.ignore_border, stride,
-                             pad, self.ndim)
-        return [shp]
+        data_shape = tensor.shape(node.inputs[0])
+        rois_shape = tensor.shape(node.inputs[1])
+        batch_size = data_shape[0]
+        num_rois = rois_shape[0]
+        h = self.pooled_h
+        w = self.pooled_w
+        channels = data_shape[1]
+        out_shape = [num_rois, channels, h, w]
+
+        return [out_shape, out_shape]
+
+    def grad(self, inp, grads):
+        data, roi = inp
+        gz1, gz2 = grads
+        maxout, argmax = self(data, roi)
+        disc = [theano.gradient.DisconnectedType()() for i in inp[1:]]
+        return [GpuRoIPoolGradOp(self.pooled_h, self.pooled_w,
+                                 self.spatial_scale)(data, roi, argmax, gz1)] + disc
+
+    def connection_pattern(self, node):
+        return [[1, 0], [0, 0]]
+
+
+class GpuRoIPoolGradOp(CGpuKernelBase):
+
+    __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
+
+    def __init__(self, pooled_h, pooled_w, spatial_scale):
+        self.dtype = config.floatX
+        self.pooled_h = pooled_h
+        self.pooled_w = pooled_w
+        self.spatial_scale = spatial_scale
+        CGpuKernelBase.__init__(self, ['./c_code/ROIPoolGPUBkwd.c'], 'APPLY_SPECIFIC(ROIPoolGPUBkwd)')
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
+    def c_headers(self):
+        return ['math.h', 'gpuarray_helper.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h']
+
+    def make_node(self, data, rois, argmaxes, out_grad):
+        ctx_name = infer_context_name(data, rois, argmaxes, out_grad)
+        data = as_gpuarray_variable(data, ctx_name)
+        rois = as_gpuarray_variable(rois, ctx_name)
+        argmaxes = as_gpuarray_variable(argmaxes, ctx_name)
+        out_grad = as_gpuarray_variable(out_grad, ctx_name)
+        assert data.ndim == 4
+        assert rois.ndim == 2
+        assert argmaxes.ndim == 4
+        assert out_grad.ndim == 4
+
+        return Apply(self, [data, rois, argmaxes, out_grad], [data.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        return [('POOLED_HEIGHT', str(self.pooled_h)),
+                ('POOLED_WIDTH', str(self.pooled_w)),
+                ('SPATIAL_SCALE', str(self.spatial_scale))]
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
+    def grad(self, inp, grads):
+        return [theano.tensor.zeros_like(self, i, inp[i]) for i in range(4)]
