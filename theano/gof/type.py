@@ -977,9 +977,9 @@ class EnumType(Type, dict):
 
     def get_aliases(self):
         """
-        Return the list of all aliases in this enumeration.
+        Return the sorted tuple of all aliases in this enumeration.
         """
-        return self.aliases.keys()
+        return tuple(sorted(self.aliases.keys()))
 
     def __repr__(self):
         names_to_aliases = {constant_name: '' for constant_name in self}

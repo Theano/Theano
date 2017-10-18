@@ -1215,7 +1215,7 @@ def test_conv3d_fwd():
         f = theano.function([], conv, mode=mode_with_gpu)
 
         # If conv_mode is 'conv' the reference implementation should use
-        # filters filpped according to the width, height and time axis
+        # filters flipped according to the width, height and time axis
         if conv_mode == 'conv':
             flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
         else:
@@ -1271,7 +1271,7 @@ def test_conv3d_bwd():
         f = theano.function([], [grad_i, grad_w], mode=mode_with_gpu)
 
         # If conv_mode is 'conv' the reference implementation should use
-        # filters filpped according to the width, height and time axis
+        # filters flipped according to the width, height and time axis
         if conv_mode == 'conv':
             flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
         else:
