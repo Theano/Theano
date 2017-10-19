@@ -658,18 +658,18 @@ class Pool(OpenMPOp):
             PyErr_SetString(PyExc_ValueError, "pad must be a vector of size %(nd)s");
             %(fail)s;
         }
-        int z[%(nd)s]; // shape of the output
-        int r[%(nd)s]; // shape of the padded_input
-        int ws[%(nd)s];
-        int st[%(nd)s];
-        int pd[%(nd)s];
+        npy_intp z[%(nd)s]; // shape of the output
+        npy_intp r[%(nd)s]; // shape of the padded_input
+        npy_intp ws[%(nd)s];
+        npy_intp st[%(nd)s];
+        npy_intp pd[%(nd)s];
         int nonzero_padding;
         nonzero_padding = 0;
         for (int i=0; i<%(nd)s; i++)
         {
-            ws[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
-            st[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
-            pd[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+            ws[i] = *((dtype_%(ws)s*)PyArray_GETPTR1(%(ws)s, i));
+            st[i] = *((dtype_%(stride)s*)PyArray_GETPTR1(%(stride)s, i));
+            pd[i] = *((dtype_%(pad)s*)PyArray_GETPTR1(%(pad)s, i));
             r[i] = PyArray_DIMS(%(x)s)[%(non_pool_ndim)s + i] + 2 * pd[i];
             if (pd[i]>0)
                 nonzero_padding = 1;
@@ -706,7 +706,7 @@ class Pool(OpenMPOp):
                 }
                 else
                 {
-                    z[i] = std::max(0, (r[i] - 1 - ws[i] + st[i]) / st[i]) + 1;
+                    z[i] = std::max((npy_intp)0, (r[i] - 1 - ws[i] + st[i]) / st[i]) + 1;
                 }
                 assert(z[i] > 0);
             }
@@ -757,7 +757,7 @@ class Pool(OpenMPOp):
         }
         // initialize temp var for the value in a region
         dtype_%(x)s collector;
-        int z_prod;
+        npy_intp z_prod;
         // do not run if any z[i] is zero
         z_prod = 1;
         for (int i=0; i<%(nd)s; i++)
@@ -767,23 +767,23 @@ class Pool(OpenMPOp):
         if (z_prod)
         {
             // will be used to hold start and end index of a region
-            int r_st[%(nd)s];
-            int r_end[%(nd)s];
+            npy_intp r_st[%(nd)s];
+            npy_intp r_end[%(nd)s];
             // index for iterating over the pooling regions
-            int r_idx[%(nd)s];
+            npy_intp r_idx[%(nd)s];
             // placeholder for PyArray indexing (output)
             npy_intp o_idx[%(total_ndim)s];
             // placeholder for PyArray indexing (input)
             npy_intp i_idx[%(total_ndim)s];
             // loop over non-pooling dimensions
-            int non_pooling_prod = 1;
+            npy_intp non_pooling_prod = 1;
             for (int i=0; i<%(non_pool_ndim)s; i++)
             {
                 non_pooling_prod *= PyArray_DIMS(%(x)s)[i];
             }
             %(omp_parallel)s
             // first loop over non-pooling dimensions
-            for (int t=0; t<non_pooling_prod; t++)
+            for (npy_intp t=0; t<non_pooling_prod; t++)
             {
                 // compute the non-pooling index in each dimension
                 if (%(non_pool_ndim)s!=0)
@@ -847,7 +847,7 @@ class Pool(OpenMPOp):
             for i in xrange(nd):
                 ccode += """
                   // go through the pooled region in the unpadded input
-                  for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
+                  for(npy_intp m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
                   {
                     i_idx[%(non_pool_ndim)s + %(i)s] = m%(i)s;
                 """ % dict(i=i, non_pool_ndim=non_pool_ndim)
@@ -875,7 +875,7 @@ class Pool(OpenMPOp):
             for i in xrange(nd):
                 ccode += """
                   // go through the pooled region in the unpadded input
-                  for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
+                  for(npy_intp m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
                   {
                     i_idx[%(non_pool_ndim)s + %(i)s] = m%(i)s;
                 """ % dict(i=i, non_pool_ndim=non_pool_ndim)
@@ -920,7 +920,7 @@ class Pool(OpenMPOp):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (9, self.openmp)
+        return (10, self.openmp)
 
 
 class PoolGrad(OpenMPOp):
@@ -1253,18 +1253,18 @@ class MaxPoolGrad(PoolGrad):
             PyErr_SetString(PyExc_ValueError, "pad must be a vector of size %(nd)s");
             %(fail)s;
         }
-        int z[%(nd)s]; // shape of the output
-        int r[%(nd)s]; // shape of the padded_input
-        int ws[%(nd)s];
-        int st[%(nd)s];
-        int pd[%(nd)s];
+        npy_intp z[%(nd)s]; // shape of the output
+        npy_intp r[%(nd)s]; // shape of the padded_input
+        npy_intp ws[%(nd)s];
+        npy_intp st[%(nd)s];
+        npy_intp pd[%(nd)s];
         int nonzero_padding;
         nonzero_padding = 0;
         for (int i=0; i<%(nd)s; i++)
         {
-            ws[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
-            st[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
-            pd[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+            ws[i] = *((dtype_%(ws)s*)PyArray_GETPTR1(%(ws)s, i));
+            st[i] = *((dtype_%(stride)s*)PyArray_GETPTR1(%(stride)s, i));
+            pd[i] = *((dtype_%(pad)s*)PyArray_GETPTR1(%(pad)s, i));
             z[i] = PyArray_DIMS(%(z)s)[%(non_pool_ndim)s + i];
             r[i] = PyArray_DIMS(%(x)s)[%(non_pool_ndim)s + i] + 2 * pd[i];
             if (pd[i]>0)
@@ -1298,7 +1298,7 @@ class MaxPoolGrad(PoolGrad):
           PyArray_FILLWBYTE(%(gx)s, 0);
         }
         dtype_%(z)s maximum; // temp var for maximum value in a region
-        int z_prod;
+        npy_intp z_prod;
         // do not run if any z[i] is zero
         z_prod = 1;
         for (int i=0; i<%(nd)s; i++)
@@ -1308,23 +1308,23 @@ class MaxPoolGrad(PoolGrad):
         if (z_prod)
         {
             // will be used to hold start and end index of a region
-            int r_st[%(nd)s];
-            int r_end[%(nd)s];
+            npy_intp r_st[%(nd)s];
+            npy_intp r_end[%(nd)s];
             // index for iterating over the pooling regions
-            int r_idx[%(nd)s];
+            npy_intp r_idx[%(nd)s];
             // placeholder for PyArray indexing (output)
             npy_intp o_idx[%(total_ndim)s];
             // placeholder for PyArray indexing (input)
             npy_intp i_idx[%(total_ndim)s];
             // loop over non-pooling dimensions
-            int non_pooling_prod = 1;
+            npy_intp non_pooling_prod = 1;
             for (int i=0; i<%(non_pool_ndim)s; i++)
             {
                 non_pooling_prod *= PyArray_DIMS(%(x)s)[i];
             }
             %(omp_parallel)s
             // first loop over non-pooling dimensions
-            for (int t=0; t<non_pooling_prod; t++)
+            for (npy_intp t=0; t<non_pooling_prod; t++)
             {
                 // compute the non-pooling index in each dimension
                 if (%(non_pool_ndim)s!=0)
@@ -1378,7 +1378,7 @@ class MaxPoolGrad(PoolGrad):
         for i in xrange(nd):
             ccode += """
                   // go through the pooled region in the unpadded input
-                  for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
+                  for(npy_intp m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
                   {
                     i_idx[%(non_pool_ndim)s + %(i)s] = m%(i)s;
                 """ % dict(i=i, non_pool_ndim=non_pool_ndim)
@@ -1415,7 +1415,7 @@ class MaxPoolGrad(PoolGrad):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 10, self.openmp)
+        return (0, 11, self.openmp)
 
 
 class AveragePoolGrad(PoolGrad):
@@ -1575,18 +1575,18 @@ class AveragePoolGrad(PoolGrad):
             PyErr_SetString(PyExc_ValueError, "pad must be a vector of size %(nd)s");
             %(fail)s;
         }
-        int z[%(nd)s]; // shape of the output
-        int r[%(nd)s]; // shape of the padded_input
-        int ws[%(nd)s];
-        int st[%(nd)s];
-        int pd[%(nd)s];
+        npy_intp z[%(nd)s]; // shape of the output
+        npy_intp r[%(nd)s]; // shape of the padded_input
+        npy_intp ws[%(nd)s];
+        npy_intp st[%(nd)s];
+        npy_intp pd[%(nd)s];
         int nonzero_padding;
         nonzero_padding = 0;
         for (int i=0; i<%(nd)s; i++)
         {
-            ws[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
-            st[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
-            pd[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+            ws[i] = *((dtype_%(ws)s*)PyArray_GETPTR1(%(ws)s, i));
+            st[i] = *((dtype_%(stride)s*)PyArray_GETPTR1(%(stride)s, i));
+            pd[i] = *((dtype_%(pad)s*)PyArray_GETPTR1(%(pad)s, i));
             z[i] = PyArray_DIMS(%(gz)s)[%(non_pool_ndim)s + i];
             r[i] = PyArray_DIMS(%(x)s)[%(non_pool_ndim)s + i] + 2 * pd[i];
             if (pd[i]>0)
@@ -1625,7 +1625,7 @@ class AveragePoolGrad(PoolGrad):
         else {
           PyArray_FILLWBYTE(%(gx)s, 0);
         }
-        int z_prod;
+        npy_intp z_prod;
         // do not run if any z[i] is zero
         z_prod = 1;
         for (int i=0; i<%(nd)s; i++)
@@ -1635,25 +1635,25 @@ class AveragePoolGrad(PoolGrad):
         if (z_prod)
         {
             // will be used to hold start and end index of a region
-            int r_st[%(nd)s];
-            int r_end[%(nd)s];
+            npy_intp r_st[%(nd)s];
+            npy_intp r_end[%(nd)s];
             // padded region size
-            int r_pad_width[%(nd)s];
+            npy_intp r_pad_width[%(nd)s];
             // index for iterating over the pooling regions
-            int r_idx[%(nd)s];
+            npy_intp r_idx[%(nd)s];
             // placeholder for PyArray indexing (output)
             npy_intp o_idx[%(total_ndim)s];
             // placeholder for PyArray indexing (input)
             npy_intp i_idx[%(total_ndim)s];
             // loop over non-pooling dimensions
-            int non_pooling_prod = 1;
+            npy_intp non_pooling_prod = 1;
             for (int i=0; i<%(non_pool_ndim)s; i++)
             {
                 non_pooling_prod *= PyArray_DIMS(%(x)s)[i];
             }
             %(omp_parallel)s
             // first loop over non-pooling dimensions
-            for (int t=0; t<non_pooling_prod; t++)
+            for (npy_intp t=0; t<non_pooling_prod; t++)
             {
                 // compute the non-pooling index in each dimension
                 if (%(non_pool_ndim)s!=0)
@@ -1718,7 +1718,7 @@ class AveragePoolGrad(PoolGrad):
         for i in xrange(nd):
             ccode += """
                   // go through the pooled region in the unpadded input
-                  for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
+                  for(npy_intp m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
                   {
                     i_idx[%(non_pool_ndim)s + %(i)s] = m%(i)s;
                 """ % dict(i=i, non_pool_ndim=non_pool_ndim)
@@ -1750,7 +1750,7 @@ class AveragePoolGrad(PoolGrad):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 3, self.openmp)
+        return (0, 4, self.openmp)
 
 
 class DownsampleFactorMaxGradGrad(OpenMPOp):
@@ -1884,11 +1884,11 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
             omp_parallel = ''
         ccode = """
         int z_typenum = PyArray_ObjectType((PyObject*)%(maxout)s, 0);
-        int z[%(nd)s]; // shape of the output
-        int r[%(nd)s]; // shape of the padded_input
-        int ws[%(nd)s];
-        int st[%(nd)s];
-        int pd[%(nd)s];
+        npy_intp z[%(nd)s]; // shape of the output
+        npy_intp r[%(nd)s]; // shape of the padded_input
+        npy_intp ws[%(nd)s];
+        npy_intp st[%(nd)s];
+        npy_intp pd[%(nd)s];
         if(PyArray_DIM(%(ws)s, 0)!=%(nd)s)
         {
             PyErr_SetString(PyExc_ValueError, "ws must be a vector of size %(nd)s");
@@ -1906,9 +1906,9 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         }
         for (int i=0; i<%(nd)s; i++)
         {
-            ws[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
-            st[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
-            pd[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+            ws[i] = *((dtype_%(ws)s*)PyArray_GETPTR1(%(ws)s, i));
+            st[i] = *((dtype_%(stride)s*)PyArray_GETPTR1(%(stride)s, i));
+            pd[i] = *((dtype_%(pad)s*)PyArray_GETPTR1(%(pad)s, i));
             z[i] = PyArray_DIMS(%(maxout)s)[%(non_pool_ndim)s + i];
             r[i] = PyArray_DIMS(%(x)s)[%(non_pool_ndim)s + i] + 2 * pd[i];
         }
@@ -1941,16 +1941,16 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         }
         dtype_%(maxout)s maximum; // temp var for maximum value in a region
         // will be used to hold start and end index of a region
-        int r_st[%(nd)s];
-        int r_end[%(nd)s];
+        npy_intp r_st[%(nd)s];
+        npy_intp r_end[%(nd)s];
         // index for iterating over the pooling regions
-        int r_idx[%(nd)s];
+        npy_intp r_idx[%(nd)s];
         // placeholder for PyArray indexing (output)
         npy_intp o_idx[%(total_ndim)s];
         // placeholder for PyArray indexing (input)
         npy_intp i_idx[%(total_ndim)s];
         // loop over non-pooling dimensions
-        int non_pooling_prod;
+        npy_intp non_pooling_prod;
         non_pooling_prod = 1;
         for (int i=0; i<%(non_pool_ndim)s; i++)
         {
@@ -1958,7 +1958,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         }
         %(omp_parallel)s
         // first loop over non-pooling dimensions
-        for (int t=0; t<non_pooling_prod; t++)
+        for (npy_intp t=0; t<non_pooling_prod; t++)
         {
             // compute the non-pooling index in each dimension
             if (%(non_pool_ndim)s!=0)
@@ -2012,7 +2012,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         for i in xrange(nd):
             ccode += """
                   // go through the pooled region in the unpadded input
-                  for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
+                  for(npy_intp m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
                   {
                     i_idx[%(non_pool_ndim)s + %(i)s] = m%(i)s;
                 """ % dict(i=i, non_pool_ndim=non_pool_ndim)
@@ -2048,7 +2048,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 4, self.openmp)
+        return (0, 5, self.openmp)
 
 
 class MaxPoolRop(OpenMPOp):
@@ -2231,18 +2231,18 @@ class MaxPoolRop(OpenMPOp):
             PyErr_SetString(PyExc_ValueError, "pad must be a vector of size %(nd)s");
             %(fail)s;
         }
-        int z[%(nd)s]; // shape of the output
-        int r[%(nd)s]; // shape of the padded_input
-        int ws[%(nd)s];
-        int st[%(nd)s];
-        int pd[%(nd)s];
+        npy_intp z[%(nd)s]; // shape of the output
+        npy_intp r[%(nd)s]; // shape of the padded_input
+        npy_intp ws[%(nd)s];
+        npy_intp st[%(nd)s];
+        npy_intp pd[%(nd)s];
         int nonzero_padding;
         nonzero_padding = 0;
         for (int i=0; i<%(nd)s; i++)
         {
-            ws[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
-            st[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
-            pd[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+            ws[i] = *((dtype_%(ws)s*)PyArray_GETPTR1(%(ws)s, i));
+            st[i] = *((dtype_%(stride)s*)PyArray_GETPTR1(%(stride)s, i));
+            pd[i] = *((dtype_%(pad)s*)PyArray_GETPTR1(%(pad)s, i));
             r[i] = PyArray_DIMS(%(x)s)[%(non_pool_ndim)s + i] + 2 * pd[i];
             if (pd[i]>0)
                 nonzero_padding = 1;
@@ -2279,7 +2279,7 @@ class MaxPoolRop(OpenMPOp):
                 }
                 else
                 {
-                    z[i] = std::max(0, (r[i] - 1 - ws[i] + st[i]) / st[i]) + 1;
+                    z[i] = std::max((npy_intp)0, (r[i] - 1 - ws[i] + st[i]) / st[i]) + 1;
                 }
                 assert(z[i] > 0);
             }
@@ -2331,7 +2331,7 @@ class MaxPoolRop(OpenMPOp):
         // initialize temp var for the value in a region
         dtype_%(x)s collector;
         dtype_%(ex)s eval_collector;
-        int z_prod;
+        npy_intp z_prod;
         // do not run if any z[i] is zero
         z_prod = 1;
         for (int i=0; i<%(nd)s; i++)
@@ -2341,23 +2341,23 @@ class MaxPoolRop(OpenMPOp):
         if (z_prod)
         {
             // will be used to hold start and end index of a region
-            int r_st[%(nd)s];
-            int r_end[%(nd)s];
+            npy_intp r_st[%(nd)s];
+            npy_intp r_end[%(nd)s];
             // index for iterating over the pooling regions
-            int r_idx[%(nd)s];
+            npy_intp r_idx[%(nd)s];
             // placeholder for PyArray indexing (output)
             npy_intp o_idx[%(total_ndim)s];
             // placeholder for PyArray indexing (input)
             npy_intp i_idx[%(total_ndim)s];
             // loop over non-pooling dimensions
-            int non_pooling_prod = 1;
+            npy_intp non_pooling_prod = 1;
             for (int i=0; i<%(non_pool_ndim)s; i++)
             {
                 non_pooling_prod *= PyArray_DIMS(%(x)s)[i];
             }
             %(omp_parallel)s
             // first loop over non-pooling dimensions
-            for (int t=0; t<non_pooling_prod; t++)
+            for (npy_intp t=0; t<non_pooling_prod; t++)
             {
                 // compute the non-pooling index in each dimension
                 if (%(non_pool_ndim)s!=0)
@@ -2423,7 +2423,7 @@ class MaxPoolRop(OpenMPOp):
         for i in xrange(nd):
             ccode += """
               // go through the pooled region in the unpadded input
-              for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
+              for(npy_intp m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
               {
                 i_idx[%(non_pool_ndim)s + %(i)s] = m%(i)s;
             """ % dict(i=i, non_pool_ndim=non_pool_ndim)
@@ -2463,4 +2463,4 @@ class MaxPoolRop(OpenMPOp):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (1, self.openmp)
+        return (2, self.openmp)
