@@ -3746,19 +3746,33 @@ def local_dnn_reduction(node):
             node.op.acc_dtype == 'float64'):
         return
 
-    if node.op.pre_scalar_op is not None:
-        # Might want to handle absmax, avg, norm1, norm2 here
+    def _identity(a):
+        return a
+
+    def _square(a):
+        return GpuElemwise(theano.scalar.basic.sqr)(a)
+
+    scal = node.op.scalar_op.name
+    post = _identity
+
+    if (isinstance(node.op.pre_scalar_op, theano.scalar.basic.Sqr) and
+            isinstance(node.op.scalar_op, theano.scalar.basic.Add)):
+        scal = 'norm2'
+        post = _square
+    elif node.op.pre_scalar_op is not None:
+        # Might want to handle absmax, avg, norm1, and other cases of norm2 here
         return
 
-    if not cudnn.cudnnReduceTensorOp_t.has_alias(node.op.scalar_op.name):
+    if not cudnn.cudnnReduceTensorOp_t.has_alias(scal):
         return
 
     with inherit_stack_trace(node.outputs):
-        return (GpuDnnReduction(node.op.scalar_op.name,
-                                node.op.axis,
-                                node.op.acc_dtype,
-                                node.op.dtype,
-                                False)(node.inputs[0]),)
+        ret = GpuDnnReduction(scal,
+                              node.op.axis,
+                              node.op.acc_dtype,
+                              node.op.dtype,
+                              False)(node.inputs[0])
+        return [post(ret)]
 
 
 @register_opt('cudnn')
