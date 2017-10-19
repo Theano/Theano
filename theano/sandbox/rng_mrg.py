@@ -4,6 +4,13 @@ Implementation of MRG31k3p random number generator for Theano.
 Generator code in SSJ package (L'Ecuyer & Simard).
 http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
+The MRG31k3p algorithm was published in:
+
+P. L'Ecuyer and R. Touzin, Fast Combined Multiple Recursive Generators with Multipliers of the form a = +/- 2^d +/- 2^e, Proceedings of the 2000 Winter Simulation Conference, Dec. 2000, 683-689.
+
+The conception of the multi-stream from MRG31k3p was published in:
+
+P. L'Ecuyer and R. Simard and E. Jack Chen and W. David Kelton, An Object-Oriented Random-Number Package with Many Long Streams and Substreams, Operations Research, volume 50, number 6, 2002, 1073-1075.
 """
 from __future__ import absolute_import, print_function, division
 import warnings

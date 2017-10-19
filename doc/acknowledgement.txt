@@ -24,4 +24,4 @@ Acknowledgements
     P. L'Ecuyer and R. Touzin, `Fast Combined Multiple Recursive Generators with Multipliers of the form a = +/- 2^d +/- 2^e <http://www.informs-sim.org/wsc00papers/090.PDF>`_, Proceedings of the 2000 Winter Simulation Conference, Dec. 2000, 683--689.
 
   We were authorized by Pierre L'Ecuyer to copy/modify his Java implementation in the `SSJ <http://www.iro.umontreal.ca/~simardr/ssj/>`_ software and to relicense it under BSD 3-Clauses in Theano.
-* A better GPU memory allocator :attr:`CNMeM <config.lib.cnmem>` is included in Theano. It has the same license.
+* A better GPU memory allocator :attr:`CNMeM <config.lib.cnmem>` was included in Theano in the previous GPU back-end. It is still in the history, but not in the current version. It has the same license.
