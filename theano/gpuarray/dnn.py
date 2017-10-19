@@ -3750,7 +3750,7 @@ def local_dnn_reduction(node):
         return a
 
     def _square(a):
-        GpuElemwise(theano.scalar.basic.sqr)(a)
+        return GpuElemwise(theano.scalar.basic.sqr)(a)
 
     scal = node.op.scalar_op.name
     post = _identity
