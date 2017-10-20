@@ -362,6 +362,7 @@ def test_pdbbreakpoint_op():
 def test_local_gpu_elemwise_careduce():
     mode_with_gpu_no_cudnn = mode_with_gpu.excluding('cudnn')
     x = theano.tensor.matrix()
+
     o = (x * x).sum()
     f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
     topo = f.maker.fgraph.toposort()
@@ -380,6 +381,26 @@ def test_local_gpu_elemwise_careduce():
     assert topo[1].op.pre_scalar_op == theano.scalar.sqr
     assert _check_stack_trace(f)
     utt.assert_allclose(f(data), (data * data).sum(axis=1))
+
+    #
+    o = abs(x).sum()
+    f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 3
+    assert isinstance(topo[1].op, GpuCAReduceCuda)
+    assert topo[1].op.pre_scalar_op == theano.scalar.abs_
+    assert _check_stack_trace(f)
+    data = np.random.rand(3, 4).astype(theano.config.floatX)
+    utt.assert_allclose(f(data), np.abs(data).sum())
+
+    o = abs(x).sum(axis=1)
+    f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 3
+    assert isinstance(topo[1].op, GpuCAReduceCuda)
+    assert topo[1].op.pre_scalar_op == theano.scalar.abs_
+    assert _check_stack_trace(f)
+    utt.assert_allclose(f(data), np.abs(data).sum(axis=1))
 
 
 def test_local_lift_dot22scalar():

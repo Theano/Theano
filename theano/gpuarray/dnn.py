@@ -3755,13 +3755,18 @@ def local_dnn_reduction(node):
     scal = node.op.scalar_op.name
     post = _identity
 
-    if (isinstance(node.op.pre_scalar_op, theano.scalar.basic.Sqr) and
-            isinstance(node.op.scalar_op, theano.scalar.basic.Add)):
-        scal = 'norm2'
-        post = _square
-    elif node.op.pre_scalar_op is not None:
-        # Might want to handle absmax, avg, norm1, and other cases of norm2 here
-        return
+    if node.op.pre_scalar_op is not None:
+        # Might want to handle absmax, avg, and other cases for (norm1, norm2) here
+        if isinstance(node.op.scalar_op, theano.scalar.basic.Add):
+            if isinstance(node.op.pre_scalar_op, theano.scalar.basic.Sqr):
+                scal = 'norm2'
+                post = _square
+            elif isinstance(node.op.pre_scalar_op, theano.scalar.basic.Abs):
+                scal = 'norm1'
+            else:
+                return
+        else:
+            return
 
     if not cudnn.cudnnReduceTensorOp_t.has_alias(scal):
         return
