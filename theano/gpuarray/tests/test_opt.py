@@ -359,24 +359,19 @@ def test_pdbbreakpoint_op():
     assert _check_stack_trace(f)
 
 
-def test_local_gpu_elemwise_careduce():
-    x = theano.tensor.matrix()
-    o = (x * x).sum()
-    f = theano.function([x], o, mode=mode_with_gpu)
-    topo = f.maker.fgraph.toposort()
-    assert len(topo) == 3
-    assert topo[1].op.pre_scalar_op == theano.scalar.sqr
-    assert _check_stack_trace(f)
-    data = np.random.rand(3, 4).astype(theano.config.floatX)
-    utt.assert_allclose(f(data), (data * data).sum())
+def test_dnn_reduction_sum_squares():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
 
-    o = (x * x).sum(axis=1)
-    f = theano.function([x], o, mode=mode_with_gpu)
-    topo = f.maker.fgraph.toposort()
-    assert len(topo) == 3
-    assert topo[1].op.pre_scalar_op == theano.scalar.sqr
-    assert _check_stack_trace(f)
-    utt.assert_allclose(f(data), (data * data).sum(axis=1))
+    M = tensor.matrix()
+    for axis in (None, 0, 1):
+        out = (M**2).sum(axis=axis)
+        f = theano.function([M], out, mode=mode_with_gpu)
+        assert any(isinstance(node.op, dnn.GpuDnnReduction) and node.op.red_op == 'norm2'
+                   for node in f.maker.fgraph.apply_nodes)
+        assert _check_stack_trace(f)
+        M_val = np.random.random((4, 5)).astype(theano.config.floatX)
+        utt.assert_allclose((M_val**2).sum(axis=axis), f(M_val))
 
 
 def test_local_lift_dot22scalar():

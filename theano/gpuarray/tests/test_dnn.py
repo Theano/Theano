@@ -1569,19 +1569,6 @@ def test_dnn_reduction_opt():
         yield dnn_reduction, 2, idtype, adtype, odtype
 
 
-def test_dnn_reduction_sum_squares():
-    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
-        raise SkipTest(dnn.dnn_available.msg)
-
-    M = T.matrix()
-    out = (M**2).sum()
-    f = theano.function([M], out, mode=mode_with_gpu)
-    assert any(isinstance(node.op, dnn.GpuDnnReduction) and node.op.red_op == 'norm2'
-               for node in f.maker.fgraph.apply_nodes)
-    M_val = np.random.random((4, 5)).astype(theano.config.floatX)
-    utt.assert_allclose((M_val**2).sum(), f(M_val))
-
-
 def dnn_reduction_strides(shp, shuffle, slice):
     utt.fetch_seed()
     inp = GpuArrayType('float32', (False,) * len(shp),
