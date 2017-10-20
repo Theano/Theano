@@ -363,44 +363,28 @@ def test_local_gpu_elemwise_careduce():
     mode_with_gpu_no_cudnn = mode_with_gpu.excluding('cudnn')
     x = theano.tensor.matrix()
 
-    o = (x * x).sum()
-    f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
-    topo = f.maker.fgraph.toposort()
-    assert len(topo) == 3
-    assert isinstance(topo[1].op, GpuCAReduceCuda)
-    assert topo[1].op.pre_scalar_op == theano.scalar.sqr
-    assert _check_stack_trace(f)
-    data = np.random.rand(3, 4).astype(theano.config.floatX)
-    utt.assert_allclose(f(data), (data * data).sum())
+    def fn_sum_square(x, axis):
+        return (x * x).sum(axis=axis)
 
-    o = (x * x).sum(axis=1)
-    f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
-    topo = f.maker.fgraph.toposort()
-    assert len(topo) == 3
-    assert isinstance(topo[1].op, GpuCAReduceCuda)
-    assert topo[1].op.pre_scalar_op == theano.scalar.sqr
-    assert _check_stack_trace(f)
-    utt.assert_allclose(f(data), (data * data).sum(axis=1))
+    def fn_sum_abs(x, axis):
+        return abs(x).sum(axis=axis)
 
-    #
-    o = abs(x).sum()
-    f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
-    topo = f.maker.fgraph.toposort()
-    assert len(topo) == 3
-    assert isinstance(topo[1].op, GpuCAReduceCuda)
-    assert topo[1].op.pre_scalar_op == theano.scalar.abs_
-    assert _check_stack_trace(f)
-    data = np.random.rand(3, 4).astype(theano.config.floatX)
-    utt.assert_allclose(f(data), np.abs(data).sum())
+    def fn_max_abs(x, axis):
+        return abs(x).max(axis=axis)
 
-    o = abs(x).sum(axis=1)
-    f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
-    topo = f.maker.fgraph.toposort()
-    assert len(topo) == 3
-    assert isinstance(topo[1].op, GpuCAReduceCuda)
-    assert topo[1].op.pre_scalar_op == theano.scalar.abs_
-    assert _check_stack_trace(f)
-    utt.assert_allclose(f(data), np.abs(data).sum(axis=1))
+    for axis in (None, 0, 1):
+        for fn, pre_scalar_op in ((fn_sum_square, theano.scalar.sqr),
+                                  (fn_sum_abs, theano.scalar.abs_),
+                                  (fn_max_abs, theano.scalar.abs_)):
+            o = fn(x, axis)
+            f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
+            topo = f.maker.fgraph.toposort()
+            assert len(topo) == 3
+            assert isinstance(topo[1].op, GpuCAReduceCuda)
+            assert topo[1].op.pre_scalar_op == pre_scalar_op
+            assert _check_stack_trace(f)
+            data = np.random.rand(3, 4).astype(theano.config.floatX)
+            utt.assert_allclose(fn(data, axis), f(data))
 
 
 def test_local_lift_dot22scalar():
