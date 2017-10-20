@@ -372,12 +372,13 @@ def test_local_gpu_elemwise_careduce():
     def fn_max_abs(x, axis):
         return abs(x).max(axis=axis)
 
-    for axis in (None, 0, 1):
-        for fn, pre_scalar_op in ((fn_sum_square, theano.scalar.sqr),
-                                  (fn_sum_abs, theano.scalar.abs_),
-                                  (fn_max_abs, theano.scalar.abs_)):
+    for fn, pre_scalar_op in ((fn_sum_square, theano.scalar.sqr),
+                              (fn_sum_abs, theano.scalar.abs_),
+                              (fn_max_abs, theano.scalar.abs_)):
+        for axis in (None, 0, 1):
             o = fn(x, axis)
             f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
+            theano.printing.debugprint(f)
             topo = f.maker.fgraph.toposort()
             assert len(topo) == 3
             assert isinstance(topo[1].op, GpuCAReduceCuda)
