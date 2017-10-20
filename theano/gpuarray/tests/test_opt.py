@@ -378,7 +378,6 @@ def test_local_gpu_elemwise_careduce():
         for axis in (None, 0, 1):
             o = fn(x, axis)
             f = theano.function([x], o, mode=mode_with_gpu_no_cudnn)
-            theano.printing.debugprint(f)
             topo = f.maker.fgraph.toposort()
             assert len(topo) == 3
             assert isinstance(topo[1].op, GpuCAReduceCuda)
