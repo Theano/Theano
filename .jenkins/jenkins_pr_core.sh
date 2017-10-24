@@ -5,6 +5,9 @@
 # Print commands as they are executed
 set -x
 
+# To make MKL work
+export MKL_THREADING_LAYER=GNU
+
 # Copy cache from master
 BASECOMPILEDIR=$HOME/.theano/pr_theano
 rsync -a $HOME/cache/ $HOME/.theano/pr_theano

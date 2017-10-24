@@ -12,6 +12,7 @@ environment:
   BINSTAR_TOKEN:
     secure: 58KqJcKtfCBVCuIzpnkLm4XZLQqKq95Hs8Ly20HWaMSla67nusrp3y4sy6XzZOBQ
   CONDA_LOC: "C:\\Miniconda-x64"
+  MKL_THREADING_LAYER: GNU
 
 install:
   # This breaks conda-build because of git
