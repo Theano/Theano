@@ -17,7 +17,7 @@ export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
 
 echo "===== Testing gpuarray backend"
 
-GPUARRAY_CONFIG="Debug"
+GPUARRAY_CONFIG="Release"
 DEVICE=cuda
 LIBDIR=${WORKSPACE}/local
 
