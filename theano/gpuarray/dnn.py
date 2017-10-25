@@ -2313,7 +2313,7 @@ class _RNNSplitParams(DnnBase):
   assert(dims[2] == 1);
   assert(dims[1] == 1);
   %(b)s = pygpu_view(%(w)s, Py_None);
-  %(b)s->ga.offset = off;
+  %(b)s->ga.offset += off;
   %(b)s->ga.dimensions[0] = dims[0];
   GpuArray_fix_flags(&%(b)s->ga);
   bshp = dims[0];
@@ -2343,7 +2343,7 @@ class _RNNSplitParams(DnnBase):
   assert(dims[2] == 1);
   // We assume that the typecode matches
   %(m)s = pygpu_reshape(%(w)s, 2, nshp, GA_F_ORDER, 1, -1);
-  %(m)s->ga.offset = off;
+  %(m)s->ga.offset += off;
   assert(dims[0] %% bshp == 0);
   %(m)s->ga.dimensions[0] = dims[0] / bshp;
   %(m)s->ga.dimensions[1] = bshp;
@@ -2362,7 +2362,7 @@ class _RNNSplitParams(DnnBase):
         return code
 
     def c_code_cache_version(self):
-        return (3, version())
+        return (4, version())
 
 
 def _split_rnn_params(w, desc, layer, input_size, dtype, rnn_mode):
