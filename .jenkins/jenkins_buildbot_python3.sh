@@ -3,6 +3,8 @@
 BUILDBOT_DIR=$WORKSPACE/nightly_build
 THEANO_PARAM="theano --with-timer --timer-top-n 10"
 COMPILEDIR=$HOME/.theano/buildbot_theano_python3
+export MKL_THREADING_LAYER=GNU
+
 # Set test reports using nosetests xunit
 XUNIT="--with-xunit --xunit-file="
 SUITE="--xunit-testsuite-name="
