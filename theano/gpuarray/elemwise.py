@@ -932,7 +932,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
         """ % locals()
 
-    def _assign_init(self, first_item):
+    def _assign_init(self, first_item, dtype):
         """
         This return the initial value for myresult.
         If the scalar op have an identity value, return it.
@@ -949,7 +949,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                                scalar.Minimum))
             if self.pre_scalar_op:  # TODO: multiple dtypes
                 # dtype = node.inputs[0].dtype
-                dtype = 'float32'
 
                 dummy_var = scalar.Scalar(dtype=dtype)()
 
@@ -1708,7 +1707,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [21]  # the version corresponding to the c code in this Op
+        version = [23]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
@@ -1729,6 +1728,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         in_dtype = node.inputs[0].dtype
         out_dtype = node.outputs[0].dtype
         acc_dtype = self._acc_dtype(node.inputs[0].dtype)
+        assign_dtype = in_dtype
         flags = Kernel.get_flags(in_dtype, acc_dtype, out_dtype)
         in_type = gpuarray.dtype_to_ctype(in_dtype)
         out_type = gpuarray.dtype_to_ctype(out_dtype)
@@ -1744,7 +1744,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[0])")
+            reduce_init = self._assign_init(load_in + "(A[0])", assign_dtype)
             kname = "kernel_reduce_ccontig"
             k_var = "kernel_reduce_ccontig_" + nodename
             sio = StringIO()
@@ -1783,7 +1783,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[0])")
+            reduce_init = self._assign_init(load_in + "(A[0])", assign_dtype)
             kname = "kernel_reduce_1"
             k_var = "kernel_reduce_1_" + nodename
             sio = StringIO()
@@ -1824,7 +1824,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[0])")
+            reduce_init = self._assign_init(load_in + "(A[0])", assign_dtype)
             kname = "kernel_reduce_11"
             k_var = "kernel_reduce_11_" + nodename
             sio = StringIO()
@@ -1911,7 +1911,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                       for i in xrange(nd_in)])
             decl, kname, params, k_var = self._k_decl(node, nodename)
             init = self._k_init(node, nodename)
-            reduce_init = self._assign_init(load_in + "(A[%(first_i3)s * %(sA3)s + %(first_i2)s * %(sA2)s + %(first_i1)s * %(sA1)s + i0 * sA0])" % locals())
+            reduce_init = self._assign_init(load_in + "(A[%(first_i3)s * %(sA3)s + %(first_i2)s * %(sA2)s + %(first_i1)s * %(sA1)s + i0 * sA0])" % locals(), assign_dtype)
             reduce_fct = self._assign_reduce(
                 node, nodename, "myresult",
                 load_in + "(A[i3 * sA3 + i2 * sA2 + i1 * sA1 + i0 * sA0])",
@@ -1948,7 +1948,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1 + i2 * sA2])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + threadIdx.x * sA1 + i2 * sA2])")
+            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + threadIdx.x * sA1 + i2 * sA2])", assign_dtype)
             kname = "kernel_reduce_010"
             k_var = "kernel_reduce_010_" + nodename
             sio = StringIO()
@@ -1995,7 +1995,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(X[a * sX0 + b * sX1 + c * sX2])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(X[a * sX0 + 0 * sX1 + c * sX2])")
+            reduce_init = self._assign_init(load_in + "(X[a * sX0 + 0 * sX1 + c * sX2])", assign_dtype)
             kname = "kernel_reduce_010_AD"
             k_var = "kernel_reduce_010_AD_" + nodename
             sio = StringIO()
@@ -2062,7 +2062,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1 + i2 * sA2])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + 0 * sA1 + i2 * sA2])")
+            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + 0 * sA1 + i2 * sA2])", assign_dtype)
             sio = StringIO()
             print("""#include "cluda.h"
 
@@ -2096,7 +2096,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1 + blockIdx.x * sA2])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[blockIdx.x * sA2])")
+            reduce_init = self._assign_init(load_in + "(A[blockIdx.x * sA2])", assign_dtype)
             kname = "kernel_reduce_110"
             k_var = "kernel_reduce_110_" + nodename
             sio = StringIO()
@@ -2144,7 +2144,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1 + i2 * sA2])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[i1 * sA1 + i2 * sA2])")
+            reduce_init = self._assign_init(load_in + "(A[i1 * sA1 + i2 * sA2])", assign_dtype)
             sio = StringIO()
             print("""#include "cluda.h"
 
@@ -2175,7 +2175,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1 + i2 * sA2])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[0])")
+            reduce_init = self._assign_init(load_in + "(A[0])", assign_dtype)
             sio = StringIO()
             print("""#include "cluda.h"
 
@@ -2206,7 +2206,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1 + i2 * sA2])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + i1 * sA1])")
+            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + i1 * sA1])", assign_dtype)
             kname = "kernel_reduce_001"
             k_var = "kernel_reduce_001_" + nodename
             sio = StringIO()
@@ -2257,7 +2257,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + i1 * sA1])")
+            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + i1 * sA1])", assign_dtype)
             sio = StringIO()
             print("""#include "cluda.h"
 
@@ -2294,7 +2294,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + i2 * sA2])")
+            reduce_init = self._assign_init(load_in + "(A[i0 * sA0 + i2 * sA2])", assign_dtype)
             sio = StringIO()
             print("""#include "cluda.h"
 
@@ -2329,7 +2329,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + i1 * sA1 + i2 * sA2 + i3 * sA3])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[0])")
+            reduce_init = self._assign_init(load_in + "(A[0])", assign_dtype)
             sio = StringIO()
             print("""#include "cluda.h"
 
@@ -2359,7 +2359,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              load_in + "(A[i0 * sA0 + blockIdx.x * sA1 + i2 * sA2 + i3 * sA3])",
                                              {}, True)
-            reduce_init = self._assign_init(load_in + "(A[blockIdx.x * sA1])")
+            reduce_init = self._assign_init(load_in + "(A[blockIdx.x * sA1])", assign_dtype)
             kname = "kernel_reduce_1011"
             k_var = "kernel_reduce_1011_" + nodename
             sio = StringIO()
