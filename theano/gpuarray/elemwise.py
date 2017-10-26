@@ -928,9 +928,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y
                 + threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ %(acc_type)s buf[];
-                %(acc_type)s myresult = 0;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
+                %(acc_type)s myresult = 0;
         """ % locals()
 
     def _assign_init(self, first_item, dtype):
@@ -2026,9 +2026,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             {
                 const int threadCount = blockDim.x;
                 const int threadNum = threadIdx.x;
-                %(acc_type)s myresult = 0;
                 X = (const %(in_type)s *)(((char *)X)+offset_X);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
+                %(acc_type)s myresult = 0;
 
                 for (int a = blockIdx.x; a < A; a += gridDim.x)
                 {
