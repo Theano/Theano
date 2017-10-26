@@ -492,6 +492,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
     __props__ = ('axis', 'reduce_mask', 'dtype', 'acc_dtype', 'scalar_op',
                  'pre_scalar_op')
     _f16_ok = True
+    verbose = 0
 
     def __init__(self, scalar_op, axis=None,
                  reduce_mask=None, dtype=None, acc_dtype=None,
@@ -1092,6 +1093,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals()
 
     def c_code_reduce_ccontig(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         in_dtype = "npy_" + node.inputs[0].dtype
         out_dtype = "npy_" + node.outputs[0].dtype
         if getattr(self.scalar_op, 'identity', None) == 0:
@@ -1120,7 +1122,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
           if(PyGpuArray_SIZE(%(x)s)==0){
             %(zero_shp)s;
           }else{
-            int verbose = 0;
+            int verbose = %(verbose)s;
             size_t numEls = PyGpuArray_SIZE(%(x)s);
             size_t n_threads = std::min(numEls, (size_t) 256);
             size_t n_blocks = 1;
@@ -1141,10 +1143,11 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_1(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
             size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t) 256), 1, 1};
             size_t n_blocks[3] = {1, 1, 1};
             %(makecall)s
@@ -1152,10 +1155,11 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_11(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
 
             size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t) 256), 1, 1};
             while (n_threads[1] * n_threads[0] <= 256) ++n_threads[1];
@@ -1180,6 +1184,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """
 
         assert N in [1, 2, 3]
+        verbose = self.verbose
         in_dtype = "npy_" + node.inputs[0].dtype
         out_dtype = "npy_" + node.outputs[0].dtype
         makecall = self._makecall(node, name, x, z, fail)
@@ -1221,7 +1226,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
             size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[%(N)s], (size_t) 256), 1, 1};
             %(threads_y)s
             %(threads_z)s
@@ -1240,6 +1245,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         self.c_code_reduce_01X(sio, node, name, x, z, fail, 3)
 
     def c_code_reduce_10(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         in_dtype = "npy_" + node.inputs[0].dtype
         out_dtype = "npy_" + node.outputs[0].dtype
         acc_dtype = "npy_" + self._acc_dtype(node.inputs[0].dtype)
@@ -1255,7 +1261,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
         print("""
     {
-        int verbose = 0;
+        int verbose = %(verbose)s;
         if(PyGpuArray_STRIDES(%(x)s)[0]>
            PyGpuArray_STRIDES(%(x)s)[1]){
                 // If there are a lot of summations to do, then we can use simple parallelization -
@@ -1333,6 +1339,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_010(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         makecall_inner = self._makecall(node, name, x, z, fail,
                                         pattern="010_inner")
@@ -1399,7 +1406,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             }
             else
             {
-                int verbose = 2;
+                int verbose = %(verbose)s;
 
                   size_t n_threads[3] = {std::min((size_t) 32, PyGpuArray_DIMS(%(x)s)[2]), 1, 1};
                   while(    (n_threads[0]*(n_threads[1]+1)<=256)
@@ -1441,10 +1448,11 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_0101(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
             size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[3], (size_t) 256), 1, 1};
             while (n_threads[0] * n_threads[1] <= 256)
             {
@@ -1458,6 +1466,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_100(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         in_dtype = "npy_" + node.inputs[0].dtype
         out_dtype = "npy_" + node.outputs[0].dtype
@@ -1476,7 +1485,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         # use blockIdx.y for i2
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
             if (PyGpuArray_STRIDES(%(x)s)[2] != sizeof(%(in_dtype)s)){
                 size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t) 256), 1, 1};
                 size_t n_blocks[3] = {std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)4096), 1, 1};
@@ -1526,10 +1535,11 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_110(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
             size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t) 256), 1, 1};
             while (n_threads[0]*n_threads[1] <= 256)
             {
@@ -1545,10 +1555,11 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_001(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
             size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[2], (size_t) 256), 1, 1};
             size_t n_blocks[3] = {std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t) 4096), 1, 1};
             while (n_blocks[0] * n_blocks[1] <= 4096)
@@ -1563,13 +1574,14 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_101(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail,
                                   extra_dims=[("size_t one = 1;", "(void *) &one")],
                                   extra_strides=[("ssize_t sone = 1;", "(void *) &sone")],
                                   pattern="1011")
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
 //            size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[3],
 //                                            (size_t) 256), 1, 1};
             size_t n_threads[3] = {1, 1, 1};
@@ -1591,10 +1603,11 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_111(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
             size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[2], (size_t) 256), 1, 1};
 
             //get as many y threads as we can fit
@@ -1623,13 +1636,14 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_0011(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         in_dtype = "npy_" + node.inputs[0].dtype
         out_dtype = "npy_" + node.outputs[0].dtype
         acc_dtype = "npy_" + self._acc_dtype(node.inputs[0].dtype)
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
 
             size_t n_blocks[3] = {std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t) 4096), 1, 1};
 
@@ -1652,10 +1666,11 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_1111(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
             size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[2], (size_t) 256), 1, 1};
 
             //get as many y threads as we can fit
@@ -1685,10 +1700,11 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_reduce_1011(self, sio, node, name, x, z, fail):
+        verbose = self.verbose
         makecall = self._makecall(node, name, x, z, fail)
         print("""
         {
-            int verbose = 0;
+            int verbose = %(verbose)s;
             size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[3], (size_t) 256), 1, 1};
 
             while (n_threads[0] * (n_threads[1]+1) <= 256) ++n_threads[1];
@@ -1707,7 +1723,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [23]  # the version corresponding to the c code in this Op
+        version = [24, self.verbose]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
@@ -1758,9 +1774,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 const int threadCount = blockDim.x;
                 const int threadNum = threadIdx.x;
                 extern __shared__ %(acc_type)s buf[];
-                %(acc_type)s myresult = %(reduce_init)s;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
+                %(acc_type)s myresult = %(reduce_init)s;
 
                 for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
                 {
@@ -1798,9 +1814,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 const int threadCount = blockDim.x;
                 const int threadNum = threadIdx.x;
                 extern __shared__ %(acc_type)s buf[];
-                %(acc_type)s myresult = %(reduce_init)s;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
+                %(acc_type)s myresult = %(reduce_init)s;
 
                 for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
                 {
@@ -1839,9 +1855,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 const int threadCount = blockDim.x * blockDim.y;
                 const int threadNum = threadIdx.y*blockDim.x + threadIdx.x;
                 extern __shared__ %(acc_type)s buf[];
-                %(acc_type)s myresult = %(reduce_init)s;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
+                %(acc_type)s myresult = %(reduce_init)s;
 
                 for (int i0 = threadIdx.y; i0 < d0; i0 += blockDim.y)
                 {
@@ -2112,9 +2128,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 const int threadCount = blockDim.x * blockDim.y;
                 const int threadNum = threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ %(acc_type)s buf[];
-                %(acc_type)s myresult = %(reduce_init)s;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
+                %(acc_type)s myresult = %(reduce_init)s;
 
                 for (int i0 = threadIdx.y; i0 < d0; i0 += blockDim.y)
                 {
@@ -2375,9 +2391,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 const int threadCount = blockDim.x * blockDim.y * blockDim.z;
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ %(acc_type)s buf[];
-                %(acc_type)s myresult = %(reduce_init)s;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
+                %(acc_type)s myresult = %(reduce_init)s;
 
                 for (int i0 = threadIdx.z; i0 < d0; i0 += blockDim.z)
                 {
