@@ -32,6 +32,10 @@ Highlights:
  - Support more debuggers for ``PdbBreakpoint``
  - Make sure MKL uses GNU OpenMP
 
+   - **NB**: Matrix dot product (``gemm``) with numpy ``1.13`` and ``mkl`` from conda
+     could return wrong results in some cases. We have reported the problem upstream
+     and we have a work around that raises an error with information about how to fix it.
+
  - Improved elemwise operations
 
    - Speed-up elemwise ops based on SciPy
