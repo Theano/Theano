@@ -20,6 +20,7 @@ from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
                                     Prod, ProdWithoutZeros)
 from theano.tests import unittest_tools
 from theano.tests.unittest_tools import attr
+import theano.tests.unittest_tools as utt
 
 
 def FunctionGraph(i, o):
@@ -482,8 +483,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                     try:
                         f_xv = f(xv)
                         self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
-                        self.assertTrue(np.allclose(f_xv, zv),
-                                        (f_xv, zv, xsh, tosum))
+                        utt.assert_allclose(zv, f_xv)
                     except NotImplementedError:
                         # GpuCAReduce don't implement all cases when size is 0
                         assert xv.size == 0

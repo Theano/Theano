@@ -2313,7 +2313,7 @@ class _RNNSplitParams(DnnBase):
   assert(dims[2] == 1);
   assert(dims[1] == 1);
   %(b)s = pygpu_view(%(w)s, Py_None);
-  %(b)s->ga.offset = off;
+  %(b)s->ga.offset += off;
   %(b)s->ga.dimensions[0] = dims[0];
   GpuArray_fix_flags(&%(b)s->ga);
   bshp = dims[0];
@@ -2343,7 +2343,7 @@ class _RNNSplitParams(DnnBase):
   assert(dims[2] == 1);
   // We assume that the typecode matches
   %(m)s = pygpu_reshape(%(w)s, 2, nshp, GA_F_ORDER, 1, -1);
-  %(m)s->ga.offset = off;
+  %(m)s->ga.offset += off;
   assert(dims[0] %% bshp == 0);
   %(m)s->ga.dimensions[0] = dims[0] / bshp;
   %(m)s->ga.dimensions[1] = bshp;
@@ -2362,7 +2362,7 @@ class _RNNSplitParams(DnnBase):
         return code
 
     def c_code_cache_version(self):
-        return (3, version())
+        return (4, version())
 
 
 def _split_rnn_params(w, desc, layer, input_size, dtype, rnn_mode):
@@ -3746,19 +3746,41 @@ def local_dnn_reduction(node):
             node.op.acc_dtype == 'float64'):
         return
 
-    if node.op.pre_scalar_op is not None:
-        # Might want to handle absmax, avg, norm1, norm2 here
-        return
+    def _identity(a):
+        return a
 
-    if not cudnn.cudnnReduceTensorOp_t.has_alias(node.op.scalar_op.name):
+    def _square(a):
+        return GpuElemwise(theano.scalar.basic.sqr)(a)
+
+    scal = node.op.scalar_op.name
+    post = _identity
+
+    if node.op.pre_scalar_op is not None:
+        # Might want to handle absmax, avg, and other cases for (norm1, norm2) here
+        if isinstance(node.op.scalar_op, theano.scalar.basic.Add):
+            if isinstance(node.op.pre_scalar_op, theano.scalar.basic.Sqr):
+                scal = 'norm2'
+                post = _square
+            elif isinstance(node.op.pre_scalar_op, theano.scalar.basic.Abs):
+                scal = 'norm1'
+            else:
+                return
+        elif (isinstance(node.op.scalar_op, theano.scalar.basic.Maximum) and
+                isinstance(node.op.pre_scalar_op, theano.scalar.basic.Abs)):
+            scal = 'absmax'
+        else:
+            return
+
+    if not cudnn.cudnnReduceTensorOp_t.has_alias(scal):
         return
 
     with inherit_stack_trace(node.outputs):
-        return (GpuDnnReduction(node.op.scalar_op.name,
-                                node.op.axis,
-                                node.op.acc_dtype,
-                                node.op.dtype,
-                                False)(node.inputs[0]),)
+        ret = GpuDnnReduction(scal,
+                              node.op.axis,
+                              node.op.acc_dtype,
+                              node.op.dtype,
+                              False)(node.inputs[0])
+        return [post(ret)]
 
 
 @register_opt('cudnn')

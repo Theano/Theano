@@ -1207,7 +1207,7 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
             return False
         x, = inputs
         idtype = x.dtype
-        adtype = getattr(op, 'acc_dtype', None)
+        adtype = getattr(op, 'acc_dtype', idtype)
         odtype = getattr(op, 'dtype', outputs[0].dtype)
 
         # Force accumulator to float32 for float32 inputs since tree
@@ -2396,6 +2396,9 @@ def local_gpu_max_pool_rop(op, ctx_name, inputs, outputs):
 def local_gpu_elemwise_careduce(node):
     """
     Merge some GpuCAReduceCuda and GPUElemwise.
+    Currently merged:
+     - SUM(X^2)
+     - SUM(ABS(X))
 
     """
     if (isinstance(node.op, GpuCAReduceCuda) and
@@ -2406,10 +2409,11 @@ def local_gpu_elemwise_careduce(node):
             # automatically add more case, as some like trigonometic
             # operation with some reduction pattern will probably results
             # in slow down.
-            isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)):
+            isinstance(node.inputs[0].owner.op.scalar_op, (scalar.basic.Sqr,
+                                                           scalar.basic.Abs))):
         inp = node.inputs[0].owner.inputs[0]
         props = node.op._props_dict()
-        props["pre_scalar_op"] = scalar.basic.sqr
+        props["pre_scalar_op"] = node.inputs[0].owner.op.scalar_op
         with inherit_stack_trace(node.outputs):
             out = GpuCAReduceCuda(**props)(inp)
             return [out]
