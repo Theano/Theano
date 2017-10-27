@@ -13,7 +13,7 @@ We recommend that every developer updates to this version.
 Highlights:
  - Make sure MKL uses GNU OpenMP
 
-   - **NB**: Matrix dot product (``gemm``) with numpy ``1.13`` and ``mkl`` from conda
+   - **NB**: Matrix dot product (``gemm``) with ``mkl`` from conda
      could return wrong results in some cases. We have reported the problem upstream
      and we have a work around that raises an error with information about how to fix it.
 
