@@ -5,7 +5,7 @@ DRAFT Release Notes
 ===================
 
 git log -p rel-0.9.0... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
-git log -p rel-0.10.0beta3... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
+git log -p rel-0.10.0beta4... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
 
 # Commit count per user
 git shortlog -sn rel-0.9.0..
@@ -30,6 +30,11 @@ Highlights:
  - Theano now internally uses ``sha256`` instead of ``md5`` to work on systems that forbide ``md5`` for security reason
  - Removed old GPU backend ``theano.sandbox.cuda``. New backend ``theano.gpuarray`` is now the official GPU backend
  - Support more debuggers for ``PdbBreakpoint``
+ - Make sure MKL uses GNU OpenMP
+
+   - **NB**: Matrix dot product (``gemm``) with numpy ``1.13`` and ``mkl`` from conda
+     could return wrong results in some cases. We have reported the problem upstream
+     and we have a work around that raises an error with information about how to fix it.
 
  - Improved elemwise operations
 
@@ -107,12 +112,13 @@ GPU:
    - Better support and loading on Windows and Mac
    - Support cuDNN v6 dilated convolutions
    - Support cuDNN v6 reductions for contiguous inputs
+   - Optimized ``SUM(x^2)``, ``SUM(ABS(X))`` and ``MAX(ABS(X))`` operations with cuDNN reductions
    - Added new Theano flags ``cuda.include_path``, ``dnn.base_path`` and ``dnn.bin_path``
      to help configure Theano when CUDA and cuDNN can not be found automatically.
    - Disallowed ``float16`` precision for convolution gradients
    - Fixed memory alignment detection
    - Added profiling in C debug mode (with theano flag ``cmodule.debug=True``)
-
+   - Added Python scripts to help test cuDNN convolutions
 
  - Updated ``float16`` support
 
@@ -155,6 +161,7 @@ Others:
  - Added decsription for rnnblock
 
 Other more detailed changes:
+ - Fixed invalid casts and index overflows in ``theano.tensor.signal.pool``
  - Fixed gradient error for elemwise ``minimum`` and ``maximum`` when compared values are the same
  - Fixed gradient for ``ARange``
  - Removed ``ViewOp`` subclass during optimization
@@ -170,6 +177,13 @@ Other more detailed changes:
  - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/6496
+* https://github.com/Theano/Theano/pull/6495
+* https://github.com/Theano/Theano/pull/6492
+* https://github.com/Theano/Theano/pull/6489
+* https://github.com/Theano/Theano/pull/6488
+* https://github.com/Theano/Theano/pull/6490
+* https://github.com/Theano/Theano/pull/5932
 * https://github.com/Theano/Theano/pull/6479
 * https://github.com/Theano/Theano/pull/6401
 * https://github.com/Theano/Theano/pull/6472

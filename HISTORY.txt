@@ -5,6 +5,119 @@
 Old Release Notes
 =================
 
+=============
+Release Notes
+=============
+
+
+Theano 0.10.0beta4 (16th of October, 2017)
+==========================================
+
+This release contains new features, improvements and bug fixes to prepare the upcoming release candidate.
+
+We recommend that every developer updates to this version.
+
+Highlights:
+ - Announcing that `MILA will stop developing Theano <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_
+ - Bug fixes, crash fixes, warning improvements and documentation updates
+
+A total of 70 people contributed to this release since 0.9.0, see list below.
+
+Interface changes:
+ - Generalized ``AllocDiag`` for any non-scalar input
+
+Convolution updates:
+ - Implemented fractional bilinear upsampling
+
+cuDNN (GPU):
+ - Disallowed ``float16`` precision for convolution gradients
+ - Fixed memory alignment detection
+ - Added profiling in C debug mode (with theano flag ``cmodule.debug=True``)
+
+New features:
+ - Implemented truncated normal distribution with box-muller transform
+ - Added ``L_op()`` overriding option for ``OpFromGraph``
+ - Added NumPy C-API based fallback implementation for ``[sd]gemv_`` and ``[sd]dot_``
+
+Other more detailed changes:
+ - Improved stack trace follow-up for GPU optimizations
+ - Fixed gradient error for elemwise ``minimum`` and ``maximum`` when compared values are the same
+ - Fixed gradient for ``ARange``
+ - Removed ``ViewOp`` subclass during optimization
+
+Commiters since 0.9.0:
+ - Frederic Bastien
+ - João Victor Tozatti Risso
+ - Arnaud Bergeron
+ - Steven Bocco
+ - Mohammed Affan
+ - amrithasuresh
+ - Pascal Lamblin
+ - Reyhane Askari
+ - Alexander Matyasko
+ - Shawn Tan
+ - Simon Lefrancois
+ - Adam Becker
+ - Vikram
+ - Gijs van Tulder
+ - Faruk Ahmed
+ - Thomas George
+ - erakra
+ - Andrei Costinescu
+ - Boris Fomitchev
+ - Zhouhan LIN
+ - Aleksandar Botev
+ - jhelie
+ - xiaoqie
+ - Tegan Maharaj
+ - Matt Graham
+ - Cesar Laurent
+ - Gabe Schwartz
+ - Juan Camilo Gamboa Higuera
+ - Tim Cooijmans
+ - Anirudh Goyal
+ - Saizheng Zhang
+ - Yikang Shen
+ - vipulraheja
+ - Florian Bordes
+ - Sina Honari
+ - Chiheb Trabelsi
+ - Shubh Vachher
+ - Daren Eiri
+ - Joseph Paul Cohen
+ - Laurent Dinh
+ - Mohamed Ishmael Diwan Belghazi
+ - Jeff Donahue
+ - Ramana Subramanyam
+ - Bogdan Budescu
+ - Dzmitry Bahdanau
+ - Ghislain Antony Vaillant
+ - Jan Schlüter
+ - Nan Jiang
+ - Xavier Bouthillier
+ - fo40225
+ - mrTsjolder
+ - wyjw
+ - Aarni Koskela
+ - Adam Geitgey
+ - Adrian Keet
+ - Adrian Seyboldt
+ - Anmol Sahoo
+ - Chong Wu
+ - Holger Kohr
+ - Jayanth Koushik
+ - Lilian Besson
+ - Lv Tao
+ - Michael Manukyan
+ - Murugesh Marvel
+ - NALEPA
+ - Zotov Yuriy
+ - dareneiri
+ - lrast
+ - morrme
+ - naitonium
+
+
 Theano 0.10.0beta3 (20th of September, 2017)
 ============================================
 

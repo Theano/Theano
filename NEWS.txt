@@ -3,46 +3,31 @@ Release Notes
 =============
 
 
-Theano 0.10.0beta4 (16th of October, 2017)
-==========================================
+Theano 1.0.0rc1 (30th of October, 2017)
+=======================================
 
-This release contains new features, improvements and bug fixes to prepare the upcoming release candidate.
+This release contains new features, improvements and bug fixes to prepare the upcoming release.
 
 We recommend that every developer updates to this version.
 
 Highlights:
- - Announcing that `MILA will stop developing Theano <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_
- - Bug fixes, crash fixes, warning improvements and documentation updates
+ - Make sure MKL uses GNU OpenMP
 
-A total of 70 people contributed to this release since 0.9.0, see list below.
+   - **NB**: Matrix dot product (``gemm``) with ``mkl`` from conda
+     could return wrong results in some cases. We have reported the problem upstream
+     and we have a work around that raises an error with information about how to fix it.
 
-Interface changes:
- - Generalized ``AllocDiag`` for any non-scalar input
+ - Optimized ``SUM(x^2)``, ``SUM(ABS(X))`` and ``MAX(ABS(X))`` operations with cuDNN reductions
+ - Added Python scripts to help test cuDNN convolutions
+ - Fixed invalid casts and index overflows in ``theano.tensor.signal.pool``
 
-Convolution updates:
- - Implemented fractional bilinear upsampling
-
-cuDNN (GPU):
- - Disallowed ``float16`` precision for convolution gradients
- - Fixed memory alignment detection
- - Added profiling in C debug mode (with theano flag ``cmodule.debug=True``)
-
-New features:
- - Implemented truncated normal distribution with box-muller transform
- - Added ``L_op()`` overriding option for ``OpFromGraph``
- - Added NumPy C-API based fallback implementation for ``[sd]gemv_`` and ``[sd]dot_``
-
-Other more detailed changes:
- - Improved stack trace follow-up for GPU optimizations
- - Fixed gradient error for elemwise ``minimum`` and ``maximum`` when compared values are the same
- - Fixed gradient for ``ARange``
- - Removed ``ViewOp`` subclass during optimization
+A total of 71 people contributed to this release since 0.9.0, see list below.
 
 Commiters since 0.9.0:
  - Frederic Bastien
+ - Steven Bocco
  - João Victor Tozatti Risso
  - Arnaud Bergeron
- - Steven Bocco
  - Mohammed Affan
  - amrithasuresh
  - Pascal Lamblin
@@ -104,6 +89,7 @@ Commiters since 0.9.0:
  - Michael Manukyan
  - Murugesh Marvel
  - NALEPA
+ - Rebecca N. Palmer
  - Zotov Yuriy
  - dareneiri
  - lrast
