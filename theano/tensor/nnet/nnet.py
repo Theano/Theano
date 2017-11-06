@@ -616,9 +616,9 @@ class Instance_SoftmaxGrad(gof.Op):
             raise ValueError('softmax must be a 4d tensor. Got ', sm.type.ndinm)
         return Apply(self, [dy, sm], [sm.type()])
 
-    def perform(self, node, input_storage, output_storage, param):
+    def perform(self, node, input_storage, output_storage):
         dy, sm = input_storage
-        axis = (1, 2, 3)
+        axis = (3, 2, 1)
         if (dy.shape != sm.shape):
             raise ValueError('dy and the softmax output should have the same shape.')
         dx = np.zeros_like(sm)
@@ -630,7 +630,7 @@ class Instance_SoftmaxGrad(gof.Op):
     def grad(self, inp, grads):
         dy, sm = inp
         g, = grads
-        axis = (1, 2, 3)
+        axis = (3, 2, 1)
         tmp = g + tensor.neg(tensor.sum(g * sm, axis=axis, keepdims=True))
         g_dy = tmp * sm
         tmp2 = tensor.sum(dy * sm, axis=axis, keepdims=True)
@@ -662,9 +662,9 @@ class Instance_Softmax(gof.Op):
             raise ValueError('x must be a 4d tensor. Got ', x.type.ndinm)
         return Apply(self, [x], [x.type()])
 
-    def perform(self, node, input_storage, output_storage, param):
+    def perform(self, node, input_storage, output_storage):
         x, = input_storage
-        axis = (1, 2, 3)
+        axis = (3, 2, 1)
         # Apply softmax on the specified dimension
         e_x = np.exp(x - x.max(axis=axis, keepdims=True))
         sm = e_x / e_x.sum(axis=axis, keepdims=True)
@@ -680,6 +680,9 @@ class Instance_Softmax(gof.Op):
         if None in eval_points:
             return [None]
         return self.L_op(inputs, [self(*inputs)], eval_points)
+
+    def infer_shape(self, node, shape):
+        return shape
 
 
 class Instance_LogSoftmax(gof.Op):
@@ -701,9 +704,9 @@ class Instance_LogSoftmax(gof.Op):
             raise ValueError('x must be a 4d tensor. Got ', x.type.ndinm)
         return Apply(self, [x], [x.type()])
 
-    def perform(self, node, input_storage, output_storage, param):
+    def perform(self, node, input_storage, output_storage):
         x, = input_storage
-        axis = (1, 2, 3)
+        axis = (3, 2, 1)
         # Apply logsoftmax on the specified dimension
         xdev = x - x.max(axis=axis, keepdims=True)
         lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axis, keepdims=True))
@@ -712,7 +715,7 @@ class Instance_LogSoftmax(gof.Op):
     def L_op(self, inp, outputs, grads):
         x, = inp
         lsm, = outputs
-        axis = (1, 2, 3)
+        axis = (3, 2, 1)
         return [grads[0] - tensor.sum(grads[0], axis=axis, keepdims=True) * np.exp(lsm)]
 
     def R_op(self, inputs, eval_points):
