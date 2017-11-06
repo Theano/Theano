@@ -873,32 +873,45 @@ class LogSoftmax(gof.Op):
 
 logsoftmax_op = LogSoftmax()
 
-
 @gof.local_optimizer([Instance_Softmax])
 def local_instancesoftmax(node):
-    if node.owner.inputs[0].type.ndim == 4:
-        old_shape = node.owner.inputs[0].shape
-        new_input = node.owner.inputs[0].flatten(ndim=2)
-        new_op = Softmax()(new_input)
-        return [new_op.reshape(old_shape)]
-
+    if node.inputs[0].type.ndim == 4:
+        old_shape = node.inputs[0].shape
+        new_input = node.inputs[0].flatten(ndim=2)
+        new_op = Softmax()
+        ret = new_op(new_input).reshape(old_shape)
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+        return [ret]
 
 @gof.local_optimizer([Instance_SoftmaxGrad])
 def local_instancesoftmax_grad(node):
-    if node.owner.inputs[0].type.ndim == 4:
-        old_shape = node.owner.inputs[0].shape
-        new_input = node.owner.inputs[0].flatten(ndim=2)
-        new_op = SoftmaxGrad()(new_input)
-        return [new_op.reshape(old_shape)]
+    if node.inputs[0].type.ndim == 4:
+        old_shape = node.inputs[0].shape
+        new_input = node.inputs[0].flatten(ndim=2)
+        # get parameters from unoptimized op
+        sm = node.inputs[1]
+        grads = node.inputs[0]
+        old_shape = node.inputs[0].shape
+        new_sm = sm.flatten(ndim=2)
+        new_grads = grads.flatten(ndim=2)
+        new_op = softmax_grad
+        ret = new_op(new_grads, new_sm).reshape(old_shape)
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+        return [ret]
 
 
 @gof.local_optimizer([Instance_LogSoftmax])
 def local_instancelogsoftmax(node):
-    if node.owner.inputs[0].type.ndim == 4:
-        old_shape = node.owner.inputs[0].shape
-        new_input = node.owner.inputs[0].flatten(ndim=2)
-        new_op = LogSoftmax(new_input)
-        return [new_op.reshape(old_shape)]
+    if node.inputs[0].type.ndim == 4:
+        old_shape = node.inputs[0].shape
+        new_input = node.inputs[0].flatten(ndim=2)
+        new_op = LogSoftmax()
+        ret = new_op(new_input).reshape(old_shape)
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+        return [ret]
 
 
 # This is not registered in stabilize, as it cause some crossentropy
