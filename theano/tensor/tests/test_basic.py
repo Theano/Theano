@@ -4431,12 +4431,12 @@ class T_Join_and_Split(unittest.TestCase):
                 assert not isinstance(node.op, type(self.join_op))
 
         # Test dim 1
-        z = self.join_op(1, x1, x2, x3)
-        f = theano.function([], z.shape, mode=self.mode)
-        topo = f.maker.fgraph.toposort()
         x1.set_value(get_mat(3, 4))
         x2.set_value(get_mat(3, 4))
         x3.set_value(get_mat(3, 5))
+        z = self.join_op(1, x1, x2, x3)
+        f = theano.function([], z.shape, mode=self.mode)
+        topo = f.maker.fgraph.toposort()
         out = f()
         assert (out == [3, 13]).all()
 
