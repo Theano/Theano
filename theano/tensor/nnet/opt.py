@@ -530,3 +530,21 @@ def local_abstractconv_check(node):
 optdb.register('AbstractConvCheck',
                opt.in2out(local_abstractconv_check, name="AbstractConvCheck"),
                48.7, 'fast_compile', 'fast_run')
+
+# Verify that no Instance Softmax are present in the graph
+@local_optimizer([Instance_Softmax,
+                  Instance_LogSoftmax,
+                  Instance_SoftmaxGrad])
+def local_instancesoftmax_check(node):
+    if isinstance(node.op, (Instance_Softmax,
+                            Instance_LogSoftmax,
+                            Instance_SoftmaxGrad)):
+        raise AssertionError(
+                '%s Theano optimization failed: there is no implementation '
+                'available supporting the requested options.')
+
+optdb.register('InstanceSoftmaxCheck',
+        opt.in2out(local_instancesoftmax_check, name="InstanceSoftmaxCheck"),
+        48.7, 'fast_compile', 'fast_run')
+
+
