@@ -23,9 +23,10 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 CrossentropySoftmaxArgmax1HotWithBias,
                                 CrossentropyCategorical1Hot,
                                 CrossentropyCategorical1HotGrad,
-                                sigmoid, softplus, Softmax, softmax,
+                                sigmoid, softplus, Softmax, softmax, SoftmaxGrad,
+                                Instance_Softmax, Instance_LogSoftmax, Instance_SoftmaxGrad,
                                 softmax_op, softmax_graph, SoftmaxWithBias,
-                                softmax_with_bias, logsoftmax_op,
+                                softmax_with_bias, LogSoftmax, logsoftmax_op,
                                 softmax_grad, SoftmaxGrad,
                                 Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row,
@@ -100,6 +101,94 @@ class T_Softmax(utt.InferShapeTester):
         def f(a):
             return softmax_op(a)
         utt.verify_grad(f, [np.random.rand(4)])
+
+
+class T_InstanceSoftmax(utt.InferShapeTester):
+
+    def test_infer_shape(self):
+        admat = T.tensor4()
+        admat_val = np.random.rand(3, 4, 2, 5).astype(config.floatX)
+        self._compile_and_check([admat], [Instance_Softmax()(admat)],
+                [admat_val], Softmax)
+
+    def test_softmax_4d(self):
+        x = T.tensor4()
+        f = theano.function([x], Instance_Softmax()(x))
+        xv = np.random.randn(3, 4, 2, 5).astype(config.floatX)
+        assert np.allclose(f(xv), np.exp(xv) / np.exp(xv).sum(axis=(3,2,1), keepdims=True))
+
+    def test_softmax_grad_4d(self):
+        def f(a):
+            return Instance_Softmax()(a)
+        utt.verify_grad(f, [np.random.rand(3, 4, 2, 5)])
+
+    def test_versus_normal_softmax(self):
+        x = T.tensor4()
+        xv = np.random.randn(3, 4, 2, 5).astype(config.floatX)
+        f_instance = theano.function([x], Instance_Softmax()(x))
+        f_normal = theano.function([x], Softmax()(x.flatten(ndim=2)))
+        assert np.allclose(f_instance(xv), f_normal(xv).reshape(xv.shape))
+
+    def test_instance_softmax_optimization(self):
+        x = T.tensor4('x')
+        ins_sm = Instance_Softmax()(x)
+        f = theano.function([x], ins_sm)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, Softmax)
+
+    def test_instance_grad_softmax_optimization(self):
+        x = T.tensor4('x')
+        y = T.tensor4('y')
+        ins_sm = Instance_Softmax()(x)
+        cost = -tensor.sum(y * ins_sm, axis=(3,2,1)).mean()
+        grad_ins_sm = T.grad(cost, x)
+        fgraph = gof.FunctionGraph([x, y], [grad_ins_sm])
+        theano.compile.mode.optdb.query(
+                theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
+        assert softmax_grad in [n.op for n in fgraph.toposort()]
+
+
+class T_InstanceLogSoftmax(utt.InferShapeTester):
+
+    def test_infer_shape(self):
+        admat = T.tensor4()
+        admat_val = np.random.rand(3, 4, 2, 5).astype(config.floatX)
+        self._compile_and_check([admat], [Instance_LogSoftmax()(admat)],
+                [admat_val], LogSoftmax)
+
+    def test_softmax_4d(self):
+        x = T.tensor4()
+        f = theano.function([x], Instance_LogSoftmax()(x))
+        xv = np.random.randn(3, 4, 2, 5).astype(config.floatX)
+        assert np.allclose(f(xv), np.log(np.exp(xv) / np.exp(xv).sum(axis=(3,2,1), keepdims=True)))
+
+    def test_softmax_grad_4d(self):
+        def f(a):
+            return Instance_LogSoftmax()(a)
+        utt.verify_grad(f, [np.random.rand(3, 4, 2, 5)])
+
+    def test_versus_normal_softmax(self):
+        x = T.tensor4()
+        xv = np.random.randn(3, 4, 2, 5).astype(config.floatX)
+        f_instance = theano.function([x], Instance_LogSoftmax()(x))
+        f_normal = theano.function([x], LogSoftmax()(x.flatten(ndim=2)))
+        assert np.allclose(f_instance(xv), f_normal(xv).reshape(xv.shape))
+
+    def test_instance_softmax_optimization(self):
+        x = T.tensor4('x')
+        ins_sm = Instance_LogSoftmax()(x)
+        f = theano.function([x], ins_sm)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op, LogSoftmax)
+
+    def test_instance_grad_log_softmax_optimization(self):
+        x = T.tensor4('x')
+        y = T.tensor4('y')
+        ins_sm = Instance_LogSoftmax()(x)
+        cost = -tensor.sum(y * ins_sm, axis=(3,2,1)).mean()
+        grad_ins_sm = T.grad(cost, x)
+        fgraph = gof.FunctionGraph([x, y], [grad_ins_sm])
+        theano.compile.mode.optdb.query(
+                theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
+        assert softmax_grad not in [n.op for n in fgraph.toposort()]
 
 
 class T_SoftmaxWithBias(utt.InferShapeTester):
