@@ -23,6 +23,12 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tensor.nnet.abstract_conv import (AbstractConv3d,
                                               AbstractConv3d_gradWeights,
                                               AbstractConv3d_gradInputs)
+from theano.tensor.nnet.nnet import (local_instancesoftmax,
+                                     local_instancesoftmax_grad,
+                                     local_instancelogsoftmax,
+                                     Instance_Softmax,
+                                     Instance_LogSoftmax,
+                                     Instance_SoftmaxGrad)
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor.opt import register_specialize_device
 from theano.tensor import TensorType
@@ -473,6 +479,30 @@ conv_groupopt.register('local_conv2d_gradinputs_cpu',
                        local_conv2d_gradinputs_cpu, 40,
                        'fast_compile', 'fast_run')
 
+# Register Instance Softmax optimization
+instanceSoftmax_groupopt = theano.gof.optdb.LocalGroupDB()
+instanceSoftmax_groupopt.__name__ = "InstanceSoftmax GroupOp"
+register_specialize_device(instanceSoftmax_groupopt, 'fast_compile', 'fast_run')
+instanceSoftmax_groupopt.register('local_instancesoftmax',
+        local_instancesoftmax, 40,
+        'instance_softmax',
+        'fast_compile', 'fast_run')
+
+instanceSoftmaxGrad_groupopt = theano.gof.optdb.LocalGroupDB()
+instanceSoftmaxGrad_groupopt.__name__ = "InstanceSoftmaxGrad GroupOp"
+register_specialize_device(instanceSoftmaxGrad_groupopt, 'fast_compile', 'fast_run')
+instanceSoftmaxGrad_groupopt.register('local_instancesoftmaxGrad',
+        local_instancesoftmax_grad, 30,
+        'instance_softmaxgrad',
+        'fast_compile', 'fast_run')
+
+instanceLogSoftmax_groupopt = theano.gof.optdb.LocalGroupDB()
+instanceLogSoftmax_groupopt.__name__ = "InstanceLogSoftmax GroupOp"
+register_specialize_device(instanceLogSoftmax_groupopt, 'fast_compile', 'fast_run')
+instanceLogSoftmax_groupopt.register('local_instanceLogsoftmax',
+        local_instancelogsoftmax, 30,
+        'instance_logsoftmax',
+        'fast_compile', 'fast_run')
 
 # Verify that no AbstractConv are present in the graph
 @local_optimizer([AbstractConv2d,
