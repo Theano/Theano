@@ -9,7 +9,7 @@ import numpy as np
 from six.moves import xrange
 
 import theano
-from theano import gof
+from theano import gof, change_flags
 from theano.compat import izip
 from theano.tests import unittest_tools as utt
 
@@ -803,6 +803,7 @@ def test_grad_scale():
     assert np.allclose(out, (8, 4))
 
 
+@change_flags(compute_test_value='off')
 def test_undefined_grad_opt():
     # Make sure that undefined grad get removed in optimized graph.
     random = RandomStreams(np.random.randint(1, 2147462579))
