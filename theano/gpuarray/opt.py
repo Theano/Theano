@@ -2964,9 +2964,9 @@ instanceSoftmaxGrad_groupopt = theano.gof.optdb.LocalGroupDB()
 instanceSoftmaxGrad_groupopt.__name__ = "InstanceSoftmaxGrad GroupOp"
 register_opt('fast_compile')(instanceSoftmaxGrad_groupopt)
 instanceSoftmaxGrad_groupopt.register('local_gpua_instancsoftmaxgrad_to_dnn',
-                                     local_gpua_instancesoftmaxgrad_to_dnn, 20,
-                                     'instance_softmaxGrad',
-                                     'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
+                                      local_gpua_instancesoftmaxgrad_to_dnn, 20,
+                                      'instance_softmaxGrad',
+                                      'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
 instanceSoftmaxGrad_groupopt.register('local_instancesoftmaxGrad',
                                       tensor.nnet.nnet.local_instancesoftmax_grad, 30,
                                       'instance_softmaxgrad',

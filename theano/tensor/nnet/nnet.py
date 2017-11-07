@@ -873,6 +873,7 @@ class LogSoftmax(gof.Op):
 
 logsoftmax_op = LogSoftmax()
 
+
 @gof.local_optimizer([Instance_Softmax])
 def local_instancesoftmax(node):
     if node.inputs[0].type.ndim == 4:
@@ -884,11 +885,11 @@ def local_instancesoftmax(node):
         copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
         return [ret]
 
+
 @gof.local_optimizer([Instance_SoftmaxGrad])
 def local_instancesoftmax_grad(node):
     if node.inputs[0].type.ndim == 4:
         old_shape = node.inputs[0].shape
-        new_input = node.inputs[0].flatten(ndim=2)
         # get parameters from unoptimized op
         sm = node.inputs[1]
         grads = node.inputs[0]

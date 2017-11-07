@@ -484,25 +484,26 @@ instanceSoftmax_groupopt = theano.gof.optdb.LocalGroupDB()
 instanceSoftmax_groupopt.__name__ = "InstanceSoftmax GroupOp"
 register_specialize_device(instanceSoftmax_groupopt, 'fast_compile', 'fast_run')
 instanceSoftmax_groupopt.register('local_instancesoftmax',
-        local_instancesoftmax, 40,
-        'instance_softmax',
-        'fast_compile', 'fast_run')
+                                  local_instancesoftmax, 40,
+                                  'instance_softmax',
+                                  'fast_compile', 'fast_run')
 
 instanceSoftmaxGrad_groupopt = theano.gof.optdb.LocalGroupDB()
 instanceSoftmaxGrad_groupopt.__name__ = "InstanceSoftmaxGrad GroupOp"
 register_specialize_device(instanceSoftmaxGrad_groupopt, 'fast_compile', 'fast_run')
 instanceSoftmaxGrad_groupopt.register('local_instancesoftmaxGrad',
-        local_instancesoftmax_grad, 30,
-        'instance_softmaxgrad',
-        'fast_compile', 'fast_run')
+                                      local_instancesoftmax_grad, 30,
+                                      'instance_softmaxgrad',
+                                      'fast_compile', 'fast_run')
 
 instanceLogSoftmax_groupopt = theano.gof.optdb.LocalGroupDB()
 instanceLogSoftmax_groupopt.__name__ = "InstanceLogSoftmax GroupOp"
 register_specialize_device(instanceLogSoftmax_groupopt, 'fast_compile', 'fast_run')
 instanceLogSoftmax_groupopt.register('local_instanceLogsoftmax',
-        local_instancelogsoftmax, 30,
-        'instance_logsoftmax',
-        'fast_compile', 'fast_run')
+                                     local_instancelogsoftmax, 30,
+                                     'instance_logsoftmax',
+                                     'fast_compile', 'fast_run')
+
 
 # Verify that no AbstractConv are present in the graph
 @local_optimizer([AbstractConv2d,
@@ -531,6 +532,7 @@ optdb.register('AbstractConvCheck',
                opt.in2out(local_abstractconv_check, name="AbstractConvCheck"),
                48.7, 'fast_compile', 'fast_run')
 
+
 # Verify that no Instance Softmax are present in the graph
 @local_optimizer([Instance_Softmax,
                   Instance_LogSoftmax,
@@ -540,11 +542,9 @@ def local_instancesoftmax_check(node):
                             Instance_LogSoftmax,
                             Instance_SoftmaxGrad)):
         raise AssertionError(
-                '%s Theano optimization failed: there is no implementation '
-                'available supporting the requested options.')
+            '%s Theano optimization failed: there is no implementation '
+            'available supporting the requested options.')
 
 optdb.register('InstanceSoftmaxCheck',
-        opt.in2out(local_instancesoftmax_check, name="InstanceSoftmaxCheck"),
-        48.7, 'fast_compile', 'fast_run')
-
-
+               opt.in2out(local_instancesoftmax_check, name="InstanceSoftmaxCheck"),
+               48.7, 'fast_compile', 'fast_run')
