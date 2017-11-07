@@ -47,7 +47,7 @@ def test_mpi_roundtrip():
         raise SkipTest('MPI not enabled')
     theano_root = theano.__file__.split('__init__')[0]
     env = os.environ.copy()
-    flags = env['THEANO_FLAGS']
+    flags = env.get('THEANO_FLAGS', '')
     keep_flags = ','.join((f for f in flags.split(',') if not f.startswith('init_gpu_device')))
     env['THEANO_FLAGS'] = keep_flags
     p = subprocess.Popen("mpiexec -np 2 python " + theano_root +

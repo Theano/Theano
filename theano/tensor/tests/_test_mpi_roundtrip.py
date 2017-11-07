@@ -4,6 +4,7 @@ from __future__ import absolute_import, print_function, division
 
 from mpi4py import MPI
 import theano
+from theano.configparser import change_flags
 from theano.tensor.io import send, recv, mpi_cmps
 from theano.gof.sched import sort_schedule_fn
 import numpy as np
@@ -27,30 +28,31 @@ scheduler = sort_schedule_fn(*mpi_cmps)
 mode = theano.Mode(optimizer=None,
                    linker=theano.OpWiseCLinker(schedule=scheduler))
 
-if rank == 0:
-    x = theano.tensor.matrix('x', dtype=dtype)
-    y = x + 1
-    send_request = send(y, 1, 11)
+with change_flags(compute_test_value='off'):
+    if rank == 0:
+        x = theano.tensor.matrix('x', dtype=dtype)
+        y = x + 1
+        send_request = send(y, 1, 11)
 
-    z = recv(shape, dtype, 1, 12)
+        z = recv(shape, dtype, 1, 12)
 
-    f = theano.function([x], [send_request, z], mode=mode)
+        f = theano.function([x], [send_request, z], mode=mode)
 
-    xx = np.random.rand(*shape).astype(dtype)
-    expected = (xx + 1) * 2
+        xx = np.random.rand(*shape).astype(dtype)
+        expected = (xx + 1) * 2
 
-    _, zz = f(xx)
+        _, zz = f(xx)
 
-    same = np.linalg.norm(zz - expected) < .001
-    # The parent test will look for "True" in the output
-    stdout.write(str(same))
+        same = np.linalg.norm(zz - expected) < .001
+        # The parent test will look for "True" in the output
+        stdout.write(str(same))
 
-if rank == 1:
+    if rank == 1:
 
-    y = recv(shape, dtype, 0, 11)
-    z = y * 2
-    send_request = send(z, 0, 12)
+        y = recv(shape, dtype, 0, 11)
+        z = y * 2
+        send_request = send(z, 0, 12)
 
-    f = theano.function([], send_request, mode=mode)
+        f = theano.function([], send_request, mode=mode)
 
-    f()
+        f()
