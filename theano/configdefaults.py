@@ -1241,7 +1241,9 @@ AddConfigVar('cmodule.debug',
 def check_mkl_openmp():
     if not theano.config.blas.check_openmp:
         return
-    import os
+    import os, sys
+    if sys.platform == 'darwin':
+        return
     if ('MKL_THREADING_LAYER' in os.environ and
             os.environ['MKL_THREADING_LAYER'] == 'GNU'):
         return
