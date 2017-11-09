@@ -3625,15 +3625,16 @@ def local_gpua_instancesoftmax_to_dnn(op, ctx_name, inputs, outputs):
 @register_opt2([Instance_SoftmaxGrad], 'fast_compile', 'cudnn')
 def local_gpua_instancesoftmaxgrad_to_dnn(op, ctx_name, inputs, outputs):
     # Check we got a 4d tensor as input
-    inp = inputs[0]
-    if inp.ndim != 4:
+    inp = inputs
+    if inp[0].ndim != 4:
         return
     if not dnn_available(ctx_name):
         return
 
-    inp.tag.context_name = ctx_name
+    inp[0].tag.context_name = ctx_name
+    inp[1].tag.context_name = ctx_name
     # Apply GpuDnnSoftmax and return the result
-    out = GpuDnnSoftmaxGrad('accurate', 'instance')(gpu_contiguous(inp))
+    out = GpuDnnSoftmaxGrad('accurate', 'instance')(gpu_contiguous(inp[0]), gpu_contiguous(inp[1]))
     return [out]
 
 
