@@ -100,15 +100,15 @@ def _dnn_lib():
                 raise RuntimeError(
                     'Could not find cudnn library (looked for v5* to v7*).'
                     ' Check your cudnn installation. Maybe using the Theano'
-                    ' flag dnn.bin_path can help you. Current value "%s"' %
-                    config.dnn.bin_path)
+                    ' flag dnn.base_path can help you. Current value "%s"' %
+                    config.dnn.base_path)
             else:
                 dnn_handle = ctypes.cdll.LoadLibrary(lib_name)
         if dnn_handle is None:
             raise RuntimeError('Could not load cudnn library. Check your cudnn'
                                ' installation. Maybe using the Theano'
-                               ' flag dnn.bin_path can help you. Current value "%s"' %
-                               config.dnn.bin_path)
+                               ' flag dnn.base_path can help you. Current value "%s"' %
+                               config.dnn.base_path)
         _dnn_lib.handle = dnn_handle
         cudnn = _dnn_lib.handle
         cudnn.cudnnCreate.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
