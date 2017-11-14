@@ -1521,7 +1521,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         # Same test with Gradsoftmax
         sm = T.tensor4('sm')
         y = T.tensor4('y')
-        f_grad = theano.function([y,sm], T.nnet.Instance_SoftmaxGrad()(y, sm), mode=mode_with_gpu)
+        f_grad = theano.function([y, sm], T.nnet.Instance_SoftmaxGrad()(y, sm), mode=mode_with_gpu)
         dnn_softmax_nodes = [n for n in f_grad.maker.fgraph.toposort() if
                              isinstance(n.op, dnn.GpuDnnSoftmaxGrad)]
         assert len(dnn_softmax_nodes) == 1
