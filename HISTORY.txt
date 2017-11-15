@@ -5,9 +5,99 @@
 Old Release Notes
 =================
 
-=============
-Release Notes
-=============
+
+Theano 1.0.0rc1 (30th of October, 2017)
+=======================================
+
+This release contains new features, improvements and bug fixes to prepare the upcoming release.
+
+We recommend that every developer updates to this version.
+
+Highlights:
+ - Make sure MKL uses GNU OpenMP
+
+   - **NB**: Matrix dot product (``gemm``) with ``mkl`` from conda
+     could return wrong results in some cases. We have reported the problem upstream
+     and we have a work around that raises an error with information about how to fix it.
+
+ - Optimized ``SUM(x^2)``, ``SUM(ABS(X))`` and ``MAX(ABS(X))`` operations with cuDNN reductions
+ - Added Python scripts to help test cuDNN convolutions
+ - Fixed invalid casts and index overflows in ``theano.tensor.signal.pool``
+
+A total of 71 people contributed to this release since 0.9.0, see list below.
+
+Commiters since 0.9.0:
+ - Frederic Bastien
+ - Steven Bocco
+ - João Victor Tozatti Risso
+ - Arnaud Bergeron
+ - Mohammed Affan
+ - amrithasuresh
+ - Pascal Lamblin
+ - Reyhane Askari
+ - Alexander Matyasko
+ - Shawn Tan
+ - Simon Lefrancois
+ - Adam Becker
+ - Vikram
+ - Gijs van Tulder
+ - Faruk Ahmed
+ - Thomas George
+ - erakra
+ - Andrei Costinescu
+ - Boris Fomitchev
+ - Zhouhan LIN
+ - Aleksandar Botev
+ - jhelie
+ - xiaoqie
+ - Tegan Maharaj
+ - Matt Graham
+ - Cesar Laurent
+ - Gabe Schwartz
+ - Juan Camilo Gamboa Higuera
+ - Tim Cooijmans
+ - Anirudh Goyal
+ - Saizheng Zhang
+ - Yikang Shen
+ - vipulraheja
+ - Florian Bordes
+ - Sina Honari
+ - Chiheb Trabelsi
+ - Shubh Vachher
+ - Daren Eiri
+ - Joseph Paul Cohen
+ - Laurent Dinh
+ - Mohamed Ishmael Diwan Belghazi
+ - Jeff Donahue
+ - Ramana Subramanyam
+ - Bogdan Budescu
+ - Dzmitry Bahdanau
+ - Ghislain Antony Vaillant
+ - Jan Schlüter
+ - Nan Jiang
+ - Xavier Bouthillier
+ - fo40225
+ - mrTsjolder
+ - wyjw
+ - Aarni Koskela
+ - Adam Geitgey
+ - Adrian Keet
+ - Adrian Seyboldt
+ - Anmol Sahoo
+ - Chong Wu
+ - Holger Kohr
+ - Jayanth Koushik
+ - Lilian Besson
+ - Lv Tao
+ - Michael Manukyan
+ - Murugesh Marvel
+ - NALEPA
+ - Rebecca N. Palmer
+ - Zotov Yuriy
+ - dareneiri
+ - lrast
+ - morrme
+ - naitonium
 
 
 Theano 0.10.0beta4 (16th of October, 2017)
