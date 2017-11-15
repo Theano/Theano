@@ -14,13 +14,13 @@ We recommend that everybody update to this version.
 Highlights (since 0.9.0):
  - Announcing that `MILA will stop developing Theano <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_
  - conda packages now available and updated in our own conda channel ``mila-udem``
-   To install it: ``conda install -c mila-udem -c mila-udem/label/pre theano pygpu``
+   To install it: ``conda install -c mila-udem theano pygpu``
  - Support NumPy ``1.13``
  - Support pygpu ``0.7``
  - Moved Python ``3.*`` minimum supported version from ``3.3`` to ``3.4``
  - Added conda recipe
  - Replaced deprecated package ``nose-parameterized`` with up-to-date package ``parameterized`` for Theano requirements
- - Theano now internally uses ``sha256`` instead of ``md5`` to work on systems that forbide ``md5`` for security reason
+ - Theano now internally uses ``sha256`` instead of ``md5`` to work on systems that forbid ``md5`` for security reason
  - Removed old GPU backend ``theano.sandbox.cuda``. New backend ``theano.gpuarray`` is now the official GPU backend
  - Make sure MKL uses GNU OpenMP
 
