@@ -53,7 +53,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             pygpu.get_include()]
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def gpu_kernels(self, node, nodename):
         # load kernel source
@@ -120,7 +120,8 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             ) as f:
                 kernel_src = f.read()
             ker = Kernel(
-                code=Template(common_src + kernel_src).substitute(**subs),
+                code=("#include <cluda.h>\n" +
+                      Template(common_src + kernel_src).substitute(**subs)),
                 name=kname,
                 params=param_types,
                 flags=flags,
@@ -159,7 +160,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         ctx = sub['params']
         k_dtype = node.inputs[1].type.dtype_specs()[1]
         # max threads per block
-        MAX_TPB = context.maxlsize
+        MAX_TPB = context.maxlsize0
         # max blocks per grid
         MAX_BPG = context.maxgsize0
         WARP_SIZE = 32

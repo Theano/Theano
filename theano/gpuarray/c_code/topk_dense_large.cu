@@ -194,7 +194,7 @@ __device__ void radix_select(DataType* data,
     *top_kth = RadixConfig<DataType>::deconvert(known_bits);
 }
 
-KERNEL void KERNEL_NAME(
+extern "C" __global__ void KERNEL_NAME(
         $dims
         // size_t dims_1, ssize_t dims_2, ... , dims_$${NDIM}
         $dstv

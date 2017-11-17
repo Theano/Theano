@@ -4,7 +4,7 @@
 #define RADIX_DIGITS(T) (bitsof(T)/RADIX_BITS)
 
 // works when length on axis is within max allowed threads in block (1024)
-KERNEL void k_topk_dense(
+extern "C" __global__ void k_topk_dense(
         $dims
         // size_t dims_1, ssize_t dims_2, ... , dims_$${NDIM}
         $dstv
