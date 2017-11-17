@@ -199,14 +199,19 @@ extern "C" __global__ void KERNEL_NAME(
         // size_t dims_1, ssize_t dims_2, ... , dims_$${NDIM}
         $dstv
         // INPUT_TYPE *dstv
+        $dstv_offset
+        // size_t offset
         $dstv_strides
         // ssize_t dstv_strides_0, ssize_t dstv_strides_1, ... , dstv_strides_$${NDIM}
         $dsti
         // INDEX_TYPE *dsti
+        $dsti_offset
+        // size_t offset
         $dsti_strides
         // ssize_t dsti_strides_0, ssize_t dsti_strides_1, ... , dsti_strides_$${NDIM}
         ssize_t k,
         INPUT_TYPE* src,
+	size_t src_offset
         $src_strides
         // ssize_t src_strides_0, ssize_t src_strides_1, ... , src_strides_$${NDIM}
         size_t size) {
@@ -217,6 +222,9 @@ extern "C" __global__ void KERNEL_NAME(
     k = (order ? k : -k);
     const int idx = threadIdx.x;
     const int warp_id = idx / GA_WARP_SIZE;
+    dstv = ptr_add(dstv, dstv_offset);
+    dsti = ptr_add(dsti, dsti_offset);
+    src = ptr_add(src, src_offset);
 
     // get the slice for thread block to work on
     // size <- the axis to work on

@@ -53,7 +53,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             pygpu.get_include()]
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def gpu_kernels(self, node, nodename):
         # load kernel source
@@ -83,7 +83,9 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
                 out_t=ga.dtype_to_ctype(self.idx_dtype),
                 dims=''.join('size_t dims_%d, ' % i for i in range(1, ndim)),
                 dstv='INPUT_TYPE *dstv,' if self.return_values else '',
+                dstv_offset='size_t dstv_offset,' if self.return_values else '',
                 dsti='INDEX_TYPE *dsti,' if self.return_indices else '',
+                dsti_offset='size_t dsti_offset,' if self.return_indices else '',
                 dstv_strides=dstv_strides_code if self.return_values else '',
                 dsti_strides=dsti_strides_code if self.return_indices else '',
                 src_strides=src_strides_code,
@@ -100,9 +102,11 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         param_types = [ga.SIZE] * (ndim - 1)  # dims
         for _ in range(self.return_values + self.return_indices):
             param_types.append(ga.GpuArray)  # dst*
+            param_types.extend([ga.SIZE] * ndim)  # offset
             param_types.extend([ga.SSIZE] * ndim)  # dst*_strides
         param_types.append(ga.SIZE)  # k
         param_types.append(ga.GpuArray)  # src
+        param_types.append(ga.SIZE)  # offset
         param_types.extend([ga.SSIZE] * ndim)  # src_strides
         param_types.append(ga.SIZE)  # size
 
@@ -174,7 +178,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         prep_output = ''
         if self.return_values:
             def_dvstrides = 'const ssize_t *dvstrides = PyGpuArray_STRIDES(%s)' % yv
-            params_dv = '(void*)((char*)(%s->ga.data) + (%s->ga.offset)),\n' % (yv, yv)
+            params_dv = '(void*)((char*)(%s->ga.data), (%s->ga.offset)),\n' % (yv, yv)
             params_dv += ''.join('(void*)(dvstrides+%d), ' % i for i in reordered_axes)
             prep_output += '''
     if (0 != theano_prep_output(
@@ -187,7 +191,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
 
         if self.return_indices:
             def_distrides = 'const ssize_t *distrides = PyGpuArray_STRIDES(%s)' % yi
-            params_di = '(void*)((char*)(%s->ga.data) + (%s->ga.offset)),\n' % yi
+            params_di = '(void*)((char*)(%s->ga.data), (%s->ga.offset)),\n' % (yi, yi)
             params_di += ''.join('(void*)(distrides+%d), ' % i for i in reordered_axes)
             prep_output += '''
     if (0 != theano_prep_output(
@@ -246,7 +250,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         %(params_dv)s
         %(params_di)s
         (void*)(&k_),
-        (void*)((char*)(%(x)s->ga.data) + (%(x)s->ga.offset)),
+        (void*)((char*)(%(x)s->ga.data), (%(x)s->ga.offset)),
         %(sstrides)s,
         (void*)(dims+%(axis)d),
     };
