@@ -1782,8 +1782,9 @@ class Compiler(object):
         try:
             fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
             exe_path = path[:-2]
-            path = "\"" + path + "\""
-            exe_path = "\"" + exe_path + "\""
+            if os.name == 'nt':
+                path = "\"" + path + "\""
+                exe_path = "\"" + exe_path + "\""
             try:
                 # Python3 compatibility: try to cast Py3 strings as Py2 strings
                 try:
