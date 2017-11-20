@@ -1258,9 +1258,8 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
             greduce = op2(
                 op.scalar_op,
                 axis=new_axis, reduce_mask=new_mask,
-                dtype=getattr(op, 'dtype', outputs[0].dtype),
-                acc_dtype=getattr(op, 'acc_dtype', None))
-
+                dtype=odtype,
+                acc_dtype=adtype)
             with inherit_stack_trace(outputs):
                 reshaped_x = x.reshape(tensor.stack(new_in_shp))
                 gpu_reshaped_x = as_gpuarray_variable(reshaped_x, context_name)

@@ -98,7 +98,7 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
       return 1;
     }
 
-    if (rsz == 1 && cudnnGetVersion() <= 7004) {
+    if (rsz == 1) {
       /* We must reduce some dimensions which have all size 1.
        * cuDNN (up to 7004) does not support this case. Let's use GpuElemwise. */
       switch (params->red_op) {
