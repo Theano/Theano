@@ -58,6 +58,8 @@ def pygpu_parse_version(version_string):
 
 def init_dev(dev, name=None, preallocate=None):
     global pygpu_activated
+    if os.environ.get('THEANO_GPU_IS_ALREADY_ACTIVE', '') == 'Yes':
+        raise RuntimeError("You can't initialize the GPU in a subprocess if the parent process already did it")
     if not config.cxx:
         raise RuntimeError("The new gpu-backend need a c++ compiler.")
     pygpu_version = pygpu_parse_version(pygpu.__version__)
@@ -92,6 +94,7 @@ def init_dev(dev, name=None, preallocate=None):
             sched=config.gpuarray.sched,
             single_stream=config.gpuarray.single_stream,
             **args)
+        os.environ['THEANO_GPU_IS_ALREADY_ACTIVE'] = 'Yes'
         context.dev = dev
         init_dev.devmap[dev] = context
         reg_context(name, context)
