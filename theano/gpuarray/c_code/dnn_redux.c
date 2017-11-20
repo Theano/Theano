@@ -3,7 +3,8 @@
 cudnnTensorDescriptor_t APPLY_SPECIFIC(input);
 cudnnTensorDescriptor_t APPLY_SPECIFIC(output);
 cudnnReduceTensorDescriptor_t APPLY_SPECIFIC(red);
-
+GpuElemwise* elemwise;
+gpuelemwise_arg arg;
 
 #section init_code_struct
 
@@ -28,12 +29,18 @@ if ((APPLY_SPECIFIC(err) = cudnnCreateReduceTensorDescriptor(&APPLY_SPECIFIC(red
   FAIL;
 }
 
+elemwise = NULL;
+
 #section cleanup_code_struct
 
 if (APPLY_SPECIFIC(input) != NULL) { cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(input)); }
 if (APPLY_SPECIFIC(output) != NULL) { cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(output)); }
 if (APPLY_SPECIFIC(red) != NULL) { cudnnDestroyReduceTensorDescriptor(APPLY_SPECIFIC(red)); }
 
+if (elemwise) {
+    GpuElemwise_free(elemwise);
+    elemwise = NULL;
+}
 
 #section support_code_struct
 
@@ -118,18 +125,18 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
         case CUDNN_REDUCE_TENSOR_NORM1:
         case CUDNN_REDUCE_TENSOR_NORM2:
         {
-            gpuelemwise_arg arg;
-            arg.name = "out";
-            arg.typecode = (*output)->ga.typecode;
-            arg.flags = GE_READ | GE_WRITE;
-            GpuElemwise* elemwise = GpuElemwise_new(c->ctx, "", "out = (out < 0 ? -out : out)", 1, &arg, p, GE_CONVERT_F16);
-            if (!elemwise) {
-                PyErr_SetString(PyExc_RuntimeError, "Unable to create GpuElemwise for output.");
-                return 1;
+            if (elemwise == NULL) {
+              arg.name = "out";
+              arg.typecode = (*output)->ga.typecode;
+              arg.flags = GE_READ | GE_WRITE;
+              elemwise = GpuElemwise_new(c->ctx, "", "out = (out < 0 ? -out : out)", 1, &arg, p, GE_CONVERT_F16);
+              if (!elemwise) {
+                  PyErr_SetString(PyExc_RuntimeError, "Unable to create GpuElemwise for output.");
+                  return 1;
+              }
             }
             void* args[1] = { (void*)&(*output)->ga };
             int err = GpuElemwise_call(elemwise, args, 0);
-            GpuElemwise_free(elemwise);
             if (err != GA_NO_ERROR) {
                 PyErr_SetString(PyExc_RuntimeError, "Unable to call GpuElemwise on output.");
                 return 1;
