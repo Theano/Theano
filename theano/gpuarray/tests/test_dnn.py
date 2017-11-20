@@ -1611,6 +1611,32 @@ def test_dnn_reduction_absmax():
         utt.assert_allclose(np.max(np.abs(M_val), axis=axis), f(M_val))
 
 
+def test_dnn_reduction_axis_size_one():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
+    for dtype in ('float16', 'float32', 'float64'):
+        for shape, axis in [[(1, 2, 3), 0], [(2, 1, 3), 1], [(2, 3, 1), 2]]:
+            x = theano.tensor.tensor3(dtype=dtype)
+            sum = x.sum(axis=axis)
+            sum_squares = (x**2).sum(axis=axis)
+            sum_abs = abs(x).sum(axis=axis)
+            absmax = abs(x).max(axis=axis)
+            f1 = theano.function([x], sum, mode=mode_with_gpu)
+            f2 = theano.function([x], sum_squares, mode=mode_with_gpu)
+            f3 = theano.function([x], sum_abs, mode=mode_with_gpu)
+            f4 = theano.function([x], absmax, mode=mode_with_gpu)
+            for fn in (f1, f2, f3, f4):
+                assert any(isinstance(node.op, dnn.GpuDnnReduction) for node in fn.maker.fgraph.apply_nodes)
+            xval = np.random.uniform(-10, -1, size=shape).astype(dtype)
+            xval_reshaped = xval.reshape(shape[:axis] + shape[(axis + 1):])
+            test_val = abs(xval_reshaped)
+            val_sum, val_sum_squares, val_sum_abs, val_absmax = f1(xval), f2(xval), f3(xval), f4(xval)
+            utt.assert_allclose(xval_reshaped, val_sum)
+            utt.assert_allclose(test_val**2, val_sum_squares)
+            utt.assert_allclose(test_val, val_sum_abs)
+            utt.assert_allclose(test_val, val_absmax)
+
+
 def dnn_reduction_strides(shp, shuffle, slice):
     utt.fetch_seed()
     inp = GpuArrayType('float32', (False,) * len(shp),
