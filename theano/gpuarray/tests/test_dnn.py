@@ -1611,6 +1611,53 @@ def test_dnn_reduction_absmax():
         utt.assert_allclose(np.max(np.abs(M_val), axis=axis), f(M_val))
 
 
+def test_dnn_reduction_axis_size_one():
+    if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
+        raise SkipTest(dnn.dnn_available.msg)
+
+    for dtype in ('float16', 'float32', 'float64'):
+        for shape, axis in [[(1, 2, 3), 0],
+                            [(2, 1, 3), 1],
+                            [(2, 3, 1), 2],
+                            [(1, 5, 1), (0, 2)],
+                            [(4, 1, 6, 1), (1, 3)]]:
+
+            x = theano.tensor.TensorType(dtype=dtype, broadcastable=[False] * len(shape))()
+            sum = x.sum(axis=axis)
+            sum_squares = (x**2).sum(axis=axis)
+            sum_abs = abs(x).sum(axis=axis)
+            absmax = abs(x).max(axis=axis)
+
+            cpu_f = theano.function([x], [sum, sum_squares, sum_abs, absmax], mode=mode_without_gpu)
+            f1 = theano.function([x], sum, mode=mode_with_gpu)
+            f2 = theano.function([x], sum_squares, mode=mode_with_gpu)
+            f3 = theano.function([x], sum_abs, mode=mode_with_gpu)
+            f4 = theano.function([x], absmax, mode=mode_with_gpu)
+
+            for fn, red_op in ((f1, 'add'), (f2, 'norm2'), (f3, 'norm1'), (f4, 'absmax')):
+                assert any(isinstance(node.op, dnn.GpuDnnReduction) and node.op.red_op == red_op
+                           for node in fn.maker.fgraph.apply_nodes)
+
+            xval = np.random.uniform(-10, -1, size=shape).astype(dtype)
+            if isinstance(axis, int):
+                xval_reshaped = xval.reshape(shape[:axis] + shape[(axis + 1):])
+            else:
+                xval_reshaped = xval.reshape([n for i, n in enumerate(shape) if i not in axis])
+            test_val = abs(xval_reshaped)
+
+            val_sum, val_sum_squares, val_sum_abs, val_absmax = f1(xval), f2(xval), f3(xval), f4(xval)
+            cpu_val_sum, cpu_val_sum_squares, cpu_val_sum_abs, cpu_val_absmax = cpu_f(xval)
+
+            utt.assert_allclose(cpu_val_sum, val_sum)
+            utt.assert_allclose(cpu_val_sum_squares, val_sum_squares)
+            utt.assert_allclose(cpu_val_sum_abs, val_sum_abs)
+            utt.assert_allclose(cpu_val_absmax, val_absmax)
+            utt.assert_allclose(xval_reshaped, val_sum)
+            utt.assert_allclose(test_val**2, val_sum_squares)
+            utt.assert_allclose(test_val, val_sum_abs)
+            utt.assert_allclose(test_val, val_absmax)
+
+
 def dnn_reduction_strides(shp, shuffle, slice):
     utt.fetch_seed()
     inp = GpuArrayType('float32', (False,) * len(shp),

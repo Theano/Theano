@@ -3,7 +3,8 @@
 cudnnTensorDescriptor_t APPLY_SPECIFIC(input);
 cudnnTensorDescriptor_t APPLY_SPECIFIC(output);
 cudnnReduceTensorDescriptor_t APPLY_SPECIFIC(red);
-
+GpuElemwise* elemwise;
+gpuelemwise_arg arg;
 
 #section init_code_struct
 
@@ -28,12 +29,18 @@ if ((APPLY_SPECIFIC(err) = cudnnCreateReduceTensorDescriptor(&APPLY_SPECIFIC(red
   FAIL;
 }
 
+elemwise = NULL;
+
 #section cleanup_code_struct
 
 if (APPLY_SPECIFIC(input) != NULL) { cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(input)); }
 if (APPLY_SPECIFIC(output) != NULL) { cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(output)); }
 if (APPLY_SPECIFIC(red) != NULL) { cudnnDestroyReduceTensorDescriptor(APPLY_SPECIFIC(red)); }
 
+if (elemwise) {
+    GpuElemwise_free(elemwise);
+    elemwise = NULL;
+}
 
 #section support_code_struct
 
@@ -97,6 +104,49 @@ int APPLY_SPECIFIC(dnn_redux)(PyGpuArrayObject *input,
       PyErr_Format(PyExc_RuntimeError, "GpuArray_reshape_inplace: %s", GpuArray_error(&(*output)->ga, err));
       return 1;
     }
+
+    if (rsz == 1) {
+      /* We must reduce some dimensions which have all size 1.
+       * cuDNN (up to 7004) does not support this case. Let's use GpuElemwise. */
+      switch (params->red_op) {
+        // Nothing to do for following cases.
+        case CUDNN_REDUCE_TENSOR_ADD: break;
+        case CUDNN_REDUCE_TENSOR_MUL: break;
+        case CUDNN_REDUCE_TENSOR_MIN: break;
+        case CUDNN_REDUCE_TENSOR_MAX: break;
+        case CUDNN_REDUCE_TENSOR_AVG: break;
+        /* Work to do for following cases.
+        AMAX (maximum on absolute values) => apply abs(output)
+        NORM1 (addition of absolute values) => apply abs(output)
+        NORM2 (square root of sum of squares) => sqroot(output^2) => abs(output)
+        So, we must apply abs(output) for all following cases.
+        */
+        case CUDNN_REDUCE_TENSOR_AMAX:
+        case CUDNN_REDUCE_TENSOR_NORM1:
+        case CUDNN_REDUCE_TENSOR_NORM2:
+        {
+            if (elemwise == NULL) {
+              arg.name = "out";
+              arg.typecode = (*output)->ga.typecode;
+              arg.flags = GE_READ | GE_WRITE;
+              elemwise = GpuElemwise_new(c->ctx, "", "out = (out < 0 ? -out : out)", 1, &arg, p, GE_CONVERT_F16);
+              if (!elemwise) {
+                  PyErr_SetString(PyExc_RuntimeError, "Unable to create GpuElemwise for output.");
+                  return 1;
+              }
+            }
+            void* args[1] = { (void*)&(*output)->ga };
+            int err = GpuElemwise_call(elemwise, args, 0);
+            if (err != GA_NO_ERROR) {
+                PyErr_SetString(PyExc_RuntimeError, "Unable to call GpuElemwise on output.");
+                return 1;
+            };
+        }
+            break;
+        default: break;
+      }
+    }
+
     if (indices != NULL) {
       // All indices will be 0 since the size of the reduced area is 1.
       err = GpuArray_memset(&(*indices)->ga, 0);
