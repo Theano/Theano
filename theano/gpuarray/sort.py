@@ -300,9 +300,9 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         return node.inputs[0].type.context
 
 
-@register_opt('fast_compile')
+#@register_opt('fast_compile')
 @op_lifter([TopKOp], cuda_only=True)
-@register_opt2([TopKOp], 'fast_compile')
+#@register_opt2([TopKOp], 'fast_compile')
 def local_gpua_topkop(op, ctx_name, inputs, outputs):
     axis = op.axis
     rv = op.return_values
