@@ -77,6 +77,17 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
                 dsti='dsti = ptr_add(dsti, gidx*dsti_strides_%(i)d)' if self.return_indices else '')
             set_slice_code = ''.join(
                 set_slice_code % dict(i=j) for j in range(1, ndim))
+            if self.return_values:
+                set_slice_code += """
+                dstv = ptr_add(dstv, dstv_offset);
+                """
+            if self.return_indices:
+                set_slice_code += """
+                dsti = ptr_add(dsti, dsti_offset);
+                """
+            set_slice_code += """
+                src = ptr_add(src, src_offset);
+            """
             flags = Kernel.get_flags(node.inputs[0].dtype)
             subs = dict(
                 inp_t=ga.dtype_to_ctype(node.inputs[0].dtype),
