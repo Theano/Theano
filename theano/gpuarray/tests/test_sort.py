@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 
 import theano
 import theano.tensor.tests.test_sort
-from .config import mode_with_gpu, test_ctx_name
+from .config import mode_with_gpu
 from ..sort import GpuTopKOp
 from nose.plugins.skip import SkipTest
 

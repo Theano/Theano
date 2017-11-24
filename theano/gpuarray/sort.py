@@ -113,7 +113,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         param_types = [ga.SIZE] * (ndim - 1)  # dims
         for _ in range(self.return_values + self.return_indices):
             param_types.append(ga.GpuArray)  # dst*
-            param_types.extend([ga.SIZE] * ndim)  # offset
+            param_types.append(ga.SIZE)  # offset
             param_types.extend([ga.SSIZE] * ndim)  # dst*_strides
         param_types.append(ga.SIZE)  # k
         param_types.append(ga.GpuArray)  # src
