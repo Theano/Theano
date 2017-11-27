@@ -875,7 +875,7 @@ class MRG_RandomStreams(object):
         if 'target' in kwargs:
             d = dict(target=kwargs.pop('target'))
         if len(kwargs) > 0:
-            raise TypeError("uniform() got unexpected keyword arguements %s" % (str(kwargs.keys())))
+            raise TypeError("uniform() got unexpected keyword arguments %s" % (str(kwargs.keys())))
         node_rstate = shared(rstates, **d)
         u = self.pretty_return(node_rstate,
                                *mrg_uniform.new(node_rstate,
@@ -1004,7 +1004,7 @@ class MRG_RandomStreams(object):
         if a is not None:
             raise TypeError("For now, a has to be None in "
                             "MRG_RandomStreams.choice. Sampled values are "
-                            "beween 0 and p.shape[1]-1")
+                            "between 0 and p.shape[1]-1")
 
         if p is None:
             raise TypeError("For now, p has to be specified in "

@@ -37,7 +37,7 @@ class ScipyGer(Ger):
         if A.size == 0:
             # We don't have to compute anything, A is empty.
             # We need this special case because Numpy considers it
-            # C-contiguous, wich is confusing.
+            # C-contiguous, which is confusing.
             if not self.destructive:
                 # Sometimes numpy thinks empty matrices can share memory,
                 # so here to stop DebugMode from complaining.

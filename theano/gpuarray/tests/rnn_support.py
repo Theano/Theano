@@ -86,7 +86,7 @@ class GRU(Layer):
 
         '''Layers weights'''
 
-        '''self.params is passed so that any paramters could be appended to it'''
+        '''self.params is passed so that any parameters could be appended to it'''
         self.W_r = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_r")
         self.b_wr = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wr")
 
@@ -149,7 +149,7 @@ class LSTM(Layer):
 
         '''Layers weights'''
 
-        '''self.params is passed so that any paramters could be appended to it'''
+        '''self.params is passed so that any parameters could be appended to it'''
         self.W_i = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_i")
         self.b_wi = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wi")
 

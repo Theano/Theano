@@ -395,7 +395,7 @@ class AttemptManyTimes:
             current_seed = original_seed
 
             # If the decorator has received only one, unnamed, argument
-            # and that argument has an atribute _testMethodName, it means
+            # and that argument has an attribute _testMethodName, it means
             # that the unit test on which the decorator is used is in a test
             # class. This means that the setup() method of that class will
             # need to be called before any attempts to execute the test in

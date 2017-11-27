@@ -57,7 +57,7 @@ def test_gc_never_pickles_temporaries():
         # We can't compare the content or the length of the string
         # between f and g. 2 reason, we store some timming information
         # in float. They won't be the same each time. Different float
-        # can have different lenght when printed.
+        # can have different length when printed.
 
         def a(fn):
             return len(pickle.dumps(fn.maker))

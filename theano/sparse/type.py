@@ -143,7 +143,7 @@ class SparseType(gof.Type):
         if diff.nnz == 0:
             return True
         # Built-in max from python is not implemented for sparse matrix as a
-        # reduction. It returns a sparse matrix wich cannot be compared to a
+        # reduction. It returns a sparse matrix which cannot be compared to a
         # scalar. When comparing sparse to scalar, no exceptions is raised and
         # the returning value is not consistent. That is why it is apply to a
         # numpy.ndarray.

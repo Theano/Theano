@@ -177,7 +177,7 @@ def test_local_gpualloc_memset_0():
     ones = np.ones((2,), dtype='float32')
 
     # Test with 0 from CPU op.
-    # Should not be transfered as the only client is the output
+    # Should not be transferred as the only client is the output
     a = tensor.alloc(z, i)
     f = theano.function([i], a, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
@@ -187,7 +187,7 @@ def test_local_gpualloc_memset_0():
     assert _check_stack_trace(f)
 
     # Test with 0 from CPU op.
-    # Should be transfered as it is used by another op.
+    # Should be transferred as it is used by another op.
     a = tensor.alloc(z, i)
     f = theano.function([i], a.cumsum(), mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
@@ -1189,7 +1189,7 @@ class Conv_opt_test(unittest.TestCase):
     def test_returns_none_2d(self):
         if theano.config.cxx == "":
             raise SkipTest("Need a c compiler.")
-        # values given dont matter since it returns None
+        # values given don't matter since it returns None
         imshp = (2, 3, 5, 5)
         kshp = (4, 3, 3, 3)
         tshp = (2, 4, 3, 3)

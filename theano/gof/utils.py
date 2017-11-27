@@ -84,7 +84,7 @@ def add_tag_trace(thing, user_line=None):
 
     Notes
     -----
-    We alse use config.traceback.limit for the maximum number of stack level
+    We also use config.traceback.limit for the maximum number of stack level
     we look.
 
     """

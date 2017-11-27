@@ -1180,7 +1180,7 @@ def ____gemm_code(check_ab, a_init, b_init):
         _dot_execute_fail:
         if (error_string == NULL)
             PyErr_SetString(PyExc_ValueError,
-                "dot->execute() cant run on these inputs");
+                "dot->execute() can't run on these inputs");
         return -1;
 
         /* v 1 */

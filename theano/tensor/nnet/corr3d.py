@@ -143,7 +143,7 @@ class BaseCorr3dMM(gof.OpenMPOp):
     @staticmethod
     def as_common_dtype(in1, in2):
         """
-        Upcast input variables if neccesary.
+        Upcast input variables if necessary.
         """
         dtype = theano.scalar.upcast(in1.dtype, in2.dtype)
         return in1.astype(dtype), in2.astype(dtype)

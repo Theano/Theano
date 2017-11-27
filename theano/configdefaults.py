@@ -1449,7 +1449,7 @@ def default_blas_ldflags():
 
         # Add sys.prefix/lib to the runtime search path. On
         # non-system installations of Python that use the
-        # system linker, this is generally neccesary.
+        # system linker, this is generally necessary.
         if sys.platform in ("linux", "darwin"):
             lib_path = os.path.join(sys.prefix, 'lib')
             ret.append('-Wl,-rpath,' + lib_path)
@@ -1562,7 +1562,7 @@ def filter_vm_lazy(val):
 
 AddConfigVar('vm.lazy',
              "Useful only for the vm linkers. When lazy is None,"
-             " auto detect if lazy evaluation is needed and use the apropriate"
+             " auto detect if lazy evaluation is needed and use the appropriate"
              " version. If lazy is True/False, force the version used between"
              " Loop/LoopGC and Stack.",
              ConfigParam('None', filter_vm_lazy),
@@ -1624,7 +1624,7 @@ AddConfigVar('scan.debug',
              in_c_key=False)
 
 AddConfigVar('compile.wait',
-             """Time to wait before retrying to aquire the compile lock.""",
+             """Time to wait before retrying to acquire the compile lock.""",
              IntParam(5, lambda i: i > 0, allow_override=False),
              in_c_key=False)
 

@@ -630,7 +630,7 @@ class CSM(gof.Op):
         return [g_data, DisconnectedType()(), DisconnectedType()(), DisconnectedType()()]
 
     def infer_shape(self, node, shapes):
-        # node.inputs[3] is of lenght as we only support sparse matrix.
+        # node.inputs[3] is of length as we only support sparse matrix.
         return [(node.inputs[3][0], node.inputs[3][1])]
 
 CSC = CSM('csc')
@@ -3606,7 +3606,7 @@ def structured_dot(x, y):
 class StructuredDotGradCSC(gof.Op):
     # Op that produces the grad of StructuredDot.
 
-    # :param a_indices: Matrix indicies
+    # :param a_indices: Matrix indices
     # :param a_indptr: Matrix indptr
     # :param b: Right operand
     # :param g_ab: Accumulated gradient.
@@ -3736,7 +3736,7 @@ sdg_csc = StructuredDotGradCSC()
 class StructuredDotGradCSR(gof.Op):
     # Op that produces the grad of StructuredDot.
 
-    # :param a_indices: Matrix indicies
+    # :param a_indices: Matrix indices
     # :param a_indptr: Matrix indptr
     # :param b: Right operand
     # :param g_ab: Accumulated gradient.

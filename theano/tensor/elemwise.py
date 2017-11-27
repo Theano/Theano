@@ -2053,7 +2053,7 @@ class Prod(CAReduceDtype):
 
 class MulWithoutZeros(scalar.BinaryScalarOp):
     # "identity" here is zero, as in Reduce we don't want to start
-    # with reducing (1, something_else): this leads to the erronous
+    # with reducing (1, something_else): this leads to the erroneous
     # case where a vector of zeros is reduced by binary reductions
     # of (1, 0), which always ends up as 1 (ie. the result for
     # the c version, for the product of [0,0,0], is 1.0)
@@ -2096,6 +2096,6 @@ class ProdWithoutZeros(CAReduceDtype):
         a_grad = theano.gradient.grad_not_implemented(
             self, 0, a,
             "2nd derivatives of `product(a)` is not currently supported."
-            "If `a` is guarenteed to contains no zeros, use "
+            "If `a` is guaranteed to contains no zeros, use "
             "`product(a, no_zeros_in_input=True)`.")
         return [a_grad]

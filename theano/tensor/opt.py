@@ -3233,7 +3233,7 @@ def local_subtensor_of_dot(node):
 
     # This is necessary because np.dot sums the last index of a with the second to last of b
     # so we want to skip the second-to-last index into b.
-    # This wasn't necessary for a, because we just ommitted the last index.
+    # This wasn't necessary for a, because we just omitted the last index.
     # We skip this if b.ndim = 1, since then we just want b_sub = b, not b_sub = b[:]
     # (dot also handles b.ndim < 2 as a special case)
     if b.ndim > 1 and len(b_indices) >= b.ndim - 1:
@@ -4067,7 +4067,7 @@ def local_useless_switch(node):
 @gof.local_optimizer([T.mul])
 def local_mul_switch_sink(node):
     """
-    This optimization makes the folowing changes in the graph:
+    This optimization makes the following changes in the graph:
     T.mul(A,T.switch(cond,0,iff),B) -->  T.switch(cond,0,T.mul(A,B,iff))
     T.mul(A,T.switch(cond,ift,0),B) -->  T.switch(cond,T.mul(A,B,ift),0)
     A and B being several (or none) symbolic variables.
@@ -4149,7 +4149,7 @@ def local_mul_switch_sink(node):
 @gof.local_optimizer([T.true_div, T.int_div])
 def local_div_switch_sink(node):
     """
-    This optimization makes the folowing changes in the graph:
+    This optimization makes the following changes in the graph:
     T.div(T.switch(cond,0,iff),A) -->  T.switch(cond,0,T.div(iff,A))
     T.div(T.switch(cond,ift,0),A) -->  T.switch(cond,T.div(ift,A),0)
 
@@ -4947,7 +4947,7 @@ class Canonizer(gof.LocalOptimizer):
                 # -> then we return very exactly the original num/denum.
                 # If we don't do that the optimizer will just loop
                 # infinitely because it will not catch on that there are
-                # no changes to be made and everytime it will want to
+                # no changes to be made and every time it will want to
                 # replace something by the same thing...
                 # Note that it is important to use `values_eq` instead of
                 # the == operator, to handle NaN values correctly.
@@ -5032,7 +5032,7 @@ def mul_calculate(num, denum, aslist=False, out_type=None):
         else:
             return np.int8(1)
 
-    # Make sure we do not accidently upcast data types.
+    # Make sure we do not accidentally upcast data types.
     if out_type is None:
         out_dtype = scalar.upcast(*[v.dtype for v in (num + denum)])
     else:
@@ -6737,8 +6737,8 @@ def local_log_erfc(node):
 # ([y*]exp(-(x**2)))/erfc(x) # The y* is optional
 # ([y*]exp(x**2))/erfc(-x) => [y*](when x>threashold,
 #                            sqrt(pi)*-x/(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6)))
-# for float64: threshold=26.63 see at the end of the fct for the explaination
-# for float32: threshold=9.3 see at the end of the fct for the explaination
+# for float64: threshold=26.63 see at the end of the fct for the explanation
+# for float32: threshold=9.3 see at the end of the fct for the explanation
 # TODO: remove the contraint that there are only 2 inputs to exp(x**2)
 #      is the second.
 # TODO: at the test point 10 in float32, there is instability in the original

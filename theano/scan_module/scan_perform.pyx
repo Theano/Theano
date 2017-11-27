@@ -148,7 +148,7 @@ def perform(
         This is the linker, i.e. the function that will loop over the
         computational graph and call the perform of each operation. For this
         linker there is a c version in gof/lazy_linker.c that will be the
-        starting point of implementing this funciton in C ( we need to take
+        starting point of implementing this function in C ( we need to take
         all the code around the call of this function and put in C inside
         that code)
     fnct: python object
@@ -610,7 +610,7 @@ def perform(
             if i < n_steps:
 
 	    # Cython can not handle negative indices ( because of a
-	    # derictive at the begining of the function that says not
+	    # derictive at the beginning of the function that says not
 	    # to do boundschecks). The directive is used to make the
 	    # code faster, so this workaround is better then removing
 	    # the directive.

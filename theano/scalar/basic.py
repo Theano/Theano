@@ -139,7 +139,7 @@ class NumpyAutocaster(object):
         - 'numpy+floatX' will do the same, except it will use float32 instead
           of float64 if `x` is a Python float and `config.floatX` is set to
           'float32' (note that if `x` is a numpy scalar whose data type is
-          float64, it is not modified since we assume the user is purposedly
+          float64, it is not modified since we assume the user is purposely
           using float64).
         - 'custom' lets one define a tuple of data types such that:
             - if `x` is already a numpy scalar and its data type is in this
@@ -3854,7 +3854,7 @@ class Composite(ScalarOp):
         # In the case where the graph is a dag, but not a tree like:
         # add(*1 -> mul(x, y), *1)
 
-        # We have an efficent way to build the executable (we build
+        # We have an efficient way to build the executable (we build
         # and traverse each node only once).
 
         # But we don't have an efficient execution. We will execute

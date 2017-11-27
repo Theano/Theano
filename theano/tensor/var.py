@@ -172,7 +172,7 @@ class _tensor_py_operators(object):
 
     def __pow__(self, other):
         # See explanation in __add__ for the error catched
-        # adn the return value in that case
+        # and the return value in that case
         try:
             return theano.tensor.basic.pow(self, other)
         except (NotImplementedError, AsTensorError):
@@ -180,7 +180,7 @@ class _tensor_py_operators(object):
 
     def __mod__(self, other):
         # See explanation in __add__ for the error catched
-        # adn the return value in that case
+        # and the return value in that case
         try:
             return theano.tensor.basic.mod_check(self, other)
         except ComplexError:

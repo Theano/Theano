@@ -40,7 +40,7 @@ def random_lil(shape, dtype, nnz):
         if dtype in theano.tensor.integer_dtypes:
             value = int(value * 100)
         # The call to tuple is needed as scipy 0.13.1 do not support
-        # ndarray with lenght 2 as idx tuple.
+        # ndarray with length 2 as idx tuple.
         rval.__setitem__(
             tuple(idx),
             value)

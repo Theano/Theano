@@ -69,7 +69,7 @@ class FunctionGraph(utils.object2):
     variable in the subgraph by another, e.g. replace (x + x).out by (2
     * x).out. This is the basis for optimization in theano.
 
-    This class is also reponsible for verifying that a graph is valid
+    This class is also responsible for verifying that a graph is valid
     (ie, all the dtypes and broadcast patterns are compatible with the
     way the the Variables are used) and for annotating the Variables with
     a .clients field that specifies which Apply nodes use the variable.
@@ -128,7 +128,7 @@ class FunctionGraph(utils.object2):
         clone : boolean
             If true, we will clone the graph. This is useful to remove the
             constant cache problem.
-        update_mapping : dictionnary
+        update_mapping : dictionary
             Mapping between the inputs with updates and the outputs
             corresponding to their updates.
         """

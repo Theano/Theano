@@ -53,7 +53,7 @@ def map(fn,
         See ``scan``.
     go_backwards : bool
         Decides the direction of iteration. True means that sequences are parsed
-        from the end towards the begining, while False is the other way around.
+        from the end towards the beginning, while False is the other way around.
     mode
         See ``scan``.
     name
@@ -98,7 +98,7 @@ def reduce(fn,
                           more info).
     go_backwards : bool 
         Decides the direction of iteration. True means that sequences are parsed
-        from the end towards the begining, while False is the other way around.
+        from the end towards the beginning, while False is the other way around.
     mode
         See ``scan``.
     name

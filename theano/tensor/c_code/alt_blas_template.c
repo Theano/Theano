@@ -277,7 +277,7 @@ void %(precision)sgemv_(
             alt_fatal_error("NumPy %(precision)sgemv_ implementation: the output vector should be empty.");
         return;
     }
-    /* Vector pointers points to the begining of memory (see function `theano.tensor.blas_c.gemv_c_code`).
+    /* Vector pointers points to the beginning of memory (see function `theano.tensor.blas_c.gemv_c_code`).
      * NumPy seems to expect that pointers points to the first element of the array. */
     if (*incx < 0)
         x += (size_x - 1) * (-*incx);
@@ -338,7 +338,7 @@ void %(precision)sgemv_(
         alt_fatal_error("NumPy %(precision)sdot_ implementation: INCX and INCY must not be 0.");
     %(float_type)s result = 0;
     int one = 1;
-    /* Vector pointers points to the begining of memory (see function `theano.tensor.blas_c.gemv_c_code`).
+    /* Vector pointers points to the beginning of memory (see function `theano.tensor.blas_c.gemv_c_code`).
      * NumPy seems to expect that pointers points to the first element of the array. */
     if (*INCX < 0)
         SX += (*N - 1) * (-*INCX);

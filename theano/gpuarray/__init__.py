@@ -138,7 +138,7 @@ def init_dev(dev, name=None, preallocate=None):
                 print(
                     "WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
 
-            # This will allocate and immediatly free an object of size gmem
+            # This will allocate and immediately free an object of size gmem
             # which will reserve that amount of memory on the GPU.
             pygpu.empty((gmem,), dtype='int8', context=context)
             if config.print_active_device:

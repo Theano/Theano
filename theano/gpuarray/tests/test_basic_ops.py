@@ -104,7 +104,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                 node_ref = safe_make_node(self.op, *inputs_ref)
                 node_tst = safe_make_node(self.op, *inputs_tst)
             except Exception as exc:
-                err_msg = ("Test %s::%s: Error occured while making "
+                err_msg = ("Test %s::%s: Error occurred while making "
                            "a node with inputs %s") % (self.gpu_op, testname,
                                                        inputs)
                 exc.args += (err_msg,)
@@ -114,7 +114,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                 f_ref = inplace_func([], node_ref.outputs, mode=mode_nogpu)
                 f_tst = inplace_func([], node_tst.outputs, mode=mode_gpu)
             except Exception as exc:
-                err_msg = ("Test %s::%s: Error occured while trying to "
+                err_msg = ("Test %s::%s: Error occurred while trying to "
                            "make a Function") % (self.gpu_op, testname)
                 exc.args += (err_msg,)
                 raise

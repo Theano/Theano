@@ -1032,7 +1032,7 @@ def test_sync_update():
         d2 = (t_2 - t_1)
         assert d1 > d2, (d1, d2)
     else:
-        raise SkipTest("Sync is only availble when pygpu is activated.")
+        raise SkipTest("Sync is only available when pygpu is activated.")
 
 
 if __name__ == '__main__':

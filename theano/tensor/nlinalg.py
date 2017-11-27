@@ -695,7 +695,7 @@ def norm(x, ord):
         else:
             raise ValueError(0)
     elif ndim > 2:
-        raise NotImplementedError("We don't support norm witn ndim > 2")
+        raise NotImplementedError("We don't support norm with ndim > 2")
 
 
 class TensorInv(Op):

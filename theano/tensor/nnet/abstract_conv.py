@@ -1875,7 +1875,7 @@ def bilinear_upsampling(input,
         different frac_ratio should be a tuple of fractional ratios, i.e
         a tuple of tuples.
     use_1D_kernel: bool
-        if set to true, row and column will be upsampled seperately by 1D
+        if set to true, row and column will be upsampled separately by 1D
         kernels, otherwise they are upsampled together using a 2D kernel. The
         final result is the same, only the speed can differ, given factors such
         as upsampling ratio.

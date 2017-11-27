@@ -49,7 +49,7 @@ class test_ScalarOps(unittest.TestCase):
     # As we use theano.scalar normally, but we use theano.tensor.scalar
     # that is not important. Also this make the theano fct fail at call time
     # so this is not a silent bug.
-    # --> This is why it is purposedly named 'tes_mod' instead of 'test_mod'.
+    # --> This is why it is purposely named 'tes_mod' instead of 'test_mod'.
     def tes_mod(self):
         # We add this test as not all language and C implementation give the same
         # sign to the result. This check that the c_code of `Mod` is implemented

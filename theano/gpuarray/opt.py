@@ -324,7 +324,7 @@ gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
 
 class GraphToGPU(Optimizer):
     """
-    Transfer the graph as a whole to GPU instead of transfering node by node.
+    Transfer the graph as a whole to GPU instead of transferring node by node.
 
     Parameters
     ----------
@@ -923,9 +923,9 @@ def local_gpu_pdbbreakpoint_op(node):
         new_inputs = node.inputs[:1]
         input_transfered = []
 
-        # Go through the monitored variables, only transfering on GPU those
+        # Go through the monitored variables, only transferring on GPU those
         # for which the input comes from the GPU or the output will be
-        # transfered on the GPU.
+        # transferred on the GPU.
         nb_monitored_vars = len(node.outputs)
         for i in range(nb_monitored_vars):
 
@@ -949,7 +949,7 @@ def local_gpu_pdbbreakpoint_op(node):
                 input_transfered.append(True)
 
             elif output_goes_to_gpu:
-                # The input should be transfered to the gpu
+                # The input should be transferred to the gpu
                 new_inputs.append(as_gpuarray_variable(inp, context_name))
                 input_transfered.append(True)
 
@@ -959,7 +959,7 @@ def local_gpu_pdbbreakpoint_op(node):
                 input_transfered.append(False)
 
         # Only continue the optimization if at least one input has been
-        # transfered to the gpu
+        # transferred to the gpu
         if not any(input_transfered):
             return False
 

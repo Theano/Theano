@@ -89,7 +89,7 @@ def debugprint(obj, depth=-1, print_type=False,
          an Apply node.
     :type used_ids: dict or None
     :param used_ids: the id to use for some object, but maybe we only
-         refered to it yet.
+         referred to it yet.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -688,7 +688,7 @@ def pydotprint(fct, outfile=None,
             the border
     :param colorCodes: dictionary with names of ops as keys and colors as
             values
-    :param cond_highlight: Highlights a lazy if by sorrounding each of the 3
+    :param cond_highlight: Highlights a lazy if by surrounding each of the 3
                 possible categories of ops with a border. The categories
                 are: ops that are on the left branch, ops that are on the
                 right branch, ops that are on both branches

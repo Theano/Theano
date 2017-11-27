@@ -96,7 +96,7 @@ class TensorType(Type):
         elif ((type(data) is np.memmap) and
               (data.dtype == self.numpy_dtype)):
             # numpy.memmap is a "safe" subclass of ndarray,
-            # so we can use it whereever we expect a base ndarray.
+            # so we can use it wherever we expect a base ndarray.
             # however, casting it would defeat the purpose of not
             # loading the whole data into memory
             pass
