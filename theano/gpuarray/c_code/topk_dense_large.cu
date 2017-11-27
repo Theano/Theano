@@ -15,19 +15,19 @@ __device__ DataType find_pattern(DataType* smem,
                              RadixType known_bits,
                              RadixType known_bits_mask) {
     if (threadIdx.x < 32)
-        smem[threadIdx.x] = 0;
+        smem[threadIdx.x] = theano_zero<DataType>();
 
     local_barrier();
 
     // All threads participate in the loop, in order to sync on the flag
     for (CountType i = threadIdx.x; i < (slice_size + (CountType)blockDim.x-1); i += blockDim.x) {
         bool in_range = (i < slice_size);
-        DataType v = in_range ? ptr_read_cached(data, i*stride) : 0;
+        DataType v = in_range ? ptr_read_cached(data, i*stride) : theano_zero<DataType>();
 
         if (in_range && ((RadixConfig<DataType>::convert(v) & known_bits_mask) == known_bits)) {
             // There should not be conflicts if we are using find_pattern,
             // since the result is unique
-            smem[0] = 1;
+            smem[0] = theano_one<DataType>();
             smem[1] = v; // can't use val as the flag, since it could be 0
         }
 
@@ -39,10 +39,10 @@ __device__ DataType find_pattern(DataType* smem,
         local_barrier();
 
         // Check to see if a thread found the value
-        if (found != 0)
+        if (theano_ne(found, 0))
             return val;
     }
-    return 0;
+    return theano_zero<DataType>();
 }
 
 // This function counts the distribution of all input values in a
@@ -260,12 +260,12 @@ extern "C" __global__ void KERNEL_NAME(
 
     for (int i = idx; i < iter_bound; i += blockDim.x) {
         bool in_range = (i < size);
-        INPUT_TYPE v = in_range ? ptr_read_cached(src, i*src_strides_0) : 0;
+        INPUT_TYPE v = in_range ? ptr_read_cached(src, i*src_strides_0) : theano_zero<INPUT_TYPE>();
         bool has_topk;
         if (order) {
-            has_topk = in_range && (v > topkth_value);
+            has_topk = in_range && (theano_gt(v, topkth_value));
         } else {
-            has_topk = in_range && (v < topkth_value);
+            has_topk = in_range && (theano_lt(v, topkth_value));
         }
 
         int index = binary_cumsum_exclusive(idx, warp_id, smem, has_topk);
@@ -288,8 +288,8 @@ extern "C" __global__ void KERNEL_NAME(
 
     for (COUNT_TYPE i = idx; i < iter_bound; i += blockDim.x) {
         bool in_range = (i < size);
-        INPUT_TYPE v = in_range ? ptr_read_cached(src, i*src_strides_0) : 0;
-        bool has_topk = in_range && (v == topkth_value);
+        INPUT_TYPE v = in_range ? ptr_read_cached(src, i*src_strides_0) : theano_zero<INPUT_TYPE>();
+        bool has_topk = in_range && (theano_eq(v, topkth_value));
 
         int index = binary_cumsum_exclusive(idx, warp_id, smem, has_topk);
         int carry = smem[blockDim.x / 32 - 1];

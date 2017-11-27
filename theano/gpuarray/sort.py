@@ -53,7 +53,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             pygpu.get_include()]
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def gpu_kernels(self, node, nodename):
         # load kernel source
@@ -103,8 +103,7 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
                 set_slice=set_slice_code,
                 write_value=int(self.return_values),
                 write_index=int(self.return_indices),
-                ndim=str(ndim),
-                use_half=int(node.inputs[0].dtype == 'float16')
+                ndim=str(ndim)
                 )
         elif device_type == b'opencl':
             raise NotImplementedError()

@@ -301,7 +301,7 @@ class Test_TopK(unittest.TestCase):
         goal = np.sort(xval)[idx]
 
         assert yval.dtype == goal.dtype
-        utt.assert_allclose(np.sort(yval), goal)
+        utt.assert_allclose(goal, np.sort(yval))
 
     @utt.parameterized.expand(chain(
         product(

@@ -47,7 +47,7 @@ extern "C" __global__ void k_topk_dense(
     //}
 
     // get input and its radix friendly form
-    const INPUT_TYPE xval = is_topk ? ptr_at(src, idx*src_strides_0) : (INPUT_TYPE)0;
+    const INPUT_TYPE xval = is_topk ? ptr_at(src, idx*src_strides_0) : theano_zero<INPUT_TYPE>();
     radix_t x = RadixConfig<INPUT_TYPE>::convert(xval);
 
     // resolve negative k

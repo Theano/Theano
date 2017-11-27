@@ -187,6 +187,21 @@ struct RadixConfig<char> {
   }
 };
 
+// g++ makes difference between 'signed char' (ga_byte, int8) and 'char'.
+// Same code as for char.
+template <>
+struct RadixConfig<ga_byte> {
+  typedef unsigned int RadixType;
+
+  static inline __device__ RadixType convert(ga_byte v) {
+    return 128u + v;
+  }
+
+  static inline __device__ ga_byte deconvert(RadixType v) {
+    return v - 128;
+  }
+};
+
 template <>
 struct RadixConfig<short> {
   typedef unsigned int RadixType;
@@ -229,25 +244,27 @@ struct RadixConfig<long long> {
   }
 };
 
-#define USE_HALF $use_half
-
-#if USE_HALF == 1
-// since half is ushort, using macro to protect this part is necessary
+/* NB: This specialization for ga_half does know that ga_half is a struct with only one member of type ga_ushort.
+ * So, if ga_half implementation changes, this code should change too.
+ * TODO: Maybe should gpuarray provide abstract functions to manipulate ga_half internal structure? e.g:
+ *   unsigned short ga_half2bits(ga_half value);
+ *   ga_half ga_bits2half(unsigned short bits);
+ */
 template <>
-struct RadixConfig<unsigned short> {
+struct RadixConfig<ga_half> {
   typedef unsigned int RadixType;
 
-  static inline __device__ RadixType convert(unsigned short v) {
-    RadixType mask = -(((RadixType)v >> 15)) | 0x8000;
-    return (v ^ mask);
+  static inline __device__ RadixType convert(ga_half v) {
+    RadixType mask = -(((RadixType)v.data >> 15)) | 0x8000;
+    return (v.data ^ mask);
   }
 
-  static inline __device__ unsigned short deconvert(RadixType v) {
+  static inline __device__ ga_half deconvert(RadixType v) {
     RadixType mask = ((v >> 15) - 1) | 0x8000;
-    return (unsigned short)(v ^ mask);
+    ga_half out = {(unsigned short)(v ^ mask)};
+    return out;
   }
 };
-#endif // USE_HALF
 
 // $$inp_t should be replaced in c_code
 // we cannot use templated kernel because gpuarray API does not support it
@@ -356,3 +373,61 @@ static __device__ inline T ptr_read_cached(T *ptr, ssize_t offset) {
     return __ldg(((T*)((char*)ptr + offset)));
 }
 
+/* NB: __ldg is not defined for ga_half, so we must specialize ptr_read_cached.
+ * To do it, I try to use a built-in type that should have the same size as ga_half.
+ * Based on current ga_half implementation (2017/11/27), it should be ga_ushort.
+ * This code must be updated every time ga_half implementation size changes,
+ * until a better code be provided. */
+#define GA_HALF_STD_TYPE ga_ushort
+static __device__ inline ga_half ptr_read_cached(ga_half *ptr, ssize_t offset) {
+
+    int check_ga_half_std_type[ ( ( sizeof(GA_HALF_STD_TYPE) - sizeof(ga_half) ) ? -1 : 1 ) ];
+
+    GA_HALF_STD_TYPE out = __ldg(((GA_HALF_STD_TYPE*)((char*)ptr + offset)));
+    ga_half real_out;
+    *(GA_HALF_STD_TYPE*)(&real_out) = out;
+    return real_out;
+
+}
+#undef GA_HALF_STD_TYPE
+
+/* Comparisons involving ga_half and conversions from integers (e.g. 0, 1) to ga_half lead to compilation errors.
+ * Following functions are provided to bypass these issues. */
+
+template<typename T>
+static __device__ inline T theano_zero() {return 0;}
+template<>
+__device__ inline ga_half theano_zero() {return ga_float2half(0);}
+
+template<typename T>
+static __device__ inline T theano_one() {return 1;}
+template<>
+__device__ inline ga_half theano_one() {return ga_float2half(1);}
+
+template<typename A, typename B> static __device__ inline bool theano_eq(const A& a, const B& b) {return a == b;}
+template<typename A, typename B> static __device__ inline bool theano_ne(const A& a, const B& b) {return a != b;}
+template<typename A, typename B> static __device__ inline bool theano_lt(const A& a, const B& b) {return a < b;}
+template<typename A, typename B> static __device__ inline bool theano_gt(const A& a, const B& b) {return a > b;}
+template<typename A, typename B> static __device__ inline bool theano_le(const A& a, const B& b) {return a <= b;}
+template<typename A, typename B> static __device__ inline bool theano_ge(const A& a, const B& b) {return a >= b;}
+
+template<typename T> static __device__ inline bool theano_eq(const ga_half& a, const T& b) {return ga_half2float(a) == b;}
+template<typename T> static __device__ inline bool theano_ne(const ga_half& a, const T& b) {return ga_half2float(a) != b;}
+template<typename T> static __device__ inline bool theano_lt(const ga_half& a, const T& b) {return ga_half2float(a) < b;}
+template<typename T> static __device__ inline bool theano_gt(const ga_half& a, const T& b) {return ga_half2float(a) > b;}
+template<typename T> static __device__ inline bool theano_le(const ga_half& a, const T& b) {return ga_half2float(a) <= b;}
+template<typename T> static __device__ inline bool theano_ge(const ga_half& a, const T& b) {return ga_half2float(a) >= b;}
+
+template<typename T> static __device__ inline bool theano_eq(const T& a, const ga_half& b) {return a == ga_half2float(b);}
+template<typename T> static __device__ inline bool theano_ne(const T& a, const ga_half& b) {return a != ga_half2float(b);}
+template<typename T> static __device__ inline bool theano_lt(const T& a, const ga_half& b) {return a < ga_half2float(b);}
+template<typename T> static __device__ inline bool theano_gt(const T& a, const ga_half& b) {return a > ga_half2float(b);}
+template<typename T> static __device__ inline bool theano_le(const T& a, const ga_half& b) {return a <= ga_half2float(b);}
+template<typename T> static __device__ inline bool theano_ge(const T& a, const ga_half& b) {return a >= ga_half2float(b);}
+
+static __device__ inline bool theano_eq(const ga_half& a, const ga_half& b) {return ga_half2float(a) == ga_half2float(b);}
+static __device__ inline bool theano_ne(const ga_half& a, const ga_half& b) {return ga_half2float(a) != ga_half2float(b);}
+static __device__ inline bool theano_lt(const ga_half& a, const ga_half& b) {return ga_half2float(a) < ga_half2float(b);}
+static __device__ inline bool theano_gt(const ga_half& a, const ga_half& b) {return ga_half2float(a) > ga_half2float(b);}
+static __device__ inline bool theano_le(const ga_half& a, const ga_half& b) {return ga_half2float(a) <= ga_half2float(b);}
+static __device__ inline bool theano_ge(const ga_half& a, const ga_half& b) {return ga_half2float(a) >= ga_half2float(b);}
