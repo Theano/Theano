@@ -459,15 +459,10 @@ import theano and print the config variable, as in:
 
     .. note::
 
-        This value allocates GPU memory ONLY when using (:ref:`gpuarray`).
-        For the old backend, please see ``config.lib.cnmem``
-
-    .. note::
-
         This could cause memory fragmentation. So if you have a memory
         error while using the cache, try to allocate more memory at
         the start or disable it. If you try this, report your result
-        on :ref`theano-dev`.
+        on `theano-dev`_.
 
     .. note::
 
