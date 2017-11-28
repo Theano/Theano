@@ -28,7 +28,7 @@ class CLinkerType(CLinkerObject):
     """
     Interface specification for Types that can be arguments to a `CLinkerOp`.
 
-    A CLinkerType instance is mainly reponsible  for providing the C code that
+    A CLinkerType instance is mainly responsible  for providing the C code that
     interfaces python objects with a C `CLinkerOp` implementation.
 
     See WRITEME for a general overview of code generation by `CLinker`.
@@ -275,7 +275,7 @@ class PureType(object):
     """
     Interface specification for variable type instances.
 
-    A :term:`Type` instance is mainly reponsible for two things:
+    A :term:`Type` instance is mainly responsible for two things:
 
     - creating `Variable` instances (conventionally, `__call__` does this), and
 

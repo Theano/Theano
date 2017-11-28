@@ -28,7 +28,7 @@ def gen_data():
 
         The reason we store our dataset in shared variables is to allow
         Theano to copy it into the GPU memory (when code is run on GPU).
-        Since copying data into the GPU is slow, copying a minibatch everytime
+        Since copying data into the GPU is slow, copying a minibatch every time
         is needed (the default behaviour if the data is not in a shared
         variable) would lead to a large decrease in performance.
         """

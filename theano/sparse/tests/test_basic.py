@@ -89,7 +89,7 @@ def random_lil(shape, dtype, nnz):
         if dtype in theano.sparse.integer_dtypes:
             value = int(value * 100)
         # The call to tuple is needed as scipy 0.13.1 do not support
-        # ndarray with lenght 2 as idx tuple.
+        # ndarray with length 2 as idx tuple.
         rval.__setitem__(
             tuple(idx),
             value)
@@ -182,7 +182,7 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
 
 def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
     """
-    Wrapper for theano.test.unittest_tools.py:verify_grad wich
+    Wrapper for theano.test.unittest_tools.py:verify_grad which
     converts sparse variables back and forth.
 
     Parameters
@@ -2791,7 +2791,7 @@ def test_hstack_vstack():
 
 def structure_function(f, index=0):
     """
-    Decorator to structure a function wich
+    Decorator to structure a function which
     apply on dense matrix.
 
     Here, the inputs of the function must be
@@ -2799,7 +2799,7 @@ def structure_function(f, index=0):
     determined by finding the zeros.
 
     :param index: The index of the parameter
-                  from wich the function must
+                  from which the function must
                   be structured.
 
     :return: The structured function for its

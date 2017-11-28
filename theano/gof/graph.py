@@ -363,7 +363,7 @@ class Variable(Node):
         theano.function([d,b], [e])     # this works.  d's default value of 1.5 is ignored.
 
     The python variables :literal:`a,b,c` all refer to instances of type
-    `Variable`. The `Variable` refered to by `a` is also an instance of
+    `Variable`. The `Variable` referred to by `a` is also an instance of
     `Constant`.
 
     `compile.function` uses each `Apply` instance's `inputs` attribute together

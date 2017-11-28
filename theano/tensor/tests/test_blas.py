@@ -876,7 +876,7 @@ def test_gemm_unrolled():
                                               theano.tensor.blas.Dot22,
                                               theano.tensor.blas.Gemm))])
         # Each num_rounds add 3 dot, but one of them is always the same.
-        # So the final graph should have 1 + 2* num_rounds dot varient op.
+        # So the final graph should have 1 + 2* num_rounds dot variant op.
         assert nb_dot == num_rounds * 2 + 1, nb_dot
 
         unrolled_theano()

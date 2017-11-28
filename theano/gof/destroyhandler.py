@@ -267,7 +267,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
     considered to be destroyed. The view_maps of several Ops can feed into
     one another and form a directed graph. The consequence of destroying any
     variable in such a graph is that all variables in the graph must be
-    considered to be destroyed, because they could all be refering to the
+    considered to be destroyed, because they could all be referring to the
     same underlying storage.
 
     In the current implementation, that graph is a tree, and the root of that
@@ -659,7 +659,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
             # James's Conjecture:
             # If there are no destructive ops, then there can be no cycles.
 
-            # FB: This isn't always True. It can happend that
+            # FB: This isn't always True. It can happened that
             # optimization introduce node that depend on itself. This
             # is very rare and should not happen in general. It will be
             # caught later. The error will be far from the source. But

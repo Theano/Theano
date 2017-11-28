@@ -86,7 +86,7 @@ class SortOp(theano.Op):
         Returns
         -------
         1d array if axis is None
-        list of lenght len(a.shape) otherwise
+        list of length len(a.shape) otherwise
 
         """
 

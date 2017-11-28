@@ -2912,7 +2912,7 @@ class T_Clip(unittest.TestCase):
 
 
 # TODO: consider moving this function / functionality to gradient.py
-#      rationale: it's tricky, and necessary everytime you want to verify
+#      rationale: it's tricky, and necessary every time you want to verify
 #      gradient numerically
 
 

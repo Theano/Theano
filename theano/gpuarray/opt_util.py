@@ -117,7 +117,7 @@ def alpha_merge(cls, alpha_in, beta_in):
 
         maker(node, *inputs)
 
-    The `node` argument you recieve is the original apply node that
+    The `node` argument you receive is the original apply node that
     contains your op.  You should use it to grab relevant properties
     for your op so that the new version performs the same computation.
     The `*inputs` parameters contains the new inputs for your op.  You
@@ -209,7 +209,7 @@ def output_merge(cls, alpha_in, beta_in, out_in):
 
         maker(node, *inputs)
 
-    The `node` argument you recieve is the original apply node that
+    The `node` argument you receive is the original apply node that
     contains your op.  You should use it to grab relevant properties
     for your op so that the new version performs the same computation.
     The `*inputs` parameters contains the new inputs for your op.  You
@@ -291,7 +291,7 @@ def inplace_allocempty(op, idx):
 
         maker(node, inputs)
 
-    The `node` argument you recieve is the original apply node that
+    The `node` argument you receive is the original apply node that
     contains your op.  You should use it to grab relevant properties
     for your op so that the new version performs the same computation.
     You should also switch the op to work inplace.  The `*inputs`

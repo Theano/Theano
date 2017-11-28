@@ -368,7 +368,7 @@ class T_Scan(unittest.TestCase):
                                allow_input_downcast=True)
         nodes = [x for x in my_f.maker.fgraph.toposort()
                  if isinstance(x.op, theano.scan_module.scan_op.Scan)]
-        # This assertation fails if savemem optimization failed on scan
+        # This assertion fails if savemem optimization failed on scan
         if theano.config.mode != "FAST_COMPILE":
             assert nodes[0].op._scan_savemem_visited
         rng = np.random.RandomState(utt.fetch_seed())
@@ -2813,7 +2813,7 @@ class T_Scan(unittest.TestCase):
 
     @theano.change_flags(on_opt_error='raise')
     def test_pushout_nonseq(self):
-        # Test case originally reported by Daniel Renshaw. The crashed occured
+        # Test case originally reported by Daniel Renshaw. The crashed occurred
         # during the optimization PushOutNonSeqScan when it attempted to
         # a scan node with two outputs but only providing a replacement for
         # one of those outputs. This led the optimization to raise an
@@ -4004,7 +4004,7 @@ class T_Scan(unittest.TestCase):
         assert np.all(exp_out == f(inp))
 
     def test_borrow_bug_jeremiah(self):
-        # This tests two things. The first is a bug occuring when scan wrongly
+        # This tests two things. The first is a bug occurring when scan wrongly
         # used the borrow flag. The second thing it that Scan's infer_shape()
         # method will be able to remove the Scan node from the graph in this
         # case.
@@ -4112,7 +4112,7 @@ class T_Scan(unittest.TestCase):
         [u, m2], _ = theano.scan(lambda _, u: [u, v],
                                  sequences=m,
                                  outputs_info=[u0, None])
-        # This used to raise an exception with older versions becasue for a
+        # This used to raise an exception with older versions because for a
         # disconnected gradient a non disconnected type was returned
         tensor.grad((m * m2).sum(), v)
 
@@ -4124,7 +4124,7 @@ class T_Scan(unittest.TestCase):
         [u, m2], _ = theano.scan(lambda x, u: [x+u, u+v],
                                  sequences=m,
                                  outputs_info=[u0, None])
-        # This used to raise an exception with older versions becasue
+        # This used to raise an exception with older versions because
         # scan could not detect the connection between `m2` and `x`
         tensor.grad(m2.sum(), m)
 
@@ -4534,7 +4534,7 @@ class ScanGpuTests:
     """
     This class defines a number of tests for Scan on GPU as well as a few
     helper functions for these tests. The GPU tests defined in this class are
-    independant of the GPU backend used. Because of this, a class inheriting
+    independent of the GPU backend used. Because of this, a class inheriting
     from ScanGpuTests should define the following attributes and methods to
     make the tests run on a specific backend :
     - self.gpu_backend : Reference to the backend module

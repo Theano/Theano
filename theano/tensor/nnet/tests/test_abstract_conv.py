@@ -1184,7 +1184,7 @@ class TestBilinearUpsampling(unittest.TestCase):
         Returns
         -------
         1D numpy array
-            The multiplers that can be used in bilinear interpolation
+            The multipliers that can be used in bilinear interpolation
             to upsample an array.
 
         int

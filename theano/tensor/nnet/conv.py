@@ -832,7 +832,7 @@ class ConvOp(OpenMPOp):
 
         # We copy it to remove the Stride mismatch warning from DEBUG_MODE.
         # The copy make that we return an object with the same stride as the c version.
-        # The copy don't affect the performence during our experience as in that case we
+        # The copy don't affect the performance during our experience as in that case we
         # execute the c version which is much faster.
         if self.dx > 1 or self.dy > 1:
             zz = zz[:, :, 0::self.dx, 0::self.dy].copy()
@@ -1793,7 +1793,7 @@ def gen_conv_code_unroll_batch_kern(d, unroll_bsize=1, unroll_ksize=1):
     """
     assert unroll_bsize > 0 and unroll_ksize > 0
     if "unroll_bsize" in d or "unroll_ksize" in d or "unroll_iter" in d or "unroll_biter" in d or "unroll_kiter" in d:
-        raise Exception("We can't use this dictionnary as we will overwrite some of its containt")
+        raise Exception("We can't use this dictionary as we will overwrite some of its containt")
     d = d.copy()
 
     d["unroll_bsize"] = unroll_bsize

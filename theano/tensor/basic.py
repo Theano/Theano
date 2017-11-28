@@ -2025,7 +2025,7 @@ def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
     nans_or_infs = bitwise_or(nans, infs)
 
     # close is now an array of 0's except where elements are not nan or inf
-    # and are withing the tolerance.
+    # and are within the tolerance.
     close = bitwise_and(close_prelim, bitwise_not(nans_or_infs))
 
     # deal with signed inf values. this will make an array inf_eq of 0's

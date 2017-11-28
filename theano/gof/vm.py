@@ -714,7 +714,7 @@ class VM_Linker(link.LocalLinker):
     lazy
         Useful only when use_cloop is False. When lazy is None, use the
         theano flag vm.lazy value. Then if we have a None (default) we auto
-        detect if lazy evaluation is needed and use the apropriate
+        detect if lazy evaluation is needed and use the appropriate
         version. If lazy is True or False, we force the version used
         between Loop/LoopGC and Stack.
     c_thunks

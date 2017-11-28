@@ -542,8 +542,8 @@ class BaseGpuAdvancedSubtensor(object):
         # dimensions indexed by arrays and ints will be inserted.
         # For instance, if all such dimensions are grouped together,
         # it corresponds to the index of the first such dimension in the
-        # inital array.  If these dimensions are split (with slices
-        # inbetween), then the resulting dimensions will be moved to the
+        # initial array.  If these dimensions are split (with slices
+        # between), then the resulting dimensions will be moved to the
         # beginning, and ap will be 0.
         # If no such dimension has been encountered, ap is None.
         ap = None

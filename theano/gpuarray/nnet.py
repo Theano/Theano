@@ -122,7 +122,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
               }
             }
             local_barrier();
-            // The thread with the higest max writes out which of its
+            // The thread with the highest max writes out which of its
             // values was the winner.
             if (LID_0 == row_max_threadIdx) am_data[row * ams0] = per_thread_row_max_j;
             // COMPUTE SOFTMAX

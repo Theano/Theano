@@ -87,7 +87,7 @@ def infer_reuse_pattern(fgraph, outputs_to_disown):
     as any of the specified variables. Used internally by function,
     FunctionMaker.
 
-    This list (or set) is also refered to as no_recycling sometimes,
+    This list (or set) is also referred to as no_recycling sometimes,
     especially by linker code.
 
     """
@@ -630,7 +630,7 @@ class Function(object):
             # Swap SharedVariable in fgraph and In instances
             for index, (i, in_v) in enumerate(zip(ins, fg_cpy.inputs)):
                 # Variables in maker.inputs are defined by user, therefore we
-                # use them to make comparision and do the mapping.
+                # use them to make comparison and do the mapping.
                 # Otherwise we don't touch them.
                 var = maker.inputs[index].variable
 

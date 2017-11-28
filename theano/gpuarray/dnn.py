@@ -1063,7 +1063,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
 
 
     .. warning:: The cuDNN library only works with GPUs that have a compute
-        capability of 3.0 or higer. This means that older GPUs will not
+        capability of 3.0 or higher. This means that older GPUs will not
         work with this Op.
 
     """
@@ -1172,7 +1172,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
 
 
     .. warning:: The cuDNN library only works with GPUs that have a compute
-        capability of 3.0 or higer. This means that older GPUs will not
+        capability of 3.0 or higher. This means that older GPUs will not
         work with this Op.
 
     """
@@ -1548,7 +1548,7 @@ def dnn_pool(img, ws, stride=None, mode='max', pad=None):
 
 
     .. warning:: The cuDNN library only works with GPU that have a compute
-        capability of 3.0 or higer.  This means that older GPU will not
+        capability of 3.0 or higher.  This means that older GPU will not
         work with this Op.
 
     Notes

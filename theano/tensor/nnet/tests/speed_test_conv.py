@@ -197,7 +197,7 @@ def exec_multilayer_conv_nnet(
 
 def speed_multilayer_conv():
         # calculate the speed up of different combination of unroll
-        # put the paramter to the same you will try.
+        # put the parameter to the same you will try.
         # validate = False  # we don't validate the result to have it much faster!
         repeat = 3
         verbose = 1

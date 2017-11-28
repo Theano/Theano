@@ -1361,7 +1361,7 @@ def _gemm_from_factored_list(lst):
                     rval = [T.add(*add_inputs)]
                 else:
                     rval = add_inputs
-                # print "RETURNING GEMM THIGN", rval
+                # print "RETURNING GEMM THING", rval
                 return rval, old_dot22
 
 

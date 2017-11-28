@@ -208,8 +208,8 @@ class test_dimshuffle_lift(unittest.TestCase):
         u = tensor.constant(1)
         ds_x = ds(x, (0, 'x'))   # useless
         ds_y = ds(y, (2, 1, 0))  # useless
-        ds_z = ds(z, (2, 1, 0))  # usefull
-        ds_u = ds(u, ('x'))  # usefull
+        ds_z = ds(z, (2, 1, 0))  # useful
+        ds_u = ds(u, ('x'))  # useful
         g = FunctionGraph([x, y, z, u], [ds_x, ds_y, ds_z, ds_u])
         self.assertTrue(str(g) == "[InplaceDimShuffle{0,x}(x), InplaceDimShuffle{2,1,0}(y), InplaceDimShuffle{2,1,0}(z), InplaceDimShuffle{x}(TensorConstant{1})]")
         dimshuffle_lift.optimize(g)
@@ -342,7 +342,7 @@ class test_canonize(unittest.TestCase):
         # verify that the Canonizer merge sequential Elemwise({mul,add}) part 1
         #
         # This part are that case that is done, but don't include case
-        # that are not implemented but are suposed to be.
+        # that are not implemented but are supposed to be.
         #
         # Test with and without DimShuffle
 
@@ -1475,7 +1475,7 @@ def test_local_useless_slice():
     test_inp = np.random.randint(-10, 10, (4, 4)).astype('float32')
     assert all(f_opt(test_inp) == f_unopt(test_inp)),\
         "The optimization caused a mismatch in the result"
-    # test to see if the slice is truely gone
+    # test to see if the slice is truly gone
     apply_node = f_opt.maker.fgraph.toposort()[0]
     subtens = apply_node.op
     assert not any(isinstance(idx, slice) for idx in subtens.idx_list), "Slice should be gone"
@@ -4955,7 +4955,7 @@ class T_local_erfc(unittest.TestCase):
             raise SkipTest('The python code upcast somewhere internally '
                            'some value of float32 to python float for '
                            'part of its computation. That make that the '
-                           'c and python code dont generate the same value. '
+                           'c and python code don\'t generate the same value. '
                            'You can ignore this error.')
         assert all(np.isfinite(f(val)))
 

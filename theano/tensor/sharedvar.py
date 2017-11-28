@@ -58,7 +58,7 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=None,
 
 
 # TensorSharedVariable brings in the tensor operators, is not ideal, but works
-# as long as we dont do purely scalar-scalar operations
+# as long as we don't do purely scalar-scalar operations
 # _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
 #
 # N.B. THERE IS ANOTHER CLASS CALLED ScalarSharedVariable in the

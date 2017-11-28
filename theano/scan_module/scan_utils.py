@@ -743,7 +743,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
     for i in range(len(xs)):
         if xs[i].owner:
             # The case where pairs of x[i]s and y[i]s don't both have an owner
-            # have already been adressed.
+            # have already been addressed.
             is_equal = compare_nodes(xs[i].owner, ys[i].owner, common, different)
             if not is_equal:
                 return False
@@ -967,7 +967,7 @@ def compress_outs(op, not_required, inputs):
     a list of inputs to the apply node corresponding to the scan op and
     produces the list of inputs and outputs and the info dictionary where
     the indicated outputs are eliminated. Note that eliminating an output
-    means removing its inputs from the inner funciton and from the
+    means removing its inputs from the inner function and from the
     node inputs, and changing the dictionary.
 
     """

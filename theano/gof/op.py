@@ -817,7 +817,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         This can modify the node inplace and should return nothing.
 
         It can be called multiple time with different impl. It is the
-        op responsability to don't re-prepare the node when it isn't
+        op responsibility to don't re-prepare the node when it isn't
         good to do so.
 
         """

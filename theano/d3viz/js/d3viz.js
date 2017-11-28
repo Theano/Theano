@@ -757,7 +757,7 @@ function profileColor(per) {
 
 
 /*
- * Retuns node fill color.
+ * Returns node fill color.
  */
 function nodeFillColor(d) {
 	if (useProfileColors) {

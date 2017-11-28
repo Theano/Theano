@@ -9,7 +9,7 @@ from theano import config
 from . import cmodule
 
 # TODO These two lines may be removed in the future, when we are 100% sure
-# noone has an old cutils_ext.so lying around anymore.
+# no one has an old cutils_ext.so lying around anymore.
 if os.path.exists(os.path.join(config.compiledir, 'cutils_ext.so')):
     os.remove(os.path.join(config.compiledir, 'cutils_ext.so'))
 

@@ -500,7 +500,7 @@ class Container(object):
             deepcopy(self.allow_downcast, memo=memo),
             deepcopy(self.name, memo=memo),
         )
-        # Work around NumPy deepcopy of ndarray with 0 dimention that
+        # Work around NumPy deepcopy of ndarray with 0 dimension that
         # don't return an ndarray.
         if (r.storage[0] is not None and
                 not self.type.is_valid_value(r.storage[0])):

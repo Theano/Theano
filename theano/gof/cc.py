@@ -1797,7 +1797,7 @@ class OpWiseCLinker(link.LocalLinker):
                  storage_map=None):
 
         # The lock will be acquired when we compile the first
-        # C code. We will keep the lock untill all the function
+        # C code. We will keep the lock until all the function
         # compilation will be finished. This allow to don't
         # require the lock when all c code are already compiled!
         orig_n_lock = getattr(get_lock, "n_lock", 0)
