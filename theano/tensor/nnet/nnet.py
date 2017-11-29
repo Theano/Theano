@@ -599,9 +599,9 @@ class Softmax(gof.Op):
 softmax_op = Softmax()
 
 
-class Instance_SoftmaxGrad(gof.Op):
+class InstanceSoftmaxGrad(gof.Op):
     """
-    Gradient wrt x of the Softmax Op.
+    Gradient wrt x of the InstanceSoftmax Op.
     """
 
     nin = 2
@@ -613,7 +613,7 @@ class Instance_SoftmaxGrad(gof.Op):
         if dy.type.dtype not in tensor.float_dtypes:
             raise ValueError('dy must be tensor of floats. Got ', dy.type)
         if sm.type.ndim != 4:
-            raise ValueError('softmax must be a 4d tensor. Got ', sm.type.ndinm)
+            raise ValueError('sm must be a 4d tensor. Got ', sm.type.ndinm)
         return Apply(self, [dy, sm], [sm.type()])
 
     def perform(self, node, input_storage, output_storage):
@@ -641,12 +641,12 @@ class Instance_SoftmaxGrad(gof.Op):
         return [shape[1]]
 
 
-class Instance_Softmax(gof.Op):
+class InstanceSoftmax(gof.Op):
     """
-    Softmax op that match the instance mode of Cudnn Softmax
+    Softmax op that match the instance mode of cuDNN Softmax
     This op manages only the case where the input is a 4d tensor
-    and when the softmax is apllied if the last three axis such that
-    in case of 4d tensor represented as 'bc01', softmax will be apllied
+    and when the softmax is apllied on the last three axes such that
+    in case of 4d tensor represented as 'bc01', softmax will be applied
     over 'c01'.
     """
 
@@ -673,7 +673,7 @@ class Instance_Softmax(gof.Op):
     def L_op(self, inp, outputs, grads):
         x, = inp
         g_sm, = grads
-        return [Instance_SoftmaxGrad()(g_sm, outputs[0])]
+        return [InstanceSoftmaxGrad()(g_sm, outputs[0])]
 
     def R_op(self, inputs, eval_points):
         # The Jacobian is symmetric so the R_op is the same as the grad
@@ -685,12 +685,12 @@ class Instance_Softmax(gof.Op):
         return shape
 
 
-class Instance_LogSoftmax(gof.Op):
+class InstanceLogSoftmax(gof.Op):
     """
-    LogSoftmax op that match the instance mode of Cudnn Softmax
+    LogSoftmax op that match the instance mode of cuDNN Softmax
     This op manages only the case where the input is a 4d tensor
-    and when the softmax is apllied if the last three axis such that
-    in case of 4d tensor represented as 'bc01', softmax will be apllied
+    and when the log softmax is applied on the last three axes such that
+    in case of 4d tensor represented as 'bc01', log softmax will be apllied
     over 'c01'.
     """
     nin = 1
@@ -719,8 +719,6 @@ class Instance_LogSoftmax(gof.Op):
         return [grads[0] - tensor.sum(grads[0], axis=axis, keepdims=True) * np.exp(lsm)]
 
     def R_op(self, inputs, eval_points):
-        # I think the Jacobian is symmetric so the R_op
-        # is the same as the grad
         if None in eval_points:
             return [None]
         return self.grad(inputs, eval_points)
@@ -874,19 +872,19 @@ class LogSoftmax(gof.Op):
 logsoftmax_op = LogSoftmax()
 
 
-@gof.local_optimizer([Instance_Softmax])
+@gof.local_optimizer([InstanceSoftmax])
 def local_instancesoftmax(node):
     if node.inputs[0].type.ndim == 4:
         old_shape = node.inputs[0].shape
         new_input = node.inputs[0].flatten(ndim=2)
         new_op = Softmax()
         ret = new_op(new_input).reshape(old_shape)
-        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        ret.tag.values_eq_approx = values_eq_approx_remove_inf
         copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
         return [ret]
 
 
-@gof.local_optimizer([Instance_SoftmaxGrad])
+@gof.local_optimizer([InstanceSoftmaxGrad])
 def local_instancesoftmax_grad(node):
     if node.inputs[0].type.ndim == 4:
         old_shape = node.inputs[0].shape
@@ -903,7 +901,7 @@ def local_instancesoftmax_grad(node):
         return [ret]
 
 
-@gof.local_optimizer([Instance_LogSoftmax])
+@gof.local_optimizer([InstanceLogSoftmax])
 def local_instancelogsoftmax(node):
     if node.inputs[0].type.ndim == 4:
         old_shape = node.inputs[0].shape
@@ -986,9 +984,9 @@ def softmax(c, mode='channel'):
     if mode == 'channel':
         return softmax_op(c)
     elif mode == 'instance':
-        return Instance_Softmax()(c)
+        return InstanceSoftmax()(c)
     else:
-        raise ValueError('Only two mode supported: channel and instance Got ', mode)
+        raise ValueError('Only two modes supported: channel and instance Got ', mode)
 
 
 def logsoftmax(c, mode='channel'):
@@ -998,9 +996,9 @@ def logsoftmax(c, mode='channel'):
     if mode == 'channel':
         return logsoftmax_op(c)
     elif mode == 'instance':
-        return Instance_LogSoftmax()(c)
+        return InstanceLogSoftmax()(c)
     else:
-        raise ValueError('Only two mode supported: channel and instance Got ', mode)
+        raise ValueError('Only two modes supported: channel and instance Got ', mode)
 
 
 @opt.register_specialize('fast_compile_gpu')

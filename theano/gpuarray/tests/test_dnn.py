@@ -1498,7 +1498,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
         utt.assert_allclose(f(inp), f_ref(inp))
 
-    def test_instance_softmax_tu_cudnn_optimization(self):
+    def test_instance_softmax_to_cudnn_optimization(self):
         # Compile a reference function, on the CPU, to be used to validate the
         # results of the other function.
         x = T.tensor4('x')

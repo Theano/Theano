@@ -26,9 +26,9 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv3d,
 from theano.tensor.nnet.nnet import (local_instancesoftmax,
                                      local_instancesoftmax_grad,
                                      local_instancelogsoftmax,
-                                     Instance_Softmax,
-                                     Instance_LogSoftmax,
-                                     Instance_SoftmaxGrad)
+                                     InstanceSoftmax,
+                                     InstanceLogSoftmax,
+                                     InstanceSoftmaxGrad)
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor.opt import register_specialize_device
 from theano.tensor import TensorType
@@ -534,13 +534,13 @@ optdb.register('AbstractConvCheck',
 
 
 # Verify that no Instance Softmax are present in the graph
-@local_optimizer([Instance_Softmax,
-                  Instance_LogSoftmax,
-                  Instance_SoftmaxGrad])
+@local_optimizer([InstanceSoftmax,
+                  InstanceLogSoftmax,
+                  InstanceSoftmaxGrad])
 def local_instancesoftmax_check(node):
-    if isinstance(node.op, (Instance_Softmax,
-                            Instance_LogSoftmax,
-                            Instance_SoftmaxGrad)):
+    if isinstance(node.op, (InstanceSoftmax,
+                            InstanceLogSoftmax,
+                            InstanceSoftmaxGrad)):
         raise AssertionError(
             '%s Theano optimization failed: there is no implementation '
             'available supporting the requested options.')

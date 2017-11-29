@@ -1432,7 +1432,7 @@ def local_gpua_softmax(op, context_name, inputs, outputs):
         return gpu_softmax
 
 
-@op_lifter([tensor.nnet.Instance_Softmax])
+@op_lifter([tensor.nnet.InstanceSoftmax])
 def local_gpua_instancesoftmax(op, context_name, inputs, outputs):
     if inputs[0].type.ndim == 4:
         old_shape = inputs[0].shape
@@ -2963,7 +2963,7 @@ instanceSoftmax_groupopt.register('local_instancesoftmax',
 instanceSoftmaxGrad_groupopt = theano.gof.optdb.LocalGroupDB()
 instanceSoftmaxGrad_groupopt.__name__ = "InstanceSoftmaxGrad GroupOp"
 register_opt('fast_compile')(instanceSoftmaxGrad_groupopt)
-instanceSoftmaxGrad_groupopt.register('local_gpua_instancsoftmaxgrad_to_dnn',
+instanceSoftmaxGrad_groupopt.register('local_gpua_instancesoftmaxgrad_to_dnn',
                                       local_gpua_instancesoftmaxgrad_to_dnn, 20,
                                       'instance_softmaxGrad',
                                       'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
