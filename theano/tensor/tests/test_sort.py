@@ -383,7 +383,7 @@ class Test_TopK(unittest.TestCase):
         utt.assert_allclose(np.sort(xval[yval]), np.sort(xval[goal]))
 
     @utt.parameterized.expand(product(
-        ((17, 15), (2, 3, 5, 7, 11), (2017, 5, 3)),
+        ((17, 15), (2, 3, 5, 7, 11), (500, 5, 3)),  # NB: Test may fail with bigger sizes (e.g. (2017, 5, 3)) due to "too many resources requested" kernel error on some GPUs.
         (-1, '(1+n)//2', '-n', '1-n'),
         ('float32', 'int32'),
         (False,),
