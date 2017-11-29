@@ -330,7 +330,7 @@ class Test_TopK(unittest.TestCase):
         goal = np.argsort(xval)[idx].astype(idx_dtype)
 
         # due to uniqueness, we expect indices same
-        assert np.all(xval[np.sort(yval)] == xval[np.sort(goal)])
+        utt.assert_allclose(xval[np.sort(goal)], xval[np.sort(yval)])
 
     @utt.parameterized.expand(chain(
         product(
