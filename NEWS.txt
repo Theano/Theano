@@ -3,243 +3,29 @@ Release Notes
 =============
 
 
-Theano 1.0.0 (15th of November, 2017)
-=====================================
+Theano 1.0.1 (1st of December, 2017)
+====================================
 
-This is a final release of Theano, version ``1.0.0``, with a lot of
-new features, interface changes, improvements and bug fixes.
+This is a release of Theano, version ``1.0.1``, with important bug fixes.
 
 We recommend that everybody update to this version.
 
-Highlights (since 0.9.0):
- - Announcing that `MILA will stop developing Theano <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_
- - conda packages now available and updated in our own conda channel ``mila-udem``
-   To install it: ``conda install -c mila-udem theano pygpu``
- - Support NumPy ``1.13``
- - Support pygpu ``0.7``
- - Moved Python ``3.*`` minimum supported version from ``3.3`` to ``3.4``
- - Added conda recipe
- - Replaced deprecated package ``nose-parameterized`` with up-to-date package ``parameterized`` for Theano requirements
- - Theano now internally uses ``sha256`` instead of ``md5`` to work on systems that forbid ``md5`` for security reason
- - Removed old GPU backend ``theano.sandbox.cuda``. New backend ``theano.gpuarray`` is now the official GPU backend
- - Make sure MKL uses GNU OpenMP
+Highlights (since 1.0.0):
 
-   - **NB**: Matrix dot product (``gemm``) with ``mkl`` from conda
-     could return wrong results in some cases. We have reported the problem upstream
-     and we have a work around that raises an error with information about how to fix it.
+ - Fixed compilation and improved float16 support for topK on GPU
 
- - Improved elemwise operations
+   - **NB**: topK support on GPU is experimental and may not work for large input sizes on certain GPUs
 
-   - Speed-up elemwise ops based on SciPy
-   - Fixed memory leaks related to elemwise ops on GPU
+ - Fixed cuDNN reductions when axes to reduce have size ``1``
+ - Attempted to prevent re-initialization of the GPU in a child process
+ - Fixed support for temporar paths with spaces in Theano initialization
+ - Whole spell checking
 
- - Scan improvements
+A total of 6 people contributed to this release since ``1.0.0``:
 
-   - Speed up Theano scan compilation and gradient computation
-   - Added meaningful message when missing inputs to scan
-
- - Speed up graph toposort algorithm
- - Faster C compilation by massively using a new interface for op params
- - Faster optimization step, with new optional destroy handler
- - Documentation updated and more complete
-
-   - Added documentation for RNNBlock
-   - Updated ``conv`` documentation
-
- - Support more debuggers for ``PdbBreakpoint``
- - Many bug fixes, crash fixes and warning improvements
-
-A total of 71 people contributed to this release since 0.9.0, see list below.
-
-Interface changes:
- - Merged duplicated diagonal functions into two ops: ``ExtractDiag`` (extract a diagonal to a vector),
-   and ``AllocDiag`` (set a vector as a diagonal of an empty array)
- - Removed op ``ExtractDiag`` from ``theano.tensor.nlinalg``, now only in ``theano.tensor.basic``
- - Generalized ``AllocDiag`` for any non-scalar input
- - Added new parameter ``target`` for MRG functions
- - Renamed ``MultinomialWOReplacementFromUniform`` to ``ChoiceFromUniform``
- - Changed ``grad()`` method to ``L_op()`` in ops that need the outputs to compute gradient
-
- - Removed or deprecated Theano flags:
-
-   - ``cublas.lib``
-   - ``cuda.enabled``
-   - ``enable_initial_driver_test``
-   - ``gpuarray.sync``
-   - ``home``
-   - ``lib.cnmem``
-   - ``nvcc.*`` flags
-   - ``pycuda.init``
-
-Convolution updates:
- - Implemented separable convolutions for 2D and 3D
- - Implemented grouped convolutions for 2D and 3D
- - Added dilated causal convolutions for 2D
- - Added unshared convolutions
- - Implemented fractional bilinear upsampling
- - Removed old ``conv3d`` interface
- - Deprecated old ``conv2d`` interface
-
-GPU:
- - Added a meta-optimizer to select the fastest GPU implementations for convolutions
- - Prevent GPU initialization when not required
- - Added disk caching option for kernels
- - Added method ``my_theano_function.sync_shared()`` to help synchronize GPU Theano functions
- - Added useful stats for GPU in profile mode
- - Added Cholesky op based on ``cusolver`` backend
- - Added GPU ops based on `magma library <http://icl.cs.utk.edu/magma/software/>`_:
-   SVD, matrix inverse, QR, cholesky and eigh
- - Added ``GpuCublasTriangularSolve``
- - Added atomic addition and exchange for ``long long`` values in ``GpuAdvancedIncSubtensor1_dev20``
- - Support log gamma function for all non-complex types
- - Support GPU SoftMax in both OpenCL and CUDA
- - Support offset parameter ``k`` for ``GpuEye``
- - ``CrossentropyCategorical1Hot`` and its gradient are now lifted to GPU
-
- - cuDNN:
-
-   - Official support for ``v6.*`` and ``v7.*``
-   - Added spatial transformation operation based on cuDNN
-   - Updated and improved caching system for runtime-chosen cuDNN convolution algorithms
-   - Support cuDNN v7 tensor core operations for convolutions with runtime timed algorithms
-   - Better support and loading on Windows and Mac
-   - Support cuDNN v6 dilated convolutions
-   - Support cuDNN v6 reductions for contiguous inputs
-   - Optimized ``SUM(x^2)``, ``SUM(ABS(X))`` and ``MAX(ABS(X))`` operations with cuDNN reductions
-   - Added new Theano flags ``cuda.include_path``, ``dnn.base_path`` and ``dnn.bin_path``
-     to help configure Theano when CUDA and cuDNN can not be found automatically
-   - Extended Theano flag ``dnn.enabled`` with new option ``no_check`` to help speed up cuDNN importation
-   - Disallowed ``float16`` precision for convolution gradients
-   - Fixed memory alignment detection
-   - Added profiling in C debug mode (with theano flag ``cmodule.debug=True``)
-   - Added Python scripts to help test cuDNN convolutions
-   - Automatic addition of cuDNN DLL path to ``PATH`` environment variable on Windows
-
- - Updated ``float16`` support
-
-   - Added documentation for GPU float16 ops
-   - Support ``float16`` for ``GpuGemmBatch``
-   - Started to use ``float32`` precision for computations that don't support ``float16`` on GPU
-
-New features:
- - Implemented truncated normal distribution with box-muller transform
- - Added ``L_op()`` overriding option for ``OpFromGraph``
- - Added NumPy C-API based fallback implementation for ``[sd]gemv_`` and ``[sd]dot_``
- - Implemented ``topk`` and ``argtopk`` on CPU and GPU
- - Implemented ``max()`` and ``min()`` functions for booleans and unsigned integers types
- - Added ``tensor6()`` and ``tensor7()`` in ``theano.tensor`` module
- - Added boolean indexing for sub-tensors
- - Added covariance matrix function ``theano.tensor.cov``
- - Added a wrapper for `Baidu's CTC <https://github.com/baidu-research/warp-ctc>`_ cost and gradient functions
- - Added scalar and elemwise CPU ops for modified Bessel function of order 0 and 1 from ``scipy.special``
- - Added Scaled Exponential Linear Unit (SELU) activation
- - Added sigmoid_binary_crossentropy function
- - Added tri-gamma function
- - Added ``unravel_index`` and ``ravel_multi_index`` functions on CPU
- - Added modes ``half`` and ``full`` for ``Images2Neibs`` ops
- - Implemented gradient for ``AbstractBatchNormTrainGrad``
- - Implemented gradient for matrix pseudoinverse op
- - Added new prop `replace` for ``ChoiceFromUniform`` op
- - Added new prop ``on_error`` for CPU ``Cholesky`` op
- - Added new Theano flag ``deterministic`` to help control how Theano optimize certain ops that have deterministic versions.
-   Currently used for subtensor Ops only.
- - Added new Theano flag ``cycle_detection`` to speed-up optimization step by reducing time spending in inplace optimizations
- - Added new Theano flag ``check_stack_trace`` to help check the stack trace during optimization process
- - Added new Theano flag ``cmodule.debug`` to allow a debug mode for Theano C code. Currently used for cuDNN convolutions only.
- - Added new Theano flag ``pickle_test_value`` to help disable pickling test values
-
-Others:
- - Kept stack trace for optimizations in new GPU backend
- - Added deprecation warning for the softmax and logsoftmax vector case
- - Added a warning to announce that C++ compiler will become mandatory in next Theano release ``0.11``
- - Added ``R_op()`` for ``ZeroGrad``
- - Added description for rnnblock
-
-Other more detailed changes:
- - Fixed invalid casts and index overflows in ``theano.tensor.signal.pool``
- - Fixed gradient error for elemwise ``minimum`` and ``maximum`` when compared values are the same
- - Fixed gradient for ``ARange``
- - Removed ``ViewOp`` subclass during optimization
- - Removed useless warning when profile is manually disabled
- - Added tests for abstract conv
- - Added options for `disconnected_outputs` to Rop
- - Removed ``theano/compat/six.py``
- - Removed ``COp.get_op_params()``
- - Support of list of strings for ``Op.c_support_code()``, to help not duplicate support codes
- - Macro names provided for array properties are now standardized in both CPU and GPU C codes
- - Moved all C code files into separate folder ``c_code`` in every Theano module
- - Many improvements for Travis CI tests (with better splitting for faster testing)
- - Many improvements for Jenkins CI tests: daily testings on Mac and Windows in addition to Linux
-
-Commiters since 0.9.0:
  - Frederic Bastien
  - Steven Bocco
- - João Victor Tozatti Risso
  - Arnaud Bergeron
- - Mohammed Affan
- - amrithasuresh
- - Pascal Lamblin
- - Reyhane Askari
- - Alexander Matyasko
- - Shawn Tan
+ - Sam Johnson
+ - Edward Betts
  - Simon Lefrancois
- - Adam Becker
- - Vikram
- - Gijs van Tulder
- - Faruk Ahmed
- - Thomas George
- - erakra
- - Andrei Costinescu
- - Boris Fomitchev
- - Zhouhan LIN
- - Aleksandar Botev
- - jhelie
- - xiaoqie
- - Tegan Maharaj
- - Matt Graham
- - Cesar Laurent
- - Gabe Schwartz
- - Juan Camilo Gamboa Higuera
- - Tim Cooijmans
- - Anirudh Goyal
- - Saizheng Zhang
- - Yikang Shen
- - vipulraheja
- - Florian Bordes
- - Sina Honari
- - Chiheb Trabelsi
- - Shubh Vachher
- - Daren Eiri
- - Joseph Paul Cohen
- - Laurent Dinh
- - Mohamed Ishmael Diwan Belghazi
- - Jeff Donahue
- - Ramana Subramanyam
- - Bogdan Budescu
- - Dzmitry Bahdanau
- - Ghislain Antony Vaillant
- - Jan Schlüter
- - Nan Jiang
- - Xavier Bouthillier
- - fo40225
- - mrTsjolder
- - wyjw
- - Aarni Koskela
- - Adam Geitgey
- - Adrian Keet
- - Adrian Seyboldt
- - Anmol Sahoo
- - Chong Wu
- - Holger Kohr
- - Jayanth Koushik
- - Lilian Besson
- - Lv Tao
- - Michael Manukyan
- - Murugesh Marvel
- - NALEPA
- - Rebecca N. Palmer
- - Zotov Yuriy
- - dareneiri
- - lrast
- - morrme
- - naitonium

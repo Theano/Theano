@@ -165,7 +165,7 @@ Note: There is no short term plan to support multi-node computation.
 Theano Vision State
 ===================
 
-Here is the state of that vision as of November 15th, 2017 (after Theano 1.0.0):
+Here is the state of that vision as of December 1st, 2017 (after Theano 1.0.1):
 
 * `MILA will stop developing Theano. <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_
 * We support tensors using the `numpy.ndarray` object and we support many operations on them.

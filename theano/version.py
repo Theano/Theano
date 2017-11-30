@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 
 from theano._version import get_versions
 
-FALLBACK_VERSION = "1.0.0+unknown"
+FALLBACK_VERSION = "1.0.1+unknown"
 
 info = get_versions()
 if info['error'] is not None:
