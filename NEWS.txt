@@ -6,7 +6,7 @@ Release Notes
 Theano 1.0.1 (1st of December, 2017)
 ====================================
 
-This is a release of Theano, version ``1.0.1``, with important bug fixes.
+This is a maintenance release of Theano, version ``1.0.1``, with no new features, but some important bug fixes.
 
 We recommend that everybody update to this version.
 
@@ -18,8 +18,8 @@ Highlights (since 1.0.0):
 
  - Fixed cuDNN reductions when axes to reduce have size ``1``
  - Attempted to prevent re-initialization of the GPU in a child process
- - Fixed support for temporar paths with spaces in Theano initialization
- - Whole spell checking
+ - Fixed support for temporary paths with spaces in Theano initialization
+ - Spell check pass on the documentation
 
 A total of 6 people contributed to this release since ``1.0.0``:
 
