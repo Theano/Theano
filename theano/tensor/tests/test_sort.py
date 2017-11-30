@@ -232,6 +232,8 @@ def test_argsort_grad():
 
 
 class Test_TopK(unittest.TestCase):
+    mode = None
+    op_class = TopKOp
 
     def setUp(self):
         pass
@@ -240,7 +242,10 @@ class Test_TopK(unittest.TestCase):
         _all_dtypes, tensor.integer_dtypes, [-1, 0, None], [False]))
     def test_argtopk_sanity(self, dtype, idx_dtype, axis, sorted):
         x = tensor.vector(name='x', dtype=dtype)
-        fn = theano.function([x], argtopk(x, 1, axis=axis, sorted=sorted, idx_dtype=idx_dtype))
+        fn = theano.function([x],
+                             argtopk(x, 1, axis=axis, sorted=sorted, idx_dtype=idx_dtype),
+                             mode=self.mode)
+        assert any([isinstance(n.op, self.op_class) for n in fn.maker.fgraph.apply_nodes])
         xval = np.asarray([1]).astype(dtype)
         yval = fn(xval)
         assert yval == np.asarray([0], dtype=idx_dtype)
@@ -250,7 +255,8 @@ class Test_TopK(unittest.TestCase):
         _all_dtypes, [-1, 0, None], [False]))
     def test_topk_sanity(self, dtype, axis, sorted):
         x = tensor.vector(name='x', dtype=dtype)
-        fn = theano.function([x], topk(x, 1, axis=axis, sorted=sorted))
+        fn = theano.function([x], topk(x, 1, axis=axis, sorted=sorted), mode=self.mode)
+        assert any([isinstance(n.op, self.op_class) for n in fn.maker.fgraph.apply_nodes])
         xval = np.asarray([1]).astype(dtype)
         yval = fn(xval)
         assert yval == xval
@@ -261,7 +267,8 @@ class Test_TopK(unittest.TestCase):
     def test_combined_sanity(self, dtype, idx_dtype, axis, sorted):
         x = tensor.vector(name='x', dtype=dtype)
         yv, yi = topk_and_argtopk(x, 1, axis=axis, sorted=sorted, idx_dtype=idx_dtype)
-        fn = theano.function([x], [yv, yi])
+        fn = theano.function([x], [yv, yi], mode=self.mode)
+        assert any([isinstance(n.op, self.op_class) for n in fn.maker.fgraph.apply_nodes])
         xval = np.asarray([1]).astype(dtype)
         yvval, yival = fn(xval)
         assert yival == np.asarray([0], dtype=idx_dtype)
@@ -282,7 +289,8 @@ class Test_TopK(unittest.TestCase):
 
         x = theano.tensor.vector(name='x', dtype=dtype)
         y = topk(x, k, sorted=sorted)
-        fn = theano.function([x], y)
+        fn = theano.function([x], y, mode=self.mode)
+        assert any([isinstance(n.op, self.op_class) for n in fn.maker.fgraph.apply_nodes])
         # assert local_useless_topk opt is done properly
         assert 1 == len(fn.maker.fgraph.outputs[0].owner.outputs)
 
@@ -293,7 +301,7 @@ class Test_TopK(unittest.TestCase):
         goal = np.sort(xval)[idx]
 
         assert yval.dtype == goal.dtype
-        utt.assert_allclose(np.sort(yval), goal)
+        utt.assert_allclose(goal, np.sort(yval))
 
     @utt.parameterized.expand(chain(
         product(
@@ -309,7 +317,8 @@ class Test_TopK(unittest.TestCase):
 
         x = theano.tensor.vector(name='x', dtype=dtype)
         y = argtopk(x, k, sorted=sorted, idx_dtype=idx_dtype)
-        fn = theano.function([x], y)
+        fn = theano.function([x], y, mode=self.mode)
+        assert any([isinstance(n.op, self.op_class) for n in fn.maker.fgraph.apply_nodes])
 
         # assert local_useless_topk opt is done properly
         assert 1 == len(fn.maker.fgraph.outputs[0].owner.outputs)
@@ -337,7 +346,8 @@ class Test_TopK(unittest.TestCase):
 
         x = theano.tensor.vector(name='x', dtype=dtype)
         yv, yi = topk_and_argtopk(x, k, sorted=sorted, idx_dtype=idx_dtype)
-        fn = theano.function([x], [yv, yi])
+        fn = theano.function([x], [yv, yi], mode=self.mode)
+        assert any([isinstance(n.op, self.op_class) for n in fn.maker.fgraph.apply_nodes])
         # generate a all-unique array
         xval = gen_unique_vector(size, dtype)
         yvval, yival = fn(xval)
@@ -363,7 +373,8 @@ class Test_TopK(unittest.TestCase):
 
         x = theano.tensor.vector(name='x', dtype=dtype)
         y = argtopk(x, k, sorted=sorted, idx_dtype='int32')
-        fn = theano.function([x], y)
+        fn = theano.function([x], y, mode=self.mode)
+        assert any([isinstance(n.op, self.op_class) for n in fn.maker.fgraph.apply_nodes])
         xval = np.repeat(np.random.uniform(-100., 100., size=size // 2).astype(dtype), 2)
         xval = xval[np.random.permutation(size)]
         yval = fn(xval)
@@ -372,7 +383,7 @@ class Test_TopK(unittest.TestCase):
         utt.assert_allclose(np.sort(xval[yval]), np.sort(xval[goal]))
 
     @utt.parameterized.expand(product(
-        ((17, 15), (2, 3, 5, 7, 11), (2017, 5, 3)),
+        ((17, 15), (2, 3, 5, 7, 11), (500, 5, 3)),  # NB: Test may fail with bigger sizes (e.g. (2017, 5, 3)) due to "too many resources requested" kernel error on some GPUs.
         (-1, '(1+n)//2', '-n', '1-n'),
         ('float32', 'int32'),
         (False,),
@@ -391,7 +402,8 @@ class Test_TopK(unittest.TestCase):
             x = theano.tensor.tensor(
                 name='x', broadcastable=(False,) * len(shp), dtype=dtype)
             y = argtopk(x, k, axis=axis, sorted=sorted, idx_dtype=idx_dtype)
-            fn = theano.function([x], y)
+            fn = theano.function([x], y, mode=self.mode)
+            assert any([isinstance(n.op, self.op_class) for n in fn.maker.fgraph.apply_nodes])
             size = reduce(int.__mul__, shp)
             xval = gen_unique_vector(size, dtype).reshape(shp)
             yval = fn(xval)

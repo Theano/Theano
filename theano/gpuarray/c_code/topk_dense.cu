@@ -4,19 +4,24 @@
 #define RADIX_DIGITS(T) (bitsof(T)/RADIX_BITS)
 
 // works when length on axis is within max allowed threads in block (1024)
-KERNEL void k_topk_dense(
+extern "C" __global__ void k_topk_dense(
         $dims
         // size_t dims_1, ssize_t dims_2, ... , dims_$${NDIM}
         $dstv
         // INPUT_TYPE *dstv
+        $dstv_offset
+        // size_t offset
         $dstv_strides
         // ssize_t dstv_strides_0, ssize_t dstv_strides_1, ... , dstv_strides_$${NDIM}
         $dsti
         // INDEX_TYPE *dsti
+        $dsti_offset
+        // size_t offset
         $dsti_strides
         // ssize_t dsti_strides_0, ssize_t dsti_strides_1, ... , dsti_strides_$${NDIM}
         ssize_t k,
         INPUT_TYPE* src,
+	size_t src_offset,
         $src_strides
         // ssize_t src_strides_0, ssize_t src_strides_1, ... , src_strides_$${NDIM}
         size_t size) {
@@ -28,7 +33,6 @@ KERNEL void k_topk_dense(
     size_t out_idx;
 
     const unsigned char warp_id = idx / GA_WARP_SIZE;
-
     // 0. get the slice for thread block to work on
 
     size_t gid = blockIdx.x, gidx;
@@ -43,7 +47,7 @@ KERNEL void k_topk_dense(
     //}
 
     // get input and its radix friendly form
-    const INPUT_TYPE xval = is_topk ? ptr_at(src, idx*src_strides_0) : (INPUT_TYPE)0;
+    const INPUT_TYPE xval = is_topk ? ptr_at(src, idx*src_strides_0) : theano_zero<INPUT_TYPE>();
     radix_t x = RadixConfig<INPUT_TYPE>::convert(xval);
 
     // resolve negative k

@@ -7563,6 +7563,7 @@ def local_useless_topk(node):
     old_output = node.outputs[ret_idx]
     new_output = TopKOp(
         axis=op.axis,
+        sorted=op.sorted,
         idx_dtype=op.idx_dtype,
         return_values=ret_val,
         return_indices=ret_idx)(x, k)
