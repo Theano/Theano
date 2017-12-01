@@ -54,7 +54,9 @@ mkdir %BUILDBOT_DIR%
 echo "Directory of stdout/stderr %BUILDBOT_DIR%"
 
 REM Exit if theano.gpuarray import fails
-python -c "import theano.gpuarray; theano.gpuarray.use('%DEVICE%')" || exit /b
+REM NB: As we define `set THEANO_FLAGS=init_gpu_device=cuda` above,
+REM     importing theano.gpuarray will automatically initialize GPU.
+python -c "import theano.gpuarray; exit(1 - int(theano.gpuarray.pygpu_activated))" || exit /b
 
 REM Fast run and float32
 set FILE=%BUILDBOT_DIR%\theano_python2_fastrun_f32_tests.xml
