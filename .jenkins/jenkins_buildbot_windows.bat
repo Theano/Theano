@@ -59,5 +59,5 @@ python -c "import theano.gpuarray; theano.gpuarray.use('%DEVICE%')" || exit /b
 REM Fast run and float32
 set FILE=%BUILDBOT_DIR%\theano_python2_fastrun_f32_tests.xml
 set NAME=win_fastrun_f32
-set THEANO_FLAGS=%THEANO_FLAGS%,compiledir=%COMPILEDIR:\=\\%,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32,dnn.base_path="%CUDNNPATH%",gcc.cxxflags='-I%LIBDIR:\=\\%\\include -L%LIBDIR:\=\\%\\lib'
+set THEANO_FLAGS=%THEANO_FLAGS%,compiledir=%COMPILEDIR:\=\\%,mode=FAST_RUN,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,floatX=float32,dnn.base_path=%CUDNNPATH%,gcc.cxxflags='-I%LIBDIR:\=\\%\\include -L%LIBDIR:\=\\%\\lib'
 python bin\theano-nose %THEANO_PARAM% %XUNIT%%FILE% %SUITE%%NAME%
