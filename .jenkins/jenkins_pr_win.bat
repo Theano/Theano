@@ -9,7 +9,7 @@ REM Set cache dir and copy from master
 set COMPILEDIR=%WORKSPACE%\cache
 REM C:\Windows\System32\robocopy /E /purge C:\Jenkins\theano_cache\buildbot_windows %COMPILEDIR% > nul
 
-set THEANO_FLAGS=init_gpu_device=cuda
+set THEANO_FLAGS=init_gpu_device=cuda,dnn.base_path="%CUDNNPATH%"
 
 REM Build libgpuarray
 set GPUARRAY_CONFIG="Release"
@@ -52,5 +52,5 @@ python -c "import theano.gpuarray; theano.gpuarray.use('%DEVICE%')" || exit /b
 
 set THEANO_PARAM=theano --with-timer --timer-top-n 10 --with-xunit --xunit-file=theano_win_pr_tests.xml
 set NAME=pr_win
-set THEANO_FLAGS=%THEANO_FLAGS%,mode=FAST_RUN,floatX=float32,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,compiledir=%COMPILEDIR:\=\\%,dnn.base_path="%CUDNNPATH%",gcc.cxxflags='-I%LIBDIR:\=\\%\\include -L%LIBDIR:\=\\%\\lib'
+set THEANO_FLAGS=%THEANO_FLAGS%,mode=FAST_RUN,floatX=float32,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,compiledir=%COMPILEDIR:\=\\%,gcc.cxxflags='-I%LIBDIR:\=\\%\\include -L%LIBDIR:\=\\%\\lib'
 python bin\theano-nose %THEANO_PARAM% --xunit-testsuite-name=%NAME%

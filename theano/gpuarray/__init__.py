@@ -17,6 +17,8 @@ error = _logger.error
 info = _logger.info
 
 pygpu_activated = False
+# Used to skip initialization checking when we are in the same processus.
+theano_gpu_is_already_active = False
 try:
     import pygpu
     import pygpu.gpuarray
@@ -58,7 +60,8 @@ def pygpu_parse_version(version_string):
 
 def init_dev(dev, name=None, preallocate=None):
     global pygpu_activated
-    if os.environ.get('THEANO_GPU_IS_ALREADY_ACTIVE', '') == 'Yes':
+    global theano_gpu_is_already_active
+    if not theano_gpu_is_already_active and os.environ.get('THEANO_GPU_IS_ALREADY_ACTIVE', '') == 'Yes':
         raise RuntimeError("You can't initialize the GPU in a subprocess if the parent process already did it")
     if not config.cxx:
         raise RuntimeError("The new gpu-backend need a c++ compiler.")
@@ -95,6 +98,7 @@ def init_dev(dev, name=None, preallocate=None):
             single_stream=config.gpuarray.single_stream,
             **args)
         os.environ['THEANO_GPU_IS_ALREADY_ACTIVE'] = 'Yes'
+        theano_gpu_is_already_active = True
         context.dev = dev
         init_dev.devmap[dev] = context
         reg_context(name, context)
