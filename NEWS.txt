@@ -3,7 +3,7 @@ Release Notes
 =============
 
 
-Theano 1.0.1 (1st of December, 2017)
+Theano 1.0.1 (6th of December, 2017)
 ====================================
 
 This is a maintenance release of Theano, version ``1.0.1``, with no new features, but some important bug fixes.

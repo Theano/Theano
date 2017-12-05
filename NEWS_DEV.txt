@@ -36,6 +36,7 @@ Other more detailed changes:
 
 
 PULL REQUESTS CHECKED FOR 1.0.1 SINCE 1.0.0
+* https://github.com/Theano/Theano/pull/6530
 * https://github.com/Theano/Theano/pull/6513
 * https://github.com/Theano/Theano/pull/6520
 * https://github.com/Theano/Theano/pull/6525
