@@ -4,18 +4,11 @@
 DRAFT Release Notes
 ===================
 
-git log -p rel-1.0.0... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
+git log -p rel-1.0.1... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
 
 # Commit count per user
-git shortlog -sn rel-1.0.0..
+git shortlog -sn rel-1.0.1..
 
-
-
-# docker added to jenkins buildbot
-
-TODO: better Theano conv doc
-
-# NB: Following notes contains infos since 0.9.0.
 
 Highlights:
  - ...
@@ -40,6 +33,16 @@ Others:
 
 Other more detailed changes:
  - ...
+
+
+PULL REQUESTS CHECKED FOR 1.0.1 SINCE 1.0.0
+* https://github.com/Theano/Theano/pull/6530
+* https://github.com/Theano/Theano/pull/6513
+* https://github.com/Theano/Theano/pull/6520
+* https://github.com/Theano/Theano/pull/6525
+* https://github.com/Theano/Theano/pull/6517
+* https://github.com/Theano/Theano/pull/6506
+* https://github.com/Theano/Theano/pull/6512
 
 ALL THE PR BELLOW HAVE BEEN CHECKED FOR FINAL RELEASE 1.0.0 SINCE 0.9.0
 * https://github.com/Theano/Theano/pull/6509

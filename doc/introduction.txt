@@ -167,7 +167,8 @@ Theano Vision State
 
 Here is the state of that vision as of November 15th, 2017 (after Theano 1.0.0):
 
-* `MILA will stop developing Theano. <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_
+* `MILA will stop developing Theano. <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_.
+  We will provide support for one year, starting from ``1.0`` release (November 15th, 2017 to November 15th, 2018).
 * We support tensors using the `numpy.ndarray` object and we support many operations on them.
 * We support sparse types by using the `scipy.{csc,csr,bsr}_matrix` object and support some operations on them.
 * We have implementing/wrapping more advanced linear algebra operations. Still more possible.
