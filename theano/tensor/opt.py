@@ -7567,4 +7567,5 @@ def local_useless_topk(node):
         idx_dtype=op.idx_dtype,
         return_values=ret_val,
         return_indices=ret_idx)(x, k)
+    copy_stack_trace(node.outputs[0], new_output)
     return {old_output: new_output}
