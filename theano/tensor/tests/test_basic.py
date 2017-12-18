@@ -6583,8 +6583,8 @@ class test_tensordot(unittest.TestCase):
             f3 = inplace_func([amat, bmat], c)
             aval = rand(4, 7)
             bval = rand(7, 9)
-            self.assertTrue(np.allclose(np.tensordot(aval, bval, axes),
-                                        f3(aval, bval)))
+            utt.assert_allclose(np.tensordot(aval, bval, axes),
+                                f3(aval, bval))
             utt.verify_grad(self.TensorDot(axes), [aval, bval])
 
     def test_scalar_axes(self):
