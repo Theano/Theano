@@ -354,6 +354,9 @@ class TopKOp(theano.Op):
         if not isinstance(axis, int):
             raise TypeError(
                 '"axis" parameter must be integer, got "%s"' % type(axis))
+        if sorted:
+            raise NotImplementedError(
+                "The sorted parameter is not yet implemented. Use sorted=False for now.")
         if idx_dtype not in theano.tensor.integer_dtypes:
             raise TypeError(
                 '"idx_dtype" parameter must be an integer dtype, got "%s"' % idx_dtype)
@@ -473,9 +476,6 @@ def topk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
     - ``sorted=True`` is not supported yet.
 
     """
-    if sorted:
-        raise NotImplementedError(
-            "We are still working on sorted topk. Use sorted=False for now.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0
@@ -523,9 +523,6 @@ def argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
       indices are deterministically chosen.
 
     """
-    if sorted:
-        raise NotImplementedError(
-            "We are still working on sorted topk. Use sorted=False for now.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0
@@ -546,9 +543,6 @@ def topk_and_argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
     tuple: (values, indices)
 
     """
-    if sorted:
-        raise NotImplementedError(
-            "We are still working on sorted topk. Use sorted=False for now.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0
