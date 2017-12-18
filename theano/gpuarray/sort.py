@@ -21,8 +21,10 @@ except ImportError as e:
 
 # TODO GPU sort / argsort
 class GpuTopKOp(GpuKernelBase, TopKOp):
-    '''
-    Implements TopKOp on gpu
+    '''Implements TopKOp on gpu
+
+    Currently the output seem sorted, but we do not test it. So as on
+    the CPU, we only support sorted=False for now.
 
     '''
     __props__ = TopKOp.__props__
@@ -35,6 +37,9 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         return_values=True,
         return_indices=True
     ):
+        if sorted:
+            raise NotImplementedError(
+                "GpuTopK currently is not sure to give sorted output even if they look sorted..")
         GpuKernelBase.__init__(self)
         TopKOp.__init__(
             self, axis=axis,
@@ -334,7 +339,8 @@ def local_gpua_topkop(op, ctx_name, inputs, outputs):
     ri = op.return_indices
     x, k = inputs
     x = as_gpuarray_variable(x, ctx_name)
-
+    if op.sorted:
+        return
     gpu_op = GpuTopKOp(
         axis=axis,
         sorted=op.sorted,
