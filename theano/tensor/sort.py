@@ -287,8 +287,7 @@ def _topk_py_impl(op, x, k, axis, idx_dtype):
 
 
 class TopKOp(theano.Op):
-    """
-    Operations related to finding k-largest elements.
+    """Operations related to finding k-largest elements.
 
     Parameters
     ----------
@@ -309,14 +308,19 @@ class TopKOp(theano.Op):
 
     Notes
     -----
-    - By default, this Op give two outputs: values and indices. However optimizer may
-      remove a certain output if not needed.
-
-    - Computing gradient is only possible when both values and indices are computed in
+    - The CPU and GPU op have a different order of the elements. This is
+      currently expected.
+    - The output order is not guaranteed. On the CPU, we use
+      ``np.partition`` and ``np.argpartition`` that only make sure the
+      k-th element is the correct one and that the other
+      elements are on the correct side. On the GPU, they
+      look sorted, but we do not test the correctness of this behavior.
+    - By default, this Op gives two outputs: values and indices. However
+      optimizers may remove a certain output if not needed.
+    - Computing the gradient requests the computation of the indices in
       forward pass.
-
-    - If the top-k-th value is not unique, we cannot guarantee the output indices being
-      deterministically chosen.
+    - If the top-k-th value is not unique, we cannot guarantee the
+      output indices being deterministically chosen.
 
     See Also
     --------
