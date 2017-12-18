@@ -1296,6 +1296,8 @@ def test_conv3d_bwd():
         # Raise tolerance for float16
         if theano.config.floatX == 'float16':
             rtol = 5e-2
+        elif max(inputs_shape) > 1024 or max(filters_shape) > 1024:
+            rtol = 2e-5
         utt.assert_allclose(res_ref[0], res[0], rtol=rtol)
         utt.assert_allclose(res_ref[1], res[1], rtol=rtol)
 
