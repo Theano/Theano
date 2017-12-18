@@ -490,7 +490,7 @@ def local_abstractconv_check(node):
                             AbstractConv3d,
                             AbstractConv3d_gradWeights,
                             AbstractConv3d_gradInputs)):
-        raise AssertionError(
+        raise gof.opt.LocalMetaOptimizerSkipAssertionError(
             '%s Theano optimization failed: there is no implementation '
             'available supporting the requested options. Did you exclude '
             'both "conv_dnn" and "conv_gemm" from the optimizer? If on GPU, '

@@ -37,6 +37,15 @@ def _list_of_nodes(fgraph):
     return list(graph.io_toposort(fgraph.inputs, fgraph.outputs))
 
 
+class LocalMetaOptimizerSkipAssertionError(AssertionError):
+    """This is an AssertionError, but instead of having the
+    LocalMetaOptimizer print the error, it just skip that
+    compilation.
+
+    """
+    pass
+
+
 class Optimizer(object):
     """
 
@@ -1130,6 +1139,10 @@ class LocalMetaOptimizer(LocalOptimizer):
     Base class for meta-optimizers that try a set of LocalOptimizers
     to replace a node and choose the one that executes the fastest.
 
+    If the error LocalMetaOptimizerSkipAssertionError is raised during
+    compilation, we will skip that function compilation and not print
+    the error.
+
     """
 
     def __init__(self):
@@ -1194,6 +1207,8 @@ class LocalMetaOptimizer(LocalOptimizer):
                                          on_unused_input='ignore')
                     fn.trust_input = True
                     timing = min(self.time_call(fn) for _ in range(2))
+                except LocalMetaOptimizerSkipAssertionError:
+                    continue
                 except Exception as e:
                     if self.verbose > 0:
                         print("* %s: exception" % opt, e)
