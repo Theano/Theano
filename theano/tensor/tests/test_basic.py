@@ -820,7 +820,7 @@ def test_maximum_minimum_grad():
     for op in [tensor.maximum, tensor.minimum]:
         o = op(x, y)
         g = theano.grad(o.sum(), [x, y])
-        theano.printing.debugprint(g)
+
         f = theano.function([x, y], g)
         assert np.allclose(f([1], [1]), [[1], [0]])
 
@@ -7789,7 +7789,7 @@ class TestSpecifyShape(unittest.TestCase):
         f(xval)
         xval = np.random.rand(3).astype(floatX)
         self.assertRaises(AssertionError, f, xval)
-        theano.printing.debugprint(f)
+
         assert isinstance([n for n in f.maker.fgraph.toposort()
                            if isinstance(n.op, SpecifyShape)][0].inputs[0].type,
                           self.input_type)

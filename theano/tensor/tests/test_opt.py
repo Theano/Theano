@@ -1116,7 +1116,6 @@ class test_fusion(unittest.TestCase):
                  nb_elemwise, answer, out_dtype] in enumerate(cases):
             if isinstance(out_dtype, dict):
                 out_dtype = out_dtype[config.cast_policy]
-            print("new cases", id)
 
             if shared_fn is None:
                 f = compile.function(list(sym_inputs), g, mode=mode)
@@ -1139,6 +1138,7 @@ class test_fusion(unittest.TestCase):
                 atol = 1e-6
             if not np.allclose(out, answer * nb_repeat, atol=atol):
                 fail1.append(id)
+                print("cases", id)
                 print(val_inputs)
                 print(out)
                 print(answer * nb_repeat)
@@ -1163,7 +1163,8 @@ class test_fusion(unittest.TestCase):
                 fail4.append((id, out_dtype, out.dtype))
 
         failed = len(fail1 + fail2 + fail3 + fail4)
-        print("Executed", len(cases), "cases", "failed", failed)
+        if failed > 0:
+            print("Executed", len(cases), "cases", "failed", failed)
         if failed > 0:
             raise Exception("Failed %d cases" % failed, fail1,
                             fail2, fail3, fail4)
