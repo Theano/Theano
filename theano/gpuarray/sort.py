@@ -2,6 +2,9 @@ from __future__ import absolute_import, print_function, division
 import os
 from string import Template
 
+import numpy as np
+
+import theano
 from theano import Apply
 from theano.tensor import as_tensor_variable
 from theano.tensor.sort import TopKOp
@@ -333,6 +336,21 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         return node.inputs[0].type.context
 
 
+class ValuesEqApproxNoOrder():
+    """
+    We ignore the order of elements on a given axis during the comparison.
+    """
+
+    def __init__(self, axis):
+        self.axis = axis
+
+    def __call__(self, val1, val2):
+        v1 = np.sort(val1, axis=self.axis)
+        v2 = np.sort(val2, axis=self.axis)
+        ret = theano.tensor.type.values_eq_approx(v1, v2)
+        return ret
+
+
 @register_opt('fast_compile')
 @op_lifter([TopKOp], cuda_only=True)
 @register_opt2([TopKOp], 'fast_compile')
@@ -350,5 +368,10 @@ def local_gpua_topkop(op, ctx_name, inputs, outputs):
         idx_dtype=op.idx_dtype,
         return_values=rv,
         return_indices=ri)
-    rets = gpu_op(x, k)
+    rets = gpu_op(x, k, return_list=True)
+    c = ValuesEqApproxNoOrder(axis)
+    if rv or ri:
+        rets[0].tag.values_eq_approx = c
+    if rv and ri:
+        rets[1].tag.values_eq_approx = c
     return rets
