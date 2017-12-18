@@ -129,7 +129,9 @@ def get_variable_trace_string(v):
         else:
             # Print separate message for each element in the list of
             # batcktraces
-            for subtr in tr:
+            for idx, subtr in enumerate(tr):
+                if len(tr) > 1:
+                    print("trace %d" % idx, file=sio)
                 traceback.print_list(subtr, sio)
     return sio.getvalue()
 
