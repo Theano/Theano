@@ -48,6 +48,9 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             return_values=return_values,
             return_indices=return_indices)
 
+    def perform(self, node, inputs, output_storage, params):
+        raise NotImplementedError()
+
     def c_headers(self):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
 
