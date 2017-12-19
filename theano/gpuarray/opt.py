@@ -183,22 +183,14 @@ gpu_optimizer.register('local_remove_all_assert',
 # in order to avoid introducin new CPU Ops, or useless ones.
 def safe_to_gpu(x, ctx_name):
     if isinstance(x.type, tensor.TensorType):
-        ret = GpuFromHost(ctx_name)(x)
-        values_eq_approx = getattr(x.tag, 'values_eq_approx', None)
-        if values_eq_approx:
-            ret.tag.values_eq_approx = values_eq_approx
-        return ret
+        return GpuFromHost(ctx_name)(x)
     else:
         return x
 
 
 def safe_to_cpu(x):
     if isinstance(x.type, GpuArrayType):
-        ret = x.transfer('cpu')
-        values_eq_approx = getattr(x.tag, 'values_eq_approx', None)
-        if values_eq_approx:
-            ret.tag.values_eq_approx = values_eq_approx
-        return ret
+        return x.transfer('cpu')
     else:
         return x
 
