@@ -194,7 +194,11 @@ def safe_to_gpu(x, ctx_name):
 
 def safe_to_cpu(x):
     if isinstance(x.type, GpuArrayType):
-        return x.transfer('cpu')
+        ret = x.transfer('cpu')
+        values_eq_approx = getattr(x.tag, 'values_eq_approx', None)
+        if values_eq_approx:
+            ret.tag.values_eq_approx = values_eq_approx
+        return ret
     else:
         return x
 
