@@ -498,7 +498,7 @@ class GpuMagmaBase(COp):
                 'gpuarray_helper.h', 'magma.h']
 
     def c_header_dirs(self):
-        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include()]
+        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include(), config.cuda.include_path]
         if config.magma.include_path:
             dirs.append(config.magma.include_path)
         return dirs
