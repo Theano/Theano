@@ -370,8 +370,6 @@ def local_gpua_topkop(op, ctx_name, inputs, outputs):
         return_indices=ri)
     rets = gpu_op(x, k, return_list=True)
     c = ValuesEqApproxNoOrder(axis)
-    if rv or ri:
-        rets[0].tag.values_eq_approx = c
-    if rv and ri:
-        rets[1].tag.values_eq_approx = c
+    for r in rets:
+        r.tag.values_eq_approx = c
     return rets

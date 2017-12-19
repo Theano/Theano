@@ -308,8 +308,7 @@ class TopKOp(theano.Op):
 
     Notes
     -----
-    - The CPU and GPU op have a different order of the elements. This is
-      currently expected.
+    - CPU and GPU ops don't produce same output order. This is expected.
     - The output order is not guaranteed. On the CPU, we use
       ``np.partition`` and ``np.argpartition`` that only make sure the
       k-th element is the correct one and that the other

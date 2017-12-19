@@ -1165,7 +1165,6 @@ class test_fusion(unittest.TestCase):
         failed = len(fail1 + fail2 + fail3 + fail4)
         if failed > 0:
             print("Executed", len(cases), "cases", "failed", failed)
-        if failed > 0:
             raise Exception("Failed %d cases" % failed, fail1,
                             fail2, fail3, fail4)
 
