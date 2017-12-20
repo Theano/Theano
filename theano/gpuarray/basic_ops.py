@@ -576,9 +576,13 @@ class HostFromGpu(Op):
     def make_node(self, x):
         if not isinstance(x.type, GpuArrayType):
             raise TypeError(x)
-        return Apply(self, [x],
-                     [tensor.TensorType(dtype=x.dtype,
-                                        broadcastable=x.broadcastable)()])
+        out_var = tensor.TensorType(dtype=x.dtype,
+                                    broadcastable=x.broadcastable)()
+        # Keep the special comparison if there is one.
+        values_eq_approx = getattr(x.tag, 'values_eq_approx', None)
+        if values_eq_approx:
+            out_var.tag.values_eq_approx = values_eq_approx
+        return Apply(self, [x], [out_var])
 
     def perform(self, node, inp, out):
         x, = inp
@@ -664,9 +668,14 @@ class GpuFromHost(Op):
             raise TypeError(x)
         if "complex" in x.dtype:
             raise TypeError("complex not supported in the new gpuarray back-end.", x)
-        return Apply(self, [x], [GpuArrayType(broadcastable=x.broadcastable,
-                                              context_name=self.context_name,
-                                              dtype=x.dtype)()])
+        out_var = GpuArrayType(broadcastable=x.broadcastable,
+                               context_name=self.context_name,
+                               dtype=x.dtype)()
+        # Keep the special comparison if there is one.
+        values_eq_approx = getattr(x.tag, 'values_eq_approx', None)
+        if values_eq_approx:
+            out_var.tag.values_eq_approx = values_eq_approx
+        return Apply(self, [x], [out_var])
 
     def get_params(self, node):
         return get_context(self.context_name)

@@ -287,8 +287,7 @@ def _topk_py_impl(op, x, k, axis, idx_dtype):
 
 
 class TopKOp(theano.Op):
-    """
-    Operations related to finding k-largest elements.
+    """Operations related to finding k-largest elements.
 
     Parameters
     ----------
@@ -309,14 +308,18 @@ class TopKOp(theano.Op):
 
     Notes
     -----
-    - By default, this Op give two outputs: values and indices. However optimizer may
-      remove a certain output if not needed.
-
-    - Computing gradient is only possible when both values and indices are computed in
+    - CPU and GPU ops don't produce same output order. This is expected.
+    - The output order is not guaranteed. On the CPU, we use
+      ``np.partition`` and ``np.argpartition`` that only make sure the
+      k-th element is the correct one and that the other
+      elements are on the correct side. On the GPU, they
+      look sorted, but we do not test the correctness of this behavior.
+    - By default, this Op gives two outputs: values and indices. However
+      optimizers may remove a certain output if not needed.
+    - Computing the gradient requests the computation of the indices in
       forward pass.
-
-    - If the top-k-th value is not unique, we cannot guarantee the output indices being
-      deterministically chosen.
+    - If the top-k-th value is not unique, we cannot guarantee the
+      output indices being deterministically chosen.
 
     See Also
     --------
@@ -354,6 +357,9 @@ class TopKOp(theano.Op):
         if not isinstance(axis, int):
             raise TypeError(
                 '"axis" parameter must be integer, got "%s"' % type(axis))
+        if sorted:
+            raise NotImplementedError(
+                "The sorted parameter is not yet implemented. Use sorted=False for now.")
         if idx_dtype not in theano.tensor.integer_dtypes:
             raise TypeError(
                 '"idx_dtype" parameter must be an integer dtype, got "%s"' % idx_dtype)
@@ -473,9 +479,6 @@ def topk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
     - ``sorted=True`` is not supported yet.
 
     """
-    if sorted:
-        raise NotImplementedError(
-            "We are still working on sorted topk. Use sorted=False for now.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0
@@ -523,9 +526,6 @@ def argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
       indices are deterministically chosen.
 
     """
-    if sorted:
-        raise NotImplementedError(
-            "We are still working on sorted topk. Use sorted=False for now.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0
@@ -546,9 +546,6 @@ def topk_and_argtopk(x, kth, axis=-1, sorted=True, idx_dtype='int64'):
     tuple: (values, indices)
 
     """
-    if sorted:
-        raise NotImplementedError(
-            "We are still working on sorted topk. Use sorted=False for now.")
     if axis is None:
         x = theano.tensor.flatten(x)
         axis = 0

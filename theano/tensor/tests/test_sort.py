@@ -373,7 +373,12 @@ class Test_TopK(unittest.TestCase):
 
         x = theano.tensor.vector(name='x', dtype=dtype)
         y = argtopk(x, k, sorted=sorted, idx_dtype='int32')
-        fn = theano.function([x], y, mode=self.mode)
+        # DebugMode won't like the index change on collision on CPU
+        # So don't use DebugMode here.
+        mode = self.mode
+        if isinstance(self.mode, theano.compile.DebugMode):
+            mode = theano.Mode(optimizer=mode.optimizer)
+        fn = theano.function([x], y, mode=mode)
         assert any([isinstance(n.op, self.op_class) for n in fn.maker.fgraph.apply_nodes])
         xval = np.repeat(np.random.uniform(-100., 100., size=size // 2).astype(dtype), 2)
         xval = xval[np.random.permutation(size)]

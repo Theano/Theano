@@ -2,6 +2,9 @@ from __future__ import absolute_import, print_function, division
 import os
 from string import Template
 
+import numpy as np
+
+import theano
 from theano import Apply
 from theano.tensor import as_tensor_variable
 from theano.tensor.sort import TopKOp
@@ -21,8 +24,10 @@ except ImportError as e:
 
 # TODO GPU sort / argsort
 class GpuTopKOp(GpuKernelBase, TopKOp):
-    '''
-    Implements TopKOp on gpu
+    '''Implements TopKOp on gpu
+
+    Currently the output seem sorted, but we do not test it. So as on
+    the CPU, we only support sorted=False for now.
 
     '''
     __props__ = TopKOp.__props__
@@ -35,6 +40,9 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         return_values=True,
         return_indices=True
     ):
+        if sorted:
+            raise NotImplementedError(
+                "GpuTopK currently is not sure to give sorted output even if they look sorted..")
         GpuKernelBase.__init__(self)
         TopKOp.__init__(
             self, axis=axis,
@@ -42,6 +50,9 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
             idx_dtype=idx_dtype,
             return_values=return_values,
             return_indices=return_indices)
+
+    def perform(self, node, inputs, output_storage, params):
+        raise NotImplementedError()
 
     def c_headers(self):
         return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
@@ -325,6 +336,21 @@ class GpuTopKOp(GpuKernelBase, TopKOp):
         return node.inputs[0].type.context
 
 
+class ValuesEqApproxNoOrder():
+    """
+    We ignore the order of elements on a given axis during the comparison.
+    """
+
+    def __init__(self, axis):
+        self.axis = axis
+
+    def __call__(self, val1, val2):
+        v1 = np.sort(val1, axis=self.axis)
+        v2 = np.sort(val2, axis=self.axis)
+        ret = theano.tensor.type.values_eq_approx(v1, v2)
+        return ret
+
+
 @register_opt('fast_compile')
 @op_lifter([TopKOp], cuda_only=True)
 @register_opt2([TopKOp], 'fast_compile')
@@ -334,12 +360,16 @@ def local_gpua_topkop(op, ctx_name, inputs, outputs):
     ri = op.return_indices
     x, k = inputs
     x = as_gpuarray_variable(x, ctx_name)
-
+    if op.sorted:
+        return
     gpu_op = GpuTopKOp(
         axis=axis,
         sorted=op.sorted,
         idx_dtype=op.idx_dtype,
         return_values=rv,
         return_indices=ri)
-    rets = gpu_op(x, k)
+    rets = gpu_op(x, k, return_list=True)
+    c = ValuesEqApproxNoOrder(axis)
+    for r in rets:
+        r.tag.values_eq_approx = c
     return rets

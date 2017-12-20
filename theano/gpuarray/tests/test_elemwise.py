@@ -59,7 +59,6 @@ def test_elemwise_pow():
             assert exp.dtype == dtype_exp
             output = base ** exp
             f = theano.function([base], output, mode=mode_with_gpu)
-            theano.printing.debugprint(f)
             # We don't transfer to the GPU when the output dtype is int*
             n = len([n for n in f.maker.fgraph.apply_nodes
                      if isinstance(n.op, GpuElemwise)])
