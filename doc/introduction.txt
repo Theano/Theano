@@ -5,7 +5,7 @@
 Theano at a Glance
 ==================
 
-Theano is a Python library that lets you to define, optimize, and evaluate
+Theano is a Python library that lets you define, optimize, and evaluate
 mathematical expressions, especially ones with multi-dimensional arrays
 (numpy.ndarray).  Using Theano it is
 possible to attain speeds rivaling hand-crafted C implementations for problems
