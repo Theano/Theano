@@ -69,11 +69,11 @@ def test_batch_normalization():
     v = theano.tensor.vector('v')
 
     bn_ref_op = bn_ref(x, g, b, m, v)
-    f_ref = theano.function([x, b, g, m, v], [bn_ref_op])
+    f_ref = theano.function([x, g, b, m, v], [bn_ref_op])
     res_ref = f_ref(X, G, B, M, V)
     for mode in ['low_mem', 'high_mem']:
         bn_op = bn.batch_normalization(x, g, b, m, v, mode=mode)
-        f = theano.function([x, b, g, m, v], [bn_op])
+        f = theano.function([x, g, b, m, v], [bn_op])
         res = f(X, G, B, M, V)
         utt.assert_allclose(res_ref, res)
 
