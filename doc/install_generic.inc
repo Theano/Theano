@@ -50,18 +50,15 @@ Install the latest stable version of Theano with:
 
 If you encountered any trouble, head to the :ref:`troubleshooting` page.
 
-The latest stable version of Theano is ``0.9.0`` (tagged with ``rel-0.9.0``).
+The latest stable version of Theano is ``1.0.1`` (tagged with ``rel-1.0.1``).
 
 libgpuarray
 :::::::::::
 
-For the stable version of Theano you need a specific version of libgpuarray,
-that has been tagged ``v0.6.9``.
 Download it with::
 
     git clone https://github.com/Theano/libgpuarray.git
     cd libgpuarray
-    git checkout tags/v0.6.5 -b v0.6.9
 
 and then follow the `Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.
 
@@ -93,8 +90,8 @@ Install the latest, development version of libgpuarray following the
 
 .. note::
 
-    Currently, you need ``libgpuarray`` version ``0.7.1`` that is not in conda default channel.
-    But you can install it with our own channel ``mila-udem`` (that support only Python 2.7 and 3.5)::
+    Currently, you need ``libgpuarray`` version ``0.7.X`` that is not in conda default channel.
+    But you can install it with our own channel ``mila-udem`` (that only supports Python 2.7, 3.5 and 3.6)::
 
         conda install -c mila-udem pygpu
 
