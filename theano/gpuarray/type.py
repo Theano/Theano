@@ -603,7 +603,10 @@ class GpuArrayConstant(_operators, Constant):
         try:
             np_data = np.asarray(self.data)
         except gpuarray.GpuArrayException:
-            np_data = self.data
+            try:
+                np_data = str(self.data)
+            except Exception:
+                np_data = 'Unknown'
         return "GpuArrayConstant{%s}" % np_data
 
 
