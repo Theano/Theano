@@ -39,6 +39,8 @@ too.
 
 Update the fallback version in ``theano/version.py``.
 
+Update the version in ``doc/install_generic.inc``.
+
 Update the code and the documentation for the theano flags
 ``warn.ignore_bug_before`` to accept the new version. You must modify the
 file ``theano/configdefaults.py`` and ``doc/library/config.txt``.
