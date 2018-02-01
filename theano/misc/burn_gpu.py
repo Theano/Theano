@@ -2,7 +2,7 @@
 GPU power consumption then gemm call.
 
 """
-
+from __future__ import absolute_import, print_function, division
 
 import numpy as np
 
@@ -18,13 +18,11 @@ def burn():
 
     sz = 128
     img_shp = [sz, sz, sz, sz]
-    kern_shp = [sz//2, sz, 3, 3]
+    kern_shp = [sz // 2, sz, 3, 3]
     out_shp = get_conv_output_shape(img_shp, kern_shp, 'valid', (1, 1))
     img = T.tensor4('img')
     kern = T.tensor4('kern')
     out = T.tensor4('out')
-    desc1 = dnn.GpuDnnConvDesc(border_mode='valid', conv_mode='conv')(
-        kern.shape)
 
     def rand(shp):
         return np.random.rand(*shp).astype(theano.config.floatX)
