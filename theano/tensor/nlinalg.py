@@ -4,6 +4,7 @@ import logging
 import warnings
 import numpy as np
 from six.moves import xrange
+from functools import partial
 
 import theano
 from theano.tensor import as_tensor_variable
@@ -375,10 +376,10 @@ class EighGrad(Op):
         self.UPLO = UPLO
         if UPLO == 'L':
             self.tri0 = np.tril
-            self.tri1 = lambda a: np.triu(a, 1)
+            self.tri1 = partial(np.triu, k=1)
         else:
             self.tri0 = np.triu
-            self.tri1 = lambda a: np.tril(a, -1)
+            self.tri1 = partial(np.tril, k=-1)
 
     def make_node(self, x, w, v, gw, gv):
         x, w, v, gw, gv = map(as_tensor_variable, (x, w, v, gw, gv))
