@@ -13,9 +13,6 @@ from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 
 
 def burn():
-    # This test that we have inplace work correctly even when
-    # GpuAllocEmpty get merged together.
-
     sz = 128
     img_shp = [sz, sz, sz, sz]
     kern_shp = [sz // 2, sz, 3, 3]
