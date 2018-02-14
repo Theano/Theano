@@ -7,6 +7,7 @@ Defines the `Type` class.
 from __future__ import absolute_import, print_function, division
 
 import ctypes
+import platform
 
 from six import string_types
 
@@ -606,9 +607,11 @@ class Generic(SingletonType):
 
 generic = Generic()
 
-_cdata_type = ctypes.py_object.from_address(
-    ctypes.addressof(ctypes.pythonapi.PyCapsule_Type)).value
+_cdata_type = None
 
+if platform.python_implementation() != 'PyPy':
+    _cdata_type = ctypes.py_object.from_address(
+        ctypes.addressof(ctypes.pythonapi.PyCapsule_Type)).value
 
 class _make_cdata(Op):
     __props__ = ('rtype',)
@@ -679,8 +682,12 @@ class CDataType(Type):
         self.version = version
 
     def filter(self, data, strict=False, allow_downcast=None):
-        if data is not None and not isinstance(data, _cdata_type):
-            raise TypeError("expected None or a PyCapsule")
+        # We ignore this type-check (_cdata_type is None) in PyPy
+        # because this type is not exposed to us.
+        if data is not None and _cdata_type is not None:
+            if not isinstance(data, _cdata_type):
+                raise TypeError("expected None or a PyCapsule")
+
         return data
 
     def _get_func(self):
