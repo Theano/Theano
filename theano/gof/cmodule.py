@@ -269,16 +269,23 @@ def dlimport(fullpath, suffix=None):
     if not os.path.isabs(fullpath):
         raise ValueError('`fullpath` must be an absolute path', fullpath)
     if suffix is None:
-        if fullpath.endswith('.so'):
-            suffix = '.so'
-        elif fullpath.endswith('.pyd'):
-            suffix = '.pyd'
-        elif fullpath.endswith('.dll'):
-            suffix = '.dll'
-        elif fullpath.endswith('.py'):
-            suffix = '.py'
-        else:
-            suffix = ''
+        suffix = ''
+
+        dist_suffix = distutils.sysconfig.get_config_var("SO")
+        if dist_suffix is not None and dist_suffix != '':
+            if fullpath.endswith(dist_suffix):
+                suffix = dist_suffix
+
+        if suffix == '':
+            if fullpath.endswith('.so'):
+                suffix = '.so'
+            elif fullpath.endswith('.pyd'):
+                suffix = '.pyd'
+            elif fullpath.endswith('.dll'):
+                suffix = '.dll'
+            elif fullpath.endswith('.py'):
+                suffix = '.py'
+
     rval = None
     if fullpath.endswith(suffix):
         module_name = '.'.join(fullpath.split(os.path.sep)[-2:])[:-len(suffix)]
@@ -1675,22 +1682,30 @@ def std_lib_dirs_and_libs():
     elif sys.platform == 'darwin':
         std_lib_dirs_and_libs.data = [], []
     else:
-        # assume Linux
-        # Typical include directory: /usr/include/python2.6
+        if platform.python_implementation() == 'PyPy':
+            # Assume Linux (note: Ubuntu doesn't ship this .so)
+            libname = "pypy-c"
+            # Unfortunately the only convention of this .so is that it appears
+            # next to the location of the interpreter binary.
+            libdir = os.path.dirname(os.path.realpath(sys.executable))
+        else:
+            # Assume Linux
+            # Typical include directory: /usr/include/python2.6
 
-        # get the name of the python library (shared object)
-        libname = distutils.sysconfig.get_config_var("LDLIBRARY")
+            # get the name of the python library (shared object)
 
-        if libname.startswith("lib"):
-            libname = libname[3:]
+            libname = distutils.sysconfig.get_config_var("LDLIBRARY")
 
-        # remove extension if present
-        if libname.endswith(".so"):
-            libname = libname[:-3]
-        elif libname.endswith(".a"):
-            libname = libname[:-2]
+            if libname.startswith("lib"):
+                libname = libname[3:]
 
-        libdir = distutils.sysconfig.get_config_var("LIBDIR")
+            # remove extension if present
+            if libname.endswith(".so"):
+                libname = libname[:-3]
+            elif libname.endswith(".a"):
+                libname = libname[:-2]
+
+            libdir = distutils.sysconfig.get_config_var("LIBDIR")
 
         std_lib_dirs_and_libs.data = [libname], [libdir]
 
@@ -2277,9 +2292,18 @@ class GCC_compiler(Compiler):
             if not src_code.endswith('\n'):
                 cppfile.write('\n')
 
-        lib_filename = os.path.join(
-            location,
-            '%s.%s' % (module_name, get_lib_extension()))
+        if platform.python_implementation() == 'PyPy':
+            suffix = '.' + get_lib_extension()
+
+            dist_suffix = distutils.sysconfig.get_config_var("SO")
+            if dist_suffix is not None and dist_suffix != '':
+                suffix = dist_suffix
+
+            filepath = '%s%s' % (module_name, suffix)
+        else:
+            filepath = '%s.%s' % (module_name, get_lib_extension())
+
+        lib_filename = os.path.join(location, filepath)
 
         _logger.debug('Generating shared lib %s', lib_filename)
         cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
