@@ -13,6 +13,7 @@ import logging
 import sys
 import time
 import warnings
+import platform
 
 from theano.configparser import (config, _config_var_list)
 
@@ -983,7 +984,11 @@ class VM_Linker(link.LocalLinker):
                 if oidx in update_in_from_out:
                     update_storage.append(update_in_from_out[oidx])
 
-            c0 = sys.getrefcount(node_n_inputs)
+            # PyPy has no sys.getrefcount, so ignore this check if not running
+            # under CPython.
+            if platform.python_implementation() == 'CPython':
+                c0 = sys.getrefcount(node_n_inputs)
+
             vm = CVM(
                 nodes,
                 thunks,
@@ -1006,7 +1011,9 @@ class VM_Linker(link.LocalLinker):
                 update_storage=update_storage,
                 dependencies=dependency_map_list,
             )
-            assert c0 == sys.getrefcount(node_n_inputs)
+
+            if platform.python_implementation() == 'CPython':
+                assert c0 == sys.getrefcount(node_n_inputs)
         else:
             lazy = self.lazy
             if lazy is None:
