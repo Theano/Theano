@@ -573,7 +573,7 @@ EQ_MAP = {
 
 
 # Add a reverse map too.
-EQ_MAP.update((v, k for k, v in EQ_MAP.items()))
+EQ_MAP.update(((v, k) for k, v in EQ_MAP.items()))
 
 
 class _operators(_tensor_py_operators):
