@@ -30,7 +30,7 @@ except ImportError:
     pass
 
 from .type import (GpuArrayType, GpuArrayConstant, gpu_context_type,
-                   get_context, ContextNotDefined)
+                   get_context, ContextNotDefined, EQ_MAP)
 from .fp16_help import write_w
 
 
@@ -581,7 +581,8 @@ class HostFromGpu(Op):
         # Keep the special comparison if there is one.
         values_eq_approx = getattr(x.tag, 'values_eq_approx', None)
         if values_eq_approx:
-            out_var.tag.values_eq_approx = values_eq_approx
+            out_var.tag.values_eq_approx = EQ_MAP.get(values_eq_approx,
+                                                      values_eq_approx)
         return Apply(self, [x], [out_var])
 
     def perform(self, node, inp, out):
@@ -674,7 +675,8 @@ class GpuFromHost(Op):
         # Keep the special comparison if there is one.
         values_eq_approx = getattr(x.tag, 'values_eq_approx', None)
         if values_eq_approx:
-            out_var.tag.values_eq_approx = values_eq_approx
+            out_var.tag.values_eq_approx = EQ_MAP.get(values_eq_approx,
+                                                      values_eq_approx)
         return Apply(self, [x], [out_var])
 
     def get_params(self, node):
