@@ -524,23 +524,20 @@ def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
     if str(a.dtype) in theano.tensor.discrete_dtypes:
         return GpuArrayType.values_eq(a, b)
     else:
-        if allow_remove_inf or allow_remove_nan:
-            raise NotImplementedError(
-                "GpuArrayType.values_eq_approx() don't implemented the"
-                " allow_remove_inf and allow_remove_nan parameter")
-        atol_, rtol_ = theano.tensor.basic._get_atol_rtol(a, b)
-        if rtol is not None:
-            rtol_ = rtol
-        if atol is not None:
-            atol_ = atol
-        res = elemwise2(a, '', b, a, odtype=np.dtype('bool'),
-                        op_tmpl="res = (fabs(a - b) <"
-                        "(%(atol_)s + %(rtol_)s * fabs(b)))" %
-                        locals())
-        ret = np.asarray(res).all()
-        if ret:
-            return True
-        # maybe the trouble is that there are NaNs
+        if not (allow_remove_inf or allow_remove_nan):
+            atol_, rtol_ = theano.tensor.basic._get_atol_rtol(a, b)
+            if rtol is not None:
+                rtol_ = rtol
+            if atol is not None:
+                atol_ = atol
+            res = elemwise2(a, '', b, a, odtype=np.dtype('bool'),
+                            op_tmpl="res = (fabs(a - b) <"
+                            "(%(atol_)s + %(rtol_)s * fabs(b)))" %
+                            locals())
+            ret = np.asarray(res).all()
+            if ret:
+                return True
+
         an = np.asarray(a)
         bn = np.asarray(b)
         return tensor.TensorType.values_eq_approx(
