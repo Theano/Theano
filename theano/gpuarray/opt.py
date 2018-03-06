@@ -1207,7 +1207,7 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
             return False
         x, = inputs
         idtype = x.dtype
-        adtype = getattr(op, 'acc_dtype', idtype)
+        adtype = getattr(op, 'acc_dtype', None)
         odtype = getattr(op, 'dtype', outputs[0].dtype)
 
         # Force accumulator to float32 for float32 inputs since tree

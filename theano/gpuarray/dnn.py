@@ -3783,7 +3783,7 @@ def local_dnn_reduction(node):
     with inherit_stack_trace(node.outputs):
         ret = GpuDnnReduction(scal,
                               node.op.axis,
-                              node.op.acc_dtype,
+                              node.op._acc_dtype(node.inputs[0].dtype),
                               node.op.dtype,
                               False)(node.inputs[0])
         return [post(ret)]
