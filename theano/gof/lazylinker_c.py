@@ -71,8 +71,14 @@ try:
     else:
         try_import()
         _need_reload = True
-        if version != getattr(lazylinker_ext, '_version', None):
-            raise ImportError()
+        actual_version = getattr(lazylinker_ext, '_version', None)
+        if version != actual_version:
+            raise ImportError(
+                "Version check of the existing lazylinker compiled file."
+                " Looking for version %s, but found %s. "
+                "Extra debug information: force_compile=%s, _need_reload=%s" % (
+                    version,
+                    actual_version, force_compile, _need_reload))
 except ImportError:
     get_lock()
     try:
@@ -88,8 +94,15 @@ except ImportError:
             else:
                 try_import()
                 _need_reload = True
-            if version != getattr(lazylinker_ext, '_version', None):
-                raise ImportError()
+            actual_version = getattr(lazylinker_ext, '_version', None)
+            if version != actual_version:
+                raise ImportError(
+                    "Version check of the existing lazylinker compiled file."
+                    " Looking for version %s, but found %s. "
+                    "Extra debug information: force_compile=%s,"
+                    " _need_reload=%s" % (
+                        version,
+                        actual_version, force_compile, _need_reload))
         except ImportError:
             # It is useless to try to compile if there isn't any
             # compiler!  But we still want to try to load it, in case
