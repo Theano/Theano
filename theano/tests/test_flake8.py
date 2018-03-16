@@ -7,10 +7,15 @@ import os
 import sys
 from fnmatch import fnmatch
 import theano
+new_flake8 = True
 try:
-    import flake8.engine
     import flake8.main
     flake8_available = True
+    try:
+        import flake8.engine
+        new_flake8 = False
+    except ImportError:
+        import flake8.api.legacy
 except ImportError:
     flake8_available = False
 
@@ -126,6 +131,8 @@ def test_format_flake8():
     if not flake8_available:
         raise SkipTest("flake8 is not installed")
     total_errors = 0
+
+    files_to_checks = []
     for path in list_files():
         rel_path = os.path.relpath(path, theano.__path__[0])
         if sys.platform == 'win32':
@@ -133,8 +140,17 @@ def test_format_flake8():
         if rel_path in whitelist_flake8:
             continue
         else:
+            files_to_checks.append(path)
+
+    if new_flake8:
+        guide = flake8.api.legacy.get_style_guide(ignore=ignore)
+        r = guide.check_files(files_to_checks)
+        total_errors = r.total_errors
+    else:
+        for path in files_to_checks:
             error_num = flake8.main.check_file(path, ignore=ignore)
             total_errors += error_num
+
     if total_errors > 0:
         raise AssertionError("FLAKE8 Format not respected")
 
