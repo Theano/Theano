@@ -1604,44 +1604,44 @@ class T_Scan(unittest.TestCase):
  | |     | | | | |Elemwise{minimum,no_inplace} [id K] ''
  | |     | | | | | |Subtensor{int64} [id L] ''
  | |     | | | | | | |Shape [id M] ''
- | |     | | | | | | | |Subtensor{int64::} [id N] 'u1[1:]'
+ | |     | | | | | | | |Subtensor{int64::} [id N] 'u1[0:]'
  | |     | | | | | | |   |u1 [id O]
  | |     | | | | | | |   |Constant{0} [id P]
  | |     | | | | | | |Constant{0} [id Q]
  | |     | | | | | |Subtensor{int64} [id R] ''
  | |     | | | | |   |Shape [id S] ''
- | |     | | | | |   | |Subtensor{int64:int64:} [id T] 'u2[1:]'
+ | |     | | | | |   | |Subtensor{int64:int64:} [id T] 'u2[0:-2]'
  | |     | | | | |   |   |u2 [id U]
  | |     | | | | |   |   |Constant{0} [id V]
  | |     | | | | |   |   |Constant{-2} [id W]
  | |     | | | | |   |Constant{0} [id X]
  | |     | | | | |Subtensor{int64} [id Y] ''
  | |     | | | |   |Shape [id Z] ''
- | |     | | | |   | |Subtensor{int64:int64:} [id BA] ''
+ | |     | | | |   | |Subtensor{int64:int64:} [id BA] 'u2[1:-1]'
  | |     | | | |   |   |u2 [id U]
  | |     | | | |   |   |Constant{1} [id BB]
  | |     | | | |   |   |Constant{-1} [id BC]
  | |     | | | |   |Constant{0} [id BD]
  | |     | | | |Subtensor{int64} [id BE] ''
  | |     | | |   |Shape [id BF] ''
- | |     | | |   | |Subtensor{int64::} [id BG] ''
+ | |     | | |   | |Subtensor{int64::} [id BG] 'u2[2:]'
  | |     | | |   |   |u2 [id U]
  | |     | | |   |   |Constant{2} [id BH]
  | |     | | |   |Constant{0} [id BI]
  | |     | | |Subtensor{:int64:} [id BJ] ''
- | |     | | | |Subtensor{int64::} [id N] 'u1[1:]'
+ | |     | | | |Subtensor{int64::} [id N] 'u1[0:]'
  | |     | | | |ScalarFromTensor [id BK] ''
  | |     | | |   |Elemwise{minimum,no_inplace} [id I] ''
  | |     | | |Subtensor{:int64:} [id BL] ''
- | |     | | | |Subtensor{int64:int64:} [id T] 'u2[1:]'
+ | |     | | | |Subtensor{int64:int64:} [id T] 'u2[0:-2]'
  | |     | | | |ScalarFromTensor [id BM] ''
  | |     | | |   |Elemwise{minimum,no_inplace} [id I] ''
  | |     | | |Subtensor{:int64:} [id BN] ''
- | |     | | | |Subtensor{int64:int64:} [id BA] ''
+ | |     | | | |Subtensor{int64:int64:} [id BA] 'u2[1:-1]'
  | |     | | | |ScalarFromTensor [id BO] ''
  | |     | | |   |Elemwise{minimum,no_inplace} [id I] ''
  | |     | | |Subtensor{:int64:} [id BP] ''
- | |     | | | |Subtensor{int64::} [id BG] ''
+ | |     | | | |Subtensor{int64::} [id BG] 'u2[2:]'
  | |     | | | |ScalarFromTensor [id BQ] ''
  | |     | | |   |Elemwise{minimum,no_inplace} [id I] ''
  | |     | | |IncSubtensor{Set;:int64:} [id BR] ''
