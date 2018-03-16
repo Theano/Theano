@@ -3838,7 +3838,7 @@ class Split(Op):
 
         try:
             len_along_axis = x.shape[axis]
-        except:
+        except Exception:
             raise ValueError('Split.perform() with axis=(%s) is invalid'
                              ' for x.shape==(%s)'
                              % (axis, x.shape))

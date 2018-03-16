@@ -1007,7 +1007,7 @@ class ScanInplaceOptimizer(Optimizer):
             try:
                 alloc_ops += (theano.gpuarray.GpuAlloc,
                               theano.gpuarray.GpuAllocEmpty)
-            except:
+            except Exception:
                 pass
 
         nodes = fgraph.toposort()[::-1]
