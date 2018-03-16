@@ -75,7 +75,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         # Test grad is called correctly for a 1-to-1 op
         gval = theano.tensor.matrix()
 
-        class O(gof.op.Op):
+        class TestOp(gof.op.Op):
             __props__ = ()
 
             def make_node(self):
@@ -85,7 +85,7 @@ class testgrad_sources_inputs(unittest.TestCase):
 
             def grad(self, inp, grads):
                 return gval,
-        a1 = O().make_node()
+        a1 = TestOp().make_node()
         g = grad_sources_inputs([(a1.outputs[0], one)], None)
         self.assertTrue(g[a1.inputs[0]] is gval)
 
@@ -93,7 +93,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         # Test grad is called correctly for a 1-to-many op
         gval = theano.tensor.matrix()
 
-        class O(gof.op.Op):
+        class TestOp(gof.op.Op):
             __props__ = ()
 
             def make_node(self):
@@ -105,7 +105,7 @@ class testgrad_sources_inputs(unittest.TestCase):
                 x, = inp
                 gz1, gz2 = grads
                 return gval,
-        a1 = O().make_node()
+        a1 = TestOp().make_node()
         g = grad_sources_inputs([(a1.outputs[0], one)], None)
         self.assertTrue(g[a1.inputs[0]] is gval)
 
@@ -114,7 +114,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval0 = theano.tensor.scalar()
         gval1 = theano.tensor.scalar()
 
-        class O(gof.op.Op):
+        class TestOp(gof.op.Op):
             __props__ = ()
 
             def make_node(self):
@@ -126,7 +126,7 @@ class testgrad_sources_inputs(unittest.TestCase):
                 x0, x1 = inp
                 gz, = grads
                 return (gval0, gval1)
-        a1 = O().make_node()
+        a1 = TestOp().make_node()
         g = grad_sources_inputs([(a1.outputs[0], one)], None)
         self.assertTrue(g[a1.inputs[0]] is gval0)
         self.assertTrue(g[a1.inputs[1]] is gval1)
@@ -136,7 +136,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval0 = theano.tensor.matrix()
         gval1 = theano.tensor.matrix()
 
-        class O(gof.op.Op):
+        class TestOp(gof.op.Op):
             __props__ = ()
 
             def make_node(self):
@@ -146,7 +146,7 @@ class testgrad_sources_inputs(unittest.TestCase):
 
             def grad(self, inp, grads):
                 return gval0, gval1
-        a1 = O().make_node()
+        a1 = TestOp().make_node()
         g = grad_sources_inputs([(a1.outputs[0], one)], None)
         self.assertTrue(g[a1.inputs[0]] is gval0)
         self.assertTrue(g[a1.inputs[1]] is gval1)
