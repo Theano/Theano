@@ -1762,8 +1762,9 @@ for{cpu,scan_fn}.2 [id H] ''
  >Elemwise{Composite{(i0 + ((i1 + (i2 * i3)) * i4) + i5)}} [id DW] ''
  >CGemv{no_inplace} [id DX] ''
 """
-            for truth, out in zip(expected_output.split("\n"), lines):
-                assert truth.strip() == out.strip()
+            if theano.config.mode != 'FAST_COMPILE':
+                for truth, out in zip(expected_output.split("\n"), lines):
+                    assert truth.strip() == out.strip(), (truth, out)
 
             cost_fn = theano.function([u1, u2, x0, y0, W_in1],
                                       cost,
