@@ -275,9 +275,7 @@ def test_scan_debugprint1():
 
     final_result = result[-1]
     output_str = theano.printing.debugprint(final_result, file='str')
-    lines = []
-    for line in output_str.split('\n'):
-        lines += [line]
+    lines = output_str.split('\n')
 
     expected_output = """Subtensor{int64} [id A] ''
      |Subtensor{int64::} [id B] ''
@@ -338,9 +336,7 @@ def test_scan_debugprint2():
     polynomial = components.sum()
 
     output_str = theano.printing.debugprint(polynomial, file='str')
-    lines = []
-    for line in output_str.split('\n'):
-        lines += [line]
+    lines = output_str.split('\n')
 
     expected_output = """Sum{acc_dtype=float64} [id A] ''
      |for{cpu,scan_fn} [id B] ''
@@ -421,9 +417,7 @@ def test_scan_debugprint3():
     final_result = polynomial
 
     output_str = theano.printing.debugprint(final_result, file='str')
-    lines = []
-    for line in output_str.split('\n'):
-        lines += [line]
+    lines = output_str.split('\n')
 
     expected_output = """Sum{acc_dtype=float64} [id A] ''
      |for{cpu,scan_fn} [id B] ''
@@ -516,9 +510,7 @@ def test_scan_debugprint4():
 
     final_result = a + b
     output_str = theano.printing.debugprint(final_result, file='str')
-    lines = []
-    for line in output_str.split('\n'):
-        lines += [line]
+    lines = output_str.split('\n')
 
     expected_output = """Elemwise{add,no_inplace} [id A] ''
      |Subtensor{int64::} [id B] ''
@@ -587,9 +579,7 @@ def test_scan_debugprint5():
     final_result = tensor.grad(result[-1].sum(), A)
 
     output_str = theano.printing.debugprint(final_result, file='str')
-    lines = []
-    for line in output_str.split('\n'):
-        lines += [line]
+    lines = output_str.split('\n')
 
     expected_output = """Subtensor{int64} [id A] ''
     |for{cpu,grad_of_scan_fn}.1 [id B] ''
