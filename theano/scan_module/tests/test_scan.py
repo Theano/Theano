@@ -1645,7 +1645,7 @@ class T_Scan(unittest.TestCase):
  | |     | | | |ScalarFromTensor [id BQ] ''
  | |     | | |   |Elemwise{minimum,no_inplace} [id I] ''
  | |     | | |IncSubtensor{Set;:int64:} [id BR] ''
- | |     | | | |AllocEmpty{dtype='float64'} [id BS] ''
+ | |     | | | |AllocEmpty{dtype='%(float)s'} [id BS] ''
  | |     | | | | |Elemwise{add,no_inplace} [id BT] ''
  | |     | | | |   |Elemwise{minimum,no_inplace} [id I] ''
  | |     | | | |   |Subtensor{int64} [id BU] ''
@@ -1658,7 +1658,7 @@ class T_Scan(unittest.TestCase):
  | |     | | | |ScalarFromTensor [id CA] ''
  | |     | | |   |Subtensor{int64} [id BU] ''
  | |     | | |IncSubtensor{Set;:int64:} [id CB] ''
- | |     | | | |AllocEmpty{dtype='float64'} [id CC] ''
+ | |     | | | |AllocEmpty{dtype='%(float)s'} [id CC] ''
  | |     | | | | |Elemwise{add,no_inplace} [id CD] ''
  | |     | | | | | |Elemwise{minimum,no_inplace} [id I] ''
  | |     | | | | | |Subtensor{int64} [id CE] ''
@@ -1715,7 +1715,7 @@ for{cpu,scan_fn}.1 [id H] ''
  > |y0[t-3] [id DM] -> [id BR]
  > |InplaceDimShuffle{} [id DN] ''
  >   |CGemv{inplace} [id DO] ''
- >     |AllocEmpty{dtype='float64'} [id DP] ''
+ >     |AllocEmpty{dtype='%(float)s'} [id DP] ''
  >     | |TensorConstant{1} [id DQ]
  >     |TensorConstant{1.0} [id DR]
  >     |InplaceDimShuffle{x,0} [id DS] ''
@@ -1724,7 +1724,7 @@ for{cpu,scan_fn}.1 [id H] ''
  >     |TensorConstant{0.0} [id DV]
  >Elemwise{Composite{(i0 + ((i1 + (i2 * i3)) * i4) + i5)}} [id DW] ''
  > |CGemv{no_inplace} [id DX] ''
- > | |AllocEmpty{dtype='float64'} [id DY] ''
+ > | |AllocEmpty{dtype='%(float)s'} [id DY] ''
  > | | |Shape_i{1} [id DZ] ''
  > | |   |win_copy [id EA] -> [id CR]
  > | |TensorConstant{1.0} [id DR]
@@ -1737,7 +1737,7 @@ for{cpu,scan_fn}.1 [id H] ''
  > |u2[t+1] [id EF] -> [id BP]
  > |win2_copy [id EG] -> [id CO]
  > |CGemv{inplace} [id EH] ''
- >   |AllocEmpty{dtype='float64'} [id EI] ''
+ >   |AllocEmpty{dtype='%(float)s'} [id EI] ''
  >   | |Shape_i{1} [id EJ] ''
  >   |   |w_copy [id EK] -> [id CP]
  >   |TensorConstant{1.0} [id DR]
@@ -1761,7 +1761,7 @@ for{cpu,scan_fn}.2 [id H] ''
  >Elemwise{Composite{((i0 + i1) * i2)}} [id DK] ''
  >Elemwise{Composite{(i0 + ((i1 + (i2 * i3)) * i4) + i5)}} [id DW] ''
  >CGemv{no_inplace} [id DX] ''
-"""
+""" % {"float":theano.config.floatX}
             if theano.config.mode != 'FAST_COMPILE':
                 for truth, out in zip(expected_output.split("\n"), lines):
                     assert truth.strip() == out.strip(), (truth, out)
