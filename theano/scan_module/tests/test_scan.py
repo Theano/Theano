@@ -1762,7 +1762,7 @@ for{cpu,scan_fn}.2 [id H] ''
  >Elemwise{Composite{(i0 + ((i1 + (i2 * i3)) * i4) + i5)}} [id DW] ''
  >CGemv{no_inplace} [id DX] ''
 """ % {"float":theano.config.floatX}
-            if theano.config.mode != 'FAST_COMPILE':
+            if theano.config.mode != 'FAST_COMPILE' and theano.config.floatX == 'float64':
                 for truth, out in zip(expected_output.split("\n"), lines):
                     assert truth.strip() == out.strip(), (truth, out)
 
