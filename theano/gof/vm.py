@@ -245,7 +245,7 @@ class Loop(VM):
                     t1 = time.time()
                     self.call_counts[i] += 1
                     self.call_times[i] += t1 - t0
-            except:
+            except Exception:
                 link.raise_with_op(node, thunk)
         else:
             for cont in self.pre_call_clear:
@@ -253,7 +253,7 @@ class Loop(VM):
             try:
                 for thunk, node in zip(self.thunks, self.nodes):
                     thunk()
-            except:
+            except Exception:
                 link.raise_with_op(node, thunk)
 
 
@@ -289,7 +289,7 @@ class LoopGC(VM):
                     for old_s in old_storage:
                         old_s[0] = None
                     i += 1
-            except:
+            except Exception:
                 link.raise_with_op(node, thunk)
         else:
             for cont in self.pre_call_clear:
@@ -300,7 +300,7 @@ class LoopGC(VM):
                     thunk()
                     for old_s in old_storage:
                         old_s[0] = None
-            except:
+            except Exception:
                 link.raise_with_op(node, thunk)
 
 

@@ -124,7 +124,7 @@ class change_flags(object):
         try:
             for k, v in iteritems(self.confs):
                 v.__set__(None, self.new_vals[k])
-        except:
+        except Exception:
             self.__exit__()
             raise
 

@@ -104,7 +104,7 @@ class PdbBreakpoint(Op):
         if condition:
             try:
                 monitored = [np.asarray(inp) for inp in inputs[1:]]
-            except:
+            except Exception:
                 raise ValueError("Some of the inputs to the PdbBreakpoint op "
                                  "'%s' could not be casted to NumPy arrays" %
                                  self.name)

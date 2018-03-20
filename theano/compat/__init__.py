@@ -130,7 +130,7 @@ def maybe_add_to_os_environ_pathlist(var, newpath):
             if newpath not in oldpaths:
                 newpaths = os.pathsep.join([newpath] + oldpaths)
                 os.environ[var] = newpaths
-        except:
+        except Exception:
             pass
 
 __all__ += ['maybe_add_to_os_environ_pathlist']
