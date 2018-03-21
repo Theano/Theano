@@ -536,11 +536,16 @@ def scan(fn,
                 maxtap_proxy = max(maxtap, 0)
                 mintap_proxy = min(mintap, 0)
                 start = (k - mintap_proxy)
+                nw_name = None
                 if k == maxtap_proxy:
                     nw_seq = seq['input'][start:]
+                    if getattr(seq['input'], 'name', None) is not None:
+                        nw_name = seq['input'].name + "[%d:]" % start
                 else:
                     end = -(maxtap_proxy - k)
                     nw_seq = seq['input'][start:end]
+                    if getattr(seq['input'], 'name', None) is not None:
+                        nw_name = seq['input'].name + "[%d:%d]" % (start, end)
 
                 if go_backwards:
                     nw_seq = nw_seq[::-1]
@@ -549,6 +554,9 @@ def scan(fn,
                 inner_seqs.append(nw_slice)
                 inner_slices.append(actual_slice)
                 n_seqs += 1
+                # Add names -- it helps a lot when debugging
+                if nw_name is not None:
+                    nw_seq.name = nw_name
 
     # Since we've added all sequences now we need to level them up based on
     # n_steps or their different shapes
@@ -575,12 +583,6 @@ def scan(fn,
             actual_n_steps = tensor.minimum(actual_n_steps, contestant)
     else:
         actual_n_steps = tensor.as_tensor(n_steps)
-
-    # Add names -- it helps a lot when debugging
-
-    for (nw_seq, seq) in zip(scan_seqs, seqs):
-        if getattr(seq['input'], 'name', None) is not None:
-            nw_seq.name = seq['input'].name + '[%d:]' % k
 
     scan_seqs = [seq[:actual_n_steps] for seq in scan_seqs]
     # Conventions :

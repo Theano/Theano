@@ -1588,6 +1588,184 @@ class T_Scan(unittest.TestCase):
             params = [u1, u2, x0, y0, W_in1]
             gparams = theano.tensor.grad(cost, params)
             print(".", file=sys.stderr)
+            # Test the output including names
+            output_str = theano.printing.debugprint(cost, file='str')
+            lines = output_str.split('\n')
+            expected_output = """Elemwise{add,no_inplace} [id A] ''
+ |Elemwise{add,no_inplace} [id B] ''
+ | |Elemwise{add,no_inplace} [id C] ''
+ | | |TensorConstant{0} [id D]
+ | | |Sum{acc_dtype=float64} [id E] ''
+ | |   |Elemwise{mul,no_inplace} [id F] ''
+ | |     |Subtensor{int64::} [id G] ''
+ | |     | |for{cpu,scan_fn}.1 [id H] ''
+ | |     | | |Elemwise{minimum,no_inplace} [id I] ''
+ | |     | | | |Elemwise{minimum,no_inplace} [id J] ''
+ | |     | | | | |Elemwise{minimum,no_inplace} [id K] ''
+ | |     | | | | | |Subtensor{int64} [id L] ''
+ | |     | | | | | | |Shape [id M] ''
+ | |     | | | | | | | |Subtensor{int64::} [id N] 'u1[0:]'
+ | |     | | | | | | |   |u1 [id O]
+ | |     | | | | | | |   |Constant{0} [id P]
+ | |     | | | | | | |Constant{0} [id Q]
+ | |     | | | | | |Subtensor{int64} [id R] ''
+ | |     | | | | |   |Shape [id S] ''
+ | |     | | | | |   | |Subtensor{int64:int64:} [id T] 'u2[0:-2]'
+ | |     | | | | |   |   |u2 [id U]
+ | |     | | | | |   |   |Constant{0} [id V]
+ | |     | | | | |   |   |Constant{-2} [id W]
+ | |     | | | | |   |Constant{0} [id X]
+ | |     | | | | |Subtensor{int64} [id Y] ''
+ | |     | | | |   |Shape [id Z] ''
+ | |     | | | |   | |Subtensor{int64:int64:} [id BA] 'u2[1:-1]'
+ | |     | | | |   |   |u2 [id U]
+ | |     | | | |   |   |Constant{1} [id BB]
+ | |     | | | |   |   |Constant{-1} [id BC]
+ | |     | | | |   |Constant{0} [id BD]
+ | |     | | | |Subtensor{int64} [id BE] ''
+ | |     | | |   |Shape [id BF] ''
+ | |     | | |   | |Subtensor{int64::} [id BG] 'u2[2:]'
+ | |     | | |   |   |u2 [id U]
+ | |     | | |   |   |Constant{2} [id BH]
+ | |     | | |   |Constant{0} [id BI]
+ | |     | | |Subtensor{:int64:} [id BJ] ''
+ | |     | | | |Subtensor{int64::} [id N] 'u1[0:]'
+ | |     | | | |ScalarFromTensor [id BK] ''
+ | |     | | |   |Elemwise{minimum,no_inplace} [id I] ''
+ | |     | | |Subtensor{:int64:} [id BL] ''
+ | |     | | | |Subtensor{int64:int64:} [id T] 'u2[0:-2]'
+ | |     | | | |ScalarFromTensor [id BM] ''
+ | |     | | |   |Elemwise{minimum,no_inplace} [id I] ''
+ | |     | | |Subtensor{:int64:} [id BN] ''
+ | |     | | | |Subtensor{int64:int64:} [id BA] 'u2[1:-1]'
+ | |     | | | |ScalarFromTensor [id BO] ''
+ | |     | | |   |Elemwise{minimum,no_inplace} [id I] ''
+ | |     | | |Subtensor{:int64:} [id BP] ''
+ | |     | | | |Subtensor{int64::} [id BG] 'u2[2:]'
+ | |     | | | |ScalarFromTensor [id BQ] ''
+ | |     | | |   |Elemwise{minimum,no_inplace} [id I] ''
+ | |     | | |IncSubtensor{Set;:int64:} [id BR] ''
+ | |     | | | |AllocEmpty{dtype='%(float)s'} [id BS] ''
+ | |     | | | | |Elemwise{add,no_inplace} [id BT] ''
+ | |     | | | |   |Elemwise{minimum,no_inplace} [id I] ''
+ | |     | | | |   |Subtensor{int64} [id BU] ''
+ | |     | | | |     |Shape [id BV] ''
+ | |     | | | |     | |Subtensor{:int64:} [id BW] ''
+ | |     | | | |     |   |y0 [id BX]
+ | |     | | | |     |   |Constant{3} [id BY]
+ | |     | | | |     |Constant{0} [id BZ]
+ | |     | | | |Subtensor{:int64:} [id BW] ''
+ | |     | | | |ScalarFromTensor [id CA] ''
+ | |     | | |   |Subtensor{int64} [id BU] ''
+ | |     | | |IncSubtensor{Set;:int64:} [id CB] ''
+ | |     | | | |AllocEmpty{dtype='%(float)s'} [id CC] ''
+ | |     | | | | |Elemwise{add,no_inplace} [id CD] ''
+ | |     | | | | | |Elemwise{minimum,no_inplace} [id I] ''
+ | |     | | | | | |Subtensor{int64} [id CE] ''
+ | |     | | | | |   |Shape [id CF] ''
+ | |     | | | | |   | |Rebroadcast{0} [id CG] ''
+ | |     | | | | |   |   |InplaceDimShuffle{x,0} [id CH] ''
+ | |     | | | | |   |     |x0 [id CI]
+ | |     | | | | |   |Constant{0} [id CJ]
+ | |     | | | | |Subtensor{int64} [id CK] ''
+ | |     | | | |   |Shape [id CL] ''
+ | |     | | | |   | |Rebroadcast{0} [id CG] ''
+ | |     | | | |   |Constant{1} [id CM]
+ | |     | | | |Rebroadcast{0} [id CG] ''
+ | |     | | | |ScalarFromTensor [id CN] ''
+ | |     | | |   |Subtensor{int64} [id CE] ''
+ | |     | | |Elemwise{minimum,no_inplace} [id I] ''
+ | |     | | |win2 [id CO]
+ | |     | | |w [id CP]
+ | |     | | |wout [id CQ]
+ | |     | | |win [id CR]
+ | |     | |Constant{1} [id CS]
+ | |     |RandomFunction{uniform}.1 [id CT] ''
+ | |       |<RandomStateType> [id CU]
+ | |       |Shape [id CV] ''
+ | |       | |Subtensor{int64::} [id G] ''
+ | |       |TensorConstant{0.1} [id CW]
+ | |       |TensorConstant{0.9} [id CX]
+ | |Sum{acc_dtype=float64} [id CY] ''
+ |   |Elemwise{mul,no_inplace} [id CZ] ''
+ |     |Subtensor{int64::} [id DA] ''
+ |     | |for{cpu,scan_fn}.0 [id H] ''
+ |     | |Constant{3} [id DB]
+ |     |RandomFunction{uniform}.1 [id DC] ''
+ |       |<RandomStateType> [id DD]
+ |       |Shape [id DE] ''
+ |       | |Subtensor{int64::} [id DA] ''
+ |       |TensorConstant{0.1} [id CW]
+ |       |TensorConstant{0.9} [id CX]
+ |Sum{acc_dtype=float64} [id DF] ''
+   |Elemwise{mul,no_inplace} [id DG] ''
+     |for{cpu,scan_fn}.2 [id H] ''
+     |RandomFunction{uniform}.1 [id DH] ''
+       |<RandomStateType> [id DI]
+       |Shape [id DJ] ''
+       | |for{cpu,scan_fn}.2 [id H] ''
+       |TensorConstant{0.1} [id CW]
+       |TensorConstant{0.9} [id CX]
+
+Inner graphs of the scan ops:
+
+for{cpu,scan_fn}.1 [id H] ''
+ >Elemwise{Composite{((i0 + i1) * i2)}} [id DK] ''
+ > |y0[t-1] [id DL] -> [id BR]
+ > |y0[t-3] [id DM] -> [id BR]
+ > |InplaceDimShuffle{} [id DN] ''
+ >   |CGemv{inplace} [id DO] ''
+ >     |AllocEmpty{dtype='%(float)s'} [id DP] ''
+ >     | |TensorConstant{1} [id DQ]
+ >     |TensorConstant{1.0} [id DR]
+ >     |InplaceDimShuffle{x,0} [id DS] ''
+ >     | |wout_copy [id DT] -> [id CQ]
+ >     |x0[t-1] [id DU] -> [id CB]
+ >     |TensorConstant{0.0} [id DV]
+ >Elemwise{Composite{(i0 + ((i1 + (i2 * i3)) * i4) + i5)}} [id DW] ''
+ > |CGemv{no_inplace} [id DX] ''
+ > | |AllocEmpty{dtype='%(float)s'} [id DY] ''
+ > | | |Shape_i{1} [id DZ] ''
+ > | |   |win_copy [id EA] -> [id CR]
+ > | |TensorConstant{1.0} [id DR]
+ > | |InplaceDimShuffle{1,0} [id EB] 'win_copy.T'
+ > | | |win_copy [id EA] -> [id CR]
+ > | |u1[t] [id EC] -> [id BJ]
+ > | |TensorConstant{0.0} [id DV]
+ > |u2[t] [id ED] -> [id BN]
+ > |u2[t-1] [id EE] -> [id BL]
+ > |u2[t+1] [id EF] -> [id BP]
+ > |win2_copy [id EG] -> [id CO]
+ > |CGemv{inplace} [id EH] ''
+ >   |AllocEmpty{dtype='%(float)s'} [id EI] ''
+ >   | |Shape_i{1} [id EJ] ''
+ >   |   |w_copy [id EK] -> [id CP]
+ >   |TensorConstant{1.0} [id DR]
+ >   |InplaceDimShuffle{1,0} [id EL] 'w_copy.T'
+ >   | |w_copy [id EK] -> [id CP]
+ >   |x0[t-1] [id DU] -> [id CB]
+ >   |TensorConstant{0.0} [id DV]
+ >CGemv{no_inplace} [id DX] ''
+
+for{cpu,scan_fn}.0 [id H] ''
+ >Elemwise{Composite{((i0 + i1) * i2)}} [id DK] ''
+ >Elemwise{Composite{(i0 + ((i1 + (i2 * i3)) * i4) + i5)}} [id DW] ''
+ >CGemv{no_inplace} [id DX] ''
+
+for{cpu,scan_fn}.2 [id H] ''
+ >Elemwise{Composite{((i0 + i1) * i2)}} [id DK] ''
+ >Elemwise{Composite{(i0 + ((i1 + (i2 * i3)) * i4) + i5)}} [id DW] ''
+ >CGemv{no_inplace} [id DX] ''
+
+for{cpu,scan_fn}.2 [id H] ''
+ >Elemwise{Composite{((i0 + i1) * i2)}} [id DK] ''
+ >Elemwise{Composite{(i0 + ((i1 + (i2 * i3)) * i4) + i5)}} [id DW] ''
+ >CGemv{no_inplace} [id DX] ''
+""" % {"float":theano.config.floatX}
+            if theano.config.mode != 'FAST_COMPILE' and theano.config.floatX == 'float64':
+                for truth, out in zip(expected_output.split("\n"), lines):
+                    assert truth.strip() == out.strip(), (truth, out)
+
             cost_fn = theano.function([u1, u2, x0, y0, W_in1],
                                       cost,
                                       updates=updates,
