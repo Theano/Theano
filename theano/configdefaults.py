@@ -1247,7 +1247,7 @@ def check_mkl_openmp():
             os.environ['MKL_THREADING_LAYER'] == 'GNU'):
         return
     try:
-        import numpy._mklinit
+        import numpy._mklinit  # noqa
         return
     except ImportError:
         pass
