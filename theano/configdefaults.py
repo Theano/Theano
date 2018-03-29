@@ -517,8 +517,8 @@ if rc != 0:
 if rc != 0:
     param = ""
 
-# On Mac we test for 'clang++' and use it by default
-if sys.platform == 'darwin':
+# On Mac/FreeBSD we test for 'clang++' and use it by default
+if sys.platform == 'darwin' or sys.platform.startswith('freebsd'):
     try:
         rc = call_subprocess_Popen(['clang++', '-v'])
         if rc == 0:
