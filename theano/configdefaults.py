@@ -1247,6 +1247,11 @@ def check_mkl_openmp():
             os.environ['MKL_THREADING_LAYER'] == 'GNU'):
         return
     try:
+        import numpy._mklinit
+        return
+    except ImportError:
+        pass
+    try:
         import mkl
         if '2018' in mkl.get_version_string():
             raise RuntimeError('To use MKL 2018 with Theano you MUST set "MKL_THREADING_LAYER=GNU" in your environment.')
