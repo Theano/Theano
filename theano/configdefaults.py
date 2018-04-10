@@ -1247,13 +1247,23 @@ def check_mkl_openmp():
             os.environ['MKL_THREADING_LAYER'] == 'GNU'):
         return
     try:
+        import numpy._mklinit  # noqa
+        return
+    except ImportError:
+        pass
+    try:
         import mkl
         if '2018' in mkl.get_version_string():
-            raise RuntimeError('To use MKL 2018 with Theano you MUST set "MKL_THREADING_LAYER=GNU" in your environment.')
+            raise RuntimeError("""
+To use MKL 2018 with Theano either update the numpy conda packages to
+their latest build or set "MKL_THREADING_LAYER=GNU" in your
+environment.
+""")
     except ImportError:
         raise RuntimeError("""
-Could not import 'mkl'.  Either install mkl-service with conda or set
-MKL_THREADING_LAYER=GNU in your environment for MKL 2018.
+Could not import 'mkl'.  If you are using conda, update the numpy
+packages to the latest build otherwise, set MKL_THREADING_LAYER=GNU in
+your environment for MKL 2018.
 
 If you have MKL 2017 install and are not in a conda environment you
 can set the Theano flag blas.check_openmp to False.  Be warned that if
