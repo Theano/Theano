@@ -702,7 +702,8 @@ class GpuMagmaQR(GpuMagmaBase, CGpuKernelBase):
 
     Parameters
     ----------
-    complete : If `False`, returns only r.
+
+        complete : If False, returns only ``R``.
 
     .. warning::
 

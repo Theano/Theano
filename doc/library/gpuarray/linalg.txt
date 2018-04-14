@@ -1,0 +1,19 @@
+.. _libdoc_gpuarray_linalg:
+
+=========================================================
+:mod:`theano.gpuarray.linalg` -- Linear algebra operation
+=========================================================
+
+
+.. warning::
+
+   Some operation need Magma to be installed and the Theano flags
+   :attr:`config.magma.enabled=True` to be activated. See also the
+   flags :attr:`config.magma.include_path` and
+   :attr:`config.magma.library_path`.
+
+Linalg Op
+=========
+
+.. automodule:: theano.gpuarray.linalg
+    :members:
