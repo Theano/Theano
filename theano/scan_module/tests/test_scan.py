@@ -5731,3 +5731,23 @@ def test_dynamic_hidden_shared():
     f = theano.function(inputs=[], outputs=[], updates=updates)
     f()
     print(old_value.get_value())
+
+def test_condition_hidden_inp():
+    max_value = theano.tensor.scalar("max_value")
+    n_steps = theano.tensor.iscalar("n_steps")
+    def accum(prev_value, step):
+        new_value = prev_value + step
+        new_step = step + 1
+        condition = theano.scan_module.until(new_value > max_value)
+        return [new_value, new_step], condition
+
+    rs, updates = theano.scan(
+        fn=accum,
+        outputs_info=[0, 0],
+        n_steps=n_steps)
+
+    f = theano.function(
+        inputs=[max_value, n_steps],
+        outputs=rs)
+
+    _sum, total_steps = f(100, 100)
