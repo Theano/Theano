@@ -5758,24 +5758,3 @@ def test_mintap_onestep():
     _sum = f(_seq)
     print("sum %f" % _sum)
     assert _sum == 2
-
-def test_mintap_twostep():
-    seq = theano.tensor.fvector("seq")
-    seq_info = dict(input=seq, taps=[2])
-
-    def accum(seq_t, prev_sum):
-        new_sum = prev_sum + seq_t
-        return new_sum
-
-    rs, updates = theano.scan(fn=accum,
-                              sequences=seq_info,
-                              outputs_info=np.float32(0),
-                              n_steps=2)
-
-    f = theano.function(inputs=[seq],
-                        outputs=rs)
-    _seq = np.arange(20).astype("float32")
-    _sum = f(_seq)
-    _sum = _sum[0]
-    print("sum %f" % _sum)
-    assert _sum == 2
