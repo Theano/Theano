@@ -5719,19 +5719,6 @@ class TestGradUntil(unittest.TestCase):
         numpy_grad = numpy_grad.astype(theano.config.floatX)
         utt.assert_allclose(theano_gradient, numpy_grad)
 
-def test_dynamic_hidden_shared():
-    old_value = theano.shared(0)
-    print("old_value %s." % old_value.type)
-    def step_f():
-        new_value = old_value + 1
-        return {old_value : new_value}
-
-    n_steps = 3
-    _, updates = theano.scan(step_f, n_steps=n_steps)
-    f = theano.function(inputs=[], outputs=[], updates=updates)
-    f()
-    print(old_value.get_value())
-
 def test_condition_hidden_inp():
     max_value = theano.tensor.scalar("max_value")
     n_steps = theano.tensor.iscalar("n_steps")
