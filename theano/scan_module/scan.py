@@ -820,6 +820,8 @@ def scan(fn,
 
     # extract still missing inputs (there still might be so) and add them
     # as non sequences at the end of our args
+    if condition is not None:
+        outputs.append(condition)
     fake_nonseqs = [x.type() for x in non_seqs]
     fake_outputs = scan_utils.clone(outputs,
                                     replace=OrderedDict(izip(non_seqs,
@@ -836,8 +838,6 @@ def scan(fn,
     dummy_args += extra_inputs
 
     dummy_outs = outputs
-    if condition is not None:
-        dummy_outs.append(condition)
     # Perform a try-except to provide a meaningful error message to the
     # user if inputs of the inner function are missing.
     try:
