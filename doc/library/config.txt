@@ -433,7 +433,7 @@ import theano and print the config variable, as in:
     Default: ``False``
 
     This makes the compilation use the
-    `amdlibm <http://developer.amd.com/cpu/libraries/libm/>`__
+    `amdlibm <https://developer.amd.com/amd-cpu-libraries/amd-math-library-libm/>`__
     library, which is faster than the standard libm.
 
 .. attribute:: config.gpuarray.preallocate
