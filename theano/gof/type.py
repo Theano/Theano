@@ -613,6 +613,7 @@ if platform.python_implementation() != 'PyPy':
     _cdata_type = ctypes.py_object.from_address(
         ctypes.addressof(ctypes.pythonapi.PyCapsule_Type)).value
 
+
 class _make_cdata(Op):
     __props__ = ('rtype',)
 
