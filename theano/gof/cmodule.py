@@ -1684,7 +1684,10 @@ def std_lib_dirs_and_libs():
     else:
         if platform.python_implementation() == 'PyPy':
             # Assume Linux (note: Ubuntu doesn't ship this .so)
-            libname = "pypy-c"
+            if sys.version_info < (3,):
+                libname = "pypy-c"
+            else:
+                libname = "pypy3-c"
             # Unfortunately the only convention of this .so is that it appears
             # next to the location of the interpreter binary.
             libdir = os.path.dirname(os.path.realpath(sys.executable))
