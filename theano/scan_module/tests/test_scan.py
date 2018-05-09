@@ -5738,3 +5738,23 @@ def test_condition_hidden_inp():
         outputs=rs)
 
     _sum, total_steps = f(100, 100)
+
+def test_mintap_onestep():
+    seq = theano.tensor.ivector("seq")
+    seq_info = dict(input=seq, taps=[2])
+
+    def accum(seq_t, prev_sum):
+        new_sum = prev_sum + seq_t
+        return new_sum
+
+    rs, updates = theano.scan(fn=accum,
+                              sequences=seq_info,
+                              outputs_info=0,
+                              n_steps=1)
+
+    f = theano.function(inputs=[seq],
+                        outputs=rs)
+    _seq = np.arange(20).astype("int32")
+    _sum = f(_seq)
+    print("sum %f" % _sum)
+    assert _sum == 2

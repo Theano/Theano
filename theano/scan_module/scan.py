@@ -490,6 +490,12 @@ def scan(fn,
             # go through the indicated slice
             mintap = np.min(seq['taps'])
             maxtap = np.max(seq['taps'])
+            # We cut the sequence such that seq[i] to correspond to
+            # seq[i-k]. For the purposes of cutting the sequences, we
+            # need to pretend tap 0 is used to avoid cutting the sequences
+            # too long if the taps are all lower or all higher than 0.
+            maxtap_proxy = max(maxtap, 0)
+            mintap_proxy = min(mintap, 0)
             for k in seq['taps']:
                 # create one slice of the input
                 # Later on, if we decide not to use scan because we are
@@ -500,9 +506,9 @@ def scan(fn,
 
                 # If not we need to use copies, that will be replaced at
                 # each frame by the corresponding slice
-                actual_slice = seq['input'][k - mintap]
+                actual_slice = seq['input'][k - mintap_proxy]
                 _seq_val = tensor.as_tensor_variable(seq['input'])
-                _seq_val_slice = _seq_val[k - mintap]
+                _seq_val_slice = _seq_val[k - mintap_proxy]
                 nw_slice = _seq_val_slice.type()
 
                 # Try to transfer test_value to the new variable
@@ -529,12 +535,6 @@ def scan(fn,
                         nw_name = seq['input'].name + '[t%d]' % k
                     nw_slice.name = nw_name
 
-                # We cut the sequence such that seq[i] to correspond to
-                # seq[i-k]. For the purposes of cutting the sequences, we
-                # need to pretend tap 0 is used to avoid cutting the sequences
-                # too long if the taps are all lower or all higher than 0.
-                maxtap_proxy = max(maxtap, 0)
-                mintap_proxy = min(mintap, 0)
                 start = (k - mintap_proxy)
                 nw_name = None
                 if k == maxtap_proxy:
