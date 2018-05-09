@@ -220,6 +220,48 @@ def test_dnn_conv_invalid_precision():
     yield (run_dnn_conv_invalid_precision, 3)
 
 
+def test_dnn_conv_mixed_dtype():
+    mf = T.ftensor4()
+    md = T.dtensor4()
+
+    def assert_types(conv):
+        dt = conv.owner.inputs[0].dtype
+        assert conv.owner.inputs[1].dtype == dt
+        assert conv.owner.inputs[2].dtype == dt
+
+    assert_types(dnn.dnn_conv(md, mf, precision='as_input'))
+    assert_types(dnn.dnn_conv(mf, md, precision='as_input'))
+    assert_types(dnn.dnn_gradweight(mf, md, kerns_shp=mf.shape,
+                                    precision='as_input'))
+    assert_types(dnn.dnn_gradweight(md, mf, kerns_shp=mf.shape,
+                                    precision='as_input'))
+    assert_types(dnn.dnn_gradinput(mf, md, img_shp=mf.shape,
+                                   precision='as_input'))
+    assert_types(dnn.dnn_gradinput(md, mf, img_shp=mf.shape,
+                                   precision='as_input'))
+
+
+def test_dnn_conv3d_mixed_dtype():
+    mf = T.ftensor5()
+    md = T.dtensor5()
+
+    def assert_types(conv):
+        dt = conv.owner.inputs[0].dtype
+        assert conv.owner.inputs[1].dtype == dt
+        assert conv.owner.inputs[2].dtype == dt
+
+    assert_types(dnn.dnn_conv3d(md, mf, precision='as_input'))
+    assert_types(dnn.dnn_conv3d(mf, md, precision='as_input'))
+    assert_types(dnn.dnn_gradweight3d(mf, md, kerns_shp=mf.shape,
+                                      precision='as_input'))
+    assert_types(dnn.dnn_gradweight3d(md, mf, kerns_shp=mf.shape,
+                                      precision='as_input'))
+    assert_types(dnn.dnn_gradinput3d(mf, md, img_shp=mf.shape,
+                                     precision='as_input'))
+    assert_types(dnn.dnn_gradinput3d(md, mf, img_shp=mf.shape,
+                                     precision='as_input'))
+
+
 def test_pooling():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
