@@ -975,7 +975,14 @@ def test_sync_update():
     # disable that parallel computation. Then we assert the time is
     # higher.
 
+    # this import needs to go first because it generates the
+    # local 'theano' variable.  You get an UnboundLocalError otherwise.
     import theano.gpuarray.tests.config
+
+    if theano.config.mode == 'DEBUG_MODE':
+        raise SkipTest("DEBUG_MODE forces synchronous behaviour "
+                       "which breaks this test")
+
     if theano.gpuarray.pygpu_activated:
         sizes = [100, 500, 1000, 2000, 5000, 10000, 20000, 40000]
         size = sizes[0]
@@ -983,7 +990,7 @@ def test_sync_update():
             np.random.rand(size, size).astype('float32'), 'w',
             target=theano.gpuarray.tests.config.test_ctx_name)
         x = theano.gpuarray.gpuarray_shared_constructor(
-            np.random.rand(size, size).astype('float32'), 'w',
+            np.random.rand(size, size).astype('float32'), 'x',
             target=theano.gpuarray.tests.config.test_ctx_name)
 
         updates = [(w, w + np.asarray(0.001, 'float32') * T.dot(x, x))]
