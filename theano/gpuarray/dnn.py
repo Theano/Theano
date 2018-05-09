@@ -947,10 +947,14 @@ def _dnn_conv(img, kerns, alpha=1, beta=0, out=None, border_mode='valid', subsam
               conv_mode='conv', algo=None, precision=None, num_groups=1):
     ctx_name = infer_context_name(img, kerns)
 
-    img = gpu_contiguous(as_gpuarray_variable(img, ctx_name))
-    kerns = gpu_contiguous(as_gpuarray_variable(kerns, ctx_name))
+    img = as_gpuarray_variable(img, ctx_name)
+    kerns = as_gpuarray_variable(kerns, ctx_name)
 
     precision = get_precision(precision, [img, kerns])
+
+    img = gpu_contiguous(img.astype(precision))
+    kerns = gpu_contiguous(kerns.astype(precision))
+
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns.shape)
     desc_op = desc.owner.op
@@ -974,11 +978,15 @@ def _dnn_gradweight(img, topgrad, kerns_shp, alpha=1, beta=0, out=None, border_m
                     dilation=(1, 1), conv_mode='conv', algo=None, precision=None, num_groups=1):
     ctx_name = infer_context_name(img, topgrad)
 
-    img = gpu_contiguous(as_gpuarray_variable(img, ctx_name))
-    topgrad = gpu_contiguous(as_gpuarray_variable(topgrad, ctx_name))
+    img = as_gpuarray_variable(img, ctx_name)
+    topgrad = as_gpuarray_variable(topgrad, ctx_name)
     kerns_shp = theano.tensor.as_tensor_variable(kerns_shp)
 
     precision = get_precision(precision, [img, topgrad], for_grad=True)
+
+    img = gpu_contiguous(img.astype(precision))
+    topgrad = gpu_contiguous(topgrad.astype(precision))
+
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns_shp)
     if beta == 0:
@@ -995,11 +1003,15 @@ def _dnn_gradinput(kerns, topgrad, img_shp, alpha=1, beta=0, out=None, border_mo
                    dilation=(1, 1), conv_mode='conv', algo=None, precision=None, num_groups=1):
     ctx_name = infer_context_name(kerns, topgrad)
 
-    kerns = gpu_contiguous(as_gpuarray_variable(kerns, ctx_name))
-    topgrad = gpu_contiguous(as_gpuarray_variable(topgrad, ctx_name))
+    kerns = as_gpuarray_variable(kerns, ctx_name)
+    topgrad = as_gpuarray_variable(topgrad, ctx_name)
     img_shp = theano.tensor.as_tensor_variable(img_shp)
 
     precision = get_precision(precision, [kerns, topgrad], for_grad=True)
+
+    kerns = gpu_contiguous(kerns.astype(precision))
+    topgrad = gpu_contiguous(topgrad.astype(precision))
+
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns.shape)
     if beta == 0:
