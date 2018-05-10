@@ -1404,13 +1404,23 @@ def default_blas_ldflags():
                 thr = 'mkl_gnu_thread'
             else:
                 thr = 'mkl_intel_thread'
+            base_flags = list(flags)
             flags += ['-l%s' % l for l in ["mkl_core",
                                            thr,
                                            "mkl_rt"]]
             res = try_blas_flag(flags)
+
+            if not res and sys.platform == "win32" and thr == "mkl_gnu_thread":
+                # Check if it would work for intel OpenMP on windows
+                flags = base_flags + ['-l%s' % l for l in ["mkl_core",
+                                                           'mkl_intel_thread',
+                                                           "mkl_rt"]]
+                res = try_blas_flag(flags)
+
             if res:
                 check_mkl_openmp()
                 return res
+
             flags.extend(['-Wl,-rpath,' + l for l in
                           blas_info.get('library_dirs', [])])
             res = try_blas_flag(flags)
