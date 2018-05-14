@@ -1029,7 +1029,7 @@ class test_csm(unittest.TestCase):
                 z = tensor.ivector()
                 s = tensor.ivector()
                 # Sparse advanced indexing produces unsorted sparse matrices
-                a = sparse_random_inputs(format, (4, 3), out_dtype=dtype,
+                a = sparse_random_inputs(format, (8, 6), out_dtype=dtype,
                                          unsorted_indices=True)[1][0]
                 # Make sure it's unsorted
                 assert not a.has_sorted_indices
