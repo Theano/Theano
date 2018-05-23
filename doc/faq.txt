@@ -97,8 +97,8 @@ correct shape. The shape could change if the shapes of the inputs change.
 
 .. note::
 
-   With :attr:`CNMeM <config.lib.cnmem>`, this isn't very useful with GPU
-   anymore.
+   With :attr:`preallocate <config.gpuarray.preallocate>`, this isn't
+   very useful with GPU anymore.
 
 .. _unsafe_optimization:
 
@@ -177,8 +177,6 @@ New GPU backend using libgpuarray
 ---------------------------------
 
 The new theano GPU backend (:ref:`gpuarray`) uses ``config.gpuarray.preallocate`` for GPU memory allocation. 
-
-Likewise, the old back-end uses ``config.lib.cnmem`` for GPU memory allocation. 
 
 Related Projects
 ----------------
