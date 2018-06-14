@@ -273,7 +273,7 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                 time.sleep(random.uniform(min_wait, max_wait))
 
             if PY3:
-                exception = FileExistsError
+                exception = FileExistsError  # noqa
             else:
                 exception = OSError
 
