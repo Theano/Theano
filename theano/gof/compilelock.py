@@ -7,6 +7,7 @@ import os
 import socket  # only used for gethostname()
 import time
 import logging
+from six import PY3
 
 from contextlib import contextmanager
 
@@ -271,9 +272,14 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                 nb_wait += 1
                 time.sleep(random.uniform(min_wait, max_wait))
 
+            if PY3:
+                exception = FileExistsError  # noqa
+            else:
+                exception = OSError
+
             try:
                 os.mkdir(tmp_dir)
-            except OSError:
+            except exception:
                 # Error while creating the directory: someone else
                 # must have tried at the exact same time.
                 nb_error += 1
