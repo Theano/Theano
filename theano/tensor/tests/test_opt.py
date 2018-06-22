@@ -266,6 +266,11 @@ def test_add_canonizer_problem0():
     f = function([label], r)
     f(3)
 
+    # This was crashing in the past.
+    c0 = theano.tensor.constant([True])
+    c1 = theano.tensor.constant([True])
+    theano.function([], c0 + c1)
+
 
 class test_greedy_distribute(unittest.TestCase):
     def test_main(self):

@@ -6325,7 +6325,16 @@ def add_calculate(num, denum, aslist=False, out_type=None):
         zero = theano._asarray(0, dtype=out_type.dtype)
     # zero = 0.0 if out_type is None else theano._asarray(0,
     # dtype=out_type.dtype)
-    v = reduce(np.add, num, zero) - reduce(np.add, denum, zero)
+    if out_type and out_type.dtype == 'bool':
+        if len(denum) == 0:
+            # NumPy 1.14 do not accept to do "bool - bool"
+            v = reduce(np.add, num, zero)
+        else:
+            raise Exception(
+                "bool subtraction not supported. This should not happen as"
+                " an earlier error should have been raised")
+    else:
+        v = reduce(np.add, num, zero) - reduce(np.add, denum, zero)
     if aslist:
         if np.all(v == 0):
             return []
