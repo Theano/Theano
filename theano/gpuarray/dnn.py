@@ -3389,7 +3389,7 @@ def local_abstractconv3d_cudnn_alt(node):
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
     num_groups = node.op.num_groups
-    precision = get_precision(None, [inp1, inp2])
+    precision, _ = get_precision(None, [inp1, inp2])
 
     if node.op.filter_flip:
         conv_mode = 'conv'
