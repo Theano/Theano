@@ -295,8 +295,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         out = g1.eval({
             x: np.ones((5,), dtype=np.float32),
             y: np.ones((5,), dtype=np.float32)})
-        assert np.allclose(out, [1.] *5)
-            # array([ 1.,  1.,  1.,  1.,  1.])
+        assert np.allclose(out, [1.] * 5)
 
     @test_params
     def test_nested(self, cls_ofg):
