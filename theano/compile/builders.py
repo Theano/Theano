@@ -105,6 +105,11 @@ class OpFromGraph(gof.Op):
         :class:`Variable <theano.gof.Variable>`. Each list element corresponds
         to a specific output of R_op, length of list must be equal to number of outputs.
 
+    connection_pattern : list of list
+
+        If not ``None``, this will be used as the connection_pattern
+        for this op.
+
     name : string, optional
         A name for debugging purposes
 
@@ -248,6 +253,7 @@ class OpFromGraph(gof.Op):
         lop_overrides='default',
         grad_overrides='default',
         rop_overrides='default',
+        connection_pattern=None,
         name=None, **kwargs
     ):
         if not isinstance(outputs, list):
@@ -297,6 +303,8 @@ class OpFromGraph(gof.Op):
             self.set_lop_overrides('default')
             self._lop_type = 'lop'
         self.set_rop_overrides(rop_overrides)
+
+        self._connection_pattern = connection_pattern
 
         if name is not None:
             assert isinstance(name, str), 'name must be None or string object'
@@ -637,6 +645,9 @@ class OpFromGraph(gof.Op):
         Return connection pattern of subfgraph defined by inputs and outputs.
 
         """
+        if self._connection_pattern is not None:
+            return self._connection_pattern
+
         inp_len = len(self.local_inputs)
         out_len = len(self.local_outputs)
         cpmat_self = io_connection_pattern(
