@@ -71,6 +71,5 @@ Further readings
     ../extending/graphstructures 
     loading_and_saving
     aliasing
-    python-memory-management
     multi_cores
     faq_tutorial
