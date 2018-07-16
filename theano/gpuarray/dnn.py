@@ -345,7 +345,7 @@ cudnn = cudnn_defs.get_definitions(version(raises=False))
 def get_precision(precision, inputs, for_grad=False):
     common_dtype = theano.scalar.upcast(*[i.dtype for i in inputs])
     if not common_dtype.startswith('float'):
-        raise TypeError("cuDNN convolution only works on floats")
+        raise TypeError("cuDNN convolution only works on real numbers")
 
     if precision is None:
         precision = theano.config.dnn.conv.precision
