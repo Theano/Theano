@@ -2936,3 +2936,14 @@ def test_conv_guess_once_with_dtypes():
     f_pseudo_half_config()
     f_float_config()
     f_double_config()
+
+
+def test_opt_f16_prec32():
+    inputs = T.TensorType('float16', (False,) * 4)()
+    filters = T.TensorType('float16', (False,) * 4)()
+    conv = T.nnet.conv2d(inputs, filters)
+
+    gfilt = theano.grad(conv.sum(), filters)
+
+    # If this compiles we are good
+    theano.function([inputs, filters], [conv, gfilt], mode=mode_with_gpu)

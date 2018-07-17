@@ -343,17 +343,20 @@ cudnn = cudnn_defs.get_definitions(version(raises=False))
 
 
 def get_precision(precision, inputs, for_grad=False):
+    common_dtype = theano.scalar.upcast(*[i.dtype for i in inputs])
+    if not common_dtype.startswith('float'):
+        raise TypeError("cuDNN convolution only works on real numbers")
+
     if precision is None:
         precision = theano.config.dnn.conv.precision
     if precision == 'as_input' or precision == 'as_input_f32':
-        nprec = theano.scalar.upcast(*[i.dtype for i in inputs])
-        if nprec == 'float16' and precision == 'as_input_f32':
+        if common_dtype == 'float16' and precision == 'as_input_f32':
             precision = 'float32'
         else:
-            precision = nprec
+            precision = common_dtype
     if for_grad and precision == 'float16':
         raise TypeError("Float16 precision is disabled for cuDNN backward convolutions due to computation errors.")
-    return precision
+    return precision, common_dtype
 
 
 class DnnBase(COp):
@@ -950,10 +953,10 @@ def _dnn_conv(img, kerns, alpha=1, beta=0, out=None, border_mode='valid', subsam
     img = as_gpuarray_variable(img, ctx_name)
     kerns = as_gpuarray_variable(kerns, ctx_name)
 
-    precision = get_precision(precision, [img, kerns])
+    precision, dt = get_precision(precision, [img, kerns])
 
-    img = gpu_contiguous(img.astype(precision))
-    kerns = gpu_contiguous(kerns.astype(precision))
+    img = gpu_contiguous(img.astype(dt))
+    kerns = gpu_contiguous(kerns.astype(dt))
 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns.shape)
@@ -982,10 +985,10 @@ def _dnn_gradweight(img, topgrad, kerns_shp, alpha=1, beta=0, out=None, border_m
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
     kerns_shp = theano.tensor.as_tensor_variable(kerns_shp)
 
-    precision = get_precision(precision, [img, topgrad], for_grad=True)
+    precision, dt = get_precision(precision, [img, topgrad], for_grad=True)
 
-    img = gpu_contiguous(img.astype(precision))
-    topgrad = gpu_contiguous(topgrad.astype(precision))
+    img = gpu_contiguous(img.astype(dt))
+    topgrad = gpu_contiguous(topgrad.astype(dt))
 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns_shp)
@@ -1007,10 +1010,10 @@ def _dnn_gradinput(kerns, topgrad, img_shp, alpha=1, beta=0, out=None, border_mo
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
     img_shp = theano.tensor.as_tensor_variable(img_shp)
 
-    precision = get_precision(precision, [kerns, topgrad], for_grad=True)
+    precision, dt = get_precision(precision, [kerns, topgrad], for_grad=True)
 
-    kerns = gpu_contiguous(kerns.astype(precision))
-    topgrad = gpu_contiguous(topgrad.astype(precision))
+    kerns = gpu_contiguous(kerns.astype(dt))
+    topgrad = gpu_contiguous(topgrad.astype(dt))
 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample, dilation=dilation,
                           conv_mode=conv_mode, precision=precision, num_groups=num_groups)(kerns.shape)
@@ -1103,7 +1106,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                    shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1)
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
-        precision = get_precision(precision, [img, kerns], for_grad=True)
+        precision, _ = get_precision(precision, [img, kerns], for_grad=True)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                               conv_mode='cross', precision=precision)(out.shape)
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
@@ -1123,7 +1126,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1), dilation=(1, 1),
                    shape_i(img, 3, fgraph) + (shape_i(kerns, 3, fgraph) - 1) * dilation[1])
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
-        precision = get_precision(precision, [img, kerns], for_grad=True)
+        precision, _ = get_precision(precision, [img, kerns], for_grad=True)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1), dilation=dilation,
                               conv_mode=conv_mode, precision=precision)(kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
@@ -1208,7 +1211,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
                    shape_i(img, 4, fgraph) - shape_i(kerns, 4, fgraph) + 1)
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
-        precision = get_precision(precision, [img, kerns], for_grad=True)
+        precision, _ = get_precision(precision, [img, kerns], for_grad=True)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1), dilation=(1, 1, 1),
                               conv_mode='cross', precision=precision)(out.shape)
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
@@ -1229,7 +1232,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1), dilation=(1
                    shape_i(img, 4, fgraph) + (shape_i(kerns, 4, fgraph) - 1) * dilation[2])
         out_shp = assert_conv_shape(out_shp)
         out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*out_shp)
-        precision = get_precision(precision, [img, kerns], for_grad=True)
+        precision, _ = get_precision(precision, [img, kerns], for_grad=True)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1), dilation=dilation,
                               conv_mode=conv_mode, precision=precision)(kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
@@ -3280,7 +3283,7 @@ def local_abstractconv_cudnn_alt(node):
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
     num_groups = node.op.num_groups
-    precision = get_precision(None, [inp1, inp2])
+    precision, _ = get_precision(None, [inp1, inp2])
 
     if node.op.filter_flip:
         conv_mode = 'conv'
@@ -3386,7 +3389,7 @@ def local_abstractconv3d_cudnn_alt(node):
     subsample = node.op.subsample
     filter_dilation = node.op.filter_dilation
     num_groups = node.op.num_groups
-    precision = get_precision(None, [inp1, inp2])
+    precision, _ = get_precision(None, [inp1, inp2])
 
     if node.op.filter_flip:
         conv_mode = 'conv'
