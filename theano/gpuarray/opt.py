@@ -1126,7 +1126,8 @@ def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
         ret = GpuDimShuffle(ret.type.broadcastable, [0])(ret)
         return ret
     elif (x.ndim != 2 or y.ndim != 2 or
-            config.deterministic == 'more'):
+          config.deterministic == 'more' or
+          x.dtype in ('int8', 'int16')):
         return GpuAdvancedIncSubtensor1(
             set_instead_of_inc=set_instead_of_inc)
     else:
