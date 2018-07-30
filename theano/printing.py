@@ -163,7 +163,7 @@ def debugprint(obj, depth=-1, print_type=False,
             topo = obj.toposort()
             order.extend([topo for item in obj.outputs])
         elif isinstance(obj, (integer_types, float, np.ndarray)):
-            print(obj)
+            print(obj, file=_file)
         elif isinstance(obj, (theano.In, theano.Out)):
             results_to_print.append(obj.variable)
             profile_list.append(None)
