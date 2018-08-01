@@ -1118,7 +1118,8 @@ def local_gpua_advanced_incsubtensor1(op, context_name, inputs, outputs):
     set_instead_of_inc = op.set_instead_of_inc
 
     if (x.ndim == 1 and y.ndim == 0 and
-            config.deterministic == 'default'):
+        config.deterministic == 'default' and
+            x.dtype not in ('int8', 'int16')):
         x = x.dimshuffle(0, 'x')
         y = y.dimshuffle('x', 'x')
         ret = GpuAdvancedIncSubtensor1_dev20(
