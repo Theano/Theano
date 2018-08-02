@@ -155,7 +155,8 @@ def test_advinc_subtensor1_vector_scalar():
     shp = (3,)
     for dtype1, dtype2 in [('float32', 'int8'), ('float32', 'float64'),
                            ('float16', 'int8'), ('float16', 'float64'),
-                           ('float16', 'float16')]:
+                           ('float16', 'float16'), ('int8', 'int8'),
+                           ('int16', 'int16')]:
         shared = gpuarray_shared_constructor
         xval = np.arange(np.prod(shp), dtype=dtype1).reshape(shp) + 1
         yval = np.asarray(10, dtype=dtype2)
