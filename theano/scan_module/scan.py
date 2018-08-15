@@ -102,7 +102,7 @@ def scan(fn,
         * ...
         * all time slices of the last sequence
         * all past slices of the first output
-        * all past slices of the second otuput
+        * all past slices of the second output
         * ...
         * all past slices of the last output
         * all other arguments (the list given as `non_sequences` to
