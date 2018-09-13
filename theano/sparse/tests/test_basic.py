@@ -478,8 +478,8 @@ class SparseInferShapeTester(utt.InferShapeTester):
                 x = tensor.matrix()
             if isinstance(y, sparse.SparseVariable):
                 y = tensor.matrix()
-	    dense_out = tensor.dot(x, y)
-	    assert dense_out.broadcastable == sparse_out.broadcastable
+            dense_out = tensor.dot(x, y)
+            assert dense_out.broadcastable == sparse_out.broadcastable
 
     def test_structured_dot(self):
         x = SparseType('csc', dtype=config.floatX)()
