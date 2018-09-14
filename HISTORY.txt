@@ -5,6 +5,39 @@
 Old Release Notes
 =================
 
+Theano 1.0.2 (23rd of May, 2018)
+====================================
+
+This is a maintenance release of Theano, version ``1.0.2``, with no
+new features, but some important bug fixes.
+
+We recommend that everybody update to this version.
+
+Highlights (since 1.0.1):
+
+ - Theano should work under PyPy now (this is experimental).
+ - Update for cuDNN 7.1 RNN API changes.
+ - Fix for a crash related to mixed dtypes with cuDNN convolutions.
+ - MAGMA should work in more cases without manual config.
+ - Handle reductions with non-default accumulator dtype better on the GPU.
+ - Improvements to the test suite so that it fails less often due to
+   random chance.
+
+A total of 6 people contributed to this release since ``1.0.1``:
+
+ - Frederic Bastien
+ - Steven Bocco
+ - Jon Haygood
+ - Arnaud Bergeron
+ - Jordan Melendez
+ - Desiree Vogt-Lee
+ - Garming Sam
+ - Pascal Lamblin
+ - Vincent Dumoulin
+ - Glexin
+ - Simon Lefrancois
+
+
 Theano 1.0.1 (6th of December, 2017)
 ====================================
 
