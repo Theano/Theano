@@ -464,6 +464,23 @@ class SparseInferShapeTester(utt.InferShapeTester):
                                config.floatX, 3))],
                 Dot)
 
+    def test_dot_broadcast(self):
+        for x, y in [
+                (SparseType('csr', 'float32')(), tensor.vector()[:, None]),
+                (SparseType('csr', 'float32')(), tensor.vector()[None, :]),
+                (SparseType('csr', 'float32')(), tensor.matrix()),
+                (tensor.vector()[:, None], SparseType('csr', 'float32')()),
+                (tensor.vector()[None, :], SparseType('csr', 'float32')()),
+                (tensor.matrix(), SparseType('csr', 'float32')())]:
+
+            sparse_out = theano.dot(x, y)
+            if isinstance(x, sparse.SparseVariable):
+                x = tensor.matrix()
+            if isinstance(y, sparse.SparseVariable):
+                y = tensor.matrix()
+            dense_out = tensor.dot(x, y)
+            assert dense_out.broadcastable == sparse_out.broadcastable
+
     def test_structured_dot(self):
         x = SparseType('csc', dtype=config.floatX)()
         y = SparseType('csc', dtype=config.floatX)()
