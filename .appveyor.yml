@@ -10,7 +10,7 @@ clone_folder: C:\projects\theano
 
 environment:
   BINSTAR_TOKEN:
-    secure: 58KqJcKtfCBVCuIzpnkLm4XZLQqKq95Hs8Ly20HWaMSla67nusrp3y4sy6XzZOBQ
+    secure: Z4ZN29hd1UKw4qUwSlpFk+58Ssa+DfIKSGhN3Wr5uOAsP3dCXrNDl5+ipVdzADFn
   CONDA_LOC: "C:\\Miniconda-x64"
   MKL_THREADING_LAYER: GNU
 
