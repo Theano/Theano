@@ -1116,34 +1116,47 @@ class Unique(theano.Op):
     >>> import theano
 
     >>> x = theano.tensor.vector()
-    >>> f = theano.function([x], Unique(True, True, False)(x))
+    >>> f = theano.function([x], Unique(True, True, False, False)(x))
     >>> f([1, 2., 3, 4, 3, 2, 1.])
     [array([ 1.,  2.,  3.,  4.]), array([0, 1, 2, 3]), array([0, 1, 2, 3, 2, 1, 0])]
 
     >>> y = theano.tensor.matrix()
-    >>> g = theano.function([y], Unique(True, True, False)(y))
+    >>> g = theano.function([y], Unique(True, True, False, False)(y))
     >>> g([[1, 1, 1.0], (2, 3, 3.0)])
     [array([ 1.,  2.,  3.]), array([0, 3, 4]), array([0, 0, 0, 1, 2, 2])]
 
     """
 
-    __props__ = ("return_index", "return_inverse", "return_counts")
+    __props__ = ("return_index", "return_inverse", "return_counts",
+                 "axis")
 
     def __init__(self, return_index=False, return_inverse=False,
-                 return_counts=False):
+                 return_counts=False, axis=None):
         self.return_index = return_index
         self.return_inverse = return_inverse
         self.return_counts = return_counts
+        self.axis = axis
         numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
         if self.return_counts and bool(numpy_ver < [1, 9]):
             raise RuntimeError(
                 "Numpy version = " + np.__version__ +
                 ". Option 'return_counts=True' works starting"
                 " from version 1.9.0.")
+        if self.axis is not None and bool(numpy_ver < [1, 13]):
+            raise RuntimeError(
+                "Numpy version = " + np.__version__ +
+                ". Option 'axis={}' works starting"
+                " from version 1.13.0.".format(axis))
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
-        outputs = [basic.TensorType(broadcastable=[False], dtype=x.dtype)()]
+        if self.axis is None:
+            broadcastable = [False]
+        else:
+            broadcastable = [b if axis != self.axis else False
+                             for axis, b in enumerate(x.broadcastable)]
+        outputs = [basic.TensorType(broadcastable=broadcastable,
+                                    dtype=x.dtype)()]
         typ = basic.TensorType(broadcastable=[False], dtype='int64')
         if self.return_index:
             outputs.append(typ())
@@ -1163,6 +1176,8 @@ class Unique(theano.Op):
             param['return_inverse'] = True
         if self.return_counts:
             param['return_counts'] = True
+        if self.axis is not None:
+            param['axis'] = self.axis
         outs = np.unique(x, **param)
         if ((not self.return_inverse) and
                 (not self.return_index) and
