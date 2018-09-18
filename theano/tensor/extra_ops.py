@@ -1116,14 +1116,23 @@ class Unique(theano.Op):
     >>> import theano
 
     >>> x = theano.tensor.vector()
-    >>> f = theano.function([x], Unique(True, True, False, False)(x))
+    >>> f = theano.function([x], Unique(True, True, False, None)(x))
     >>> f([1, 2., 3, 4, 3, 2, 1.])
     [array([ 1.,  2.,  3.,  4.]), array([0, 1, 2, 3]), array([0, 1, 2, 3, 2, 1, 0])]
 
     >>> y = theano.tensor.matrix()
-    >>> g = theano.function([y], Unique(True, True, False, False)(y))
+    >>> g = theano.function([y], Unique(True, True, False, None)(y))
     >>> g([[1, 1, 1.0], (2, 3, 3.0)])
     [array([ 1.,  2.,  3.]), array([0, 3, 4]), array([0, 0, 0, 1, 2, 2])]
+
+    >>> z = theano.tensor.matrix()
+    >>> h1 = theano.function([y], Unique(True, True, True, 0)(z))
+    >>> h1([[[0, 1, 1], [0, 1, 1]], [[0, 1, 1], [0, 1, 1]], [[0, 0, 0], [0, 1, 1]], [[3, 2, 0], [0, 1, 1]]])
+    [array([[[0., 0., 0.], [0., 1., 1.]], [[0., 1., 1.], [0., 1., 1.]], [[3., 2., 0.], [0., 1., 1.]]]), array([2, 0, 3]), array([1, 1, 0, 2]), array([1, 2, 1])]
+
+    >>> h2 = theano.function([y], Unique(True, True, True, None)(z))
+    >>> h2([[[0, 1, 1], [0, 1, 1]], [[0, 1, 1], [0, 1, 1]], [[0, 0, 0], [0, 1, 1]], [[3, 2, 0], [0, 1, 1]]])
+    [array([0., 1., 2., 3.]), array([ 0,  1, 19, 18]), array([0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 3, 2, 0, 0, 1, 1]), array([10, 12,  1,  1])]
 
     """
 
