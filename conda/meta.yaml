@@ -19,7 +19,7 @@ requirements:
     - libpython >=2.0  [win]
     - m2w64-toolchain  [win]
     - six >=1.9.0
-    - numpy >=1.9.1
+    - numpy >=1.13.0
     - scipy >=0.14.0
     - {{ pin_compatible('pygpu', '0.7', max_pin='0.8') }}   # [not osx]
 

@@ -98,7 +98,7 @@ def do_setup():
           platforms=PLATFORMS,
           packages=find_packages(),
           cmdclass=versioneer.get_cmdclass(),
-          install_requires=['numpy>=1.9.1', 'scipy>=0.14', 'six>=1.9.0'],
+          install_requires=['numpy>=1.13.0', 'scipy>=0.14', 'six>=1.9.0'],
           # pygments is a dependency for Sphinx code highlight
           extras_require={
               'test': ['nose>=1.3.0', 'parameterized', 'flake8'],

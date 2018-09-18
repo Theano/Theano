@@ -1159,10 +1159,18 @@ class Unique(theano.Op):
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
-        if self.axis is None:
+        self_axis = self.axis
+        if self_axis is None:
             broadcastable = [False]
         else:
-            broadcastable = [b if axis != self.axis else False
+            if self_axis < 0:
+                self_axis += len(x.broadcastable)
+            if self_axis < 0 or self_axis >= len(x.broadcastable):
+                raise RuntimeError(
+                        "Unique axis `{}` is outside of input ndim = "
+                        "{}.".format(self.axis, len(x.broadcastable))
+                        )
+            broadcastable = [b if axis != self_axis else False
                              for axis, b in enumerate(x.broadcastable)]
         outputs = [basic.TensorType(broadcastable=broadcastable,
                                     dtype=x.dtype)()]
@@ -1198,8 +1206,24 @@ class Unique(theano.Op):
 
     def infer_shape(self, node, i0_shapes):
         ret = node.fgraph.shape_feature.default_infer_shape(node, i0_shapes)
+        if self.axis is not None:
+            self_axis = self.axis
+            ndim = len(i0_shapes[0])
+            if self_axis < 0:
+                self_axis += ndim
+            if self_axis < 0 or self_axis >= ndim:
+                raise RuntimeError(
+                        "Unique axis `{}` is outside of input ndim = "
+                        "{}.".format(self.axis, ndim)
+                        )
+            ret[0] = tuple([node.fgraph.shape_feature.shape_ir(i,
+                                                               node.outputs[0])
+                            for i in xrange(ndim)])
         if self.return_inverse:
-            shape = (basic.prod(i0_shapes[0]), )
+            if self.axis is None:
+                shape = (basic.prod(i0_shapes[0]), )
+            else:
+                shape = (i0_shapes[0][self_axis], )
             if self.return_index:
                 ret[2] = shape
                 return ret

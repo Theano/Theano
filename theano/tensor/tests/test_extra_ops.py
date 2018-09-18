@@ -677,7 +677,23 @@ class test_Unique(utt.InferShapeTester):
                     Unique(False, False, True),
                     Unique(True, False, True),
                     Unique(False, True, True),
-                    Unique(True, True, True)]
+                    Unique(True, True, True),
+                    Unique(axis=0),
+                    Unique(True, axis=0),
+                    Unique(False, True, axis=0),
+                    Unique(True, True, axis=0),
+                    Unique(False, False, True, axis=0),
+                    Unique(True, False, True, axis=0),
+                    Unique(False, True, True, axis=0),
+                    Unique(True, True, True, axis=0),
+                    Unique(axis=-1),
+                    Unique(True, axis=-1),
+                    Unique(False, True, axis=-1),
+                    Unique(True, True, axis=-1),
+                    Unique(False, False, True, axis=-1),
+                    Unique(True, False, True, axis=-1),
+                    Unique(False, True, True, axis=-1),
+                    Unique(True, True, True, axis=-1)]
 
     def test_basic_vector(self):
         # Basic test for a vector.
@@ -692,7 +708,23 @@ class test_Unique(utt.InferShapeTester):
                               np.unique(inp, False, False, True),
                               np.unique(inp, True, False, True),
                               np.unique(inp, False, True, True),
-                              np.unique(inp, True, True, True)]
+                              np.unique(inp, True, True, True),
+                              [np.unique(inp, axis=0)],
+                              np.unique(inp, True, axis=0),
+                              np.unique(inp, False, True, axis=0),
+                              np.unique(inp, True, True, axis=0),
+                              np.unique(inp, False, False, True, axis=0),
+                              np.unique(inp, True, False, True, axis=0),
+                              np.unique(inp, False, True, True, axis=0),
+                              np.unique(inp, True, True, True, axis=0),
+                              [np.unique(inp, axis=-1)],
+                              np.unique(inp, True, axis=-1),
+                              np.unique(inp, False, True, axis=-1),
+                              np.unique(inp, True, True, axis=-1),
+                              np.unique(inp, False, False, True, axis=-1),
+                              np.unique(inp, True, False, True, axis=-1),
+                              np.unique(inp, False, True, True, axis=-1),
+                              np.unique(inp, True, True, True, axis=-1)]
         for op, outs_expected in zip(self.ops, list_outs_expected):
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)
@@ -705,7 +737,7 @@ class test_Unique(utt.InferShapeTester):
         # Done by using the op and checking that it returns the right answer.
 
         x = theano.tensor.matrix()
-        inp = np.asarray([[2, 1], [3, 2], [2, 3]], dtype=config.floatX)
+        inp = np.asarray([[2, 1], [3, 2], [2, 1]], dtype=config.floatX)
         list_outs_expected = [[np.unique(inp)],
                               np.unique(inp, True),
                               np.unique(inp, False, True),
@@ -713,7 +745,23 @@ class test_Unique(utt.InferShapeTester):
                               np.unique(inp, False, False, True),
                               np.unique(inp, True, False, True),
                               np.unique(inp, False, True, True),
-                              np.unique(inp, True, True, True)]
+                              np.unique(inp, True, True, True),
+                              [np.unique(inp, axis=0)],
+                              np.unique(inp, True, axis=0),
+                              np.unique(inp, False, True, axis=0),
+                              np.unique(inp, True, True, axis=0),
+                              np.unique(inp, False, False, True, axis=0),
+                              np.unique(inp, True, False, True, axis=0),
+                              np.unique(inp, False, True, True, axis=0),
+                              np.unique(inp, True, True, True, axis=0),
+                              [np.unique(inp, axis=-1)],
+                              np.unique(inp, True, axis=-1),
+                              np.unique(inp, False, True, axis=-1),
+                              np.unique(inp, True, True, axis=-1),
+                              np.unique(inp, False, False, True, axis=-1),
+                              np.unique(inp, True, False, True, axis=-1),
+                              np.unique(inp, False, True, True, axis=-1),
+                              np.unique(inp, True, True, True, axis=-1)]
         for op, outs_expected in zip(self.ops, list_outs_expected):
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)
