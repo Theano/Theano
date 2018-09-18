@@ -39,7 +39,7 @@ install:
   - pip install flake8-future-import parameterized sphinx_rtd_theme
   # nose-exclude plugin allow us to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
   - pip install nose-exclude nose-timer
-  - conda install --yes -q scipy=0.14.0  # Try to reinstall it to fix the problem
+  - conda install --yes -q scipy=0.19.1  # Try to reinstall it to fix the problem
 
 jobs:
   include:
