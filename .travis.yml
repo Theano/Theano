@@ -156,6 +156,7 @@ script:
   - if [[ $FAST_COMPILE == "1" ]]; then export THEANO_FLAGS=$THEANO_FLAGS,mode=FAST_COMPILE; fi
   - if [[ $FLOAT32 == "1" ]]; then export THEANO_FLAGS=$THEANO_FLAGS,floatX=float32; fi
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
+  - export MKL_THREADING_LAYER=GNU
   - export MKL_NUM_THREADS=1
   - export OMP_NUM_THREADS=1
   - python --version
