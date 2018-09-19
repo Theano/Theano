@@ -110,7 +110,6 @@ jobs:
     - <<: *normaltest
       python: "3.4"
       env: NUMPY_VERSION=1.9.1 FAST_COMPILE=1 PART="theano/tensor/signal"
-    - <<: *normaltest
 
 script:
   - if [[ $FAST_COMPILE == "1" ]]; then export THEANO_FLAGS=$THEANO_FLAGS,mode=FAST_COMPILE; fi
