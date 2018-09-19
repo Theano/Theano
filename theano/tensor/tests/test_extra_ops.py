@@ -792,7 +792,9 @@ class test_Unique_axis(utt.InferShapeTester):
                 self.assertTrue(isinstance(op, self.op_class))
         else:
             for args, kwargs in self.ops_pars:
-                self.assertRaises(RuntimeError, self.op_class(*args, **kwargs))
+                def func():
+                    return self.op_class(*args, **kwargs)
+                self.assertRaises(RuntimeError, func)
 
     def test_basic_vector(self):
         if self.expect_success:
