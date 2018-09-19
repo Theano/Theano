@@ -1165,9 +1165,9 @@ class Unique(theano.Op):
                 self_axis += len(x.broadcastable)
             if self_axis < 0 or self_axis >= len(x.broadcastable):
                 raise RuntimeError(
-                        "Unique axis `{}` is outside of input ndim = "
-                        "{}.".format(self.axis, len(x.broadcastable))
-                        )
+                    "Unique axis `{}` is outside of input ndim = "
+                    "{}.".format(self.axis, len(x.broadcastable))
+                    )
             broadcastable = [b if axis != self_axis else False
                              for axis, b in enumerate(x.broadcastable)]
         outputs = [basic.TensorType(broadcastable=broadcastable,
@@ -1211,9 +1211,9 @@ class Unique(theano.Op):
                 self_axis += ndim
             if self_axis < 0 or self_axis >= ndim:
                 raise RuntimeError(
-                        "Unique axis `{}` is outside of input ndim = "
-                        "{}.".format(self.axis, ndim)
-                        )
+                    "Unique axis `{}` is outside of input ndim = "
+                    "{}.".format(self.axis, ndim)
+                    )
             ret[0] = tuple([node.fgraph.shape_feature.shape_ir(i,
                                                                node.outputs[0])
                             for i in xrange(ndim)])
