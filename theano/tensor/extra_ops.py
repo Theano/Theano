@@ -1125,13 +1125,16 @@ class Unique(theano.Op):
     >>> g([[1, 1, 1.0], (2, 3, 3.0)])
     [array([ 1.,  2.,  3.]), array([0, 3, 4]), array([0, 0, 0, 1, 2, 2])]
 
-    >>> z = theano.tensor.matrix()
-    >>> h1 = theano.function([z], Unique(True, True, True, 0)(z))
-    >>> h1([[[0, 1, 1], [0, 1, 1]], [[0, 1, 1], [0, 1, 1]], [[0, 0, 0], [0, 1, 1]], [[3, 2, 0], [0, 1, 1]]])
+    >>> numpy_ver = tuple([int(n) for n in np.__version__.split('.')])
+    >>> if numpy_ver >= (1, 13):
+    >>>     z = theano.tensor.matrix()
+    >>>     h1 = theano.function([z], Unique(True, True, True, 0)(z))
+    >>>     h1([[[0, 1, 1], [0, 1, 1]], [[0, 1, 1], [0, 1, 1]], [[0, 0, 0], [0, 1, 1]], [[3, 2, 0], [0, 1, 1]]])
     [array([[[0., 0., 0.], [0., 1., 1.]], [[0., 1., 1.], [0., 1., 1.]], [[3., 2., 0.], [0., 1., 1.]]]), array([2, 0, 3]), array([1, 1, 0, 2]), array([1, 2, 1])]
 
-    >>> h2 = theano.function([z], Unique(True, True, True, None)(z))
-    >>> h2([[[0, 1, 1], [0, 1, 1]], [[0, 1, 1], [0, 1, 1]], [[0, 0, 0], [0, 1, 1]], [[3, 2, 0], [0, 1, 1]]])
+    >>> if numpy_ver >= (1, 13):
+    >>>     h2 = theano.function([z], Unique(True, True, True, None)(z))
+    >>>     h2([[[0, 1, 1], [0, 1, 1]], [[0, 1, 1], [0, 1, 1]], [[0, 0, 0], [0, 1, 1]], [[3, 2, 0], [0, 1, 1]]])
     [array([0., 1., 2., 3.]), array([ 0,  1, 19, 18]), array([0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 3, 2, 0, 0, 1, 1]), array([10, 12,  1,  1])]
 
     """
@@ -1146,11 +1149,6 @@ class Unique(theano.Op):
         self.return_counts = return_counts
         self.axis = axis
         numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
-        if self.return_counts and bool(numpy_ver < [1, 9]):
-            raise RuntimeError(
-                "Numpy version = " + np.__version__ +
-                ". Option 'return_counts=True' works starting"
-                " from version 1.9.0.")
         if self.axis is not None and bool(numpy_ver < [1, 13]):
             raise RuntimeError(
                 "Numpy version = " + np.__version__ +
