@@ -1125,18 +1125,6 @@ class Unique(theano.Op):
     >>> g([[1, 1, 1.0], (2, 3, 3.0)])
     [array([ 1.,  2.,  3.]), array([0, 3, 4]), array([0, 0, 0, 1, 2, 2])]
 
-    >>> numpy_ver = tuple([int(n) for n in np.__version__.split('.')])
-    >>> if numpy_ver >= (1, 13):
-    >>>     z = theano.tensor.matrix()
-    >>>     h1 = theano.function([z], Unique(True, True, True, 0)(z))
-    >>>     h1([[[0, 1, 1], [0, 1, 1]], [[0, 1, 1], [0, 1, 1]], [[0, 0, 0], [0, 1, 1]], [[3, 2, 0], [0, 1, 1]]])
-    [array([[[0., 0., 0.], [0., 1., 1.]], [[0., 1., 1.], [0., 1., 1.]], [[3., 2., 0.], [0., 1., 1.]]]), array([2, 0, 3]), array([1, 1, 0, 2]), array([1, 2, 1])]
-
-    >>> if numpy_ver >= (1, 13):
-    >>>     h2 = theano.function([z], Unique(True, True, True, None)(z))
-    >>>     h2([[[0, 1, 1], [0, 1, 1]], [[0, 1, 1], [0, 1, 1]], [[0, 0, 0], [0, 1, 1]], [[3, 2, 0], [0, 1, 1]]])
-    [array([0., 1., 2., 3.]), array([ 0,  1, 19, 18]), array([0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 3, 2, 0, 0, 1, 1]), array([10, 12,  1,  1])]
-
     """
 
     __props__ = ("return_index", "return_inverse", "return_counts",
