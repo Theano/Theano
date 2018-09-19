@@ -1116,12 +1116,12 @@ class Unique(theano.Op):
     >>> import theano
 
     >>> x = theano.tensor.vector()
-    >>> f = theano.function([x], Unique(True, True, False, None)(x))
+    >>> f = theano.function([x], Unique(True, True, False)(x))
     >>> f([1, 2., 3, 4, 3, 2, 1.])
     [array([ 1.,  2.,  3.,  4.]), array([0, 1, 2, 3]), array([0, 1, 2, 3, 2, 1, 0])]
 
     >>> y = theano.tensor.matrix()
-    >>> g = theano.function([y], Unique(True, True, False, None)(y))
+    >>> g = theano.function([y], Unique(True, True, False)(y))
     >>> g([[1, 1, 1.0], (2, 3, 3.0)])
     [array([ 1.,  2.,  3.]), array([0, 3, 4]), array([0, 0, 0, 1, 2, 2])]
 
