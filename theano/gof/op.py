@@ -280,13 +280,13 @@ class CLinkerOp(CLinkerObject):
             string is the name of a C variable pointing to that input.
             The type of the variable depends on the declared type of
             the input.  There is a corresponding python variable that
-            can be accessed by prepending "py_" to the name in the
+            can be accessed by prepending 'py_' to the name in the
             list.
         outputs : list of strings
             Each string is the name of a C variable where the Op should
             store its output.  The type depends on the declared type of
             the output.  There is a corresponding python variable that
-            can be accessed by prepending "py_" to the name in the
+            can be accessed by prepending 'py_' to the name in the
             list.  In some cases the outputs will be preallocated and
             the value of the variable may be pre-filled.  The value for
             an unallocated output is type-dependent.
