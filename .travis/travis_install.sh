@@ -4,10 +4,9 @@ if test -e $HOME/miniconda2/envs/pyenv; then
     echo "pyenv already exists."
 else
     echo "Creating pyenv."
-    if [[ $TRAVIS_PYTHON_VERSION == '2.7' && $NUMPY_VERSION == '1.9.1' ]]; then conda create --yes -q -n pyenv python=2.7 ; fi
-    if [[ $TRAVIS_PYTHON_VERSION == '2.7' && $NUMPY_VERSION == '1.13.1' ]]; then conda create --yes -q -n pyenv python=2.7 ; fi
-    if [[ $TRAVIS_PYTHON_VERSION == '3.4' && $NUMPY_VERSION == '1.9.1' ]]; then conda create --yes -q -n pyenv python=3.4 ; fi
-    if [[ $TRAVIS_PYTHON_VERSION == '3.6' && $NUMPY_VERSION == '1.13.1' ]]; then conda create --yes -q -n pyenv python=3.6 ; fi
+    if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda create --yes -q -n pyenv python=2.7 ; fi
+    if [[ $TRAVIS_PYTHON_VERSION == '3.4' ]]; then conda create --yes -q -n pyenv python=3.4 ; fi
+    if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then conda create --yes -q -n pyenv python=3.6 ; fi
 fi
 
 source activate pyenv
