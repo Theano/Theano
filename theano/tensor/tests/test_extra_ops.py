@@ -817,7 +817,7 @@ class test_Unique_axis(utt.InferShapeTester):
                 for out, out_exp in zip(outs, outs_expected):
                     utt.assert_allclose(out, out_exp)
         else:
-            pass
+            raise utt.SkipTest('Requires numpy >= 1.13')
 
     def test_basic_matrix(self):
         if self.expect_success:
@@ -840,7 +840,7 @@ class test_Unique_axis(utt.InferShapeTester):
                 for out, out_exp in zip(outs, outs_expected):
                     utt.assert_allclose(out, out_exp)
         else:
-            pass
+            raise utt.SkipTest('Requires numpy >= 1.13')
 
     def test_infer_shape_vector(self):
         if self.expect_success:
@@ -863,7 +863,7 @@ class test_Unique_axis(utt.InferShapeTester):
                                                     dtype=config.floatX)],
                                         self.op_class)
         else:
-            pass
+            raise utt.SkipTest('Requires numpy >= 1.13')
 
     def test_infer_shape_matrix(self):
         if self.expect_success:
@@ -882,11 +882,11 @@ class test_Unique_axis(utt.InferShapeTester):
                     f = op(x)[1]
                 self._compile_and_check([x],
                                         [f],
-                                        [np.asarray(np.array([[2, 1], [3, 2], [2, 3]]),
+                                        [np.asarray(np.array([[2, 1], [3, 2], [2, 1]]),
                                                     dtype=config.floatX)],
                                         self.op_class)
         else:
-            pass
+            raise utt.SkipTest('Requires numpy >= 1.13')
 
 
 class test_unravel_index(utt.InferShapeTester):
