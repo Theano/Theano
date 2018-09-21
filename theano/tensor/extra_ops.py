@@ -1127,23 +1127,39 @@ class Unique(theano.Op):
 
     """
 
-    __props__ = ("return_index", "return_inverse", "return_counts")
+    __props__ = ("return_index", "return_inverse", "return_counts",
+                 "axis")
 
     def __init__(self, return_index=False, return_inverse=False,
-                 return_counts=False):
+                 return_counts=False, axis=None):
         self.return_index = return_index
         self.return_inverse = return_inverse
         self.return_counts = return_counts
+        self.axis = axis
         numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
-        if self.return_counts and bool(numpy_ver < [1, 9]):
+        if self.axis is not None and bool(numpy_ver < [1, 13]):
             raise RuntimeError(
                 "Numpy version = " + np.__version__ +
-                ". Option 'return_counts=True' works starting"
-                " from version 1.9.0.")
+                ". Option 'axis={}' works starting"
+                " from version 1.13.0.".format(axis))
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
-        outputs = [basic.TensorType(broadcastable=[False], dtype=x.dtype)()]
+        self_axis = self.axis
+        if self_axis is None:
+            broadcastable = [False]
+        else:
+            if self_axis < 0:
+                self_axis += len(x.broadcastable)
+            if self_axis < 0 or self_axis >= len(x.broadcastable):
+                raise RuntimeError(
+                    "Unique axis `{}` is outside of input ndim = "
+                    "{}.".format(self.axis, len(x.broadcastable))
+                    )
+            broadcastable = [b if axis != self_axis else False
+                             for axis, b in enumerate(x.broadcastable)]
+        outputs = [basic.TensorType(broadcastable=broadcastable,
+                                    dtype=x.dtype)()]
         typ = basic.TensorType(broadcastable=[False], dtype='int64')
         if self.return_index:
             outputs.append(typ())
@@ -1163,6 +1179,8 @@ class Unique(theano.Op):
             param['return_inverse'] = True
         if self.return_counts:
             param['return_counts'] = True
+        if self.axis is not None:
+            param['axis'] = self.axis
         outs = np.unique(x, **param)
         if ((not self.return_inverse) and
                 (not self.return_index) and
@@ -1174,14 +1192,37 @@ class Unique(theano.Op):
 
     def infer_shape(self, node, i0_shapes):
         ret = node.fgraph.shape_feature.default_infer_shape(node, i0_shapes)
+        if self.axis is not None:
+            self_axis = self.axis
+            ndim = len(i0_shapes[0])
+            if self_axis < 0:
+                self_axis += ndim
+            if self_axis < 0 or self_axis >= ndim:
+                raise RuntimeError(
+                    "Unique axis `{}` is outside of input ndim = "
+                    "{}.".format(self.axis, ndim)
+                    )
+            ret[0] = tuple([node.fgraph.shape_feature.shape_ir(i,
+                                                               node.outputs[0])
+                            for i in xrange(ndim)])
         if self.return_inverse:
-            shape = (basic.prod(i0_shapes[0]), )
+            if self.axis is None:
+                shape = (basic.prod(i0_shapes[0]), )
+            else:
+                shape = (i0_shapes[0][self_axis], )
             if self.return_index:
                 ret[2] = shape
                 return ret
             ret[1] = shape
             return ret
         return ret
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        # For backwards compatibility with pickled instances of Unique that
+        # did not have the axis parameter specified
+        if 'axis' not in state:
+            self.axis = None
 
 
 class UnravelIndex(gof.Op):

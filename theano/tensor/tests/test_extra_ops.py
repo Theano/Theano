@@ -705,7 +705,7 @@ class test_Unique(utt.InferShapeTester):
         # Done by using the op and checking that it returns the right answer.
 
         x = theano.tensor.matrix()
-        inp = np.asarray([[2, 1], [3, 2], [2, 3]], dtype=config.floatX)
+        inp = np.asarray([[2, 1], [3, 2], [2, 1]], dtype=config.floatX)
         list_outs_expected = [[np.unique(inp)],
                               np.unique(inp, True),
                               np.unique(inp, False, True),
@@ -754,6 +754,133 @@ class test_Unique(utt.InferShapeTester):
             self._compile_and_check([x],
                                     [f],
                                     [np.asarray(np.array([[2, 1], [3, 2], [2, 3]]),
+                                                dtype=config.floatX)],
+                                    self.op_class)
+
+
+class test_Unique_axis(utt.InferShapeTester):
+
+    def setUp(self):
+        super(test_Unique_axis, self).setUp()
+        numpy_ver = tuple([int(n) for n in np.__version__.split('.')])
+        if numpy_ver >= (1, 13):
+            self.expect_success = True
+        else:
+            self.expect_success = False
+        self.ops_pars = [(tuple(), {'axis': 0}),
+                         ((True,), {'axis': 0}),
+                         ((False, True,), {'axis': 0}),
+                         ((True, True,), {'axis': 0}),
+                         ((False, False, True,), {'axis': 0}),
+                         ((True, False, True,), {'axis': 0}),
+                         ((False, True, True,), {'axis': 0}),
+                         ((True, True, True,), {'axis': 0}),
+                         (tuple(), {'axis': -1}),
+                         ((True,), {'axis': -1}),
+                         ((False, True,), {'axis': -1}),
+                         ((True, True,), {'axis': -1}),
+                         ((False, False, True,), {'axis': -1}),
+                         ((True, False, True,), {'axis': -1}),
+                         ((False, True, True,), {'axis': -1}),
+                         ((True, True, True,), {'axis': -1})]
+        self.op_class = Unique
+
+    def test_op(self):
+        if self.expect_success:
+            for args, kwargs in self.ops_pars:
+                op = self.op_class(*args, **kwargs)
+                self.assertTrue(isinstance(op, self.op_class))
+        else:
+            for args, kwargs in self.ops_pars:
+                def func():
+                    return self.op_class(*args, **kwargs)
+                self.assertRaises(RuntimeError, func)
+
+    def test_basic_vector(self):
+        if not self.expect_success:
+            raise utt.SkipTest('Requires numpy >= 1.13')
+        # Basic test for a vector.
+        # Done by using the op and checking that it returns the right
+        # answer.
+
+        x = theano.tensor.vector()
+        ops = [self.op_class(*args, **kwargs) for args, kwargs in
+               self.ops_pars]
+        inp = np.asarray([2, 1, 3, 2], dtype=config.floatX)
+        list_outs_expected = [[np.unique(inp, **kwargs)] if len(args) == 0
+                              else np.unique(inp, *args, **kwargs)
+                              for args, kwargs in self.ops_pars]
+        for op, outs_expected in zip(ops, list_outs_expected):
+            f = theano.function(inputs=[x],
+                                outputs=op(x, return_list=True))
+            outs = f(inp)
+            # Compare the result computed to the expected value.
+            for out, out_exp in zip(outs, outs_expected):
+                utt.assert_allclose(out, out_exp)
+
+    def test_basic_matrix(self):
+        if not self.expect_success:
+            raise utt.SkipTest('Requires numpy >= 1.13')
+        # Basic test for a matrix.
+        # Done by using the op and checking that it returns the right
+        # answer.
+
+        x = theano.tensor.matrix()
+        ops = [self.op_class(*args, **kwargs) for args, kwargs in
+               self.ops_pars]
+        inp = np.asarray([[2, 1], [3, 2], [2, 1]], dtype=config.floatX)
+        list_outs_expected = [[np.unique(inp, **kwargs)] if len(args) == 0
+                              else np.unique(inp, *args, **kwargs)
+                              for args, kwargs in self.ops_pars]
+        for op, outs_expected in zip(ops, list_outs_expected):
+            f = theano.function(inputs=[x],
+                                outputs=op(x, return_list=True))
+            outs = f(inp)
+            # Compare the result computed to the expected value.
+            for out, out_exp in zip(outs, outs_expected):
+                utt.assert_allclose(out, out_exp)
+
+    def test_infer_shape_vector(self):
+        if not self.expect_success:
+            raise utt.SkipTest('Requires numpy >= 1.13')
+        # Testing the infer_shape with a vector.
+
+        x = theano.tensor.vector()
+
+        ops = [self.op_class(*args, **kwargs) for args, kwargs in
+               self.ops_pars]
+        for op in ops:
+            if not op.return_inverse:
+                continue
+            if op.return_index:
+                f = op(x)[2]
+            else:
+                f = op(x)[1]
+            self._compile_and_check([x],
+                                    [f],
+                                    [np.asarray(np.array([2, 1, 3, 2]),
+                                                dtype=config.floatX)],
+                                    self.op_class)
+
+    def test_infer_shape_matrix(self):
+        if not self.expect_success:
+            raise utt.SkipTest('Requires numpy >= 1.13')
+        # Testing the infer_shape with a matrix.
+
+        x = theano.tensor.matrix()
+
+        ops = [self.op_class(*args, **kwargs) for args, kwargs in
+               self.ops_pars]
+        for op in ops:
+            if not op.return_inverse:
+                continue
+            if op.return_index:
+                f = op(x)[2]
+            else:
+                f = op(x)[1]
+            self._compile_and_check([x],
+                                    [f],
+                                    [np.asarray(np.array([[2, 1], [3, 2], [2, 1]]),
                                                 dtype=config.floatX)],
                                     self.op_class)
 

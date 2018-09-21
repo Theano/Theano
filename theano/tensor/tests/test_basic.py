@@ -5342,7 +5342,7 @@ class T_scalarfromtensor(unittest.TestCase):
 
 
 class test_grad(unittest.TestCase):
-    class O(gof.op.Op):
+    class Obj1(gof.op.Op):
         def __init__(self):
             self.gval0 = scalar('e')
             self.gval1 = scalar('f')
@@ -5359,13 +5359,13 @@ class test_grad(unittest.TestCase):
 
     def test_1param(self):
         # grad: Test passing a single variable param
-        o = test_grad.O()
+        o = test_grad.Obj1()
         a1 = o.make_node()
         self.assertTrue(o.gval0 is tensor.grad(a1.outputs[0], a1.inputs[0]))
 
     def test_Nparam(self):
         # grad: Test passing multiple variable params
-        o = test_grad.O()
+        o = test_grad.Obj1()
         a1 = o.make_node()
         g0, g1 = grad(a1.outputs[0], a1.inputs)
         g0.name = None
@@ -5393,7 +5393,7 @@ class test_grad(unittest.TestCase):
 
     def test_1None_rval(self):
         # grad: Test returning a single zero value from grad
-        o = test_grad.O()
+        o = test_grad.Obj1()
         a1 = o.make_node()
         g = grad(a1.outputs[0], a1.outputs[1],
                  disconnected_inputs='ignore')
@@ -5403,7 +5403,7 @@ class test_grad(unittest.TestCase):
 
     def test_NNone_rval(self):
         # grad: Test returning some zero value from grad
-        o = test_grad.O()
+        o = test_grad.Obj1()
         a1 = o.make_node()
         g0, g1, g2 = grad(a1.outputs[0], a1.inputs + [scalar('z')],
                           disconnected_inputs='ignore')

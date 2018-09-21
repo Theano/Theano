@@ -39,7 +39,7 @@ install:
   - pip install flake8-future-import parameterized sphinx_rtd_theme
   # nose-exclude plugin allow us to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
   - pip install nose-exclude nose-timer
-  - conda install --yes -q scipy=0.14.0  # Try to reinstall it to fix the problem
+  - if [[ $NUMPY_VERSION == '1.13.1' ]]; then conda install --yes -q scipy=0.19.1; else conda install --yes -q scipy=0.14; fi  # Try to reinstall it to fix the problem
 
 jobs:
   include:
@@ -47,62 +47,75 @@ jobs:
     - &doctest
       stage: doc
       python: "2.7"
-      env: DOC=1 PART="theano/tests/test_flake8.py"
+      env: NUMPY_VERSION=1.9.1 DOC=1 PART="theano/tests/test_flake8.py"
     # re-use prototype, changing the Python version
     - <<: *doctest
+      python: "2.7"
+      env: NUMPY_VERSION=1.13.1 DOC=1 PART="theano/tests/test_flake8.py"
+    - <<: *doctest
       python: "3.4"
+      env: NUMPY_VERSION=1.9.1 DOC=1 PART="theano/tests/test_flake8.py"
+    - <<: *doctest
+      python: "3.6"
+      env: NUMPY_VERSION=1.13.1 DOC=1 PART="theano/tests/test_flake8.py"
     - &normaltest
       stage: test
       python: "2.7"
-      env: PART="theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox theano/scalar theano/scan_module theano/tests -e test_flake8.py theano/typed_list"
+      env: NUMPY_VERSION=1.9.1 PART="theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox theano/scalar theano/scan_module theano/tests -e test_flake8.py theano/typed_list"
     - <<: *normaltest
       python: "3.4"
-      env: PART="theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox theano/scalar theano/scan_module theano/tests -e test_flake8.py theano/typed_list"
+      env: NUMPY_VERSION=1.9.1 PART="theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox theano/scalar theano/scan_module theano/tests -e test_flake8.py theano/typed_list"
     - <<: *normaltest
-      env: PART="theano/sparse theano/tensor --exclude-test=theano.tensor.tests.test_basic --exclude-test=theano.tensor.tests.test_elemwise --exclude-test=theano.tensor.tests.test_opt --exclude-dir=theano/tensor/nnet"
+      env: NUMPY_VERSION=1.9.1 PART="theano/sparse theano/tensor --exclude-test=theano.tensor.tests.test_basic --exclude-test=theano.tensor.tests.test_elemwise --exclude-test=theano.tensor.tests.test_opt --exclude-dir=theano/tensor/nnet"
     - <<: *normaltest
-      python: "3.4"
-      env: PART="theano/sparse theano/tensor --exclude-test=theano.tensor.tests.test_basic --exclude-test=theano.tensor.tests.test_elemwise --exclude-test=theano.tensor.tests.test_opt --exclude-dir=theano/tensor/nnet"
-    - <<: *normaltest
-      env: PART="theano/tensor/tests/test_basic.py"
+      env: NUMPY_VERSION=1.13.1 PART="theano/sparse theano/tensor --exclude-test=theano.tensor.tests.test_basic --exclude-test=theano.tensor.tests.test_elemwise --exclude-test=theano.tensor.tests.test_opt --exclude-dir=theano/tensor/nnet"
     - <<: *normaltest
       python: "3.4"
-      env: PART="theano/tensor/tests/test_basic.py"
+      env: NUMPY_VERSION=1.9.1 PART="theano/sparse theano/tensor --exclude-test=theano.tensor.tests.test_basic --exclude-test=theano.tensor.tests.test_elemwise --exclude-test=theano.tensor.tests.test_opt --exclude-dir=theano/tensor/nnet"
     - <<: *normaltest
-      env: PART="theano/tensor/tests/test_elemwise.py theano/tensor/tests/test_opt.py"
+      python: "3.6"
+      env: NUMPY_VERSION=1.13.1 PART="theano/sparse theano/tensor --exclude-test=theano.tensor.tests.test_basic --exclude-test=theano.tensor.tests.test_elemwise --exclude-test=theano.tensor.tests.test_opt --exclude-dir=theano/tensor/nnet"
     - <<: *normaltest
-      python: "3.4"
-      env: PART="theano/tensor/tests/test_elemwise.py theano/tensor/tests/test_opt.py"
-    - <<: *normaltest
-      env: PART="theano/tensor/nnet -e test_abstract_conv.py"
+      env: NUMPY_VERSION=1.9.1 PART="theano/tensor/tests/test_basic.py"
     - <<: *normaltest
       python: "3.4"
-      env: PART="theano/tensor/nnet -e test_abstract_conv.py"
+      env: NUMPY_VERSION=1.9.1 PART="theano/tensor/tests/test_basic.py"
     - <<: *normaltest
-      env: PART="theano/tensor/nnet/tests/test_abstract_conv.py"
-    - <<: *normaltest
-      python: "3.4"
-      env: PART="theano/tensor/nnet/tests/test_abstract_conv.py"
-    - <<: *normaltest
-      env: FAST_COMPILE=1 FLOAT32=1 PART="theano -e test_flake8.py --exclude-dir=theano/tensor/nnet --exclude-dir=theano/tensor/signal"
+      env: NUMPY_VERSION=1.9.1 PART="theano/tensor/tests/test_elemwise.py theano/tensor/tests/test_opt.py"
     - <<: *normaltest
       python: "3.4"
-      env: FAST_COMPILE=1 PART="theano -e test_flake8.py --exclude-dir=theano/tensor/nnet --exclude-dir=theano/tensor/signal"
+      env: NUMPY_VERSION=1.9.1 PART="theano/tensor/tests/test_elemwise.py theano/tensor/tests/test_opt.py"
     - <<: *normaltest
-      env: FAST_COMPILE=1 FLOAT32=1 PART="theano/tensor/nnet"
-    - <<: *normaltest
-      python: "3.4"
-      env: FAST_COMPILE=1 PART="theano/tensor/nnet"
-    - <<: *normaltest
-      env: FAST_COMPILE=1 FLOAT32=1 PART="theano/tensor/signal"
+      env: NUMPY_VERSION=1.9.1 PART="theano/tensor/nnet -e test_abstract_conv.py"
     - <<: *normaltest
       python: "3.4"
-      env: FAST_COMPILE=1 PART="theano/tensor/signal"
+      env: NUMPY_VERSION=1.9.1 PART="theano/tensor/nnet -e test_abstract_conv.py"
+    - <<: *normaltest
+      env: NUMPY_VERSION=1.9.1 PART="theano/tensor/nnet/tests/test_abstract_conv.py"
+    - <<: *normaltest
+      python: "3.4"
+      env: NUMPY_VERSION=1.9.1 PART="theano/tensor/nnet/tests/test_abstract_conv.py"
+    - <<: *normaltest
+      env: NUMPY_VERSION=1.9.1 FAST_COMPILE=1 FLOAT32=1 PART="theano -e test_flake8.py --exclude-dir=theano/tensor/nnet --exclude-dir=theano/tensor/signal"
+    - <<: *normaltest
+      python: "3.4"
+      env: NUMPY_VERSION=1.9.1 FAST_COMPILE=1 PART="theano -e test_flake8.py --exclude-dir=theano/tensor/nnet --exclude-dir=theano/tensor/signal"
+    - <<: *normaltest
+      env: NUMPY_VERSION=1.9.1 FAST_COMPILE=1 FLOAT32=1 PART="theano/tensor/nnet"
+    - <<: *normaltest
+      python: "3.4"
+      env: NUMPY_VERSION=1.9.1 FAST_COMPILE=1 PART="theano/tensor/nnet"
+    - <<: *normaltest
+      env: NUMPY_VERSION=1.9.1 FAST_COMPILE=1 FLOAT32=1 PART="theano/tensor/signal"
+    - <<: *normaltest
+      python: "3.4"
+      env: NUMPY_VERSION=1.9.1 FAST_COMPILE=1 PART="theano/tensor/signal"
 
 script:
   - if [[ $FAST_COMPILE == "1" ]]; then export THEANO_FLAGS=$THEANO_FLAGS,mode=FAST_COMPILE; fi
   - if [[ $FLOAT32 == "1" ]]; then export THEANO_FLAGS=$THEANO_FLAGS,floatX=float32; fi
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
+  - export MKL_THREADING_LAYER=GNU
   - export MKL_NUM_THREADS=1
   - export OMP_NUM_THREADS=1
   - python --version
@@ -112,6 +125,7 @@ script:
   - ulimit -a
   - echo "$PART"
 # Print information to help debug problems
+  - python -c 'import numpy; print(numpy.__version__)'
   - python -c 'import theano; print(theano.__version__)'
   - python -c 'import theano; print(theano.config.__str__(print_doc=False))'
   - python -c 'import theano; assert(theano.config.blas.ldflags != "")'
