@@ -520,7 +520,7 @@ class Chi2SF(BinaryScalarOp):
         return hash(type(self))
 
 
-chi2sf = Chi2SF(upgrade_to_float, name='chi2sf')
+chi2sf = Chi2SF(upgrade_to_float64, name='chi2sf')
 
 
 class GammaInc(BinaryScalarOp):
