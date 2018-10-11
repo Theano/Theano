@@ -1892,6 +1892,31 @@ def isinf(a):
     """isinf(a)"""
 
 
+@_scal_elemwise
+def chi2sf(x, k):
+    """chi2sf"""
+
+
+@_scal_elemwise
+def gammainc(k, x):
+    """gammainc"""
+
+
+@_scal_elemwise
+def gammaincc(k, x):
+    """gammaincc"""
+
+
+@_scal_elemwise
+def gammau(k, x):
+    """gammau"""
+
+
+@_scal_elemwise
+def gammal(k, x):
+    """gammal"""
+
+
 # Rename isnan to isnan_ to allow to bypass it when not needed.
 # glibc 2.23 don't allow isnan on int, so we remove it from the graph.
 isinf_ = isinf
