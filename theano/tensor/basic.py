@@ -1891,7 +1891,6 @@ def isnan(a):
 def isinf(a):
     """isinf(a)"""
 
-
 # Rename isnan to isnan_ to allow to bypass it when not needed.
 # glibc 2.23 don't allow isnan on int, so we remove it from the graph.
 isinf_ = isinf
@@ -2401,6 +2400,26 @@ def tri_gamma(a):
 @_scal_elemwise
 def chi2sf(x, k):
     """chi squared survival function"""
+
+
+@_scal_elemwise
+def gammainc(k, x):
+    """Regularized lower gamma function"""
+
+
+@_scal_elemwise
+def gammaincc(k, x):
+    """Regularized upper gamma function"""
+
+
+@_scal_elemwise
+def gammau(k, x):
+    """Upper incomplete gamma function."""
+
+
+@_scal_elemwise
+def gammal(k, x):
+    """Lower incomplete gamma function."""
 
 
 @_scal_elemwise
