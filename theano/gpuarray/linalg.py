@@ -290,7 +290,6 @@ class GpuCusolverSolve(Op):
         # no need to handle A_structure like slinalg.py?
         trans_solve_op = GpuCusolverSolve('general')
         b_bar = trans_solve_op(A.T, c_bar)
-        # force outer product if vector second input
         A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
         return [A_bar, b_bar]
 
@@ -413,6 +412,24 @@ class GpuCublasTriangularSolve(Op):
                      n, m, alpha, A_ptr, lda, b_ptr, ldb)
 
         x[0] = b
+
+    def L_op(self, inputs, outputs, output_gradients):
+        """
+        Modified from theano/tensor/slinalg.py
+        """
+        A, b = inputs
+        c = outputs[0]
+        c_bar = output_gradients[0]
+
+        trans_solve_op = GpuCublasTriangularSolve(not self.lower)
+        b_bar = trans_solve_op(A.T, c_bar)
+        A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
+
+        if self.lower:
+            A_bar = tensor.tril(A_bar)
+        else:
+            A_bar = tensor.triu(A_bar)
+        return [A_bar, b_bar]
 
 def gpu_solve(A, b, A_structure='general', trans='N'):
     if A_structure == 'lower':
