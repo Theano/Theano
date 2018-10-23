@@ -280,9 +280,7 @@ class GpuCusolverSolve(Op):
         z[0] = b
 
     def L_op(self, inputs, outputs, output_gradients):
-        """
-        Modified from theano/tensor/slinalg.py
-        """
+        # Modified from theano/tensor/slinalg.py
         A, b = inputs
         c = outputs[0]
         c_bar = output_gradients[0]
@@ -414,9 +412,7 @@ class GpuCublasTriangularSolve(Op):
         x[0] = b
 
     def L_op(self, inputs, outputs, output_gradients):
-        """
-        Modified from theano/tensor/slinalg.py
-        """
+        # Modified from theano/tensor/slinalg.py
         A, b = inputs
         c = outputs[0]
         c_bar = output_gradients[0]
@@ -438,6 +434,12 @@ def gpu_solve(A, b, A_structure='general', trans='N'):
         return GpuCublasTriangularSolve(False, trans)(A, b)
 
     return GpuCusolverSolve(A_structure, trans)(A, b)
+
+def gpu_solve_lower_triangular(A, b, trans='N'):
+    return GpuCublasTriangularSolve(True, trans)(A, b)
+
+def gpu_solve_upper_triangular(A, b, trans='N'):
+    return GpuCublasTriangularSolve(False, trans)(A, b)
 
 class GpuCholesky(Op):
     """
@@ -559,6 +561,39 @@ class GpuCholesky(Op):
 
         outputs[0][0] = L
 
+    def L_op(self, inputs, outputs, gradients):
+        # Modified from theano/tensor/slinalg.py
+        # No handling for on_error = 'nan'
+        dz = gradients[0]
+        chol_x = outputs[0]
+
+        ok = ~tensor.any(tensor.isnan(chol_x))
+        chol_x = tensor.switch(ok, chol_x, 1)
+        dz = tensor.switch(ok, dz, 1)
+
+        # deal with upper triangular by converting to lower triangular
+        if not self.lower:
+            chol_x = chol_x.T
+            dz = dz.T
+
+        def tril_and_halve_diagonal(mtx):
+            """Extracts lower triangle of square matrix and halves diagonal."""
+            return tensor.tril(mtx) - tensor.diag(tensor.diagonal(mtx) / 2.)
+
+        def conjugate_solve_triangular(outer, inner):
+            """Computes L^{-T} P L^{-1} for lower-triangular L."""
+            return gpu_solve_upper_triangular(
+                outer.T, gpu_solve_upper_triangular(outer.T, inner.T).T)
+
+        s = conjugate_solve_triangular(
+            chol_x, tril_and_halve_diagonal(chol_x.T.dot(dz)))
+
+        if self.lower:
+            grad = tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))
+        else:
+            grad = tensor.triu(s + s.T) - tensor.diag(tensor.diagonal(s))
+
+        return [grad]
 
 def gpu_cholesky(A, lower=True):
     return GpuCholesky(lower)(A)

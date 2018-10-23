@@ -22,7 +22,7 @@ from theano.tests import unittest_tools as utt
 from .. import gpuarray_shared_constructor
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
-
+from nose.tools import assert_raises
 
 class TestCusolver(unittest.TestCase):
 
@@ -621,7 +621,7 @@ def test_cholesky_grad_indef():
     matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
     cholesky = GpuCholesky(lower=True)
     chol_f = theano.function([x], theano.tensor.grad(gpu_cholesky(x).sum(), [x]))
-    with assert_raises(scipy.linalg.LinAlgError):
+    with assert_raises(LinAlgError):
         chol_f(matrix)
     # cholesky = GpuCholesky(lower=True, on_error='nan')
     # chol_f = function([x], grad(gpu_cholesky(x).sum(), [x]))
