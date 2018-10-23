@@ -279,6 +279,39 @@ class GpuCusolverSolve(Op):
 
         z[0] = b
 
+    def L_op(self, inputs, outputs, output_gradients):
+        """
+        Modified from theano/tensor/slinalg.py
+        """
+        A, b = inputs
+        c = outputs[0]
+        c_bar = output_gradients[0]
+        trans_map = {
+            'lower_triangular': 'upper_triangular',
+            'upper_triangular': 'lower_triangular',
+        }
+        trans_map2 = {
+            'N': 'T',
+            'T': 'N',
+        }
+        # if self.A_structure == 'lower_triangular':
+        #     trans_solve_op = GpuCublasTriangularSolve(lower=False)
+        # elif self.A_structure == 'upper_triangular':
+        #     trans_solve_op = GpuCublasTriangularSolve(lower=True)
+        # else:
+        trans_solve_op = GpuCusolverSolve(
+            # update A_structure and lower to account for a transpose operation
+            A_structure=trans_map.get(self.A_structure,self.A_structure),
+            # trans=trans_map2[self.trans],
+        )
+        b_bar = trans_solve_op(A.T, c_bar)
+        # force outer product if vector second input
+        A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
+        if self.A_structure == 'lower_triangular':
+            A_bar = tensor.tril(A_bar)
+        elif self.A_structure == 'upper_triangular':
+            A_bar = tensor.triu(A_bar)
+        return [A_bar, b_bar]
 
 class GpuCublasTriangularSolve(Op):
     """
@@ -400,7 +433,6 @@ class GpuCublasTriangularSolve(Op):
 
         x[0] = b
 
-
 def gpu_solve(A, b, A_structure='general', trans='N'):
     if A_structure == 'lower':
         return GpuCublasTriangularSolve(True, trans)(A, b)
@@ -408,12 +440,6 @@ def gpu_solve(A, b, A_structure='general', trans='N'):
         return GpuCublasTriangularSolve(False, trans)(A, b)
 
     return GpuCusolverSolve(A_structure, trans)(A, b)
-
-# added these to make the module consistent to theano/tensor/slinalg.py
-def gpu_solve_lower_triangular(A,b):
-    return GpuCublasTriangularSolve(True,'N')(A,b)
-def gpu_solve_upper_triangular(A,b):
-    return GpuCublasTriangularSolve(False,'N')(A,b)
 
 class GpuCholesky(Op):
     """

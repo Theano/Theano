@@ -7,10 +7,12 @@ from numpy.linalg.linalg import LinAlgError
 
 import theano
 from theano import config
-from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaCholesky,
+from theano.gpuarray.linalg import (GpuCusolverSolve,GpuCublasTriangularSolve,
+                                    GpuCholesky, GpuMagmaCholesky,
                                     GpuMagmaEigh, GpuMagmaMatrixInverse,
                                     GpuMagmaQR, GpuMagmaSVD,
                                     cusolver_available, gpu_matrix_inverse,
+                                    gpu_cholesky,
                                     gpu_solve, gpu_svd, gpu_qr)
 from theano.tensor.nlinalg import (SVD, MatrixInverse, QRFull,
                                    QRIncomplete, eigh, matrix_inverse, qr)
@@ -122,6 +124,37 @@ class TestCusolver(unittest.TestCase):
         fn = theano.function([A, b], [solver], mode=mode_with_gpu)
         self.assertRaises(LinAlgError, fn, A_val, x_val)
 
+    def verify_solve_grad(self, m, n, A_structure, lower, rng):
+        # ensure diagonal elements of A relatively large to avoid numerical
+        # precision issues
+        A_val = (rng.normal(size=(m, m)) * 0.5 +
+                 np.eye(m)).astype(config.floatX)
+        if A_structure == 'lower_triangular':
+            A_val = np.tril(A_val)
+        elif A_structure == 'upper_triangular':
+            A_val = np.triu(A_val)
+        if n is None:
+            b_val = rng.normal(size=m).astype(config.floatX)
+        else:
+            b_val = rng.normal(size=(m, n)).astype(config.floatX)
+        eps = None
+        if config.floatX == "float64":
+            eps = 2e-8
+        solve_op = GpuCusolverSolve(A_structure=A_structure)
+        utt.verify_grad(solve_op, [A_val, b_val], 3, rng, eps=eps)
+
+    def test_solve_grad(self):
+        rng = np.random.RandomState(utt.fetch_seed())
+        # structures = ['general', 'lower_triangular', 'upper_triangular']
+        structures = ['general']
+        for A_structure in structures:
+            lower = (A_structure == 'lower_triangular')
+            # self.verify_solve_grad(5, None, A_structure, lower, rng)
+            self.verify_solve_grad(6, 1, A_structure, lower, rng)
+            self.verify_solve_grad(4, 3, A_structure, lower, rng)
+        # lower should have no effect for A_structure == 'general' so also
+        # check lower=True case
+        self.verify_solve_grad(4, 3, 'general', lower=True, rng=rng)
 
 class TestGpuCholesky(unittest.TestCase):
 
@@ -558,3 +591,34 @@ class TestMagma(unittest.TestCase):
             isinstance(node.op, GpuMagmaEigh)
             for node in fn.maker.fgraph.toposort()
         ])
+
+# copied from theano/tensor/tests/test_slinalg.py
+
+def test_cholesky_grad():
+    rng = np.random.RandomState(utt.fetch_seed())
+    r = rng.randn(5, 5).astype(config.floatX)
+
+    # The dots are inside the graph since Cholesky needs separable matrices
+
+    # Check the default.
+    yield (lambda: utt.verify_grad(lambda r: gpu_cholesky(r.dot(r.T)),
+                                   [r], 3, rng))
+    # Explicit lower-triangular.
+    yield (lambda: utt.verify_grad(lambda r: GpuCholesky(lower=True)(r.dot(r.T)),
+                                   [r], 3, rng))
+    # Explicit upper-triangular.
+    yield (lambda: utt.verify_grad(lambda r: GpuCholesky(lower=False)(r.dot(r.T)),
+                                   [r], 3, rng))
+
+
+def test_cholesky_grad_indef():
+    x = theano.tensor.matrix()
+    matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
+    cholesky = GpuCholesky(lower=True)
+    chol_f = theano.function([x], theano.tensor.grad(gpu_cholesky(x).sum(), [x]))
+    with assert_raises(scipy.linalg.LinAlgError):
+        chol_f(matrix)
+    # cholesky = GpuCholesky(lower=True, on_error='nan')
+    # chol_f = function([x], grad(gpu_cholesky(x).sum(), [x]))
+    # assert np.all(np.isnan(chol_f(matrix)))
+
