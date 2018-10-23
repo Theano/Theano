@@ -214,6 +214,97 @@ class TestGpuCholesky(unittest.TestCase):
         fn = self.get_gpu_cholesky_func(True, False)
         self.assertRaises(LinAlgError, fn, A_val)
 
+class TestGpuCholesky64(unittest.TestCase):
+
+    def setUp(self):
+        if not cusolver_available:
+            self.skipTest('Optional package scikits.cuda.cusolver not available')
+        utt.seed_rng()
+
+    def get_gpu_cholesky_func(self, lower=True, inplace=False):
+        # Helper function to compile function from GPU Cholesky op.
+        A = theano.tensor.matrix("A", dtype="float64")
+        cholesky_op = GpuCholesky(lower=lower, inplace=inplace)
+        chol_A = cholesky_op(A)
+        return theano.function([A], chol_A, accept_inplace=inplace,
+                               mode=mode_with_gpu)
+
+    def compare_gpu_cholesky_to_np(self, A_val, lower=True, inplace=False):
+        # Helper function to compare op output to np.cholesky output.
+        chol_A_val = np.linalg.cholesky(A_val)
+        if not lower:
+            chol_A_val = chol_A_val.T
+        fn = self.get_gpu_cholesky_func(lower, inplace)
+        res = fn(A_val)
+        chol_A_res = np.array(res)
+        utt.assert_allclose(chol_A_res, chol_A_val)
+
+    def test_gpu_cholesky_opt(self):
+        if not imported_scipy:
+            self.skipTest('SciPy is not enabled, skipping test')
+        A = theano.tensor.matrix("A", dtype="float64")
+        fn = theano.function([A], cholesky(A), mode=mode_with_gpu)
+        assert any([isinstance(node.op, GpuCholesky)
+                    for node in fn.maker.fgraph.toposort()])
+
+    def test_invalid_input_fail_non_square(self):
+        # Invalid Cholesky input test with non-square matrix as input.
+        A_val = np.random.normal(size=(3, 2)).astype("float64")
+        fn = self.get_gpu_cholesky_func(True, False)
+        self.assertRaises(ValueError, fn, A_val)
+
+    def test_invalid_input_fail_vector(self):
+        # Invalid Cholesky input test with vector as input.
+        def invalid_input_func():
+            A = theano.tensor.vector("A", dtype="float64")
+            GpuCholesky(lower=True, inplace=False)(A)
+        self.assertRaises(AssertionError, invalid_input_func)
+
+    def test_invalid_input_fail_tensor3(self):
+        # Invalid Cholesky input test with 3D tensor as input.
+        def invalid_input_func():
+            A = theano.tensor.tensor3("A", dtype="float64")
+            GpuCholesky(lower=True, inplace=False)(A)
+        self.assertRaises(AssertionError, invalid_input_func)
+
+    @utt.assertFailure_fast
+    def test_diag_chol(self):
+        # Diagonal matrix input Cholesky test.
+        for lower in [True, False]:
+            for inplace in [True, False]:
+                # make sure all diagonal elements are positive so positive-definite
+                A_val = np.diag(np.random.uniform(size=5).astype("float64") + 1)
+                self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
+
+    @utt.assertFailure_fast
+    def test_dense_chol_lower(self):
+        # Dense matrix input lower-triangular Cholesky test.
+        for lower in [True, False]:
+            for inplace in [True, False]:
+                M_val = np.random.normal(size=(3, 3)).astype("float64")
+                # A = M.dot(M) will be positive definite for all non-singular M
+                A_val = M_val.dot(M_val.T)
+                self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
+
+    def test_invalid_input_fail_non_symmetric(self):
+        # Invalid Cholesky input test with non-symmetric input.
+        #    (Non-symmetric real input must also be non-positive definite).
+        A_val = None
+        while True:
+            A_val = np.random.normal(size=(3, 3)).astype("float64")
+            if not np.allclose(A_val, A_val.T):
+                break
+        fn = self.get_gpu_cholesky_func(True, False)
+        self.assertRaises(LinAlgError, fn, A_val)
+
+    def test_invalid_input_fail_negative_definite(self):
+        # Invalid Cholesky input test with negative-definite input.
+        M_val = np.random.normal(size=(3, 3)).astype("float64")
+        # A = -M.dot(M) will be negative definite for all non-singular M
+        A_val = -M_val.dot(M_val.T)
+        fn = self.get_gpu_cholesky_func(True, False)
+        self.assertRaises(LinAlgError, fn, A_val)
+
 
 class TestMagma(unittest.TestCase):
 

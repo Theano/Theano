@@ -125,15 +125,13 @@ class GpuCusolverSolve(Op):
         inp1 = gpu_contiguous(inp1)
         inp2 = gpu_contiguous(inp2)
 
-        # this op can only operate on float32 matrices
         assert inp1.ndim == 2
         assert inp2.ndim == 2
-        assert inp1.dtype == 'float32'
-        assert inp2.dtype == 'float32'
+        assert inp1.dtype == inp2.dtype
 
         return theano.Apply(
             self, [inp1, inp2],
-            [GpuArrayType('float32',
+            [GpuArrayType(inp1.dtype,
                           broadcastable=inp1.broadcastable,
                           context_name=context_name)()])
 
@@ -192,12 +190,29 @@ class GpuCusolverSolve(Op):
         if A.flags['C_CONTIGUOUS']:
             trans = 1 - trans
 
+        if A.dtype == 'float32':
+            potrf_bufferSize = cusolver.cusolverDnSpotrf_bufferSize
+            potrf = cusolver.cusolverDnSpotrf
+            potrs = cusolverDnSpotrs
+            getrf_bufferSize = cusolver.cusolverDnSgetrf_bufferSize
+            getrf = cusolver.cusolverDnSgetrf
+            getrs = cusolver.cusolverDnSgetrs
+        elif A.dtype == 'float64':
+            potrf_bufferSize = cusolver.cusolverDnDpotrf_bufferSize
+            potrf = cusolver.cusolverDnDpotrf
+            potrs = cusolverDnDpotrs
+            getrf_bufferSize = cusolver.cusolverDnDgetrf_bufferSize
+            getrf = cusolver.cusolverDnDgetrf
+            getrs = cusolver.cusolverDnDgetrs
+        else:
+            raise ValueError("Unsupported dtype")
+        
         if self.A_structure == 'symmetric':
             with context:
-                workspace_size = cusolver.cusolverDnSpotrf_bufferSize(
+                workspace_size = potrf_bufferSize(
                     context.cusolver_handle, 0, n, A_ptr, lda)
 
-            workspace = pygpu.zeros(workspace_size, dtype='float32',
+            workspace = pygpu.zeros(workspace_size, dtype=A.dtype,
                                     context=context)
 
             dev_info = pygpu.zeros((1,), dtype='int32', context=context)
@@ -206,22 +221,22 @@ class GpuCusolverSolve(Op):
             dev_info_ptr = dev_info.gpudata
 
             with context:
-                cusolver.cusolverDnSpotrf(
+                potrf(
                     context.cusolver_handle, 0, n, A_ptr, lda, workspace_ptr,
                     workspace_size, dev_info_ptr)
                 self.check_dev_info(dev_info)
 
-                cusolverDnSpotrs(
+                potrs(
                     context.cusolver_handle, 0, n, m, A_ptr, lda,
                     b_ptr, ldb, dev_info_ptr)
 
         else:
             # general case for A
             with context:
-                workspace_size = cusolver.cusolverDnSgetrf_bufferSize(
+                workspace_size = getrf_bufferSize(
                     context.cusolver_handle, n, n, A_ptr, lda)
 
-            workspace = pygpu.zeros(workspace_size, dtype='float32',
+            workspace = pygpu.zeros(workspace_size, dtype=A.dtype,
                                     context=context)
 
             pivots = pygpu.zeros(n, dtype='int32', context=context)
@@ -233,12 +248,12 @@ class GpuCusolverSolve(Op):
             dev_info_ptr = dev_info.gpudata
 
             with context:
-                cusolver.cusolverDnSgetrf(
+                getrf(
                     context.cusolver_handle, n, n, A_ptr, lda, workspace_ptr,
                     pivots_ptr, dev_info_ptr)
                 self.check_dev_info(dev_info)
 
-                cusolver.cusolverDnSgetrs(
+                getrs(
                     context.cusolver_handle, trans, n, m, A_ptr, lda,
                     pivots_ptr, b_ptr, ldb, dev_info_ptr)
 
@@ -275,14 +290,12 @@ class GpuCublasTriangularSolve(Op):
         inp1 = gpu_contiguous(inp1)
         inp2 = gpu_contiguous(inp2)
 
-        # this op can only operate on float32 matrices
         assert inp1.ndim == 2
         assert inp2.ndim in [1, 2]
-        assert inp1.dtype == 'float32'
-        assert inp2.dtype == 'float32'
+        assert inp1.dtype == inp2.dtype
 
         return theano.Apply(self, [inp1, inp2],
-                            [GpuArrayType('float32',
+                            [GpuArrayType(inp1.dtype,
                                           broadcastable=inp2.broadcastable,
                                           context_name=context_name)()])
 
@@ -347,14 +360,23 @@ class GpuCublasTriangularSolve(Op):
         # indicates elements on diagonal of matrix A may not be unity
         diag = 'n'
 
+        if A.dtype == 'float32':
+            trsv = cublas.cublasStrsv
+            trsm = cublas.cublasStrsm
+        elif A.dtype == 'float64':
+            trsv = cublas.cublasDtrsv
+            trsm = cublas.cublasDtrsm
+        else:
+            raise ValueError("Unsupported dtype")
+        
         with ctx:
             if b.ndim == 1:
                 # matrix vector solve
-                cublas.cublasStrsv(ctx.cublas_handle, uplo, trans, diag, n,
-                                   A_ptr, lda, b_ptr, 1)
+                trsv(ctx.cublas_handle, uplo, trans, diag, n,
+                     A_ptr, lda, b_ptr, 1)
             else:
-                cublas.cublasStrsm(ctx.cublas_handle, side, uplo, trans, diag,
-                                   n, m, alpha, A_ptr, lda, b_ptr, ldb)
+                trsm(ctx.cublas_handle, side, uplo, trans, diag,
+                     n, m, alpha, A_ptr, lda, b_ptr, ldb)
 
         x[0] = b
 
@@ -411,11 +433,7 @@ class GpuCholesky(Op):
 
         inp = gpu_contiguous(inp)
 
-        # this op can only operate on float32 matrices
-        # because of current implementation of triu/tril.
-        # TODO: support float64 for triu/tril in GpuArray and for GpuCholesky/GpuCusolverSolve in Theano.
         assert inp.ndim == 2
-        assert inp.dtype == 'float32'
 
         return theano.Apply(self, [inp], [inp.type()])
 
@@ -453,11 +471,20 @@ class GpuCholesky(Op):
 
         L_ptr = L.gpudata
 
+        if A.dtype == 'float32':
+            potrf_bufferSize = cusolver.cusolverDnSpotrf_bufferSize
+            potrf = cusolver.cusolverDnSpotrf
+        elif A.dtype == 'float64':
+            potrf_bufferSize = cusolver.cusolverDnDpotrf_bufferSize
+            potrf = cusolver.cusolverDnDpotrf
+        else:
+            raise ValueError("Unsupported dtype")
+        
         with context:
-            workspace_size = cusolver.cusolverDnSpotrf_bufferSize(
+            workspace_size = potrf_bufferSize(
                 context.cusolver_handle, l_parameter, n, L_ptr, lda)
 
-            workspace = pygpu.zeros(workspace_size, dtype='float32',
+            workspace = pygpu.zeros(workspace_size, dtype=A.dtype,
                                     context=context)
 
             dev_info = pygpu.zeros((1,), dtype='int32', context=context)
@@ -465,7 +492,7 @@ class GpuCholesky(Op):
             workspace_ptr = workspace.gpudata
             dev_info_ptr = dev_info.gpudata
 
-            cusolver.cusolverDnSpotrf(
+            potrf(
                 context.cusolver_handle, l_parameter, n, L_ptr, lda, workspace_ptr,
                 workspace_size, dev_info_ptr)
 
