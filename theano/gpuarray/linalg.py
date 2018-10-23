@@ -66,6 +66,26 @@ if cusolver_available:
                                                         ldb, int(devInfo))
         cusolver.cusolverCheckStatus(status)
 
+    # DPOTRS
+    # TODO: Are they still missing in skucda?
+    cusolver._libcusolver.cusolverDnDpotrs.restype = int
+    cusolver._libcusolver.cusolverDnDpotrs.argtypes = [cusolver.ctypes.c_void_p,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_void_p,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_void_p,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_void_p]
+
+    def cusolverDnDpotrs(handle, uplo, n, nrhs, A, lda,
+                         B, ldb, devInfo):
+        status = cusolver._libcusolver.cusolverDnDpotrs(handle, uplo, n, nrhs,
+                                                        int(A), lda, int(B),
+                                                        ldb, int(devInfo))
+        cusolver.cusolverCheckStatus(status)
+        
 
 def attach_cusolver_handle_to_context(ctx):
     handle = getattr(ctx, 'cusolver_handle', None)
@@ -389,6 +409,11 @@ def gpu_solve(A, b, A_structure='general', trans='N'):
 
     return GpuCusolverSolve(A_structure, trans)(A, b)
 
+# added these to make the module consistent to theano/tensor/slinalg.py
+def gpu_solve_lower_triangular(A,b):
+    return GpuCublasTriangularSolve(True,'N')(A,b)
+def gpu_solve_upper_triangular(A,b):
+    return GpuCublasTriangularSolve(False,'N')(A,b)
 
 class GpuCholesky(Op):
     """

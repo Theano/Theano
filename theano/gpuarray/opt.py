@@ -2583,7 +2583,7 @@ def local_gpua_images2neibs(op, context_name, inputs, outputs):
 @op_lifter([slinalg.Solve])
 @register_opt2([theano.tensor.slinalg.Solve], 'fast_compile')
 def local_gpu_solve(op, context_name, inputs, outputs):
-    if inputs[0].dtype not in ['float16', 'float32']:
+    if inputs[0].dtype not in ['float16', 'float32','float64']:
         return
     if op.A_structure not in MATRIX_STRUCTURES_SOLVE:
         return
@@ -2617,7 +2617,7 @@ def local_inplace_gpu_solve(node):
 def local_gpu_cholesky(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
-    if inputs[0].dtype not in ['float16', 'float32']:
+    if inputs[0].dtype not in ['float16', 'float32', 'float64']:
         return
     op = GpuCholesky(lower=op.lower, inplace=op.destructive)
     if inputs[0].dtype == 'float16':
