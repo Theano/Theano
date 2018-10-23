@@ -286,31 +286,12 @@ class GpuCusolverSolve(Op):
         A, b = inputs
         c = outputs[0]
         c_bar = output_gradients[0]
-        trans_map = {
-            'lower_triangular': 'upper_triangular',
-            'upper_triangular': 'lower_triangular',
-        }
-        trans_map2 = {
-            'N': 'T',
-            'T': 'N',
-        }
-        # if self.A_structure == 'lower_triangular':
-        #     trans_solve_op = GpuCublasTriangularSolve(lower=False)
-        # elif self.A_structure == 'upper_triangular':
-        #     trans_solve_op = GpuCublasTriangularSolve(lower=True)
-        # else:
-        trans_solve_op = GpuCusolverSolve(
-            # update A_structure and lower to account for a transpose operation
-            A_structure=trans_map.get(self.A_structure,self.A_structure),
-            # trans=trans_map2[self.trans],
-        )
+        # FIXME: triangular structure would use GpuCublasTriangularsolve?
+        # no need to handle A_structure like slinalg.py?
+        trans_solve_op = GpuCusolverSolve('general')
         b_bar = trans_solve_op(A.T, c_bar)
         # force outer product if vector second input
         A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
-        if self.A_structure == 'lower_triangular':
-            A_bar = tensor.tril(A_bar)
-        elif self.A_structure == 'upper_triangular':
-            A_bar = tensor.triu(A_bar)
         return [A_bar, b_bar]
 
 class GpuCublasTriangularSolve(Op):

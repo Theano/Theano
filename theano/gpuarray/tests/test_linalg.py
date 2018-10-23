@@ -145,8 +145,7 @@ class TestCusolver(unittest.TestCase):
 
     def test_solve_grad(self):
         rng = np.random.RandomState(utt.fetch_seed())
-        # structures = ['general', 'lower_triangular', 'upper_triangular']
-        structures = ['general']
+        structures = ['general', 'lower_triangular', 'upper_triangular']
         for A_structure in structures:
             lower = (A_structure == 'lower_triangular')
             # self.verify_solve_grad(5, None, A_structure, lower, rng)
