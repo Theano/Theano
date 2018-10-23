@@ -13,7 +13,9 @@ from theano.gpuarray.linalg import (GpuCusolverSolve,GpuCublasTriangularSolve,
                                     GpuMagmaQR, GpuMagmaSVD,
                                     cusolver_available, gpu_matrix_inverse,
                                     gpu_cholesky,
-                                    gpu_solve, gpu_svd, gpu_qr)
+                                    gpu_solve, gpu_solve_lower_triangular,
+                                    gpu_solve_upper_triangular,
+                                    gpu_svd, gpu_qr)
 from theano.tensor.nlinalg import (SVD, MatrixInverse, QRFull,
                                    QRIncomplete, eigh, matrix_inverse, qr)
 from theano.tensor.slinalg import Cholesky, cholesky, imported_scipy
@@ -627,3 +629,17 @@ def test_cholesky_grad_indef():
     # chol_f = function([x], grad(gpu_cholesky(x).sum(), [x]))
     # assert np.all(np.isnan(chol_f(matrix)))
 
+def test_lower_triangular_and_cholesky_grad():
+    rng = np.random.RandomState(utt.fetch_seed())
+    r = rng.randn(10, 10).astype(config.floatX)
+    y = rng.rand(10, 1).astype(config.floatX)
+    
+    def f(r,y):
+        PD = r.dot(r.T)
+        L = gpu_cholesky(PD)
+        A = gpu_solve_lower_triangular(L,y)
+        AAT = theano.tensor.dot(A,A.T)
+        B = AAT + theano.tensor.eye(10)
+        LB = gpu_cholesky(B)
+        return theano.tensor.sum(LB)
+    yield (lambda: utt.verify_grad(f, [r,y], 3, rng))
