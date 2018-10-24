@@ -1821,4 +1821,4 @@ KERNEL void tri(GLOBAL_MEM %(ctype)s *a, ga_size a_off,
         return s
 
     def c_code_cache_version(self):
-        return (10,)
+        return (1,)
