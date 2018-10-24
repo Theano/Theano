@@ -420,13 +420,8 @@ class GpuCublasTriangularSolve(Op):
         trans_solve_op = GpuCublasTriangularSolve(not self.lower)
         b_bar = trans_solve_op(A.T, c_bar)
 
-        # FIXME: tensor.outer does not appear to use GPU
-        def gpu_outer(x,y):
-            return tensor.dot(x.dimshuffle(0,'x'),y.dimshuffle('x',0))
+        A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
 
-        A_bar = -gpu_outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
-
-        # FIXME: tensor.tril / tensor.triu has no GPU implementation
         if self.lower:
             A_bar = tensor.tril(A_bar)
         else:
@@ -584,9 +579,6 @@ class GpuCholesky(Op):
             chol_x = chol_x.T
             dz = dz.T
 
-        # FIXME: tensor.tril / tensor.triu / tensor.diagonal / tensor.diag
-        # has no GPU implementation
-            
         def tril_and_halve_diagonal(mtx):
             """Extracts lower triangle of square matrix and halves diagonal."""
             return tensor.tril(mtx) - tensor.diag(tensor.diagonal(mtx) / 2.)

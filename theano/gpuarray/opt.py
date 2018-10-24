@@ -52,7 +52,7 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
-                        GpuEye, gpu_join, GpuJoin)
+                        GpuEye, GpuTri, gpu_join, GpuJoin)
 from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemm_no_inplace, gpugemm_inplace,
                    gpugemmbatch_no_inplace,
@@ -389,7 +389,8 @@ class GraphToGPU(Optimizer):
             if (not move_to_GPU and
                     isinstance(node.op, (theano.tensor.Alloc,
                                          theano.tensor.AllocEmpty,
-                                         theano.tensor.basic.Eye))):
+                                         theano.tensor.basic.Eye,
+                                         theano.tensor.basic.Tri))):
                 # If the Alloc[Empty] have a client that will be moved
                 # to the GPU, we should move the Alloc* on the GPU.
 
@@ -1411,6 +1412,11 @@ def local_gpua_dot22scalar(op, context_name, inputs, outputs):
 def local_gpua_eye(op, context_name, inputs, outputs):
     return GpuEye(dtype=op.dtype, context_name=context_name)
 
+@register_opt('fast_compile')
+@op_lifter([tensor.basic.Tri])
+@register_opt2([tensor.basic.Tri], 'fast_compile')
+def local_gpua_tri(op, context_name, inputs, outputs):
+    return GpuTri(dtype=op.dtype, context_name=context_name)
 
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias])

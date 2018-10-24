@@ -20,7 +20,8 @@ from ..type import (GpuArrayType, get_context,
 from ..basic_ops import (
     host_from_gpu, HostFromGpu, GpuFromHost, GpuReshape, GpuToGpu,
     GpuAlloc, GpuAllocEmpty, GpuContiguous,
-    gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
+    gpu_join, GpuJoin, GpuSplit, GpuEye, GpuTri,
+    gpu_contiguous)
 from ..elemwise import GpuDimShuffle, GpuElemwise
 from ..subtensor import GpuSubtensor
 
@@ -443,7 +444,6 @@ def test_gpueye():
         yield check, dtype, 5, 3, 6
         yield check, dtype, 3, 5, -6
 
-
 def test_hostfromgpu_shape_i():
     # Test that the shape is lifted over hostfromgpu
 
@@ -497,3 +497,111 @@ def test_Gpujoin_inplace():
     if not isinstance(mode_with_gpu, theano.compile.DebugMode):
         assert x.get_value(borrow=True, return_internal_type=True) is f(0)
     assert np.allclose(f(0), [3, 4, 5])
+
+def test_gpu_tril_triu():
+    def check_l(m, k=0):
+        m_symb = T.matrix(dtype=m.dtype)
+        k_symb = T.iscalar()
+
+        f = theano.function([m_symb,k_symb],
+                            T.tril(m_symb,k_symb),
+                            mode=mode_with_gpu)
+        result = f(m, k)
+        assert np.allclose(result, np.tril(m, k))
+        assert result.dtype == np.dtype(dtype)
+        assert any([isinstance(node.op, GpuTri)
+                    for node in f.maker.fgraph.toposort()])
+
+    def check_u(m, k=0):
+        m_symb = T.matrix(dtype=m.dtype)
+        k_symb = T.iscalar()
+        f = theano.function([m_symb,k_symb],
+                            T.triu(m_symb,k_symb),
+                            mode=mode_with_gpu)
+        result = f(m, k)
+        assert np.allclose(result, np.triu(m, k))
+        assert result.dtype == np.dtype(dtype)
+        assert any([isinstance(node.op, GpuTri)
+                    for node in f.maker.fgraph.toposort()])
+
+    utt.seed_rng()
+    test_rng = np.random.RandomState(seed=utt.fetch_seed())
+
+    for dtype in ['float64', 'float32', 'float16']:
+        # try a big one
+        m = np.asarray(test_rng.rand(5000,5000) * 2 - 1, dtype=dtype)
+        yield check_l, m, 0
+        yield check_l, m, 1
+        yield check_l, m, -1
+
+        yield check_u, m, 0
+        yield check_u, m, 1
+        yield check_u, m, -1
+        
+        m = np.asarray(test_rng.rand(10,10) * 2 - 1, dtype=dtype)
+        yield check_l, m, 0
+        yield check_l, m, 1
+        yield check_l, m, -1
+
+        yield check_u, m, 0
+        yield check_u, m, 1
+        yield check_u, m, -1
+
+        m = np.asarray(test_rng.rand(10,5) * 2 - 1, dtype=dtype)
+        yield check_l, m, 0
+        yield check_l, m, 1
+        yield check_l, m, -1
+
+        yield check_u, m, 0
+        yield check_u, m, 1
+        yield check_u, m, -1
+
+def test_gputri():
+    def check(dtype, N, M_=None, k=0):
+        # Theano does not accept None as a tensor.
+        # So we must use a real value.
+        M = M_
+        # Currently DebugMode does not support None as inputs even if this is
+        # allowed.
+        if M is None:
+            M = N
+        N_symb = T.iscalar()
+        M_symb = T.iscalar()
+        k_symb = T.iscalar()
+        out = T.tri(N_symb, M_symb, k_symb, dtype=dtype) + np.array(1).astype(dtype)
+        f = theano.function([N_symb, M_symb, k_symb],
+                            out,
+                            mode=mode_with_gpu)
+        result = np.asarray(f(N, M, k)) - np.array(1).astype(dtype)
+        print(result)
+        assert np.allclose(result, np.tri(N, M_, k, dtype=dtype))
+        assert result.dtype == np.dtype(dtype)
+        assert any([isinstance(node.op, GpuTri)
+                    for node in f.maker.fgraph.toposort()])
+
+    for dtype in ['float64', 'float32', 'int32', 'float16']:
+        # try a big one
+        yield check, dtype, 1000, 1000, 0
+        yield check, dtype, 1000, 1000, -400
+        yield check, dtype, 1000, 1000, 400
+        
+        yield check, dtype, 5
+        # M != N, k = 0
+        yield check, dtype, 3, 5
+        yield check, dtype, 5, 3
+        # N == M, k != 0
+        yield check, dtype, 3, 3, 1
+        yield check, dtype, 3, 3, -1
+        # N < M, k != 0
+        yield check, dtype, 3, 5, 1
+        yield check, dtype, 3, 5, -1
+        # N > M, k != 0
+        yield check, dtype, 5, 3, 1
+        yield check, dtype, 5, 3, -1
+        # k > M, -k > N, k > M, k > N
+        yield check, dtype, 5, 3, 3
+        yield check, dtype, 3, 5, 3
+        yield check, dtype, 5, 3, -3
+        yield check, dtype, 3, 5, -3
+        yield check, dtype, 5, 3, 6
+        yield check, dtype, 3, 5, -6
