@@ -573,7 +573,6 @@ def test_gputri():
                             out,
                             mode=mode_with_gpu)
         result = np.asarray(f(N, M, k)) - np.array(1).astype(dtype)
-        print(result)
         assert np.allclose(result, np.tri(N, M_, k, dtype=dtype))
         assert result.dtype == np.dtype(dtype)
         assert any([isinstance(node.op, GpuTri)
