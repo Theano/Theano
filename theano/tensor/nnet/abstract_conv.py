@@ -1125,12 +1125,17 @@ def conv2d_grad_wrt_inputs(output_grad,
 
     # checking the type of input_shape
     for dim in [0, 1]:
-        assert isinstance(input_shape[dim], (theano.tensor.TensorConstant,
-                                             integer_types, type(None)))
+        if not isinstance(input_shape[dim], (theano.tensor.TensorConstant,
+                                             integer_types, type(None))):
+            raise ValueError("input_shape[%d] must be a constant or None." %
+                             dim)
     for dim in [2, 3]:
-        assert isinstance(input_shape[dim], (theano.tensor.TensorVariable,
+        if not isinstance(input_shape[dim], (theano.tensor.TensorVariable,
                                              theano.tensor.TensorConstant,
-                                             integer_types))
+                                             integer_types)):
+            raise ValueError("input_shape[%d] must be a symbolic variable,"
+                             " a constant or None." %
+                             dim)
 
     # checking the type of filter_shape
     if filter_shape is not None:
@@ -1139,11 +1144,16 @@ def conv2d_grad_wrt_inputs(output_grad,
         else:
             expected_dim = 4
 
-        assert len(filter_shape) == expected_dim
+        if len(filter_shape) != expected_dim:
+            raise ValueError(
+                "The lenght of filter_shape was %d, but we expected %d." % (
+                    len(filter_shape), expected_dim))
 
         for dim in range(expected_dim):
-            assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
-                                                  integer_types, type(None)))
+            if not isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
+                                                  integer_types, type(None))):
+                raise ValueError(
+                    "filter_shape[%d] must be a constant or None" % dim)
 
     # setting the last two dimensions of input_shape to None, if
     # the type of these dimensions is TensorVariable.
