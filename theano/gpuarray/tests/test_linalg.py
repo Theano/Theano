@@ -143,10 +143,8 @@ class TestCusolver(unittest.TestCase):
         if config.floatX == "float64":
             eps = 2e-8
 
-        if A_structure == 'lower_triangular':
-            solve_op = GpuCublasTriangularSolve(lower=False)
-        elif A_structure == 'lower_triangular':
-            solve_op = GpuCublasTriangularSolve(lower=True)
+        if A_structure in ('lower_triangular', 'upper_triangular'):
+            solve_op = GpuCublasTriangularSolve(lower=lower)
         else:
             solve_op = GpuCusolverSolve(A_structure="general")
         utt.verify_grad(solve_op, [A_val, b_val], 3, rng, eps=eps)
