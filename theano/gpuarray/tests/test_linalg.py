@@ -624,7 +624,7 @@ def test_cholesky_grad_indef():
     x = theano.tensor.matrix()
     matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
     cholesky = GpuCholesky(lower=True)
-    chol_f = theano.function([x], theano.tensor.grad(gpu_cholesky(x).sum(), [x]))
+    chol_f = theano.function([x], theano.tensor.grad(cholesky(x).sum(), [x]))
     with assert_raises(LinAlgError):
         chol_f(matrix)
     # cholesky = GpuCholesky(lower=True, on_error='nan')
