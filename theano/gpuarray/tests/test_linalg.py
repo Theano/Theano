@@ -7,11 +7,14 @@ from numpy.linalg.linalg import LinAlgError
 
 import theano
 from theano import config
-from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaCholesky,
+from theano.gpuarray.linalg import (GpuCusolverSolve, GpuCublasTriangularSolve,
+                                    GpuCholesky, GpuMagmaCholesky,
                                     GpuMagmaEigh, GpuMagmaMatrixInverse,
                                     GpuMagmaQR, GpuMagmaSVD,
                                     cusolver_available, gpu_matrix_inverse,
-                                    gpu_solve, gpu_svd, gpu_qr)
+                                    gpu_cholesky,
+                                    gpu_solve, gpu_solve_lower_triangular,
+                                    gpu_svd, gpu_qr)
 from theano.tensor.nlinalg import (SVD, MatrixInverse, QRFull,
                                    QRIncomplete, eigh, matrix_inverse, qr)
 from theano.tensor.slinalg import Cholesky, cholesky, imported_scipy
@@ -20,6 +23,7 @@ from theano.tests import unittest_tools as utt
 from .. import gpuarray_shared_constructor
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
+from nose.tools import assert_raises
 
 
 class TestCusolver(unittest.TestCase):
@@ -122,6 +126,41 @@ class TestCusolver(unittest.TestCase):
         fn = theano.function([A, b], [solver], mode=mode_with_gpu)
         self.assertRaises(LinAlgError, fn, A_val, x_val)
 
+    def verify_solve_grad(self, m, n, A_structure, lower, rng):
+        # ensure diagonal elements of A relatively large to avoid numerical
+        # precision issues
+        A_val = (rng.normal(size=(m, m)) * 0.5 +
+                 np.eye(m)).astype(config.floatX)
+        if A_structure == 'lower_triangular':
+            A_val = np.tril(A_val)
+        elif A_structure == 'upper_triangular':
+            A_val = np.triu(A_val)
+        if n is None:
+            b_val = rng.normal(size=m).astype(config.floatX)
+        else:
+            b_val = rng.normal(size=(m, n)).astype(config.floatX)
+        eps = None
+        if config.floatX == "float64":
+            eps = 2e-8
+
+        if A_structure in ('lower_triangular', 'upper_triangular'):
+            solve_op = GpuCublasTriangularSolve(lower=lower)
+        else:
+            solve_op = GpuCusolverSolve(A_structure="general")
+        utt.verify_grad(solve_op, [A_val, b_val], 3, rng, eps=eps)
+
+    def test_solve_grad(self):
+        rng = np.random.RandomState(utt.fetch_seed())
+        structures = ['general', 'lower_triangular', 'upper_triangular']
+        for A_structure in structures:
+            lower = (A_structure == 'lower_triangular')
+            # self.verify_solve_grad(5, None, A_structure, lower, rng)
+            self.verify_solve_grad(6, 1, A_structure, lower, rng)
+            self.verify_solve_grad(4, 3, A_structure, lower, rng)
+        # lower should have no effect for A_structure == 'general' so also
+        # check lower=True case
+        self.verify_solve_grad(4, 3, 'general', lower=True, rng=rng)
+
 
 class TestGpuCholesky(unittest.TestCase):
 
@@ -209,6 +248,98 @@ class TestGpuCholesky(unittest.TestCase):
     def test_invalid_input_fail_negative_definite(self):
         # Invalid Cholesky input test with negative-definite input.
         M_val = np.random.normal(size=(3, 3)).astype("float32")
+        # A = -M.dot(M) will be negative definite for all non-singular M
+        A_val = -M_val.dot(M_val.T)
+        fn = self.get_gpu_cholesky_func(True, False)
+        self.assertRaises(LinAlgError, fn, A_val)
+
+
+class TestGpuCholesky64(unittest.TestCase):
+
+    def setUp(self):
+        if not cusolver_available:
+            self.skipTest('Optional package scikits.cuda.cusolver not available')
+        utt.seed_rng()
+
+    def get_gpu_cholesky_func(self, lower=True, inplace=False):
+        # Helper function to compile function from GPU Cholesky op.
+        A = theano.tensor.matrix("A", dtype="float64")
+        cholesky_op = GpuCholesky(lower=lower, inplace=inplace)
+        chol_A = cholesky_op(A)
+        return theano.function([A], chol_A, accept_inplace=inplace,
+                               mode=mode_with_gpu)
+
+    def compare_gpu_cholesky_to_np(self, A_val, lower=True, inplace=False):
+        # Helper function to compare op output to np.cholesky output.
+        chol_A_val = np.linalg.cholesky(A_val)
+        if not lower:
+            chol_A_val = chol_A_val.T
+        fn = self.get_gpu_cholesky_func(lower, inplace)
+        res = fn(A_val)
+        chol_A_res = np.array(res)
+        utt.assert_allclose(chol_A_res, chol_A_val)
+
+    def test_gpu_cholesky_opt(self):
+        if not imported_scipy:
+            self.skipTest('SciPy is not enabled, skipping test')
+        A = theano.tensor.matrix("A", dtype="float64")
+        fn = theano.function([A], cholesky(A), mode=mode_with_gpu)
+        assert any([isinstance(node.op, GpuCholesky)
+                    for node in fn.maker.fgraph.toposort()])
+
+    def test_invalid_input_fail_non_square(self):
+        # Invalid Cholesky input test with non-square matrix as input.
+        A_val = np.random.normal(size=(3, 2)).astype("float64")
+        fn = self.get_gpu_cholesky_func(True, False)
+        self.assertRaises(ValueError, fn, A_val)
+
+    def test_invalid_input_fail_vector(self):
+        # Invalid Cholesky input test with vector as input.
+        def invalid_input_func():
+            A = theano.tensor.vector("A", dtype="float64")
+            GpuCholesky(lower=True, inplace=False)(A)
+        self.assertRaises(AssertionError, invalid_input_func)
+
+    def test_invalid_input_fail_tensor3(self):
+        # Invalid Cholesky input test with 3D tensor as input.
+        def invalid_input_func():
+            A = theano.tensor.tensor3("A", dtype="float64")
+            GpuCholesky(lower=True, inplace=False)(A)
+        self.assertRaises(AssertionError, invalid_input_func)
+
+    @utt.assertFailure_fast
+    def test_diag_chol(self):
+        # Diagonal matrix input Cholesky test.
+        for lower in [True, False]:
+            for inplace in [True, False]:
+                # make sure all diagonal elements are positive so positive-definite
+                A_val = np.diag(np.random.uniform(size=5).astype("float64") + 1)
+                self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
+
+    @utt.assertFailure_fast
+    def test_dense_chol_lower(self):
+        # Dense matrix input lower-triangular Cholesky test.
+        for lower in [True, False]:
+            for inplace in [True, False]:
+                M_val = np.random.normal(size=(3, 3)).astype("float64")
+                # A = M.dot(M) will be positive definite for all non-singular M
+                A_val = M_val.dot(M_val.T)
+                self.compare_gpu_cholesky_to_np(A_val, lower=lower, inplace=inplace)
+
+    def test_invalid_input_fail_non_symmetric(self):
+        # Invalid Cholesky input test with non-symmetric input.
+        #    (Non-symmetric real input must also be non-positive definite).
+        A_val = None
+        while True:
+            A_val = np.random.normal(size=(3, 3)).astype("float64")
+            if not np.allclose(A_val, A_val.T):
+                break
+        fn = self.get_gpu_cholesky_func(True, False)
+        self.assertRaises(LinAlgError, fn, A_val)
+
+    def test_invalid_input_fail_negative_definite(self):
+        # Invalid Cholesky input test with negative-definite input.
+        M_val = np.random.normal(size=(3, 3)).astype("float64")
         # A = -M.dot(M) will be negative definite for all non-singular M
         A_val = -M_val.dot(M_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
@@ -467,3 +598,61 @@ class TestMagma(unittest.TestCase):
             isinstance(node.op, GpuMagmaEigh)
             for node in fn.maker.fgraph.toposort()
         ])
+
+
+# mostly copied from theano/tensor/tests/test_slinalg.py
+def test_cholesky_grad():
+    rng = np.random.RandomState(utt.fetch_seed())
+    r = rng.randn(5, 5).astype(config.floatX)
+
+    # The dots are inside the graph since Cholesky needs separable matrices
+
+    # Check the default.
+    yield (lambda: utt.verify_grad(lambda r: gpu_cholesky(r.dot(r.T)),
+                                   [r], 3, rng))
+    # Explicit lower-triangular.
+    yield (lambda: utt.verify_grad(lambda r: GpuCholesky(lower=True)(r.dot(r.T)),
+                                   [r], 3, rng))
+    # Explicit upper-triangular.
+    yield (lambda: utt.verify_grad(lambda r: GpuCholesky(lower=False)(r.dot(r.T)),
+                                   [r], 3, rng))
+
+
+def test_cholesky_grad_indef():
+    x = theano.tensor.matrix()
+    matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
+    cholesky = GpuCholesky(lower=True)
+    chol_f = theano.function([x], theano.tensor.grad(cholesky(x).sum(), [x]))
+    with assert_raises(LinAlgError):
+        chol_f(matrix)
+    # cholesky = GpuCholesky(lower=True, on_error='nan')
+    # chol_f = function([x], grad(gpu_cholesky(x).sum(), [x]))
+    # assert np.all(np.isnan(chol_f(matrix)))
+
+
+def test_lower_triangular_and_cholesky_grad():
+    # Random lower triangular system is ill-conditioned.
+    #
+    # Reference
+    # -----------
+    # Viswanath, Divakar, and L. N. Trefethen. "Condition numbers of random triangular matrices."
+    # SIAM Journal on Matrix Analysis and Applications 19.2 (1998): 564-581.
+    #
+    # Use smaller number of N when using float32
+    if config.floatX == 'float64':
+        N = 100
+    else:
+        N = 5
+    rng = np.random.RandomState(utt.fetch_seed())
+    r = rng.randn(N, N).astype(config.floatX)
+    y = rng.rand(N, 1).astype(config.floatX)
+
+    def f(r, y):
+        PD = r.dot(r.T)
+        L = gpu_cholesky(PD)
+        A = gpu_solve_lower_triangular(L, y)
+        AAT = theano.tensor.dot(A, A.T)
+        B = AAT + theano.tensor.eye(N)
+        LB = gpu_cholesky(B)
+        return theano.tensor.sum(theano.tensor.log(theano.tensor.diag(LB)))
+    yield (lambda: utt.verify_grad(f, [r, y], 3, rng))

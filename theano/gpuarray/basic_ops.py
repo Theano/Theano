@@ -1712,3 +1712,114 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size a_off,
 
     def c_code_cache_version(self):
         return (10,)
+
+
+class GpuTri(GpuKernelBase, Op):
+    """
+    Tri for GPU.
+
+    """
+    __props__ = ('dtype', 'context_name')
+    _f16_ok = True
+
+    def __init__(self, dtype=None, context_name=None):
+        if dtype is None:
+            dtype = config.floatX
+        self.dtype = dtype
+        self.context_name = context_name
+
+    def get_params(self, node):
+        return get_context(self.context_name)
+
+    def make_node(self, n, m, k):
+        n = tensor.as_tensor_variable(n)
+        m = tensor.as_tensor_variable(m)
+        k = tensor.as_tensor_variable(k)
+        assert n.ndim == 0
+        assert m.ndim == 0
+        assert k.ndim == 0
+        otype = GpuArrayType(dtype=self.dtype,
+                             broadcastable=(False, False),
+                             context_name=self.context_name)
+
+        return Apply(self, [n, m, k], [otype()])
+
+    def infer_shape(self, node, in_shapes):
+        out_shape = [node.inputs[0], node.inputs[1]]
+        return [out_shape]
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, i, inp[i])
+                for i in xrange(3)]
+
+    def gpu_kernels(self, node, name):
+        code = """#include "cluda.h"
+
+KERNEL void tri(GLOBAL_MEM %(ctype)s *a, ga_size a_off,
+                ga_size n, ga_size m, ga_ssize k) {
+    a = (GLOBAL_MEM %(ctype)s *)(((GLOBAL_MEM char *)a) + a_off);
+    ga_ssize coff = max(k, (ga_ssize) 0);
+    ga_ssize roff = -min(k, (ga_ssize) 0);
+    for (ga_size i = LID_0; i < min(n - roff,n); i += LDIM_0) {
+        for (ga_size j = 0; j <= min(i + coff,m-1); j++) {
+          a[(i + roff)*m + j] = %(write_a)s(1);
+        }
+    }
+}""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype),
+            name=name, write_a=write_w(self.dtype))
+        return [Kernel(
+                code=code, name="tri",
+                params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE,
+                        gpuarray.SIZE, gpuarray.SSIZE],
+                flags=Kernel.get_flags(self.dtype),
+                objvar='k_tri_' + name)]
+
+    def c_code(self, node, name, inp, out, sub):
+        if len(inp) == 2:
+            n, m = inp
+            k = 0
+        elif len(inp) == 3:
+            n, m, k = inp
+
+        z, = out
+        fail = sub['fail']
+        ctx = sub['params']
+        typecode = pygpu.gpuarray.dtype_to_typecode(self.dtype)
+        kname = self.gpu_kernels(node, name)[0].objvar
+        s = """
+        size_t dims[2] = {0, 0};
+        size_t ls, gs;
+        ssize_t k;
+        int err;
+
+        dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
+        dims[1] = ((dtype_%(m)s*)PyArray_DATA(%(m)s))[0];
+        k = ((dtype_%(k)s*)PyArray_DATA(%(k)s))[0];
+
+        Py_CLEAR(%(z)s);
+
+        %(z)s = pygpu_zeros(2, dims,
+                            %(typecode)s,
+                            GA_C_ORDER,
+                            %(ctx)s, Py_None);
+        if (%(z)s == NULL) {
+            %(fail)s
+        }
+
+        ls = 1;
+        gs = 256;
+        err = tri_call(1, &gs, &ls, 0, %(z)s->ga.data, %(z)s->ga.offset,
+                       dims[0], dims[1], k);
+        if (err != GA_NO_ERROR) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "gpuarray error: kTri: %%s. n%%lu, m=%%lu.",
+                         GpuKernel_error(&%(kname)s, err),
+                         (unsigned long)dims[0], (unsigned long)dims[1]);
+            %(fail)s;
+        }
+        """ % locals()
+
+        return s
+
+    def c_code_cache_version(self):
+        return (1,)

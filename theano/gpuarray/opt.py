@@ -52,7 +52,7 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
-                        GpuEye, gpu_join, GpuJoin)
+                        GpuEye, GpuTri, gpu_join, GpuJoin)
 from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemm_no_inplace, gpugemm_inplace,
                    gpugemmbatch_no_inplace,
@@ -389,7 +389,8 @@ class GraphToGPU(Optimizer):
             if (not move_to_GPU and
                     isinstance(node.op, (theano.tensor.Alloc,
                                          theano.tensor.AllocEmpty,
-                                         theano.tensor.basic.Eye))):
+                                         theano.tensor.basic.Eye,
+                                         theano.tensor.basic.Tri))):
                 # If the Alloc[Empty] have a client that will be moved
                 # to the GPU, we should move the Alloc* on the GPU.
 
@@ -1410,6 +1411,13 @@ def local_gpua_dot22scalar(op, context_name, inputs, outputs):
 @register_opt2([tensor.basic.Eye], 'fast_compile')
 def local_gpua_eye(op, context_name, inputs, outputs):
     return GpuEye(dtype=op.dtype, context_name=context_name)
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.basic.Tri])
+@register_opt2([tensor.basic.Tri], 'fast_compile')
+def local_gpua_tri(op, context_name, inputs, outputs):
+    return GpuTri(dtype=op.dtype, context_name=context_name)
 
 
 @register_opt('fast_compile')
@@ -2583,7 +2591,7 @@ def local_gpua_images2neibs(op, context_name, inputs, outputs):
 @op_lifter([slinalg.Solve])
 @register_opt2([theano.tensor.slinalg.Solve], 'fast_compile')
 def local_gpu_solve(op, context_name, inputs, outputs):
-    if inputs[0].dtype not in ['float16', 'float32']:
+    if inputs[0].dtype not in ['float16', 'float32', 'float64']:
         return
     if op.A_structure not in MATRIX_STRUCTURES_SOLVE:
         return
@@ -2609,7 +2617,8 @@ def local_gpu_solve(op, context_name, inputs, outputs):
 def local_inplace_gpu_solve(node):
     if isinstance(node.op, GpuCusolverSolve) and not node.op.inplace:
         with inherit_stack_trace(node.outputs):
-            return [GpuCusolverSolve(A_structure=node.op.A_structure, trans=node.op.trans,
+            return [GpuCusolverSolve(A_structure=node.op.A_structure,
+                                     trans=node.op.trans,
                                      inplace=True)(*node.inputs)]
 
 
@@ -2617,7 +2626,7 @@ def local_inplace_gpu_solve(node):
 def local_gpu_cholesky(op, context_name, inputs, outputs):
     if not cusolver_available:
         return
-    if inputs[0].dtype not in ['float16', 'float32']:
+    if inputs[0].dtype not in ['float16', 'float32', 'float64']:
         return
     op = GpuCholesky(lower=op.lower, inplace=op.destructive)
     if inputs[0].dtype == 'float16':

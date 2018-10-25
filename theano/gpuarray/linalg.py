@@ -66,6 +66,26 @@ if cusolver_available:
                                                         ldb, int(devInfo))
         cusolver.cusolverCheckStatus(status)
 
+    # DPOTRS
+    # TODO: Are they still missing in skucda?
+    cusolver._libcusolver.cusolverDnDpotrs.restype = int
+    cusolver._libcusolver.cusolverDnDpotrs.argtypes = [cusolver.ctypes.c_void_p,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_void_p,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_void_p,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_void_p]
+
+    def cusolverDnDpotrs(handle, uplo, n, nrhs, A, lda,
+                         B, ldb, devInfo):
+        status = cusolver._libcusolver.cusolverDnDpotrs(handle, uplo, n, nrhs,
+                                                        int(A), lda, int(B),
+                                                        ldb, int(devInfo))
+        cusolver.cusolverCheckStatus(status)
+
 
 def attach_cusolver_handle_to_context(ctx):
     handle = getattr(ctx, 'cusolver_handle', None)
@@ -125,15 +145,13 @@ class GpuCusolverSolve(Op):
         inp1 = gpu_contiguous(inp1)
         inp2 = gpu_contiguous(inp2)
 
-        # this op can only operate on float32 matrices
         assert inp1.ndim == 2
         assert inp2.ndim == 2
-        assert inp1.dtype == 'float32'
-        assert inp2.dtype == 'float32'
+        assert inp1.dtype == inp2.dtype
 
         return theano.Apply(
             self, [inp1, inp2],
-            [GpuArrayType('float32',
+            [GpuArrayType(inp1.dtype,
                           broadcastable=inp1.broadcastable,
                           context_name=context_name)()])
 
@@ -192,12 +210,29 @@ class GpuCusolverSolve(Op):
         if A.flags['C_CONTIGUOUS']:
             trans = 1 - trans
 
+        if A.dtype == 'float32':
+            potrf_bufferSize = cusolver.cusolverDnSpotrf_bufferSize
+            potrf = cusolver.cusolverDnSpotrf
+            potrs = cusolverDnSpotrs
+            getrf_bufferSize = cusolver.cusolverDnSgetrf_bufferSize
+            getrf = cusolver.cusolverDnSgetrf
+            getrs = cusolver.cusolverDnSgetrs
+        elif A.dtype == 'float64':
+            potrf_bufferSize = cusolver.cusolverDnDpotrf_bufferSize
+            potrf = cusolver.cusolverDnDpotrf
+            potrs = cusolverDnDpotrs
+            getrf_bufferSize = cusolver.cusolverDnDgetrf_bufferSize
+            getrf = cusolver.cusolverDnDgetrf
+            getrs = cusolver.cusolverDnDgetrs
+        else:
+            raise ValueError("Unsupported dtype")
+
         if self.A_structure == 'symmetric':
             with context:
-                workspace_size = cusolver.cusolverDnSpotrf_bufferSize(
+                workspace_size = potrf_bufferSize(
                     context.cusolver_handle, 0, n, A_ptr, lda)
 
-            workspace = pygpu.zeros(workspace_size, dtype='float32',
+            workspace = pygpu.zeros(workspace_size, dtype=A.dtype,
                                     context=context)
 
             dev_info = pygpu.zeros((1,), dtype='int32', context=context)
@@ -206,22 +241,22 @@ class GpuCusolverSolve(Op):
             dev_info_ptr = dev_info.gpudata
 
             with context:
-                cusolver.cusolverDnSpotrf(
+                potrf(
                     context.cusolver_handle, 0, n, A_ptr, lda, workspace_ptr,
                     workspace_size, dev_info_ptr)
                 self.check_dev_info(dev_info)
 
-                cusolverDnSpotrs(
+                potrs(
                     context.cusolver_handle, 0, n, m, A_ptr, lda,
                     b_ptr, ldb, dev_info_ptr)
 
         else:
             # general case for A
             with context:
-                workspace_size = cusolver.cusolverDnSgetrf_bufferSize(
+                workspace_size = getrf_bufferSize(
                     context.cusolver_handle, n, n, A_ptr, lda)
 
-            workspace = pygpu.zeros(workspace_size, dtype='float32',
+            workspace = pygpu.zeros(workspace_size, dtype=A.dtype,
                                     context=context)
 
             pivots = pygpu.zeros(n, dtype='int32', context=context)
@@ -233,16 +268,28 @@ class GpuCusolverSolve(Op):
             dev_info_ptr = dev_info.gpudata
 
             with context:
-                cusolver.cusolverDnSgetrf(
+                getrf(
                     context.cusolver_handle, n, n, A_ptr, lda, workspace_ptr,
                     pivots_ptr, dev_info_ptr)
                 self.check_dev_info(dev_info)
 
-                cusolver.cusolverDnSgetrs(
+                getrs(
                     context.cusolver_handle, trans, n, m, A_ptr, lda,
                     pivots_ptr, b_ptr, ldb, dev_info_ptr)
 
         z[0] = b
+
+    def L_op(self, inputs, outputs, output_gradients):
+        # Modified from theano/tensor/slinalg.py
+        A, b = inputs
+        c = outputs[0]
+        c_bar = output_gradients[0]
+        # FIXME: triangular structure would use GpuCublasTriangularsolve?
+        # no need to handle A_structure like slinalg.py?
+        trans_solve_op = GpuCusolverSolve('general')
+        b_bar = trans_solve_op(A.T, c_bar)
+        A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
+        return [A_bar, b_bar]
 
 
 class GpuCublasTriangularSolve(Op):
@@ -266,7 +313,8 @@ class GpuCublasTriangularSolve(Op):
     def make_node(self, inp1, inp2):
         if not cublas_available:
             raise RuntimeError('CUBLAS is not available and '
-                               'GpuCublasTriangularSolve Op can not be constructed.')
+                               'GpuCublasTriangularSolve Op '
+                               'can not be constructed.')
         context_name = infer_context_name(inp1, inp2)
 
         inp1 = as_gpuarray_variable(inp1, context_name)
@@ -275,14 +323,12 @@ class GpuCublasTriangularSolve(Op):
         inp1 = gpu_contiguous(inp1)
         inp2 = gpu_contiguous(inp2)
 
-        # this op can only operate on float32 matrices
         assert inp1.ndim == 2
         assert inp2.ndim in [1, 2]
-        assert inp1.dtype == 'float32'
-        assert inp2.dtype == 'float32'
+        assert inp1.dtype == inp2.dtype
 
         return theano.Apply(self, [inp1, inp2],
-                            [GpuArrayType('float32',
+                            [GpuArrayType(inp1.dtype,
                                           broadcastable=inp2.broadcastable,
                                           context_name=context_name)()])
 
@@ -347,16 +393,42 @@ class GpuCublasTriangularSolve(Op):
         # indicates elements on diagonal of matrix A may not be unity
         diag = 'n'
 
+        if A.dtype == 'float32':
+            trsv = cublas.cublasStrsv
+            trsm = cublas.cublasStrsm
+        elif A.dtype == 'float64':
+            trsv = cublas.cublasDtrsv
+            trsm = cublas.cublasDtrsm
+        else:
+            raise ValueError("Unsupported dtype")
+
         with ctx:
             if b.ndim == 1:
                 # matrix vector solve
-                cublas.cublasStrsv(ctx.cublas_handle, uplo, trans, diag, n,
-                                   A_ptr, lda, b_ptr, 1)
+                trsv(ctx.cublas_handle, uplo, trans, diag, n,
+                     A_ptr, lda, b_ptr, 1)
             else:
-                cublas.cublasStrsm(ctx.cublas_handle, side, uplo, trans, diag,
-                                   n, m, alpha, A_ptr, lda, b_ptr, ldb)
+                trsm(ctx.cublas_handle, side, uplo, trans, diag,
+                     n, m, alpha, A_ptr, lda, b_ptr, ldb)
 
         x[0] = b
+
+    def L_op(self, inputs, outputs, output_gradients):
+        # Modified from theano/tensor/slinalg.py
+        A, b = inputs
+        c = outputs[0]
+        c_bar = output_gradients[0]
+
+        trans_solve_op = GpuCublasTriangularSolve(not self.lower)
+        b_bar = trans_solve_op(A.T, c_bar)
+
+        A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
+
+        if self.lower:
+            A_bar = tensor.tril(A_bar)
+        else:
+            A_bar = tensor.triu(A_bar)
+        return [A_bar, b_bar]
 
 
 def gpu_solve(A, b, A_structure='general', trans='N'):
@@ -366,6 +438,14 @@ def gpu_solve(A, b, A_structure='general', trans='N'):
         return GpuCublasTriangularSolve(False, trans)(A, b)
 
     return GpuCusolverSolve(A_structure, trans)(A, b)
+
+
+def gpu_solve_lower_triangular(A, b, trans='N'):
+    return GpuCublasTriangularSolve(True, trans)(A, b)
+
+
+def gpu_solve_upper_triangular(A, b, trans='N'):
+    return GpuCublasTriangularSolve(False, trans)(A, b)
 
 
 class GpuCholesky(Op):
@@ -401,7 +481,8 @@ class GpuCholesky(Op):
             raise RuntimeError('CUSOLVER is not available and '
                                'GpuCholesky Op can not be constructed.')
         if skcuda.__version__ <= '0.5.1':
-            warnings.warn('The GpuCholesky op requires scikit-cuda > 0.5.1 to work with CUDA 8')
+            warnings.warn('The GpuCholesky op requires scikit-cuda > '
+                          '0.5.1 to work with CUDA 8')
         if not pygpu_available:
             raise RuntimeError('Missing pygpu or triu/tril functions.'
                                'Install or update libgpuarray.')
@@ -411,11 +492,7 @@ class GpuCholesky(Op):
 
         inp = gpu_contiguous(inp)
 
-        # this op can only operate on float32 matrices
-        # because of current implementation of triu/tril.
-        # TODO: support float64 for triu/tril in GpuArray and for GpuCholesky/GpuCusolverSolve in Theano.
         assert inp.ndim == 2
-        assert inp.dtype == 'float32'
 
         return theano.Apply(self, [inp], [inp.type()])
 
@@ -453,11 +530,20 @@ class GpuCholesky(Op):
 
         L_ptr = L.gpudata
 
+        if A.dtype == 'float32':
+            potrf_bufferSize = cusolver.cusolverDnSpotrf_bufferSize
+            potrf = cusolver.cusolverDnSpotrf
+        elif A.dtype == 'float64':
+            potrf_bufferSize = cusolver.cusolverDnDpotrf_bufferSize
+            potrf = cusolver.cusolverDnDpotrf
+        else:
+            raise ValueError("Unsupported dtype")
+
         with context:
-            workspace_size = cusolver.cusolverDnSpotrf_bufferSize(
+            workspace_size = potrf_bufferSize(
                 context.cusolver_handle, l_parameter, n, L_ptr, lda)
 
-            workspace = pygpu.zeros(workspace_size, dtype='float32',
+            workspace = pygpu.zeros(workspace_size, dtype=A.dtype,
                                     context=context)
 
             dev_info = pygpu.zeros((1,), dtype='int32', context=context)
@@ -465,9 +551,8 @@ class GpuCholesky(Op):
             workspace_ptr = workspace.gpudata
             dev_info_ptr = dev_info.gpudata
 
-            cusolver.cusolverDnSpotrf(
-                context.cusolver_handle, l_parameter, n, L_ptr, lda, workspace_ptr,
-                workspace_size, dev_info_ptr)
+            potrf(context.cusolver_handle, l_parameter, n, L_ptr,
+                  lda, workspace_ptr, workspace_size, dev_info_ptr)
 
             val_dev_info = np.asarray(dev_info)[0]
             if val_dev_info > 0:
@@ -482,6 +567,42 @@ class GpuCholesky(Op):
             triu(L)
 
         outputs[0][0] = L
+
+    def L_op(self, inputs, outputs, gradients):
+        # Modified from theano/tensor/slinalg.py
+        # No handling for on_error = 'nan'
+        dz = gradients[0]
+        chol_x = outputs[0]
+
+        # this is for nan mode
+        #
+        # ok = ~tensor.any(tensor.isnan(chol_x))
+        # chol_x = tensor.switch(ok, chol_x, 1)
+        # dz = tensor.switch(ok, dz, 1)
+
+        # deal with upper triangular by converting to lower triangular
+        if not self.lower:
+            chol_x = chol_x.T
+            dz = dz.T
+
+        def tril_and_halve_diagonal(mtx):
+            """Extracts lower triangle of square matrix and halves diagonal."""
+            return tensor.tril(mtx) - tensor.diag(tensor.diagonal(mtx) / 2.)
+
+        def conjugate_solve_triangular(outer, inner):
+            """Computes L^{-T} P L^{-1} for lower-triangular L."""
+            return gpu_solve_upper_triangular(
+                outer.T, gpu_solve_upper_triangular(outer.T, inner.T).T)
+
+        s = conjugate_solve_triangular(
+            chol_x, tril_and_halve_diagonal(chol_x.T.dot(dz)))
+
+        if self.lower:
+            grad = tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))
+        else:
+            grad = tensor.triu(s + s.T) - tensor.diag(tensor.diagonal(s))
+
+        return [grad]
 
 
 def gpu_cholesky(A, lower=True):
@@ -498,7 +619,8 @@ class GpuMagmaBase(COp):
                 'gpuarray_helper.h', 'magma.h']
 
     def c_header_dirs(self):
-        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include(), config.cuda.include_path]
+        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include(),
+                config.cuda.include_path]
         if config.magma.include_path:
             dirs.append(config.magma.include_path)
         return dirs
