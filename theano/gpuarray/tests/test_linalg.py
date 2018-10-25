@@ -7,14 +7,13 @@ from numpy.linalg.linalg import LinAlgError
 
 import theano
 from theano import config
-from theano.gpuarray.linalg import (GpuCusolverSolve,GpuCublasTriangularSolve,
+from theano.gpuarray.linalg import (GpuCusolverSolve, GpuCublasTriangularSolve,
                                     GpuCholesky, GpuMagmaCholesky,
                                     GpuMagmaEigh, GpuMagmaMatrixInverse,
                                     GpuMagmaQR, GpuMagmaSVD,
                                     cusolver_available, gpu_matrix_inverse,
                                     gpu_cholesky,
                                     gpu_solve, gpu_solve_lower_triangular,
-                                    gpu_solve_upper_triangular,
                                     gpu_svd, gpu_qr)
 from theano.tensor.nlinalg import (SVD, MatrixInverse, QRFull,
                                    QRIncomplete, eigh, matrix_inverse, qr)
@@ -25,6 +24,7 @@ from .. import gpuarray_shared_constructor
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
 from nose.tools import assert_raises
+
 
 class TestCusolver(unittest.TestCase):
 
@@ -163,6 +163,7 @@ class TestCusolver(unittest.TestCase):
         # check lower=True case
         self.verify_solve_grad(4, 3, 'general', lower=True, rng=rng)
 
+
 class TestGpuCholesky(unittest.TestCase):
 
     def setUp(self):
@@ -253,6 +254,7 @@ class TestGpuCholesky(unittest.TestCase):
         A_val = -M_val.dot(M_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
         self.assertRaises(LinAlgError, fn, A_val)
+
 
 class TestGpuCholesky64(unittest.TestCase):
 
@@ -599,6 +601,7 @@ class TestMagma(unittest.TestCase):
             for node in fn.maker.fgraph.toposort()
         ])
 
+
 # mostly copied from theano/tensor/tests/test_slinalg.py
 def test_cholesky_grad():
     rng = np.random.RandomState(utt.fetch_seed())
@@ -628,6 +631,7 @@ def test_cholesky_grad_indef():
     # chol_f = function([x], grad(gpu_cholesky(x).sum(), [x]))
     # assert np.all(np.isnan(chol_f(matrix)))
 
+
 def test_lower_triangular_and_cholesky_grad():
     # Random lower triangular system is ill-conditioned.
     #
@@ -645,12 +649,12 @@ def test_lower_triangular_and_cholesky_grad():
     r = rng.randn(N, N).astype(config.floatX)
     y = rng.rand(N, 1).astype(config.floatX)
 
-    def f(r,y):
+    def f(r, y):
         PD = r.dot(r.T)
         L = gpu_cholesky(PD)
-        A = gpu_solve_lower_triangular(L,y)
-        AAT = theano.tensor.dot(A,A.T)
+        A = gpu_solve_lower_triangular(L, y)
+        AAT = theano.tensor.dot(A, A.T)
         B = AAT + theano.tensor.eye(N)
         LB = gpu_cholesky(B)
         return theano.tensor.sum(theano.tensor.log(theano.tensor.diag(LB)))
-    yield (lambda: utt.verify_grad(f, [r,y], 3, rng))
+    yield (lambda: utt.verify_grad(f, [r, y], 3, rng))

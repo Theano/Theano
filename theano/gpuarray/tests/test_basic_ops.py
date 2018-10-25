@@ -444,6 +444,7 @@ def test_gpueye():
         yield check, dtype, 5, 3, 6
         yield check, dtype, 3, 5, -6
 
+
 def test_hostfromgpu_shape_i():
     # Test that the shape is lifted over hostfromgpu
 
@@ -498,13 +499,14 @@ def test_Gpujoin_inplace():
         assert x.get_value(borrow=True, return_internal_type=True) is f(0)
     assert np.allclose(f(0), [3, 4, 5])
 
+
 def test_gpu_tril_triu():
     def check_l(m, k=0):
         m_symb = T.matrix(dtype=m.dtype)
         k_symb = T.iscalar()
 
-        f = theano.function([m_symb,k_symb],
-                            T.tril(m_symb,k_symb),
+        f = theano.function([m_symb, k_symb],
+                            T.tril(m_symb, k_symb),
                             mode=mode_with_gpu)
         result = f(m, k)
         assert np.allclose(result, np.tril(m, k))
@@ -515,8 +517,8 @@ def test_gpu_tril_triu():
     def check_u(m, k=0):
         m_symb = T.matrix(dtype=m.dtype)
         k_symb = T.iscalar()
-        f = theano.function([m_symb,k_symb],
-                            T.triu(m_symb,k_symb),
+        f = theano.function([m_symb, k_symb],
+                            T.triu(m_symb, k_symb),
                             mode=mode_with_gpu)
         result = f(m, k)
         assert np.allclose(result, np.triu(m, k))
@@ -529,16 +531,7 @@ def test_gpu_tril_triu():
 
     for dtype in ['float64', 'float32', 'float16']:
         # try a big one
-        m = np.asarray(test_rng.rand(5000,5000) * 2 - 1, dtype=dtype)
-        yield check_l, m, 0
-        yield check_l, m, 1
-        yield check_l, m, -1
-
-        yield check_u, m, 0
-        yield check_u, m, 1
-        yield check_u, m, -1
-        
-        m = np.asarray(test_rng.rand(10,10) * 2 - 1, dtype=dtype)
+        m = np.asarray(test_rng.rand(5000, 5000) * 2 - 1, dtype=dtype)
         yield check_l, m, 0
         yield check_l, m, 1
         yield check_l, m, -1
@@ -547,7 +540,7 @@ def test_gpu_tril_triu():
         yield check_u, m, 1
         yield check_u, m, -1
 
-        m = np.asarray(test_rng.rand(10,5) * 2 - 1, dtype=dtype)
+        m = np.asarray(test_rng.rand(10, 10) * 2 - 1, dtype=dtype)
         yield check_l, m, 0
         yield check_l, m, 1
         yield check_l, m, -1
@@ -555,6 +548,16 @@ def test_gpu_tril_triu():
         yield check_u, m, 0
         yield check_u, m, 1
         yield check_u, m, -1
+
+        m = np.asarray(test_rng.rand(10, 5) * 2 - 1, dtype=dtype)
+        yield check_l, m, 0
+        yield check_l, m, 1
+        yield check_l, m, -1
+
+        yield check_u, m, 0
+        yield check_u, m, 1
+        yield check_u, m, -1
+
 
 def test_gputri():
     def check(dtype, N, M_=None, k=0):
@@ -583,7 +586,7 @@ def test_gputri():
         yield check, dtype, 1000, 1000, 0
         yield check, dtype, 1000, 1000, -400
         yield check, dtype, 1000, 1000, 400
-        
+
         yield check, dtype, 5
         # M != N, k = 0
         yield check, dtype, 3, 5

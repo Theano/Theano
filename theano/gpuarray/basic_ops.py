@@ -1713,6 +1713,7 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size a_off,
     def c_code_cache_version(self):
         return (10,)
 
+
 class GpuTri(GpuKernelBase, Op):
     """
     Tri for GPU.

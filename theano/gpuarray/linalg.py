@@ -85,7 +85,7 @@ if cusolver_available:
                                                         int(A), lda, int(B),
                                                         ldb, int(devInfo))
         cusolver.cusolverCheckStatus(status)
-        
+
 
 def attach_cusolver_handle_to_context(ctx):
     handle = getattr(ctx, 'cusolver_handle', None)
@@ -226,7 +226,7 @@ class GpuCusolverSolve(Op):
             getrs = cusolver.cusolverDnDgetrs
         else:
             raise ValueError("Unsupported dtype")
-        
+
         if self.A_structure == 'symmetric':
             with context:
                 workspace_size = potrf_bufferSize(
@@ -291,6 +291,7 @@ class GpuCusolverSolve(Op):
         A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
         return [A_bar, b_bar]
 
+
 class GpuCublasTriangularSolve(Op):
     """
     CUBLAS GPU Triangular Solve Op.
@@ -312,7 +313,8 @@ class GpuCublasTriangularSolve(Op):
     def make_node(self, inp1, inp2):
         if not cublas_available:
             raise RuntimeError('CUBLAS is not available and '
-                               'GpuCublasTriangularSolve Op can not be constructed.')
+                               'GpuCublasTriangularSolve Op '
+                               'can not be constructed.')
         context_name = infer_context_name(inp1, inp2)
 
         inp1 = as_gpuarray_variable(inp1, context_name)
@@ -399,7 +401,7 @@ class GpuCublasTriangularSolve(Op):
             trsm = cublas.cublasDtrsm
         else:
             raise ValueError("Unsupported dtype")
-        
+
         with ctx:
             if b.ndim == 1:
                 # matrix vector solve
@@ -428,6 +430,7 @@ class GpuCublasTriangularSolve(Op):
             A_bar = tensor.triu(A_bar)
         return [A_bar, b_bar]
 
+
 def gpu_solve(A, b, A_structure='general', trans='N'):
     if A_structure == 'lower':
         return GpuCublasTriangularSolve(True, trans)(A, b)
@@ -436,11 +439,14 @@ def gpu_solve(A, b, A_structure='general', trans='N'):
 
     return GpuCusolverSolve(A_structure, trans)(A, b)
 
+
 def gpu_solve_lower_triangular(A, b, trans='N'):
     return GpuCublasTriangularSolve(True, trans)(A, b)
 
+
 def gpu_solve_upper_triangular(A, b, trans='N'):
     return GpuCublasTriangularSolve(False, trans)(A, b)
+
 
 class GpuCholesky(Op):
     """
@@ -475,7 +481,8 @@ class GpuCholesky(Op):
             raise RuntimeError('CUSOLVER is not available and '
                                'GpuCholesky Op can not be constructed.')
         if skcuda.__version__ <= '0.5.1':
-            warnings.warn('The GpuCholesky op requires scikit-cuda > 0.5.1 to work with CUDA 8')
+            warnings.warn('The GpuCholesky op requires scikit-cuda > '
+                          '0.5.1 to work with CUDA 8')
         if not pygpu_available:
             raise RuntimeError('Missing pygpu or triu/tril functions.'
                                'Install or update libgpuarray.')
@@ -531,7 +538,7 @@ class GpuCholesky(Op):
             potrf = cusolver.cusolverDnDpotrf
         else:
             raise ValueError("Unsupported dtype")
-        
+
         with context:
             workspace_size = potrf_bufferSize(
                 context.cusolver_handle, l_parameter, n, L_ptr, lda)
@@ -544,9 +551,8 @@ class GpuCholesky(Op):
             workspace_ptr = workspace.gpudata
             dev_info_ptr = dev_info.gpudata
 
-            potrf(
-                context.cusolver_handle, l_parameter, n, L_ptr, lda, workspace_ptr,
-                workspace_size, dev_info_ptr)
+            potrf(context.cusolver_handle, l_parameter, n, L_ptr,
+                  lda, workspace_ptr, workspace_size, dev_info_ptr)
 
             val_dev_info = np.asarray(dev_info)[0]
             if val_dev_info > 0:
@@ -598,6 +604,7 @@ class GpuCholesky(Op):
 
         return [grad]
 
+
 def gpu_cholesky(A, lower=True):
     return GpuCholesky(lower)(A)
 
@@ -612,7 +619,8 @@ class GpuMagmaBase(COp):
                 'gpuarray_helper.h', 'magma.h']
 
     def c_header_dirs(self):
-        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include(), config.cuda.include_path]
+        dirs = [gpuarray_helper_inc_dir(), pygpu.get_include(),
+                config.cuda.include_path]
         if config.magma.include_path:
             dirs.append(config.magma.include_path)
         return dirs
