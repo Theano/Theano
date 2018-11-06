@@ -183,7 +183,7 @@ KERNEL void k_multi_warp_multinomial(
         do
         {
             nb_threads*=2;
-            if (nb_multi % %nb_threads == 0)
+            if (nb_multi %% nb_threads == 0)
                 nb_blocks = nb_multi/nb_threads;
             else
                 nb_blocks = (int)((float)nb_multi/(float)nb_threads + 1.);
