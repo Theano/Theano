@@ -248,6 +248,14 @@ static struct PyModuleDef moduledef = {{
     # TODO: add_type
 
 
+def _get_ext_suffix():
+    """Get the suffix for compiled extensions"""
+    dist_suffix = distutils.sysconfig.get_config_var("EXT_SUFFIX")
+    if dist_suffix is None:
+        dist_suffix = distutils.sysconfig.get_config_var("SO")
+    return dist_suffix
+
+
 def dlimport(fullpath, suffix=None):
     """
     Dynamically load a .so, .pyd, .dll, or .py file.
@@ -271,7 +279,7 @@ def dlimport(fullpath, suffix=None):
     if suffix is None:
         suffix = ''
 
-        dist_suffix = distutils.sysconfig.get_config_var("SO")
+        dist_suffix = _get_ext_suffix()
         if dist_suffix is not None and dist_suffix != '':
             if fullpath.endswith(dist_suffix):
                 suffix = dist_suffix
