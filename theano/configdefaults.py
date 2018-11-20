@@ -1927,7 +1927,7 @@ AddConfigVar(
     ConfigParam(
         default_compiledir,
         filter=filter_compiledir,
-        allow_override=False),
+        allow_override=True),
     in_c_key=False)
 
 AddConfigVar(
