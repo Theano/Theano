@@ -1112,6 +1112,11 @@ class GpuContiguous(Op):
         }
         """ % dict(input=inp[0], z=out[0], fail=sub['fail'])
 
+    def perform(self, node, inp, out_):
+        x, = inp
+        out, = out_
+        out[0] = pygpu.ascontiguousarray(x)
+
 gpu_contiguous = GpuContiguous()
 
 
