@@ -1,6 +1,11 @@
 from __future__ import absolute_import, print_function, division
 
-from collections import MutableSet
+try:
+    from collections.abc import MutableSet
+except ImportError:
+    # this raises an DeprecationWarning on py37 and will become
+    # an Exception in py38
+    from collections import MutableSet
 import types
 import weakref
 
