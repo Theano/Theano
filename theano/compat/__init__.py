@@ -6,7 +6,15 @@ from __future__ import absolute_import, print_function, division
 from six import PY3, b, BytesIO, next
 from six.moves import configparser
 from six.moves import reload_module as reload
-import collections
+try:
+    from collections.abc import (OrderedDict, MutableMapping as DictMixin,
+                                 Callable)
+except ImportError:
+    # this raises an DeprecationWarning on py37 and will become
+    # and Exception in py38. Importing from collections.abc
+    # won't work on py27
+    from collections import (OrderedDict, MutableMapping as DictMixin,
+                             Callable)
 
 __all__ = ['PY3', 'b', 'BytesIO', 'next', 'configparser', 'reload']
 
@@ -37,8 +45,6 @@ if PY3:
             return unbound.__func__
         return unbound
 
-    from collections import OrderedDict, MutableMapping as DictMixin
-
     def decode(x):
         return x.decode()
 
@@ -58,8 +64,6 @@ else:
 
     cmp = cmp
 
-    from collections import OrderedDict, MutableMapping as DictMixin
-
     def decode(x):
         return x
 
@@ -76,7 +80,7 @@ __all__ += ['cmp', 'operator_div', 'DictMixin', 'OrderedDict', 'decode',
 class DefaultOrderedDict(OrderedDict):
     def __init__(self, default_factory=None, *a, **kw):
         if (default_factory is not None and
-                not isinstance(default_factory, collections.Callable)):
+                not isinstance(default_factory, Callable)):
             raise TypeError('first argument must be callable')
         OrderedDict.__init__(self, *a, **kw)
         self.default_factory = default_factory
