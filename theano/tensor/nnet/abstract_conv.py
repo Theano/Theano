@@ -1766,7 +1766,7 @@ def bilinear_kernel_1D(ratio, normalize=True):
     kern = T.concatenate([half_kern, half_kern[-2::-1]])
 
     if normalize:
-        kern /= np.cast[theano.config.floatX](ratio)
+        kern /= T.cast(ratio, theano.config.floatX)
     return kern
 
 
