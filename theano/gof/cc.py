@@ -1375,8 +1375,12 @@ class CLinker(link.Linker):
 
         # We must always add the numpy ABI version here as
         # DynamicModule always add the include <numpy/arrayobject.h>
+        if np.lib.NumpyVersion(np.__version__) < '1.16.0a':
+            ndarray_c_version = np.core.multiarray._get_ndarray_c_version()
+        else:
+            ndarray_c_version = np.core._multiarray_umath._get_ndarray_c_version()
         sig.append('NPY_ABI_VERSION=0x%X' %
-                   np.core.multiarray._get_ndarray_c_version())
+                   ndarray_c_version)
         if c_compiler:
             sig.append('c_compiler_str=' + c_compiler.version_str())
 
