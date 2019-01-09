@@ -1855,9 +1855,7 @@ def frac_bilinear_upsampling(input,
     # upsample the input by passing it as kernel of conv and using filter_dilation
     upsamp = T.nnet.conv2d(pad_kern, concat_mat, border_mode='valid',
                            filter_dilation=ratio, subsample=subsample)
-
-    up_img_sh = T.ceil(T.as_tensor([row, col]) * np.array(ratio) / np.array(subsample)).astype('int64')
-    return upsamp.reshape((input.shape[0], input.shape[1], up_img_sh[0], up_img_sh[1]))
+    return upsamp.reshape((input.shape[0], input.shape[1], upsamp.shape[2], upsamp.shape[3]))
 
 
 def bilinear_upsampling(input,
