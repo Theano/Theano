@@ -1803,61 +1803,37 @@ def frac_bilinear_upsampling(input,
     """
 
     T = theano.tensor
-    row, col = input.shape[2:]
-    up_input = input.reshape((-1, 1, row, col))
-
-    # define the upsampling ratio depending on the case
     if not isinstance(frac_ratio, tuple):
         raise ValueError("frac_ratio must be a tuple")
     else:
         if isinstance(frac_ratio[0], tuple):
-            f_r = []
-            for i, fr in enumerate(frac_ratio):
-                p, q = fr
-                div = gcd(p, q)
-                f_r.append(tuple(np.array(fr) // div))
-            frac_ratio = tuple(f_r)
-            ratio = (frac_ratio[0][0], frac_ratio[1][0])
-            subsample = (frac_ratio[0][1], frac_ratio[1][1])
+            ratio = np.array((frac_ratio[0][0], frac_ratio[1][0]))
+            subsample = np.array((frac_ratio[0][1], frac_ratio[1][1]))
         else:
-            p, q = frac_ratio
-            div = gcd(p, q)
-            frac_ratio = tuple(np.array(frac_ratio) // div)
-            ratio = (frac_ratio[0], frac_ratio[0])
-            subsample = (frac_ratio[1], frac_ratio[1])
+            ratio = np.array((frac_ratio[0], frac_ratio[0]))
+            subsample = np.array((frac_ratio[1], frac_ratio[1]))
 
-    # duplicate borders of the input
-    concat_mat = T.concatenate((up_input[:, :, :1, :], up_input,
-                                up_input[:, :, -1:, :]), axis=2)
-    concat_mat = T.concatenate((concat_mat[:, :, :, :1], concat_mat,
-                                concat_mat[:, :, :, -1:]), axis=3)
+    theta = np.array([[1, 0, 0],
+                      [0, 1, 0]])[None]
+    theta = T.tile(T.constant(theta, dtype=theano.config.floatX), (input.shape[0], 1, 1))
 
-    # add padding for the pyramidal kernel
-    double_pad = (2 * T.as_tensor([row, col]) - 1) * np.array(ratio) + 1
-    pad = double_pad // 2
+    def _dnn_spatialtf(img):
+        from theano.scalar import as_scalar
+        from theano.gpuarray.dnn import (GpuDnnTransformerGrid, GpuDnnTransformerSampler)
+        h = T.ceil(
+            img.shape[2].astype(theano.config.floatX) / subsample[0].astype(theano.config.floatX) * ratio[0].astype(
+                theano.config.floatX))
+        w = T.ceil(
+            img.shape[3].astype(theano.config.floatX) / subsample[1].astype(theano.config.floatX) * ratio[1].astype(
+                theano.config.floatX))
+        out_dims = (img.shape[0], img.shape[1], h, w)
+        out_dims = tuple([as_scalar(v).astype('int64') for v in out_dims])
+        # Setup spatial transformer
+        grid = GpuDnnTransformerGrid()(theta, out_dims)
+        sampler = GpuDnnTransformerSampler()(img, grid)
+        return sampler
 
-    # build pyramidal kernel
-    kern = bilinear_kernel_2D(ratio=ratio)[np.newaxis, np.newaxis, :, :].astype(theano.config.floatX)
-
-    # add corresponding padding
-    pad_kern = T.concatenate((T.zeros(tuple(kern.shape[:2]) + (pad[0], kern.shape[-1]),
-                                      dtype=theano.config.floatX),
-                              kern,
-                              T.zeros(tuple(kern.shape[:2]) + (double_pad[0] - pad[0], kern.shape[-1]),
-                                      dtype=theano.config.floatX)),
-                             axis=2)
-    pad_kern = T.concatenate((T.zeros(tuple(pad_kern.shape[:3]) + (pad[1],), dtype=theano.config.floatX),
-                              pad_kern,
-                              T.zeros(tuple(pad_kern.shape[:3]) + (double_pad[1] - pad[1],),
-                                      dtype=theano.config.floatX)),
-                             axis=3)
-
-    # upsample the input by passing it as kernel of conv and using filter_dilation
-    upsamp = T.nnet.conv2d(pad_kern, concat_mat, border_mode='valid',
-                           filter_dilation=ratio, subsample=subsample)
-
-    up_img_sh = T.ceil(T.as_tensor([row, col]) * np.array(ratio) / np.array(subsample)).astype('int64')
-    return upsamp.reshape((input.shape[0], input.shape[1], up_img_sh[0], up_img_sh[1]))
+    return _dnn_spatialtf(input)
 
 
 def bilinear_upsampling(input,
