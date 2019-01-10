@@ -1800,6 +1800,7 @@ def frac_bilinear_upsampling(input,
         row and column which makes the upsampled tensor asymmetrical on both
         sides. This does not happen when it is odd.
     """
+    from theano.gpuarray import dnn
     from theano.gpuarray.dnn import GpuDnnTransformerSampler
     from theano import tensor as T
 
@@ -1837,14 +1838,43 @@ def frac_bilinear_upsampling(input,
     # Transform the grid of the upscaled img back to that of the original one
     grid = _meshgrid(h, w)
     Tg = T.dot(theta, grid + 1.) - 1.
-    xs = T.reshape(Tg[:, :1], (input.shape[0], h, w, 1))
-    xs = (T.clip(xs, 0., input.shape[3].astype('float32') - 1.) / (input.shape[3].astype('float32') - 1.)) * 2. - 1.
-    ys = T.reshape(Tg[:, 1:2], (input.shape[0], h, w, 1))
-    ys = (T.clip(ys, 0., input.shape[2].astype('float32') - 1.) / (input.shape[2].astype('float32') - 1.)) * 2. - 1.
-    grid = T.concatenate((xs, ys), 3)
 
     # Bilinear sampling
-    upscaled = GpuDnnTransformerSampler()(input, grid)
+    if 'cuda' in theano.config.device and dnn.dnn_present():
+        xs = T.reshape(Tg[:, :1], (input.shape[0], h, w, 1))
+        xs = (T.clip(xs, 0., input.shape[3].astype('float32') - 1.) / (input.shape[3].astype('float32') - 1.)) * 2. - 1.
+        ys = T.reshape(Tg[:, 1:2], (input.shape[0], h, w, 1))
+        ys = (T.clip(ys, 0., input.shape[2].astype('float32') - 1.) / (input.shape[2].astype('float32') - 1.)) * 2. - 1.
+        grid = T.concatenate((xs, ys), 3)
+        upscaled = GpuDnnTransformerSampler()(input, grid)
+    else:
+        height_f = T.cast(input.shape[2], theano.config.floatX)
+        width_f = T.cast(input.shape[3], theano.config.floatX)
+
+        x, y = Tg[:, 0].flatten(), Tg[:, 1].flatten()
+        x0_f = T.floor(x)
+        y0_f = T.floor(y)
+        x1_f = x0_f + 1
+        y1_f = y0_f + 1
+
+        x0 = T.clip(x0_f, 0, width_f - 1)
+        x1 = T.clip(x1_f, 0, width_f - 1)
+        y0 = T.clip(y0_f, 0, height_f - 1)
+        y1 = T.clip(y1_f, 0, height_f - 1)
+        x0, x1, y0, y1 = (T.cast(v, 'int64') for v in (x0, x1, y0, y1))
+
+        pixel_a = input[:, :, y0, x0]
+        pixel_b = input[:, :, y1, x0]
+        pixel_c = input[:, :, y0, x1]
+        pixel_d = input[:, :, y1, x1]
+
+        wa = ((x1_f - x) * (y1_f - y)).dimshuffle(('x', 'x', 0))
+        wb = ((x1_f - x) * (1. - (y1_f - y))).dimshuffle(('x', 'x', 0))
+        wc = ((1. - (x1_f - x)) * (y1_f - y)).dimshuffle(('x', 'x', 0))
+        wd = ((1. - (x1_f - x)) * (1. - (y1_f - y))).dimshuffle(('x', 'x', 0))
+
+        upscaled = T.sum(T.stack((wa * pixel_a, wb * pixel_b, wc * pixel_c, wd * pixel_d), axis=3), axis=3)
+        upscaled = T.reshape(upscaled, (input.shape[0], input.shape[1], h, w))
     return upscaled
 
 
