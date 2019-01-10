@@ -1800,39 +1800,52 @@ def frac_bilinear_upsampling(input,
         row and column which makes the upsampled tensor asymmetrical on both
         sides. This does not happen when it is odd.
     """
+    from theano.gpuarray.dnn import GpuDnnTransformerSampler
+    from theano import tensor as T
 
-    T = theano.tensor
+    input = T.as_tensor(input)
     if not isinstance(frac_ratio, tuple):
         raise ValueError("frac_ratio must be a tuple")
     else:
         if isinstance(frac_ratio[0], tuple):
-            ratio = np.array((frac_ratio[0][0], frac_ratio[1][0]))
-            subsample = np.array((frac_ratio[0][1], frac_ratio[1][1]))
+            ratio = T.stack((frac_ratio[0][0], frac_ratio[1][0])).astype(theano.config.floatX)
+            subsample = T.stack((frac_ratio[0][1], frac_ratio[1][1])).astype(theano.config.floatX)
         else:
-            ratio = np.array((frac_ratio[0], frac_ratio[0]))
-            subsample = np.array((frac_ratio[1], frac_ratio[1]))
+            ratio = T.stack((frac_ratio[0], frac_ratio[0])).astype(theano.config.floatX)
+            subsample = T.stack((frac_ratio[1], frac_ratio[1])).astype(theano.config.floatX)
 
-    theta = np.array([[1, 0, 0],
-                      [0, 1, 0]])[None]
-    theta = T.tile(T.constant(theta, dtype=theano.config.floatX), (input.shape[0], 1, 1))
+    # Setup the transformation of the coordinates from the upscaled image to the original (inverse transformation)
+    scale = subsample / ratio
+    theta = T.concatenate((T.diag(scale[::-1]), T.zeros((2, 1))), 1)
+    theta = T.tile(T.shape_padleft(theta), (input.shape[0], 1, 1))
 
-    def _dnn_spatialtf(img):
-        from theano.scalar import as_scalar
-        from theano.gpuarray.dnn import (GpuDnnTransformerGrid, GpuDnnTransformerSampler)
-        h = T.ceil(
-            img.shape[2].astype(theano.config.floatX) / subsample[0].astype(theano.config.floatX) * ratio[0].astype(
-                theano.config.floatX))
-        w = T.ceil(
-            img.shape[3].astype(theano.config.floatX) / subsample[1].astype(theano.config.floatX) * ratio[1].astype(
-                theano.config.floatX))
-        out_dims = (img.shape[0], img.shape[1], h, w)
-        out_dims = tuple([as_scalar(v).astype('int64') for v in out_dims])
-        # Setup spatial transformer
-        grid = GpuDnnTransformerGrid()(theta, out_dims)
-        sampler = GpuDnnTransformerSampler()(img, grid)
-        return sampler
+    h = T.ceil(input.shape[2].astype(theano.config.floatX) * 1. / scale[0])
+    h = h.astype('int64')
+    w = T.ceil(input.shape[3].astype(theano.config.floatX) * 1. / scale[1])
+    w = w.astype('int64')
 
-    return _dnn_spatialtf(input)
+    def _meshgrid(height, width):
+        x_t = T.dot(T.ones((height, 1)), T.arange(0, width, dtype='float32').dimshuffle('x', 0))
+        y_t = T.dot(T.arange(0, height, dtype='float32').dimshuffle(0, 'x'), T.ones((1, width)))
+
+        x_t_flat = x_t.reshape((1, -1))
+        y_t_flat = y_t.reshape((1, -1))
+        ones = T.ones_like(x_t_flat)
+        grid = T.concatenate([x_t_flat, y_t_flat, ones], axis=0)
+        return grid
+
+    # Transform the grid of the upscaled img back to that of the original one
+    grid = _meshgrid(h, w)
+    Tg = T.dot(theta, grid + 1.) - 1.
+    xs = T.reshape(Tg[:, :1], (input.shape[0], h, w, 1))
+    xs = (T.clip(xs, 0., input.shape[3].astype('float32') - 1.) / (input.shape[3].astype('float32') - 1.)) * 2. - 1.
+    ys = T.reshape(Tg[:, 1:2], (input.shape[0], h, w, 1))
+    ys = (T.clip(ys, 0., input.shape[2].astype('float32') - 1.) / (input.shape[2].astype('float32') - 1.)) * 2. - 1.
+    grid = T.concatenate((xs, ys), 3)
+
+    # Bilinear sampling
+    upscaled = GpuDnnTransformerSampler()(input, grid)
+    return upscaled
 
 
 def bilinear_upsampling(input,
