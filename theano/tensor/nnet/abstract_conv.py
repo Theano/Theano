@@ -6,7 +6,6 @@ from __future__ import absolute_import, print_function, division
 import logging
 from six import reraise, integer_types
 import sys
-from fractions import gcd
 
 import theano
 
@@ -1801,63 +1800,82 @@ def frac_bilinear_upsampling(input,
         row and column which makes the upsampled tensor asymmetrical on both
         sides. This does not happen when it is odd.
     """
+    from theano.gpuarray import dnn
+    from theano.gpuarray.dnn import GpuDnnTransformerSampler
+    from theano import tensor as T
 
-    T = theano.tensor
-    row, col = input.shape[2:]
-    up_input = input.reshape((-1, 1, row, col))
-
-    # define the upsampling ratio depending on the case
+    input = T.as_tensor(input)
     if not isinstance(frac_ratio, tuple):
         raise ValueError("frac_ratio must be a tuple")
     else:
         if isinstance(frac_ratio[0], tuple):
-            f_r = []
-            for i, fr in enumerate(frac_ratio):
-                p, q = fr
-                div = gcd(p, q)
-                f_r.append(tuple(np.array(fr) // div))
-            frac_ratio = tuple(f_r)
-            ratio = (frac_ratio[0][0], frac_ratio[1][0])
-            subsample = (frac_ratio[0][1], frac_ratio[1][1])
+            ratio = T.stack((frac_ratio[0][0], frac_ratio[1][0])).astype(theano.config.floatX)
+            subsample = T.stack((frac_ratio[0][1], frac_ratio[1][1])).astype(theano.config.floatX)
         else:
-            p, q = frac_ratio
-            div = gcd(p, q)
-            frac_ratio = tuple(np.array(frac_ratio) // div)
-            ratio = (frac_ratio[0], frac_ratio[0])
-            subsample = (frac_ratio[1], frac_ratio[1])
+            ratio = T.stack((frac_ratio[0], frac_ratio[0])).astype(theano.config.floatX)
+            subsample = T.stack((frac_ratio[1], frac_ratio[1])).astype(theano.config.floatX)
 
-    # duplicate borders of the input
-    concat_mat = T.concatenate((up_input[:, :, :1, :], up_input,
-                                up_input[:, :, -1:, :]), axis=2)
-    concat_mat = T.concatenate((concat_mat[:, :, :, :1], concat_mat,
-                                concat_mat[:, :, :, -1:]), axis=3)
+    # Setup the transformation of the coordinates from the upscaled image to the original (inverse transformation)
+    scale = subsample / ratio
+    theta = T.concatenate((T.diag(scale[::-1]), T.zeros((2, 1))), 1)
+    theta = T.tile(T.shape_padleft(theta), (input.shape[0], 1, 1))
 
-    # add padding for the pyramidal kernel
-    double_pad = (2 * T.as_tensor([row, col]) - 1) * np.array(ratio) + 1
-    pad = double_pad // 2
+    h = T.ceil(input.shape[2].astype(theano.config.floatX) * 1. / scale[0])
+    h = h.astype('int64')
+    w = T.ceil(input.shape[3].astype(theano.config.floatX) * 1. / scale[1])
+    w = w.astype('int64')
 
-    # build pyramidal kernel
-    kern = bilinear_kernel_2D(ratio=ratio)[np.newaxis, np.newaxis, :, :].astype(theano.config.floatX)
+    def _meshgrid(height, width):
+        x_t = T.dot(T.ones((height, 1)), T.arange(0, width, dtype='float32').dimshuffle('x', 0))
+        y_t = T.dot(T.arange(0, height, dtype='float32').dimshuffle(0, 'x'), T.ones((1, width)))
 
-    # add corresponding padding
-    pad_kern = T.concatenate((T.zeros(tuple(kern.shape[:2]) + (pad[0], kern.shape[-1]),
-                                      dtype=theano.config.floatX),
-                              kern,
-                              T.zeros(tuple(kern.shape[:2]) + (double_pad[0] - pad[0], kern.shape[-1]),
-                                      dtype=theano.config.floatX)),
-                             axis=2)
-    pad_kern = T.concatenate((T.zeros(tuple(pad_kern.shape[:3]) + (pad[1],), dtype=theano.config.floatX),
-                              pad_kern,
-                              T.zeros(tuple(pad_kern.shape[:3]) + (double_pad[1] - pad[1],),
-                                      dtype=theano.config.floatX)),
-                             axis=3)
+        x_t_flat = x_t.reshape((1, -1))
+        y_t_flat = y_t.reshape((1, -1))
+        ones = T.ones_like(x_t_flat)
+        grid = T.concatenate([x_t_flat, y_t_flat, ones], axis=0)
+        return grid
 
-    # upsample the input by passing it as kernel of conv and using filter_dilation
-    upsamp = T.nnet.conv2d(pad_kern, concat_mat, border_mode='valid',
-                           filter_dilation=ratio, subsample=subsample)
+    # Transform the grid of the upscaled img back to that of the original one
+    grid = _meshgrid(h, w)
+    Tg = T.dot(theta, grid + 1.) - 1.
 
-    up_img_sh = T.ceil(T.as_tensor([row, col]) * np.array(ratio) / np.array(subsample)).astype('int64')
-    return upsamp.reshape((input.shape[0], input.shape[1], up_img_sh[0], up_img_sh[1]))
+    # Bilinear sampling
+    if 'cuda' in theano.config.device and dnn.dnn_present():
+        xs = T.reshape(Tg[:, :1], (input.shape[0], h, w, 1))
+        xs = (T.clip(xs, 0., input.shape[3].astype('float32') - 1.) / (input.shape[3].astype('float32') - 1.)) * 2. - 1.
+        ys = T.reshape(Tg[:, 1:2], (input.shape[0], h, w, 1))
+        ys = (T.clip(ys, 0., input.shape[2].astype('float32') - 1.) / (input.shape[2].astype('float32') - 1.)) * 2. - 1.
+        grid = T.concatenate((xs, ys), 3)
+        upscaled = GpuDnnTransformerSampler()(input, grid)
+    else:
+        height_f = T.cast(input.shape[2], theano.config.floatX)
+        width_f = T.cast(input.shape[3], theano.config.floatX)
+
+        x, y = Tg[:, 0].flatten(), Tg[:, 1].flatten()
+        x0_f = T.floor(x)
+        y0_f = T.floor(y)
+        x1_f = x0_f + 1
+        y1_f = y0_f + 1
+
+        x0 = T.clip(x0_f, 0, width_f - 1)
+        x1 = T.clip(x1_f, 0, width_f - 1)
+        y0 = T.clip(y0_f, 0, height_f - 1)
+        y1 = T.clip(y1_f, 0, height_f - 1)
+        x0, x1, y0, y1 = (T.cast(v, 'int64') for v in (x0, x1, y0, y1))
+
+        pixel_a = input[:, :, y0, x0]
+        pixel_b = input[:, :, y1, x0]
+        pixel_c = input[:, :, y0, x1]
+        pixel_d = input[:, :, y1, x1]
+
+        wa = ((x1_f - x) * (y1_f - y)).dimshuffle(('x', 'x', 0))
+        wb = ((x1_f - x) * (1. - (y1_f - y))).dimshuffle(('x', 'x', 0))
+        wc = ((1. - (x1_f - x)) * (y1_f - y)).dimshuffle(('x', 'x', 0))
+        wd = ((1. - (x1_f - x)) * (1. - (y1_f - y))).dimshuffle(('x', 'x', 0))
+
+        upscaled = T.sum(T.stack((wa * pixel_a, wb * pixel_b, wc * pixel_c, wd * pixel_d), axis=3), axis=3)
+        upscaled = T.reshape(upscaled, (input.shape[0], input.shape[1], h, w))
+    return upscaled
 
 
 def bilinear_upsampling(input,
