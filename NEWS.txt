@@ -2,24 +2,27 @@
 Release Notes
 =============
 
-Theano 1.0.3 (20th of September 2018)
+Theano 1.0.4 (16th of January 2019)
 =====================================
 
-This is a maintenance release of Theano, version ``1.0.3``, with no
+This is a maintenance release of Theano, version ``1.0.4``, with no
 new features, but some important bug fixes.
 
 We recommend that everybody update to this version.
 
-Highlights (since 1.0.2):
+Highlights (since 1.0.3):
 
- - Theano is now compatible with Python 3.7
- - Broadcasting for sparse dot products works correctly
- - Subtensor grads do not return int anymore
+ - Theano is now compatible with NumPy 1.16.
 
-A total of 5 people contributed to this release since ``1.0.2``:
+A total of 10 people contributed to this release since ``1.0.3``:
 
+ - wonghang
  - Frederic Bastien
  - Arnaud Bergeron
- - Dmitry Mottl
- - Adrian Seyboldt
- - Thomas Wiecki
+ - Duc Nguyen
+ - Andrew Nelson
+ - Björn Linse
+ - Luis Mario Domenzain
+ - Rebecca N. Palmer
+ - Luciano Paz
+ - Dan Foreman-Mackey

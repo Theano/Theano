@@ -50,7 +50,7 @@ Install the latest stable version of Theano with:
 
 If you encountered any trouble, head to the :ref:`troubleshooting` page.
 
-The latest stable version of Theano is ``1.0.1`` (tagged with ``rel-1.0.1``).
+The latest stable version of Theano is ``1.0.4`` (tagged with ``rel-1.0.4``).
 
 libgpuarray
 :::::::::::
