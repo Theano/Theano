@@ -77,13 +77,15 @@ To set your umask::
 
     umask 0022
 
-Now change ``ISRELEASED`` in ``setup.py`` to ``True``.
+Finally, use setuptools to build the release::
 
-Finally, use setuptools to register and upload the release::
+    python setup.py sdist --formats=gztar
 
-    python setup.py register sdist --formats=gztar,zip upload
+Then use twine to upload the release
 
-This command register and uploads the package on pypi.python.org. To be able
+    twine upload dist/Theano-1.0.X.tax.gz
+
+This command uploads the package on pypi.python.org. To be able
 to do that, you must register on PyPI (you can create an new account, or use
 OpenID), and be listed among the "Package Index Owners" of Theano.
 
@@ -115,11 +117,6 @@ the description.
 You can "update this project" and save lots of times to get the revision text
 right. Just do not change the version number.
 
-
-Finally
--------
-
-Change ``ISRELEASED`` back to ``False``.
 
 Update documentation server scripts
 ===================================
