@@ -4992,8 +4992,18 @@ class Canonizer(gof.LocalOptimizer):
             return len(x) == len(y) and all(np.all(xe == ye) for xe, ye in
                                             zip(x, y))
 
-        if same(orig_num, num) and same(orig_denum, denum):
-            # We return False if there are no changes
+        if (same(orig_num, num) and same(orig_denum, denum) and
+            # Check to see if we've collapsed some nested ops.
+            not (len(orig_denum) == 0 and
+                 # Make sure this change would increase the number of vector
+                 # arguments--decreasing the number of unnecessary `self.main`
+                 # nodes.
+                 len(node.inputs) < len(orig_num)) and
+            # Do a similar check for the reciprocal op.
+            not (self.use_reciprocal and
+                 node.op == self.reciprocal and
+                 len(orig_num) == 0 and node.inputs[0].owner and
+                 len(node.inputs[0].owner.inputs) < len(orig_denum))):
             return False
 
         new = self.merge_num_denum(num, denum)

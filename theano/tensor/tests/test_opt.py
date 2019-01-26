@@ -367,9 +367,9 @@ class test_canonize(unittest.TestCase):
         cases = [
             (fx + fy, (fx, fy), (fxv, fyv), 1, 'float32'),
             (fx * fy, (fx, fy), (fxv, fyv), 1, 'float32'),
-            # (fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+            (fx + fy + fz, (fx, fy, fz), (fxv, fyv, fzv), 1, 'float32'),
             # (dx+dy+dz,(dx,dy,dz),(dxv,dyv,dzv),1,'float64'),
-            # (fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
+            (fx * fy * fz, (fx, fy, fz), (fxv, fyv, fzv), 1, 'float32'),
             # (dx*dy*dz,(dx,dy,dz),(dxv,dyv,dzv),1,'float64'),
             # (fx*fy*(fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
             # (dx*dy*(dx+dy+dz),(dx,dy,dz),(dxv,dyv,dzv),2,'float64'),
@@ -4988,7 +4988,7 @@ class T_local_erfc(unittest.TestCase):
 
         f = theano.function([x], T.grad(T.log(T.erfc(x)).sum(), x), mode=mode)
 
-        assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 22, len(f.maker.fgraph.apply_nodes)
         assert all(np.isfinite(f(val)))
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
 
