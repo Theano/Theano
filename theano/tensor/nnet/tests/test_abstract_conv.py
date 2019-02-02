@@ -1327,7 +1327,7 @@ class TestBilinearUpsampling(unittest.TestCase):
         utt.assert_allclose(f_up_x(), num_up_x, rtol=1e-6)
 
     def test_fractional_bilinear_upsampling_shape(self):
-        x = np.random.rand(1, 1, 200, 200).astype('float32')
+        x = np.random.rand(1, 1, 200, 200).astype(theano.config.floatX)
         resize = (24, 20)
         z = bilinear_upsampling(tensor.as_tensor_variable(x), frac_ratio=resize, use_1D_kernel=False)
         utt.assert_allclose(z.shape.eval(), (1, 1, 240, 240))
