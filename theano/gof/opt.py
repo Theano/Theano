@@ -615,7 +615,7 @@ class MergeFeature(object):
         Check if a node can be merged, and queue that replacement.
 
         """
-        if node in self.nodes_seen:
+        if node in self.nodes_seen or getattr(node.op, 'nondeterministic', False):
             return
 
         node_has_assert = False
@@ -733,14 +733,6 @@ class MergeFeature(object):
                                  new_node.owner.outputs,
                                  ['new_node'] * len(node.outputs)))
 
-                # transfer names
-                for pair in pairs:
-                    node_output, cand_output = pair[:2]
-                    # clobber old name with new one
-                    # it's arbitrary... one of the names has to go
-                    if node_output.name:
-                        cand_output.name = node_output.name
-
                 replacement_candidates.append(pairs)
 
         if replacement_candidates:
@@ -817,7 +809,6 @@ class MergeOptimizer(Optimizer):
         nb_constant = 0
         while sched:
             pairs_list = sched.pop()
-            success = True
             for pairs_ in pairs_list:
                 # We must check again the equivalence, as the graph
                 # can have changed. If so, doing the replacement can
@@ -902,12 +893,19 @@ class MergeOptimizer(Optimizer):
                     else:
                         fgraph.replace_all_validate(pairs, 'MergeOptimizer')
                 except InconsistencyError:
-                    success = False
                     nb_fail += 1
                     fgraph.merge_feature.blacklist.append(
                         (pairs[0][0].owner, pairs[0][1].owner))
+                else:
+                    # Transfer names *only* after successfully replacing
+                    # the nodes.
+                    for pair in pairs:
+                        node_output, cand_output = pair[:2]
+                        # clobber old name with new one
+                        # it's arbitrary... one of the names has to go
+                        if node_output.name:
+                            cand_output.name = node_output.name
 
-                if success:
                     nb_merged += len(pairs)
                     if isinstance(pairs[0][0], graph.Constant):
                         nb_constant += 1

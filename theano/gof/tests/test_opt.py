@@ -317,6 +317,18 @@ class TestMergeOptimizer:
         MergeOptimizer().optimize(g)
         assert str(g) == "[Op1(*1 -> Op2(x, y), *1, Op2(x, z))]"
 
+    def test_nondeterministic(self):
+        x, y, z = inputs()
+        op2.nondeterministic = True
+        e = op1(op2(x, y), op2(x, y), op2(x, z),
+                op1(x, y), op1(x, y))
+        g = FunctionGraph([x, y, z], [e])
+        MergeOptimizer().optimize(g)
+        op2.nondeterministic = False
+        assert str(g) == (
+            "[Op1(Op2(x, y), Op2(x, y), "
+            "Op2(x, z), *1 -> Op1(x, y), *1)]")
+
     def test_constant_merging(self):
         x = MyVariable('x')
         y = Constant(MyType(), 2, name='y')
