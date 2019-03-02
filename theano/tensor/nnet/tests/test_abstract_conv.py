@@ -1330,7 +1330,8 @@ class TestBilinearUpsampling(unittest.TestCase):
         x = np.random.rand(1, 1, 200, 200).astype(theano.config.floatX)
         resize = (24, 20)
         z = bilinear_upsampling(tensor.as_tensor_variable(x), frac_ratio=resize, use_1D_kernel=False)
-        utt.assert_allclose(z.shape.eval(mode='FAST_RUN'), (1, 1, 240, 240))
+        out = theano.function([], z.shape, mode='FAST_RUN')()
+        utt.assert_allclose(out, (1, 1, 240, 240))
 
 
 class TestConv2dTranspose(unittest.TestCase):
