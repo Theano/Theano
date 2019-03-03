@@ -1326,6 +1326,13 @@ class TestBilinearUpsampling(unittest.TestCase):
         f_up_x = theano.function([], up_x, mode=self.compile_mode)
         utt.assert_allclose(f_up_x(), num_up_x, rtol=1e-6)
 
+    def test_fractional_bilinear_upsampling_shape(self):
+        x = np.random.rand(1, 1, 200, 200).astype(theano.config.floatX)
+        resize = (24, 20)
+        z = bilinear_upsampling(tensor.as_tensor_variable(x), frac_ratio=resize, use_1D_kernel=False)
+        out = theano.function([], z.shape, mode='FAST_RUN')()
+        utt.assert_allclose(out, (1, 1, 240, 240))
+
 
 class TestConv2dTranspose(unittest.TestCase):
     mode = None
