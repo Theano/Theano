@@ -6608,7 +6608,7 @@ class AllocDiag(Op):
                            idxs + np.maximum(0, offset)])
 
         # Fill in final 2 axes with x
-        result[diagonal_slice] = x
+        result[tuple(diagonal_slice)] = x
 
         if len(x.shape) > 1:
             # Re-order axes so they correspond to diagonals at axis1, axis2
