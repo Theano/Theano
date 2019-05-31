@@ -2194,7 +2194,7 @@ class BaseAdvancedSubtensor(Op):
     def perform(self, node, inputs, out_):
         out, = out_
         check_advanced_indexing_dimensions(inputs[0], inputs[1:])
-        rval = inputs[0].__getitem__(inputs[1:])
+        rval = inputs[0].__getitem__(tuple(inputs[1:]))
         # When there are no arrays, we are not actually doing advanced
         # indexing, so __getitem__ will not return a copy.
         # Since no view_map is set, we need to copy the returned value
