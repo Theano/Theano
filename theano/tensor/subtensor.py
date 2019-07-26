@@ -2336,7 +2336,7 @@ class BaseAdvancedIncSubtensor(Op):
             out[0] = inputs[0]
 
         if self.set_instead_of_inc:
-            out[0][inputs[2:]] = inputs[1]
+            out[0][tuple(inputs[2:])] = inputs[1]
         else:
             np.add.at(out[0], tuple(inputs[2:]), inputs[1])
 
