@@ -465,7 +465,7 @@ class _tensor_py_operators(object):
                     (hasattr(args_el, 'dtype') and args_el.dtype == 'bool')):
                 return True
             if (not isinstance(args_el, theano.tensor.Variable) and
-                    isinstance(args_el, collections.Iterable)):
+                    isinstance(args_el, collections.abc.Iterable)):
                 for el in args_el:
                     if includes_bool(el):
                         return True
