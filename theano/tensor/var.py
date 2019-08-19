@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 try:
     from collections.abc import Iterable
-except AttributeError:
+except (ImportError, AttributeError):
     from collections import Iterable
 import copy
 import traceback as tb
