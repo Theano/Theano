@@ -1,5 +1,8 @@
 from __future__ import absolute_import, print_function, division
-import collections
+try:
+    from collections.abc import Iterable
+except (ImportError, AttributeError):
+    from collections import Iterable
 import copy
 import traceback as tb
 import warnings
@@ -465,7 +468,7 @@ class _tensor_py_operators(object):
                     (hasattr(args_el, 'dtype') and args_el.dtype == 'bool')):
                 return True
             if (not isinstance(args_el, theano.tensor.Variable) and
-                    isinstance(args_el, collections.Iterable)):
+                    isinstance(args_el, Iterable)):
                 for el in args_el:
                     if includes_bool(el):
                         return True
