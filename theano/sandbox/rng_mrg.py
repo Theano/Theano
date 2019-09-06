@@ -16,7 +16,7 @@ from __future__ import absolute_import, print_function, division
 import warnings
 
 import numpy as np
-from six import integer_types
+from six import integer_types, string_types
 from six.moves import xrange
 
 import theano
@@ -768,7 +768,7 @@ class MRG_RandomStreams(object):
         and they are spaced by 2**72 samples.
 
         """
-        assert isinstance(dtype, str)
+        assert isinstance(dtype, string_types)
         assert n_streams < 2**72
         assert n_streams > 0
         rval = np.zeros((n_streams, 6), dtype='int32')
