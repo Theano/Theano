@@ -1,7 +1,8 @@
 ============================================================================================================
 `MILA will stop developing Theano <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_.
 ============================================================================================================
-
+THEANO:
+Theano is a Python library and optimizing compiler for manipulating and evaluating mathematical expressions, especially matrix-valued ones. In Theano, computations are expressed using a NumPy-esque syntax and compiled to run efficiently on either CPU or GPU architectures.Let's learn more!
 
 To install the package, see this page:
    http://deeplearning.net/software/theano/install.html
