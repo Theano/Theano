@@ -166,8 +166,7 @@ class NumpyAutocaster(object):
 
     def __call__(self, x):
         # Make sure we only deal with scalars.
-        assert (isinstance(x, six.integer_types) or
-                isinstance(x, builtin_float) or
+        assert (isinstance(x, (six.integer_types, builtin_float)) or
                 (isinstance(x, np.ndarray) and x.ndim == 0))
 
         if config.cast_policy == 'numpy':
@@ -281,7 +280,7 @@ def convert(x, dtype=None):
             x_ = np.asarray(x)
             if x_.size == 0 and not hasattr(x, 'dtype'):
                 x_ = np.asarray(x, dtype=config.floatX)
-    assert type(x_) in [np.ndarray, np.memmap]
+    assert issubclass(type(x_), (np.ndarray, np.memmap))
     return x_
 
 
