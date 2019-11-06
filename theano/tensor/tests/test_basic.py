@@ -346,7 +346,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
         def test_good(self):
             if skip:
-                raise SkipTest(skip)
+                pytest.skip(skip)
 
             good = self.add_memmap_values(self.good)
 
@@ -433,7 +433,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
         def test_bad_build(self):
             if skip:
-                raise SkipTest(skip)
+                pytest.skip(skip)
             for testname, inputs in iteritems(self.bad_build):
                 inputs = [copy(input) for input in inputs]
                 inputrs = [shared(input) for input in inputs]
@@ -446,7 +446,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
         @change_flags(compute_test_value='off')
         def test_bad_runtime(self):
             if skip:
-                raise SkipTest(skip)
+                pytest.skip(skip)
             for testname, inputs in iteritems(self.bad_runtime):
                 inputrs = [shared(input) for input in inputs]
                 try:
@@ -474,7 +474,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
         def test_grad(self):
             if skip:
-                raise SkipTest(skip)
+                pytest.skip(skip)
             # Disable old warning that may be triggered by this test.
             backup = config.warn.sum_div_dimshuffle_bug
             config.warn.sum_div_dimshuffle_bug = False
@@ -501,7 +501,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             # We use all values in self.good because this has to be true
             # whether or not the values work for utt.verify_grad.
             if skip:
-                raise SkipTest(skip)
+                pytest.skip(skip)
 
             if not hasattr(self.op, 'grad'):
                 # This is not actually an Op
@@ -2031,7 +2031,7 @@ def test_verify_jv_grad():
     # Implemented separately due to need to fix first input for which grad is
     # not defined.
     if skip_scipy:
-        raise SkipTest("SciPy needed")
+        pytest.skip("SciPy needed")
     v_val, x_val = _grad_broadcast_binary_bessel['normal']
 
     def fixed_first_input_jv(x):
@@ -2099,7 +2099,7 @@ def test_verify_iv_grad():
     # Implemented separately due to need to fix first input for which grad is
     # not defined.
     if skip_scipy:
-        raise SkipTest("SciPy needed")
+        pytest.skip("SciPy needed")
 
     v_val, x_val = _grad_broadcast_binary_bessel['normal']
 
@@ -4075,7 +4075,7 @@ class T_Join_and_Split(unittest.TestCase):
 
     def test_join_matrix_dtypes(self):
         if "float32" in self.shared.__name__:
-            raise SkipTest(
+            pytest.skip(
                 "The shared variable constructor"
                 " need to support other dtype then float32")
         # Test mixed dtype. There was a bug that caused crash in the past.
@@ -4095,7 +4095,7 @@ class T_Join_and_Split(unittest.TestCase):
 
     def test_join_matrix_ints(self):
         if "float32" in self.shared.__name__:
-            raise SkipTest(
+            pytest.skip(
                 "The shared variable constructor"
                 " need to support other dtype then float32")
         # Test mixed dtype. There was a bug that caused crash in the past.
@@ -7045,7 +7045,7 @@ class test_arithmetic_cast(unittest.TestCase):
                                     # a float32 may result in a complex64. As
                                     # of 1.9.2. this is still the case so it is
                                     # probably by design
-                                    raise SkipTest("Known issue with"
+                                    pytest.skip("Known issue with"
                                                    "numpy see #761")
                                 # In any other situation: something wrong is
                                 # going on!

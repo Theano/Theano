@@ -262,7 +262,7 @@ class test_Broadcast(unittest.TestCase):
 
     def test_c(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         self.with_linker(gof.CLinker(), self.cop, self.ctype, self.rand_cval)
 
     def test_perform_inplace(self):
@@ -271,13 +271,13 @@ class test_Broadcast(unittest.TestCase):
 
     def test_c_inplace(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         self.with_linker_inplace(gof.CLinker(), self.cop, self.ctype,
                                  self.rand_cval)
 
     def test_fill(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         for linker, op, t, rval in zip(self.linkers, [self.op, self.cop],
                                        [self.type, self.ctype],
                                        [self.rand_val, self.rand_cval]):
@@ -304,7 +304,7 @@ class test_Broadcast(unittest.TestCase):
 
     def test_weird_strides(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         for linker, op, t, rval in zip(self.linkers, [self.op, self.cop],
                                        [self.type, self.ctype],
                                        [self.rand_val, self.rand_cval]):
@@ -319,7 +319,7 @@ class test_Broadcast(unittest.TestCase):
 
     def test_same_inputs(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         for linker, op, t, rval in zip(self.linkers, [self.op, self.cop],
                                        [self.type, self.ctype],
                                        [self.rand_val, self.rand_cval]):
@@ -541,13 +541,13 @@ class test_CAReduce(unittest_tools.InferShapeTester):
         # We need to make sure that we cover the corner cases that
         # optimizations normally cover
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         self.with_mode(Mode(linker='c', optimizer=None), scalar.add, dtype='floatX')
 
     @attr('slow')
     def test_c(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         for dtype in ["bool", "floatX", "complex64", "complex128", "int8", "uint8"]:
             self.with_mode(Mode(linker='c'), scalar.add, dtype=dtype)
             self.with_mode(Mode(linker='c'), scalar.mul, dtype=dtype)
@@ -566,7 +566,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
     @attr('slow')
     def test_c_nan(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         for dtype in ["floatX", "complex64", "complex128"]:
             self.with_mode(Mode(linker='c'), scalar.add, dtype=dtype,
                            test_nan=True)

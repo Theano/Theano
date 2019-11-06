@@ -1,12 +1,11 @@
 from __future__ import absolute_import, print_function, division
-from nose.plugins.skip import SkipTest
 import sys
 import time
 import unittest
 
 import theano.sparse
 if not theano.sparse.enable_sparse:
-    raise SkipTest('Optional package sparse disabled')
+    pytest.skip('Optional package sparse disabled')
 
 import scipy.sparse
 from scipy.signal import convolve2d

@@ -7,10 +7,10 @@ import theano as th
 from theano.d3viz.formatting import PyDotFormatter
 from theano.d3viz.tests import models
 
-from nose.plugins.skip import SkipTest
+import pytest
 from theano.d3viz.formatting import pydot_imported, pydot_imported_msg
 if not pydot_imported:
-    raise SkipTest('pydot not available: ' + pydot_imported_msg)
+    pytest.skip('pydot not available: ' + pydot_imported_msg, allow_module_level=True)
 
 
 class TestPyDotFormatter():

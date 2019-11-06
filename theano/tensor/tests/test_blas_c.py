@@ -31,7 +31,7 @@ def skip_if_blas_ldflags_empty(*functions_detected):
         functions_string = ""
         if functions_detected:
             functions_string = " (at least " + (", ".join(functions_detected)) + ")"
-        raise SkipTest("This test is useful only when Theano can access to BLAS functions" + functions_string + " other than [sd]gemm_.")
+        pytest.skip("This test is useful only when Theano can access to BLAS functions" + functions_string + " other than [sd]gemm_.")
 
 
 class TestCGer(TestCase, TestOptimizationMixin):

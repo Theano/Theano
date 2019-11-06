@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 from theano.compat import izip
+import pytest
 
 from six import iteritems
 
@@ -87,8 +87,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
 
         def test_all(self):
             if skip:
-                from nose.plugins.skip import SkipTest
-                raise SkipTest(skip)
+                pytest.skip(skip)
 
             for testname, inputs in iteritems(cases):
                 for _ in range(len(inputs)):

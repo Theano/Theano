@@ -14,7 +14,7 @@ from theano import tensor
 from theano import sparse
 
 if not theano.sparse.enable_sparse:
-    raise SkipTest('Optional package sparse disabled')
+    pytest.skip('Optional package sparse disabled')
 
 from theano.sparse.sandbox.sp2 import (
     Poisson, poisson, Binomial, Multinomial, multinomial)

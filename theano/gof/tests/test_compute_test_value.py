@@ -5,8 +5,7 @@ import traceback
 import warnings
 
 import numpy as np
-from nose.plugins.skip import SkipTest
-import unittest
+import pytest
 
 import theano
 from theano import config
@@ -38,7 +37,7 @@ class IncOneC(Op):
         return "%(z)s = %(x)s + 1;" % locals()
 
 
-class TestComputeTestValue(unittest.TestCase):
+class TestComputeTestValue():
 
     def test_variable_only(self):
         orig_compute_test_value = theano.config.compute_test_value
@@ -59,7 +58,8 @@ class TestComputeTestValue(unittest.TestCase):
 
             # this test should fail
             y.tag.test_value = np.random.rand(6, 5).astype(config.floatX)
-            self.assertRaises(ValueError, T.dot, x, y)
+            with pytest.raises(ValueError):
+                T.dot(x, y)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
@@ -77,13 +77,15 @@ class TestComputeTestValue(unittest.TestCase):
 
             # should fail when asked by user
             theano.config.compute_test_value = 'raise'
-            self.assertRaises(ValueError, T.dot, x, y)
+            with pytest.raises(ValueError):
+                T.dot(x, y)
 
             # test that a warning is raised if required
             theano.config.compute_test_value = 'warn'
             warnings.simplefilter('error', UserWarning)
             try:
-                self.assertRaises(UserWarning, T.dot, x, y)
+                with pytest.raises(UserWarning):
+                    T.dot(x, y)
             finally:
                 # Restore the default behavior.
                 # TODO There is a cleaner way to do this in Python 2.6, once
@@ -117,7 +119,8 @@ class TestComputeTestValue(unittest.TestCase):
 
             # this test should fail
             z.set_value(np.random.rand(7, 6).astype(config.floatX))
-            self.assertRaises(ValueError, f, x, y, z)
+            with pytest.raises(ValueError):
+                f(x, y, z)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
@@ -139,7 +142,8 @@ class TestComputeTestValue(unittest.TestCase):
 
             # this test should fail
             y.set_value(np.random.rand(5, 6).astype(config.floatX))
-            self.assertRaises(ValueError, T.dot, x, y)
+            with pytest.raises(ValueError):
+                T.dot(x, y)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
@@ -160,7 +164,8 @@ class TestComputeTestValue(unittest.TestCase):
 
             # this test should fail
             x = np.random.rand(2, 4).astype(config.floatX)
-            self.assertRaises(ValueError, T.dot, x, y)
+            with pytest.raises(ValueError):
+                T.dot(x, y)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
@@ -198,7 +203,8 @@ class TestComputeTestValue(unittest.TestCase):
 
             # this test should fail
             x = T.constant(np.random.rand(2, 4), dtype=config.floatX)
-            self.assertRaises(ValueError, T.dot, x, y)
+            with pytest.raises(ValueError):
+                T.dot(x, y)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
@@ -213,7 +219,8 @@ class TestComputeTestValue(unittest.TestCase):
             y = T.dmatrix('y')
             y.tag.test_value = np.random.rand(4, 5)
 
-            self.assertRaises(TypeError, T.dot, x, y)
+            with pytest.raises(TypeError):
+                T.dot(x, y)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
@@ -227,7 +234,8 @@ class TestComputeTestValue(unittest.TestCase):
             x.tag.test_value = np.zeros((2, 3), dtype=config.floatX)
             y = T.matrix()
             y.tag.test_value = np.zeros((2, 2), dtype=config.floatX)
-            self.assertRaises(ValueError, x.__mul__, y)
+            with pytest.raises(ValueError):
+                x.__mul__(y)
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
@@ -310,12 +318,11 @@ class TestComputeTestValue(unittest.TestCase):
             def fx(prior_result, A):
                 return T.dot(prior_result, A)
 
-            self.assertRaises(ValueError,
-                              theano.scan,
-                              fn=fx,
-                              outputs_info=T.ones_like(A.T),
-                              non_sequences=A,
-                              n_steps=k)
+            with pytest.raises(ValueError):
+                theano.scan(fn=fx,
+                            outputs_info=T.ones_like(A.T),
+                            non_sequences=A,
+                            n_steps=k)
 
             # Since we have to inspect the traceback,
             # we cannot simply use self.assertRaises()
@@ -359,10 +366,8 @@ class TestComputeTestValue(unittest.TestCase):
             o = IncOnePython()(i)
 
             # Check that the c_code function is not implemented
-            self.assertRaises(
-                (NotImplementedError, utils.MethodNotDefined),
-                o.owner.op.c_code,
-                o.owner, 'o', ['x'], 'z', {'fail': ''})
+            with pytest.raises((NotImplementedError, utils.MethodNotDefined)):
+                o.owner.op.c_code(o.owner, 'o', ['x'], 'z', {'fail': ''})
 
             assert hasattr(o.tag, 'test_value')
             assert o.tag.test_value == 4
@@ -372,7 +377,7 @@ class TestComputeTestValue(unittest.TestCase):
 
     def test_no_perform(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
 
         orig_compute_test_value = theano.config.compute_test_value
         try:
@@ -386,9 +391,8 @@ class TestComputeTestValue(unittest.TestCase):
             o = IncOneC()(i)
 
             # Check that the perform function is not implemented
-            self.assertRaises((NotImplementedError, utils.MethodNotDefined),
-                              o.owner.op.perform,
-                              o.owner, 0, [None])
+            with pytest.raises((NotImplementedError, utils.MethodNotDefined)):
+                o.owner.op.perform(o.owner, 0, [None])
 
             assert hasattr(o.tag, 'test_value')
             assert o.tag.test_value == 4

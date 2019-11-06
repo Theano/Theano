@@ -20,7 +20,7 @@ def mul(a, b):
     return a * b
 
 
-class OpDecoratorTests(utt.InferShapeTester):
+class TestOpDecorator(utt.InferShapeTester):
 
     def test_1arg(self):
         x = dmatrix('x')

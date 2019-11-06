@@ -28,7 +28,7 @@ class TestConv2D(utt.InferShapeTester):
         self.filters = T.tensor4('filters', dtype=self.dtype)
         self.filters.name = 'default_filters'
         if not conv.imported_scipy_signal and theano.config.cxx == "":
-            raise SkipTest("conv2d tests need SciPy or a c++ compiler")
+            pytest.skip("conv2d tests need SciPy or a c++ compiler")
 
     def validate(self, image_shape, filter_shape,
                  border_mode='valid', subsample=(1, 1),

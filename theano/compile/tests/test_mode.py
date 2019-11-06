@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
-
-from nose.plugins.skip import SkipTest
+import pytest
 
 import theano
 from theano.compile.mode import Mode, AddFeatureOptimizer
@@ -22,7 +21,7 @@ def test_no_output_from_implace():
     assert (hasattr(op, 'destroy_map') and 0 in op.destroy_map)
 
     if not theano.config.cxx:
-        raise SkipTest("Need cxx for this test")
+        pytest.skip("Need cxx for this test")
     # Ensure that the elemwise op that produces the output is not inplace when
     # using a mode that includes the optimization
     opt = AddFeatureOptimizer(NoOutputFromInplace())

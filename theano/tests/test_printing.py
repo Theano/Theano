@@ -21,7 +21,7 @@ def test_pydotprint_cond_highlight():
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
-        raise SkipTest('pydot not available')
+        pytest.skip('pydot not available')
 
     x = tensor.dvector()
     f = theano.function([x], x * 2)
@@ -48,7 +48,7 @@ def test_pydotprint_cond_highlight():
 def test_pydotprint_return_image():
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
-        raise SkipTest('pydot not available')
+        pytest.skip('pydot not available')
 
     x = tensor.dvector()
     ret = theano.printing.pydotprint(x * 2, return_image=True)
@@ -63,7 +63,7 @@ def test_pydotprint_long_name():
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
-        raise SkipTest('pydot not available')
+        pytest.skip('pydot not available')
 
     x = tensor.dvector()
     mode = theano.compile.mode.get_default_mode().excluding("fusion")
@@ -82,10 +82,10 @@ def test_pydotprint_profile():
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
-        raise SkipTest('pydot not available')
+        pytest.skip('pydot not available')
 
     if theano.config.mode in ("DebugMode", "DEBUG_MODE"):
-        raise SkipTest("Can't profile in DebugMode")
+        pytest.skip("Can't profile in DebugMode")
 
     A = tensor.matrix()
     prof = theano.compile.ProfileStats(atexit_print=False, gpu_checks=False)
@@ -702,7 +702,7 @@ def test_scan_debugprint5():
 def test_printing_scan():
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
-        raise SkipTest('pydot not available')
+        pytest.skip('pydot not available')
 
     def f_pow2(x_tm1):
         return 2 * x_tm1

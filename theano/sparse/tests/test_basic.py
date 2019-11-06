@@ -22,7 +22,7 @@ from theano.tensor.basic import _allclose
 from theano.tests.unittest_tools import attr
 
 if not enable_sparse:
-    raise SkipTest('Optional package SciPy not installed')
+    pytest.skip('Optional package SciPy not installed')
 
 from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
@@ -341,7 +341,7 @@ class T_transpose(unittest.TestCase):
 
 class SparseInferShapeTester(utt.InferShapeTester):
     def test_getitem_2d(self):
-        raise SkipTest('infer_shape not implemented for GetItem2d yet')
+        pytest.skip('infer_shape not implemented for GetItem2d yet')
 
     def test_getitem_scalar(self):
         x = SparseType('csr', dtype=config.floatX)()
@@ -495,7 +495,7 @@ class SparseInferShapeTester(utt.InferShapeTester):
 
     def test_structured_dot_grad(self):
         # We also need the grad of CSM to be implemetned.
-        raise SkipTest('infer_shape not implemented for the grad'
+        pytest.skip('infer_shape not implemented for the grad'
                        ' of structured_dot')
         for format, op in [('csc', StructuredDotGradCSC),
                            ('csr', StructuredDotGradCSR)]:
@@ -770,7 +770,7 @@ class test_comparison(unittest.TestCase):
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
         if (bool(scipy_ver < [0, 13])):
-            raise SkipTest("comparison operators need newer release of scipy")
+            pytest.skip("comparison operators need newer release of scipy")
 
         x = symbolicType()
         y = symbolicType()
@@ -789,7 +789,7 @@ class test_comparison(unittest.TestCase):
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
         if (bool(scipy_ver < [0, 13])):
-            raise SkipTest("comparison operators need newer release of scipy")
+            pytest.skip("comparison operators need newer release of scipy")
 
         x = symbolicType()
         y = theano.tensor.matrix()
@@ -808,7 +808,7 @@ class test_comparison(unittest.TestCase):
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
         if (bool(scipy_ver < [0, 13])):
-            raise SkipTest("comparison operators need newer release of scipy")
+            pytest.skip("comparison operators need newer release of scipy")
 
         x = symbolicType()
         y = theano.tensor.matrix()
@@ -865,7 +865,7 @@ class test_comparison(unittest.TestCase):
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
         if (bool(scipy_ver < [0, 13])):
-            raise SkipTest("comparison operators need newer release of scipy")
+            pytest.skip("comparison operators need newer release of scipy")
 
         x = sparse.csc_matrix()
         y = theano.tensor.matrix()
@@ -2347,7 +2347,7 @@ class Test_getitem(unittest.TestCase):
                 self.assertRaises(ValueError,
                                   x.__getitem__, (slice(a, b), slice(c, d, 2)))
             else:
-                raise SkipTest("Slicing with step is supported.")
+                pytest.skip("Slicing with step is supported.")
 
             # Advanced indexing is not supported
             self.assertRaises(ValueError,

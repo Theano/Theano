@@ -306,7 +306,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
     def test_sparse_tensor_error(self):
         import theano.sparse
         if not theano.sparse.enable_sparse:
-            raise SkipTest("Optimization temporarily disabled")
+            pytest.skip("Optimization temporarily disabled")
         rng = np.random.RandomState(utt.fetch_seed())
         data = rng.rand(2, 3).astype(self.dtype)
         x = self.shared(data)
@@ -322,7 +322,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertRaises(TypeError, ifelse, cond, z, y)
 
     def test_merge(self):
-        raise SkipTest("Optimization temporarily disabled")
+        pytest.skip("Optimization temporarily disabled")
         x = tensor.vector('x')
         y = tensor.vector('y')
         c = tensor.iscalar('c')
@@ -334,7 +334,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
                     if isinstance(n.op, IfElse)]) == 1
 
     def test_remove_useless_inputs1(self):
-        raise SkipTest("Optimization temporarily disabled")
+        pytest.skip("Optimization temporarily disabled")
         x = tensor.vector('x')
         y = tensor.vector('y')
         c = tensor.iscalar('c')
@@ -346,7 +346,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert len(ifnode.inputs) == 3
 
     def test_remove_useless_inputs2(self):
-        raise SkipTest("Optimization temporarily disabled")
+        pytest.skip("Optimization temporarily disabled")
         x1 = tensor.vector('x1')
         x2 = tensor.vector('x2')
         y1 = tensor.vector('y1')
@@ -360,7 +360,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert len(ifnode.outputs) == 3
 
     def test_pushout1(self):
-        raise SkipTest("Optimization temporarily disabled")
+        pytest.skip("Optimization temporarily disabled")
         x1 = tensor.scalar('x1')
         x2 = tensor.scalar('x2')
         y1 = tensor.scalar('y1')
@@ -389,7 +389,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
                            vx2 * vy2 * vw2)
 
     def test_pushout3(self):
-        raise SkipTest("Optimization temporarily disabled")
+        pytest.skip("Optimization temporarily disabled")
         x1 = tensor.scalar('x1')
         y1 = tensor.scalar('x2')
         y2 = tensor.scalar('y2')
@@ -413,7 +413,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert np.allclose(f(vx1, vy1, vy2, 0), 2 * vy2 * 0.2)
 
     def test_pushout2(self):
-        raise SkipTest("Optimization temporarily disabled")
+        pytest.skip("Optimization temporarily disabled")
         x1 = tensor.scalar('x1')
         x2 = tensor.scalar('x2')
         y1 = tensor.scalar('y1')
@@ -450,7 +450,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
                            vx2 * vy2 * vw)
 
     def test_merge_ifs_true_false(self):
-        raise SkipTest("Optimization temporarily disabled")
+        pytest.skip("Optimization temporarily disabled")
         x1 = tensor.scalar('x1')
         x2 = tensor.scalar('x2')
         y1 = tensor.scalar('y1')

@@ -11,14 +11,14 @@ import theano.gpuarray.fft
 from .config import mode_with_gpu
 
 # Skip tests if pygpu is not available.
-from nose.plugins.skip import SkipTest
+import pytest
 from theano.gpuarray.fft import pygpu_available, skcuda_available, pycuda_available
 if not pygpu_available:  # noqa
-    raise SkipTest('Optional package pygpu not available')
+    pytest.skip('Optional package pygpu not available', allow_module_level=True)
 if not skcuda_available:  # noqa
-    raise SkipTest('Optional package scikit-cuda not available')
+    pytest.skip('Optional package scikit-cuda not available', allow_module_level=True)
 if not pycuda_available:  # noqa
-    raise SkipTest('Optional package pycuda not available')
+    pytest.skip('Optional package pycuda not available', allow_module_level=True)
 
 # Transform sizes
 N = 32

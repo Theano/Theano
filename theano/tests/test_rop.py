@@ -186,7 +186,7 @@ class RopLop_checker(unittest.TestCase):
         assert np.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
         if known_fail:
-            raise SkipTest('Rop does not handle non-differentiable inputs '
+            pytest.skip('Rop does not handle non-differentiable inputs '
                            'correctly. Bug exposed by fixing Add.grad method.')
 
 

@@ -10,10 +10,10 @@ import theano as th
 import theano.d3viz as d3v
 from theano.d3viz.tests import models
 
-from nose.plugins.skip import SkipTest
+import pytest
 from theano.d3viz.formatting import pydot_imported, pydot_imported_msg
 if not pydot_imported:
-    raise SkipTest('pydot not available: ' + pydot_imported_msg)
+    pytest.skip('pydot not available: ' + pydot_imported_msg, allow_module_level=True)
 
 
 class TestD3Viz():
@@ -39,7 +39,7 @@ class TestD3Viz():
 
     def test_mlp_profiled(self):
         if th.config.mode in ("DebugMode", "DEBUG_MODE"):
-            raise SkipTest("Can't profile in DebugMode")
+            pytest.skip("Can't profile in DebugMode")
         m = models.Mlp()
         profile = th.compile.profiling.ProfileStats(False)
         f = th.function(m.inputs, m.outputs, profile=profile)

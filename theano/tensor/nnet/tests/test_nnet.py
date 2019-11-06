@@ -1521,7 +1521,7 @@ class Test_softmax_opt:
         # printing.debugprint(g)
         # print '==='
 
-        raise SkipTest('Optimization not enabled for the moment')
+        pytest.skip('Optimization not enabled for the moment')
         assert len(g_ops) == 2
         assert softmax_op in g_ops
         assert softmax_grad in g_ops
@@ -1544,7 +1544,7 @@ class Test_softmax_opt:
         finally:
             config.warn.sum_div_dimshuffle_bug = backup
         # printing.debugprint(g)
-        raise SkipTest('Optimization not enabled for the moment')
+        pytest.skip('Optimization not enabled for the moment')
 
     def test_1d_basic(self):
         # this should be a softmax, but of a one-row matrix
@@ -1563,7 +1563,7 @@ class Test_softmax_opt:
         finally:
             config.warn.sum_div_dimshuffle_bug = backup
         # printing.debugprint(g)
-        raise SkipTest('Optimization not enabled for the moment')
+        pytest.skip('Optimization not enabled for the moment')
 
     # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing
     # etc.

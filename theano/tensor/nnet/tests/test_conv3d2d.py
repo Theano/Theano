@@ -101,7 +101,7 @@ def check_diagonal_subtensor_view_traces(fn):
 @pytest.mark.parametrize("border_mode", ('valid', 'full', 'half'))
 def test_conv3d(border_mode):
     if ndimage is None or not theano.config.cxx:
-        raise SkipTest("conv3d2d tests need SciPy and a c++ compiler")
+        pytest.skip("conv3d2d tests need SciPy and a c++ compiler")
 
     if theano.config.mode == 'FAST_COMPILE':
         mode = theano.compile.mode.get_mode('FAST_RUN')

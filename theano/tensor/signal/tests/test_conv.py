@@ -88,7 +88,7 @@ class TestSignalConv2D(unittest.TestCase):
 
         if(not theano.tensor.nnet.conv.imported_scipy_signal and
            theano.config.cxx == ""):
-            raise SkipTest("conv2d tests need SciPy or a c++ compiler")
+            pytest.skip("conv2d tests need SciPy or a c++ compiler")
 
         self.validate((1, 4, 5), (2, 2, 3), out_dim=4, verify_grad=True)
         self.validate((7, 5), (5, 2, 3), out_dim=3, verify_grad=False)

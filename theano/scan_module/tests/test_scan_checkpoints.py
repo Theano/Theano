@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 
 import numpy as np
-import unittest
+import pytest
 
 import theano
 import theano.tensor as T
@@ -13,7 +13,7 @@ except ImportError:
     PYGPU_AVAILABLE = False
 
 
-class TestScanCheckpoint(unittest.TestCase):
+class TestScanCheckpoint():
 
     def setup_method(self):
         self.k = T.iscalar("k")
@@ -52,7 +52,7 @@ class TestScanCheckpoint(unittest.TestCase):
     def test_memory(self):
         # Test that scan_checkpoint reduces memory usage.
         if None not in theano.gpuarray.type.list_contexts():
-            return unittest.SkipTest('Requires gpuarray backend.')
+            pytest.skip('Requires gpuarray backend.')
         from theano.gpuarray.tests.config import mode_with_gpu  # noqa
         f = theano.function(inputs=[self.A, self.k],
                             outputs=self.grad_A, mode=mode_with_gpu)
@@ -69,9 +69,10 @@ class TestScanCheckpoint(unittest.TestCase):
         # Check that the basic scan fails in that case
         # Skip that check in DebugMode, as it can fail in different ways
         if not isinstance(mode_with_gpu, theano.compile.DebugMode):
-            self.assertRaises(GpuArrayException, f, data, 1000)
+            with pytest.raises(GpuArrayException):
+                f(data, 1000)
 
     def test_taps_error(self):
         # Test that an error rises if we use taps in outputs_info.
-        self.assertRaises(RuntimeError, theano.scan_checkpoints,
-                          lambda: None, [], {'initial': self.A, 'taps': [-2]})
+        with pytest.raises(RuntimeError):
+            theano.scan_checkpoints(lambda: None, [], {'initial': self.A, 'taps': [-2]})

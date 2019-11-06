@@ -140,7 +140,7 @@ class TestOptimizationMixin(object):
         return self.assertFunctionContainsClass(f, op, min=N, max=N)
 
     def SkipTest(self, msg='Skip this test'):
-        raise SkipTest(msg)
+        pytest.skip(msg)
 
 
 # This object name should not start with Test.
@@ -428,8 +428,8 @@ class AttemptManyTimes:
                 finally:
                     # Clean up after the test
                     config.unittests.rseed = original_seed
-                    if test_in_class and hasattr(class_instance, "teardown_method("):
-                        class_instance.teardown_method(()
+                    if test_in_class and hasattr(class_instance, "teardown_method"):
+                        class_instance.teardown_method()
 
                     # Update the current_seed
                     if current_seed not in [None, "random"]:

@@ -12,9 +12,7 @@ from collections import OrderedDict
 import six.moves.cPickle as pickle
 from six.moves import xrange
 import numpy as np
-from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises
-from nose.tools import raises
+import pytest
 from numpy.testing import dec
 
 import theano
@@ -3455,7 +3453,7 @@ for{cpu,scan_fn}.2 [id H] ''
                     if isinstance(x.op, theano.tensor.Elemwise)]) == 0
 
     def test_alloc_inputs2(self):
-        raise SkipTest("This tests depends on an optimization for "
+        pytest.skip("This tests depends on an optimization for "
                        "scan that has not been implemented yet.")
         W1 = tensor.matrix()
         W2 = tensor.matrix()
@@ -3620,8 +3618,8 @@ for{cpu,scan_fn}.2 [id H] ''
         out, updates_outer = theano.scan(unit_dropout,
                                      sequences=[tensor.arange(inp.shape[0])])
 
-        assert_raises(theano.gradient.NullTypeGradError,
-                      tensor.grad, out.sum(), inp)
+        with pytest.raises(theano.gradient.NullTypeGradError):
+            tensor.grad(out.sum(), inp)
 
     def test_bugFunctioProvidesIntermediateNodesAsInputs(self):
         # This is a bug recently reported by Ilya
@@ -3683,7 +3681,7 @@ for{cpu,scan_fn}.2 [id H] ''
         assert out == 24
 
     def test_infershape_seq_shorter_nsteps(self):
-        raise SkipTest("This is a generic problem with "
+        pytest.skip("This is a generic problem with "
                        "infershape that has to be discussed "
                        "and figured out")
         x = tensor.vector('x')
@@ -4649,7 +4647,6 @@ for{cpu,scan_fn}.2 [id H] ''
 
         assert diff <= type_eps[theano.config.floatX]
 
-    @raises(theano.gof.fg.MissingInputError)
     def test_strict_mode_ex(self):
         n = 10
 
@@ -4661,11 +4658,12 @@ for{cpu,scan_fn}.2 [id H] ''
         def _scan_loose(x):
             return tensor.dot(x, w_)
 
-        ret_strict = theano.scan(_scan_loose,
-                                 sequences=[],
-                                 outputs_info=[x0_],
-                                 n_steps=n,
-                                 strict=True)
+        with pytest.raises(theano.gof.fg.MissingInputError):
+            ret_strict = theano.scan(_scan_loose,
+                                    sequences=[],
+                                    outputs_info=[x0_],
+                                    n_steps=n,
+                                    strict=True)
 
     def test_monitor_mode(self):
         # Test that it is possible to pass an instance of MonitorMode
@@ -5074,7 +5072,7 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
         import theano.gpuarray.tests.config
         # Skip the test if pygpu is not available
         if not self.gpu_backend.pygpu_activated:
-            raise SkipTest('Optional package pygpu disabled')
+            pytest.skip('Optional package pygpu disabled')
 
         utt.seed_rng()
         super(T_Scan_Gpuarray, self).setup_method()
@@ -5099,7 +5097,7 @@ def test_speed():
     #
     # We need the CVM for this speed test
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
 
     r = np.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
 
@@ -5186,7 +5184,7 @@ def test_speed_rnn():
 
     # We need the CVM for this speed test
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
 
     L = 10000
     N = 50
@@ -5265,7 +5263,7 @@ def test_speed_batchrnn():
 
     # We need the CVM for this speed test
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     L = 100
     B = 50
     N = 400
@@ -5581,10 +5579,11 @@ def test_outputs_taps_check():
     y = tensor.fvector('y')
     f = lambda x, y: [x]
     outputs_info = {'initial': y, 'taps': [0]}
-    assert_raises(ValueError, theano.scan, f, x, outputs_info)
+    with pytest.raises(ValueError):
+        theano.scan(f, x, outputs_info)
     outputs_info = {'initial': y, 'taps': [-1, -1]}
-    assert_raises(ValueError, theano.scan, f, x, outputs_info)
-    print('done')
+    with pytest.raises(ValueError):
+        theano.scan(f, x, outputs_info)
 
 
 def test_default_value_broadcasted():

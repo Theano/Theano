@@ -2,8 +2,8 @@ from __future__ import absolute_import, print_function, division
 import os
 import sys
 from six import reraise
+import pytest
 
-from nose.plugins.skip import SkipTest
 import numpy as np
 
 import theano
@@ -81,7 +81,7 @@ def test_n_samples_compatibility():
             # when "type" and "copy_reg" are builtin modules.
             if sys.platform == 'win32':
                 exc_type, exc_value, exc_trace = sys.exc_info()
-                reraise(SkipTest, exc_value, exc_trace)
+                raise
             raise
 
         f = theano.function([X], samples)

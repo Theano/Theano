@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
-from nose.plugins.skip import SkipTest
 import itertools
 import numpy as np
+import pytest
 
 import theano
 from theano import config
@@ -183,13 +183,13 @@ class TestGpuSger(TestGer):
         self.gemm = gpugemm_inplace
 
     def test_f32_0_0(self):
-        raise SkipTest('0-sized objects not supported')
+        pytest.skip('0-sized objects not supported')
 
     def test_f32_1_0(self):
-        raise SkipTest('0-sized objects not supported')
+        pytest.skip('0-sized objects not supported')
 
     def test_f32_0_1(self):
-        raise SkipTest('0-sized objects not supported')
+        pytest.skip('0-sized objects not supported')
 
 
 class TestGpuSgerNoTransfer(TestGpuSger):

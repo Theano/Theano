@@ -29,7 +29,7 @@ class TestCorr3D(utt.InferShapeTester):
         self.filters = T.tensor5('filters', dtype=self.dtype)
         self.filters.name = 'default_filters'
         if not conv.imported_scipy_signal and theano.config.cxx == "":
-            raise SkipTest("Corr3dMM tests need SciPy or a c++ compiler")
+            pytest.skip("Corr3dMM tests need SciPy or a c++ compiler")
         # This tests can run even when theano.config.blas.ldflags is empty.
 
     def validate(self, image_shape, filter_shape,
@@ -41,7 +41,7 @@ class TestCorr3D(utt.InferShapeTester):
         :param filter_shape: The constant shape info passed to corr3dMM.
         """
         if not theano.config.cxx:
-            raise SkipTest("Need cxx for this test")
+            pytest.skip("Need cxx for this test")
 
         N_image_shape = [T.get_scalar_constant_value(T.as_tensor_variable(x))
                          for x in image_shape]
@@ -267,7 +267,7 @@ class TestCorr3D(utt.InferShapeTester):
     def test_dtype_upcast(self):
         # Checks dtype upcast for Corr3dMM methods.
         if not theano.config.cxx:
-            raise SkipTest("Need cxx for this test")
+            pytest.skip("Need cxx for this test")
 
         def rand(shape, dtype='float64'):
             r = np.asarray(np.random.rand(*shape), dtype=dtype)
@@ -294,9 +294,9 @@ class TestCorr3D(utt.InferShapeTester):
     @attr('slow')
     def test_infer_shape_forward(self):
         if theano.config.mode == "FAST_COMPILE":
-            raise SkipTest("Corr3dMM don't work in FAST_COMPILE")
+            pytest.skip("Corr3dMM don't work in FAST_COMPILE")
         if not theano.config.cxx:
-            raise SkipTest("Need cxx for this test")
+            pytest.skip("Need cxx for this test")
 
         def rand(*shape):
             r = np.asarray(np.random.rand(*shape), dtype='float64')
@@ -327,9 +327,9 @@ class TestCorr3D(utt.InferShapeTester):
     @attr('slow')
     def test_infer_shape_gradW(self):
         if theano.config.mode == "FAST_COMPILE":
-            raise SkipTest("Corr3dMM don't work in FAST_COMPILE")
+            pytest.skip("Corr3dMM don't work in FAST_COMPILE")
         if not theano.config.cxx:
-            raise SkipTest("Need cxx for this test")
+            pytest.skip("Need cxx for this test")
 
         def rand(*shape):
             r = np.asarray(np.random.rand(*shape), dtype='float64')
@@ -368,9 +368,9 @@ class TestCorr3D(utt.InferShapeTester):
     @attr('slow')
     def test_infer_shape_gradI(self):
         if theano.config.mode == "FAST_COMPILE":
-            raise SkipTest("Corr3dMM don't work in FAST_COMPILE")
+            pytest.skip("Corr3dMM don't work in FAST_COMPILE")
         if not theano.config.cxx:
-            raise SkipTest("Need cxx for this test")
+            pytest.skip("Need cxx for this test")
 
         def rand(*shape):
             r = np.asarray(np.random.rand(*shape), dtype='float64')

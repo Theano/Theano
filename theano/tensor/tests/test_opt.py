@@ -432,7 +432,7 @@ class test_canonize(unittest.TestCase):
         # This part are that case that should have been done, but that are not implemented.
         # Test with and without DimShuffle
 
-        raise SkipTest("Current implementation of Canonizer does not "
+        pytest.skip("Current implementation of Canonizer does not "
                        "implement all cases. Skip the corresponding test.")
 
         shp = (5, 5)
@@ -753,7 +753,7 @@ class test_canonize(unittest.TestCase):
         assert f.maker.fgraph.toposort()[0].op == T.sgn
 
     def test_multiple_case_that_fail(self):
-        raise SkipTest("Current implementation of Canonizer does not "
+        pytest.skip("Current implementation of Canonizer does not "
                        "implement all cases. Skip the corresponding test.")
 
         shp = (4, 4)
@@ -807,7 +807,7 @@ class test_canonize(unittest.TestCase):
 
     def test_dont_merge_if_multiple_client(self):
         # test those case take from the comment in Canonizer
-        raise SkipTest("Not implemented")
+        pytest.skip("Not implemented")
 
     def test_canonicalize_nan(self):
         # Regression test for bug in canonicalization of NaN values.
@@ -1216,7 +1216,7 @@ class test_fusion(unittest.TestCase):
         # generate C code in that case.
 
         if not theano.config.cxx:
-            raise SkipTest("no c compiler, so can't use big elemwise!")
+            pytest.skip("no c compiler, so can't use big elemwise!")
         factors = []
         sd = tensor.dscalar()
         means = tensor.dvector()
@@ -1459,7 +1459,7 @@ def test_log_add():
         f([10000], [10000])  # causes overflow if handled incorrectly
         utt.assert_allclose(f([10000], [10000]), 20000)
     except utt.WrongValue:
-        raise SkipTest("log(add(exp)) is not stabilized when adding "
+        pytest.skip("log(add(exp)) is not stabilized when adding "
                        "more than 2 elements, see #623")
 
     # TODO: test that the optimization works in the presence of broadcasting.
@@ -3599,7 +3599,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         # Test equality where one sides contain only shapes related
         # stuff.
         if theano.config.mode == "FAST_COMPILE":
-            raise SkipTest("Skip opt test as the opt is disabled")
+            pytest.skip("Skip opt test as the opt is disabled")
         x = T.vector('x', dtype=config.floatX)
         for g in [x.shape[0],
                   Shape_i(0)(x)]:
@@ -4672,7 +4672,7 @@ def test_constant_get_stabilized():
         assert f() == 800, f()
 
     except AssertionError:
-        raise SkipTest('Theano optimizes constant before stabilization. '
+        pytest.skip('Theano optimizes constant before stabilization. '
                        'This breaks stabilization optimization in some '
                        'cases. See #504.')
 
@@ -4786,7 +4786,7 @@ class T_local_erf(unittest.TestCase):
             'canonicalize', 'fast_run').excluding('gpu', 'fusion')
         self.mode._optimizer.position_cutoff = 1.50001
         if theano.config.cxx == '' and not theano.scalar.basic_scipy.imported_scipy_special:
-            raise SkipTest("erf need a c++ compiler or scipy")
+            pytest.skip("erf need a c++ compiler or scipy")
 
     def test_local_one_plus_erf(self):
         val = np.asarray([-30, -3, -2, -1, 0, 1, 2, 3, 30],
@@ -4875,7 +4875,7 @@ class T_local_erfc(unittest.TestCase):
         self.mode._optimizer.position_cutoff = 1.50001
         if (theano.config.cxx == '' and
                 not theano.scalar.basic_scipy.imported_scipy_special):
-            raise SkipTest("erfc need a c++ compiler or scipy")
+            pytest.skip("erfc need a c++ compiler or scipy")
 
     def test_local_one_minus_erfc(self):
         # test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
@@ -4957,7 +4957,7 @@ class T_local_erfc(unittest.TestCase):
             0].op.scalar_op.fgraph.apply_nodes) == 22, len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
         # TODO: fix this problem
         if theano.config.floatX == "float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
-            raise SkipTest('The python code upcast somewhere internally '
+            pytest.skip('The python code upcast somewhere internally '
                            'some value of float32 to python float for '
                            'part of its computation. That make that the '
                            'c and python code don\'t generate the same value. '

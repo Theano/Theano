@@ -8,10 +8,8 @@ regular test file.
 from __future__ import absolute_import, print_function, division
 import os
 import sys
-from six import reraise
 
-from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises
+import pytest
 import numpy as np
 
 from theano.compat import PY3
@@ -23,7 +21,7 @@ from ..type import ContextNotDefined
 try:
     from . import config as _  # noqa
     have_pygpu = True
-except SkipTest:
+except:
     have_pygpu = False
 
 
@@ -32,7 +30,7 @@ def test_unpickle_gpuarray_as_numpy_ndarray_flag1():
     # available. test_unpickle_gpuarray_as_numpy_ndarray_flag0 in
     # test_type.py test it when pygpu is there.
     if have_pygpu:
-        raise SkipTest("pygpu active")
+        pytest.skip("pygpu active")
     oldflag = config.experimental.unpickle_gpu_on_cpu
     config.experimental.unpickle_gpu_on_cpu = False
 
@@ -45,7 +43,8 @@ def test_unpickle_gpuarray_as_numpy_ndarray_flag1():
                 u = CompatUnpickler(fp, encoding="latin1")
             else:
                 u = CompatUnpickler(fp)
-            assert_raises((ImportError, ContextNotDefined), u.load)
+            with pytest.raises((ImportError, ContextNotDefined)):
+                u.load()
     finally:
         config.experimental.unpickle_gpu_on_cpu = oldflag
 
@@ -72,7 +71,7 @@ def test_unpickle_gpuarray_as_numpy_ndarray_flag2():
                 # when "type" and "copy_reg" are builtin modules.
                 if sys.platform == 'win32':
                     exc_type, exc_value, exc_trace = sys.exc_info()
-                    reraise(SkipTest, exc_value, exc_trace)
+                    raise
                 raise
 
         assert isinstance(mat, np.ndarray)

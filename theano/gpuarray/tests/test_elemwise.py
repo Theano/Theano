@@ -7,7 +7,7 @@ import numpy as np
 import theano
 from theano import scalar, gof, tensor
 from theano.compile import DebugMode, Mode
-from theano.tests.unittest_tools import SkipTest, assert_allclose
+from theano.tests.unittest_tools import assert_allclose
 
 from theano.tensor.tests import test_elemwise
 
@@ -79,7 +79,7 @@ class TestMathErrorFunctions(TestCase):
     @classmethod
     def setup_class(cls):
         if not imported_scipy_special:
-            raise SkipTest("scipy.special needed")
+            pytest.skip("scipy.special needed")
         # NB: erfinv is defined in ]-1;1[, and erfcinv is defined in ]0;2[,
         # so we just take some values in an interval that covers both domains
         # (this will also allow to test some values outside the domains).
@@ -361,7 +361,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     def setup_method(self):
         super(test_GpuCAReduceCuda, self).setup_method()
         if get_context(test_ctx_name).kind != b'cuda':
-            raise SkipTest("Cuda specific tests")
+            pytest.skip("Cuda specific tests")
 
 
 class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
@@ -378,7 +378,7 @@ class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
 
     def setup_method(self):
         if get_context(test_ctx_name).kind != b'cuda':
-            raise SkipTest("Cuda specific tests")
+            pytest.skip("Cuda specific tests")
 
 
 def speed_reduce10():

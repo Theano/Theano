@@ -264,7 +264,7 @@ class TestAssertShape(unittest.TestCase):
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d(self):
         if theano.config.cxx == "":
-            raise SkipTest("test needs cxx")
+            pytest.skip("test needs cxx")
         input = tensor.tensor5()
         filters = tensor.tensor5()
 
@@ -298,7 +298,7 @@ class TestAssertShape(unittest.TestCase):
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d_grad_wrt_inputs(self):
         if theano.config.cxx == "":
-            raise SkipTest("test needs cxx")
+            pytest.skip("test needs cxx")
         output_grad = tensor.tensor5()
         filters = tensor.tensor5()
 
@@ -328,7 +328,7 @@ class TestAssertShape(unittest.TestCase):
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d_grad_wrt_weights(self):
         if theano.config.cxx == "":
-            raise SkipTest("test needs cxx")
+            pytest.skip("test needs cxx")
         input = tensor.tensor5()
         output_grad = tensor.tensor5()
 
@@ -559,7 +559,7 @@ class BaseTestConv():
 
     def test_all(self):
         if type(self) is BaseTestConv:
-            raise SkipTest("base class")
+            pytest.skip("base class")
         ds = self.default_subsamples
         db = self.default_border_mode
         dflip = self.default_filter_flip
@@ -697,7 +697,7 @@ class TestCorrConv2d(BaseTestConv2d):
         # This tests can run even when theano.config.blas.ldflags is empty.
         if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
-            raise SkipTest("Need blas to test conv2d")
+            pytest.skip("Need blas to test conv2d")
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, provide_shape=provide_shape,
                      border_mode=b, filter_flip=flip,
@@ -718,7 +718,7 @@ class TestCorrConv2d(BaseTestConv2d):
         # This tests can run even when theano.config.blas.ldflags is empty.
         if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
-            raise SkipTest("Need blas to test conv2d")
+            pytest.skip("Need blas to test conv2d")
         if not expect_error:
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s, verify_grad=True,
@@ -748,14 +748,14 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
         cls.filter_flip = [True]
         cls.provide_shape = [False]
         if not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("SciPy needed")
+            pytest.skip("SciPy needed")
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         o = self.get_output_shape(i, f, s, b, fd)
         mode = theano.Mode(optimizer=None)
 
         if not theano.config.cxx:
-            raise SkipTest("Need cxx to test conv2d")
+            pytest.skip("Need cxx to test conv2d")
 
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, provide_shape=provide_shape,
@@ -778,7 +778,7 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
     def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1), expect_error=False):
 
         if not theano.config.cxx:
-            raise SkipTest("Need cxx to test conv2d")
+            pytest.skip("Need cxx to test conv2d")
 
         mode = theano.Mode(optimizer=None)
         if not expect_error:
@@ -919,7 +919,7 @@ class TestCorrConv3d(BaseTestConv3d):
         # This test can run even when theano.config.blas.ldflags is empty.
         if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
-            raise SkipTest("Need blas to test conv3d")
+            pytest.skip("Need blas to test conv3d")
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, provide_shape=provide_shape,
                      border_mode=b, filter_flip=flip,
@@ -940,7 +940,7 @@ class TestCorrConv3d(BaseTestConv3d):
         # This test can run even when theano.config.blas.ldflags is empty.
         if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
-            raise SkipTest("Need blas to test conv3d")
+            pytest.skip("Need blas to test conv3d")
         if not expect_error:
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s, verify_grad=True,
@@ -1344,7 +1344,7 @@ class TestConv2dTranspose(unittest.TestCase):
         # axes expected by the function produces the correct
         # output shape.
         if theano.config.cxx == "":
-            raise SkipTest("test needs cxx")
+            pytest.skip("test needs cxx")
 
         mode = self.mode
         if theano.config.mode == "FAST_COMPILE":
@@ -1378,7 +1378,7 @@ class TestConv2dGrads(unittest.TestCase):
 
         if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
-            raise SkipTest("Need blas to test conv2d")
+            pytest.skip("Need blas to test conv2d")
 
         self.random_stream = np.random.RandomState(utt.fetch_seed())
 
@@ -1500,7 +1500,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
         self.corr_gradw = conv2d_corr_gw
         self.corr_gradi = conv2d_corr_gi
         if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("CorrMM needs cxx and SciPy")
+            pytest.skip("CorrMM needs cxx and SciPy")
 
     def test_fwd(self):
         if self.convdim == 2:
@@ -1667,7 +1667,7 @@ class Grouped_conv3d_noOptim(Grouped_conv_noOptim):
         self.corr_gradw = conv3d_corr_gw
         self.corr_gradi = conv3d_corr_gi
         if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("CorrMM needs cxx")
+            pytest.skip("CorrMM needs cxx")
 
 
 class Separable_conv(unittest.TestCase):
@@ -1697,7 +1697,7 @@ class Separable_conv(unittest.TestCase):
 
     def test_interface2d(self):
         if theano.config.cxx == "":
-            raise SkipTest("test needs cxx")
+            pytest.skip("test needs cxx")
         x_sym = theano.tensor.tensor4('x')
         dfilter_sym = theano.tensor.tensor4('d')
         pfilter_sym = theano.tensor.tensor4('p')
@@ -1743,7 +1743,7 @@ class Separable_conv(unittest.TestCase):
 
     def test_interface3d(self):
         if theano.config.cxx == "":
-            raise SkipTest("test needs cxx")
+            pytest.skip("test needs cxx")
         # Expand the filter along the depth
         x = np.tile(np.expand_dims(self.x, axis=2), (1, 1, 5, 1, 1))
         depthwise_filter = np.tile(np.expand_dims(self.depthwise_filter, axis=2), (1, 1, 3, 1, 1))
@@ -1820,7 +1820,7 @@ class TestUnsharedConv(unittest.TestCase):
 
         self.ref_mode = 'FAST_RUN'
         if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("CorrMM needs cxx or SciPy")
+            pytest.skip("CorrMM needs cxx or SciPy")
 
     def test_fwd(self):
         tensor6 = theano.tensor.TensorType(theano.config.floatX, (False,) * 6)
@@ -1963,7 +1963,7 @@ class TestAsymmetricPadding(unittest.TestCase):
 
     def test_fwd(self):
         if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("SciPy and cxx needed")
+            pytest.skip("SciPy and cxx needed")
         img_sym = theano.tensor.tensor4('img')
         kern_sym = theano.tensor.tensor4('kern')
 
@@ -1999,7 +1999,7 @@ class TestAsymmetricPadding(unittest.TestCase):
 
     def test_gradweight(self):
         if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("SciPy and cxx needed")
+            pytest.skip("SciPy and cxx needed")
 
         img_sym = theano.tensor.tensor4('img')
         top_sym = theano.tensor.tensor4('top')
@@ -2039,7 +2039,7 @@ class TestAsymmetricPadding(unittest.TestCase):
 
     def test_gradinput(self):
         if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("test needs cxx and SciPy")
+            pytest.skip("test needs cxx and SciPy")
         kern_sym = theano.tensor.tensor4('kern')
         top_sym = theano.tensor.tensor4('top')
 
@@ -2092,7 +2092,7 @@ class TestCausalConv(unittest.TestCase):
         img_sym = theano.tensor.tensor3('img')
         kern_sym = theano.tensor.tensor3('kern')
         if theano.config.cxx == "" or not theano.tensor.nnet.abstract_conv.imported_scipy_signal:
-            raise SkipTest("SciPy and cxx needed")
+            pytest.skip("SciPy and cxx needed")
         sym_out = causal_conv1d(img_sym, kern_sym, self.kern.shape, filter_dilation=self.dilation)
 
         causal_func = theano.function([img_sym, kern_sym], sym_out, mode=self.mode)

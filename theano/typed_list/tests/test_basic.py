@@ -448,7 +448,7 @@ class test_index(unittest.TestCase):
 
     def test_sparse(self):
         if not scipy_imported:
-            raise SkipTest('Optional package SciPy not installed')
+            pytest.skip('Optional package SciPy not installed')
         mySymbolicSparseList = TypedListType(
             sparse.SparseType('csr', theano.config.floatX))()
         mySymbolicSparse = sparse.csr_matrix()
@@ -514,7 +514,7 @@ class test_count(unittest.TestCase):
 
     def test_sparse(self):
         if not scipy_imported:
-            raise SkipTest('Optional package SciPy not installed')
+            pytest.skip('Optional package SciPy not installed')
         mySymbolicSparseList = TypedListType(
             sparse.SparseType('csr', theano.config.floatX))()
         mySymbolicSparse = sparse.csr_matrix()

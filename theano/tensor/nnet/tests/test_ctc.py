@@ -86,7 +86,7 @@ class TestCTC(unittest.TestCase):
 
     def setup_method(self):
         if theano.config.mode == "FAST_COMPILE" or theano.config.cxx == "":
-            raise SkipTest("We need a c compiler")
+            pytest.skip("We need a c compiler")
 
         if not ctc_available():
             self.skipTest('Optional library warp-ctc not available')

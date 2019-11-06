@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-from nose.plugins.skip import SkipTest
+import pytest
 import numpy as np
 
 import theano
@@ -713,7 +713,7 @@ class Test_aliasing_rules(unittest.TestCase):
 
         from theano.sparse import enable_sparse
         if not enable_sparse:
-            raise SkipTest('Optional package sparse disabled')
+            pytest.skip('Optional package sparse disabled')
 
         from theano import sparse
 

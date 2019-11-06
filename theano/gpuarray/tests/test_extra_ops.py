@@ -3,6 +3,7 @@ from functools import partial
 from itertools import product
 
 import numpy as np
+import pytest
 from six.moves import xrange
 
 from theano import tensor as T
@@ -10,7 +11,6 @@ import theano
 import theano.tensor.tests.test_extra_ops
 
 from theano.tensor.extra_ops import CumOp
-from theano.tests.unittest_tools import SkipTest
 from theano.tests import unittest_tools as utt
 
 from .config import mode_with_gpu, test_ctx_name
@@ -27,7 +27,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
         super(TestGpuCumOp, self).setup_method()
         test_ctx = get_context(test_ctx_name)
         if test_ctx.kind != b'cuda':
-            raise SkipTest("Cuda specific tests")
+            pytest.skip("Cuda specific tests")
         self.max_threads_dim0 = test_ctx.maxlsize0
         self.max_grid_size1 = test_ctx.maxgsize2
         self.op_class = CumOp
@@ -50,7 +50,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
         op_class = partial(self.op_class, mode=mode)
         gpucumop_supported_dtypes = ('float32',)
         if theano.config.floatX not in gpucumop_supported_dtypes:
-            raise SkipTest('Gpucumop not implemented for dtype %s'
+            pytest.skip('Gpucumop not implemented for dtype %s'
                            % theano.config.floatX)
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(theano.config.floatX)

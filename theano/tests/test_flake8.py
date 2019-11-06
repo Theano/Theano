@@ -131,7 +131,7 @@ def list_files(dir_path=theano.__path__[0], pattern='*.py', no_match=".#"):
 def test_format_flake8():
     # Test if flake8 is respected.
     if not flake8_available:
-        raise SkipTest("flake8 is not installed")
+        pytest.skip("flake8 is not installed")
     total_errors = 0
 
     files_to_checks = []

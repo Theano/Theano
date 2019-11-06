@@ -1,11 +1,11 @@
 from __future__ import print_function, absolute_import, division
 from unittest import TestCase
 import numpy as np
+import pytest
 
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
-from theano.tests.unittest_tools import SkipTest
 
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand_gpuarray
@@ -79,9 +79,9 @@ class BaseTest:
 
     def setup_method(self):
         if not isinstance(self.tensor_size, int):
-            raise SkipTest("No tensor ndim defined.")
+            pytest.skip("No tensor ndim defined.")
         if self.tensor_size < 0 or self.tensor_size > 5:
-            raise SkipTest("We allow from 0 (included) to 5 (inclued) dimensons for these tests.")
+            pytest.skip("We allow from 0 (included) to 5 (inclued) dimensons for these tests.")
         if self.shape is None:
             self.shape = self.get_shape()
 
