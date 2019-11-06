@@ -289,7 +289,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
         skip = skip_
         test_memmap = _test_memmap
 
-        def setUp(self):
+        def setup_method(self):
             # Verify that the test's name is correctly set.
             # Some tests reuse it outside this module.
             if self.check_name:
@@ -336,7 +336,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 break
             return val_dict
 
-        def tearDown(self):
+        def teardown_method((self):
             # This is to avoid a problem with deleting memmap files on windows.
             import gc
             gc.collect()
@@ -2443,7 +2443,7 @@ class ApplyDefaultTestOp(theano.Op):
 class TestAsTensorVariable(unittest.TestCase):
     # Unit test for ensuring that as_tensor_variable handles Apply objects
     # correctly and removes leading broadcastable dimensions when possible.
-    def setUp(self):
+    def setup_method(self):
         self.x = tensor.scalar('x')
 
     def test_one_output(self):
@@ -2477,7 +2477,7 @@ class TestAlloc(unittest.TestCase):
     shared = staticmethod(theano.shared)
     allocs = [tensor.Alloc()] * 3
 
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(seed=utt.fetch_seed())
 
     def test_alloc_constant_folding(self):
@@ -3088,7 +3088,7 @@ class T_Shape(unittest.TestCase):
 
 
 class T_max_and_argmax(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
 
@@ -3320,7 +3320,7 @@ class T_max_and_argmax(unittest.TestCase):
 
 
 class T_argmin_argmax(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
 
@@ -3487,7 +3487,7 @@ class T_argmin_argmax(unittest.TestCase):
 
 
 class T_min_max(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
 
@@ -3754,7 +3754,7 @@ class T_GetVectorLength(unittest.TestCase):
 
 class T_Join_and_Split(unittest.TestCase):
     # Split is tested by each verify_grad method.
-    def setUp(self):
+    def setup_method(self):
         Join.debug = False
         utt.seed_rng()
         self.mode = theano.compile.get_default_mode().excluding(
@@ -4555,7 +4555,7 @@ class test_comparison(unittest.TestCase):
     # ndarray. ndarray cmp tensor was crashing.  In a NumPy PR (should
     # be in the release 1.8 of NumPy), it will work.  So we assert it
     # work(futur behavior) or raise an error(current NumPy release).
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.mode = None
         self.shared = shared
@@ -4818,7 +4818,7 @@ class test_bitwise(unittest.TestCase):
 
 
 class T_add(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_complex_all_ops(self):
@@ -4994,7 +4994,7 @@ class test_matinv(unittest.TestCase):
 
 
 class t_dot(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def cmp_dot(self, x, y):
@@ -5431,7 +5431,7 @@ class test_grad(unittest.TestCase):
 
 
 class T_op_cache(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test0(self):
@@ -5908,7 +5908,7 @@ def test_tile_grad():
 
 
 class TestARange(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_Op_integers(self):
@@ -6239,7 +6239,7 @@ class TestARange(unittest.TestCase):
 
 class TestNdGrid(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         pass
 
     def test_mgrid_numpy_equiv(self):
@@ -6288,7 +6288,7 @@ class TestNdGrid(unittest.TestCase):
 
 
 class TestInversePermutation(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_dim1(self):
@@ -6332,7 +6332,7 @@ class TestInversePermutation(unittest.TestCase):
 
 
 class TestPermuteRowElements(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_1_1(self):
@@ -6463,7 +6463,7 @@ class test_tensordot(unittest.TestCase):
         # to allow easy use of verify_grad.
         return lambda a, b: tensordot(a, b, axes)
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test0(self):
@@ -8245,7 +8245,7 @@ class TestInferShape(utt.InferShapeTester):
 
 
 class TestTensorInstanceMethods(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.vars = matrices('X', 'Y')
         self.vals = [m.astype(floatX) for m in [rand(2, 2), rand(2, 2)]]
 
@@ -8567,7 +8567,7 @@ class test_ptp(unittest.TestCase):
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
-    t.setUp()
+    t.setup_method()
     t.test_infer_shape()
 
 

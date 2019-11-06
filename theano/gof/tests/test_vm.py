@@ -19,10 +19,10 @@ from theano.ifelse import ifelse
 import theano
 
 
-class TestCallbacks(unittest.TestCase):
+class TestCallbacks():
     # Test the VM_Linker's callback argument, which can be useful for debugging.
 
-    def setUp(self):
+    def setup_method(self):
         self.n_callbacks = {}
 
     def callback(self, node, thunk, storage_map, compute_map):

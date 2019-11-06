@@ -4,8 +4,8 @@ from collections import OrderedDict
 
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
-from parameterized import parameterized
 import numpy as np
+import pytest
 from itertools import product, chain
 
 import theano
@@ -674,10 +674,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     border_modes = ['valid', 'full', 'half']
     conv_modes = ['conv', 'cross']
 
-    def setUp(self):
+    def setup_method(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
-        super(TestDnnInferShapes, self).setUp()
+            pytest.skip(dnn.dnn_available.msg)
         self.mode = mode_with_gpu
 
     def test_softmax(self):
@@ -740,13 +739,13 @@ class TestDnnInferShapes(utt.InferShapeTester):
                     dnn.GpuDnnConv
                 )
 
-    @parameterized.expand(chain(product([SUPPORTED_DNN_CONV_ALGO_FWD[0]],
+    @pytest.mark.parametrize("algo, border_mode, conv_mode",
+                             chain(product([SUPPORTED_DNN_CONV_ALGO_FWD[0]],
                                         border_modes,
                                         conv_modes),
-                                product(SUPPORTED_DNN_CONV_ALGO_FWD[1:],
+                             product(SUPPORTED_DNN_CONV_ALGO_FWD[1:],
                                         [border_modes[0]],
-                                        [conv_modes[0]])),
-                          testcase_func_name=utt.custom_name_func)
+                                        [conv_modes[0]])))
     def test_conv(self, algo, border_mode, conv_mode):
         # Currently only CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM (algo 'none')
         # supports dilation > 1. 'time*' and 'guess*' should fallback to it.
@@ -765,7 +764,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                         dilations,
                         algo)
 
-    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    @pytest.mark.parametrize("border_mode, conv_mode", product(border_modes, conv_modes))
     def test_conv3d_none(self, border_mode, conv_mode):
         dilations = [(1, 1, 1), (2, 2, 2)] if dnn.version() >= 6000 else [(1, 1, 1)]
 
@@ -821,7 +820,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                     dnn.GpuDnnConvGradW
                 )
 
-    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    @pytest.mark.parametrize("border_mode, conv_mode", product(border_modes, conv_modes))
     def test_conv_gradw(self, border_mode, conv_mode):
         dilations = [(1, 1), (2, 2)] if dnn.version() >= 6000 else [(1, 1)]
 
@@ -1360,9 +1359,9 @@ class test_SoftMax(test_nnet.test_SoftMax):
     gpu_grad_op = dnn.GpuDnnSoftmaxGrad
     mode = mode_with_gpu
 
-    def setUp(self):
+    def setup_method(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
 
     def test_softmax_shape_0(self):
         dims = (2, 0, 4, 5)

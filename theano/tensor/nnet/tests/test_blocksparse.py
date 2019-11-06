@@ -16,7 +16,7 @@ from theano.tensor.nnet.blocksparse import (
 
 
 class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         mode = None
         if theano.config.mode == "FAST_COMPILE":

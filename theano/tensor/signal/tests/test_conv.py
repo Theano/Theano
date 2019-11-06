@@ -15,7 +15,7 @@ from theano.tensor.basic import _allclose
 
 class TestSignalConv2D(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def validate(self, image_shape, filter_shape, out_dim, verify_grad=True):

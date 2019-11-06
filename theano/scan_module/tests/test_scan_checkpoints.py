@@ -15,7 +15,7 @@ except ImportError:
 
 class TestScanCheckpoint(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         self.k = T.iscalar("k")
         self.A = T.vector("A")
         result, _ = theano.scan(

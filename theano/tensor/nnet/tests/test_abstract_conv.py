@@ -342,7 +342,7 @@ class TestAssertShape(unittest.TestCase):
                       np.zeros((3, 7, 5, 9, 11), dtype='float32'))
 
 
-class BaseTestConv(object):
+class BaseTestConv():
     def get_output_shape(self, inputs_shape, filters_shape,
                          subsample, border_mode, filter_dilation):
         dil_filters = tuple((s - 1) * d + 1 for s, d in zip(filters_shape[2:],
@@ -1005,7 +1005,7 @@ def test_constant_shapes():
 
 
 class TestConvTypes(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.input = tensor.ftensor4()
         self.filters = tensor.ftensor4()
         self.topgrad = tensor.ftensor4()
@@ -1374,7 +1374,7 @@ class TestConv2dTranspose(unittest.TestCase):
 
 class TestConv2dGrads(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
 
         if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
@@ -1486,7 +1486,7 @@ class Grouped_conv_noOptim(unittest.TestCase):
     mode = theano.Mode(optimizer=None)
     is_dnn = False
 
-    def setUp(self):
+    def setup_method(self):
         self.num_groups = [3, 2, 4, 4]
         self.border_mode = 'valid'
         self.subsample = (1, 1)
@@ -1653,7 +1653,7 @@ class Grouped_conv3d_noOptim(Grouped_conv_noOptim):
     conv_gradi_op = theano.tensor.nnet.abstract_conv.AbstractConv3d_gradInputs
     mode = theano.Mode(optimizer=None)
 
-    def setUp(self):
+    def setup_method(self):
         self.num_groups = [3, 2, 4, 4]
         self.border_mode = 'valid'
         self.subsample = (1, 1, 1)
@@ -1671,7 +1671,7 @@ class Grouped_conv3d_noOptim(Grouped_conv_noOptim):
 
 
 class Separable_conv(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.x = np.array([[[[1, 2, 3, 4, 5], [3, 2, 1, 4, 5], [3, 3, 1, 3, 6], [5, 3, 2, 1, 1], [4, 7, 1, 2, 1]],
                             [[3, 3, 1, 2, 6], [6, 5, 4, 3, 1], [3, 4, 5, 2, 3], [6, 4, 1, 3, 4], [2, 3, 4, 2, 5]]]]).astype(theano.config.floatX)
 
@@ -1805,7 +1805,7 @@ class TestUnsharedConv(unittest.TestCase):
 
     mode = theano.compile.mode.Mode(optimizer='None')
 
-    def setUp(self):
+    def setup_method(self):
         self.img_shape = [(2, 2, 4, 4), (3, 2, 4, 2), (3, 3, 5, 3), (3, 4, 4, 4)]
         self.kern_shape = [(2, 2, 2, 2, 3, 3), (2, 4, 2, 2, 4, 2), (3, 2, 1, 1, 3, 3), (4, 3, 3, 2, 4, 2)]
         self.topgrad_shape = [(2, 2, 2, 2), (3, 2, 4, 2), (3, 3, 2, 1), (3, 4, 3, 3)]

@@ -11,7 +11,7 @@ from theano.tests.unittest_tools import TestOptimizationMixin
 
 class TestScipyGer(TestCase, TestOptimizationMixin):
 
-    def setUp(self):
+    def setup_method(self):
         self.mode = theano.compile.get_default_mode()
         self.mode = self.mode.including('fast_run')
         self.mode = self.mode.excluding('c_blas')  # c_blas trumps scipy Ops

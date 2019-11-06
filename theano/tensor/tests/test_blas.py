@@ -50,7 +50,7 @@ class t_gemm(TestCase):
     This test suite is supposed to establish that gemm works as it is supposed to.
     """
 
-    def setUp(self):
+    def setup_method(self):
         unittest_tools.seed_rng()
         Gemm.debug = False
 
@@ -380,7 +380,7 @@ class TestGemmNoFlags(object):
     K = 6
     slice_step = 3
 
-    def setUp(self):
+    def setup_method(self):
         unittest_tools.seed_rng()
 
     def get_variable(self, V, to_transpose, to_slice):
@@ -1619,7 +1619,7 @@ class TestDgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
 
 
 class TestGer_make_node(TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.iv = T.tensor(dtype='int32', broadcastable=(False,))
         self.fv = T.tensor(dtype='float32', broadcastable=(False,))
         self.fv1 = T.tensor(dtype='float32', broadcastable=(True,))
@@ -1694,7 +1694,7 @@ class TestGer_make_node(TestCase):
 
 
 class TestGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
-    def setUp(self):
+    def setup_method(self):
         self.ops = [ger, ger_destructive]
 
     def clone(self, op):
@@ -1704,7 +1704,7 @@ class TestGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
 class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
     shared = staticmethod(theano.shared)
 
-    def setUp(self):
+    def setup_method(self):
         self.mode = theano.compile.get_default_mode().including('fast_run')
         self.mode = self.mode.excluding('c_blas', 'scipy_blas')
         dtype = self.dtype = 'float64'  # optimization isn't dtype-dependent

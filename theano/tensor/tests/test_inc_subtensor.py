@@ -21,7 +21,7 @@ class Test_inc_subtensor(unittest.TestCase):
     the new (read: not deprecated) inc_subtensor, set_subtensor
     functions.
     """
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_simple_2d(self):

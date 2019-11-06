@@ -77,7 +77,7 @@ class BaseTest:
             return []
         return [int(math.ceil(math.pow(test_size, 1 / self.tensor_size)))] * self.tensor_size
 
-    def setUp(self):
+    def setup_method(self):
         if not isinstance(self.tensor_size, int):
             raise SkipTest("No tensor ndim defined.")
         if self.tensor_size < 0 or self.tensor_size > 5:

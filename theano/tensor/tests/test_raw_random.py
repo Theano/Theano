@@ -15,7 +15,7 @@ __docformat__ = "restructuredtext en"
 
 
 class T_random_function(utt.InferShapeTester):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_basic_usage(self):
@@ -968,8 +968,8 @@ class T_random_function(utt.InferShapeTester):
         assert normal(rng_R, avg=tensor.constant(0, dtype='float64'),
                       dtype='float32')[1].dtype == 'float32'
 
-    def setUp(self):
-        super(T_random_function, self).setUp()
+    def setup_method(self):
+        super(T_random_function, self).setup_method()
 
     def test_infer_shape(self):
         rng_R = random_state_type()

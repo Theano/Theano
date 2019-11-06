@@ -1,7 +1,7 @@
 from __future__ import (division, absolute_import, print_function)
 
-import unittest
 import numpy as np
+import pytest
 
 import theano
 import theano.tensor as T
@@ -13,10 +13,10 @@ from theano.tensor.nnet.tests.test_ctc import (setup_torch_case, setup_ctc_case,
 from .config import (mode_with_gpu, mode_without_gpu)
 
 
-class TestCTC(unittest.TestCase):
-    def setUp(self):
+class TestCTC():
+    def setup_method(self):
         if not ctc_available():
-            self.skipTest('Optional library warp-ctc not available')
+            pytest.skip('Optional library warp-ctc not available')
 
     def check_ctc(self, activations, labels, input_length, expected_costs, expected_grads):
         # Create symbolic variables

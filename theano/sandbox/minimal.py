@@ -54,7 +54,7 @@ minimal = Minimal()
 
 
 class T_minimal(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed(666))
 
     def test0(self):

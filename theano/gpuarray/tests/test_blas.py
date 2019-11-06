@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-from unittest import TestCase
 from nose.plugins.skip import SkipTest
 import itertools
 import numpy as np
@@ -85,7 +84,7 @@ def test_float16():
     utt.assert_allclose(np.asarray(out), np.dot(x, y))
 
 
-class TestGpuSgemv(TestCase, BaseGemv, utt.TestOptimizationMixin):
+class TestGpuSgemv(BaseGemv, utt.TestOptimizationMixin):
     mode = mode_with_gpu
     dtype = 'float32'
 
@@ -156,7 +155,7 @@ GpuGemmBatchTester = makeTester(
     )
 
 
-class TestGpuGemmBatchStrided(TestCase):
+class TestGpuGemmBatchStrided():
     def test0(self):
         # Reported in https://github.com/Theano/Theano/issues/5730
         x = tensor.tensor3()
@@ -170,7 +169,7 @@ class TestGpuGemmBatchStrided(TestCase):
 
 
 class TestGpuSger(TestGer):
-    def setUp(self):
+    def setup_method(self):
         self.mode = mode_with_gpu
         dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
         self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
@@ -197,8 +196,8 @@ class TestGpuSgerNoTransfer(TestGpuSger):
     shared = staticmethod(gpuarray_shared_constructor)
 
 
-class TestGpuGer_OpContract(TestCase, utt.T_OpContractMixin):
-    def setUp(self):
+class TestGpuGer_OpContract(utt.T_OpContractMixin):
+    def setup_method(self):
         self.ops = [gpuger_no_inplace, gpuger_inplace]
 
     def clone(self, op):

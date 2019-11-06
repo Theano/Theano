@@ -103,7 +103,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertFunctionContainsClassN(f, op, N)
         return f
 
-    def setUp(self):
+    def setup_method(self):
         Subtensor.debug = False
         utt.seed_rng()
 
@@ -1371,7 +1371,7 @@ class TestIncSubtensor1(unittest.TestCase):
     # test inc_subtensor
     # also tests set_subtensor
 
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(seed=utt.fetch_seed())
 
         self.s = tensor.iscalar()
@@ -1470,7 +1470,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         self.ignore_topo = ignore_topo
         super(TestAdvancedSubtensor, self).__init__(name)
 
-    def setUp(self):
+    def setup_method(self):
         self.s = iscalar()
         self.v = fvector()
         self.m = dmatrix()

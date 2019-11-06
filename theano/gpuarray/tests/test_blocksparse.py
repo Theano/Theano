@@ -16,7 +16,7 @@ from ..blocksparse import (GpuSparseBlockGemv,
 
 
 class BlockSparse_Gemv_and_Outer(test_blocksparse.BlockSparse_Gemv_and_Outer):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.mode = mode_with_gpu.excluding('constant_folding')
         self.gemv_op = gpu_sparse_block_gemv

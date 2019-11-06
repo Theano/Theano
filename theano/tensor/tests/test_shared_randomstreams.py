@@ -16,7 +16,7 @@ from theano.tests import unittest_tools as utt
 
 
 class T_SharedRandomStreams(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_tutorial(self):

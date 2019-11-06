@@ -24,7 +24,7 @@ def gen_unique_vector(size, dtype):
 
 class Test_sort(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(seed=utt.fetch_seed())
         self.m_val = self.rng.rand(3, 2)
         self.v_val = self.rng.rand(4)
@@ -235,7 +235,7 @@ class Test_TopK(unittest.TestCase):
     mode = None
     op_class = TopKOp
 
-    def setUp(self):
+    def setup_method(self):
         pass
 
     @utt.parameterized.expand(product(

@@ -36,8 +36,8 @@ class PoissonTester(utt.InferShapeTester):
         x[format] = variable()
         a[format] = as_sparse_format(rand, format)
 
-    def setUp(self):
-        super(PoissonTester, self).setUp()
+    def setup_method(self):
+        super(PoissonTester, self).setup_method()
         self.op_class = Poisson
 
     def test_op(self):
@@ -72,8 +72,8 @@ class BinomialTester(utt.InferShapeTester):
     inputs = [n, p, shape]
     _inputs = [_n, _p, _shape]
 
-    def setUp(self):
-        super(BinomialTester, self).setUp()
+    def setup_method(self):
+        super(BinomialTester, self).setup_method()
         self.op_class = Binomial
 
     def test_op(self):
@@ -109,8 +109,8 @@ class MultinomialTester(utt.InferShapeTester):
                                       [0.3, 0.3, 0.0, 0.4]],
                                      dtype=config.floatX))
 
-    def setUp(self):
-        super(MultinomialTester, self).setUp()
+    def setup_method(self):
+        super(MultinomialTester, self).setup_method()
         self.op_class = Multinomial
 
     def test_op(self):

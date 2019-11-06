@@ -49,7 +49,7 @@ def random_lil(shape, dtype, nnz):
 
 class test_get_item(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_sanity_check_slice(self):

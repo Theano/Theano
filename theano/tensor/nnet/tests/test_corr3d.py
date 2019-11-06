@@ -22,8 +22,8 @@ class TestCorr3D(utt.InferShapeTester):
         mode = None
     dtype = theano.config.floatX
 
-    def setUp(self):
-        super(TestCorr3D, self).setUp()
+    def setup_method(self):
+        super(TestCorr3D, self).setup_method()
         self.input = T.tensor5('input', dtype=self.dtype)
         self.input.name = 'default_V'
         self.filters = T.tensor5('filters', dtype=self.dtype)
@@ -431,5 +431,5 @@ class TestGroupCorr3d(Grouped_conv3d_noOptim):
 if __name__ == '__main__':
 
     t = TestCorr3D('setUp')
-    t.setUp()
+    t.setup_method()
     t.test_infer_shape()

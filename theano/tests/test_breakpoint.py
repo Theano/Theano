@@ -8,9 +8,9 @@ from theano.tests.breakpoint import PdbBreakpoint
 
 class TestPdbBreakpoint(utt.InferShapeTester):
 
-    def setUp(self):
+    def setup_method(self):
 
-        super(TestPdbBreakpoint, self).setUp()
+        super(TestPdbBreakpoint, self).setup_method()
 
         # Sample computation that involves tensors with different numbers
         # of dimensions

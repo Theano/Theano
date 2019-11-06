@@ -1337,7 +1337,7 @@ class TestCompositeCodegen(unittest.TestCase):
     Test The Composite Ops code generation in a case where there is multiple
     scalar ops with support code.
     """
-    def setUp(self):
+    def setup_method(self):
         upgrade_to_float = theano.scalar.basic.upgrade_to_float
 
         self.scal_times_2 = TimesN(2, upgrade_to_float, name='times_2')
@@ -2129,7 +2129,7 @@ class test_local_subtensor_lift(unittest.TestCase):
 
 
 class test_local_subtensor_merge(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.x_shapes = [(2, 2), (5, 3), (4, 1), (1, 2),
                          (0, 2), (2, 0), (1, 0), (0, 0)]
@@ -2659,7 +2659,7 @@ class test_local_subtensor_merge(unittest.TestCase):
 
 
 class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         mode = theano.compile.mode.get_default_mode()
         self.mode = mode.including("local_adv_sub1_adv_inc_sub1").excluding("fusion")
@@ -2754,7 +2754,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
 
 
 class Test_alloc_zero(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         mode = theano.compile.mode.get_default_mode()
         self.mode = mode.including("local_incsubtensor_of_zeros",
                                    "local_setsubtensor_of_constants",
@@ -3058,7 +3058,7 @@ def test_local_subtensor_of_dot():
 class Test_local_elemwise_alloc(unittest.TestCase):
     dtype = config.floatX
 
-    def setUp(self):
+    def setup_method(self):
         self.fast_compile_mode = get_mode('FAST_COMPILE')
         self.fast_run_mode = get_mode('FAST_RUN')
 
@@ -3422,7 +3422,7 @@ def test_local_elemwise_sub_zeros():
 
 
 class Test_local_useless_elemwise_comparison(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
     def test_local_useless_elemwise_comparison(self):
@@ -3700,7 +3700,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
 
 class Test_local_canonicalize_alloc(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
     @change_flags(compute_test_value='off')
@@ -3814,7 +3814,7 @@ class Test_local_canonicalize_alloc(unittest.TestCase):
 class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
     opt_name = 'local_useless_inc_subtensor_alloc'
 
-    def setUp(self):
+    def setup_method(self):
         # The optimization requires the shape feature so we need to compile in
         # FAST_RUN mode.
         mode = theano.config.mode
@@ -3915,7 +3915,7 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
 
 
 class test_shapeoptimizer(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test0(self):
@@ -4095,8 +4095,8 @@ class test_shapeoptimizer(unittest.TestCase):
 
 class test_assert(utt.InferShapeTester):
 
-    def setUp(self):
-        super(test_assert, self).setUp()
+    def setup_method(self):
+        super(test_assert, self).setup_method()
 
     def test0(self):
         x = T.scalar()
@@ -4420,7 +4420,7 @@ class T_Rebroadcast(unittest.TestCase):
 
 
 class T_useless_elemwise(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.mode = theano.compile.get_default_mode().including(
             'canonicalize', 'local_fill_to_alloc')
 
@@ -4506,7 +4506,7 @@ class T_useless_elemwise(unittest.TestCase):
 
 
 class T_cast_cast(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         mode = theano.compile.get_default_mode()
         self.mode = mode.including('local_cast_cast')
 
@@ -4563,7 +4563,7 @@ class T_cast_cast(unittest.TestCase):
 
 class T_func_inverse(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         mode = theano.compile.get_default_mode()
         self.mode = mode.including('local_func_inv')
 
@@ -4678,7 +4678,7 @@ def test_constant_get_stabilized():
 
 
 class T_local_switch_sink(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         # condition values
         self.condm = np.asarray([[0.1, 0, 1, -1],
                                  [0., 0., 0., 0.],
@@ -4781,7 +4781,7 @@ class T_local_switch_sink(unittest.TestCase):
 
 
 class T_local_erf(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.mode = theano.compile.mode.get_default_mode().including(
             'canonicalize', 'fast_run').excluding('gpu', 'fusion')
         self.mode._optimizer.position_cutoff = 1.50001
@@ -4868,7 +4868,7 @@ class T_local_erf(unittest.TestCase):
 
 
 class T_local_erfc(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.mode_fusion = theano.compile.mode.get_default_mode().including(
             'canonicalize').including('fast_run').excluding('gpu')
         self.mode = self.mode_fusion.excluding('fusion')
@@ -5062,7 +5062,7 @@ class T_local_erfc(unittest.TestCase):
 
 
 class test_local_useless_switch(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.mode = mode_opt.excluding('constant_folding')
 
     def test_const0(self):
@@ -5235,7 +5235,7 @@ class T_local_sum_prod(unittest.TestCase):
     """
     Test sum/prod opts in opt.py
     """
-    def setUp(self):
+    def setup_method(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize',
                                                                 'specialize')
 
@@ -5635,7 +5635,7 @@ class T_local_opt_alloc_f16(T_local_opt_alloc):
 
 
 class T_local_reduce(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.mode = theano.compile.get_default_mode().including(
             'canonicalize',
             'specialize',
@@ -5761,7 +5761,7 @@ class T_local_reduce(unittest.TestCase):
 
 
 class T_local_sum_prod_dimshuffle(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
 
     def test_local_sum_div_dimshuffle(self):
@@ -5933,8 +5933,8 @@ class T_local_sum_prod_dimshuffle(unittest.TestCase):
 
 class TestMakeVector(utt.InferShapeTester):
 
-    def setUp(self):
-        super(TestMakeVector, self).setUp()
+    def setup_method(self):
+        super(TestMakeVector, self).setup_method()
 
     def test_make_vector(self):
         b = T.bscalar()
@@ -6280,7 +6280,7 @@ def test_local_flatten_lift():
 
 
 class Test_Reshape(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.mode = mode_opt
         self.op = tensor.Reshape
 
@@ -6297,7 +6297,7 @@ class Test_Reshape(unittest.TestCase):
 
 
 class Test_local_useless_reshape(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
     def test_0(self):
@@ -6359,7 +6359,7 @@ class Test_local_useless_reshape(unittest.TestCase):
 
 
 class Test_local_reshape_to_dimshuffle(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
     def test_1(self):
@@ -6463,8 +6463,8 @@ def test_local_upcast_elemwise_constant_inputs():
 
 class TestShape_i(utt.InferShapeTester):
 
-    def setUp(self):
-        super(TestShape_i, self).setUp()
+    def setup_method(self):
+        super(TestShape_i, self).setup_method()
 
     def test_perform(self):
 
@@ -6556,7 +6556,7 @@ def test_assert_op_gradient():
 
 class TestIntDivByOne(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         self.mode = theano.compile.mode.get_default_mode()
         self.mode = self.mode.including('local_intdiv_by_one')
 

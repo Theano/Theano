@@ -2,12 +2,12 @@ from __future__ import absolute_import, print_function, division
 import time
 
 from nose.plugins.skip import SkipTest
-from parameterized import parameterized
 import numpy as np
 try:
     from scipy import ndimage
 except ImportError:
     ndimage = None
+import pytest
 from six.moves import xrange
 
 import theano
@@ -98,7 +98,7 @@ def check_diagonal_subtensor_view_traces(fn):
         fn, ops_to_check=(DiagonalSubtensor, IncDiagonalSubtensor))
 
 
-@parameterized.expand(('valid', 'full', 'half'), utt.custom_name_func)
+@pytest.mark.parametrize("border_mode", ('valid', 'full', 'half'))
 def test_conv3d(border_mode):
     if ndimage is None or not theano.config.cxx:
         raise SkipTest("conv3d2d tests need SciPy and a c++ compiler")

@@ -18,7 +18,7 @@ def rand_ranged_matrix(minimum, maximum, shape):
 
 class test_typed_list_type(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_wrong_input_on_creation(self):

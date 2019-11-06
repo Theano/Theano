@@ -22,7 +22,7 @@ from theano.tensor.tests.test_basic import (makeBroadcastTester, copymod,
 
 
 class T_sigmoid(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_elemwise(self):
@@ -77,7 +77,7 @@ SoftplusTester = makeBroadcastTester(
 
 
 class T_softplus(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_elemwise(self):
@@ -363,7 +363,7 @@ class T_sigmoid_opts(unittest.TestCase):
 
 
 class T_softplus_opts(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         if theano.config.mode == 'FAST_COMPILE':
             m = theano.compile.mode.get_mode('FAST_RUN').excluding(
                 'local_elemwise_fusion')

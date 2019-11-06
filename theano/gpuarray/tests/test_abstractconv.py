@@ -245,7 +245,7 @@ class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
 
 
 class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
-    def setUp(self):
+    def setup_method(self):
         self.input = gpu_ftensor4()
         self.filters = gpu_ftensor4()
         self.topgrad = gpu_ftensor4()

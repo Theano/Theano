@@ -45,7 +45,7 @@ from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
 
 class T_sigmoid(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_elemwise(self):
@@ -54,7 +54,7 @@ class T_sigmoid(unittest.TestCase):
 
 class T_softplus(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_elemwise(self):
@@ -327,7 +327,7 @@ class T_SoftmaxGrad(utt.InferShapeTester):
 
 class T_CrossentropySoftmax1Hot(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test0(self):
@@ -422,8 +422,8 @@ class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
 
 class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
 
-    def setUp(self):
-        super(T_CrossentropySoftmaxArgmax1HotWithBias, self).setUp()
+    def setup_method(self):
+        super(T_CrossentropySoftmaxArgmax1HotWithBias, self).setup_method()
         self.op = theano.tensor.nnet.crossentropy_softmax_argmax_1hot_with_bias
 
     def test0(self):
@@ -1464,7 +1464,7 @@ class Test_softmax_opt:
     # CrossEntropySoftmax...grad to look for the more basic pattern.
     #
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.rng = np.random.RandomState(utt.fetch_seed())
         self.mode = theano.compile.mode.get_default_mode()
@@ -1770,7 +1770,7 @@ SoftsignTester = makeBroadcastTester(
 
 class T_sigmoid_binary_crossentropy(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def _get_test_inputs(self, n=50):

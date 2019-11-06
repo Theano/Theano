@@ -36,7 +36,7 @@ def skip_if_blas_ldflags_empty(*functions_detected):
 
 class TestCGer(TestCase, TestOptimizationMixin):
 
-    def setUp(self, dtype='float64'):
+    def setup_method(self, dtype='float64'):
         # This tests can run even when theano.config.blas.ldflags is empty.
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
@@ -88,13 +88,13 @@ class TestCGer(TestCase, TestOptimizationMixin):
 
     def test_optimization_pipeline_float(self):
         skip_if_blas_ldflags_empty()
-        self.setUp('float32')
+        self.setup_method('float32')
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=True))
         f(self.xval, self.yval)  # DebugMode tests correctness
 
     def test_int_fails(self):
-        self.setUp('int32')
+        self.setup_method('int32')
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))
         self.assertFunctionContains0(f, CGer(destructive=True))
         self.assertFunctionContains0(f, CGer(destructive=False))
@@ -121,7 +121,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
     Generic tests of Gemv-compatibility, including both dtypes are
     done below in TestCGemvFloat32 and TestCGemvFloat64
     """
-    def setUp(self, dtype='float64'):
+    def setup_method(self, dtype='float64'):
         # This tests can run even when theano.config.blas.ldflags is empty.
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
@@ -302,7 +302,7 @@ class TestCGemvFloat32(TestCase, BaseGemv, TestOptimizationMixin):
     gemv = CGemv(inplace=False)
     gemv_inplace = CGemv(inplace=True)
 
-    def setUp(self):
+    def setup_method(self):
         skip_if_blas_ldflags_empty()
 
 
@@ -312,7 +312,7 @@ class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
     gemv = CGemv(inplace=False)
     gemv_inplace = CGemv(inplace=True)
 
-    def setUp(self):
+    def setup_method(self):
         skip_if_blas_ldflags_empty()
 
 
@@ -323,7 +323,7 @@ class TestCGemvNoFlags(object):
     N = 5
     slice_step = 3
 
-    def setUp(self):
+    def setup_method(self):
         unittest_tools.seed_rng()
 
     def get_function(self, dtype, transpose_A=False, slice_tensors=False):

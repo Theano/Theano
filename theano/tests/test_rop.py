@@ -58,7 +58,7 @@ class RopLop_checker(unittest.TestCase):
     Don't peform any test, but provide the function to test the
     Rop to class that inherit from it.
     """
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         # Using vectors make things a lot simpler for generating the same
         # computations using scan

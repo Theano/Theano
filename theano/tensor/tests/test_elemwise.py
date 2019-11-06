@@ -174,7 +174,7 @@ class test_Broadcast(unittest.TestCase):
         return np.asarray(np.random.rand(*shp),
                           dtype=theano.config.floatX)
 
-    def setUp(self):
+    def setup_method(self):
         unittest_tools.seed_rng()
 
     def with_linker(self, linker, op, type, rand_val):
@@ -600,7 +600,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
 
 
 class test_Prod(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         unittest_tools.seed_rng()
 
         # we want to allow nans in the matrices, so we disable this
@@ -770,7 +770,7 @@ class test_Prod(unittest.TestCase):
 
 class test_IsInf_IsNan(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         self.test_vals = [np.array(x, dtype=config.floatX) for x in [
             0,
             1,
@@ -1152,7 +1152,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
 
 
 class TestBitOpReduceGrad(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(unittest_tools.fetch_seed())
 
     def test_all_grad(self):
@@ -1353,5 +1353,5 @@ def test_not_implemented_elemwise_grad():
 if __name__ == '__main__':
 
     t = TestElemwise('setUp')
-    t.setUp()
+    t.setup_method()
     t.test_infer_shape()

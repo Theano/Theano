@@ -75,14 +75,14 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
     _skip = skip
     _checks = checks
 
-    class Checker(unittest.TestCase, utt.TestOptimizationMixin):
+    class Checker(utt.TestOptimizationMixin):
         op = staticmethod(_op)
         gpu_op = staticmethod(_gpu_op)
         cases = _cases
         skip = _skip
         checks = _checks
 
-        def setUp(self):
+        def setup_method(self):
             eval(self.__class__.__module__ + '.' + self.__class__.__name__)
 
         def test_all(self):
@@ -334,7 +334,7 @@ class G_reshape(test_basic.T_reshape):
 
 
 class G_comparison(test_basic.test_comparison):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.mode = mode_with_gpu
         self.shared = gpuarray_shared_constructor
@@ -342,8 +342,7 @@ class G_comparison(test_basic.test_comparison):
 
 
 class G_Join_and_Split(test_basic.T_Join_and_Split):
-    def setUp(self):
-        super(G_Join_and_Split, self).setUp()
+    def setup_method(self):
         self.mode = mode_with_gpu.excluding('constant_folding')
         self.join_op = GpuJoin()
         self.split_op_class = GpuSplit

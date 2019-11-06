@@ -6,7 +6,6 @@ gnumpy
 pydot
 pydot2
 Cython
-parameterized
 scipy==0.13
 
 

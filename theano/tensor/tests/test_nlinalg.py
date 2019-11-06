@@ -56,8 +56,8 @@ def test_pseudoinverse_grad():
 
 
 class test_MatrixInverse(utt.InferShapeTester):
-    def setUp(self):
-        super(test_MatrixInverse, self).setUp()
+    def setup_method(self):
+        super(test_MatrixInverse, self).setup_method()
         self.op_class = MatrixInverse
         self.op = matrix_inverse
         self.rng = np.random.RandomState(utt.fetch_seed())
@@ -142,8 +142,8 @@ class test_SVD(utt.InferShapeTester):
     op_class = SVD
     dtype = 'float32'
 
-    def setUp(self):
-        super(test_SVD, self).setUp()
+    def setup_method(self):
+        super(test_SVD, self).setup_method()
         self.rng = np.random.RandomState(utt.fetch_seed())
         self.A = theano.tensor.matrix(dtype=self.dtype)
         self.op = svd
@@ -433,8 +433,8 @@ class test_Eig(utt.InferShapeTester):
     op = eig
     dtype = 'float64'
 
-    def setUp(self):
-        super(test_Eig, self).setUp()
+    def setup_method(self):
+        super(test_Eig, self).setup_method()
         self.rng = np.random.RandomState(utt.fetch_seed())
         self.A = theano.tensor.matrix(dtype=self.dtype)
         self.X = np.asarray(self.rng.rand(5, 5), dtype=self.dtype)
@@ -581,8 +581,8 @@ class T_NormTests(unittest.TestCase):
 
 
 class test_TensorInv(utt.InferShapeTester):
-    def setUp(self):
-        super(test_TensorInv, self).setUp()
+    def setup_method(self):
+        super(test_TensorInv, self).setup_method()
         self.A = tensor.tensor4("A", dtype=theano.config.floatX)
         self.B = tensor.tensor3("B", dtype=theano.config.floatX)
         self.a = np.random.rand(4, 6, 8, 3).astype(theano.config.floatX)

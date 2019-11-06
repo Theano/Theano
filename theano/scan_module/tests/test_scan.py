@@ -218,9 +218,9 @@ def scan_nodes_from_fct(fct):
 
 class T_Scan(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
-        super(T_Scan, self).setUp()
+        super(T_Scan, self).setup_method()
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
@@ -5068,7 +5068,7 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
         self.mode_with_gpu_nodebug = mode_nodebug.including('gpuarray', 'scan')
         super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
 
-    def setUp(self):
+    def setup_method(self):
         # Make sure to activate the new backend, if possible otherwise
         # tesing this class directly will always skip.
         import theano.gpuarray.tests.config
@@ -5077,7 +5077,7 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
             raise SkipTest('Optional package pygpu disabled')
 
         utt.seed_rng()
-        super(T_Scan_Gpuarray, self).setUp()
+        super(T_Scan_Gpuarray, self).setup_method()
 
     def is_scan_on_gpu(self, node):
         return node.op.info.get('gpua', False)
@@ -5649,7 +5649,7 @@ class TestMissingInputError(unittest.TestCase):
 
 class TestGradUntil(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         self.x = tensor.vector(name='x')
         self.threshold = tensor.scalar(name='threshold', dtype='int64')
         self.seq = np.arange(15, dtype=theano.config.floatX)

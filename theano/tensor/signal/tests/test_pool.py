@@ -1,7 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
 from nose.plugins.skip import SkipTest
-from parameterized import parameterized
 from itertools import product
 import os
 import unittest
@@ -582,13 +581,13 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         ((9, 9), (1, 1), (1, 2, 8, 5)),
     )
 
-    @parameterized.expand(product(pool_grad_stride_examples,
-                                  [True, False],
-                                  ['max',
-                                   'sum',
-                                   'average_inc_pad',
-                                   'average_exc_pad']),
-                          testcase_func_name=utt.custom_name_func)
+    @pytest.mark.parametrize("example, ignore_border, mode",
+                             product(pool_grad_stride_examples,
+                                    [True, False],
+                                    ['max',
+                                     'sum',
+                                     'average_inc_pad',
+                                     'average_exc_pad']))
     def test_DownsampleFactorMax_grad_stride(self, example, ignore_border, mode):
         # checks the gradient for the case that stride is used
         rng = np.random.RandomState(utt.fetch_seed())
@@ -674,9 +673,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
                     utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
-    @parameterized.expand(product(pool_grad_stride_examples,
-                                  [True, False]),
-                          testcase_func_name=utt.custom_name_func)
+    @pytest.mark.parametrize("example, ignore_border",
+                             product(pool_grad_stride_examples, [True, False]))
     def test_DownsampleFactorMaxGrad_grad_stride(self, example, ignore_border):
         # checks the gradient of the gradient for
         # the case that stride is used
@@ -702,12 +700,12 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
-    @parameterized.expand(product(pool_grad_stride_examples,
-                                  [True, False],
-                                  ['sum',
-                                   'average_inc_pad',
-                                   'average_exc_pad']),
-                          testcase_func_name=utt.custom_name_func)
+    @pytest.mark.parametrize("example, ignore_border, mode",
+                             product(pool_grad_stride_examples,
+                                    [True, False],
+                                    ['sum',
+                                     'average_inc_pad',
+                                     'average_exc_pad']))
     def test_AveragePoolGrad_grad_stride(self, example, ignore_border, mode):
         # checks the gradient of the gradient for
         # the case that stride is used

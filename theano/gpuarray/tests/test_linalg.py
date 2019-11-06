@@ -28,7 +28,7 @@ from nose.tools import assert_raises
 
 class TestCusolver(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         if not cusolver_available:
             self.skipTest('Optional package scikits.cuda.cusolver not available')
 
@@ -164,7 +164,7 @@ class TestCusolver(unittest.TestCase):
 
 class TestGpuCholesky(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         if not cusolver_available:
             self.skipTest('Optional package scikits.cuda.cusolver not available')
         utt.seed_rng()
@@ -256,7 +256,7 @@ class TestGpuCholesky(unittest.TestCase):
 
 class TestGpuCholesky64(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         if not cusolver_available:
             self.skipTest('Optional package scikits.cuda.cusolver not available')
         utt.seed_rng()
@@ -348,7 +348,7 @@ class TestGpuCholesky64(unittest.TestCase):
 
 class TestMagma(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         if not config.magma.enabled:
             self.skipTest('Magma is not enabled, skipping test')
 

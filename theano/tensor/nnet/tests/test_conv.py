@@ -21,8 +21,8 @@ class TestConv2D(utt.InferShapeTester):
     # `self` as the first argument.
     conv2d = staticmethod(conv.conv2d)
 
-    def setUp(self):
-        super(TestConv2D, self).setUp()
+    def setup_method(self):
+        super(TestConv2D, self).setup_method()
         self.input = T.tensor4('input', dtype=self.dtype)
         self.input.name = 'default_V'
         self.filters = T.tensor4('filters', dtype=self.dtype)
@@ -612,5 +612,5 @@ def test_broadcast_grad():
 if __name__ == '__main__':
 
     t = TestConv2D('setUp')
-    t.setUp()
+    t.setup_method()
     t.test_infer_shape()

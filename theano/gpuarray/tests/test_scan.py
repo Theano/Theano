@@ -14,7 +14,7 @@ from .config import mode_with_gpu, test_ctx_name
 
 
 class T_Scan(TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_one_sequence_one_output_weights_gpu1(self):

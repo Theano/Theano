@@ -17,7 +17,7 @@ class TestGaussNewton(unittest.TestCase):
 
     This test case is based on code by Sigurd Spieckermann.
     """
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
     def _run(self, num_features, num_timesteps, batch_size, mode):

@@ -13,9 +13,9 @@ if not pydot_imported:
     raise SkipTest('pydot not available: ' + pydot_imported_msg)
 
 
-class TestPyDotFormatter(unittest.TestCase):
+class TestPyDotFormatter():
 
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(0)
 
     def node_counts(self, graph):

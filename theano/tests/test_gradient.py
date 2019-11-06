@@ -602,7 +602,7 @@ def test_subgraph_grad():
 
 class TestConsiderConstant(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.rng = np.random.RandomState(seed=utt.fetch_seed())
 
@@ -641,7 +641,7 @@ class TestConsiderConstant(unittest.TestCase):
 
 class TestZeroGrad(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.rng = np.random.RandomState(seed=utt.fetch_seed())
 
@@ -697,7 +697,7 @@ class TestZeroGrad(unittest.TestCase):
 
 class TestDisconnectedGrad(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.rng = np.random.RandomState(seed=utt.fetch_seed())
 

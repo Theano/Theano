@@ -16,9 +16,9 @@ if not pydot_imported:
     raise SkipTest('pydot not available: ' + pydot_imported_msg)
 
 
-class TestD3Viz(unittest.TestCase):
+class TestD3Viz():
 
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(0)
         self.data_dir = pt.join('data', 'test_d3viz')
 

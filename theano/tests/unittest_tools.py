@@ -3,10 +3,8 @@ from copy import copy, deepcopy
 from functools import wraps
 import logging
 import sys
-import unittest
-from parameterized import parameterized
-from nose.tools import assert_raises
 
+import pytest
 from six import integer_types
 from six.moves import StringIO
 
@@ -31,14 +29,6 @@ except ImportError:
         Skip this test
         """
 _logger = logging.getLogger("theano.tests.unittest_tools")
-
-
-def custom_name_func(testcase_func, param_num, param):
-    return "%s_%s" % (
-        testcase_func.__name__,
-        parameterized.to_safe_name("_".join(str(x) for x in param.args)),
-    )
-
 
 def fetch_seed(pseed=None):
     """
@@ -200,9 +190,9 @@ class T_OpContractMixin(object):
             assert s       # names should not be empty
 
 
-class InferShapeTester(unittest.TestCase):
+class InferShapeTester():
 
-    def setUp(self):
+    def setup_method(self):
         seed_rng()
         # Take into account any mode that may be defined in a child class
         # and it can be None
@@ -418,7 +408,7 @@ class AttemptManyTimes:
                     # Attempt to make the test use the current seed
                     config.unittests.rseed = current_seed
                     if test_in_class and hasattr(class_instance, "setUp"):
-                        class_instance.setUp()
+                        class_instance.setup_method()
 
                     fct(*args, **kwargs)
 
@@ -438,8 +428,8 @@ class AttemptManyTimes:
                 finally:
                     # Clean up after the test
                     config.unittests.rseed = original_seed
-                    if test_in_class and hasattr(class_instance, "tearDown"):
-                        class_instance.tearDown()
+                    if test_in_class and hasattr(class_instance, "teardown_method("):
+                        class_instance.teardown_method(()
 
                     # Update the current_seed
                     if current_seed not in [None, "random"]:
@@ -454,7 +444,7 @@ def assertFailure_fast(f):
     """
     if theano.config.cycle_detection == 'fast':
         def test_with_assert(*args, **kwargs):
-            with assert_raises(Exception):
+            with pytest.raises(Exception):
                 f(*args, **kwargs)
         return test_with_assert
     else:

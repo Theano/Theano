@@ -84,7 +84,7 @@ class TestCTC(unittest.TestCase):
     C implementation, that uses the library directly.
     """
 
-    def setUp(self):
+    def setup_method(self):
         if theano.config.mode == "FAST_COMPILE" or theano.config.cxx == "":
             raise SkipTest("We need a c compiler")
 

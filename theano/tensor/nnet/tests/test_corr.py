@@ -21,8 +21,8 @@ class TestCorr2D(utt.InferShapeTester):
         mode = None
     dtype = theano.config.floatX
 
-    def setUp(self):
-        super(TestCorr2D, self).setUp()
+    def setup_method(self):
+        super(TestCorr2D, self).setup_method()
         self.input = T.tensor4('input', dtype=self.dtype)
         self.input.name = 'default_V'
         self.filters = T.tensor4('filters', dtype=self.dtype)
@@ -475,5 +475,5 @@ class TestCausalCorr(TestCausalConv):
 if __name__ == '__main__':
 
     t = TestCorr2D('setUp')
-    t.setUp()
+    t.setup_method()
     t.test_infer_shape()

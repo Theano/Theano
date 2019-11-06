@@ -43,7 +43,7 @@ class T_max_and_argmax(unittest.TestCase):
 
 
 class T_min_max(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.mode = theano.compile.mode.get_default_mode().including(
             'canonicalize', 'fast_run')

@@ -309,7 +309,7 @@ class T_verify_grad_sparse(unittest.TestCase):
 
 
 class T_transpose(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_transpose_csc(self):
@@ -751,7 +751,7 @@ class T_AddMul(unittest.TestCase):
 
 
 class test_comparison(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     # took from tensor basic_test.py
@@ -883,7 +883,7 @@ class test_comparison(unittest.TestCase):
 
 
 class T_conversion(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     if 0:
@@ -948,7 +948,7 @@ class T_conversion(unittest.TestCase):
 
 
 class test_csm_properties(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_csm_properties_grad(self):
@@ -991,7 +991,7 @@ class test_csm_properties(unittest.TestCase):
 
 
 class test_csm(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_csm_grad(self):
@@ -1082,7 +1082,7 @@ class test_csm(unittest.TestCase):
 
 
 class test_structureddot(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_structureddot_csc_grad(self):
@@ -1313,8 +1313,8 @@ class test_structureddot(unittest.TestCase):
 
 
 class DotTests(utt.InferShapeTester):
-    def setUp(self):
-        super(DotTests, self).setUp()
+    def setup_method(self):
+        super(DotTests, self).setup_method()
         x_size = (10, 100)
         y_size = (100, 1000)
         utt.seed_rng()
@@ -1448,7 +1448,7 @@ class UsmmTests(unittest.TestCase):
     """
     Test the Usmm and UsmmCscDense class and related optimization
     """
-    def setUp(self):
+    def setup_method(self):
         x_size = (10, 100)
         y_size = (100, 200)
         z_size = (x_size[0], y_size[1])
@@ -1754,8 +1754,8 @@ def test_size():
 
 
 class ColScaleCSCTester(utt.InferShapeTester):
-    def setUp(self):
-        super(ColScaleCSCTester, self).setUp()
+    def setup_method(self):
+        super(ColScaleCSCTester, self).setup_method()
         self.op = sparse.col_scale
 
     def test_op(self):
@@ -1795,8 +1795,8 @@ class ColScaleCSCTester(utt.InferShapeTester):
 
 
 class RowScaleCSCTester(utt.InferShapeTester):
-    def setUp(self):
-        super(RowScaleCSCTester, self).setUp()
+    def setup_method(self):
+        super(RowScaleCSCTester, self).setup_method()
         self.op = sparse.row_scale
 
     def test_op(self):
@@ -1838,8 +1838,8 @@ class RowScaleCSCTester(utt.InferShapeTester):
 class SpSumTester(utt.InferShapeTester):
     possible_axis = [None, 0, 1]
 
-    def setUp(self):
-        super(SpSumTester, self).setUp()
+    def setup_method(self):
+        super(SpSumTester, self).setup_method()
         self.op_class = sparse.SpSum
         self.op = sparse.sp_sum
 
@@ -1883,8 +1883,8 @@ class SpSumTester(utt.InferShapeTester):
 
 
 class DiagTester(utt.InferShapeTester):
-    def setUp(self):
-        super(DiagTester, self).setUp()
+    def setup_method(self):
+        super(DiagTester, self).setup_method()
         self.op_class = Diag
         self.op = diag
 
@@ -1923,8 +1923,8 @@ class DiagTester(utt.InferShapeTester):
 
 
 class SquareDiagonalTester(utt.InferShapeTester):
-    def setUp(self):
-        super(SquareDiagonalTester, self).setUp()
+    def setup_method(self):
+        super(SquareDiagonalTester, self).setup_method()
         self.op_class = SquareDiagonal
         self.op = square_diagonal
 
@@ -1966,8 +1966,8 @@ class SquareDiagonalTester(utt.InferShapeTester):
 
 
 class EnsureSortedIndicesTester(utt.InferShapeTester):
-    def setUp(self):
-        super(EnsureSortedIndicesTester, self).setUp()
+    def setup_method(self):
+        super(EnsureSortedIndicesTester, self).setup_method()
         self.op_class = EnsureSortedIndices
         self.op = ensure_sorted_indices
 
@@ -2002,8 +2002,8 @@ class EnsureSortedIndicesTester(utt.InferShapeTester):
 
 
 class CleanTester(utt.InferShapeTester):
-    def setUp(self):
-        super(CleanTester, self).setUp()
+    def setup_method(self):
+        super(CleanTester, self).setup_method()
         self.op = clean
 
     def test_op(self):
@@ -2036,8 +2036,8 @@ class CleanTester(utt.InferShapeTester):
 
 
 class Remove0Tester(utt.InferShapeTester):
-    def setUp(self):
-        super(Remove0Tester, self).setUp()
+    def setup_method(self):
+        super(Remove0Tester, self).setup_method()
         self.op_class = Remove0
 
     def test_remove0(self):
@@ -2117,7 +2117,7 @@ class Remove0Tester(utt.InferShapeTester):
 
 
 class Test_getitem(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
     def test_GetItemList(self):
@@ -2408,8 +2408,8 @@ class Test_getitem(unittest.TestCase):
 
 
 class CastTester(utt.InferShapeTester):
-    def setUp(self):
-        super(CastTester, self).setUp()
+    def setup_method(self):
+        super(CastTester, self).setup_method()
 
     # slow but only test
     def test_cast(self):
@@ -2564,8 +2564,8 @@ class AddSSDataTester(utt.InferShapeTester):
     x = {}
     a = {}
 
-    def setUp(self):
-        super(AddSSDataTester, self).setUp()
+    def setup_method(self):
+        super(AddSSDataTester, self).setup_method()
         self.op_class = AddSSData
 
         for format in sparse.sparse_formats:
@@ -2638,8 +2638,8 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
 
     class Tester(unittest.TestCase):
 
-        def setUp(self):
-            super(Tester, self).setUp()
+        def setup_method(self):
+            super(Tester, self).setup_method()
             self.op = op
             self.expected_f = expected_f
             self.gap = gap
@@ -2983,7 +2983,7 @@ ConjTester = elemwise_checker(
 
 
 class MulSVTester(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_mul_s_v_grad(self):
@@ -3018,7 +3018,7 @@ class MulSVTester(unittest.TestCase):
 
 
 class StructuredAddSVTester(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_structured_add_s_v_grad(self):
@@ -3056,8 +3056,8 @@ class StructuredAddSVTester(unittest.TestCase):
 
 
 class TrueDotTester(utt.InferShapeTester):
-    def setUp(self):
-        super(TrueDotTester, self).setUp()
+    def setup_method(self):
+        super(TrueDotTester, self).setup_method()
         self.op = true_dot
         self.op_class = TrueDot
 
@@ -3154,8 +3154,8 @@ class SamplingDotTester(utt.InferShapeTester):
          ]
     a[2] = sp.csr_matrix(a[2])
 
-    def setUp(self):
-        super(SamplingDotTester, self).setUp()
+    def setup_method(self):
+        super(SamplingDotTester, self).setup_method()
         self.op_class = SamplingDot
 
     def test_op(self):

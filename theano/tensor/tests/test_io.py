@@ -7,7 +7,7 @@ import os
 
 
 class T_load_tensor(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         self.data = np.arange(5, dtype=np.int32)
         self.filename = os.path.join(
             theano.config.compiledir,
@@ -51,7 +51,7 @@ class T_load_tensor(unittest.TestCase):
         fn = function([path], x)
         assert type(fn(self.filename)) == np.core.memmap
 
-    def tearDown(self):
+    def teardown_method((self):
         os.remove(os.path.join(
             theano.config.compiledir,
             "_test.npy"))

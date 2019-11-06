@@ -13,7 +13,7 @@ from theano.tests import unittest_tools as utt
 
 
 class T_XlogX(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test0(self):
@@ -30,7 +30,7 @@ class T_XlogX(unittest.TestCase):
 
 
 class T_XlogY0(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test2(self):

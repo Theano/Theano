@@ -184,8 +184,8 @@ def test_eigvalsh_grad():
 
 
 class test_Solve(utt.InferShapeTester):
-    def setUp(self):
-        super(test_Solve, self).setUp()
+    def setup_method(self):
+        super(test_Solve, self).setup_method()
         self.op_class = Solve
         self.op = Solve()
 
@@ -367,8 +367,8 @@ class TestKron(utt.InferShapeTester):
 
     rng = np.random.RandomState(43)
 
-    def setUp(self):
-        super(TestKron, self).setUp()
+    def setup_method(self):
+        super(TestKron, self).setup_method()
         self.op = kron
 
     def test_perform(self):

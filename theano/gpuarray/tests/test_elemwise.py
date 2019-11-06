@@ -77,7 +77,7 @@ class TestMathErrorFunctions(TestCase):
     expected_erfcinv_outputs = {}
 
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         if not imported_scipy_special:
             raise SkipTest("scipy.special needed")
         # NB: erfinv is defined in ]-1;1[, and erfcinv is defined in ]0;2[,
@@ -358,8 +358,8 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     def test_perform_nan(self):
         return
 
-    def setUp(self):
-        super(test_GpuCAReduceCuda, self).setUp()
+    def setup_method(self):
+        super(test_GpuCAReduceCuda, self).setup_method()
         if get_context(test_ctx_name).kind != b'cuda':
             raise SkipTest("Cuda specific tests")
 
@@ -376,7 +376,7 @@ class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
               'uint8', 'uint16', 'uint32', 'uint64',
               'float32', 'float64']
 
-    def setUp(self):
+    def setup_method(self):
         if get_context(test_ctx_name).kind != b'cuda':
             raise SkipTest("Cuda specific tests")
 

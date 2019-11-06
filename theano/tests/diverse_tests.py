@@ -17,11 +17,11 @@ from theano.tests import unittest_tools as utt
 
 
 class T_scipy(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         self.orig_floatX = theano.config.floatX
 
-    def tearDown(self):
+    def teardown_method((self):
         theano.config.floatX = self.orig_floatX
 
     def test_scipy_paper_example1(self):

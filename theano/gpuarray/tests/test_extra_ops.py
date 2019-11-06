@@ -23,8 +23,8 @@ cum_modes = utt.parameterized.expand([('mul',), ('add',)])
 class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
     mode = mode_with_gpu
 
-    def setUp(self):
-        super(TestGpuCumOp, self).setUp()
+    def setup_method(self):
+        super(TestGpuCumOp, self).setup_method()
         test_ctx = get_context(test_ctx_name)
         if test_ctx.kind != b'cuda':
             raise SkipTest("Cuda specific tests")
@@ -38,8 +38,8 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
         self.old_rtol = theano.tensor.float32_rtol
         theano.tensor.basic.float32_rtol *= 2
 
-    def tearDown(self):
-        super(TestGpuCumOp, self).tearDown()
+    def teardown_method((self):
+        super(TestGpuCumOp, self).teardown_method(()
         # Restore rtol
         theano.tensor.basic.float32_rtol = self.old_rtol
 
