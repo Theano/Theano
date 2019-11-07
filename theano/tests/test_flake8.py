@@ -2,7 +2,7 @@
 Test flake8 errors.
 """
 from __future__ import absolute_import, print_function, division
-from nose.plugins.skip import SkipTest
+import pytest
 import os
 import sys
 from fnmatch import fnmatch

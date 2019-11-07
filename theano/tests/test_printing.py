@@ -4,7 +4,7 @@ Tests of printing functionality
 from __future__ import absolute_import, print_function, division
 import logging
 
-from nose.plugins.skip import SkipTest
+import pytest
 import numpy as np
 
 from six.moves import StringIO

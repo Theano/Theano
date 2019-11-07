@@ -8,26 +8,11 @@ import pytest
 from six import integer_types
 from six.moves import StringIO
 
-try:
-    from nose.plugins.attrib import attr
-except ImportError:
-    # This is an old version of nose
-    def attr(tag):
-        def func(f):
-            return f
-        return func
 import numpy as np
 
 import theano
 import theano.tensor as T
 from theano import config
-try:
-    from nose.plugins.skip import SkipTest
-except ImportError:
-    class SkipTest(Exception):
-        """
-        Skip this test
-        """
 _logger = logging.getLogger("theano.tests.unittest_tools")
 
 def fetch_seed(pseed=None):
@@ -138,9 +123,6 @@ class TestOptimizationMixin(object):
 
     def assertFunctionContainsClassN(self, f, op, N):
         return self.assertFunctionContainsClass(f, op, min=N, max=N)
-
-    def SkipTest(self, msg='Skip this test'):
-        pytest.skip(msg)
 
 
 # This object name should not start with Test.

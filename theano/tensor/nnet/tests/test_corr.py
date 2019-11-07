@@ -1,8 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
-from nose.tools import assert_equals
+import pytest
 import numpy as np
 from six import integer_types
 
@@ -141,7 +139,7 @@ class TestCorr2D(utt.InferShapeTester):
             utt.verify_grad(sym_CorrMM, [orig_image_data, filter_data],
                             mode=self.mode)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_basic(self):
         # Tests that basic correlations work for odd and even
         # dimensions of image and filter shapes, as well as rectangular
@@ -168,7 +166,7 @@ class TestCorr2D(utt.InferShapeTester):
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), (1, 1))
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 1)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_subsample(self):
         # Tests correlation where subsampling != (1,1)
 
@@ -211,7 +209,7 @@ class TestCorr2D(utt.InferShapeTester):
 
         self.validate((1, 1, 6, 6), (1, 1, 3, 3), 1, subsample=(3, 3), filter_dilation=(2, 2))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_shape_Constant_tensor(self):
         # Tests correlation where the {image,filter}_shape is a Constant tensor.
 
@@ -231,9 +229,8 @@ class TestCorr2D(utt.InferShapeTester):
     def test_invalid_filter_shape(self):
         # Tests scenario where filter_shape[1] != input_shape[1]
 
-        self.assertRaises(ValueError, self.validate,
-                          (3, 2, 8, 8), (4, 3, 5, 5),
-                          'valid')
+        with pytest.raises(ValueError):
+            self.validate((3, 2, 8, 8), (4, 3, 5, 5), 'valid')
 
     def test_full_mode(self):
         # Tests basic correlation in full mode and case where filter
@@ -243,17 +240,18 @@ class TestCorr2D(utt.InferShapeTester):
 
         def f():
             self.validate((3, 2, 5, 5), (4, 2, 8, 8), 'valid')
-        self.assertRaises(Exception, f)
+        with pytest.raises(Exception):
+            f()
 
     def test_wrong_input(self):
         # Make sure errors are raised when image and kernel are not 4D tensors
 
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
-                          'valid', input=T.dmatrix())
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
-                          'valid', filters=T.dvector())
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
-                          'valid', input=T.dtensor3())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'valid', input=T.dmatrix())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'valid', filters=T.dvector())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'valid', input=T.dtensor3())
 
     def test_dtype_upcast(self):
         # Checks dtype upcast for CorrMM methods.
@@ -280,9 +278,9 @@ class TestCorr2D(utt.InferShapeTester):
 
                     c_tens = op()(a_tens, b_tens)
                     f = theano.function([a_tens, b_tens], c_tens, mode=self.mode)
-                    assert_equals(f(a_tens_val, b_tens_val).dtype, c_dtype)
+                    assert f(a_tens_val, b_tens_val).dtype == c_dtype
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_infer_shape_forward(self):
         if theano.config.mode == "FAST_COMPILE":
             pytest.skip("CorrMM don't work in FAST_COMPILE")
@@ -315,7 +313,7 @@ class TestCorr2D(utt.InferShapeTester):
                                             [adtens_val, bdtens_val], corrMM,
                                             warn=False)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_infer_shape_gradW(self):
         if theano.config.mode == "FAST_COMPILE":
             pytest.skip("CorrMM don't work in FAST_COMPILE")
@@ -355,7 +353,7 @@ class TestCorr2D(utt.InferShapeTester):
                                             [adtens_val, cdtens_val], gradW,
                                             warn=False)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_infer_shape_gradI(self):
         if theano.config.mode == "FAST_COMPILE":
             pytest.skip("CorrMM don't work in FAST_COMPILE")

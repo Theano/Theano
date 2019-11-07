@@ -20,7 +20,7 @@ import itertools
 import numpy as np
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
-from theano.tests.unittest_tools import SkipTest
+import pytest
 from theano.tensor.signal.pool import Pool
 from theano.tensor.nnet import conv, conv2d
 

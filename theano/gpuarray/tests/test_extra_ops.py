@@ -17,8 +17,6 @@ from .config import mode_with_gpu, test_ctx_name
 from ..extra_ops import GpuCumOp
 from ..type import get_context
 
-cum_modes = utt.parameterized.expand([('mul',), ('add',)])
-
 
 class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
     mode = mode_with_gpu
@@ -43,7 +41,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
         # Restore rtol
         theano.tensor.basic.float32_rtol = self.old_rtol
 
-    @cum_modes
+    @pytest.parametrized("mode", ["mul", "add"])
     def test_infer_shape(self, mode):
         # GpuCumOp is only defined for float32 for now, so we skip it
         # in the unsupported cases
@@ -61,12 +59,12 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
                                     [a],
                                     GpuCumOp)
 
-    @cum_modes
+    @pytest.parametrized("mode", ["mul", "add"])
     def test_grad(self, mode):
         # no grad for GpuCumOp
         pass
 
-    @cum_modes
+    @pytest.parametrized("mode", ["mul", "add"])
     def test_Strides1D(self, mode):
         op_class = partial(self.op_class, mode=mode)
         np_func = dict(add=np.cumsum, mul=np.cumprod)[mode]
@@ -92,7 +90,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
                 utt.assert_allclose(np_func(a[slicing], axis=axis),
                                     cumop_function(a[slicing]))
 
-    @cum_modes
+    @pytest.parametrized("mode", ["mul", "add"])
     def test_Strides2D(self, mode):
         np_func = dict(add=np.cumsum, mul=np.cumprod)[mode]
         op_class = partial(self.op_class, mode=mode)
@@ -118,7 +116,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
                 utt.assert_allclose(np_func(a[slicing], axis=axis),
                                     cumop_function(a[slicing]))
 
-    @cum_modes
+    @pytest.parametrized("mode", ["mul", "add"])
     def test_Strides3D(self, mode):
         np_func = dict(add=np.cumsum, mul=np.cumprod)[mode]
         op_class = partial(self.op_class, mode=mode)
@@ -144,7 +142,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
                 utt.assert_allclose(np_func(a[slicing], axis=axis),
                                     cumop_function(a[slicing]))
 
-    @cum_modes
+    @pytest.parametrized("mode", ["mul", "add"])
     def test_GpuCumOp1D(self, mode):
         np_func = dict(add=np.cumsum, mul=np.cumprod)[mode]
         op_class = partial(self.op_class, mode=mode)
@@ -169,7 +167,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
                     dtype="float32")
         utt.assert_allclose(np_func(a), f(a))
 
-    @cum_modes
+    @pytest.parametrized("mode", ["mul", "add"])
     def test_GpuCumOp2D(self, mode):
         np_func = dict(add=np.cumsum, mul=np.cumprod)[mode]
         op_class = partial(self.op_class, mode=mode)
@@ -211,7 +209,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
             a = np.sign(a - 0.5).astype("float32")  # Avoid floating point error
             utt.assert_allclose(np_func(a, axis=axis), f(a))
 
-    @cum_modes
+    @pytest.parametrized("mode", ["mul", "add"])
     def test_GpuCumOp3D(self, mode):
         np_func = dict(add=np.cumsum, mul=np.cumprod)[mode]
         op_class = partial(self.op_class, mode=mode)
@@ -264,7 +262,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
             a = np.sign(a - 0.5).astype("float32")  # Avoid floating point error
             utt.assert_allclose(np_func(a, axis=axis), f(a))
 
-    @cum_modes
+    @pytest.parametrized("mode", ["mul", "add"])
     def test_GpuCumOp4D(self, mode):
         op_class = partial(self.op_class, mode=mode)
         # Should not use the GPU version.

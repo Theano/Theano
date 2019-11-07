@@ -374,7 +374,7 @@ class T_Scan(unittest.TestCase):
              4,
              np.int64([2, 2, 3]))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_only_nonseq_inputs(self):
         # Compile the Theano function
         n_steps = 2
@@ -1523,7 +1523,7 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_grad_multiple_outs_taps(self):
         l = 5
         rng = np.random.RandomState(utt.fetch_seed())
@@ -1795,7 +1795,7 @@ for{cpu,scan_fn}.2 [id H] ''
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_grad_multiple_outs_taps_backwards(self):
         l = 5
         rng = np.random.RandomState(utt.fetch_seed())
@@ -3152,7 +3152,7 @@ for{cpu,scan_fn}.2 [id H] ''
         f2 = theano.function([], gx)
         utt.assert_allclose(f2(), np.ones((10,)))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_rop2(self):
         seed = utt.fetch_seed()
         rng = np.random.RandomState(seed)
@@ -4572,7 +4572,7 @@ for{cpu,scan_fn}.2 [id H] ''
             inp = scan_node.op.outer_non_seqs(scan_node)
             assert len(inp) == 1
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_hessian_bug_grad_grad_two_scans(self):
         # Bug reported by Bitton Tenessi
         # NOTE : The test to reproduce the bug reported by Bitton Tenessi

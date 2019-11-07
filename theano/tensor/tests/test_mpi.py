@@ -2,8 +2,8 @@ from __future__ import absolute_import, print_function, division
 import os
 import subprocess
 
-from nose.plugins.skip import SkipTest
 
+import pytest
 import theano
 from theano import change_flags
 from theano.compat import PY3

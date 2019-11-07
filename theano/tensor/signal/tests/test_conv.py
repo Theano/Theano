@@ -1,8 +1,7 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
-from nose.plugins.skip import SkipTest
 import numpy as np
+import pytest
 
 import theano
 import theano.tensor as T
@@ -13,7 +12,7 @@ from theano.tensor.signal import conv
 from theano.tensor.basic import _allclose
 
 
-class TestSignalConv2D(unittest.TestCase):
+class TestSignalConv2D():
 
     def setup_method(self):
         utt.seed_rng()
@@ -73,8 +72,7 @@ class TestSignalConv2D(unittest.TestCase):
                             filter2d[::-1, ::-1]
                             ).sum()
 
-                self.assertTrue(_allclose(theano_output4d[b, k, :, :],
-                                          output2d))
+                assert _allclose(theano_output4d[b, k, :, :], output2d)
 
         # TEST GRADIENT ############
         if verify_grad:
@@ -98,8 +96,10 @@ class TestSignalConv2D(unittest.TestCase):
     def test_fail(self):
         # Test that conv2d fails for dimensions other than 2 or 3.
 
-        self.assertRaises(Exception, conv.conv2d, T.dtensor4(), T.dtensor3())
-        self.assertRaises(Exception, conv.conv2d, T.dtensor3(), T.dvector())
+        with pytest.raises(Exception):
+            conv.conv2d(T.dtensor4(), T.dtensor3())
+        with pytest.raises(Exception):
+            conv.conv2d(T.dtensor3(), T.dvector())
 
     def test_bug_josh_reported(self):
         # Test refers to a bug reported by Josh, when due to a bad merge these

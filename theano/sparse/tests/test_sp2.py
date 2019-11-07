@@ -1,8 +1,8 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-from nose.plugins.skip import SkipTest
 import numpy as np
+import pytest
 try:
     import scipy.sparse as sp
 except ImportError:

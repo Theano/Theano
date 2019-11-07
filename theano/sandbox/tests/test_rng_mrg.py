@@ -320,7 +320,7 @@ def test_broadcastable():
             assert uu.broadcastable == (False, True)
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_binomial():
     # TODO: test size=None, ndim=X
     # TODO: test size=X, ndim!=X.ndim
@@ -377,7 +377,7 @@ def t_binomial(mean, size, const_size, var_input, input, steps, rtol):
               inputs=input, target_avg=mean, mean_rtol=rtol)
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_normal0():
     steps = 50
     std = 2.
@@ -439,7 +439,7 @@ def test_normal0():
                   prefix='numpy ', allow_01=True, inputs=input, mean_rtol=rtol)
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_normal_truncation():
     # just a copy of test_normal0 with extra bound check
     steps = 50
@@ -504,7 +504,7 @@ def test_normal_truncation():
         sys.stdout.flush()
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_truncated_normal():
     # just a copy of test_normal0 for truncated normal
     steps = 50

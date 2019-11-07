@@ -38,7 +38,7 @@ class TestKeepDims(unittest.TestCase):
 
         return tensor.DimShuffle(y.type.broadcastable, new_dims)(y)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_keepdims(self):
 
         x = tensor.dtensor3()

@@ -1,8 +1,7 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
 import numpy as np
-from nose.plugins.skip import SkipTest
+import pytest
 from six.moves import xrange
 
 import theano
@@ -43,7 +42,7 @@ from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
                                             upcast_int8_nfunc)
 
 
-class T_sigmoid(unittest.TestCase):
+class T_sigmoid():
 
     def setup_method(self):
         utt.seed_rng()
@@ -52,7 +51,7 @@ class T_sigmoid(unittest.TestCase):
         utt.verify_grad(sigmoid, [np.random.rand(3, 4)])
 
 
-class T_softplus(unittest.TestCase):
+class T_softplus():
 
     def setup_method(self):
         utt.seed_rng()
@@ -287,7 +286,7 @@ class T_LogSoftmax(utt.InferShapeTester):
         utt.verify_grad(myfunc, [a], eps=0.1, mode=m)
         sa = theano.shared(a)
         f = theano.function([], myfunc(sa))
-        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        assert check_stack_trace(f, ops_to_check='all')
 
     def test_logsoftmax_grad_true_div_elemwise(self):
         # Checks that the gradient of an expression similar to a log(softmax)
@@ -325,7 +324,7 @@ class T_SoftmaxGrad(utt.InferShapeTester):
                                 [admat_val, bdmat_val], SoftmaxGrad)
 
 
-class T_CrossentropySoftmax1Hot(unittest.TestCase):
+class T_CrossentropySoftmax1Hot():
 
     def setup_method(self):
         utt.seed_rng()
@@ -417,7 +416,8 @@ class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
         alvec_val[1] = -1
         out = CrossentropySoftmax1HotWithBiasDx()(advec, admat, alvec)
         f = theano.function([advec, admat, alvec], out)
-        self.assertRaises(ValueError, f, advec_val, admat_val, alvec_val)
+        with pytest.raises(ValueError):
+            f(advec_val, admat_val, alvec_val)
 
 
 class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
@@ -475,7 +475,8 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
         alvec_val[1] = -1
         out = CrossentropySoftmaxArgmax1HotWithBias()(admat, advec, alvec)
         f = theano.function([admat, advec, alvec], out)
-        self.assertRaises(ValueError, f, admat_val, advec_val, alvec_val)
+        with pytest.raises(ValueError):
+            f(admat_val, advec_val, alvec_val)
 
 
 class T_prepend(utt.InferShapeTester):
@@ -486,8 +487,8 @@ class T_prepend(utt.InferShapeTester):
         f = theano.function([x], y)
         m = np.random.rand(3, 5).astype(config.floatX)
         my = f(m)
-        self.assertTrue(my.shape == (3, 6), my.shape)
-        self.assertTrue(np.all(my[:, 0] == 4.0))
+        assert my.shape == (3, 6)
+        assert np.all(my[:, 0] == 4.0)
 
     def test1(self):
         "basic functionality"
@@ -496,8 +497,8 @@ class T_prepend(utt.InferShapeTester):
         f = theano.function([x], y)
         m = np.ones((3, 5), dtype="float32")
         my = f(m)
-        self.assertTrue(my.shape == (3, 6))
-        self.assertTrue(np.all(my[:, 0] == 5.0))
+        assert my.shape == (3, 6)
+        assert np.all(my[:, 0] == 5.0)
 
     def test_infer_shape(self):
         admat = matrix()
@@ -1768,7 +1769,7 @@ SoftsignTester = makeBroadcastTester(
 )
 
 
-class T_sigmoid_binary_crossentropy(unittest.TestCase):
+class T_sigmoid_binary_crossentropy():
 
     def setup_method(self):
         utt.seed_rng()

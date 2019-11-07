@@ -67,8 +67,8 @@ def test_c_thunks():
                          linker=vm.VM_Linker(c_thunks=c_thunks,
                                              use_cloop=False)))
         f(1, [2], [3, 2])
-        from nose.tools import assert_raises
-        assert_raises(ValueError, f, 0, [2], [3, 4])
+        with pytest.raises(ValueError):
+            f(0, [2], [3, 4])
         assert any([hasattr(t, 'cthunk') for t in f.fn.thunks]) == c_thunks
 
 

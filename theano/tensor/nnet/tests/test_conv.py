@@ -1,8 +1,8 @@
 from __future__ import absolute_import, print_function, division
 import time
 
-from nose.plugins.skip import SkipTest
 import numpy as np
+import pytest
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
@@ -130,7 +130,7 @@ class TestConv2D(utt.InferShapeTester):
                                 icol:icol + N_filter_shape[3]] * filter2d[::-1, ::-1]
                             ).sum()
 
-        self.assertTrue(_allclose(theano_output, ref_output))
+        assert _allclose(theano_output, ref_output)
 
         # TEST GRADIENT
         if verify_grad:
@@ -278,18 +278,22 @@ class TestConv2D(utt.InferShapeTester):
             N_image_shape=(2, 3, 3, 3), N_filter_shape=(5, 3, 2, 2),
             should_raise=True)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_subsample(self):
         # Tests convolution where subsampling != (1,1)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', subsample=(2, 2))
 
         # Fails as of 2012-07-11
-        self.assertRaises(NotImplementedError, self.validate, (1, 1, 6, 6), (1, 1, 3, 3), 'full', subsample=(3, 3))
+        with pytest.raises(NotImplementedError):
+            self.validate((1, 1, 6, 6), (1, 1, 3, 3), 'full', subsample=(3, 3))
 
         # Fails as of 2017-08-10
-        self.assertRaises(NotImplementedError, self.validate, (3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 2))
-        self.assertRaises(NotImplementedError, self.validate, (3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 1))
-        self.assertRaises(NotImplementedError, self.validate, (1, 1, 6, 6), (1, 1, 3, 3), 'valid', subsample=(3, 3))
+        with pytest.raises(NotImplementedError):
+            self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 2))
+        with pytest.raises(NotImplementedError):
+            self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 1))
+        with pytest.raises(NotImplementedError):
+            self.validate((1, 1, 6, 6), (1, 1, 3, 3), 'valid', subsample=(3, 3))
 
     def test_shape_Constant_tensor(self):
         # Tests convolution where the {image,filter}_shape is a Constant tensor.
@@ -310,11 +314,10 @@ class TestConv2D(utt.InferShapeTester):
     def test_invalid_filter_shape(self):
         # Tests scenario where filter_shape[1] != input_shape[1]
 
-        self.assertRaises(AssertionError, self.validate,
-                          (3, 2, 8, 8), (4, 3, 5, 5),
-                          'valid')
+        with pytest.raises(AssertionError):
+            self.validate((3, 2, 8, 8), (4, 3, 5, 5), 'valid')
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_invalid_input_shape(self):
         # Tests that when the shape gived at build time is not the same as
         # run time we raise an error
@@ -323,55 +326,23 @@ class TestConv2D(utt.InferShapeTester):
             for unroll_kern in [None, 2, 4]:
                 for unroll_patch in [None, True, False]:
                     for mode in ['valid', 'full']:
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_image_shape=(2, 2, 8, 8),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_image_shape=(3, 1, 8, 8),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_image_shape=(3, 2, 7, 8),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_image_shape=(3, 2, 8, 7),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
+                        with pytest.raises(ValueError):
+                            self.validate((3, 2, 8, 8), (4, 2, 5, 5), mode, N_image_shape=(2, 2, 8, 8), unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)
+                        with pytest.raises(ValueError):
+                            self.validate((3, 2, 8, 8), (4, 2, 5, 5), mode, N_image_shape=(3, 1, 8, 8), unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)
+                        with pytest.raises(ValueError):
+                            self.validate((3, 2, 8, 8), (4, 2, 5, 5), mode, N_image_shape=(3, 2, 7, 8), unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)
+                        with pytest.raises(ValueError):
+                            self.validate((3, 2, 8, 8), (4, 2, 5, 5), mode, N_image_shape=(3, 2, 8, 7), unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)
 
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_filter_shape=(3, 2, 5, 5),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_filter_shape=(4, 1, 5, 5),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_filter_shape=(4, 2, 6, 5),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_filter_shape=(4, 2, 5, 6),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
+                        with pytest.raises(ValueError):
+                            self.validate((3, 2, 8, 8), (4, 2, 5, 5), mode, N_filter_shape=(3, 2, 5, 5), unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)
+                        with pytest.raises(ValueError):
+                            self.validate((3, 2, 8, 8), (4, 2, 5, 5), mode, N_filter_shape=(4, 1, 5, 5), unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)
+                        with pytest.raises(ValueError):
+                            self.validate((3, 2, 8, 8), (4, 2, 5, 5), mode, N_filter_shape=(4, 2, 6, 5), unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)
+                        with pytest.raises(ValueError):
+                            self.validate((3, 2, 8, 8), (4, 2, 5, 5), mode, N_filter_shape=(4, 2, 5, 6), unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch)
 
     def test_missing_info(self):
         # Test convolutions for various pieces of missing info.
@@ -396,14 +367,10 @@ class TestConv2D(utt.InferShapeTester):
         # Test convolutions when we don't give a constant as shape information
 
         i = theano.scalar.basic.int32()
-        self.assertRaises(NotScalarConstantError, self.validate,
-                          (3, 2, 8, i), (4, 2, 5, 5),
-                          N_image_shape=(3, 2, 8, 8),
-                          N_filter_shape=(4, 2, 5, 5))
-        self.assertRaises(NotScalarConstantError, self.validate,
-                          (3, 2, 8, 8), (4, 2, 5, i),
-                          N_image_shape=(3, 2, 8, 8),
-                          N_filter_shape=(4, 2, 5, 5))
+        with pytest.raises(NotScalarConstantError):
+            self.validate((3, 2, 8, i), (4, 2, 5, 5), N_image_shape=(3, 2, 8, 8), N_filter_shape=(4, 2, 5, 5))
+        with pytest.raises(NotScalarConstantError):
+            self.validate((3, 2, 8, 8), (4, 2, 5, i), N_image_shape=(3, 2, 8, 8), N_filter_shape=(4, 2, 5, 5))
 
     def test_full_mode(self):
         # Tests basic convolution in full mode and case where filter
@@ -413,17 +380,18 @@ class TestConv2D(utt.InferShapeTester):
 
         def f():
             self.validate((3, 2, 5, 5), (4, 2, 8, 8), 'valid')
-        self.assertRaises(Exception, f)
+        with pytest.raises(Exception):
+            f()
 
     def test_wrong_input(self):
         # Make sure errors are raised when image and kernel are not 4D tensors
 
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
-                          'valid', input=T.dmatrix())
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
-                          'valid', filters=T.dvector())
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
-                          'valid', input=T.dtensor3())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'valid', input=T.dmatrix())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'valid', filters=T.dvector())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'valid', input=T.dtensor3())
 
     def test_gcc_crash(self):
         # gcc 4.3.0 20080428 (Red Hat 4.3.0-8)

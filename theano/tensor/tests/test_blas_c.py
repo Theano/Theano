@@ -1,9 +1,9 @@
 from __future__ import absolute_import, print_function, division
 import sys
 import numpy as np
+import pytest
 from unittest import TestCase
 
-from nose.plugins.skip import SkipTest
 
 import theano
 import theano.tensor as tensor

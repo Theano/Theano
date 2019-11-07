@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import time
 
-from nose.plugins.skip import SkipTest
+import pytest
 import numpy as np
 try:
     from scipy import ndimage

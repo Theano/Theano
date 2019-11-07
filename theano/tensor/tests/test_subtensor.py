@@ -753,7 +753,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(np.allclose(g_0[0], 1))
         self.assertTrue(np.allclose(g_0[1:], 0))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_shape_i_const(self):
         # Each axis is treated independently by shape_i/shape operators
 
@@ -1011,7 +1011,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         except TypeError:
             pass
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_grad_list(self):
         data = rand(4)
         data = np.asarray(data, dtype=self.dtype)
@@ -1804,7 +1804,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
 
 class TestInferShape(utt.InferShapeTester):
-    @attr('slow')
+    @pytest.mark.slow
     def test_infer_shape(self):
         # IncSubtensor
         admat = dmatrix()

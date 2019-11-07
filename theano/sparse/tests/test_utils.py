@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
-from nose.plugins.skip import SkipTest
 import numpy as np
+import pytest
 import theano.sparse
 if not theano.sparse.enable_sparse:
     pytest.skip('Optional package sparse disabled')

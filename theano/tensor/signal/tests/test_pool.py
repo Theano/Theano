@@ -1,15 +1,14 @@
 from __future__ import absolute_import, print_function, division
 
-from nose.plugins.skip import SkipTest
 from itertools import product
 import os
-import unittest
 from six import reraise
 from six.moves import cPickle
 import six.moves.builtins as builtins
 import sys
 
 import numpy as np
+import pytest
 
 import theano
 import theano.tensor as tensor
@@ -1140,7 +1139,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 # when "type" and "copy_reg" are builtin modules.
                 if sys.platform == 'win32':
                     exc_type, exc_value, exc_trace = sys.exc_info()
-                    reraise(SkipTest, exc_value, exc_trace)
+                    raise
                 raise
         # 2. Create the new version
         x = theano.tensor.ftensor4()
@@ -1157,6 +1156,3 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
 
-
-if __name__ == '__main__':
-    unittest.main()

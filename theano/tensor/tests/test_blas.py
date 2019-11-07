@@ -1,9 +1,9 @@
 from __future__ import absolute_import, print_function, division
 from copy import copy
 from itertools import product as itertools_product
-from unittest import TestCase
 
 import numpy as np
+import pytest
 from numpy import (arange, array, common_type, complex64, complex128, float32,
                    float64, newaxis, shape, transpose, zeros)
 from numpy.testing import assert_array_almost_equal
@@ -24,7 +24,6 @@ from theano.tests import unittest_tools
 from .test_basic import (as_tensor_variable, inplace_func,
                          compile, inplace)
 import theano.tensor.blas_scipy
-from theano.tests.unittest_tools import attr
 
 
 if config.mode == 'FAST_COMPILE':
@@ -45,7 +44,7 @@ def sharedX(x, name):
     return theano.shared(np.asarray(x, config.floatX), name=name)
 
 
-class t_gemm(TestCase):
+class test_gemm():
     """
     This test suite is supposed to establish that gemm works as it is supposed to.
     """
@@ -89,9 +88,9 @@ class t_gemm(TestCase):
                 if a == 0.0 and b == 1.0:
                     return
                 elif z_orig.size == 0:
-                    self.assertTrue(z.size == 0)
+                    assert z.size == 0
                 else:
-                    self.assertFalse(np.all(z_orig == z))
+                    assert np.any(z_orig != z)
 
             cmp_linker(copy(z), a, x, y, b, 'c|py')
             cmp_linker(copy(z), a, x, y, b, 'py')
@@ -122,7 +121,7 @@ class t_gemm(TestCase):
         try:
             self.cmp(2., 1.0, [3, 2, 1.], [[1], [2], [3.]], 1.0)
         except TypeError as e:
-            self.assertTrue(exc_message(e) == Gemm.E_rank)
+            assert exc_message(e) == Gemm.E_rank
             return
         self.fail()
 
@@ -474,7 +473,7 @@ def test_res_is_a():
     # leave the maxclients  stuff untested because it requires being in an fgraph.
 
 
-class t_as_scalar(TestCase):
+class test_as_scalar():
     def test0(self):
         # Test that it works on scalar constants
         a = T.constant(2.5)
@@ -485,17 +484,17 @@ class t_as_scalar(TestCase):
         d_b = T.DimShuffle([True, True, True], [0, 2, 1])(b)
         d_a2 = T.DimShuffle([], ['x', 'x', 'x'])(a)
 
-        self.assertTrue(_as_scalar(a) == a)
-        self.assertTrue(_as_scalar(b) != b)
-        self.assertTrue(_as_scalar(d_a) != d_a)
-        self.assertTrue(_as_scalar(d_b) != d_b)
-        self.assertTrue(_as_scalar(d_a2) != d_a2)
+        assert _as_scalar(a) == a
+        assert _as_scalar(b) != b
+        assert _as_scalar(d_a) != d_a
+        assert _as_scalar(d_b) != d_b
+        assert _as_scalar(d_a2) != d_a2
 
     def test1(self):
         # Test that it fails on nonscalar constants
         a = T.constant(np.ones(5))
-        self.assertTrue(_as_scalar(a) is None)
-        self.assertTrue(_as_scalar(T.DimShuffle([False], [0, 'x'])(a)) is None)
+        assert _as_scalar(a) is None
+        assert _as_scalar(T.DimShuffle([False], [0, 'x'])(a)) is None
 
     def test2(self):
         # Test that it works on scalar variables
@@ -503,25 +502,21 @@ class t_as_scalar(TestCase):
         d_a = T.DimShuffle([], [])(a)
         d_a2 = T.DimShuffle([], ['x', 'x'])(a)
 
-        self.assertTrue(_as_scalar(a) is a)
-        self.assertTrue(_as_scalar(d_a) is a)
-        self.assertTrue(_as_scalar(d_a2) is a)
+        assert _as_scalar(a) is a
+        assert _as_scalar(d_a) is a
+        assert _as_scalar(d_a2) is a
 
     def test3(self):
         # Test that it fails on nonscalar variables
         a = T.matrix()
-        self.assertTrue(_as_scalar(a) is None)
-        self.assertTrue(_as_scalar(T.DimShuffle([False, False],
-                                                [0, 'x', 1])(a)) is None)
+        assert _as_scalar(a) is None
+        assert _as_scalar(T.DimShuffle([False, False],[0, 'x', 1])(1)) is None
 
 
-class T_real_matrix(TestCase):
+class Test_real_matrix():
     def test0(self):
-        self.assertTrue(_is_real_matrix(T.DimShuffle([False, False],
-                                                     [1, 0])(T.matrix())))
-        self.assertTrue(not _is_real_matrix(T.DimShuffle([False],
-                                                         ['x', 0])
-                                            (T.dvector())))
+        assert _is_real_matrix(T.DimShuffle([False, False], [1, 0])(T.matrix()))
+        assert not _is_real_matrix(T.DimShuffle([False], ['x', 0])(T.dvector()))
 
 
 def fail(msg):
@@ -942,7 +937,7 @@ def test_dot22():
             cmp((0, 0), (0, 0))
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_dot22scalar():
     # including does not seem to work for 'local_dot_to_dot22' and
     # 'local_dot22_to_dot22scalar'
@@ -1163,7 +1158,7 @@ def test_dot_w_self():
 # Tests for Gemv
 ###############################################################################
 
-class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
+class TestGemv(unittest_tools.TestOptimizationMixin):
     def test_dot_vv(self):
         # Currently we generate a gemv for that case
         rng = np.random.RandomState(unittest_tools.fetch_seed())
@@ -1255,7 +1250,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert np.allclose(v2.get_value(),
                            np.dot(m.get_value(), v1.get_value()) + v2_orig)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_gemv1(self):
         self.t_gemv1((3, 2))
         self.t_gemv1((0, 2))
@@ -1356,9 +1351,12 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
 
         f(A_val, ones_3, ones_5)
         f(A_val[::-1, ::-1], ones_3, ones_5)
-        self.assertRaises(ValueError, f, A_val, ones_4, ones_5)
-        self.assertRaises(ValueError, f, A_val, ones_3, ones_6)
-        self.assertRaises(ValueError, f, A_val, ones_4, ones_6)
+        with pytest.raises(ValueError):
+            f(A_val, ones_4, ones_5)
+        with pytest.raises(ValueError):
+            f(A_val, ones_3, ones_6)
+        with pytest.raises(ValueError):
+            f(A_val, ones_4, ones_6)
 
 # The following gemv tests were added in March 2011 by Ian Goodfellow
 # and are based on the gemv tests from scipy
@@ -1594,13 +1592,13 @@ class BaseGemv(object):
         f(alpha_v)
 
 
-class TestSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
+class TestSgemv(BaseGemv, unittest_tools.TestOptimizationMixin):
     dtype = float32
     gemv = theano.tensor.blas.gemv_no_inplace
     gemv_inplace = theano.tensor.blas.gemv_inplace
 
 
-class TestDgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
+class TestDgemv(BaseGemv, unittest_tools.TestOptimizationMixin):
     dtype = float64
     gemv = theano.tensor.blas.gemv_no_inplace
     gemv_inplace = theano.tensor.blas.gemv_inplace
@@ -1618,7 +1616,7 @@ class TestDgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
 ###############################################################################
 
 
-class TestGer_make_node(TestCase):
+class TestGer_make_node():
     def setup_method(self):
         self.iv = T.tensor(dtype='int32', broadcastable=(False,))
         self.fv = T.tensor(dtype='float32', broadcastable=(False,))
@@ -1646,54 +1644,51 @@ class TestGer_make_node(TestCase):
         self.za = T.zscalar()
 
     def test_works_on_all_valid_dtypes(self):
-        self.assertEqual(self.fm.type,
-                         ger(self.fm, self.fa, self.fv, self.fv_2).type)
-        self.assertEqual(self.fm.type,
-                         ger(self.fm, self.fa, self.fv, self.fv_2).type)
-        self.assertEqual(self.fm.type,
-                         ger(self.fm, self.fa, self.fv, self.fv_2).type)
-        self.assertEqual(self.fm.type,
-                         ger(self.fm, self.fa, self.fv, self.fv_2).type)
+        assert self.fm.type == ger(self.fm, self.fa, self.fv, self.fv_2).type
+        assert self.fm.type == ger(self.fm, self.fa, self.fv, self.fv_2).type
+        assert self.fm.type ==  ger(self.fm, self.fa, self.fv, self.fv_2).type
+        assert self.fm.type == ger(self.fm, self.fa, self.fv, self.fv_2).type
 
     def test_fails_on_invalid_dtypes(self):
-        self.assertRaises(TypeError,
-                          ger, T.imatrix(), T.iscalar(), T.ivector(),
-                          T.ivector())
+        with pytest.raises(TypeError):
+            ger(T.imatrix(), T.iscalar(), T.ivector(), T.ivector())
 
     def test_fails_for_nonscalar_alpha(self):
-        self.assertRaises(TypeError,
-                          ger, self.fm, self.fm, self.fv, self.fv_2)
+        with pytest.raises(TypeError):
+            ger(self.fm, self.fm, self.fv, self.fv_2)
         # boundary case - fv1 has the right dtype and could be dimshuffled to a
         # scalar, but that's not make_node's job.
-        self.assertRaises(TypeError,
-                          ger, self.fm, self.fv1, self.fv, self.fv_2)
+        with pytest.raises(TypeError):
+            ger(self.fm, self.fv1, self.fv, self.fv_2)
         # actually doing the aforementioned dimshuffle makes it work
-        self.assertEqual(self.fm.type,
-                         ger(self.fm, self.fv1.dimshuffle(), self.fv,
-                             self.fv_2).type)
+        assert self.fm.type == ger(self.fm, self.fv1.dimshuffle(), self.fv, self.fv_2).type
 
     def test_fails_for_nonmatrix_A(self):
-        self.assertRaises(TypeError,
-                          ger, self.fv, self.fa, self.fv, self.fv_2)
+        with pytest.raises(TypeError):
+            ger(self.fv, self.fa, self.fv, self.fv_2)
 
     def test_fails_for_nonvector_x_or_y(self):
-        self.assertRaises(TypeError,
-                          ger, self.fm, self.fa,
-                          self.fv.dimshuffle('x', 0), self.fv_2)
-        self.assertRaises(TypeError,
-                          ger, self.fm, self.fa,
-                          self.fv, self.fv_2.dimshuffle('x', 0))
+        with pytest.raises(TypeError):
+            ger(self.fm, self.fa, self.fv.dimshuffle('x', 0), self.fv_2)
+        with pytest.raises(TypeError):
+            ger(self.fm, self.fa, self.fv, self.fv_2.dimshuffle('x', 0))
 
     def test_fails_for_mixed_dtypes(self):
-        self.assertRaises(TypeError, ger, self.dm, self.fa, self.fv, self.fv_2)
-        self.assertRaises(TypeError, ger, self.fm, self.da, self.fv, self.fv_2)
-        self.assertRaises(TypeError, ger, self.fm, self.fa, self.dv, self.fv_2)
-        self.assertRaises(TypeError, ger, self.fm, self.fa, self.fv, self.dv_2)
-        self.assertRaises(TypeError, ger, self.cm, self.fa, self.fv, self.dv_2)
-        self.assertRaises(TypeError, ger, self.cm, self.fa, self.fv, self.zv_2)
+        with pytest.raises(TypeError):
+            ger(self.dm, self.fa, self.fv, self.fv_2)
+        with pytest.raises(TypeError):
+            ger(self.fm, self.da, self.fv, self.fv_2)
+        with pytest.raises(TypeError):
+            ger(self.fm, self.fa, self.dv, self.fv_2)
+        with pytest.raises(TypeError):
+            ger(self.fm, self.fa, self.fv, self.dv_2)
+        with pytest.raises(TypeError):
+            ger(self.cm, self.fa, self.fv, self.dv_2)
+        with pytest.raises(TypeError):
+            ger(self.cm, self.fa, self.fv, self.zv_2)
 
 
-class TestGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
+class TestGer_OpContract(unittest_tools.T_OpContractMixin):
     def setup_method(self):
         self.ops = [ger, ger_destructive]
 
@@ -1701,7 +1696,7 @@ class TestGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
         return Ger(op.destructive)
 
 
-class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
+class TestGer(unittest_tools.TestOptimizationMixin):
     shared = staticmethod(theano.shared)
 
     def setup_method(self):
@@ -1850,7 +1845,7 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
           np.random.rand(5).astype(self.dtype))
 
 
-class TestBlasStrides(TestCase):
+class TestBlasStrides():
     dtype = 'float64'
     shared = staticmethod(tensor._shared)
     mode = theano.compile.get_default_mode()

@@ -3,12 +3,10 @@ from __future__ import absolute_import, print_function, division
 import copy
 import logging
 import time
-import unittest
 
 import numpy as np
 from six.moves import xrange
-from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises, assert_true
+import pytest
 
 import theano
 import theano.scalar as scal
@@ -108,36 +106,34 @@ def inputs(xbc=(0, 0), ybc=(0, 0), zbc=(0, 0)):
     return x, y, z
 
 
-class test_dimshuffle_lift(unittest.TestCase):
+class test_dimshuffle_lift():
     def test_double_transpose(self):
         x, y, z = inputs()
         e = ds(ds(x, (1, 0)), (1, 0))
         g = FunctionGraph([x], [e])
-        self.assertTrue(str(g) == "[InplaceDimShuffle{1,0}(InplaceDimShuffle{1,0}(x))]")
+        assert str(g) == "[InplaceDimShuffle{1,0}(InplaceDimShuffle{1,0}(x))]"
         dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == "[x]")
+        assert str(g) == "[x]"
         # no need to check_stack_trace as graph is supposed to be empty
 
     def test_merge2(self):
         x, y, z = inputs()
         e = ds(ds(x, (1, 'x', 0)), (2, 0, 'x', 1))
         g = FunctionGraph([x], [e])
-        self.assertTrue(str(g) == "[InplaceDimShuffle{2,0,x,1}(InplaceDimShuffle{1,x,0}(x))]",
+        assert str(g) == "[InplaceDimShuffle{2,0,x,1}(InplaceDimShuffle{1,x,0}(x))]"
                         str(g))
         dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == "[InplaceDimShuffle{0,1,x,x}(x)]", str(g))
+        assert str(g) == "[InplaceDimShuffle{0,1,x,x}(x)]", str(g)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
+        assert check_stack_trace(g, ops_to_check='all')
 
     def test_elim3(self):
         x, y, z = inputs()
         e = ds(ds(ds(x, (0, 'x', 1)), (2, 0, 'x', 1)), (1, 0))
         g = FunctionGraph([x], [e])
-        self.assertTrue(str(g) == ("[InplaceDimShuffle{1,0}(InplaceDimShuffle{2,0,x,1}"
-                                   "(InplaceDimShuffle{0,x,1}(x)))]"),
-                        str(g))
+        assert str(g) == ("[InplaceDimShuffle{1,0}(InplaceDimShuffle{2,0,x,1}" "(InplaceDimShuffle{0,x,1}(x)))]"), str(g)
         dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == "[x]", str(g))
+        assert str(g) == "[x]", str(g)
         # no need to check_stack_trace as graph is supposed to be empty
 
     def test_lift(self):
@@ -153,8 +149,7 @@ class test_dimshuffle_lift(unittest.TestCase):
         init_str_g_noinplace = (
             "[Elemwise{add,no_inplace}(DimShuffle{x,0,1}"
             "(Elemwise{add,no_inplace}(DimShuffle{x,0}(x), y)), z)]")
-        self.assertTrue(str(g) in (init_str_g_inplace, init_str_g_noinplace),
-                        str(g))
+        assert str(g) in (init_str_g_inplace, init_str_g_noinplace), str(g)
 
         opt_str_g_inplace = (
             "[Elemwise{add,no_inplace}(Elemwise{add,no_inplace}"
@@ -163,10 +158,9 @@ class test_dimshuffle_lift(unittest.TestCase):
             "[Elemwise{add,no_inplace}(Elemwise{add,no_inplace}"
             "(DimShuffle{x,x,0}(x), DimShuffle{x,0,1}(y)), z)]")
         dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) in (opt_str_g_inplace, opt_str_g_noinplace),
-                        str(g))
+        assert str(g) in (opt_str_g_inplace, opt_str_g_noinplace), str(g)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
+        assert check_stack_trace(g, ops_to_check='all')
 
     def test_recursive_lift(self):
         v = T.vector(dtype="float64")
@@ -180,7 +174,7 @@ class test_dimshuffle_lift(unittest.TestCase):
                       "Elemwise{add,no_inplace}"
                       "(<TensorType(float64, matrix)>, "
                       "InplaceDimShuffle{x,x}(TensorConstant{84}))))]")
-        self.assertTrue(str(g) == init_str_g)
+        assert str(g) == init_str_g
         new_out = local_dimshuffle_lift.transform(g.outputs[0].owner)[0]
         new_g = FunctionGraph(g.inputs, [new_out])
         opt_str_g = ("[Elemwise{mul,no_inplace}(Elemwise{add,no_inplace}"
@@ -189,19 +183,19 @@ class test_dimshuffle_lift(unittest.TestCase):
                      "Elemwise{add,no_inplace}(InplaceDimShuffle{1,0}"
                      "(<TensorType(float64, matrix)>), "
                      "InplaceDimShuffle{x,x}(TensorConstant{84})))]")
-        self.assertTrue(str(new_g) == opt_str_g)
+        assert str(new_g) == opt_str_g
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(new_g, ops_to_check='all'))
+        assert check_stack_trace(new_g, ops_to_check='all')
 
     def test_useless_dimshuffle(self):
         x, _, _ = inputs()
         e = ds(x, (0, 1))
         g = FunctionGraph([x], [e])
-        self.assertTrue(str(g) == "[InplaceDimShuffle{0,1}(x)]")
+        assert str(g) == "[InplaceDimShuffle{0,1}(x)]"
         dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == "[x]")
+        assert str(g) == "[x]"
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+        assert hasattr(g.outputs[0].tag, 'trace')
 
     def test_dimshuffle_on_broadcastable(self):
         x, y, z = inputs([False, True], [True, False, True], [False, False, True])
@@ -211,11 +205,11 @@ class test_dimshuffle_lift(unittest.TestCase):
         ds_z = ds(z, (2, 1, 0))  # useful
         ds_u = ds(u, ('x'))  # useful
         g = FunctionGraph([x, y, z, u], [ds_x, ds_y, ds_z, ds_u])
-        self.assertTrue(str(g) == "[InplaceDimShuffle{0,x}(x), InplaceDimShuffle{2,1,0}(y), InplaceDimShuffle{2,1,0}(z), InplaceDimShuffle{x}(TensorConstant{1})]")
+        assert str(g) == "[InplaceDimShuffle{0,x}(x), InplaceDimShuffle{2,1,0}(y), InplaceDimShuffle{2,1,0}(z), InplaceDimShuffle{x}(TensorConstant{1})]"
         dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == "[x, y, InplaceDimShuffle{2,1,0}(z), InplaceDimShuffle{x}(TensorConstant{1})]")
+        assert str(g) == "[x, y, InplaceDimShuffle{2,1,0}(z), InplaceDimShuffle{x}(TensorConstant{1})]"
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+        assert hasattr(g.outputs[0].tag, 'trace')
 
 
 def test_local_useless_dimshuffle_in_reshape():
@@ -234,19 +228,19 @@ def test_local_useless_dimshuffle_in_reshape():
                        reshape_dimshuffle_row, reshape_dimshuffle_col])
 
     print(str(g))
-    assert_true(str(g) == "[Reshape{1}(InplaceDimShuffle{x,0}(vector), Shape(vector)), "
+    assert str(g) == ("[Reshape{1}(InplaceDimShuffle{x,0}(vector), Shape(vector)), "
                           "Reshape{2}(InplaceDimShuffle{x,0,x,1}(mat), Shape(mat)), "
                           "Reshape{2}(InplaceDimShuffle{1,x}(row), Shape(row)), "
                           "Reshape{2}(InplaceDimShuffle{0}(col), Shape(col))]")
     useless_dimshuffle_in_reshape = out2in(local_useless_dimshuffle_in_reshape)
     useless_dimshuffle_in_reshape.optimize(g)
-    assert_true(str(g) == "[Reshape{1}(vector, Shape(vector)), "
+    assert str(g) == ("[Reshape{1}(vector, Shape(vector)), "
                           "Reshape{2}(mat, Shape(mat)), "
                           "Reshape{2}(row, Shape(row)), "
                           "Reshape{2}(col, Shape(col))]")
 
     # Check stacktrace was copied over correctly after opt was applied
-    assert_true(check_stack_trace(g, ops_to_check='all'))
+    assert check_stack_trace(g, ops_to_check='all')
 
     # Check that the optimization does not get applied when the order
     # of dimensions has changed.
@@ -254,7 +248,7 @@ def test_local_useless_dimshuffle_in_reshape():
     h = FunctionGraph([mat], [reshape_dimshuffle_mat2])
     str_h = str(h)
     useless_dimshuffle_in_reshape.optimize(h)
-    assert_true(str(h) == str_h)
+    assert str(h) == str_h
 
 
 def test_add_canonizer_problem0():
@@ -272,7 +266,7 @@ def test_add_canonizer_problem0():
     theano.function([], c0 + c1)
 
 
-class test_greedy_distribute(unittest.TestCase):
+class test_greedy_distribute():
     def test_main(self):
         a, b, c, d, x, y, z = matrices('abcdxyz')
 
@@ -323,7 +317,7 @@ class test_greedy_distribute(unittest.TestCase):
         assert np.all(r0 == r2)
 
 
-class test_canonize(unittest.TestCase):
+class test_canonize():
     def test_muldiv(self):
         x, y, z = matrices('xyz')
         a, b, c, d = matrices('abcd')
@@ -502,7 +496,7 @@ class test_canonize(unittest.TestCase):
             assert(len(f.maker.fgraph.toposort()) == nb_elemwise)
             assert(out_dtype == out.dtype)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_multiple_case(self):
         # test those case take from the comment in Canonizer
         # x / x -> 1
@@ -922,7 +916,7 @@ def test_cast_in_mul_canonizer():
     f([1], [1])
 
 
-class test_fusion(unittest.TestCase):
+class test_fusion():
     mode = copy.copy(compile.mode.get_default_mode())
     _shared = staticmethod(shared)
     topo_exclude = ()
@@ -1185,7 +1179,7 @@ class test_fusion(unittest.TestCase):
             'canonicalize')
         self.do(mode, self._shared, shp)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_elemwise_fusion_4d(self):
         shp = (3, 3, 3, 3)
         mode = copy.copy(self.mode)
@@ -1332,7 +1326,7 @@ class TimesN(theano.scalar.basic.UnaryScalarOp):
         return "%(z)s = %(name)s_timesn(%(x)s);" % locals()
 
 
-class TestCompositeCodegen(unittest.TestCase):
+class TestCompositeCodegen():
     """
     Test The Composite Ops code generation in a case where there is multiple
     scalar ops with support code.
@@ -1734,7 +1728,7 @@ def test_local_subtensor_remove_broadcastable_index():
     f2(xn)
 
 
-class Test_subtensor_inc_subtensor(unittest.TestCase):
+class Test_subtensor_inc_subtensor():
     @classmethod
     def setUpClass(cls):
         cls.mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
@@ -1852,7 +1846,7 @@ class Test_subtensor_inc_subtensor(unittest.TestCase):
         assert np.array_equal(f(x_, i_, v_), v_.astype('int8'))
 
 
-class test_local_subtensor_make_vector(unittest.TestCase):
+class test_local_subtensor_make_vector():
     def test_scalar_idx(self):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
@@ -1912,17 +1906,17 @@ class test_local_subtensor_make_vector(unittest.TestCase):
 
         for v_subtensor in v_subtensors:
             f = function([x, y, z], v_subtensor, mode=mode)
-            self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+            assert check_stack_trace(f, ops_to_check='all')
 
 
-class test_local_subtensor_lift(unittest.TestCase):
+class test_local_subtensor_lift():
     def test0(self):
         # basic test that the Op works
         x = tensor.matrix('x')
         f = function([x], tensor.exp(x)[0], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        assert check_stack_trace(f, ops_to_check='all')
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)  # first subtensor
@@ -1937,8 +1931,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x], [tensor.exp(x)[0], tensor.exp(x)], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=[
-            Subtensor, tensor.Elemwise]))
+        assert check_stack_trace(f, ops_to_check=[Subtensor, tensor.Elemwise])
 
         prog = f.maker.fgraph.toposort()
         assert prog[0].op == tensor.exp
@@ -1955,8 +1948,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x, y, z], tensor.exp(x + y + z)[0], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=[
-            Subtensor, tensor.DimShuffle]))
+        assert check_stack_trace(f, ops_to_check=[Subtensor, tensor.DimShuffle])
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
@@ -1976,8 +1968,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x, y, z], tensor.exp(x + y + z)[0:2], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=[
-            Subtensor, tensor.DimShuffle]))
+        assert check_stack_trace(f, ops_to_check=[Subtensor, tensor.DimShuffle])
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
@@ -1996,7 +1987,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([y], tensor.exp(y.dimshuffle(0, 'x'))[0], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        assert check_stack_trace(f, ops_to_check='all')
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
@@ -2015,7 +2006,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x, y], tensor.exp(x + y)[0], mode=mode_opt)
 
         # Opt doesn't apply, so no need for check_stack_trace
-        # self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        # assert check_stack_trace(f, ops_to_check='all')
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
@@ -2034,7 +2025,7 @@ class test_local_subtensor_lift(unittest.TestCase):
                      mode=mode_opt)
 
         # Opt doesn't apply, so no need for check_stack_trace
-        # self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+        # assert check_stack_trace(f, ops_to_check=Subtensor)
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
@@ -2056,7 +2047,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x, y], tensor.exp(x + y)[0], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+        assert check_stack_trace(f, ops_to_check=Subtensor)
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
@@ -2078,8 +2069,7 @@ class test_local_subtensor_lift(unittest.TestCase):
 
         f1 = function([x], newx[:2, :5], mode=mode_opt)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f1, ops_to_check=[
-                        Subtensor, tensor.Rebroadcast]))
+        assert check_stack_trace(f1, ops_to_check=[Subtensor, tensor.Rebroadcast])
         prog = f1.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
@@ -2094,8 +2084,7 @@ class test_local_subtensor_lift(unittest.TestCase):
 
         f2 = function([y], newy[:, 3, 0, :], mode=mode_opt)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f2, ops_to_check=[
-                        Subtensor, tensor.Rebroadcast]))
+        assert check_stack_trace(f2, ops_to_check=[Subtensor, tensor.Rebroadcast])
         prog = f2.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
@@ -2104,8 +2093,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         # corner case 2: subtensor idx_list is shorter than resulting broadcast pattern
         f3 = function([y], newy[:, 3, 0], mode=mode_opt)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f3, ops_to_check=[
-            Subtensor, tensor.Rebroadcast]))
+        assert check_stack_trace(f3, ops_to_check=[Subtensor, tensor.Rebroadcast])
         prog = f3.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
@@ -2120,15 +2108,14 @@ class test_local_subtensor_lift(unittest.TestCase):
 
         f4 = function([z], newz[:, 3, 0], mode=mode_opt)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f4, ops_to_check=[
-            Subtensor, tensor.Rebroadcast]))
+        assert check_stack_trace(f4, ops_to_check=[Subtensor, tensor.Rebroadcast])
         prog = f4.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
         assert (f4(zval) == zval[:, 3, 0]).all()
 
 
-class test_local_subtensor_merge(unittest.TestCase):
+class test_local_subtensor_merge():
     def setup_method(self):
         utt.seed_rng()
         self.x_shapes = [(2, 2), (5, 3), (4, 1), (1, 2),
@@ -2144,7 +2131,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                 'local_subtensor_merge'))
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+            assert check_stack_trace(f, ops_to_check=Subtensor)
 
             topo = f.maker.fgraph.toposort()
             assert len([t for t in topo
@@ -2160,8 +2147,10 @@ class test_local_subtensor_merge(unittest.TestCase):
                 else:
                     # A non-empty subtensor of an empty one should be
                     # an IndexError
-                    self.assertRaises(IndexError, f, x_val)
-                    self.assertRaises(IndexError, g, x_val)
+                    with pytest.raises(IndexError):
+                        f(x_val)
+                    with pytest.raises(IndexError):
+                        g(x_val)
 
     def test_scalar(self):
         # var[int::][-1] -> var[-1]
@@ -2173,7 +2162,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         # theano.printing.debugprint(f, print_type=True)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+        assert check_stack_trace(f, ops_to_check=Subtensor)
 
         topo = f.maker.fgraph.toposort()
         # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2190,10 +2179,12 @@ class test_local_subtensor_merge(unittest.TestCase):
                     # The first subtensor is non-empty
                     f(x_val, idx)  # let debugmode test something
                 else:
-                    self.assertRaises(IndexError, f, x_val, idx)
-                    self.assertRaises(IndexError, g, x_val, idx)
+                    with pytest.raises(IndexError):
+                        f(x_val, idx)
+                    with pytest.raises(IndexError):
+                        g(x_val, idx)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_const2(self):
         # var[::-1][const] -> var[-1]
         x = tensor.matrix('x')
@@ -2203,7 +2194,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                          mode=mode_opt.excluding('local_subtensor_merge'))
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+            assert check_stack_trace(f, ops_to_check=Subtensor)
 
             # theano.printing.debugprint(f, print_type=True)
             topo = f.maker.fgraph.toposort()
@@ -2221,8 +2212,10 @@ class test_local_subtensor_merge(unittest.TestCase):
                 else:
                     # A non-empty subtensor of an empty one should be
                     # an IndexError
-                    self.assertRaises(IndexError, f, x_val)
-                    self.assertRaises(IndexError, g, x_val)
+                    with pytest.raises(IndexError):
+                        f(x_val)
+                    with pytest.raises(IndexError):
+                        g(x_val)
 
     def test_scalar2(self):
         # var[::-1][int] -> var[-1]
@@ -2234,7 +2227,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         # theano.printing.debugprint(f, print_type=True)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+        assert check_stack_trace(f, ops_to_check=Subtensor)
 
         topo = f.maker.fgraph.toposort()
         # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2249,8 +2242,10 @@ class test_local_subtensor_merge(unittest.TestCase):
             for idx in xrange(-x_s[0], x_s[0]):
                 f(x_val, idx)  # let debugmode test something
             for idx in (list(range(x_s[0], 9)) + list(range(-9, -x_s[0]))):
-                self.assertRaises(IndexError, f, x_val, idx)
-                self.assertRaises(IndexError, g, x_val, idx)
+                with pytest.raises(IndexError):
+                    f(x_val, idx)
+                with pytest.raises(IndexError):
+                    g(x_val, idx)
 
     def test_const3(self):
         # var[::-1][:const] -> var[-1]
@@ -2259,7 +2254,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = function([x], x[::-1][:idx], mode=mode_opt)
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+            assert check_stack_trace(f, ops_to_check=Subtensor)
 
             # theano.printing.debugprint(f, print_type=True)
             topo = f.maker.fgraph.toposort()
@@ -2280,7 +2275,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         f = function([x, y], x[::-1][:y], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+        assert check_stack_trace(f, ops_to_check=Subtensor)
 
         # theano.printing.debugprint(f, print_type=True)
 
@@ -2304,7 +2299,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                 f = function([x], x[idx1:][:idx2], mode=mode_opt)
 
                 # Check stacktrace was copied over correctly after opt was applied
-                self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+                assert check_stack_trace(f, ops_to_check=Subtensor)
 
                 # theano.printing.debugprint(f, print_type=True)
                 topo = f.maker.fgraph.toposort()
@@ -2326,7 +2321,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         f = function([x, y, z], x[y:][:z], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+        assert check_stack_trace(f, ops_to_check=Subtensor)
 
         # theano.printing.debugprint(f, print_type=True)
 
@@ -2358,7 +2353,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = function([x], z, mode=mode_opt)
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+            assert check_stack_trace(f, ops_to_check=Subtensor)
 
             x_val = self.rng.uniform(size=shape).astype(config.floatX)
             f(x_val)
@@ -2377,7 +2372,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                      mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+        assert check_stack_trace(f, ops_to_check=Subtensor)
 
         # theano.printing.debugprint(f, print_type=True)
 
@@ -2465,7 +2460,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         f = function([x, b, e, s, i], x[b:e:s][i], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+        assert check_stack_trace(f, ops_to_check=Subtensor)
 
         # theano.printing.debugprint(f, print_type=True)
 
@@ -2497,8 +2492,8 @@ class test_local_subtensor_merge(unittest.TestCase):
                                 x_val[b_v:e_v:s_v][i_v]
                             except IndexError:
                                 n_index_err += 1
-                                self.assertRaises(IndexError,
-                                                  f, x_val, b_v, e_v, s_v, i_v)
+                                with pytest.raises(IndexError):
+                                    f(x_val, b_v, e_v, s_v, i_v)
                             else:
                                 # Executed if the "try" clause did not raise
                                 # any exception
@@ -2508,7 +2503,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             # print 'shape: %s' % (x_s,)
             # print '%% OK: %f' % (float(n_ok) * 100 / (n_ok + n_index_err))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_none_slice(self):
         # Test case of two slices, var[b1:e1:s1][b2:e2:s2]
         # where any of the b, e, and s can be None
@@ -2561,8 +2556,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             # Check stacktrace was copied over correctly after opt was applied
             # for some cases, the optimization may remove all Subtensors,
             # which is why we pass "bug_print='ignore'".
-            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor,
-                                              bug_print='ignore'))
+            assert check_stack_trace(f, ops_to_check=Subtensor, bug_print='ignore')
 
             topo = f.maker.fgraph.toposort()
             # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2622,7 +2616,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+            assert check_stack_trace(f, ops_to_check=Subtensor)
 
             topo = f.maker.fgraph.toposort()
             # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2651,14 +2645,15 @@ class test_local_subtensor_merge(unittest.TestCase):
                     try:
                         x_val[num_slice][num_i]
                     except IndexError:
-                        self.assertRaises(IndexError, f, x_val, *i_val)
+                        with pytest.raises(IndexError):
+                            f(x_val, *i_val)
                     else:
                         # Executed if the "try" clause did not raise
                         # any exception
                         f(x_val, *i_val)
 
 
-class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
+class test_local_adv_sub1_adv_inc_sub1():
     def setup_method(self):
         utt.seed_rng()
         mode = theano.compile.mode.get_default_mode()
@@ -2728,11 +2723,11 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode)
             # test wrong index
             for i in [dx.shape[0], -dx.shape[0] - 1]:
-                self.assertRaises((AssertionError, IndexError),
-                                  f, dx, dy, [i, i])
+                with pytest.raises(():
+                        s(ionError, IndexError), f, dx, dy, [i, i])
             # test wrong shape
-            self.assertRaises((AssertionError, ValueError),
-                              f, dx, dy, [1])
+            with pytest.raises(():
+                    s(ionError, ValueError), f, dx, dy, [1])
 
     def test_stack_trace(self):
         x = tensor.matrix("x")
@@ -2749,11 +2744,10 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
 
         for y, out in zip(ys, outs):
             f = theano.function([x, y, idx], out, self.mode)
-            self.assertTrue(check_stack_trace(
-                f, ops_to_check=(Assert, scal.Cast)))
+            assert check_stack_trace( f, ops_to_check=(Assert, scal.Cast))
 
 
-class Test_alloc_zero(unittest.TestCase):
+class Test_alloc_zero():
     def setup_method(self):
         mode = theano.compile.mode.get_default_mode()
         self.mode = mode.including("local_incsubtensor_of_zeros",
@@ -2940,10 +2934,10 @@ class Test_alloc_zero(unittest.TestCase):
                                    f.maker.fgraph.toposort()])
 
                     # test that we don't remove shape errors
-                    self.assertRaises((ValueError, AssertionError), f,
-                                      _e1[1], _e2[2])
-                    self.assertRaises((ValueError, AssertionError), f,
-                                      _e1[2], _e2[1])
+                    with pytest.raises(ValueError, AssertionError):
+                        f(_e1[1], _e2[2])
+                    with pytest.raises(ValueError, AssertionError):
+                        f(_e1[2], _e2[1])
 
 
 def test_local_IncSubtensor_serialize():
@@ -3055,7 +3049,7 @@ def test_local_subtensor_of_dot():
     assert check_stack_trace(f, ops_to_check='last')
 
 
-class Test_local_elemwise_alloc(unittest.TestCase):
+class Test_local_elemwise_alloc():
     dtype = config.floatX
 
     def setup_method(self):
@@ -3113,7 +3107,7 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(func, ops_to_check='all'))
+        assert check_stack_trace(func, ops_to_check='all')
 
         # Optimization on alloc with assert
         func = function(
@@ -3421,7 +3415,7 @@ def test_local_elemwise_sub_zeros():
     assert check_stack_trace(f, ops_to_check='all')
 
 
-class Test_local_useless_elemwise_comparison(unittest.TestCase):
+class Test_local_useless_elemwise_comparison():
     def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
@@ -3693,13 +3687,13 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         x = T.vector('x', dtype=config.floatX)
         f = theano.function([x], T.gt(x, x), mode=mode)
-        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+        assert check_stack_trace(f, ops_to_check='last')
 
         f = theano.function([x], T.le(x, x), mode=mode)
-        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+        assert check_stack_trace(f, ops_to_check='last')
 
 
-class Test_local_canonicalize_alloc(unittest.TestCase):
+class Test_local_canonicalize_alloc():
     def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
@@ -3719,7 +3713,8 @@ class Test_local_canonicalize_alloc(unittest.TestCase):
 
         # In DebugMode, the shape mismatch should be detected
         if isinstance(mode_opt, compile.DebugMode):
-            self.assertRaises(ValueError, f)
+            with pytest.raises(ValueError):
+                f
 
         # No need to check_stack_trace as the optimization
         # local_canonicalize_alloc only removes nodes.
@@ -3771,7 +3766,7 @@ class Test_local_canonicalize_alloc(unittest.TestCase):
         alloc_w = tensor.alloc(w, 1, 2)
 
         g = FunctionGraph([x, y, z, w], [alloc_x, alloc_y, alloc_z, alloc_w])
-        self.assertTrue(str(g) == ("[Alloc(<TensorType(float64, vector)>, "
+        assert str(g) == ("[Alloc(<TensorType(float64, vector)>, "
                                    "TensorConstant{1}, "
                                    "TensorConstant{3}, "
                                    "TensorConstant{2}), "
@@ -3790,7 +3785,7 @@ class Test_local_canonicalize_alloc(unittest.TestCase):
                                    "TensorConstant{2})]"))
 
         alloc_lift.optimize(g)
-        self.assertTrue(str(g) == "[InplaceDimShuffle{x,0,1}"
+        assert str(g) == "[InplaceDimShuffle{x,0,1}"
                                   "(Alloc(<TensorType(float64, vector)>, "
                                   "TensorConstant{3}, "
                                   "TensorConstant{2})), "
@@ -3808,10 +3803,10 @@ class Test_local_canonicalize_alloc(unittest.TestCase):
                                   "TensorConstant{2})]")
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
+        assert check_stack_trace(g, ops_to_check='all')
 
 
-class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
+class Test_local_useless_inc_subtensor_alloc():
     opt_name = 'local_useless_inc_subtensor_alloc'
 
     def setup_method(self):
@@ -3849,8 +3844,8 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         utt.assert_allclose(r1, r2)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f1, ops_to_check=tensor.AdvancedIncSubtensor))
-        self.assertTrue(check_stack_trace(f2, ops_to_check=tensor.AdvancedIncSubtensor))
+        assert check_stack_trace(f1, ops_to_check=tensor.AdvancedIncSubtensor)
+        assert check_stack_trace(f2, ops_to_check=tensor.AdvancedIncSubtensor)
 
     def test_advanced_inc_subtensor1(self):
         x = tensor.vector('x')
@@ -3879,9 +3874,8 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         utt.assert_allclose(r1, r2)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(
-            f1, ops_to_check=tensor.AdvancedIncSubtensor1))
-        self.assertTrue(check_stack_trace(f2, ops_to_check='all'))
+        assert check_stack_trace(f1, ops_to_check=tensor.AdvancedIncSubtensor1)
+        assert check_stack_trace(f2, ops_to_check='all')
 
     def test_incsubtensor(self):
         x = tensor.vector('x')
@@ -3910,11 +3904,11 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         utt.assert_allclose(r1, r2)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f1, ops_to_check='last'))
-        self.assertTrue(check_stack_trace(f2, ops_to_check='last'))
+        assert check_stack_trace(f1, ops_to_check='last')
+        assert check_stack_trace(f2, ops_to_check='last')
 
 
-class test_shapeoptimizer(unittest.TestCase):
+class test_shapeoptimizer():
     def setup_method(self):
         utt.seed_rng()
 
@@ -4103,7 +4097,8 @@ class test_assert(utt.InferShapeTester):
         y = T.scalar()
         f = theano.function([x, y], theano.tensor.opt.assert_op(x, T.eq(x, y)))
         f(1, 1)
-        self.assertRaises(AssertionError, f, 1, 0)
+        with pytest.raises(AssertionError):
+            f(1, 0)
 
     def test_local_remove_useless_assert1(self):
         # remove assert that are always true
@@ -4149,7 +4144,8 @@ class test_assert(utt.InferShapeTester):
         y = T.scalar()
         f = theano.function([x, y], theano.tensor.opt.assert_op(x, y, 0),
                             mode=mode)
-        self.assertRaises(AssertionError, f, 1, 0)
+        with pytest.raises(AssertionError):
+            f(1, 0)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 2
         assert len(topo[0].inputs) == 3
@@ -4168,7 +4164,8 @@ class test_assert(utt.InferShapeTester):
                             mode=mode)
         if isinstance(mode, theano.compile.debugmode.DebugMode):
             # DebugMode will run the original version with the Assert
-            self.assertRaises(AssertionError, f, 1, 0)
+            with pytest.raises(AssertionError):
+                f(1, 0)
         else:
             f(1, 0)  # Without opt, it should fail.
         topo = f.maker.fgraph.toposort()
@@ -4239,7 +4236,7 @@ def test_local_mul_specialize():
     assert nodes == [T.mul]
 
 
-class T_Tile(unittest.TestCase):
+class TestTile():
     def test_local_useless_tile(self):
         v = T.vector()
         m = T.matrix()
@@ -4393,7 +4390,7 @@ def test_local_pow_specialize_device_more_aggressive_on_cpu():
     utt.assert_allclose(f(val_no0), val_no0 ** (-16))
 
 
-class T_Rebroadcast(unittest.TestCase):
+class TestRebroadcast():
     def test_local_useless_rebroadcast(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
         v1 = T.vector()
@@ -4419,7 +4416,7 @@ class T_Rebroadcast(unittest.TestCase):
         assert rebroadcast_nodes[0].op.axis == {0: True}
 
 
-class T_useless_elemwise(unittest.TestCase):
+class Testuseless_elemwise():
     def setup_method(self):
         self.mode = theano.compile.get_default_mode().including(
             'canonicalize', 'local_fill_to_alloc')
@@ -4505,7 +4502,7 @@ class T_useless_elemwise(unittest.TestCase):
         assert topo[0].op == deep_copy_op
 
 
-class T_cast_cast(unittest.TestCase):
+class Testcast_cast():
     def setup_method(self):
         mode = theano.compile.get_default_mode()
         self.mode = mode.including('local_cast_cast')
@@ -4561,7 +4558,7 @@ class T_cast_cast(unittest.TestCase):
         assert (len(topo) == 1 and isinstance(topo[0].op.scalar_op, scal.basic.Composite)) or (len(topo) > 1)
 
 
-class T_func_inverse(unittest.TestCase):
+class Testfunc_inverse():
 
     def setup_method(self):
         mode = theano.compile.get_default_mode()
@@ -4588,8 +4585,8 @@ class T_func_inverse(unittest.TestCase):
         else:
             delta_condition = np.all(delta != 0)
 
-        self.assertTrue(len(topo) in acceptable_topo_lens)
-        self.assertTrue(delta_condition)
+        assert len(topo) in acceptable_topo_lens
+        assert delta_condition
         self.assertEqual(isinstance(topo[0].op, DeepCopyOp), should_copy,
                          "Inverse functions not removed!")
 
@@ -4677,7 +4674,7 @@ def test_constant_get_stabilized():
                        'cases. See #504.')
 
 
-class T_local_switch_sink(unittest.TestCase):
+class Testlocal_switch_sink():
     def setup_method(self):
         # condition values
         self.condm = np.asarray([[0.1, 0, 1, -1],
@@ -4757,7 +4754,7 @@ class T_local_switch_sink(unittest.TestCase):
         f = self.function_remove_nan([x], T.grad(y, x), self.mode)
         assert f(5) == 1, f(5)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_local_div_switch_sink(self):
         c = T.dscalar()
         idx = 0
@@ -4780,7 +4777,7 @@ class T_local_switch_sink(unittest.TestCase):
                 idx += 1
 
 
-class T_local_erf(unittest.TestCase):
+class Testlocal_erf():
     def setup_method(self):
         self.mode = theano.compile.mode.get_default_mode().including(
             'canonicalize', 'fast_run').excluding('gpu', 'fusion')
@@ -4867,7 +4864,7 @@ class T_local_erf(unittest.TestCase):
         print(f(val))
 
 
-class T_local_erfc(unittest.TestCase):
+class Testlocal_erfc():
     def setup_method(self):
         self.mode_fusion = theano.compile.mode.get_default_mode().including(
             'canonicalize').including('fast_run').excluding('gpu')
@@ -5061,7 +5058,7 @@ class T_local_erfc(unittest.TestCase):
         print(t1 - t0, t2 - t1)
 
 
-class test_local_useless_switch(unittest.TestCase):
+class test_local_useless_switch():
     def setup_method(self):
         self.mode = mode_opt.excluding('constant_folding')
 
@@ -5202,7 +5199,7 @@ class test_local_useless_switch(unittest.TestCase):
                     isinstance(node.op, theano.tensor.Elemwise)]) == 0
 
 
-class test_local_merge_switch_same_cond(unittest.TestCase):
+class test_local_merge_switch_same_cond():
     def test_elemwise(self):
         # float Ops
         mats = theano.tensor.matrices('cabxy')
@@ -5231,7 +5228,7 @@ class test_local_merge_switch_same_cond(unittest.TestCase):
             assert str(g).count('Switch') == 1
 
 
-class T_local_sum_prod(unittest.TestCase):
+class Testlocal_sum_prod():
     """
     Test sum/prod opts in opt.py
     """
@@ -5590,7 +5587,7 @@ class T_local_sum_prod(unittest.TestCase):
         assert check_stack_trace(f, ops_to_check=[T.Sum])
 
 
-class T_local_opt_alloc(unittest.TestCase):
+class Testlocal_opt_alloc():
     dtype = 'float32'
 
     def test_sum_upcast(self):
@@ -5630,11 +5627,11 @@ class T_local_opt_alloc(unittest.TestCase):
         print(self.dtype)
 
 
-class T_local_opt_alloc_f16(T_local_opt_alloc):
+class Testlocal_opt_alloc_f16(T_local_opt_alloc):
     dtype = 'float16'
 
 
-class T_local_reduce(unittest.TestCase):
+class Testlocal_reduce():
     def setup_method(self):
         self.mode = theano.compile.get_default_mode().including(
             'canonicalize',
@@ -5760,7 +5757,7 @@ class T_local_reduce(unittest.TestCase):
             theano.config.warn.reduce_join = old
 
 
-class T_local_sum_prod_dimshuffle(unittest.TestCase):
+class Testlocal_sum_prod_dimshuffle():
     def setup_method(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
 
@@ -6279,7 +6276,7 @@ def test_local_flatten_lift():
         assert isinstance(topo[-1].op, tensor.Elemwise)
 
 
-class Test_Reshape(unittest.TestCase):
+class Test_Reshape():
     def setup_method(self):
         self.mode = mode_opt
         self.op = tensor.Reshape
@@ -6293,10 +6290,10 @@ class Test_Reshape(unittest.TestCase):
         assert sum(isinstance(node.op, self.op) for node in topo) == 1
 
         # Check stack trace
-        self.assertTrue(check_stack_trace(f, ops_to_check=[self.op]))
+        assert check_stack_trace(f, ops_to_check=[self.op])
 
 
-class Test_local_useless_reshape(unittest.TestCase):
+class Test_local_useless_reshape():
     def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
@@ -6358,7 +6355,7 @@ class Test_local_useless_reshape(unittest.TestCase):
             assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
 
 
-class Test_local_reshape_to_dimshuffle(unittest.TestCase):
+class Test_local_reshape_to_dimshuffle():
     def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
@@ -6371,16 +6368,16 @@ class Test_local_reshape_to_dimshuffle(unittest.TestCase):
         reshape_y = tensor.reshape(y, (1, 5, 1, 6, 1, 1))
 
         g = FunctionGraph([x, y], [reshape_x, reshape_y])
-        self.assertTrue(str(g) == ("[Reshape{2}"
+        assert str(g) == ("[Reshape{2}"
                                    "(<TensorType(float64, vector)>, "
                                    "TensorConstant{[1 4]}), "
                                    "Reshape{6}"
                                    "(<TensorType(float64, matrix)>, "
-                                   "TensorConstant{[1 5 1 6 1 1]})]"))
+                                   "TensorConstant{[1 5 1 6 1 1]})]")
 
         reshape_lift.optimize(g)
         useless_reshape.optimize(g)
-        self.assertTrue(str(g) == "[InplaceDimShuffle{x,0}"
+        assert str(g) == ("[InplaceDimShuffle{x,0}"
                                   "(<TensorType(float64, vector)>), "
                                   "InplaceDimShuffle{x,0,x,1,x,x}"
                                   "(Reshape{2}(<TensorType(float64, matrix)>, "
@@ -6405,7 +6402,7 @@ def test_local_reshape_lift():
     assert check_stack_trace(f, ops_to_check='last')
 
 
-class Test_lift_transpose_through_dot(unittest.TestCase):
+class Test_lift_transpose_through_dot():
     def simple_optimize(self, g):
         out2in(opt.local_useless_elemwise).optimize(g)
         out2in(opt.local_lift_transpose_through_dot).optimize(g)
@@ -6418,7 +6415,7 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
         sg = '[dot(InplaceDimShuffle{1,0}(b), InplaceDimShuffle{1,0}(a))]'
         assert str(g) == sg, (str(g), sg)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
+        assert check_stack_trace(g, ops_to_check='all')
 
     def test_row_matrix(self):
         a = vector('a')
@@ -6430,7 +6427,7 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
         sg = '[dot(InplaceDimShuffle{1,0}(b), InplaceDimShuffle{0,x}(a))]'
         assert str(g) == sg, (str(g), sg)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
+        assert check_stack_trace(g, ops_to_check='all')
 
     def test_matrix_col(self):
         a = vector('a')
@@ -6442,7 +6439,7 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
         sg = '[dot(InplaceDimShuffle{x,0}(a), InplaceDimShuffle{1,0}(b))]'
         assert str(g) == sg, (str(g), sg)
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
+        assert check_stack_trace(g, ops_to_check='all')
 
 
 def test_local_upcast_elemwise_constant_inputs():
@@ -6491,7 +6488,7 @@ class TestShape_i(utt.InferShapeTester):
                                 [admat_val], Shape_i)
 
 
-class TestShapeFeature(unittest.TestCase):
+class TestShapeFeature():
     def test_scalar(self):
         x = scalar()
         cst = T.constant(1).clone()
@@ -6539,8 +6536,10 @@ class TestShapeFeature(unittest.TestCase):
         fgraph = FunctionGraph([x, y], [o], clone=False)
         shape_feature = opt.ShapeFeature()
         fgraph.attach_feature(shape_feature)
-        self.assertRaises(IndexError, shape_feature.same_shape, x, o, 1, 0)
-        self.assertRaises(IndexError, shape_feature.same_shape, x, o, 0, 1)
+        with pytest.raises(IndexError):
+            shape_feature.same_shape(x, o, 1, 0)
+        with pytest.raises(IndexError):
+            shape_feature.same_shape(x, o, 0, 1)
 
 
 def test_assert_op_gradient():
@@ -6554,7 +6553,7 @@ def test_assert_op_gradient():
     assert func(x_val) == 1
 
 
-class TestIntDivByOne(unittest.TestCase):
+class TestIntDivByOne():
 
     def setup_method(self):
         self.mode = theano.compile.mode.get_default_mode()
@@ -6714,7 +6713,8 @@ def test_local_merge_alloc():
     assert isinstance(topo[-1].op, T.Alloc)
     o = f(0., 1, 2, 2, 3, 4)
     assert o.shape == (1, 2, 3, 4)
-    assert_raises((AssertionError, ValueError), f, 0., 1, 2, 5, 3, 4)
+    with pytest.raises(AssertionError, ValueError):
+        f(0., 1, 2, 5, 3, 4)
 
 
 def test_local_useless_alloc():

@@ -436,7 +436,7 @@ class TestRepeatOp(utt.InferShapeTester):
                         assert not np.any([isinstance(n.op, RepeatOp)
                                            for n in f.maker.fgraph.toposort()])
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_infer_shape(self):
         for ndim in [1, 3]:
             x = T.TensorType(config.floatX, [False] * ndim)()
@@ -550,7 +550,7 @@ class TestFillDiagonal(utt.InferShapeTester):
         assert out[2, 2, 2] == val
         assert (out == val).sum() == min(a.shape)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_gradient(self):
         utt.verify_grad(fill_diagonal, [np.random.rand(5, 8),
                                         np.random.rand()],
@@ -798,7 +798,7 @@ class test_Unique_axis(utt.InferShapeTester):
 
     def test_basic_vector(self):
         if not self.expect_success:
-            raise utt.SkipTest('Requires numpy >= 1.13')
+            raise pytest.skip('Requires numpy >= 1.13')
         # Basic test for a vector.
         # Done by using the op and checking that it returns the right
         # answer.
@@ -820,7 +820,7 @@ class test_Unique_axis(utt.InferShapeTester):
 
     def test_basic_matrix(self):
         if not self.expect_success:
-            raise utt.SkipTest('Requires numpy >= 1.13')
+            raise pytest.skip('Requires numpy >= 1.13')
         # Basic test for a matrix.
         # Done by using the op and checking that it returns the right
         # answer.
@@ -842,7 +842,7 @@ class test_Unique_axis(utt.InferShapeTester):
 
     def test_infer_shape_vector(self):
         if not self.expect_success:
-            raise utt.SkipTest('Requires numpy >= 1.13')
+            raise pytest.skip('Requires numpy >= 1.13')
         # Testing the infer_shape with a vector.
 
         x = theano.tensor.vector()
@@ -864,7 +864,7 @@ class test_Unique_axis(utt.InferShapeTester):
 
     def test_infer_shape_matrix(self):
         if not self.expect_success:
-            raise utt.SkipTest('Requires numpy >= 1.13')
+            raise pytest.skip('Requires numpy >= 1.13')
         # Testing the infer_shape with a matrix.
 
         x = theano.tensor.matrix()

@@ -22,9 +22,9 @@ from theano.tensor.nlinalg import (
     trace, Det, det, Eig, eig, Eigh, EighGrad, eigh,
     matrix_dot, _zero_disconnected, qr, matrix_power,
     norm, svd, SVD, TensorInv, tensorinv, tensorsolve)
+import pytest
 from nose.plugins.attrib import attr
 
-from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 
 
@@ -395,7 +395,7 @@ class test_diag(unittest.TestCase):
         x = rng.rand(5, 4).astype(self.floatX)
         tensor.verify_grad(extract_diag, [x], rng=rng)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_extract_diag_empty(self):
         c = self.shared(np.array([[], []], self.floatX))
         f = theano.function([], extract_diag(c), mode=self.mode)

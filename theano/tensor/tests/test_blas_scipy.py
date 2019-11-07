@@ -1,15 +1,16 @@
 from __future__ import absolute_import, print_function, division
 import sys
 import numpy as np
+import pytest
 import theano
 import theano.tensor as tensor
 from theano.tensor.blas_scipy import ScipyGer
 
-from .test_blas import TestCase, gemm_no_inplace, TestBlasStrides
+from .test_blas import gemm_no_inplace, TestBlasStrides
 from theano.tests.unittest_tools import TestOptimizationMixin
 
 
-class TestScipyGer(TestCase, TestOptimizationMixin):
+class TestScipyGer(TestOptimizationMixin):
 
     def setup_method(self):
         self.mode = theano.compile.get_default_mode()
@@ -24,7 +25,7 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
         self.xval = np.asarray([1, 2], dtype=dtype)
         self.yval = np.asarray([1.5, 2.7, 3.9], dtype=dtype)
         if not theano.tensor.blas_scipy.have_fblas:
-            self.SkipTest()
+            pytest.skip()
 
     def function(self, inputs, outputs):
         return theano.function(inputs, outputs, self.mode)

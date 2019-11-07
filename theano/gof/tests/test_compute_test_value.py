@@ -293,8 +293,8 @@ class TestComputeTestValue():
             except ValueError:
                 # Get traceback
                 tb = sys.exc_info()[2]
-                # Get frame info 4 layers up
-                frame_info = traceback.extract_tb(tb)[-5]
+                # Get frame info 6 layers up
+                frame_info = traceback.extract_tb(tb)[-6]
                 # We should be in the "fx" function defined above
                 expected = 'test_compute_test_value.py'
                 assert os.path.split(frame_info[0])[1] == expected, frame_info

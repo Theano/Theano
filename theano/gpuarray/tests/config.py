@@ -5,7 +5,7 @@ import theano.tensor
 import theano.gpuarray
 
 if theano.gpuarray.pygpu is None:
-    pytest.skip("pygpu not installed")
+    pytest.skip("pygpu not installed", allow_module_level=True)
 
 
 init_error = None

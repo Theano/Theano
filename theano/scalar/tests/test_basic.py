@@ -34,7 +34,7 @@ def inputs():
     return floats('xyz')
 
 
-class test_ScalarOps(unittest.TestCase):
+class test_ScalarOps():
 
     def test_straightforward(self):
         x, y, z = inputs()
@@ -61,7 +61,7 @@ class test_ScalarOps(unittest.TestCase):
                      (1, 2), (-1, 2), (1, -2), (-1, -2),
                      (5, 3), (-5, 3), (5, -3), (-5, -3)
                      ):
-            self.assertTrue(fn(a, b) == a % b, (a,))
+            assert fn(a, b) == a % b, (a,)
 
 
 def has_f16(comp):
@@ -70,7 +70,7 @@ def has_f16(comp):
     return False
 
 
-class test_composite(unittest.TestCase):
+class test_composite():
     def test_composite_clone_float32(self):
         w = int8()
         x = float16()
@@ -184,76 +184,76 @@ class test_composite(unittest.TestCase):
         sop.make_node(si0 * si3, si1, si2)
 
 
-class test_logical(unittest.TestCase):
+class test_logical():
     def test_gt(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x > y])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a > b))
+            assert fn(a, b) == (a > b)
 
     def test_lt(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x < y])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a < b))
+            assert fn(a, b) == (a < b)
 
     def test_le(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x <= y])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a <= b))
+            assert fn(a, b) == (a <= b)
 
     def test_ge(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x >= y])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a >= b))
+            assert fn(a, b) == (a >= b)
 
     def test_eq(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [eq(x, y)])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a == b))
+            assert fn(a, b) == (a == b)
 
     def test_neq(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [neq(x, y)])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a != b))
+            assert fn(a, b) == (a != b)
 
     def test_or(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x | y])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
-            self.assertTrue(fn(a, b) == (a | b), (a, b))
+            assert fn(a, b) == (a | b), (a, b)
 
     def test_xor(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x ^ y])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
-            self.assertTrue(fn(a, b) == (a ^ b), (a, b))
+            assert fn(a, b) == (a ^ b), (a, b)
 
     def test_and(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [and_(x, y)])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
-            self.assertTrue(fn(a, b) == (a & b), (a, b))
+            assert fn(a, b) == (a & b), (a, b)
 
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x & y])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
-            self.assertTrue(fn(a, b) == (a & b), (a, b))
+            assert fn(a, b) == (a & b), (a, b)
 
     def test_not(self):
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [invert(x)])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
-            self.assertTrue(fn(a, b) == ~a, (a,))
+            assert fn(a, b) == ~a, (a,)
 
         x, y, z = ints('xyz')
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [~x])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
-            self.assertTrue(fn(a, b) == ~a, (a,))
+            assert fn(a, b) == ~a, (a,)
 
 
 # This class does not inherit from unittest.TestCase, because it would
@@ -380,7 +380,7 @@ class test_upgrade_to_float(object):
             yield test
 
 
-class test_complex_mod(unittest.TestCase):
+class test_complex_mod():
     # Make sure % fails on complex numbers.
 
     def test_fail(self):
@@ -393,7 +393,7 @@ class test_complex_mod(unittest.TestCase):
             pass
 
 
-class test_div(unittest.TestCase):
+class test_div():
     def test_0(self):
         a = int8()
         b = int32()

@@ -20,7 +20,7 @@ from theano.tensor.slinalg import (
     Eigvalsh, EigvalshGrad, eigvalsh, expm, kron)
 from theano.tests.unittest_tools import attr
 
-from nose.plugins.skip import SkipTest
+import pytest
 from nose.tools import assert_raises
 
 try:
@@ -119,7 +119,7 @@ def test_cholesky_grad_indef():
     assert np.all(np.isnan(chol_f(matrix)))
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_cholesky_and_cholesky_grad_shape():
     if not imported_scipy:
         pytest.skip("Scipy needed for the Cholesky op.")

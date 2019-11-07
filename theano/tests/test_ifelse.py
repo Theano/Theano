@@ -5,7 +5,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 import numpy as np
-from nose.plugins.skip import SkipTest
+import pytest
 from six.moves import reduce
 
 import theano

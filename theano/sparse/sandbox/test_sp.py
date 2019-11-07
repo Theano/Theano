@@ -24,7 +24,7 @@ from theano.tests.unittest_tools import attr
 
 
 class TestSP(unittest.TestCase):
-    @attr('slow')
+    @pytest.mark.slow
     def test_convolution(self):
 #        print '\n\n*************************************************'
 #        print '           TEST CONVOLUTION'

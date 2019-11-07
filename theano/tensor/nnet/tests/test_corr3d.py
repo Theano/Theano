@@ -1,9 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
-from nose.tools import assert_equals
-from parameterized import parameterized
+import pytest
 
 import numpy as np
 from six import integer_types
@@ -152,7 +149,7 @@ class TestCorr3D(utt.InferShapeTester):
             utt.verify_grad(sym_Corr3dMM, [orig_image_data, filter_data],
                             mode=self.mode)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_basic(self):
         # Tests that basic correlations work for odd and even
         # dimensions of image and filter shapes, as well as rectangular
@@ -179,7 +176,7 @@ class TestCorr3D(utt.InferShapeTester):
         self.validate((3, 2, 3, 3, 3), (1, 2, 3, 3, 3), (1, 1, 1))
         self.validate((3, 2, 3, 3, 3), (1, 2, 3, 3, 3), 1)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_subsample(self):
         # Tests correlation where subsampling != (1,1,1)
         self.validate((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'valid', subsample=(2, 2, 2))
@@ -201,7 +198,8 @@ class TestCorr3D(utt.InferShapeTester):
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3))
 
     # Tests correlation where filter dilation != (1,1,1)
-    @parameterized.expand([
+    @pytest.mark.parametrize("image_shape, filter_shape, border_mode, filter_dilation",
+        [
         ((3, 2, 7, 5, 5), (2, 2, 2, 3, 3), 'valid', (2, 2, 2)),
         ((3, 2, 14, 10, 10), (2, 2, 2, 3, 3), 'valid', (3, 1, 1)),
         ((1, 1, 14, 14, 14), (1, 1, 3, 3, 3), 'valid', (2, 3, 3)),
@@ -221,10 +219,9 @@ class TestCorr3D(utt.InferShapeTester):
     def test_filter_dilation_subsample(self):
         self.validate((1, 1, 6, 6, 6), (1, 1, 3, 3, 3), 1, subsample=(3, 3, 3), filter_dilation=(2, 2, 2))
 
-    @parameterized.expand([('valid',), ('full',), ('half',), ((1, 1, 1),),
-                           ((2, 1, 1),), ((1, 2, 1),), ((1, 1, 2),),
-                           ((3, 3, 3),), (1,)])
-#    @attr('slow')
+    @pytest.mark.parametrize("border_mode", ['valid', 'full', 'half', (1, 1, 1),
+                                             (2, 1, 1), (1, 2, 1), (1, 1, 2),
+                                             (3, 3, 3), 1])
     def test_shape_Constant_tensor(self, border_mode):
         # Tests correlation where the {image,filter}_shape is a Constant tensor
         as_t = T.as_tensor_variable
@@ -240,9 +237,8 @@ class TestCorr3D(utt.InferShapeTester):
 
     def test_invalid_filter_shape(self):
         # Tests scenario where filter_shape[1] != input_shape[1]
-        self.assertRaises(ValueError, self.validate,
-                          (3, 2, 8, 8, 8), (4, 3, 5, 5, 8),
-                          'valid')
+        with pytest.raises(ValueError):
+            self.validate((3, 2, 8, 8, 8), (4, 3, 5, 5, 8), 'valid')
 
     def test_full_mode(self):
         # Tests basic correlation in full mode and case where filter
@@ -251,18 +247,19 @@ class TestCorr3D(utt.InferShapeTester):
 
         def f():
             self.validate((3, 2, 5, 5, 5), (4, 2, 8, 8, 8), 'valid')
-        self.assertRaises(Exception, f)
+        with pytest.raises(Exception):
+            f()
 
     def test_wrong_input(self):
         # Make sure errors are raised when image and kernel are not 5D tensors
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8, 8), (4, 2, 5, 5, 5),
-                          'valid', input=T.dmatrix())
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8, 8), (4, 2, 5, 5, 5),
-                          'valid', filters=T.dvector())
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8, 8), (4, 2, 5, 5, 5),
-                          'valid', input=T.dtensor3())
-        self.assertRaises(Exception, self.validate, (3, 2, 8, 8, 8), (4, 2, 5, 5, 5),
-                          'valid', input=T.dtensor4())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8, 8), (4, 2, 5, 5, 5), 'valid', input=T.dmatrix())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8, 8), (4, 2, 5, 5, 5), 'valid', input=T.vector())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8, 8), (4, 2, 5, 5, 5), 'valid', input=T.dtensor3())
+        with pytest.raises(Exception):
+            self.validate((3, 2, 8, 8, 8), (4, 2, 5, 5, 5), 'valid', input=T.dtensor4())
 
     def test_dtype_upcast(self):
         # Checks dtype upcast for Corr3dMM methods.
@@ -289,9 +286,9 @@ class TestCorr3D(utt.InferShapeTester):
 
                     c_tens = op()(a_tens, b_tens)
                     f = theano.function([a_tens, b_tens], c_tens, mode=self.mode)
-                    assert_equals(f(a_tens_val, b_tens_val).dtype, c_dtype)
+                    assert f(a_tens_val, b_tens_val).dtype == c_dtype
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_infer_shape_forward(self):
         if theano.config.mode == "FAST_COMPILE":
             pytest.skip("Corr3dMM don't work in FAST_COMPILE")
@@ -324,7 +321,7 @@ class TestCorr3D(utt.InferShapeTester):
                                             [adtens_val, bdtens_val], corr3dMM,
                                             warn=False)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_infer_shape_gradW(self):
         if theano.config.mode == "FAST_COMPILE":
             pytest.skip("Corr3dMM don't work in FAST_COMPILE")
@@ -365,7 +362,7 @@ class TestCorr3D(utt.InferShapeTester):
                                             [adtens_val, cdtens_val], gradW,
                                             warn=False)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_infer_shape_gradI(self):
         if theano.config.mode == "FAST_COMPILE":
             pytest.skip("Corr3dMM don't work in FAST_COMPILE")
