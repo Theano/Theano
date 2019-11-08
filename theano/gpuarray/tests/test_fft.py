@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 import numpy as np
+import pytest
 
 import theano
 import theano.tensor as T
@@ -24,7 +24,7 @@ if not pycuda_available:  # noqa
 N = 32
 
 
-class TestFFT(unittest.TestCase):
+class TestFFT():
 
     def test_1Dfft(self):
         inputs_val = np.random.random((1, N)).astype('float32')
@@ -106,9 +106,9 @@ class TestFFT(unittest.TestCase):
         inputs_val = np.random.random((1, N)).astype('float64')
         inputs = theano.shared(inputs_val)
 
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             theano.gpuarray.fft.curfft(inputs)
-        with self.assertRaises(AssertionError):
+        with pytest.raises(AssertionError):
             theano.gpuarray.fft.cuirfft(inputs)
 
     def test_norm(self):
@@ -245,10 +245,13 @@ class TestFFT(unittest.TestCase):
         inputs_val = np.random.random((1, N)).astype('float32')
         inputs = theano.shared(inputs_val)
 
-        self.assertRaises(ValueError, theano.gpuarray.fft.curfft, inputs, norm=123)
+        with pytest.raises(ValueError):
+            theano.gpuarray.fft.curfft(inputs, norm=123)
 
         inputs_val = np.random.random((1, N // 2 + 1, 2)).astype('float32')
         inputs = theano.shared(inputs_val)
 
-        self.assertRaises(ValueError, theano.gpuarray.fft.cuirfft, inputs, norm=123)
-        self.assertRaises(ValueError, theano.gpuarray.fft.cuirfft, inputs, is_odd=123)
+        with pytest.raises(ValueError):
+            theano.gpuarray.fft.cuirfft(inputs, norm=123)
+        with pytest.raises(ValueError):
+            theano.gpuarray.fft.cuirfft(inputs, is_odd=123)

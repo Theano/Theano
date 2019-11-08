@@ -1,15 +1,15 @@
 from __future__ import absolute_import, print_function, division
-import unittest
-
+import pytest
 import theano
 from theano.updates import OrderedUpdates
 import theano.tensor as T
 
 
-class test_ifelse(unittest.TestCase):
+class test_ifelse():
 
     def test_updates_init(self):
-        self.assertRaises(TypeError, OrderedUpdates, dict(d=3))
+        with pytest.raises(TypeError):
+            OrderedUpdates(dict(d=3))
 
         sv = theano.shared('asdf')
         OrderedUpdates({sv: 3})
@@ -19,8 +19,10 @@ class test_ifelse(unittest.TestCase):
         up = OrderedUpdates()
 
         # keys have to be SharedVariables
-        self.assertRaises(TypeError, up.__setitem__, 5, 7)
-        self.assertRaises(TypeError, up.__setitem__, T.vector(), 7)
+        with pytest.raises(TypeError):
+            up.__setitem__(5, 7)
+        with pytest.raises(TypeError):
+            up.__setitem__(T.vector(), 7)
 
         up[theano.shared(88)] = 7
 

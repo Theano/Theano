@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 from copy import deepcopy
-import unittest
 
 import numpy as np
 
@@ -87,7 +86,7 @@ def FunctionGraph(inputs, outputs):
     return e
 
 
-class TestPerformLinker(unittest.TestCase):
+class TestPerformLinker():
     def test_thunk(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
@@ -138,7 +137,7 @@ def wrap_linker(fgraph, linkers, wrapper):
     return lnk
 
 
-class TestWrapLinker(unittest.TestCase):
+class TestWrapLinker():
     def test_0(self):
         nodes = []
 

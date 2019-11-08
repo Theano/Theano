@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 import numpy as np
 
 import theano
@@ -15,7 +14,7 @@ from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv_noOptim, Te
 from theano.tensor.nnet.tests.test_abstract_conv import TestAsymmetricPadding, TestCausalConv
 
 
-class TestCorrMM(unittest.TestCase):
+class TestCorrMM():
 
     def run_conv_valid(self, inputs_shape, filters_shape,
                        border_mode='valid',

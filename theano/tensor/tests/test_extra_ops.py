@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 
 import numpy as np
+import pytest
 
 import theano
 from theano.tests import unittest_tools as utt
@@ -16,7 +17,6 @@ from theano.tensor.extra_ops import (SearchsortedOp, searchsorted,
                                      ravel_multi_index, RavelMultiIndex)
 from theano import tensor as T
 from theano import config, tensor, function
-from theano.tests.unittest_tools import attr
 
 
 def test_cpu_contiguous():
@@ -64,17 +64,20 @@ class TestSearchsortedOp(utt.InferShapeTester):
         assert np.allclose(sa.searchsorted(self.b, side='right'), f(sa, self.b))
 
     def test_searchsortedOp_wrong_side_kwd(self):
-        self.assertRaises(ValueError, searchsorted, self.x, self.v, side='asdfa')
+        with pytest.raises(ValueError):
+            searchsorted(self.x, self.v, side='asdfa')
 
     def test_searchsortedOp_on_no_1d_inp(self):
         no_1d = T.dmatrix('no_1d')
-        self.assertRaises(ValueError, searchsorted, no_1d, self.v)
-        self.assertRaises(ValueError, searchsorted, self.x, self.v, sorter=no_1d)
+        with pytest.raises(ValueError):
+            searchsorted(no_1d, self.v)
+        with pytest.raises(ValueError):
+            searchsorted(self.x, self.v, sorter=no_1d)
 
     def test_searchsortedOp_on_float_sorter(self):
         sorter = T.vector('sorter', dtype="float32")
-        self.assertRaises(TypeError, searchsorted,
-                          self.x, self.v, sorter=sorter)
+        with pytest.raises(TypeError):
+            searchsorted(self.x, self.v, sorter=sorter)
 
     def test_searchsortedOp_on_int_sorter(self):
         compatible_types = ('int8', 'int16', 'int32')
@@ -133,10 +136,14 @@ class TestCumOp(utt.InferShapeTester):
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
         # Test axis out of bounds
-        self.assertRaises(ValueError, cumsum, x, axis=3)
-        self.assertRaises(ValueError, cumsum, x, axis=-4)
-        self.assertRaises(ValueError, cumprod, x, axis=3)
-        self.assertRaises(ValueError, cumprod, x, axis=-4)
+        with pytest.raises(ValueError):
+            cumsum(x, axis=3)
+        with pytest.raises(ValueError):
+            cumsum(x, axis=-4)
+        with pytest.raises(ValueError):
+            cumprod(x, axis=3)
+        with pytest.raises(ValueError):
+            cumprod(x, axis=-4)
 
         f = theano.function([x], [cumsum(x), cumprod(x)])
         s, p = f(a)
@@ -214,7 +221,8 @@ class TestBinCount(utt.InferShapeTester):
             if not dtype.startswith('u'):
                 a[0] = -1
                 f5 = theano.function([x], bincount(x, assert_nonneg=True))
-                self.assertRaises(AssertionError, f5, a)
+                with pytest.raises(AssertionError):
+                    f5(a)
 
 
 class TestDiffOp(utt.InferShapeTester):
@@ -391,7 +399,8 @@ class TestRepeatOp(utt.InferShapeTester):
                     if (dtype == 'uint64' or
                             (dtype in self.numpy_unsupported_dtypes and
                                 r_var.ndim == 1)):
-                        self.assertRaises(TypeError, repeat, x, r_var, axis=axis)
+                                with pytest.raises(TypeError):
+                                    repeat(x, r_var, axis=axis)
                     else:
                         f = theano.function([x, r_var],
                                             repeat(x, r_var, axis=axis))
@@ -407,8 +416,8 @@ class TestRepeatOp(utt.InferShapeTester):
                                 1, 6, size=(10,)).astype(dtype)
 
                         if dtype in self.numpy_unsupported_dtypes and r_var.ndim == 1:
-                            self.assertRaises(TypeError,
-                                              repeat, x, r_var, axis=axis)
+                            with pytest.raises(TypeError):
+                                repeat(x, r_var, axis=axis)
                         else:
                             f = theano.function([x, r_var],
                                                 repeat(x, r_var, axis=axis))
@@ -449,7 +458,8 @@ class TestRepeatOp(utt.InferShapeTester):
                     r = np.asarray(3, dtype=dtype)
                     if dtype in self.numpy_unsupported_dtypes:
                         r_var = T.vector(dtype=dtype)
-                        self.assertRaises(TypeError, repeat, x, r_var)
+                        with pytest.raises(TypeError):
+                            repeat(x, r_var)
                     else:
                         self._compile_and_check([x, r_var],
                                                 [RepeatOp(axis=axis)(x, r_var)],
@@ -483,11 +493,11 @@ class TestRepeatOp(utt.InferShapeTester):
     def test_broadcastable(self):
         x = T.TensorType(config.floatX, [False, True, False])()
         r = RepeatOp(axis=1)(x, 2)
-        self.assertEqual(r.broadcastable, (False, False, False))
+        assert r.broadcastable == (False, False, False)
         r = RepeatOp(axis=1)(x, 1)
-        self.assertEqual(r.broadcastable, (False, True, False))
+        assert r.broadcastable == (False, True, False)
         r = RepeatOp(axis=0)(x, 2)
-        self.assertEqual(r.broadcastable, (False, True, False))
+        assert r.broadcastable == (False, True, False)
 
 
 class TestBartlett(utt.InferShapeTester):
@@ -789,12 +799,13 @@ class test_Unique_axis(utt.InferShapeTester):
         if self.expect_success:
             for args, kwargs in self.ops_pars:
                 op = self.op_class(*args, **kwargs)
-                self.assertTrue(isinstance(op, self.op_class))
+                assert isinstance(op, self.op_class)
         else:
             for args, kwargs in self.ops_pars:
                 def func():
                     return self.op_class(*args, **kwargs)
-                self.assertRaises(RuntimeError, func)
+                with pytest.raises(RuntimeError):
+                    func()
 
     def test_basic_vector(self):
         if not self.expect_success:
@@ -939,16 +950,22 @@ class test_unravel_index(utt.InferShapeTester):
                 check((3, 4, 5), index_ndim, order)
 
         # must specify ndim if length of dims is not fixed
-        self.assertRaises(ValueError, unravel_index, theano.tensor.ivector(), theano.tensor.ivector())
+        with pytest.raises(ValueError):
+            unravel_index(theano.tensor.ivector(), theano.tensor.ivector())
 
         # must provide integers
-        self.assertRaises(TypeError, unravel_index, theano.tensor.fvector(), (3, 4))
-        self.assertRaises(TypeError, unravel_index, (3, 4), (3.4, 3.2))
-        self.assertRaises(ValueError, unravel_index, (3, 4), (3, 3), ndim=5.4)
+        with pytest.raises(TypeError):
+            unravel_index(theano.tensor.fvector(), (3, 4))
+        with pytest.raises(TypeError):
+            unravel_index((3, 4), (3.4, 3.2))
+        with pytest.raises(ValueError):
+            unravel_index((3, 4), (3, 3), ndim=5.4)
 
         # dims must be a 1D sequence
-        self.assertRaises(TypeError, unravel_index, (3, 4), 3)
-        self.assertRaises(TypeError, unravel_index, (3, 4), ((3, 4),))
+        with pytest.raises(TypeError):
+            unravel_index((3, 4), 3)
+        with pytest.raises(TypeError):
+            unravel_index((3, 4), ((3, 4),))
 
 
 class test_ravel_multi_index(utt.InferShapeTester):
@@ -1000,8 +1017,11 @@ class test_ravel_multi_index(utt.InferShapeTester):
                     check((3, 4, 5), index_ndim, mode, order)
 
         # must provide integers
-        self.assertRaises(TypeError, ravel_multi_index, (theano.tensor.fvector(), theano.tensor.ivector()), (3, 4))
-        self.assertRaises(TypeError, ravel_multi_index, ((3, 4), theano.tensor.ivector()), (3.4, 3.2))
+        with pytest.raises(TypeError):
+            ravel_multi_index((theano.tensor.fvector(), theano.tensor.ivector()), (3, 4))
+        with pytest.raises(TypeError):
+            ravel_multi_index(((3, 4), theano.tensor.ivector()), (3.4, 3.2))
 
         # dims must be a 1D sequence
-        self.assertRaises(TypeError, ravel_multi_index, ((3, 4),), ((3, 4),))
+        with pytest.raises(TypeError):
+            ravel_multi_index(((3, 4),), ((3, 4),))

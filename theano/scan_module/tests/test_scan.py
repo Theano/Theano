@@ -5,7 +5,6 @@ import shutil
 import sys
 from tempfile import mkdtemp
 import time
-import unittest
 import copy
 from collections import OrderedDict
 
@@ -13,7 +12,6 @@ import six.moves.cPickle as pickle
 from six.moves import xrange
 import numpy as np
 import pytest
-from numpy.testing import dec
 
 import theano
 import theano.sandbox.rng_mrg
@@ -23,7 +21,6 @@ from theano.tests import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
 from theano.compat import PY3
-from theano.tests.unittest_tools import attr
 
 
 '''
@@ -214,18 +211,17 @@ def scan_nodes_from_fct(fct):
     return scan_nodes
 
 
-class T_Scan(unittest.TestCase):
+class Test_Scan():
 
     def setup_method(self):
         utt.seed_rng()
-        super(T_Scan, self).setup_method()
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
-    @dec.skipif(
+    @pytest.mark.skipif(
         isinstance(theano.compile.mode.get_default_mode(),
                    theano.compile.debugmode.DebugMode),
-        ("This test fails in DebugMode, because it is not yet picklable."))
+        reason="This test fails in DebugMode, because it is not yet picklable.")
     def test_pickling(self):
         def f_pow2(x_tm1):
             return 2 * x_tm1
@@ -2786,17 +2782,17 @@ for{cpu,scan_fn}.2 [id H] ''
         go1 = theano.tensor.grad(o1.mean(), wrt=x)
         f = theano.function([x], go1, updates=updates,
                             allow_input_downcast=True, mode=mode_with_opt)
-        self.assertTrue(np.allclose(f([1, 2, 3]), 2. / 3))
+        assert np.allclose(f([1, 2, 3]), 2. / 3)
 
         topo = f.maker.fgraph.toposort()
         # this new assert is here to test if scan_merging works ..
         nb_scan = len([n for n in topo
             if isinstance(n.op, theano.scan_module.scan_op.Scan)])
-        self.assertTrue(nb_scan == 1)
+        assert nb_scan == 1
         nb_shape_i = len([n for n in topo
             if isinstance(n.op, theano.tensor.opt.Shape_i)])
         if theano.config.mode != 'FAST_COMPILE':
-            self.assertTrue(nb_shape_i == 1)
+            assert nb_shape_i == 1
 
     def test_merge(self):
         x = theano.tensor.vector()
@@ -2813,7 +2809,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 2)
+        assert len(scans) == 2
 
         sx, upx = theano.scan(sum, sequences=[x], n_steps=2)
         sy, upy = theano.scan(sum, sequences=[y], n_steps=3)
@@ -2823,7 +2819,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 2)
+        assert len(scans) == 2
 
         sx, upx = theano.scan(sum, sequences=[x], n_steps=4)
         sy, upy = theano.scan(sum, sequences=[y], n_steps=4)
@@ -2833,7 +2829,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 1)
+        assert len(scans) == 1
 
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x])
@@ -2843,7 +2839,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 1)
+        assert len(scans) == 1
 
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x], mode='FAST_COMPILE')
@@ -2853,7 +2849,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 1)
+        assert len(scans) == 1
 
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x], truncate_gradient=1)
@@ -2863,7 +2859,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 2)
+        assert len(scans) == 2
 
     def test_merge_3scans(self):
         # This test checks a case where we have 3 scans, two of them
@@ -2887,7 +2883,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 2)
+        assert len(scans) == 2
 
         rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.uniform(size=(4,)).astype(theano.config.floatX)
@@ -3532,10 +3528,10 @@ for{cpu,scan_fn}.2 [id H] ''
         # One scan node gets optimnized out
         assert len(lssc) == 1
 
-    @dec.skipif(True,
-                        ("This test fails because not typed outputs_info "
+    @pytest.mark.skipif(True,
+                        reason="This test fails because not typed outputs_info "
                          "are always gived the smallest dtype. There is "
-                         "no upcast of outputs_info in scan for now."))
+                         "no upcast of outputs_info in scan for now.")
     def test_outputs_info_not_typed(self):
         # This was ticket 766
 
@@ -4276,9 +4272,11 @@ for{cpu,scan_fn}.2 [id H] ''
 
         gx0 = tensor.grad(cost, x0)  # defined
         gy0 = tensor.grad(cost, y0)  # defined
-        self.assertRaises(ValueError, tensor.grad, cost, z0)
+        with pytest.raises(ValueError):
+            tensor.grad(cost, z0)
         cost = x.sum()
-        self.assertRaises(ValueError, tensor.grad, cost, y0)
+        with pytest.raises(ValueError):
+            tensor.grad(cost, y0)
 
     def test_disconnected_gradient(self):
         v = tensor.vector('v')
@@ -5047,7 +5045,7 @@ class ScanGpuTests:
         utt.assert_allclose(output, expected_output)
 
 
-class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
+class Test_Scan_Gpuarray(ScanGpuTests):
     """
     This class takes the gpu tests for scan that are defined in
     class ScanGpuTests and runs them using the gpuarray backend.
@@ -5064,7 +5062,6 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
 
         self.mode_with_gpu = mode_with_opt.including('gpuarray', 'scan')
         self.mode_with_gpu_nodebug = mode_nodebug.including('gpuarray', 'scan')
-        super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
 
     def setup_method(self):
         # Make sure to activate the new backend, if possible otherwise
@@ -5075,7 +5072,6 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
             pytest.skip('Optional package pygpu disabled')
 
         utt.seed_rng()
-        super(T_Scan_Gpuarray, self).setup_method()
 
     def is_scan_on_gpu(self, node):
         return node.op.info.get('gpua', False)
@@ -5612,7 +5608,7 @@ def test_default_value_broadcasted():
     f(np.random.rand(10, in_size).astype(X.dtype))
 
 
-class TestInconsistentBroadcast(unittest.TestCase):
+class TestInconsistentBroadcast():
 
     def test_raise_error(self):
         x = tensor.tensor3()
@@ -5621,7 +5617,7 @@ class TestInconsistentBroadcast(unittest.TestCase):
                                  sequences=x,
                                  outputs_info=[dict(initial=initial_x)])
         # Error, because the broadcast patterns are inconsistent.
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             gs = tensor.grad(y.sum(), x)
 
         # No error here, because the broadcast patterns are consistent.
@@ -5632,9 +5628,9 @@ class TestInconsistentBroadcast(unittest.TestCase):
         gs = tensor.grad(y.sum(), x)
 
 
-class TestMissingInputError(unittest.TestCase):
+class TestMissingInputError():
 
-    @raises(theano.gof.fg.MissingInputError)
+    @pytest.mark.xfail(raises=theano.gof.fg.MissingInputError)
     def test_raise_error(self):
         c = theano.shared(0.)
         inc = tensor.scalar('inc')
@@ -5646,7 +5642,7 @@ class TestMissingInputError(unittest.TestCase):
         func = theano.function(inputs=[inc], outputs=[], updates=updates)
 
 
-class TestGradUntil(unittest.TestCase):
+class TestGradUntil():
 
     def setup_method(self):
         self.x = tensor.vector(name='x')

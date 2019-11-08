@@ -3,14 +3,13 @@ Test compilation modes
 """
 from __future__ import absolute_import, print_function, division
 import copy
-import unittest
 
 import theano
 import theano.tensor as T
 from theano.compile import Mode
 
 
-class T_bunch_of_modes(unittest.TestCase):
+class Test_bunch_of_modes():
 
     def test1(self):
         # this is a quick test after the LazyLinker branch merge
@@ -45,7 +44,7 @@ class T_bunch_of_modes(unittest.TestCase):
         assert 4 == len(set(linker_classes_involved))
 
 
-class T_old_problem(unittest.TestCase):
+class Test_old_problem():
     def test_1(self):
         # Then, build a mode with the same linker, and a modified optimizer
         default_mode = theano.compile.mode.get_default_mode()
@@ -59,6 +58,3 @@ class T_old_problem(unittest.TestCase):
         linker = theano.compile.mode.get_default_mode().linker
         assert not hasattr(linker, "fgraph") or linker.fgraph is None
 
-
-if __name__ == '__main__':
-    unittest.main()

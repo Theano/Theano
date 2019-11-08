@@ -2853,7 +2853,7 @@ ClipTester = makeTester(
     )
 
 
-class T_Clip():
+class Test_Clip():
     def test_complex_value(self):
         for dtype in ['complex64', 'complex128']:
             a = tensor.vector(dtype=dtype)
@@ -3077,7 +3077,7 @@ def test_isnan():
         f([[0, 1, 2]])
 
 
-class T_Shape():
+class Test_Shape():
     def test_basic0(self):
         s = shape(np.ones((5, 3)))
         assert (eval_outputs([s]) == [5, 3]).all()
@@ -3091,7 +3091,7 @@ class T_Shape():
         assert (eval_outputs([s]) == [5, 3, 10]).all()
 
 
-class T_max_and_argmax():
+class Test_max_and_argmax():
     def setup_method(self):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
@@ -3323,7 +3323,7 @@ class T_max_and_argmax():
         assert argmax.eval(), 2
 
 
-class T_argmin_argmax():
+class Test_argmin_argmax():
     def setup_method(self):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
@@ -3477,20 +3477,20 @@ class T_argmin_argmax():
             data = np.array([itype.min + 3, itype.min, itype.max - 5, itype.max], dtype)
             n = as_tensor_variable(data)
             i = eval_outputs(argmin(n))
-            assert i, 1
+            assert i == 1
             i = eval_outputs(argmax(n))
-            assert i, 3
+            assert i == 3
 
     def test_bool(self):
         data = np.array([True, False], 'bool')
         n = as_tensor_variable(data)
         i = eval_outputs(argmin(n))
-        assert i, 1
+        assert i == 1
         i = eval_outputs(argmax(n))
-        assert i, 0
+        assert i == 0
 
 
-class T_min_max():
+class Test_min_max():
     def setup_method(self):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
@@ -3679,22 +3679,22 @@ class T_min_max():
             itype = np.iinfo(dtype)
             data = np.array([itype.min + 3, itype.min, itype.max - 5, itype.max], dtype)
             n = as_tensor_variable(data)
-            assert min(n).dtype, dtype
+            assert min(n).dtype == dtype
             i = eval_outputs(min(n))
-            assert i, itype.min
-            assert max(n).dtype, dtype
+            assert i == itype.min
+            assert max(n).dtype == dtype
             i = eval_outputs(max(n))
-            assert i, itype.max
+            assert i == itype.max
 
     def test_bool(self):
         data = np.array([True, False], 'bool')
         n = as_tensor_variable(data)
-        assert min(n).dtype, 'bool'
+        assert min(n).dtype == 'bool'
         i = eval_outputs(min(n))
-        assert i, False
-        assert max(n).dtype, 'bool'
+        assert i == False
+        assert max(n).dtype == 'bool'
         i = eval_outputs(max(n))
-        assert i, True
+        assert i == True
 
 
 def test_basic_allclose():
@@ -3702,7 +3702,7 @@ def test_basic_allclose():
     assert tensor.basic._allclose(-0.311023883434, -0.311022856884)
 
 
-class T_outer():
+class Test_outer():
     def test_outer(self):
         for m in range(4):
             for n in range(4):
@@ -3736,7 +3736,7 @@ class T_outer():
             utt.verify_grad(tensor.outer, [data0, data1])
 
 
-class T_GetVectorLength():
+class Test_GetVectorLength():
     def test_get_vector_length(self):
         x = theano.shared(np.zeros((2, 3, 4, 5)))
         assert len(list(x.shape)) == 4
@@ -3756,7 +3756,7 @@ class T_GetVectorLength():
         assert len(list(x.shape[1:-1])) == 2
 
 
-class T_Join_and_Split():
+class Test_Join_and_Split():
     # Split is tested by each verify_grad method.
     def setup_method(self):
         Join.debug = False
@@ -4840,7 +4840,7 @@ class test_bitwise():
         assert np.all(fn(5, 6, 1) == np.eye(5, 6, 1))
 
 
-class T_add():
+class Test_add():
     def setup_method(self):
         utt.seed_rng()
 
@@ -4871,20 +4871,20 @@ class T_add():
         utt.verify_grad(add, [rand(3, 5), rand(3, 1)])
 
 
-class T_ceil():
+class Test_ceil():
     def test_complex(self):
         with pytest.raises(TypeError):
             tensor.ceil(tensor.zvector())
 
 
-class T_exp():
+class Test_exp():
     def test_grad_0(self):
         utt.verify_grad(exp, [
             np.asarray([[1.5089518, 1.48439076, -4.7820262],
                         [2.04832468, 0.50791564, -1.58892269]])])
 
     fails = (theano.config.cycle_detection == 'fast' and theano.config.mode != 'FAST_COMPILE')
-    @pytest.mark.xfail(fails)
+    @pytest.mark.xfail(fails, reason='cycle detection is fast and mode is FAST_COMPILE')
     def test_grad_1(self):
         utt.verify_grad(inplace.exp_inplace, [
             np.asarray([[1.5089518, 1.48439076, -4.7820262],
@@ -4905,7 +4905,7 @@ class T_exp():
         assert np.allclose(exp_3, np.exp(3 + 2j))
 
 
-class T_divimpl():
+class Test_divimpl():
     def test_impls(self):
         i = iscalar()
         ii = lscalar()
@@ -4929,7 +4929,7 @@ class T_divimpl():
                            ((5 + 3j) / 5.))
 
 
-class T_mean():
+class Test_mean():
     def test_regression_mean_of_ndarray_failure(self):
         try:
             tensor.mean(np.zeros(1))
@@ -5299,7 +5299,7 @@ class t_dot():
                             assert g.broadcastable == y.broadcastable
 
 
-class T_tensorfromscalar():
+class Test_tensorfromscalar():
     def test0(self):
         s = scal.constant(56)
         t = tensor_from_scalar(s)
@@ -5349,7 +5349,7 @@ class T_tensorfromscalar():
         assert eval_outputs([g]) == 1.
 
 
-class T_scalarfromtensor():
+class Test_scalarfromtensor():
     def test0(self):
         tt = constant(56)  # scal.constant(56)
         ss = scalar_from_tensor(tt)
@@ -5360,9 +5360,9 @@ class T_scalarfromtensor():
 
         assert v == 56
         if config.cast_policy == 'custom':
-            assert isinstance(v)
+            assert isinstance(v, np.int8)
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
-            assert isinstance(v)
+            assert isinstance(v, str(np.asarray(56).dtype))
         else:
             raise NotImplementedError(config.cast_policy)
         assert v.shape == ()
@@ -5372,7 +5372,7 @@ class T_scalarfromtensor():
         fff = function([tt], ss)
         v = fff(np.asarray(5))
         assert v == 5
-        assert isinstance(v)
+        assert isinstance(v, np.int64)
         assert v.shape == ()
 
 
@@ -5468,7 +5468,7 @@ class test_grad():
             grad(m, m)
 
 
-class T_op_cache():
+class Test_op_cache():
     def setup_method(self):
         utt.seed_rng()
 
@@ -5484,7 +5484,7 @@ class T_op_cache():
         assert np.all(fn_py(a) == fn_c_or_py(a))
 
 
-class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
+class Test_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
     def __init__(self, name, shared=tensor._shared, op=Reshape, mode=None,
                  ignore_topo=(DeepCopyOp, opt.MakeVector,
                               opt.Shape_i, DimShuffle, theano.tensor.Elemwise)):
@@ -5493,7 +5493,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         # The tag canonicalize is needed for the shape test in FAST_COMPILE
         self.mode = mode
         self.ignore_topo = ignore_topo
-        super(T_reshape, self).__init__(name)
+        super(Test_reshape, self).__init__(name)
 
     def function(self, inputs, outputs, ignore_empty=False):
         f = function(inputs, outputs, mode=self.mode)
@@ -6779,7 +6779,7 @@ def test_var():
     assert theano.tensor.vector(dtype='float16').var().dtype == 'float16'
 
 
-class T_sum():
+class Test_sum():
     def test_sum_overflow(self):
         # Ensure that overflow errors are a little bit harder to get
         a = Tensor(dtype='int8', broadcastable=[False])()
@@ -7113,7 +7113,7 @@ class test_arithmetic_cast():
                     category=DeprecationWarning)
 
 
-class T_long_tensor():
+class Test_long_tensor():
     def test_fit_int64(self):
         bitwidth = theano.configdefaults.python_int_bitwidth()
         for exponent in xrange(bitwidth):
@@ -7360,7 +7360,7 @@ def test_dimshuffle_duplicate():
     assert success
 
 
-class T_get_scalar_constant_value():
+class Test_get_scalar_constant_value():
     def test_get_scalar_constant_value(self):
         a = tensor.stack([1, 2, 3])
         assert get_scalar_constant_value(a[0]) == 1
@@ -7369,8 +7369,8 @@ class T_get_scalar_constant_value():
 
         b = tensor.iscalar()
         a = tensor.stack([b, 2, 3])
-        with pytest.raises(tensor):
-            asic.NotScalarConstantError(get_scalar_constant_value, a[0])
+        with pytest.raises(tensor.basic.NotScalarConstantError):
+            get_scalar_constant_value(a[0])
         assert get_scalar_constant_value(a[1]) == 2
         assert get_scalar_constant_value(a[2]) == 3
 
@@ -7484,7 +7484,7 @@ class T_get_scalar_constant_value():
         assert e == 3, (c, d, e)
 
 
-class T_as_tensor_variable():
+class Test_as_tensor_variable():
     # We test that ticket #649 stay fixed.
     # We should not allow as_tensor_variable to accept True or False
     # But it should upcast an ndarray of bool to uint8
@@ -8637,7 +8637,7 @@ if __name__ == '__main__':
     t.test_infer_shape()
 
 
-class T_swapaxes():
+class Test_swapaxes():
 
     def test_no_dimensional_input(self):
         with pytest.raises(IndexError):
@@ -8674,7 +8674,7 @@ class T_swapaxes():
         assert np.allclose(n_s, t_s)
 
 
-class T_Power():
+class Test_Power():
     def test_numpy_compare(self):
         rng = np.random.RandomState(utt.fetch_seed())
         A = tensor.matrix("A", dtype=theano.config.floatX)
@@ -8702,7 +8702,7 @@ class T_Power():
             f([1, 2, 3, 4])
 
 
-class T_Choose(utt.InferShapeTester):
+class Test_Choose(utt.InferShapeTester):
     op = staticmethod(choose)
     op_class = Choose
     modes = ['raise', 'wrap', 'clip']

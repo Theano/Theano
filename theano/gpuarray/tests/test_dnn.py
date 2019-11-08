@@ -2,7 +2,6 @@ from __future__ import absolute_import, print_function, division
 import logging
 from collections import OrderedDict
 
-from nose.tools import assert_raises
 import numpy as np
 import pytest
 from itertools import product, chain
@@ -196,11 +195,13 @@ def run_dnn_conv_invalid_precision(ndim):
 
     dnn_gradw('float64')
     dnn_gradw('float32')
-    assert_raises(TypeError, dnn_gradw, 'float16')
+    with pytest.raises(TypeError):
+        dnn_gradw('float16')
 
     dnn_gradi('float64')
     dnn_gradi('float32')
-    assert_raises(TypeError, dnn_gradi, 'float16')
+    with pytest.raises(TypeError):
+        dnn_gradi('float16')
 
     for precision in ('float64', 'float32'):
         dnn_conv(precision, 'valid', None)
@@ -209,8 +210,10 @@ def run_dnn_conv_invalid_precision(ndim):
         dnn_conv(precision, 'full', 'forward!')
 
     dnn_conv('float16', 'valid', None)
-    assert_raises(TypeError, dnn_conv, 'float16', 'valid', 'bprop weights')
-    assert_raises(TypeError, dnn_conv, 'float16', 'full', None)
+    with pytest.raises(TypeError):
+        dnn_conv('float16', 'valid', 'bprop weights')
+    with pytest.raises(TypeError):
+        dnn_conv('float16', 'full', None)
     dnn_conv('float16', 'full', 'forward!')
 
 
@@ -2691,12 +2694,16 @@ def test_dnn_spatialtf_invalid_shapes():
     try_theta_shp((3, 2, 3))
 
     # incorrect parameter dimensions
-    assert_raises(RuntimeError, try_theta_shp, (3, 1, 3))
-    assert_raises(RuntimeError, try_theta_shp, (3, 2, 1))
+    with pytest.raises(RuntimeError):
+        try_theta_shp((3, 1, 3))
+    with pytest.raises(RuntimeError):
+        try_theta_shp((3, 2, 1))
 
     # number of rows does not match the number of input rows
-    assert_raises(RuntimeError, try_theta_shp, (1, 2, 3))
-    assert_raises(RuntimeError, try_theta_shp, (4, 2, 3))
+    with pytest.raises(RuntimeError):
+        try_theta_shp((1, 2, 3))
+    with pytest.raises(RuntimeError):
+        try_theta_shp((4, 2, 3))
 
 
 def test_dnn_spatialtf_grad():

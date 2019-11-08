@@ -1,11 +1,9 @@
 from __future__ import absolute_import, print_function, division
 from copy import copy
-import unittest
 import math
 
 import numpy as np
 import pytest
-from nose.tools import raises
 from six.moves import xrange
 import six.moves.cPickle as pickle
 
@@ -19,7 +17,6 @@ from theano.compile.mode import get_default_mode, Mode
 from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
                                     Prod, ProdWithoutZeros)
 from theano.tests import unittest_tools
-from theano.tests.unittest_tools import attr
 import theano.tests.unittest_tools as utt
 
 
@@ -59,20 +56,23 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
         # Test when we drop a axis that is not broadcastable
         ib = [False, True, False]
         x = self.type(self.dtype, ib)('x')
-        self.assertRaises(ValueError, self.op, ib, shuffle)
+        with pytest.raises(ValueError):
+            self.op(ib, shuffle)
 
         # Test when we drop a axis that don't have shape 1
         ib = [True, True, False]
         x = self.type(self.dtype, ib)('x')
         e = self.op(ib, (1, 2))(x)
         f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
-        self.assertRaises(TypeError, f, np.ones((2, 1, 4)))
+        with pytest.raises(TypeError):
+            f(np.ones((2, 1, 4)))
 
         # Test that we can't take a dimensions multiple time
         xsh, shuffle, zsh = ((1, 1, 4), (0, 1, 2, 0), (1, 4))
         ib = [False, True, False]
         x = self.type(self.dtype, ib)('x')
-        self.assertRaises(ValueError, DimShuffle, ib, shuffle)
+        with pytest.raises(ValueError):
+            DimShuffle(ib, shuffle)
 
     def test_perform(self):
         self.with_linker(gof.PerformLinker())
@@ -104,10 +104,11 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
     def test_too_big_rank(self):
         x = self.type(self.dtype, broadcastable=())()
         y = x.dimshuffle(('x',) * (np.MAXDIMS + 1))
-        self.assertRaises(ValueError, y.eval, {x: 0})
+        with pytest.raises(ValueError):
+            y.eval({x: 0})
 
 
-class test_reduce_axes(unittest.TestCase):
+class test_reduce_axes():
 
     def test_sum_axes(self):
         axes = [None, 0, 1, [0, 1], np.array(1),
@@ -152,7 +153,7 @@ class test_reduce_axes(unittest.TestCase):
             x.var(a)
 
 
-class test_Broadcast(unittest.TestCase):
+class test_Broadcast():
     # this is to allow other types to reuse this class to test their ops
     type = TensorType
     op = Elemwise
@@ -237,7 +238,7 @@ class test_Broadcast(unittest.TestCase):
 
             f(xv, yv)
 
-            self.assertTrue((xv == zv).all())
+            assert (xv == zv).all()
             # test Elemwise.infer_shape
             # the Shape op don't implement c_code!
             if isinstance(linker, gof.PerformLinker):
@@ -473,16 +474,14 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             else:
                 if test_nan:
                     try:
-                        self.assertTrue(
-                            self.type.values_eq(f(xv), zv),
-                            (f(xv), zv))
+                        assert self.type.values_eq(f(xv), zv), (f(xv), zv)
                     except NotImplementedError:
                         # GpuCAReduce don't implement all cases when size is 0
                         assert xv.size == 0
                 else:
                     try:
                         f_xv = f(xv)
-                        self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
+                        assert (f_xv.shape == zv.shape), (f_xv, zv)
                         utt.assert_allclose(zv, f_xv)
                     except NotImplementedError:
                         # GpuCAReduce don't implement all cases when size is 0
@@ -599,7 +598,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                                     warn=0 not in xsh)
 
 
-class test_Prod(unittest.TestCase):
+class test_Prod():
     def setup_method(self):
         unittest_tools.seed_rng()
 
@@ -714,7 +713,7 @@ class test_Prod(unittest.TestCase):
         fn_a0 = theano.function([x], pwz_a0, mode=self.mode)
         assert np.allclose(fn_a0(x_val), [1, 10, 162])
 
-    @raises(theano.gradient.NullTypeGradError)
+    @pytest.mark.xfail(raises=theano.gradient.NullTypeGradError)
     def test_prod_without_zeros_grad(self):
         x = theano.tensor.dmatrix()
         pwz_a1 = ProdWithoutZeros(axis=0)(x)
@@ -768,7 +767,7 @@ class test_Prod(unittest.TestCase):
         pickle.dumps(o)
 
 
-class test_IsInf_IsNan(unittest.TestCase):
+class test_IsInf_IsNan():
 
     def setup_method(self):
         self.test_vals = [np.array(x, dtype=config.floatX) for x in [
@@ -809,7 +808,7 @@ class test_IsInf_IsNan(unittest.TestCase):
         return self.run_isfunc('isnan')
 
 
-class T_reduce_dtype(unittest.TestCase):
+class Test_reduce_dtype():
     mode = theano.compile.get_default_mode().excluding(
         'local_cut_useless_reduce')
     op = CAReduce
@@ -944,9 +943,8 @@ class T_reduce_dtype(unittest.TestCase):
                         tensor.grad(var.sum(), x,
                                     disconnected_inputs='ignore')
                     else:
-                        self.assertRaises(TypeError,
-                                          getattr(x, method),
-                                          acc_dtype=acc_dtype, axis=axis)
+                        with pytest.raises(TypeError):
+                            getattr(x(method), acc_dtype=acc_dtype, axis=axis)
 
                     idx += 1
 
@@ -966,7 +964,7 @@ class T_reduce_dtype(unittest.TestCase):
             assert np.allclose(s_val, ret), (s_val, ret)
 
 
-class T_mean_dtype(unittest.TestCase):
+class Test_mean_dtype():
     def test_mean_default_dtype(self):
         # Test the default dtype of a mean().
 
@@ -1043,7 +1041,7 @@ class T_mean_dtype(unittest.TestCase):
         assert np.allclose(m_val, 1. / 3)
 
 
-class T_prod_without_zeros_dtype(unittest.TestCase):
+class Test_prod_without_zeros_dtype():
     def test_prod_without_zeros_default_dtype(self):
         # Test the default dtype of a ProdWithoutZeros().
 
@@ -1143,15 +1141,13 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                     data = data.astype(input_dtype)
                     f(data)
                 else:
-                    self.assertRaises(
-                        TypeError,
-                        ProdWithoutZeros(axis=axis, acc_dtype=acc_dtype),
-                        x)
+                    with pytest.raises(TypeError):
+                        ProdWithoutZeros(axis=axis, acc_dtype=acc_dtype)(x)
 
                 idx += 1
 
 
-class TestBitOpReduceGrad(unittest.TestCase):
+class TestBitOpReduceGrad():
     def setup_method(self):
         self.rng = np.random.RandomState(unittest_tools.fetch_seed())
 

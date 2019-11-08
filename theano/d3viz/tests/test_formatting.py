@@ -1,7 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
 import numpy as np
-import unittest
 
 import theano as th
 from theano.d3viz.formatting import PyDotFormatter
@@ -33,7 +32,7 @@ class TestPyDotFormatter():
         expected = 11
         if th.config.mode == "FAST_COMPILE":
             expected = 12
-        self.assertEqual(len(graph.get_nodes()), expected)
+        assert len(graph.get_nodes()) == expected
         nc = self.node_counts(graph)
 
         if th.config.mode == "FAST_COMPILE":

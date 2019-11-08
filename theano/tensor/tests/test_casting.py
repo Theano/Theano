@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 
-import unittest
 from theano import function
 from theano.tensor.basic import (_convert_to_int32, _convert_to_int8,
                                  _convert_to_int16, _convert_to_int64,
@@ -8,7 +7,7 @@ from theano.tensor.basic import (_convert_to_int32, _convert_to_int8,
 from theano.tensor import *
 
 
-class test_casting(unittest.TestCase):
+class test_casting():
     def test_0(self):
         for op_fn in [_convert_to_int32, _convert_to_float32,
                       _convert_to_float64]:
@@ -46,7 +45,7 @@ class test_casting(unittest.TestCase):
                 f = function([compile.In(x, strict=True)], y)
                 a = np.arange(10, dtype=type1)
                 b = f(a)
-                self.assertTrue(np.all(b == np.arange(10, dtype=type2)))
+                assert np.all(b == np.arange(10, dtype=type2))
 
     def test_convert_to_complex(self):
         val64 = np.ones(3, dtype='complex64') + 0.5j

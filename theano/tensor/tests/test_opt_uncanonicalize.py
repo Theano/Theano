@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
 import numpy as np
 
@@ -20,7 +19,7 @@ from theano.tensor.elemwise import CAReduce, Elemwise, DimShuffle
 from theano.tests import unittest_tools as utt
 
 
-class T_max_and_argmax(unittest.TestCase):
+class Test_max_and_argmax():
     def test_optimization(self):
         # If we use only the max output, we should replace this op with
         # a faster one.
@@ -42,7 +41,7 @@ class T_max_and_argmax(unittest.TestCase):
             assert isinstance(topo[0].op, tensor.MaxAndArgmax)
 
 
-class T_min_max(unittest.TestCase):
+class Test_min_max():
     def setup_method(self):
         utt.seed_rng()
         self.mode = theano.compile.mode.get_default_mode().including(

@@ -1,7 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import os
 import shutil
-import unittest
 from tempfile import mkdtemp
 
 import numpy as np
@@ -12,14 +11,14 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.misc.pkl_utils import dump, load, StripPickler
 
 
-class T_dump_load(unittest.TestCase):
+class Test_dump_load():
     def setup_method(self):
         # Work in a temporary directory to avoid cluttering the repository
         self.origdir = os.getcwd()
         self.tmpdir = mkdtemp()
         os.chdir(self.tmpdir)
 
-    def teardown_method((self):
+    def teardown_method(self):
         # Get back to the original dir, and delete the temporary one
         os.chdir(self.origdir)
         if self.tmpdir is not None:
@@ -51,14 +50,14 @@ class T_dump_load(unittest.TestCase):
         assert array == np.array(3)
 
 
-class TestStripPickler(unittest.TestCase):
+class TestStripPickler():
     def setup_method(self):
         # Work in a temporary directory to avoid cluttering the repository
         self.origdir = os.getcwd()
         self.tmpdir = mkdtemp()
         os.chdir(self.tmpdir)
 
-    def teardown_method((self):
+    def teardown_method(self):
         # Get back to the original dir, and delete the temporary one
         os.chdir(self.origdir)
         if self.tmpdir is not None:

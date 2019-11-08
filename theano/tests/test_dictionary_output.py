@@ -1,10 +1,9 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 import theano
 import theano.tensor as T
 
 
-class dictionary_output_checker(unittest.TestCase):
+class dictionary_output_checker():
 
     def test_output_dictionary(self):
         # Tests that theano.function works when outputs is a dictionary

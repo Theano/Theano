@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-from numpy.testing import dec
+import pytest
 
 import theano
 from theano import tensor
@@ -40,7 +40,7 @@ class TestFourier(utt.InferShapeTester):
                                     [np.random.rand(12, 4), 0],
                                     self.op_class)
 
-    @dec.skipif(True, "Complex grads not enabled, see #178")
+    @pytest.mark.skipif(True, reason="Complex grads not enabled, see #178")
     def test_gradient(self):
         def fft_test1(a):
             return self.op(a, None, None)

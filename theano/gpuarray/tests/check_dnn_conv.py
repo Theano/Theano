@@ -19,7 +19,6 @@ import math
 import sys
 from itertools import product, chain
 
-import nose
 import numpy as np
 import pytest
 
@@ -1040,24 +1039,3 @@ class CheckDnn:
             for tcase in test.test_gradweight_runtime_algorithms():
                 print(tcase[0].__name__, *tcase[1:])
         print(test_true_half_config_support.__name__)
-
-
-if __name__ == '__main__':
-
-    args = sys.argv[1:]
-    if len(args) == 1 and args[0] in ('infos', 'list'):
-        if args[0] == 'infos':
-            CheckDnn.print_infos()
-        if args[0] == 'list':
-            CheckDnn.print_tests()
-    else:
-        # We run all tests with nosetests.
-        module_name = sys.modules[__name__].__file__
-        if len(args) == 0:
-            # No args given: run nosetests -vs
-            args = ['--verbose', '--nocapture']
-        # Else, use given args.
-        argv = [sys.argv[0], module_name] + args
-
-        CheckDnn.print_infos()
-        nose.main(argv=argv)

@@ -1,11 +1,10 @@
 from __future__ import absolute_import, print_function, division
-from unittest import TestCase
 
 from theano.compat import exc_message
 from theano.gof.optdb import opt, DB
 
 
-class Test_DB(TestCase):
+class Test_DB():
 
     def test_0(self):
 
@@ -19,9 +18,9 @@ class Test_DB(TestCase):
 
         db.register('c', Opt(), 'z', 'asdf')
 
-        self.assertTrue('a' in db)
-        self.assertTrue('b' in db)
-        self.assertTrue('c' in db)
+        assert 'a' in db
+        assert 'b' in db
+        assert 'c' in db
 
         try:
             db.register('c', Opt())  # name taken

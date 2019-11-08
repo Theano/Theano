@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-import unittest
 
 import theano
 from theano import tensor
@@ -279,7 +278,7 @@ def test_adv_subtensor():
     assert np.allclose(rval, rep)
 
 
-class test_gpuextractdiag(unittest.TestCase):
+class test_gpuextractdiag():
     def test_extractdiag_opt(self):
         x = tensor.matrix()
         fn = theano.function([x], tensor.ExtractDiag()(x), mode=mode_with_gpu)
@@ -328,7 +327,7 @@ class TestGpuAllocDiag(test_basic.TestAllocDiag):
         )
 
 
-class test_gpuallocdiag(unittest.TestCase):
+class test_gpuallocdiag():
     def test_allocdiag_opt(self):
         x = tensor.vector()
         fn = theano.function([x], tensor.AllocDiag()(x), mode=mode_with_gpu)

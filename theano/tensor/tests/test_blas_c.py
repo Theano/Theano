@@ -2,8 +2,6 @@ from __future__ import absolute_import, print_function, division
 import sys
 import numpy as np
 import pytest
-from unittest import TestCase
-
 
 import theano
 import theano.tensor as tensor
@@ -34,9 +32,12 @@ def skip_if_blas_ldflags_empty(*functions_detected):
         pytest.skip("This test is useful only when Theano can access to BLAS functions" + functions_string + " other than [sd]gemm_.")
 
 
-class TestCGer(TestCase, TestOptimizationMixin):
+class TestCGer(TestOptimizationMixin):
 
-    def setup_method(self, dtype='float64'):
+    def setup_method(self):
+        self.manual_setup_method()
+
+    def manual_setup_method(self, dtype='float64'):
         # This tests can run even when theano.config.blas.ldflags is empty.
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
@@ -62,23 +63,23 @@ class TestCGer(TestCase, TestOptimizationMixin):
         return tensor.as_tensor_variable(np.asarray(bval, dtype=self.dtype))
 
     def test_eq(self):
-        self.assertTrue(CGer(True) == CGer(True))
-        self.assertTrue(CGer(False) == CGer(False))
-        self.assertTrue(CGer(False) != CGer(True))
+        assert CGer(True) == CGer(True)
+        assert CGer(False) == CGer(False)
+        assert CGer(False) != CGer(True)
 
-        self.assertTrue(CGer(True) != ScipyGer(True))
-        self.assertTrue(CGer(False) != ScipyGer(False))
-        self.assertTrue(CGer(True) != Ger(True))
-        self.assertTrue(CGer(False) != Ger(False))
+        assert CGer(True) != ScipyGer(True)
+        assert CGer(False) != ScipyGer(False)
+        assert CGer(True) != Ger(True)
+        assert CGer(False) != Ger(False)
 
         # assert that eq works for non-CGer instances
-        self.assertTrue(CGer(False) is not None)
-        self.assertTrue(CGer(True) is not None)
+        assert CGer(False) is not None
+        assert CGer(True) is not None
 
     def test_hash(self):
-        self.assertTrue(hash(CGer(True)) == hash(CGer(True)))
-        self.assertTrue(hash(CGer(False)) == hash(CGer(False)))
-        self.assertTrue(hash(CGer(False)) != hash(CGer(True)))
+        assert hash(CGer(True)) == hash(CGer(True))
+        assert hash(CGer(False)) == hash(CGer(False))
+        assert hash(CGer(False)) != hash(CGer(True))
 
     def test_optimization_pipeline(self):
         skip_if_blas_ldflags_empty()
@@ -88,13 +89,13 @@ class TestCGer(TestCase, TestOptimizationMixin):
 
     def test_optimization_pipeline_float(self):
         skip_if_blas_ldflags_empty()
-        self.setup_method('float32')
+        self.manual_setup_method('float32')
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=True))
         f(self.xval, self.yval)  # DebugMode tests correctness
 
     def test_int_fails(self):
-        self.setup_method('int32')
+        self.manual_setup_method('int32')
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))
         self.assertFunctionContains0(f, CGer(destructive=True))
         self.assertFunctionContains0(f, CGer(destructive=False))
@@ -114,15 +115,16 @@ class TestCGer(TestCase, TestOptimizationMixin):
         self.run_f(f)  # DebugMode tests correctness
 
 
-class TestCGemv(TestCase, TestOptimizationMixin):
+class TestCGemv(TestOptimizationMixin):
     """
     Tests of CGemv specifically.
 
     Generic tests of Gemv-compatibility, including both dtypes are
     done below in TestCGemvFloat32 and TestCGemvFloat64
     """
-    def setup_method(self, dtype='float64'):
+    def setup_method(self):
         # This tests can run even when theano.config.blas.ldflags is empty.
+        dtype = 'float64'
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
         # matrix
@@ -274,9 +276,12 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
         f(A_val, ones_3, ones_5)
         f(A_val[::-1, ::-1], ones_3, ones_5)
-        self.assertRaises(ValueError, f, A_val, ones_4, ones_5)
-        self.assertRaises(ValueError, f, A_val, ones_3, ones_6)
-        self.assertRaises(ValueError, f, A_val, ones_4, ones_6)
+        with pytest.raises(ValueError):
+            f(A_val, ones_4, ones_5)
+        with pytest.raises(ValueError):
+            f(A_val, ones_3, ones_6)
+        with pytest.raises(ValueError):
+            f(A_val, ones_4, ones_6)
 
     def test_multiple_inplace(self):
         skip_if_blas_ldflags_empty()
@@ -296,7 +301,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
                     if isinstance(n.op, tensor.AllocEmpty)]) == 2
 
 
-class TestCGemvFloat32(TestCase, BaseGemv, TestOptimizationMixin):
+class TestCGemvFloat32(BaseGemv, TestOptimizationMixin):
     mode = mode_blas_opt
     dtype = 'float32'
     gemv = CGemv(inplace=False)
@@ -306,7 +311,7 @@ class TestCGemvFloat32(TestCase, BaseGemv, TestOptimizationMixin):
         skip_if_blas_ldflags_empty()
 
 
-class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
+class TestCGemvFloat64(BaseGemv, TestOptimizationMixin):
     mode = mode_blas_opt
     dtype = 'float64'
     gemv = CGemv(inplace=False)

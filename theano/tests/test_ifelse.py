@@ -3,7 +3,6 @@
 """
 
 from __future__ import absolute_import, print_function, division
-import unittest
 import numpy as np
 import pytest
 from six.moves import reduce
@@ -21,7 +20,7 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 
-class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
+class test_ifelse(utt.TestOptimizationMixin):
     mode = None
     dtype = theano.config.floatX
     cast_output = staticmethod(tensor.as_tensor_variable)
@@ -278,8 +277,10 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         y = tensor.cast(x * 10, 'int8')
         cond = theano.tensor.iscalar('cond')
 
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
+        with pytest.raises(TypeError):
+            ifelse(cond, x, y)
+        with pytest.raises(TypeError):
+            ifelse(cond, y, x)
 
     def test_ndim_mismatch(self):
         rng = np.random.RandomState(utt.fetch_seed())
@@ -288,8 +289,10 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         y = tensor.col('y', self.dtype)
         cond = theano.tensor.iscalar('cond')
 
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
+        with pytest.raises(TypeError):
+            ifelse(cond, x, y)
+        with pytest.raises(TypeError):
+            ifelse(cond, y, x)
 
     def test_broadcast_mismatch(self):
         rng = np.random.RandomState(utt.fetch_seed())
@@ -300,8 +303,10 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         # print y.broadcastable
         cond = theano.tensor.iscalar('cond')
 
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
+        with pytest.raises(TypeError):
+            ifelse(cond, x, y)
+        with pytest.raises(TypeError):
+            ifelse(cond, y, x)
 
     def test_sparse_tensor_error(self):
         import theano.sparse
@@ -314,12 +319,18 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         z = theano.sparse.matrix('csr', dtype=self.dtype, name='z')
         cond = theano.tensor.iscalar('cond')
 
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
-        self.assertRaises(TypeError, ifelse, cond, x, z)
-        self.assertRaises(TypeError, ifelse, cond, z, x)
-        self.assertRaises(TypeError, ifelse, cond, y, z)
-        self.assertRaises(TypeError, ifelse, cond, z, y)
+        with pytest.raises(TypeError):
+            ifelse(cond, x, y)
+        with pytest.raises(TypeError):
+            ifelse(cond, y, x)
+        with pytest.raises(TypeError):
+            ifelse(cond, x, z)
+        with pytest.raises(TypeError):
+            ifelse(cond, z, x)
+        with pytest.raises(TypeError):
+            ifelse(cond, y, z)
+        with pytest.raises(TypeError):
+            ifelse(cond, z, y)
 
     def test_merge(self):
         pytest.skip("Optimization temporarily disabled")

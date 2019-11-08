@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-from unittest import TestCase
 
 import numpy as np
 from six.moves import xrange
@@ -13,7 +12,7 @@ from ..elemwise import GpuElemwise
 from .config import mode_with_gpu, test_ctx_name
 
 
-class T_Scan(TestCase):
+class Test_Scan():
     def setup_method(self):
         utt.seed_rng()
 

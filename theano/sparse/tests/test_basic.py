@@ -3,6 +3,7 @@ from itertools import product
 import time
 
 import numpy as np
+import pytest
 from six.moves import xrange
 try:
     import scipy.sparse as sp
@@ -17,10 +18,9 @@ from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.tensor.basic import _allclose
-from theano.tests.unittest_tools import attr
 
 if not enable_sparse:
-    pytest.skip('Optional package SciPy not installed')
+    pytest.skip('Optional package SciPy not installed', allow_module_level=True)
 
 from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
@@ -293,11 +293,11 @@ class Test_verify_grad_sparse():
             return [shapes[0]]
 
     def test_grad_fail(self):
-        with pytest.raises(verify_grad_sparse):
-            _grad(verify_grad_sparse, self.FailOp(structured=False), [sp.csr_matrix(random_lil((10, 40), config.floatX, 3))])
+        with pytest.raises(verify_grad_sparse.E_grad):
+            verify_grad_sparse(self.FailOp(structured=False), [sp.csr_matrix(random_lil((10, 40), config.floatX, 3))])
 
-        with pytest.raises(verify_grad_sparse):
-            _grad(verify_grad_sparse, self.FailOp(structured=True), [sp.csr_matrix(random_lil((10, 40), config.floatX, 3))])
+        with pytest.raises(verify_grad_sparse.E_grad):
+            verify_grad_sparse(self.FailOp(structured=True), [sp.csr_matrix(random_lil((10, 40), config.floatX, 3))])
 
 
 class Test_transpose():
@@ -693,8 +693,7 @@ class Test_AddMul():
                     elif op is mul:
                         assert _is_sparse_variable(apb)
                         assert np.all(val.todense() == (b.multiply(array1)))
-                        assert np.all(val.todense() == np.array
-                            [[1, 0], [9, 0], [0, 36]])))
+                        assert np.all(val.todense() == np.array([[1, 0], [9, 0], [0, 36]]))
                         if isinstance(a, theano.Constant):
                             a = a.data
                         if getattr(a, 'owner', None):

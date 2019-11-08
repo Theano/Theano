@@ -48,7 +48,7 @@ class TestScanCheckpoint():
         out, out_check = f(range(10), 101)
         assert np.allclose(out, out_check)
 
-    @unittest.skipUnless(PYGPU_AVAILABLE, 'Requires pygpu.')
+    @pytest.mark.skipif(~PYGPU_AVAILABLE, reason='Requires pygpu.')
     def test_memory(self):
         # Test that scan_checkpoint reduces memory usage.
         if None not in theano.gpuarray.type.list_contexts():

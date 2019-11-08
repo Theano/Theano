@@ -62,7 +62,6 @@ from theano.tensor.type import values_eq_approx_remove_nan
 from theano.tests import unittest_tools as utt
 from theano.gof.opt import check_stack_trace, out2in
 from theano import change_flags
-from nose.plugins.attrib import attr
 
 mode_opt = theano.config.mode
 if mode_opt == 'FAST_COMPILE':
@@ -120,8 +119,7 @@ class test_dimshuffle_lift():
         x, y, z = inputs()
         e = ds(ds(x, (1, 'x', 0)), (2, 0, 'x', 1))
         g = FunctionGraph([x], [e])
-        assert str(g) == "[InplaceDimShuffle{2,0,x,1}(InplaceDimShuffle{1,x,0}(x))]"
-                        str(g))
+        assert str(g) == "[InplaceDimShuffle{2,0,x,1}(InplaceDimShuffle{1,x,0}(x))]", str(g)
         dimshuffle_lift.optimize(g)
         assert str(g) == "[InplaceDimShuffle{0,1,x,x}(x)]", str(g)
         # Check stacktrace was copied over correctly after opt was applied
@@ -1730,7 +1728,7 @@ def test_local_subtensor_remove_broadcastable_index():
 
 class Test_subtensor_inc_subtensor():
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
 
     def test_basic(self):
@@ -2723,11 +2721,11 @@ class test_local_adv_sub1_adv_inc_sub1():
             f = theano.function([x, y, idx], o, self.mode)
             # test wrong index
             for i in [dx.shape[0], -dx.shape[0] - 1]:
-                with pytest.raises(():
-                        s(ionError, IndexError), f, dx, dy, [i, i])
+                with pytest.raises((AssertionError, IndexError)):
+                        f(dx, dy, [i, i])
             # test wrong shape
-            with pytest.raises(():
-                    s(ionError, ValueError), f, dx, dy, [1])
+            with pytest.raises((AssertionError, IndexError)):
+                f(dx, dy, [1])
 
     def test_stack_trace(self):
         x = tensor.matrix("x")
@@ -2934,9 +2932,9 @@ class Test_alloc_zero():
                                    f.maker.fgraph.toposort()])
 
                     # test that we don't remove shape errors
-                    with pytest.raises(ValueError, AssertionError):
+                    with pytest.raises((ValueError, AssertionError)):
                         f(_e1[1], _e2[2])
-                    with pytest.raises(ValueError, AssertionError):
+                    with pytest.raises((ValueError, AssertionError)):
                         f(_e1[2], _e2[1])
 
 
@@ -3782,10 +3780,10 @@ class Test_local_canonicalize_alloc():
 
                                    "Alloc(<TensorType(float64, matrix)>, "
                                    "TensorConstant{1}, "
-                                   "TensorConstant{2})]"))
+                                   "TensorConstant{2})]")
 
         alloc_lift.optimize(g)
-        assert str(g) == "[InplaceDimShuffle{x,0,1}"
+        assert str(g) == ("[InplaceDimShuffle{x,0,1}"
                                   "(Alloc(<TensorType(float64, vector)>, "
                                   "TensorConstant{3}, "
                                   "TensorConstant{2})), "
@@ -4587,8 +4585,7 @@ class Testfunc_inverse():
 
         assert len(topo) in acceptable_topo_lens
         assert delta_condition
-        self.assertEqual(isinstance(topo[0].op, DeepCopyOp), should_copy,
-                         "Inverse functions not removed!")
+        assert isinstance(topo[0].op, DeepCopyOp) == should_copy, "Inverse functions not removed!"
 
     def test(self):
         # test optimization for consecutive functional inverses
@@ -5627,7 +5624,7 @@ class Testlocal_opt_alloc():
         print(self.dtype)
 
 
-class Testlocal_opt_alloc_f16(T_local_opt_alloc):
+class Testlocal_opt_alloc_f16(Testlocal_opt_alloc):
     dtype = 'float16'
 
 
@@ -6713,7 +6710,7 @@ def test_local_merge_alloc():
     assert isinstance(topo[-1].op, T.Alloc)
     o = f(0., 1, 2, 2, 3, 4)
     assert o.shape == (1, 2, 3, 4)
-    with pytest.raises(AssertionError, ValueError):
+    with pytest.raises((AssertionError, ValueError)):
         f(0., 1, 2, 5, 3, 4)
 
 

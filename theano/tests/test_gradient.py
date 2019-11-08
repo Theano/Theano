@@ -3,9 +3,8 @@ from collections import OrderedDict
 #
 # UNIT TEST
 #
-import unittest
-
 import numpy as np
+import pytest
 from six.moves import xrange
 
 import theano
@@ -32,7 +31,7 @@ def grad_sources_inputs(sources, inputs):
                                                   wrt=inputs, consider_constant=inputs)))
 
 
-class testgrad_sources_inputs(unittest.TestCase):
+class TestGrad_sources_inputs():
 
     def test_retNone1(self):
         # Test that it is not ok to return None from op.grad()
@@ -49,7 +48,8 @@ class testgrad_sources_inputs(unittest.TestCase):
                 gz, = grads
                 pass
         a = retNone().make_node()
-        self.assertRaises(TypeError, grad_sources_inputs, [(a.out, one)], None)
+        with pytest.raises(TypeError):
+            grad_sources_inputs([(a.out, one)], None)
 
     def test_wrong_rval_len1(self):
         # Test that it is not ok to return the wrong number of gradient terms
@@ -69,7 +69,8 @@ class testgrad_sources_inputs(unittest.TestCase):
         a1 = retOne().make_node(i)
         grad_sources_inputs([(a1.out, one)], None)
         a2 = retOne().make_node(i, j)
-        self.assertRaises(ValueError, grad_sources_inputs, [(a2.out, one)], None)
+        with pytest.raises(ValueError):
+            grad_sources_inputs([(a2.out, one)], None)
 
     def test_1in_1out(self):
         # Test grad is called correctly for a 1-to-1 op
@@ -87,7 +88,7 @@ class testgrad_sources_inputs(unittest.TestCase):
                 return gval,
         a1 = TestOp().make_node()
         g = grad_sources_inputs([(a1.outputs[0], one)], None)
-        self.assertTrue(g[a1.inputs[0]] is gval)
+        assert g[a1.inputs[0]] is gval
 
     def test_1in_Nout(self):
         # Test grad is called correctly for a 1-to-many op
@@ -107,7 +108,7 @@ class testgrad_sources_inputs(unittest.TestCase):
                 return gval,
         a1 = TestOp().make_node()
         g = grad_sources_inputs([(a1.outputs[0], one)], None)
-        self.assertTrue(g[a1.inputs[0]] is gval)
+        assert g[a1.inputs[0]] is gval
 
     def test_Nin_1out(self):
         # Test grad is called correctly for a many-to-1 op
@@ -128,8 +129,8 @@ class testgrad_sources_inputs(unittest.TestCase):
                 return (gval0, gval1)
         a1 = TestOp().make_node()
         g = grad_sources_inputs([(a1.outputs[0], one)], None)
-        self.assertTrue(g[a1.inputs[0]] is gval0)
-        self.assertTrue(g[a1.inputs[1]] is gval1)
+        assert g[a1.inputs[0]] is gval0
+        assert g[a1.inputs[1]] is gval1
 
     def test_Nin_Nout(self):
         # Test grad is called correctly for a many-to-many op
@@ -148,11 +149,11 @@ class testgrad_sources_inputs(unittest.TestCase):
                 return gval0, gval1
         a1 = TestOp().make_node()
         g = grad_sources_inputs([(a1.outputs[0], one)], None)
-        self.assertTrue(g[a1.inputs[0]] is gval0)
-        self.assertTrue(g[a1.inputs[1]] is gval1)
+        assert g[a1.inputs[0]] is gval0
+        assert g[a1.inputs[1]] is gval1
 
 
-class test_grad(unittest.TestCase):
+class test_grad():
 
     def test_unimplemented_grad_func(self):
         # tests that function compilation catches unimplemented grads
@@ -160,13 +161,15 @@ class test_grad(unittest.TestCase):
 
         a = theano.tensor.vector()
         b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
-        self.assertRaises(TypeError, theano.function, [a], b, on_unused_input='ignore')
+        with pytest.raises(TypeError):
+            theano.function([a], b, on_unused_input='ignore')
 
     def test_undefined_grad_func(self):
         # tests that function compilation catches undefined grads in the graph
         a = theano.tensor.vector()
         b = theano.gradient.grad_undefined(theano.tensor.add, 0, a)
-        self.assertRaises(TypeError, theano.function, [a], b, on_unused_input='ignore')
+        with pytest.raises(TypeError):
+            theano.function([a], b, on_unused_input='ignore')
 
     def test_unimplemented_grad_grad(self):
         # tests that unimplemented grads are caught in the grad method
@@ -183,7 +186,8 @@ class test_grad(unittest.TestCase):
         a = theano.tensor.scalar()
         b = DummyOp()(a)
 
-        self.assertRaises(TypeError, theano.gradient.grad, b, a)
+        with pytest.raises(TypeError):
+            theano.gradient.grad(b, a)
 
     def test_undefined_grad_grad(self):
         # tests that undefined grads are caught in the grad method
@@ -200,7 +204,8 @@ class test_grad(unittest.TestCase):
         a = theano.tensor.scalar()
         b = DummyOp()(a)
 
-        self.assertRaises(TypeError, theano.gradient.grad, b, a)
+        with pytest.raises(TypeError):
+            theano.gradient.grad(b, a)
 
     def test_grad_name(self):
         A = theano.tensor.matrix('A')
@@ -600,7 +605,7 @@ def test_subgraph_grad():
         assert(np.sum(np.abs(true_grad - pgrad)) < 0.00001)
 
 
-class TestConsiderConstant(unittest.TestCase):
+class TestConsiderConstant():
 
     def setup_method(self):
         utt.seed_rng()
@@ -639,7 +644,7 @@ class TestConsiderConstant(unittest.TestCase):
             assert np.allclose(f(a), f2(a))
 
 
-class TestZeroGrad(unittest.TestCase):
+class TestZeroGrad():
 
     def setup_method(self):
         utt.seed_rng()
@@ -695,7 +700,7 @@ class TestZeroGrad(unittest.TestCase):
         assert np.count_nonzero(f(a, u)) == 0
 
 
-class TestDisconnectedGrad(unittest.TestCase):
+class TestDisconnectedGrad():
 
     def setup_method(self):
         utt.seed_rng()
@@ -751,8 +756,8 @@ class TestDisconnectedGrad(unittest.TestCase):
 
         # This MUST raise a DisconnectedInputError error.
         # This also rasies an additional warning from gradients.py.
-        self.assertRaises(gradient.DisconnectedInputError, gradient.grad,
-                          gradient.disconnected_grad(x).sum(), x)
+        with pytest.raises(gradient.DisconnectedInputError):
+            gradient.grad(gradient.disconnected_grad(x).sum(), x)
 
         # This MUST NOT raise a DisconnectedInputError error.
         y = gradient.grad((x + gradient.disconnected_grad(x)).sum(), x)
@@ -762,8 +767,8 @@ class TestDisconnectedGrad(unittest.TestCase):
         y = a + gradient.disconnected_grad(b)
         # This MUST raise a DisconnectedInputError error.
         # This also rasies an additional warning from gradients.py.
-        self.assertRaises(gradient.DisconnectedInputError,
-                          gradient.grad, y.sum(), b)
+        with pytest.raises(gradient.DisconnectedInputError):
+            gradient.grad(y.sum(), b)
 
         # This MUST NOT raise a DisconnectedInputError error.
         gradient.grad(y.sum(), a)
@@ -818,6 +823,3 @@ def test_undefined_grad_opt():
     f = theano.function([], grad)
     theano.printing.debugprint(f)
     assert not any([isinstance(node.op, gradient.UndefinedGrad) for node in f.maker.fgraph.apply_nodes])
-
-if __name__ == '__main__':
-    unittest.main()

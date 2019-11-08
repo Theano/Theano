@@ -1,15 +1,15 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
+import pytest
 import os
 from theano import config, function, tensor
 from theano.compat import PY3
 from theano.misc.pkl_utils import CompatUnpickler
 from theano.sandbox import multinomial
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
-import unittest
 
 
-class test_OP(unittest.TestCase):
+class test_OP():
 
     def test_select_distinct(self):
         # Tests that ChoiceFromUniform always selects distinct elements
@@ -60,7 +60,8 @@ class test_OP(unittest.TestCase):
         uni = np.random.rand(n_selected).astype(config.floatX)
         pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        self.assertRaises(ValueError, f, pvals, uni, n_selected)
+        with pytest.raises(ValueError):
+            f(pvals, uni, n_selected)
 
     def test_select_proportional_to_weight(self):
         # Tests that ChoiceFromUniform selects elements, on average,
@@ -91,7 +92,7 @@ class test_OP(unittest.TestCase):
         assert avg_diff < mean_rtol, avg_diff
 
 
-class test_function(unittest.TestCase):
+class test_function():
 
     def test_select_distinct(self):
         # Tests that multinomial_wo_replacement always selects distinct elements
@@ -132,7 +133,8 @@ class test_function(unittest.TestCase):
         np.random.seed(12345)
         pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        self.assertRaises(ValueError, f, pvals, n_selected)
+        with pytest.raises(ValueError):
+            f(pvals, n_selected)
 
     def test_select_proportional_to_weight(self):
         # Tests that multinomial_wo_replacement selects elements, on average,

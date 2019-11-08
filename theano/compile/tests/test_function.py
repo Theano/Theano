@@ -3,9 +3,9 @@ import six.moves.cPickle as pickle
 import os
 import shutil
 import tempfile
-import unittest
 
 import numpy as np
+import pytest
 
 import theano
 from theano.compile.io import In
@@ -30,7 +30,7 @@ def test_function_dump():
     assert np.allclose(fct1(x), fct2(x))
 
 
-class TestFunctionIn(unittest.TestCase):
+class TestFunctionIn():
 
     def test_in_strict(self):
 
@@ -55,14 +55,16 @@ class TestFunctionIn(unittest.TestCase):
         # This is not a test of the In class per se, but the In class relies
         # on the fact that shared variables cannot be explicit inputs
         a = theano.shared(1.0)
-        self.assertRaises(TypeError, theano.function, [a], a + 1)
+        with pytest.raises(TypeError):
+            theano.function([a], a + 1)
 
     def test_in_shared_variable(self):
         # Ensure that an error is raised if the In wrapped is used to wrap
         # a shared variable
         a = theano.shared(1.0)
         a_wrapped = In(a, update=a + 1)
-        self.assertRaises(TypeError, theano.function, [a_wrapped])
+        with pytest.raises(TypeError):
+            theano.function([a_wrapped])
 
     def test_in_mutable(self):
         a = theano.tensor.dvector()
@@ -98,7 +100,8 @@ class TestFunctionIn(unittest.TestCase):
         # an update of a different type
         a = theano.tensor.dscalar('a')
         b = theano.tensor.dvector('b')
-        self.assertRaises(TypeError, In, a, update=b)
+        with pytest.raises(TypeError):
+            In(a, update=b)
 
     def test_in_update_shared(self):
         # Test that using both In() with updates and shared variables with
@@ -133,17 +136,19 @@ class TestFunctionIn(unittest.TestCase):
         # Values are in range, but a dtype too large has explicitly been given
         # For performance reasons, no check of the data is explicitly performed
         # (It might be OK to change this in the future.)
-        self.assertRaises(TypeError, f, [3], np.array([6], dtype='int16'),
-                          1)
+        with pytest.raises(TypeError):
+            f([3], np.array([6], dtype='int16'), 1)
 
         # Value too big for a, silently ignored
         assert np.all(f([2 ** 20], np.ones(1, dtype='int8'), 1) == 2)
 
         # Value too big for b, raises TypeError
-        self.assertRaises(TypeError, f, [3], [312], 1)
+        with pytest.raises(TypeError):
+            f([3], [312], 1)
 
         # Value too big for c, raises TypeError
-        self.assertRaises(TypeError, f, [3], [6], 806)
+        with pytest.raises(TypeError):
+            f([3], [6], 806)
 
     def test_in_allow_downcast_floatX(self):
         a = theano.tensor.fscalar('a')
@@ -162,13 +167,15 @@ class TestFunctionIn(unittest.TestCase):
         assert np.allclose(f(0.1, 0, 0), 0.1)
 
         # If allow_downcast is False, nope
-        self.assertRaises(TypeError, f, 0, 0.1, 0)
+        with pytest.raises(TypeError):
+            f(0, 0.1, 0)
 
         # If allow_downcast is None, it should work iff floatX=float32
         if theano.config.floatX == 'float32':
             assert np.allclose(f(0, 0, 0.1), 0.1)
         else:
-            self.assertRaises(TypeError, f, 0, 0, 0.1)
+            with pytest.raises(TypeError):
+                f(0, 0, 0.1)
 
     def test_in_allow_downcast_vector_floatX(self):
         a = theano.tensor.fvector('a')
@@ -188,7 +195,9 @@ class TestFunctionIn(unittest.TestCase):
         assert np.allclose(f([0.1], z, z), 0.1)
 
         # If allow_downcast is False, nope
-        self.assertRaises(TypeError, f, z, [0.1], z)
+        with pytest.raises(TypeError):
+            f(z, [0.1], z)
 
         # If allow_downcast is None, like False
-        self.assertRaises(TypeError, f, z, z, [0.1])
+        with pytest.raises(TypeError):
+            f(z, z, [0.1])

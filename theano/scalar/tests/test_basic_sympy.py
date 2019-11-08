@@ -11,7 +11,7 @@ try:
     xs = sympy.Symbol('x')
     ys = sympy.Symbol('y')
 except ImportError:
-    pytest.skip('optional package sympy disabled')
+    pytest.skip('optional package sympy disabled', allow_module_level=True)
 
 xt, yt = floats('xy')
 

@@ -2,10 +2,9 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 import sys
-import unittest
+import pytest
 
 import numpy as np
-from nose.tools import assert_equal
 from numpy.testing import assert_array_equal
 from six import StringIO
 from six.moves import xrange
@@ -33,7 +32,6 @@ from theano.tensor.subtensor import (AdvancedIncSubtensor,
 
 from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
 from theano.tests import unittest_tools as utt
-from theano.tests.unittest_tools import attr
 from theano import change_flags
 
 if PY3:
@@ -44,7 +42,7 @@ else:
         return long(i)  # noqa for Python 3
 
 
-class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
+class Test_subtensor(utt.TestOptimizationMixin):
     """
     This is build in a way that allow to reuse it to test the equivalent gpu op.
     """
@@ -80,7 +78,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.fast_compile = theano.config.mode == 'FAST_COMPILE'
         self.ops = (sub, inc_sub, adv_sub1, adv_incsub1,
                     adv_bool_sub, adv_bool_inc_sub)
-        return super(T_subtensor, self).__init__(name)
+        return super(Test_subtensor, self).__init__(name)
 
     def function(self, inputs, outputs, accept_inplace=False,
                  op=None, mode=None, N=1, N_fast=None):
@@ -116,7 +114,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
                                                          self.ignore_topo)]
-        assert_equal(len(topo_), length)
+        assert len(topo_) == length
         if length == 1:
             assert isinstance(topo_[0].op, op_type)
         tval = f()
@@ -125,13 +123,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test0_err_invalid(self):
         # it is impossible to retrieve a view of a 0-d tensor
         n = self.shared(np.ones((), dtype=self.dtype))
-        self.assertRaises(IndexError, n.__getitem__, 0)
+        with pytest.raises(IndexError):
+            n.__getitem__(0)
 
     @change_flags(compute_test_value='off')
     def test1_err_bounds(self):
         n = self.shared(np.ones(3, dtype=self.dtype))
         t = n[7]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         # Silence expected error messages
         _logger = logging.getLogger('theano.gof.opt')
         oldlevel = _logger.level
@@ -160,74 +159,75 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test1_ok_range_finite(self):
         n = self.shared(np.arange(3, dtype=self.dtype))
         t = n[0:2]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (2,))
-        self.assertTrue((tval == [0, 1]).all())
+        assert tval.shape == (2,)
+        assert (tval == [0, 1]).all()
 
     def test2_ok_range_finite(self):
         n = self.shared(np.arange(12, dtype=self.dtype).reshape((3, 4)))
         # Also check negative index
         for idx in [(slice(0, 2), 3), ((slice(0, 2), -1)), (slice(0, 2), -4)]:
             t = n[idx]  # l]#0:2,3]
-            self.assertTrue(isinstance(t.owner.op, Subtensor))
+            assert isinstance(t.owner.op, Subtensor)
             tval = self.eval_output_and_check(t)
-            self.assertTrue(tval.shape == (2,))
-            self.assertTrue(np.allclose(tval, n.get_value()[idx]))
+            assert tval.shape == (2,)
+            assert np.allclose(tval, n.get_value()[idx])
 
     def test1_0_dims(self):
         n = self.shared(np.ones((), dtype=self.dtype))
         t = self.sub([])(n)
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         self.eval_output_and_check(
             t, mode=self.mode.excluding("local_useless_subtensor"))
 
     def test1_err_invalid(self):
         n = self.shared(np.ones(1, dtype=self.dtype))
-        self.assertRaises(IndexError, n.__getitem__, (0, 0))
+        with pytest.raises(IndexError):
+            n.__getitem__((0, 0))
 
     def test1_ok_elem(self):
         n = self.shared(np.ones(1, dtype=self.dtype) * 5)
         t = n[0]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == ())
-        self.assertTrue(tval == 5.0)
+        assert tval.shape == ()
+        assert tval == 5.0
 
     def test1_ok_range_infinite(self):
         n = self.shared(np.arange(3, dtype=self.dtype))
         t = n[1:]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (2,))
-        self.assertTrue((tval == [1.0, 2.0]).all())
+        assert tval.shape == (2,)
+        assert (tval == [1.0, 2.0]).all()
 
     def test1_ok_strided(self):
         n = self.shared(np.arange(5, dtype=self.dtype))
         t = n[1::2]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (2,))
-        self.assertTrue((tval == [1.0, 3.0]).all())
+        assert tval.shape == (2,)
+        assert (tval == [1.0, 3.0]).all()
 
         t = n[0:-1:2]  # 0 to 1 from the end stepping by 2
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (2,))
-        self.assertTrue((tval == [0.0, 2.0]).all())
+        assert tval.shape == (2,)
+        assert (tval == [0.0, 2.0]).all()
 
     @change_flags(compute_test_value='off')
     def test2_err_bounds0(self):
         n = self.shared(np.ones((2, 3), dtype=self.dtype) * 5)
         for idx in [(0, 4), (0, -4)]:
             t = n[idx]
-            self.assertTrue(isinstance(t.owner.op, Subtensor))
+            assert isinstance(t.owner.op, Subtensor)
             # Silence expected warnings
             _logger = logging.getLogger('theano.gof.opt')
             oldlevel = _logger.level
             _logger.setLevel(logging.CRITICAL)
             try:
-                self.assertRaises(IndexError,
-                                  self.eval_output_and_check, [t])
+                with pytest.raises(IndexError):
+                    self.eval_output_and_check([t])
             finally:
                 _logger.setLevel(oldlevel)
 
@@ -235,86 +235,87 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test2_err_bounds1(self):
         n = self.shared((np.ones((2, 3), dtype=self.dtype) * 5))
         t = n[4:5, 3]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         old_stderr = sys.stderr
         sys.stderr = StringIO()
         try:
-            self.assertRaises(IndexError,
-                              self.eval_output_and_check, [t])
+            with pytest.raises(IndexError):
+                self.eval_output_and_check([t])
         finally:
             sys.stderr = old_stderr
 
     def test2_ok_elem(self):
         n = self.shared(np.arange(6, dtype=self.dtype).reshape((2, 3)))
         t = n[0, 2]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == ())
-        self.assertTrue(np.all(tval == 2))
+        assert tval.shape == ()
+        assert np.all(tval == 2)
 
     def test2_ok_row(self):
         n = self.shared(np.arange(6, dtype=self.dtype).reshape((2, 3)))
         t = n[1]
-        self.assertFalse(any(n.type.broadcastable))
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert not any(n.type.broadcastable)
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (3,))
-        self.assertTrue(np.all(tval == [3, 4, 5]))
+        assert tval.shape == (3,)
+        assert np.all(tval == [3, 4, 5])
 
     def test2_ok_col(self):
         n = self.shared(np.arange(6, dtype=self.dtype).reshape((2, 3)))
         t = n[:, 0]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
-        self.assertFalse(any(n.type.broadcastable))
+        assert isinstance(t.owner.op, Subtensor)
+        assert not any(n.type.broadcastable)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (2,))
-        self.assertTrue(np.all(tval == [0, 3]))
+        assert tval.shape == (2,)
+        assert np.all(tval == [0, 3])
 
     def test2_ok_rows_finite(self):
         n = self.shared(np.arange(12, dtype=self.dtype).reshape((4, 3)))
         t = n[1:3, 0]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (2,))
-        self.assertTrue(np.all(tval == [3, 6]))
+        assert tval.shape == (2,)
+        assert np.all(tval == [3, 6])
 
     def test2_ok_cols_infinite(self):
         n = self.shared(np.arange(12, dtype=self.dtype).reshape((4, 3)))
         t = n[1, 2:]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (1,))
-        self.assertTrue(np.all(tval == 5))
+        assert tval.shape == (1,)
+        assert np.all(tval == 5)
 
     def test2_ok_strided(self):
         n = self.shared(np.arange(20, dtype=self.dtype).reshape((4, 5)))
         t = n[1:4:2, 1:5:2]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (2, 2))
-        self.assertTrue(np.all(tval == [[6, 8], [16, 18]]))
+        assert tval.shape == (2, 2)
+        assert np.all(tval == [[6, 8], [16, 18]])
 
     def test3_ok_mat(self):
         n = self.shared(np.arange(24, dtype=self.dtype).reshape((2, 3, 4)))
         t = n[0, 0, 0]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == ())
-        self.assertTrue(np.all(tval == 0))
+        assert tval.shape == ()
+        assert np.all(tval == 0)
 
     def test_long(self):
         n = self.shared(np.arange(12, dtype=self.dtype).reshape((4, 3)))
         t = n[L(1):L(4):L(2), L(1)]
-        self.assertTrue(isinstance(t.owner.op, Subtensor))
+        assert isinstance(t.owner.op, Subtensor)
         tval = self.eval_output_and_check(t)
-        self.assertTrue(tval.shape == (2,))
-        self.assertTrue(np.all(tval == [4, 10]))
+        assert tval.shape == (2,)
+        assert np.all(tval == [4, 10])
 
     def test_long_too_big(self):
         # Currently, we cast Python longs to int64 when used for indexing.
         # This test checks that using a long that does not fit raises an error.
         n = self.shared(np.arange(12, dtype=self.dtype).reshape((4, 3)))
-        self.assertRaises(Exception, lambda: n[:L(2 ** 63)])
+        with pytest.raises(Exception):
+            (lambda: n[:L(2 ** 63)])()
 
     def test_list_slice(self):
         x = theano.tensor.arange(100).reshape((5, 5, 4))
@@ -350,11 +351,11 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         for length, op_type, op_type_opt, slice_ in test_cases:
             numpy_tval = numpy_n[slice_]
             t = n[slice_]
-            self.assertTrue(isinstance(t.owner.op, op_type))
+            assert isinstance(t.owner.op, op_type)
             tval = self.eval_output_and_check(t,
                                               op_type=op_type_opt,
                                               length=length)
-            assert_equal(tval.shape, numpy_tval.shape)
+            assert tval.shape == numpy_tval.shape
             assert_array_equal(tval, numpy_tval)
 
     def test_boolean(self):
@@ -425,44 +426,70 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             # the boolean mask should have the correct shape
             # - too large, padded with True
             mask = np.array([True, False, True])
-            self.assertRaises(IndexError, n[mask].eval)
-            self.assertRaises(IndexError, n[mask, ...].eval)
-            self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
-            self.assertRaises(IndexError, inc_subtensor(n[mask, ...], 1).eval)
+            with pytest.raises(IndexError):
+                n[mask].eval()
+            with pytest.raises(IndexError):
+                n[mask, ...].eval()
+            with pytest.raises(IndexError):
+                inc_subtensor(n[mask], 1).eval()
+            with pytest.raises(IndexError):
+                inc_subtensor(n[mask, ...], 1).eval()
             mask = np.array([[True, False, False, True], [False, True, False, True]])
-            self.assertRaises(IndexError, n[mask].eval)
-            self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+            with pytest.raises(IndexError):
+                n[mask].eval()
+            with pytest.raises(IndexError):
+                inc_subtensor(n[mask], 1).eval()
             # - too large, padded with False (this works in NumPy < 0.13.0)
             mask = np.array([True, False, False])
-            self.assertRaises(IndexError, n[mask].eval)
-            self.assertRaises(IndexError, n[mask, ...].eval)
-            self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
-            self.assertRaises(IndexError, inc_subtensor(n[mask, ...], 1).eval)
+            with pytest.raises(IndexError):
+                n[mask].eval()
+            with pytest.raises(IndexError):
+                n[mask, ...].eval()
+            with pytest.raises(IndexError):
+                inc_subtensor(n[mask], 1).eval()
+            with pytest.raises(IndexError):
+                inc_subtensor(n[mask, ...], 1).eval()
             mask = np.array([[True, False, False, False], [False, True, False, False]])
-            self.assertRaises(IndexError, n[mask].eval)
-            self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+            with pytest.raises(IndexError):
+                n[mask].eval()
+            with pytest.raises(IndexError):
+                inc_subtensor(n[mask], 1).eval()
             # - mask too small (this works in NumPy < 0.13.0)
             mask = np.array([True])
-            self.assertRaises(IndexError, n[mask].eval)
-            self.assertRaises(IndexError, n[mask, ...].eval)
-            self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
-            self.assertRaises(IndexError, inc_subtensor(n[mask, ...], 1).eval)
+            with pytest.raises(IndexError):
+                n[mask].eval()
+            with pytest.raises(IndexError):
+                n[mask, ...].eval()
+            with pytest.raises(IndexError):
+                inc_subtensor(n[mask], 1).eval()
+            with pytest.raises(IndexError):
+                inc_subtensor(n[mask, ...], 1).eval()
             mask = np.array([[True], [True]])
-            self.assertRaises(IndexError, n[mask].eval)
-            self.assertRaises(IndexError, inc_subtensor(n[mask], 1).eval)
+            with pytest.raises(IndexError):
+                n[mask].eval()
+            with pytest.raises(IndexError):
+                inc_subtensor(n[mask], 1).eval()
             # - too many dimensions
             mask = np.array([[[True, False, False],
                               [False, True, False]]])
-            self.assertRaises(IndexError, n.__getitem__, mask)
-            self.assertRaises(IndexError, n.__getitem__, mask)
+            with pytest.raises(IndexError):
+                n.__getitem__(mask)
+            with pytest.raises(IndexError):
+                n.__getitem__(mask)
 
             # special cases: Python bools and bools nested in Python arrays are not supported
-            self.assertRaises(TypeError, n.__getitem__, (True,))
-            self.assertRaises(TypeError, n.__getitem__, (False,))
-            self.assertRaises(TypeError, n.__getitem__, (True, False))
-            self.assertRaises(TypeError, n.__getitem__, ([True, False]))
-            self.assertRaises(TypeError, n.__getitem__, ([0, 1], [0, False]))
-            self.assertRaises(TypeError, n.__getitem__, ([0, 1], [0, theano.shared(True)]))
+            with pytest.raises(TypeError):
+                n.__getitem__((True,))
+            with pytest.raises(TypeError):
+                n.__getitem__((False,))
+            with pytest.raises(TypeError):
+                n.__getitem__((True, False))
+            with pytest.raises(TypeError):
+                n.__getitem__(([True, False]))
+            with pytest.raises(TypeError):
+                n.__getitem__(([0, 1], [0, False]))
+            with pytest.raises(TypeError):
+                n.__getitem__(([0, 1], [0, theano.shared(True)]))
 
     def test_newaxis(self):
         # newaxis support comes from logic in the __getitem__ of TensorType
@@ -527,7 +554,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
         good = np.zeros_like(data)
         good[subi:, subi] = np.exp(data[subi:, subi])
-        self.assertTrue(np.allclose(gval, good), (gval, good))
+        assert np.allclose(gval, good), (gval, good)
 
     def test_grad_2d_inc_set_subtensor(self):
         for n_shape, m_shape in [
@@ -559,7 +586,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         topo_ = [node for node in topo
                  if not isinstance(node.op, self.ignore_topo)]
         if not self.fast_compile:
-            assert_equal(len(topo_), 6)
+            assert len(topo_) == 6
         assert np.sum([isinstance(node.op, self.inc_sub)
                        for node in topo_]) == 1
         assert np.sum([isinstance(node.op, self.sub)
@@ -568,7 +595,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         gval = f()
         good = np.zeros_like(data)
         good[1, 0] = np.exp(data[1, 0])
-        self.assertTrue(np.allclose(gval, good), (gval, good))
+        assert np.allclose(gval, good), (gval, good)
 
     def test_ok_list(self):
         for data, idx in [(rand(4), [1, 0]),
@@ -591,15 +618,15 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             t = n[idx]
 
             # We test again AdvancedSubtensor1 as we transfer data to the cpu.
-            self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
+            assert isinstance(t.owner.op, tensor.AdvancedSubtensor1)
 
             val = self.eval_output_and_check(t, op_type=self.adv_sub1)
             if isinstance(idx, list):
                 good = data[idx]
             else:
                 good = data[idx.data]
-            self.assertTrue(val.ndim == data.ndim)
-            self.assertTrue(np.allclose(val, good), (val, good))
+            assert val.ndim == data.ndim
+            assert np.allclose(val, good), (val, good)
 
             # Test reuse of output memory
             if type(self.adv_sub1) == tensor.AdvancedSubtensor1:
@@ -629,24 +656,26 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         idx = [2, 2, 0, 0, 1, 1]
         n = self.shared(data)
         t = n[self.shared(np.asarray(idx).astype('int64'))[::2]]
-        self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
+        assert isinstance(t.owner.op, tensor.AdvancedSubtensor1)
         val = self.eval_output_and_check(t, op_type=self.adv_sub1, length=2)
         utt.assert_allclose(data[idx[::2]], val)
 
     def test_err_invalid_list(self):
         n = self.shared(np.asarray(5, dtype=self.dtype))
-        self.assertRaises(IndexError, n.__getitem__, [0, 0])
+        with pytest.raises(IndexError):
+            n.__getitem__([0, 0])
 
     def test_err_invalid_2list_dtype(self):
         n = self.shared(np.ones((3, 3), dtype=self.dtype) * 5)
-        self.assertRaises(TypeError, n.__getitem__, ([0., 0], [1, 1]))
+        with pytest.raises(TypeError):
+            n.__getitem__(([0., 0], [1, 1]))
 
     def test_err_bound_list(self):
         n = self.shared(np.ones((2, 3), dtype=self.dtype) * 5)
         l = lvector()
         t = n[l]
         # We test again AdvancedSubtensor1 as we transfer data to the cpu.
-        self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
+        assert isinstance(t.owner.op, tensor.AdvancedSubtensor1)
 
         f = self.function([l], t, op=self.adv_sub1)
 
@@ -656,40 +685,43 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                           op=self.adv_incsub1)
 
         for shp in [[0, 4], [0, -3], [-10]]:
-            self.assertRaises(IndexError, f, shp)
-            self.assertRaises(IndexError, g, shp)
+            with pytest.raises(IndexError):
+                f(shp)
+            with pytest.raises(IndexError):
+                g(shp)
 
     def test_adv_sub1_broadcast(self):
         v = np.arange(3, dtype=self.dtype).reshape((1, 3))
         n = self.shared(v * 5, broadcastable=(True, False))
         idx = tensor.lvector()
         t = n[idx]
-        self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
+        assert isinstance(t.owner.op, tensor.AdvancedSubtensor1)
 
         f = self.function([idx], t, op=self.adv_sub1)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
                                                          self.ignore_topo)]
         assert len(topo_) == 1
-        self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
+        assert isinstance(topo_[0].op, self.adv_sub1)
         f_0 = f([0])
-        self.assertTrue(f_0.shape == (1, 3))
-        self.assertTrue(np.allclose(f_0, v * 5))
+        assert f_0.shape == (1, 3)
+        assert np.allclose(f_0, v * 5)
         f_00 = f([0, 0])
-        self.assertTrue(f_00.shape == (2, 3))
-        self.assertTrue(np.allclose(f_00, v * 5))
-        self.assertRaises(IndexError, f, [0, 1])
+        assert f_00.shape == (2, 3)
+        assert np.allclose(f_00, v * 5)
+        with pytest.raises(IndexError):
+            f([0, 1])
 
         # Test the gradient
         c = t.sum()
         gn = theano.grad(c, n)
         g = self.function([idx], gn, op=self.adv_incsub1)
         g_0 = g([0])
-        self.assertTrue(g_0.shape == (1, 3))
-        self.assertTrue(np.allclose(g_0, 1))
+        assert g_0.shape == (1, 3)
+        assert np.allclose(g_0, 1)
         g_00 = g([0, 0])
-        self.assertTrue(g_00.shape == (1, 3))
-        self.assertTrue(np.allclose(g_00, 2))
+        assert g_00.shape == (1, 3)
+        assert np.allclose(g_00, 2)
 
         utt.verify_grad(lambda m: m[[1, 3]],
                         [np.random.rand(5, 5).astype(self.dtype)],
@@ -732,26 +764,26 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         idx = tensor.TensorType(dtype='int64', broadcastable=(True,))()
         assert idx.type.broadcastable == (True,)
         t = n[idx]
-        self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
+        assert isinstance(t.owner.op, tensor.AdvancedSubtensor1)
 
         f = self.function([idx], t, op=self.adv_sub1)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
                                                          self.ignore_topo)]
         assert len(topo_) == 1
-        self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
+        assert isinstance(topo_[0].op, self.adv_sub1)
         f_0 = f([0])
-        self.assertTrue(f_0.shape == (1, 3))
-        self.assertTrue(np.allclose(f_0, 5))
+        assert f_0.shape == (1, 3)
+        assert np.allclose(f_0, 5)
 
         # Test the gradient
         c = t.sum()
         gn = theano.grad(c, n)
         g = self.function([idx], gn, op=self.adv_incsub1)
         g_0 = g([0])
-        self.assertTrue(g_0.shape == (4, 3))
-        self.assertTrue(np.allclose(g_0[0], 1))
-        self.assertTrue(np.allclose(g_0[1:], 0))
+        assert g_0.shape == (4, 3)
+        assert np.allclose(g_0[0], 1)
+        assert np.allclose(g_0[1:], 0)
 
     @pytest.mark.slow
     def test_shape_i_const(self):
@@ -964,9 +996,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             # good[idx] += np.exp(data[idx])
             for i in idx:
                 good[i] += np.exp(data[i])
-            self.assertTrue(gval.ndim == data.ndim)
-            self.assertTrue(np.allclose(gval, good), (gval, good))
-            self.assertTrue(np.allclose(gshape, data.shape))
+            assert gval.ndim == data.ndim
+            assert np.allclose(gval, good), (gval, good)
+            assert np.allclose(gshape, data.shape)
 
             def fct(t):
                 return theano.tensor.sum(t[idx_])
@@ -1041,7 +1073,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             t = n[idx]
             f = self.function([], t.shape, op=self.ops, N=0, N_fast=1)
             val = f()
-            self.assertTrue(np.allclose(val, data[idx].shape))
+            assert np.allclose(val, data[idx].shape)
 
     def test_grad_advanced_inc_subtensor(self):
         def inc_slice(*s):
@@ -1367,7 +1399,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         f(np.random.normal(0, 1, (30, 4)))
 
 
-class TestIncSubtensor1(unittest.TestCase):
+class TestIncSubtensor1():
     # test inc_subtensor
     # also tests set_subtensor
 
@@ -1382,7 +1414,8 @@ class TestIncSubtensor1(unittest.TestCase):
         self.adv1q = tensor.lvector()  # advanced 1d query
 
     def test_cant_adv_idx_into_scalar(self):
-        self.assertRaises(IndexError, lambda: self.s[self.adv1q])
+        with pytest.raises(IndexError):
+            (lambda: self.s[self.adv1q])()
 
     def test_index_into_vec_w_vec(self):
         a = self.v[self.adv1q]
@@ -1417,8 +1450,8 @@ class TestIncSubtensor1(unittest.TestCase):
         assert np.allclose(aval, [.4, 3.9, 3.1])
 
     def test_assigning_matrix_to_vector_selection(self):
-        self.assertRaises(TypeError,
-                          lambda: inc_subtensor(self.v[self.adv1q], fmatrix()))
+        with pytest.raises(TypeError):
+            (lambda: inc_subtensor(self.v[self.adv1q](fmatrix())))()
 
     def test_matrix_idx(self):
         idx = tensor.lmatrix()
@@ -1450,7 +1483,7 @@ class TestIncSubtensor1(unittest.TestCase):
         utt.assert_allclose(out1val, out2val)
 
 
-class TestAdvancedSubtensor(unittest.TestCase):
+class TestAdvancedSubtensor():
     # test inc_subtensor
     # also tests set_subtensor
     def __init__(self, name,
@@ -1531,7 +1564,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
         return tval
 
     def test_cant_adv_idx_into_scalar(self):
-        self.assertRaises(IndexError, lambda: self.s[self.ix1])
+        with pytest.raises(IndexError):
+            (lambda: self.s[self.ix1])()
 
     def test_index_into_vec_w_vec(self):
         a = self.v[self.ix1]
@@ -1569,15 +1603,15 @@ class TestAdvancedSubtensor(unittest.TestCase):
             n = self.shared(data)
             t = n[0, idx]
 
-            self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor))
+            assert isinstance(t.owner.op, tensor.AdvancedSubtensor)
 
             val = self.eval_output_and_check(t)
             if isinstance(idx, list):
                 good = data[0, idx]
             else:
                 good = data[0, idx.data]
-            self.assertTrue(val.ndim == data.ndim - 1)
-            self.assertTrue(np.allclose(val, good), (val, good))
+            assert val.ndim == data.ndim - 1
+            assert np.allclose(val, good), (val, good)
 
     def test_inc_adv_subtensor_w_matrix(self):
         subt = self.v[self.ix2]
@@ -1723,7 +1757,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         z = b[[i, j], :]
         f1 = theano.function([i, j], z, mode=self.mode)
         cmd = f1(0, 1) == a[[0, 1], :]
-        self.assertTrue(cmd.all())
+        assert cmd.all()
 
         aa = rng.uniform(size=(4, 2, 3))
         bb = theano.shared(aa)
@@ -1731,7 +1765,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         z = bb[[i, j, k], :, i:k]
         f2 = theano.function([i, j, k], z, mode=self.mode)
         cmd = f2(0, 1, 2) == aa[[0, 1, 2], :, 0:2]
-        self.assertTrue(cmd.all())
+        assert cmd.all()
 
     def test_adv_sub_3d(self):
         # Reported in https://github.com/Theano/Theano/issues/5674
@@ -1784,7 +1818,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         idx = tensor.lvector()
         idx2 = tensor.lvector()
         t = n[idx, idx2]
-        self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor))
+        assert isinstance(t.owner.op, tensor.AdvancedSubtensor)
 
         utt.verify_grad(lambda m: m[[1, 3], [2, 4]],
                         [np.random.rand(5, 5).astype(self.dtype)],

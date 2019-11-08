@@ -1,10 +1,9 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
 import numpy as np
 import numpy.linalg
 from numpy.testing import assert_array_almost_equal
-from numpy.testing import dec, assert_array_equal, assert_allclose
+from numpy.testing import assert_array_equal, assert_allclose
 from numpy import inf
 
 import itertools
@@ -18,10 +17,8 @@ from theano import config
 from theano.tensor.slinalg import (
     Cholesky, cholesky, CholeskyGrad, Solve, solve,
     Eigvalsh, EigvalshGrad, eigvalsh, expm, kron)
-from theano.tests.unittest_tools import attr
 
 import pytest
-from nose.tools import assert_raises
 
 try:
     import scipy.linalg
@@ -79,7 +76,7 @@ def test_cholesky_indef():
     matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
     cholesky = Cholesky(lower=True, on_error='raise')
     chol_f = function([x], cholesky(x))
-    with assert_raises(scipy.linalg.LinAlgError):
+    with pytest.raises(scipy.linalg.LinAlgError):
         chol_f(matrix)
     cholesky = Cholesky(lower=True, on_error='nan')
     chol_f = function([x], cholesky(x))
@@ -112,7 +109,7 @@ def test_cholesky_grad_indef():
     matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
     cholesky = Cholesky(lower=True, on_error='raise')
     chol_f = function([x], grad(cholesky(x).sum(), [x]))
-    with assert_raises(scipy.linalg.LinAlgError):
+    with pytest.raises(scipy.linalg.LinAlgError):
         chol_f(matrix)
     cholesky = Cholesky(lower=True, on_error='nan')
     chol_f = function([x], grad(cholesky(x).sum(), [x]))

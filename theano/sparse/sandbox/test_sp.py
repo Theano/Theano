@@ -1,11 +1,11 @@
 from __future__ import absolute_import, print_function, division
 import sys
 import time
-import unittest
+import pytest
 
 import theano.sparse
 if not theano.sparse.enable_sparse:
-    pytest.skip('Optional package sparse disabled')
+    pytest.skip('Optional package sparse disabled', allow_module_level=True)
 
 import scipy.sparse
 from scipy.signal import convolve2d
@@ -20,10 +20,9 @@ from theano.sparse.sandbox import sp
 from theano.sparse.tests.test_basic import random_lil
 from theano.tests import unittest_tools as utt
 from theano.sparse.tests.test_basic import sparse_random_inputs
-from theano.tests.unittest_tools import attr
 
 
-class TestSP(unittest.TestCase):
+class TestSP():
     @pytest.mark.slow
     def test_convolution(self):
 #        print '\n\n*************************************************'
@@ -206,15 +205,3 @@ class TestSP(unittest.TestCase):
                 return output
             utt.verify_grad(mp, [imval.reshape(imval.shape[0], -1)])
 
-
-if __name__ == '__main__':
-    if 0:
-        test_remove0()
-        exit()
-    if 1:
-        testcase =  TestSP
-        suite = unittest.TestLoader()
-        suite = suite.loadTestsFromTestCase(testcase)
-        unittest.TextTestRunner(verbosity=2).run(suite)
-    else:
-        unittest.main()

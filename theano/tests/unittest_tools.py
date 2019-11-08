@@ -127,7 +127,7 @@ class TestOptimizationMixin(object):
 
 # This object name should not start with Test.
 # Otherwise nosetests will execute it!
-class T_OpContractMixin(object):
+class Test_OpContractMixin(object):
     # self.ops should be a list of instantiations of an Op class to test.
     # self.other_op should be an op which is different from every op
     other_op = T.add

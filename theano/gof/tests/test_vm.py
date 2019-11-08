@@ -2,7 +2,6 @@ from __future__ import absolute_import, print_function, division
 import gc
 import sys
 import time
-import unittest
 
 import pytest
 import numpy as np

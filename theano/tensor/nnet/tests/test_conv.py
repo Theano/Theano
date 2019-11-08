@@ -8,7 +8,6 @@ import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import conv
 from theano.tensor.basic import _allclose, NotScalarConstantError
-from theano.tests.unittest_tools import attr
 
 
 class TestConv2D(utt.InferShapeTester):
@@ -28,7 +27,7 @@ class TestConv2D(utt.InferShapeTester):
         self.filters = T.tensor4('filters', dtype=self.dtype)
         self.filters.name = 'default_filters'
         if not conv.imported_scipy_signal and theano.config.cxx == "":
-            pytest.skip("conv2d tests need SciPy or a c++ compiler")
+            pytest.skip(reason="conv2d tests need SciPy or a c++ compiler")
 
     def validate(self, image_shape, filter_shape,
                  border_mode='valid', subsample=(1, 1),

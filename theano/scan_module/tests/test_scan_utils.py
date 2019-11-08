@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import itertools
-import unittest
 import numpy as np
+import pytest
 import theano
 from theano import tensor
 from theano.scan_module.scan_utils import equal_computations, map_variables
@@ -22,7 +22,7 @@ def test_equal_compuations():
 # map_variables #
 #################
 
-class TestMapVariables(unittest.TestCase):
+class TestMapVariables():
     @staticmethod
     def replacer(graph):
         return getattr(graph.tag, "replacement", graph)
@@ -105,8 +105,8 @@ class TestMapVariables(unittest.TestCase):
 
         s, _ = theano.scan(step, sequences=x,
                            outputs_info=[np.array(0.)])
-        self.assertRaises(NotImplementedError,
-                          map_variables, self.replacer, [s])
+        with pytest.raises(NotImplementedError):
+            map_variables(self.replacer, [s])
 
     def test_scan_with_shared_update2(self):
         x = tensor.vector('x')
@@ -129,8 +129,8 @@ class TestMapVariables(unittest.TestCase):
 
         s, _ = theano.scan(step, sequences=x,
                            outputs_info=[np.array(0.)])
-        self.assertRaises(NotImplementedError,
-                          map_variables, self.replacer, [s])
+        with pytest.raises(NotImplementedError):
+            map_variables(self.replacer, [s])
 
     def test_opfromgraph(self):
         # as with the scan tests above, insert foreign inputs into the
@@ -163,5 +163,5 @@ class TestMapVariables(unittest.TestCase):
         # test that the unsupported case of replacement with a shared
         # variable with updates crashes
         shared.update = shared + 1
-        self.assertRaises(NotImplementedError,
-                          map_variables, self.replacer, [t])
+        with pytest.raises(NotImplementedError):
+            map_variables(self.replacer, [t])

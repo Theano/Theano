@@ -42,7 +42,7 @@ from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
                                             upcast_int8_nfunc)
 
 
-class T_sigmoid():
+class Test_sigmoid():
 
     def setup_method(self):
         utt.seed_rng()
@@ -51,7 +51,7 @@ class T_sigmoid():
         utt.verify_grad(sigmoid, [np.random.rand(3, 4)])
 
 
-class T_softplus():
+class Test_softplus():
 
     def setup_method(self):
         utt.seed_rng()
@@ -60,7 +60,7 @@ class T_softplus():
         utt.verify_grad(softplus, [np.random.rand(3, 4)])
 
 
-class T_Softmax(utt.InferShapeTester):
+class Test_Softmax(utt.InferShapeTester):
 
     def test0(self):
         def f(a):
@@ -101,7 +101,7 @@ class T_Softmax(utt.InferShapeTester):
         utt.verify_grad(f, [np.random.rand(4)])
 
 
-class T_SoftmaxWithBias(utt.InferShapeTester):
+class Test_SoftmaxWithBias(utt.InferShapeTester):
 
     def test0(self):
         def f(a, b):
@@ -165,7 +165,7 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
                                 [admat_val, advec_val], SoftmaxWithBias)
 
 
-class T_LogSoftmax(utt.InferShapeTester):
+class Test_LogSoftmax(utt.InferShapeTester):
 
     def test0(self):
         def f(a):
@@ -313,7 +313,7 @@ class T_LogSoftmax(utt.InferShapeTester):
         assert softmax_grad in [n.op for n in fgraph.toposort()]
 
 
-class T_SoftmaxGrad(utt.InferShapeTester):
+class Test_SoftmaxGrad(utt.InferShapeTester):
 
     def test_infer_shape(self):
         admat = matrix()
@@ -324,7 +324,7 @@ class T_SoftmaxGrad(utt.InferShapeTester):
                                 [admat_val, bdmat_val], SoftmaxGrad)
 
 
-class T_CrossentropySoftmax1Hot():
+class Test_CrossentropySoftmax1Hot():
 
     def setup_method(self):
         utt.seed_rng()
@@ -359,7 +359,7 @@ class T_CrossentropySoftmax1Hot():
         utt.verify_grad(f, [np.random.rand(4), np.random.rand(4)])
 
 
-class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
+class Test_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
 
     def test0(self):
         def ff(class_dtype):
@@ -420,10 +420,10 @@ class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
             f(advec_val, admat_val, alvec_val)
 
 
-class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
+class Test_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
 
     def setup_method(self):
-        super(T_CrossentropySoftmaxArgmax1HotWithBias, self).setup_method()
+        super(Test_CrossentropySoftmaxArgmax1HotWithBias, self).setup_method()
         self.op = theano.tensor.nnet.crossentropy_softmax_argmax_1hot_with_bias
 
     def test0(self):
@@ -479,7 +479,7 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
             f(admat_val, advec_val, alvec_val)
 
 
-class T_prepend(utt.InferShapeTester):
+class Test_prepend(utt.InferShapeTester):
 
     def test0(self):
         x = tensor.matrix('x')
@@ -519,7 +519,7 @@ class T_prepend(utt.InferShapeTester):
             Prepend_scalar_to_each_row)
 
 
-class T_CrossentropyCategorical1HotGrad(utt.InferShapeTester):
+class Test_CrossentropyCategorical1HotGrad(utt.InferShapeTester):
 
     def test_infer_shape(self):
         advec = vector()
@@ -536,7 +536,7 @@ class T_CrossentropyCategorical1HotGrad(utt.InferShapeTester):
             CrossentropyCategorical1HotGrad)
 
 
-class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
+class Test_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
     def test_grad(self):
         x = tensor.matrix('x')
@@ -1769,7 +1769,7 @@ SoftsignTester = makeBroadcastTester(
 )
 
 
-class T_sigmoid_binary_crossentropy():
+class Test_sigmoid_binary_crossentropy():
 
     def setup_method(self):
         utt.seed_rng()

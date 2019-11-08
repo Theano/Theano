@@ -23,7 +23,6 @@ from ..subtensor import GpuSubtensor
 from ..linalg import GpuCusolverSolve, cusolver_available, GpuCholesky
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
-import unittest
 from theano.tensor.nnet import abstract_conv
 from theano.gpuarray import dnn, blas, opt
 
@@ -772,7 +771,7 @@ def test_crossentropycategorical1hot_lifter():
       rng.randint(5, size=(13,)))
 
 
-class Conv_opt_test(unittest.TestCase):
+class TestConv_opt():
 
     def optimizer_2d(self, input_shapes, direction, include_tags, exclude_tags,
                      op, border_mode='valid', subsample=(1, 1),

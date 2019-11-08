@@ -32,114 +32,15 @@ module, for this we refer the reader to the `official documentation
 <http://docs.python.org/library/unittest.html>`_.  We will however
 adress certain specificities about how unittests relate to theano.
 
-Unittest Primer
+PyTest Primer
 ===============
 
-A unittest is a subclass of ``unittest.TestCase``, with member
-functions with names that start with the string ``test``.  For
-example:
-
-.. testcode::
-  
-    import unittest
-
-    class MyTestCase(unittest.TestCase):
-        def test0(self):
-            pass
-            # test passes cleanly
-
-        def test1(self):
-            self.assertTrue(2+2 == 5)
-            # raises an exception, causes test to fail
-
-        def test2(self):
-            assert 2+2 == 5
-            # causes error in test (basically a failure, but counted separately)
-
-        def test2(self):
-            assert 2+2 == 4
-            # this test has the same name as a previous one,
-            # so this is the one that runs.
-
+We use pytest now! New tests should mostly be functions, with assertions
 
 How to Run Unit Tests ?
 -----------------------
 
-Two options are available:
-
-theano-nose
-~~~~~~~~~~~
-
-The easiest by far is to use ``theano-nose`` which is a command line
-utility that recurses through a given directory, finds all unittests
-matching a specific criteria and executes them. By default, it will
-find & execute tests case in test*.py files whose method name starts
-with 'test'.
-
-``theano-nose`` is a wrapper around `nosetests
-<http://nose.readthedocs.org/en/latest/>`_. You should be
-able to execute it if you installed Theano using pip, or if you ran
-"python setup.py develop" after the installation. If ``theano-nose`` is
-not found by your shell, you will need to add ``Theano/bin`` to your
-``PATH`` environment variable.
-
-.. note::
-
-    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
-    are working with such a version, you can call ``nosetests`` instead
-    of ``theano-nose`` in all the examples below.
-
-Running all unit tests ::
-
-    cd Theano/
-    theano-nose
-
-Running unit tests with standard out ::
-
-    theano-nose -s
-
-Running unit tests contained in a specific .py file ::
-
-    theano-nose <filename>.py
-
-Running a specific unit test ::
-
-    theano-nose <filename>.py:<classname>.<method_name>
-
-Using unittest module
-~~~~~~~~~~~~~~~~~~~~~
-
-To launch tests cases from within python, you can also use the
-functionality offered by the ``unittest`` module. The simplest thing
-is to run all the tests in a file using ``unittest.main()``. Python's
-built-in unittest module uses metaclasses to know about all the
-``unittest.TestCase`` classes you have created.  This call will run
-them all, printing '.' for passed tests, and a stack trace for
-exceptions. The standard footer code in theano's test files is:
-
-.. testcode::
-
-    if __name__ == '__main__':
-        unittest.main()
-
-You can also choose to run a subset of the full test suite.
-
-To run all the tests in one or more ``TestCase`` subclasses:
-
-.. code-block:: python
-
-    suite = unittest.TestLoader()
-    suite = suite.loadTestsFromTestCase(MyTestCase0)
-    suite = suite.loadTestsFromTestCase(MyTestCase1)
-    ...
-    unittest.TextTestRunner(verbosity=2).run(suite)
-
-To run just a single ``MyTestCase`` member test function called ``test0``:
-
-.. testcode::
-
-    MyTestCase('test0').debug()
-
+Mostly `pytest theano/`
 
 Folder Layout
 -------------

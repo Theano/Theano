@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 from copy import copy
-from unittest import TestCase
 
 import numpy as np
 
@@ -70,7 +69,7 @@ def test_elemwise_pow():
             assert_allclose(out, expected_out)
 
 
-class TestMathErrorFunctions(TestCase):
+class TestMathErrorFunctions():
     dtypes = ["float64", "float32", "float16"]
     default_arrays = {}
     expected_erfinv_outputs = {}
@@ -364,7 +363,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
             pytest.skip("Cuda specific tests")
 
 
-class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
+class Test_gpureduce_dtype(test_elemwise.T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
 
     # GpuDnnReduction doesn't cover all cases, but should cover some

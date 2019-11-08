@@ -196,7 +196,7 @@ class TestGpuSgerNoTransfer(TestGpuSger):
     shared = staticmethod(gpuarray_shared_constructor)
 
 
-class TestGpuGer_OpContract(utt.T_OpContractMixin):
+class TestGpuGer_OpContract(utt.Test_OpContractMixin):
     def setup_method(self):
         self.ops = [gpuger_no_inplace, gpuger_inplace]
 

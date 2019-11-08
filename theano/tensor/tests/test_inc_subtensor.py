@@ -1,12 +1,12 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-import unittest
+import pytest
 from theano.tests import unittest_tools as utt
 import theano
 import theano.tensor as tt
 
 
-class Test_inc_subtensor(unittest.TestCase):
+class Test_inc_subtensor():
     """
     Partial testing.
 
@@ -62,8 +62,10 @@ class Test_inc_subtensor(unittest.TestCase):
         increment = tt.matrix()
         index = 0
 
-        self.assertRaises(TypeError, tt.set_subtensor, a[index], increment)
-        self.assertRaises(TypeError, tt.inc_subtensor, a[index], increment)
+        with pytest.raises(TypeError):
+            tt.set_subtensor(a[index], increment)
+        with pytest.raises(TypeError):
+            tt.inc_subtensor(a[index], increment)
 
     def test_wrong_broadcast(self):
         a = tt.col()
@@ -83,12 +85,12 @@ class Test_inc_subtensor(unittest.TestCase):
                 # This one should work
                 f(rng_randX(3, 1), rng_randX(1))
                 # These ones should not
-                self.assertRaises(ValueError,
-                                  f, rng_randX(3, 1), rng_randX(2))
-                self.assertRaises(ValueError,
-                                  f, rng_randX(3, 1), rng_randX(3))
-                self.assertRaises(ValueError,
-                                  f, rng_randX(3, 1), rng_randX(0))
+                with pytest.raises(ValueError):
+                    f(rng_randX(3, 1), rng_randX(2))
+                with pytest.raises(ValueError):
+                    f(rng_randX(3, 1), rng_randX(3))
+                with pytest.raises(ValueError):
+                    f(rng_randX(3, 1), rng_randX(0))
 
     def test_simple_3d(self):
         # Increments or sets part of a tensor by a scalar using full slice and

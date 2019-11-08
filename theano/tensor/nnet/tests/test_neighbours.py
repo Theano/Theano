@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-import unittest
+import pytest
 
 import theano
 from theano import shared, function
@@ -13,7 +13,7 @@ from theano import change_flags
 mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 
-class T_Images2Neibs(unittest_tools.InferShapeTester):
+class Test_Images2Neibs(unittest_tools.InferShapeTester):
     mode = mode_without_gpu
     op = Images2Neibs
     dtypes = ['int64', 'float32', 'float64']
@@ -152,7 +152,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                 neib_shape = T.as_tensor_variable(neib_shape)
                 f = function([], images2neibs(images, neib_shape),
                              mode=self.mode)
-                self.assertRaises(TypeError, f)
+                with pytest.raises(TypeError):
+                    f()
 
                 # Test that ignore border work in that case.
                 f = function([],
@@ -304,7 +305,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                 f = function([], images2neibs(images, neib_shape,
                                               mode="wrap_centered"),
                              mode=self.mode)
-                self.assertRaises(TypeError, f)
+                with pytest.raises(TypeError):
+                    f()
 
             for shape in [(2, 3, 2, 3), (2, 3, 3, 2)]:
                 images = shared(np.arange(np.prod(shape)).reshape(shape))
@@ -312,7 +314,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                 f = function([], images2neibs(images, neib_shape,
                                               mode="wrap_centered"),
                              mode=self.mode)
-                self.assertRaises(TypeError, f)
+                with pytest.raises(TypeError):
+                    f()
 
             # Test a valid shapes
             shape = (2, 3, 3, 3)
@@ -332,8 +335,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         def fn(images):
             return images2neibs(images, (3, 3), mode='wrap_centered')
 
-        self.assertRaises(TypeError, unittest_tools.verify_grad,
-                          fn, [images_val], mode=self.mode)
+        with pytest.raises(TypeError):
+            unittest_tools.verify_grad(fn, [images_val], mode=self.mode)
 
     def test_grad_half(self):
         # It is not implemented for now. So test that we raise an error.
@@ -343,8 +346,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         def fn(images):
             return images2neibs(images, (3, 3), mode='half')
 
-        self.assertRaises(TypeError, unittest_tools.verify_grad,
-                          fn, [images_val], mode=self.mode)
+        with pytest.raises(TypeError):
+            unittest_tools.verify_grad(fn, [images_val], mode=self.mode)
 
     def test_grad_full(self):
         # It is not implemented for now. So test that we raise an error.
@@ -354,8 +357,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         def fn(images):
             return images2neibs(images, (3, 3), mode='full')
 
-        self.assertRaises(TypeError, unittest_tools.verify_grad,
-                          fn, [images_val], mode=self.mode)
+        with pytest.raises(TypeError):
+            unittest_tools.verify_grad(fn, [images_val], mode=self.mode)
 
     def test_grad_valid(self):
         shape = (2, 3, 6, 6)
@@ -409,7 +412,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         f = theano.function([images],
                             T.sqr(images2neibs(images, (2, 2), mode='valid')),
                             mode=self.mode)
-        self.assertRaises(TypeError, f, images_val)
+        with pytest.raises(TypeError):
+            f(images_val)
 
     def test_neibs_half_with_inconsistent_borders(self):
         shape = (2, 3, 5, 5)
@@ -420,7 +424,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         f = theano.function([images],
                             T.sqr(images2neibs(images, (2, 2), mode='half')),
                             mode=self.mode)
-        self.assertRaises(TypeError, f, images_val)
+        with pytest.raises(TypeError):
+            f(images_val)
 
     def test_neibs_full_with_inconsistent_borders(self):
         shape = (2, 3, 5, 5)
@@ -431,7 +436,8 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         f = theano.function([images],
                             T.sqr(images2neibs(images, (2, 2), mode='full')),
                             mode=self.mode)
-        self.assertRaises(TypeError, f, images_val)
+        with pytest.raises(TypeError):
+            f(images_val)
 
     def test_can_not_infer_nb_dim(self):
         # Was reported in gh-5613. Test that we do not crash
@@ -455,12 +461,12 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             neibs = extractPatches(im_val)
             f(neibs, im_val.shape)
             # Wrong number of dimensions
-            self.assertRaises(ValueError, f, neibs,
-                              (1, 1, 3, 320, 320))
+            with pytest.raises(ValueError):
+                f(neibs, (1, 1, 3, 320, 320))
             # End up with a step of 0
             # This can lead to division by zero in DebugMode
-            self.assertRaises((ValueError, ZeroDivisionError), f, neibs,
-                              (3, 320, 320, 1))
+            with pytest.raises((ValueError, ZeroDivisionError)):
+                    f(neibs, (3, 320, 320, 1))
 
     def speed_neibs(self):
         shape = (100, 40, 18, 18)
@@ -570,6 +576,3 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         self._compile_and_check(
             [x], [images2neibs(x, neib_shape=(2, 3), mode='full')],
             [images], Images2Neibs)
-
-if __name__ == '__main__':
-    unittest.main()

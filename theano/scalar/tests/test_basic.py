@@ -10,7 +10,6 @@ If you do want to rewrite these tests, bear in mind:
 """
 from __future__ import absolute_import, print_function, division
 
-import unittest
 import numpy as np
 
 import theano
@@ -256,12 +255,7 @@ class test_logical():
             assert fn(a, b) == ~a, (a,)
 
 
-# This class does not inherit from unittest.TestCase, because it would
-# interfere with the "yield" mechanism that automatically generates test, see
-# http://stackoverflow.com/questions/6689537/nose-test-generators-inside-class
-# Therefore, it needs to be named "test_..." or "Test_...", so nose can pick
-# it up by name, otherwise the tests would not be executed.
-class test_upgrade_to_float(object):
+class test_upgrade_to_float():
     # Test for Ops whose output has to be floating point, even when all
     # inputs are ints.
     # In particular, when the inputs are int8, the output should be
@@ -493,6 +487,3 @@ def test_constant():
     assert c.name is None
     assert c.dtype == 'float32'
 
-
-if __name__ == '__main__':
-    unittest.main()

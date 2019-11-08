@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
 import numpy as np
 import pytest
@@ -139,6 +138,3 @@ class MultinomialTester(utt.InferShapeTester):
                                 self.op_class,
                                 warn=False)
 
-
-if __name__ == '__main__':
-    unittest.main()

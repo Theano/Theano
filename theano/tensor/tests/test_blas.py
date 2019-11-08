@@ -1605,10 +1605,10 @@ class TestDgemv(BaseGemv, unittest_tools.TestOptimizationMixin):
 
 # The optimization to put Gemv don't work for complex type for now.
 # See ticket 653.
-# class TestCgemv(TestCase, BaseGemv):
+# class TestCgemv(BaseGemv):
 #    dtype = complex64
 
-# class TestZgemv(TestCase, BaseGemv):
+# class TestZgemv(BaseGemv):
 #    dtype = complex128
 
 ###############################################################################
@@ -1688,7 +1688,7 @@ class TestGer_make_node():
             ger(self.cm, self.fa, self.fv, self.zv_2)
 
 
-class TestGer_OpContract(unittest_tools.T_OpContractMixin):
+class TestGer_OpContract(unittest_tools.Test_OpContractMixin):
     def setup_method(self):
         self.ops = [ger, ger_destructive]
 

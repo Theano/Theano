@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
 import numpy as np
 import numpy.random
@@ -16,7 +15,7 @@ from theano.tests import unittest_tools as utt
 '''
 
 
-class T_scipy(unittest.TestCase):
+class Test_scipy():
     def setup_method(self):
         utt.seed_rng()
         self.orig_floatX = theano.config.floatX
@@ -68,6 +67,3 @@ class T_scipy(unittest.TestCase):
         for i in range(training_steps):
             pred, err = train(D[0], D[1])
 
-
-if __name__ == '__main__':
-    unittest.main()
