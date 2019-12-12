@@ -770,7 +770,7 @@ class ProfileStats(object):
     def summary_memory(self, file, N=None):
         fct_memory = {}  # fgraph->dict(node->[outputs size])
         fct_shapes = {}  # fgraph->dict(node->[outputs shapes]))
-        var_mem = {}  # varible->size in bytes; don't include input variables
+        var_mem = {}  # variable->size in bytes; don't include input variables
         node_mem = {}  # node->total outputs size (only dense outputs)
 
         for node in self.apply_callcount:
