@@ -791,7 +791,7 @@ implementation.
 It takes an optional :func:`infer_shape` parameter that must have this
 signature:
 
-.. code-block::
+.. code-block:: none
 
     def infer_shape(node, input_shapes):
         # ...
