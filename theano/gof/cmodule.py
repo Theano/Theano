@@ -2219,6 +2219,21 @@ class GCC_compiler(Compiler):
             # Use the already-loaded python symbols.
             cxxflags.extend(['-undefined', 'dynamic_lookup'])
 
+        if sys.platform == 'win32':
+            # Workaround for https://github.com/Theano/Theano/issues/4926.
+            # https://github.com/python/cpython/pull/11283/ removed the "hypot"
+            # redefinition for recent CPython versions (>=2.7.16 and >=3.7.3).
+            # The following nullifies that redefinition, if it is found.
+            python_version = sys.version_info[:3]
+            if python_version < (2, 7, 16) or (3,) <= python_version < (3, 7, 3):
+                config_h_filename = distutils.sysconfig.get_config_h_filename()
+                try:
+                    with open(config_h_filename) as config_h:
+                        if any(line.startswith('#define hypot _hypot') for line in config_h):
+                            cxxflags.append('-D_hypot=hypot')
+                except IOError:
+                    pass
+
         return cxxflags
 
     @classmethod
