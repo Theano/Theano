@@ -6,15 +6,14 @@ from __future__ import absolute_import, print_function, division
 from six import PY3, b, BytesIO, next
 from six.moves import configparser
 from six.moves import reload_module as reload
+from collections import OrderedDict
 try:
-    from collections.abc import (OrderedDict, MutableMapping as DictMixin,
-                                 Callable)
+    from collections.abc import MutableMapping as DictMixin, Callable
 except ImportError:
     # this raises an DeprecationWarning on py37 and will become
-    # and Exception in py38. Importing from collections.abc
+    # and Exception in py39. Importing from collections.abc
     # won't work on py27
-    from collections import (OrderedDict, MutableMapping as DictMixin,
-                             Callable)
+    from collections import MutableMapping as DictMixin, Callable
 
 __all__ = ['PY3', 'b', 'BytesIO', 'next', 'configparser', 'reload']
 
