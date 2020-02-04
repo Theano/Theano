@@ -1,7 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import sys
 from textwrap import dedent
-import collections
 import warnings
 import logging
 
@@ -22,6 +21,7 @@ from theano.tensor.basic import (addbroadcast, clip, get_scalar_constant_value,
 from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType, NoneTypeT, make_slice
 from theano import config
+from theano.compat import Iterable
 
 from .inc_code import inc_code
 
@@ -2154,7 +2154,7 @@ def check_and_reject_bool(args_el):
         pass
 
     if (not isinstance(args_el, theano.tensor.Variable) and
-            isinstance(args_el, collections.Iterable)):
+            isinstance(args_el, Iterable)):
         for el in args_el:
             check_and_reject_bool(el)
 

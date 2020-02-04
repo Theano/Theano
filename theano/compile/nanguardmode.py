@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import collections
 import logging
 
 from six.moves import StringIO
@@ -9,6 +8,7 @@ import theano
 from theano import config
 import theano.tensor as T
 from theano.compile import Mode
+from theano.compat import ValuesView
 from .mode import get_mode
 
 try:
@@ -68,7 +68,7 @@ def flatten(l):
         A flattened list of objects.
 
     """
-    if isinstance(l, (list, tuple, collections.ValuesView)):
+    if isinstance(l, (list, tuple, ValuesView)):
         rval = []
         for elem in l:
             if isinstance(elem, (list, tuple)):
