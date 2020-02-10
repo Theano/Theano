@@ -5,10 +5,12 @@ import collections
 import operator
 import functools
 
+from theano.compat import Mapping
 
-class frozendict(collections.Mapping):
+
+class frozendict(Mapping):
     """
-    An immutable wrapper around dictionaries that implements the complete :py:class:`collections.Mapping`
+    An immutable wrapper around dictionaries that implements the complete :py:class:`collections.abc.Mapping`
     interface. It can be used as a drop-in replacement for dictionaries where immutability and ordering are desired.
     """
 

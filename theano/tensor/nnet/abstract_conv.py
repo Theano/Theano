@@ -6,7 +6,10 @@ from __future__ import absolute_import, print_function, division
 import logging
 from six import reraise, integer_types
 import sys
-from fractions import gcd
+try:
+    from math import gcd
+except ImportError:
+    from fractions import gcd
 
 import theano
 

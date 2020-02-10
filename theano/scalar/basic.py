@@ -22,7 +22,7 @@ import six
 from six.moves import xrange
 
 import theano
-from theano.compat import imap, izip
+from theano.compat import imap, izip, Callable
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
@@ -33,7 +33,6 @@ from theano.gradient import DisconnectedType
 from theano.gradient import grad_undefined
 
 from theano.printing import pprint
-import collections
 
 builtin_bool = bool
 builtin_complex = complex
@@ -1028,7 +1027,7 @@ class ScalarOp(Op):
     def __init__(self, output_types_preference=None, name=None):
         self.name = name
         if output_types_preference is not None:
-            if not isinstance(output_types_preference, collections.Callable):
+            if not isinstance(output_types_preference, Callable):
                 raise TypeError(
                     "Expected a callable for the 'output_types_preference' argument to %s. (got: %s)" %
                     (self.__class__, output_types_preference))

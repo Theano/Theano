@@ -6,15 +6,16 @@ from __future__ import absolute_import, print_function, division
 from six import PY3, b, BytesIO, next
 from six.moves import configparser
 from six.moves import reload_module as reload
+from collections import OrderedDict
 try:
-    from collections.abc import (OrderedDict, MutableMapping as DictMixin,
-                                 Callable)
+    from collections.abc import (Callable, Iterable, Mapping, ValuesView,
+                                 MutableMapping as DictMixin)
 except ImportError:
     # this raises an DeprecationWarning on py37 and will become
-    # and Exception in py38. Importing from collections.abc
+    # and Exception in py39. Importing from collections.abc
     # won't work on py27
-    from collections import (OrderedDict, MutableMapping as DictMixin,
-                             Callable)
+    from collections import (Callable, Iterable, Mapping, ValuesView,
+                             MutableMapping as DictMixin)
 
 __all__ = ['PY3', 'b', 'BytesIO', 'next', 'configparser', 'reload']
 
@@ -73,8 +74,10 @@ else:
     def decode_with(x, encoding):
         return x
 
-__all__ += ['cmp', 'operator_div', 'DictMixin', 'OrderedDict', 'decode',
-            'decode_iter', 'get_unbound_function', 'imap', 'izip', 'ifilter']
+__all__ += ['cmp', 'operator_div',
+            'DictMixin', 'Iterable', 'Mapping', 'OrderedDict', 'ValuesView',
+            'decode', 'decode_iter', 'get_unbound_function',
+            'imap', 'izip', 'ifilter']
 
 
 class DefaultOrderedDict(OrderedDict):
