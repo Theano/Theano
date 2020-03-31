@@ -60,6 +60,7 @@ if __name__ == '__main__':
 
     def call_sphinx(builder, workdir):
         import sphinx
+        import sphinx.cmd.build
         if options['--check']:
             extraopts = ['-W']
         else:
@@ -70,7 +71,7 @@ if __name__ == '__main__':
         inopt = [docpath, workdir]
         if files is not None:
             inopt.extend(files)
-        ret = sphinx.build_main(['', '-b', builder] + extraopts + inopt)
+        ret = sphinx.cmd.build.build_main(['-b', builder] + extraopts + inopt)
         if ret != 0:
             sys.exit(ret)
 
