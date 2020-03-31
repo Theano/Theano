@@ -57,7 +57,7 @@ def test_determinism_1():
             updates.append((s, val))
 
         for var in theano.gof.graph.ancestors(update for _, update in updates):
-            if var.name is not None and var.name is not 'b':
+            if var.name is not None and var.name != 'b':
                 if var.name[0] != 's' or len(var.name) != 2:
                     var.name = None
 

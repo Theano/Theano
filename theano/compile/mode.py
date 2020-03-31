@@ -261,7 +261,7 @@ class Mode(object):
     def __init__(self, linker=None, optimizer='default'):
         if linker is None:
             linker = config.linker
-        if optimizer is 'default':
+        if type(optimizer)==str and optimizer == 'default':
             optimizer = config.optimizer
         Mode.__setstate__(self, (linker, optimizer))
 

@@ -113,7 +113,7 @@ class TestPerformLinker(unittest.TestCase):
     def test_input_output_same(self):
         x, y, z = inputs()
         fn = perform_linker(FunctionGraph([x], [x])).make_function()
-        assert 1.0 is fn(1.0)
+        assert 1.0 == fn(1.0)
 
     def test_input_dependency0(self):
         x, y, z = inputs()
