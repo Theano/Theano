@@ -642,7 +642,7 @@ class AbstractBatchNormTrainGrad(Op):
         # some inputs should be disconnected
         results = [g_wrt_x, g_wrt_dy, g_wrt_scale, g_wrt_x_mean, g_wrt_x_invstd,
                    theano.gradient.DisconnectedType()()]
-        return [theano.gradient.DisconnectedType()() if (type(r)==int and r==0) else r
+        return [theano.gradient.DisconnectedType()() if (type(r) == int and r == 0) else r
                 for r in results]
 
     def connection_pattern(self, node):
