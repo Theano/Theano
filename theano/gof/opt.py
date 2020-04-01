@@ -1284,7 +1284,7 @@ def local_optimizer(tracks, inplace=False, requirements=()):
 
         """
         if tracks is not None:
-            if len(tracks) is 0:
+            if len(tracks) == 0:
                 raise ValueError("Use None instead of an empty list to apply to all nodes.", f.__module__, f.__name__)
             for t in tracks:
                 if not (isinstance(t, op.Op) or issubclass(t, op.PureOp)):

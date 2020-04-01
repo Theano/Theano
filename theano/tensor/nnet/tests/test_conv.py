@@ -95,7 +95,7 @@ class TestConv2D(utt.InferShapeTester):
         # REFERENCE IMPLEMENTATION
         s = 1.
         orig_image_data = image_data
-        if border_mode is not 'full':
+        if border_mode != 'full':
             s = -1.
         out_shape2d = np.array(N_image_shape[-2:]) +\
             s * np.array(N_filter_shape[-2:]) - s

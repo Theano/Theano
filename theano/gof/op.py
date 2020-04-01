@@ -1540,12 +1540,12 @@ class COp(Op):
         undef_macros = []
 
         for i, inp in enumerate(inputs):
-            define_macros.append("#define INPUT_%d %s" (i, inp))
-            undef_macros.append("#undef INPUT_%d", (i,))
+            define_macros.append("#define INPUT_%d %s" % (i, inp))
+            undef_macros.append("#undef INPUT_%d" % (i,))
 
         for i, out in enumerate(outputs):
-            define_macros.append("#define OUTPUT_%d %s" (i, inp))
-            undef_macros.append("#undef OUTPUT_%d", (i,))
+            define_macros.append("#define OUTPUT_%d %s" % (i, inp))
+            undef_macros.append("#undef OUTPUT_%d" % (i,))
 
     def c_init_code_struct(self, node, name, sub):
         """
