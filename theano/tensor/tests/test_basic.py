@@ -2835,11 +2835,7 @@ ClipTester = makeTester(
               correct6=(randint(5, 5).astype('int64'),
                         np.array(-1, dtype='int64'),
                         np.array(1, dtype='int64')),
-              # min > max. messed up behaviour, but
-              # should be same as NumPy's
-              correct7=((5 * rand(5, 5)).astype('float64'),
-                        np.array(1, dtype='float64'),
-                        np.array(-1, dtype='float64')),
+              # min > max case removed as numpy has changed
               correct8=(randint(0, 5).astype('uint8'),
                         np.array(2, dtype='uint8'),
                         np.array(4, dtype='uint8')),

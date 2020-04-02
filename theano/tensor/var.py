@@ -247,6 +247,15 @@ class _tensor_py_operators(object):
     def __rpow__(self, other):
         return theano.tensor.basic.pow(other, self)
 
+    def __ceil__(self):
+        return theano.tensor.ceil(self)
+
+    def __floor__(self):
+        return theano.tensor.floor(self)
+
+    def __trunc__(self):
+        return theano.tensor.trunc(self)
+
     # TRANSPOSE
     T = property(lambda self: theano.tensor.basic.transpose(self))
 
