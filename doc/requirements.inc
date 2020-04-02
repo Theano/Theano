@@ -87,12 +87,6 @@ Install requirements and optional packages
 
 * Arguments between <...> are optional.
 
-Package ``parameterized`` is also optional but may be required for unit testing. It is available via ``pip``.
-
-.. code-block:: bash
-
-    pip install parameterized
-
 Install and configure the GPU drivers (recommended)
 ---------------------------------------------------
 
@@ -115,5 +109,5 @@ Install and configure the GPU drivers (recommended)
 
 2. Fix 'lib' path
     * Add the CUDA 'lib' subdirectory (and/or 'lib64' subdirectory if you have a
-      64-bit OS) to your ``$LD_LIBRARY_PATH`` environment 
+      64-bit OS) to your ``$LD_LIBRARY_PATH`` environment
       variable. Example: ``/usr/local/cuda/lib64``

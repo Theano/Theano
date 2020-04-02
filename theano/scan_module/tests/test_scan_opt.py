@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-import unittest
 
 import theano
 from theano import config
@@ -11,13 +10,13 @@ from theano.tests import unittest_tools as utt
 mode = theano.compile.mode.get_mode(config.mode)
 
 
-class TestGaussNewton(unittest.TestCase):
+class TestGaussNewton():
     """
     Regression test for code exhibiting various optimization errors.
 
     This test case is based on code by Sigurd Spieckermann.
     """
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
     def _run(self, num_features, num_timesteps, batch_size, mode):

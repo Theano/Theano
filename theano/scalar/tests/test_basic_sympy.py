@@ -1,24 +1,24 @@
 from __future__ import absolute_import, print_function, division
 
+import pytest
+
 import theano
 from theano.scalar.basic_sympy import SymPyCCode
 from theano.scalar.basic import floats
-
-from nose.plugins.skip import SkipTest
 
 try:
     import sympy
     xs = sympy.Symbol('x')
     ys = sympy.Symbol('y')
 except ImportError:
-    raise SkipTest('optional package sympy disabled')
+    pytest.skip('optional package sympy disabled', allow_module_level=True)
 
 xt, yt = floats('xy')
 
 
 def test_SymPyCCode():
     if not theano.config.cxx:
-        raise SkipTest("Need cxx for this test")
+        pytest.skip("Need cxx for this test")
 
     op = SymPyCCode([xs, ys], xs + ys)
     e = op(xt, yt)

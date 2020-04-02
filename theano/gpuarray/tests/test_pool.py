@@ -1,10 +1,10 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
 import copy
 import itertools
 
 import numpy as np
+import pytest
 import theano
 from theano import gradient
 from theano import tensor
@@ -18,17 +18,17 @@ from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
                     GpuDownsampleFactorMaxGradGrad)
 
 
-class TestPool(unittest.TestCase):
+class TestPool():
 
     def test_pool_py_interface(self):
         shp = (2, 2, 2, 2)
         inp = theano.shared(rand(*shp), 'a')
         inp = tensor.as_tensor_variable(inp)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             # test when pad >= ws
             ds_op = GpuPool(ignore_border=True, ndim=2)
             ds_op(inp, [2, 2], pad=[3, 3])
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             # test when ignore_border and pad >= 0
             ds_op = GpuPool(ignore_border=False, ndim=2)
             ds_op(inp, [2, 2], pad=[1, 1])
@@ -40,7 +40,7 @@ class TestPool(unittest.TestCase):
         shp = (2, 2, 2, 2)
         inp = theano.shared(rand(*shp), 'a')
         inp = tensor.as_tensor_variable(inp)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             # test when ignore_border and pad >= 0
             ds_op = GpuPool(ignore_border=False, ndim=2)
             pad = tensor.as_tensor_variable([1, 1])

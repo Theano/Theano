@@ -4,10 +4,9 @@ This test is for testing the NanGuardMode.
 from __future__ import absolute_import, print_function, division
 
 import logging
-from nose.tools import assert_raises
+import pytest
 
 import numpy as np
-
 from theano.compile.nanguardmode import NanGuardMode
 import theano
 import theano.tensor as T
@@ -39,9 +38,12 @@ def test_NanGuardMode():
     _logger = logging.getLogger("theano.compile.nanguardmode")
     try:
         _logger.propagate = False
-        assert_raises(AssertionError, fun, infa)  # INFs
-        assert_raises(AssertionError, fun, nana)  # NANs
-        assert_raises(AssertionError, fun, biga)  # big values
+        with pytest.raises(AssertionError):
+            fun(infa)  # INFs
+        with pytest.raises(AssertionError):
+            fun(nana)  # NANs
+        with pytest.raises(AssertionError):
+            fun(infa)  # big values
     finally:
         _logger.propagate = True
 
@@ -64,8 +66,11 @@ def test_NanGuardMode():
     fun(a)  # normal values
     try:
         _logger.propagate = False
-        assert_raises(AssertionError, fun, infa)  # INFs
-        assert_raises(AssertionError, fun, nana)  # NANs
-        assert_raises(AssertionError, fun, biga)  # big values
+        with pytest.raises(AssertionError):
+            fun(infa)  # INFs
+        with pytest.raises(AssertionError):
+            fun(nana)  # NANs
+        with pytest.raises(AssertionError):
+            fun(infa)  # big values
     finally:
         _logger.propagate = True

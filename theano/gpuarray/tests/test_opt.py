@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
-from nose.tools import assert_raises
 import numpy as np
+import pytest
 
 import theano
 from theano import tensor
@@ -22,8 +22,7 @@ from ..dnn import GpuDnnReduction
 from ..subtensor import GpuSubtensor
 from ..linalg import GpuCusolverSolve, cusolver_available, GpuCholesky
 
-from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, SkipTest
-import unittest
+from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 from theano.tensor.nnet import abstract_conv
 from theano.gpuarray import dnn, blas, opt
 
@@ -623,8 +622,8 @@ def test_local_assert_no_cpu_op():
         theano.config.assert_no_cpu_op = 'raise'
         theano.config.on_opt_error = 'ignore'
 
-        assert_raises(AssertionError, theano.function,
-                      [], out, mode=mode_local_assert)
+        with pytest.raises(AssertionError):
+            theano.function([], out, mode=mode_local_assert)
     finally:
         theano.config.assert_no_cpu_op = old
         theano.config.on_opt_error = old2
@@ -651,7 +650,7 @@ def test_no_complex():
 @utt.assertFailure_fast
 def test_local_lift_solve():
     if not cusolver_available or not slinalg.imported_scipy:
-        raise SkipTest('No cuSolver or SciPy')
+        pytest.skip('No cuSolver or SciPy')
     A = tensor.fmatrix()
     b = tensor.fmatrix()
     o = slinalg.solve(A, b)
@@ -669,7 +668,7 @@ def test_local_lift_solve():
 
 def test_gpu_solve_not_inplace():
     if not cusolver_available or not slinalg.imported_scipy:
-        raise SkipTest('No cuSolver or Scipy')
+        pytest.skip('No cuSolver or Scipy')
     A = tensor.fmatrix()
     b = tensor.fmatrix()
     s = slinalg.solve(A, b)
@@ -687,7 +686,7 @@ def test_gpu_solve_not_inplace():
 @utt.assertFailure_fast
 def test_local_lift_cholesky():
     if not cusolver_available or not slinalg.imported_scipy:
-        raise SkipTest('No cuSolver or Scipy')
+        pytest.skip('No cuSolver or Scipy')
     A = tensor.fmatrix()
     o = slinalg.cholesky(A)
     f_cpu = theano.function([A], o, mode=mode_without_gpu)
@@ -705,7 +704,7 @@ def test_local_lift_cholesky():
 
 def test_gpu_cholesky_not_inplace():
     if not cusolver_available or not slinalg.imported_scipy:
-        raise SkipTest('No cuSolver or SciPy')
+        pytest.skip('No cuSolver or SciPy')
     A = tensor.fmatrix()
     A_squared = A**2
     B = slinalg.cholesky(A_squared)
@@ -772,7 +771,7 @@ def test_crossentropycategorical1hot_lifter():
       rng.randint(5, size=(13,)))
 
 
-class Conv_opt_test(unittest.TestCase):
+class TestConv_opt():
 
     def optimizer_2d(self, input_shapes, direction, include_tags, exclude_tags,
                      op, border_mode='valid', subsample=(1, 1),
@@ -896,7 +895,7 @@ class Conv_opt_test(unittest.TestCase):
 
     def test_optimizers_2d(self):
         if theano.config.cxx == "":
-            raise SkipTest("Need a c compiler.")
+            pytest.skip("Need a c compiler.")
 
         imshp2d = [(2, 3, 5, 5), (2, 2, 5, 7), (2, 1, 3, 3)]
         kshp2d = [(4, 3, 3, 3), (3, 2, 3, 5), (4, 1, 1, 1)]
@@ -957,7 +956,7 @@ class Conv_opt_test(unittest.TestCase):
 
     def test_optimizers_3d(self):
         if theano.config.cxx == "":
-            raise SkipTest("Need a c compiler.")
+            pytest.skip("Need a c compiler.")
 
         imshp3d = [(2, 3, 5, 5, 5), (2, 2, 5, 7, 5), (2, 1, 3, 3, 3)]
         kshp3d = [(4, 3, 3, 3, 3), (3, 2, 3, 5, 3), (4, 1, 1, 1, 1)]
@@ -1023,7 +1022,7 @@ class Conv_opt_test(unittest.TestCase):
 
     def test_optimizers_non_default(self):
         if theano.config.cxx == "":
-            raise SkipTest("Need a c compiler.")
+            pytest.skip("Need a c compiler.")
         # conv2d forward pass with Non-default border_mode and filter_dilation
         imshp2d = [(2, 3, 5, 5), (4, 2, 5, 5)]
         kshp2d = [(4, 3, 3, 3), (3, 2, 3, 3)]
@@ -1188,7 +1187,7 @@ class Conv_opt_test(unittest.TestCase):
 
     def test_returns_none_2d(self):
         if theano.config.cxx == "":
-            raise SkipTest("Need a c compiler.")
+            pytest.skip("Need a c compiler.")
         # values given don't matter since it returns None
         imshp = (2, 3, 5, 5)
         kshp = (4, 3, 3, 3)
@@ -1260,7 +1259,7 @@ class Conv_opt_test(unittest.TestCase):
 
     def test_returns_none_3d(self):
         if theano.config.cxx == "":
-            raise SkipTest("Need a c compiler.")
+            pytest.skip("Need a c compiler.")
         imshp = (2, 3, 5, 5, 5)
         kshp = (4, 3, 3, 3, 3)
         tshp = (2, 4, 3, 3, 3)

@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
 import numpy as np
 
@@ -37,7 +36,7 @@ def test_hash_from_ndarray():
     assert hash_from_ndarray(rng[::-1]) == hash_from_ndarray(rng[::-1].copy())
 
 
-class Tshape_of_variables(unittest.TestCase):
+class Tshape_of_variables():
     def test_simple(self):
         x = theano.tensor.matrix('x')
         y = x+x
@@ -63,4 +62,5 @@ class Tshape_of_variables(unittest.TestCase):
         x = theano.tensor.matrix('x')
         subx = x[1:]
         fgraph = theano.FunctionGraph([x], [subx])
-        self.assertRaises(ValueError, shape_of_variables, fgraph, {x: (10, 10)})
+        with pytest.raises(ValueError):
+            shape_of_variables(fgraph, {x: (10, 10)})

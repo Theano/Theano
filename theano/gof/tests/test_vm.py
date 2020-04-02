@@ -2,9 +2,8 @@ from __future__ import absolute_import, print_function, division
 import gc
 import sys
 import time
-import unittest
 
-from nose.plugins.skip import SkipTest
+import pytest
 import numpy as np
 from six import itervalues
 
@@ -19,10 +18,10 @@ from theano.ifelse import ifelse
 import theano
 
 
-class TestCallbacks(unittest.TestCase):
+class TestCallbacks():
     # Test the VM_Linker's callback argument, which can be useful for debugging.
 
-    def setUp(self):
+    def setup_method(self):
         self.n_callbacks = {}
 
     def callback(self, node, thunk, storage_map, compute_map):
@@ -67,14 +66,14 @@ def test_c_thunks():
                          linker=vm.VM_Linker(c_thunks=c_thunks,
                                              use_cloop=False)))
         f(1, [2], [3, 2])
-        from nose.tools import assert_raises
-        assert_raises(ValueError, f, 0, [2], [3, 4])
+        with pytest.raises(ValueError):
+            f(0, [2], [3, 4])
         assert any([hasattr(t, 'cthunk') for t in f.fn.thunks]) == c_thunks
 
 
 def test_speed():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
 
     def build_graph(x, depth=5):
         z = x
@@ -208,7 +207,7 @@ def test_partial_function():
 
     check_partial_function(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
     if not theano.config.cxx:
-        raise SkipTest("Need cxx for this test")
+        pytest.skip("Need cxx for this test")
     check_partial_function('cvm')
 
 
@@ -224,7 +223,7 @@ def test_partial_function_with_output_keys():
 
     check_partial_function_output_keys(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
     if not theano.config.cxx:
-        raise SkipTest("Need cxx for this test")
+        pytest.skip("Need cxx for this test")
     check_partial_function_output_keys('cvm')
 
 
@@ -246,7 +245,7 @@ def test_partial_function_with_updates():
 
     check_updates(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
     if not theano.config.cxx:
-        raise SkipTest("Need cxx for this test")
+        pytest.skip("Need cxx for this test")
     check_updates('cvm')
 
 
@@ -440,7 +439,7 @@ def test_reallocation():
 
 def test_no_recycling():
     if theano.config.cxx == '':
-        raise SkipTest('need c++')
+        pytest.skip('need c++')
     x = theano.tensor.vector()
     for lnk in [vm.VM_Linker(use_cloop=True),
                 vm.VM_Linker(use_cloop=False, lazy=True),

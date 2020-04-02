@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import six
 
 import numpy as np
-import unittest
+import pytest
 from functools import update_wrapper
 
 import theano
@@ -62,7 +62,7 @@ def makeSharedTester(shared_constructor_,
     class m(type):
         pass
 
-    class SharedTester(unittest.TestCase):
+    class SharedTester():
         # This is to allow setting __doc__ with python 2
         if not six.PY3:
             __metaclass__ = m
@@ -420,14 +420,16 @@ def makeSharedTester(shared_constructor_,
             # but that will raise an error in some case, but not all
             specify_shape_fct()
             x1_shared.set_value(x2)
-            self.assertRaises(AssertionError, specify_shape_fct)
+            with pytest.raises(AssertionError):
+                specify_shape_fct()
 
             # No assertion will be raised as the Op is removed from the graph
             # when their is optimization
             if theano.config.mode not in ['FAST_COMPILE', 'DebugMode', 'DEBUG_MODE']:
                 shape_constant_fct()
             else:
-                self.assertRaises(AssertionError, shape_constant_fct)
+                with pytest.raises(AssertionError):
+                    shape_constant_fct()
 
         def test_specify_shape_partial(self):
             dtype = self.dtype
@@ -481,13 +483,15 @@ def makeSharedTester(shared_constructor_,
             # Test that we can replace with values of the different shape
             # but that will raise an error in some case, but not all
             x1_shared.set_value(x2)
-            self.assertRaises(AssertionError, specify_shape_fct)
+            with pytest.raises(AssertionError):
+                specify_shape_fct()
 
             # No assertion will be raised as the Op is removed from the graph
             if theano.config.mode not in ['FAST_COMPILE', 'DebugMode', 'DEBUG_MODE']:
                 shape_constant_fct()
             else:
-                self.assertRaises(AssertionError, shape_constant_fct)
+                with pytest.raises(AssertionError):
+                    shape_constant_fct()
 
         def test_specify_shape_inplace(self):
             # test that specify_shape don't break inserting inplace op

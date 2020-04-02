@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 from functools import partial
 import numpy as np
+import pytest
 
 import theano
 from theano import config, shared
@@ -16,13 +17,10 @@ from theano.compile.builders import OpFromGraph
 
 from theano.tests import unittest_tools
 
-test_params = unittest_tools.parameterized.expand(
-    [(OpFromGraph,), (partial(OpFromGraph, inline=True),)])
 
+class Test_OpFromGraph(unittest_tools.InferShapeTester):
 
-class T_OpFromGraph(unittest_tools.InferShapeTester):
-
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_straightforward(self, cls_ofg):
         x, y, z = T.matrices('xyz')
         e = x + y * z
@@ -40,7 +38,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert np.all(8.0 == fn(xv, yv, zv))
         assert np.all(8.0 == fn(xv, yv, zv))
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_size_changes(self, cls_ofg):
         x, y, z = T.matrices('xyz')
         e = T.dot(x, y)
@@ -57,7 +55,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert res.shape == (2, 5)
         assert np.all(180.0 == res)
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_grad(self, cls_ofg):
         x, y, z = T.matrices('xyz')
         e = x + y * z
@@ -70,7 +68,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         zv = np.ones((2, 2), dtype=config.floatX) * 5
         assert np.all(11.0 == fn(xv, yv, zv))
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_grad_grad(self, cls_ofg):
         x, y, z = T.matrices('xyz')
         e = x + y * z
@@ -84,7 +82,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         zv = np.ones((2, 2), dtype=config.floatX) * 5
         assert np.allclose(6.0, fn(xv, yv, zv))
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_shared(self, cls_ofg):
         x, y, z = T.matrices('xyz')
         s = shared(np.random.rand(2, 2).astype(config.floatX))
@@ -102,7 +100,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert np.allclose(8.0, fn(xv, yv, zv))
         assert np.allclose(8.0, fn(xv, yv, zv))
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_shared_grad(self, cls_ofg):
         x, y, z = T.matrices('xyz')
         s = shared(np.random.rand(2, 2).astype(config.floatX))
@@ -123,7 +121,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert np.allclose(15.0 + s.get_value(),
                            fn(xv, yv, zv))
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_grad_override(self, cls_ofg):
         x, y = T.vectors('xy')
 
@@ -192,7 +190,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert isinstance(dw2.type, NullType)
         assert isinstance(db2.type, DisconnectedType)
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_lop_override(self, cls_ofg):
         x = T.vector()
         y = 1. / (1. + T.exp(-x))
@@ -219,7 +217,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
             y1val, y2val = fn(xval)
             assert np.allclose(y1val, y2val)
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_rop(self, cls_ofg):
         a = T.vector()
         M = T.matrix()
@@ -238,7 +236,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         dvval2 = fn(xval, Wval, duval)
         assert np.allclose(dvval2, dvval)
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_rop_override(self, cls_ofg):
         x, y = T.vectors('xy')
 
@@ -266,7 +264,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
 
         # TODO list override case
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_connection_pattern_override(self, cls_ofg):
         x, y = T.vectors('xy')
 
@@ -297,7 +295,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
             y: np.ones((5,), dtype=np.float32)})
         assert np.allclose(out, [1.] * 5)
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_nested(self, cls_ofg):
         x, y = T.vectors('xy')
         u, v = x + y, x - y
@@ -314,7 +312,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert np.allclose(xv, xv2)
         assert np.allclose(yv, yv2)
 
-    @test_params
+    @pytest.mark.parametrize("cls_ofg", [OpFromGraph, partial(OpFromGraph, inline=True)])
     def test_connection_pattern(self, cls_ofg):
         # Basic case
         x, y, z = T.matrices('xyz')

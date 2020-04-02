@@ -2,10 +2,9 @@ from __future__ import absolute_import, print_function, division
 
 import theano
 import theano.tensor as T
-import unittest
 
 
-class test_FutureDiv(unittest.TestCase):
+class test_FutureDiv():
 
     def test_divide_floats(self):
         a = T.dscalar('a')

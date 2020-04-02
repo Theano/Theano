@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
 import numpy.linalg
+import pytest
 
 import theano
 from theano import tensor, function
@@ -22,7 +23,6 @@ from theano.sandbox.linalg.ops import (Cholesky,  # op class
                                        inv_as_solve,
                                        )
 
-from nose.plugins.skip import SkipTest
 
 
 def test_rop_lop():
@@ -135,7 +135,7 @@ def test_transinv_to_invtrans():
 
 def test_tag_solve_triangular():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the Cholesky op.")
+        pytest.skip("Scipy needed for the Cholesky op.")
     cholesky_lower = Cholesky(lower=True)
     cholesky_upper = Cholesky(lower=False)
     A = tensor.matrix('A')
@@ -158,7 +158,7 @@ def test_tag_solve_triangular():
 
 def test_matrix_inverse_solve():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the Solve op.")
+        pytest.skip("Scipy needed for the Solve op.")
     A = theano.tensor.dmatrix('A')
     b = theano.tensor.dmatrix('b')
     node = matrix_inverse(A).dot(b).owner

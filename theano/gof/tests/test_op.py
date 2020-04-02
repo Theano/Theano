@@ -1,8 +1,7 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
-from nose.plugins.skip import SkipTest
 import numpy as np
+import pytest
 
 import theano
 import theano.gof.op as op
@@ -137,7 +136,7 @@ class TestOp:
 
     def test_op_struct(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         sop = StructOp()
         c = sop(theano.tensor.constant(0))
         mode = None
@@ -155,7 +154,7 @@ class TestOp:
         assert rval == [0, 0]
 
 
-class TestMakeThunk(unittest.TestCase):
+class TestMakeThunk():
 
     def test_no_c_code(self):
         class IncOnePython(Op):
@@ -176,9 +175,8 @@ class TestMakeThunk(unittest.TestCase):
         o = IncOnePython()(i)
 
         # Check that the c_code function is not implemented
-        self.assertRaises((NotImplementedError, utils.MethodNotDefined),
-                          o.owner.op.c_code,
-                          o.owner, 'o', ['x'], 'z', {'fail': ''})
+        with pytest.raises((NotImplementedError, utils.MethodNotDefined)):
+            o.owner.op.c_code(o.owner, 'o', ['x'], 'z', {'fail': ''})
 
         storage_map = {i: [np.int32(3)],
                        o: [None]}
@@ -213,9 +211,8 @@ class TestMakeThunk(unittest.TestCase):
         o = IncOneC()(i)
 
         # Check that the perform function is not implemented
-        self.assertRaises((NotImplementedError, utils.MethodNotDefined),
-                          o.owner.op.perform,
-                          o.owner, 0, [None])
+        with pytest.raises((NotImplementedError, utils.MethodNotDefined)):
+            o.owner.op.perform(o.owner, 0, [None])
 
         storage_map = {i: [np.int32(3)],
                        o: [None]}
@@ -231,8 +228,8 @@ class TestMakeThunk(unittest.TestCase):
             assert compute_map[o][0]
             assert storage_map[o][0] == 4
         else:
-            self.assertRaises((NotImplementedError, utils.MethodNotDefined),
-                              thunk)
+            with pytest.raises((NotImplementedError, utils.MethodNotDefined)):
+                thunk()
 
     def test_no_make_node(self):
         class DoubleOp(Op):
@@ -400,6 +397,3 @@ def test_debug_error_message():
             assert raised
         finally:
             config.compute_test_value = prev_value
-
-if __name__ == '__main__':
-    unittest.main()

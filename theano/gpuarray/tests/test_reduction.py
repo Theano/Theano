@@ -1,11 +1,10 @@
 from __future__ import print_function, absolute_import, division
-from unittest import TestCase
 import numpy as np
+import pytest
 
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
-from theano.tests.unittest_tools import SkipTest
 
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand_gpuarray
@@ -77,11 +76,11 @@ class BaseTest:
             return []
         return [int(math.ceil(math.pow(test_size, 1 / self.tensor_size)))] * self.tensor_size
 
-    def setUp(self):
+    def setup_method(self):
         if not isinstance(self.tensor_size, int):
-            raise SkipTest("No tensor ndim defined.")
+            pytest.skip("No tensor ndim defined.")
         if self.tensor_size < 0 or self.tensor_size > 5:
-            raise SkipTest("We allow from 0 (included) to 5 (inclued) dimensons for these tests.")
+            pytest.skip("We allow from 0 (included) to 5 (inclued) dimensons for these tests.")
         if self.shape is None:
             self.shape = self.get_shape()
 
@@ -171,29 +170,29 @@ class BaseTest:
         self.compute_some_axes(4)
 
 
-class TestScalar(BaseTest, TestCase):
+class TestScalar(BaseTest):
     tensor_size = 0
 
 
-class TestVector(BaseTest, TestCase):
+class TestVector(BaseTest):
     tensor_size = 1
 
 
 # Special case
-class TestRow(BaseTest, TestCase):
+class TestRow(BaseTest):
     tensor_size = 2
     shape = [1, test_size]
 
 
 # Special case
-class TestColumn(BaseTest, TestCase):
+class TestColumn(BaseTest):
     tensor_size = 2
     shape = [test_size, 1]
 
 
-class TestMatrix(BaseTest, TestCase):
+class TestMatrix(BaseTest):
     tensor_size = 2
 
 
-class TestTensor5(BaseTest, TestCase):
+class TestTensor5(BaseTest):
     tensor_size = 5

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-from nose.plugins.skip import SkipTest
+import pytest
 
 import numpy as np
 
@@ -178,7 +178,7 @@ def Env(inputs, outputs):
 
 def test_clinker_straightforward():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
     e = add(mul(add(x, y), div(x, y)), bad_sub(bad_sub(x, y), z))
     lnk = CLinker().accept(Env([x, y, z], [e]))
@@ -188,7 +188,7 @@ def test_clinker_straightforward():
 
 def test_clinker_literal_inlining():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
     z = Constant(tdouble, 4.12345678)
     e = add(mul(add(x, y), div(x, y)), bad_sub(bad_sub(x, y), z))
@@ -204,7 +204,7 @@ def test_clinker_literal_inlining():
 def test_clinker_literal_cache():
     # This caused bugs in the past related to the cache.
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
 
     mode = theano.Mode(linker='c')
 
@@ -232,7 +232,7 @@ def test_clinker_literal_cache():
 
 def test_clinker_single_node():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
     node = add.make_node(x, y)
     lnk = CLinker().accept(Env(node.inputs, node.outputs))
@@ -242,7 +242,7 @@ def test_clinker_single_node():
 
 def test_clinker_dups():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     # Testing that duplicate inputs are allowed.
     x, y, z = inputs()
     e = add(x, x)
@@ -254,7 +254,7 @@ def test_clinker_dups():
 
 def test_clinker_not_used_inputs():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     # Testing that unused inputs are allowed.
     x, y, z = inputs()
     e = add(x, y)
@@ -265,7 +265,7 @@ def test_clinker_not_used_inputs():
 
 def test_clinker_dups_inner():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     # Testing that duplicates are allowed inside the graph
     x, y, z = inputs()
     e = add(mul(y, y), add(x, z))
@@ -326,7 +326,7 @@ def test_duallinker_straightforward():
 
 def test_duallinker_mismatch():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
     # bad_sub is correct in C but erroneous in Python
     e = bad_sub(mul(x, y), mul(y, z))
@@ -372,7 +372,7 @@ add_fail = AddFail()
 
 def test_c_fail_error():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     x, y, z = inputs()
     x = Constant(tdouble, 7.2, name='x')
     e = add_fail(mul(x, y), mul(y, z))
@@ -391,7 +391,7 @@ def test_shared_input_output():
     # https://groups.google.com/d/topic/theano-users/6dLaEqc2R6g/discussion
     # The shared variable is both an input and an output of the function.
     if not theano.config.cxx:
-        raise SkipTest("Need cxx for this test")
+        pytest.skip("Need cxx for this test")
 
     inc = theano.tensor.iscalar('inc')
     state = theano.shared(0)

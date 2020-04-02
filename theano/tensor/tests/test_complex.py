@@ -1,15 +1,13 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 from six.moves import xrange
+import pytest
 import theano
 import numpy as np
 from theano.tensor import *
 from theano.tests import unittest_tools as utt
 
-from numpy.testing import dec
 
-
-class TestRealImag(unittest.TestCase):
+class TestRealImag():
 
     def test0(self):
         x = zvector()
@@ -33,7 +31,8 @@ class TestRealImag(unittest.TestCase):
 
     def test_cast(self):
         x = zvector()
-        self.assertRaises(TypeError, cast, x, 'int32')
+        with pytest.raises(TypeError):
+            cast(x, 'int32')
 
     def test_complex(self):
         rng = np.random.RandomState(2333)
@@ -50,7 +49,7 @@ class TestRealImag(unittest.TestCase):
         assert np.all(rval == mval[0]), (rval, mval[0])
         assert np.all(ival == mval[1]), (ival, mval[1])
 
-    @dec.skipif(True, "Complex grads not enabled, see #178")
+    @pytest.mark.skipif(True, reason="Complex grads not enabled, see #178")
     def test_complex_grads(self):
         def f(m):
             c = complex(m[0], m[1])
@@ -60,7 +59,7 @@ class TestRealImag(unittest.TestCase):
         mval = np.asarray(rng.randn(2, 5))
         utt.verify_grad(f, [mval])
 
-    @dec.skipif(True, "Complex grads not enabled, see #178")
+    @pytest.mark.skipif(True, reason="Complex grads not enabled, see #178")
     def test_mul_mixed0(self):
 
         def f(a):
@@ -76,7 +75,7 @@ class TestRealImag(unittest.TestCase):
             print(e.analytic_grad)
             raise
 
-    @dec.skipif(True, "Complex grads not enabled, see #178")
+    @pytest.mark.skipif(True, reason="Complex grads not enabled, see #178")
     def test_mul_mixed1(self):
 
         def f(a):
@@ -92,7 +91,7 @@ class TestRealImag(unittest.TestCase):
             print(e.analytic_grad)
             raise
 
-    @dec.skipif(True, "Complex grads not enabled, see #178")
+    @pytest.mark.skipif(True, reason="Complex grads not enabled, see #178")
     def test_mul_mixed(self):
 
         def f(a, b):
@@ -109,7 +108,7 @@ class TestRealImag(unittest.TestCase):
             print(e.analytic_grad)
             raise
 
-    @dec.skipif(True, "Complex grads not enabled, see #178")
+    @pytest.mark.skipif(True, reason="Complex grads not enabled, see #178")
     def test_polar_grads(self):
         def f(m):
             c = complex_from_polar(abs(m[0]), m[1])
@@ -119,7 +118,7 @@ class TestRealImag(unittest.TestCase):
         mval = np.asarray(rng.randn(2, 5))
         utt.verify_grad(f, [mval])
 
-    @dec.skipif(True, "Complex grads not enabled, see #178")
+    @pytest.mark.skipif(True, reason="Complex grads not enabled, see #178")
     def test_abs_grad(self):
         def f(m):
             c = complex(m[0], m[1])

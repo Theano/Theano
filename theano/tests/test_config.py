@@ -2,11 +2,10 @@
 Test config options.
 """
 from __future__ import absolute_import, print_function, division
-import unittest
 from theano.configparser import AddConfigVar, ConfigParam, THEANO_FLAGS_DICT
 
 
-class T_config(unittest.TestCase):
+class Test_config():
 
     def test_invalid_default(self):
         # Ensure an invalid default value found in the Theano code only causes

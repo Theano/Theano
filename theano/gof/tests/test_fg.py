@@ -1,9 +1,8 @@
 from __future__ import absolute_import, print_function, division
 import os
 import pickle
-import unittest
 
-from nose.plugins.skip import SkipTest
+import pytest
 
 import theano
 from theano.compat import PY3
@@ -11,12 +10,12 @@ from theano.gof import CachedConstantError, FunctionGraph
 from theano import tensor as tt
 
 
-class TFunctionGraph(unittest.TestCase):
+class TFunctionGraph():
     def test_constant_cache_error(self):
         v = theano.tensor.constant(1)
         assert v.cached
-        self.assertRaises(CachedConstantError, FunctionGraph, [], [v + 1],
-                          clone=False)
+        with pytest.raises(CachedConstantError):
+            FunctionGraph([], [v + 1], clone=False)
 
     def test_clone(self):
         v = theano.tensor.constant(1)
@@ -35,7 +34,7 @@ class TFunctionGraph(unittest.TestCase):
         # fgraph.variables event if the apply had other output used in
         # the graph. This caused a crash.
         if not theano.config.cxx:
-            raise SkipTest("Need cxx for this test")
+            pytest.skip("Need cxx for this test")
 
         # This test run the pickle that reproduce this case.
         with open(os.path.join(os.path.dirname(__file__),

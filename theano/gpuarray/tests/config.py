@@ -1,11 +1,11 @@
 from __future__ import absolute_import, print_function, division
-from nose.plugins.skip import SkipTest
+import pytest
 
 import theano.tensor
 import theano.gpuarray
 
 if theano.gpuarray.pygpu is None:
-    raise SkipTest("pygpu not installed")
+    pytest.skip("pygpu not installed", allow_module_level=True)
 
 
 init_error = None
@@ -18,9 +18,9 @@ if (not theano.gpuarray.pygpu_activated and
 
 if not theano.gpuarray.pygpu_activated:
     if init_error:
-        raise SkipTest(init_error)
+        pytest.skip(init_error)
     else:
-        raise SkipTest("pygpu disabled")
+        pytest.skip("pygpu disabled")
 
 test_ctx_name = None
 

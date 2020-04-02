@@ -2,10 +2,9 @@ from __future__ import absolute_import, print_function, division
 import os
 import sys
 import time
-import unittest
 
-from nose.tools import assert_raises
 import numpy as np
+import pytest
 from six.moves import xrange
 
 import theano
@@ -13,7 +12,6 @@ from theano import change_flags, config, tensor
 from theano.sandbox import rng_mrg
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.tests import unittest_tools as utt
-from theano.tests.unittest_tools import attr
 
 # TODO: test MRG_RandomStreams
 # Partly done in test_consistency_randomstreams
@@ -320,7 +318,7 @@ def test_broadcastable():
             assert uu.broadcastable == (False, True)
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_binomial():
     # TODO: test size=None, ndim=X
     # TODO: test size=X, ndim!=X.ndim
@@ -377,7 +375,7 @@ def t_binomial(mean, size, const_size, var_input, input, steps, rtol):
               inputs=input, target_avg=mean, mean_rtol=rtol)
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_normal0():
     steps = 50
     std = 2.
@@ -439,7 +437,7 @@ def test_normal0():
                   prefix='numpy ', allow_01=True, inputs=input, mean_rtol=rtol)
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_normal_truncation():
     # just a copy of test_normal0 with extra bound check
     steps = 50
@@ -504,7 +502,7 @@ def test_normal_truncation():
         sys.stdout.flush()
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_truncated_normal():
     # just a copy of test_normal0 for truncated normal
     steps = 50
@@ -625,7 +623,7 @@ def test_multinomial_n_samples():
         sys.stdout.flush()
 
 
-class T_MRG(unittest.TestCase):
+class Test_MRG():
     def test_bad_size(self):
 
         R = MRG_RandomStreams(234)
@@ -636,11 +634,16 @@ class T_MRG(unittest.TestCase):
                 (1, 0),
                 ]:
 
-            self.assertRaises(ValueError, R.uniform, size)
-            self.assertRaises(ValueError, R.binomial, size)
-            self.assertRaises(ValueError, R.multinomial, size, 1, [])
-            self.assertRaises(ValueError, R.normal, size)
-            self.assertRaises(ValueError, R.truncated_normal, size)
+            with pytest.raises(ValueError):
+                R.uniform(size)
+            with pytest.raises(ValueError):
+                R.binomial(size)
+            with pytest.raises(ValueError):
+                R.multinomial(size, 1, [])
+            with pytest.raises(ValueError):
+                R.normal(size)
+            with pytest.raises(ValueError):
+                R.truncated_normal(size)
 
 
 def test_multiple_rng_aliasing():
@@ -771,7 +774,8 @@ def rng_mrg_overflow(sizes, fct, mode, should_raise_error):
         y = fct(size=size)
         f = theano.function([], y, mode=mode)
         if should_raise_error:
-            assert_raises(ValueError, f)
+            with pytest.raises(ValueError):
+                f()
         else:
             f()
 
@@ -799,75 +803,82 @@ def test_undefined_grad():
     # checking uniform distribution
     low = tensor.scalar()
     out = srng.uniform((), low=low)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, low)
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, low)
 
     high = tensor.scalar()
     out = srng.uniform((), low=0, high=high)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, high)
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, high)
 
     out = srng.uniform((), low=low, high=high)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
-                  (low, high))
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, (low, high))
 
     # checking binomial distribution
     prob = tensor.scalar()
     out = srng.binomial((), p=prob)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, prob)
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, prob)
 
     # checking multinomial distribution
     prob1 = tensor.scalar()
     prob2 = tensor.scalar()
     p = [theano.tensor.as_tensor_variable([prob1, 0.5, 0.25])]
     out = srng.multinomial(size=None, pvals=p, n=4)[0]
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad,
-                  theano.tensor.sum(out), prob1)
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(theano.tensor.sum(out), prob1)
 
     p = [theano.tensor.as_tensor_variable([prob1, prob2])]
     out = srng.multinomial(size=None, pvals=p, n=4)[0]
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad,
-                  theano.tensor.sum(out), (prob1, prob2))
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(theano.tensor.sum(out), (prob1, prob2))
 
     # checking choice
     p = [theano.tensor.as_tensor_variable([prob1, prob2, 0.1, 0.2])]
     out = srng.choice(a=None, size=1, p=p, replace=False)[0]
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out[0],
-                  (prob1, prob2))
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out[0], (prob1, prob2))
 
     p = [theano.tensor.as_tensor_variable([prob1, prob2])]
     out = srng.choice(a=None, size=1, p=p, replace=False)[0]
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out[0],
-                  (prob1, prob2))
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out[0], (prob1, prob2))
 
     p = [theano.tensor.as_tensor_variable([prob1, 0.2, 0.3])]
     out = srng.choice(a=None, size=1, p=p, replace=False)[0]
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out[0],
-                  prob1)
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out[0], prob1)
 
     # checking normal distribution
     avg = tensor.scalar()
     out = srng.normal((), avg=avg)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, avg)
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, avg)
 
     std = tensor.scalar()
     out = srng.normal((), avg=0, std=std)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, std)
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, std)
 
     out = srng.normal((), avg=avg, std=std)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
-                  (avg, std))
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, (avg, std))
 
     # checking truncated normal distribution
     avg = tensor.scalar()
     out = srng.truncated_normal((), avg=avg)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, avg)
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, avg)
 
     std = tensor.scalar()
     out = srng.truncated_normal((), avg=0, std=std)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, std)
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, std)
 
     out = srng.truncated_normal((), avg=avg, std=std)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
-                  (avg, std))
+    with pytest.raises(theano.gradient.NullTypeGradError):
+        theano.grad(out, (avg, std))
 
 
 def test_f16_nonzero(mode=None, op_to_check=rng_mrg.mrg_uniform):

@@ -1,8 +1,7 @@
 from __future__ import (division, absolute_import, print_function)
 
-import unittest
-from nose.plugins.skip import SkipTest
 import numpy as np
+import pytest
 
 import theano
 import theano.tensor as T
@@ -76,7 +75,7 @@ def setup_grad_case():
     return [activations, labels, activation_times]
 
 
-class TestCTC(unittest.TestCase):
+class TestCTC():
     """
     Test Baidu CTC wrapper implementation.
 
@@ -84,12 +83,12 @@ class TestCTC(unittest.TestCase):
     C implementation, that uses the library directly.
     """
 
-    def setUp(self):
+    def setup_method(self):
         if theano.config.mode == "FAST_COMPILE" or theano.config.cxx == "":
-            raise SkipTest("We need a c compiler")
+            pytest.skip("We need a c compiler")
 
         if not ctc_available():
-            self.skipTest('Optional library warp-ctc not available')
+            pytest.skip('Optional library warp-ctc not available')
 
     def run_ctc(self, activations, labels, input_length, expected_costs, expected_grads):
         # Create symbolic variables

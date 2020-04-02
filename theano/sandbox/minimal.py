@@ -1,7 +1,5 @@
 from __future__ import absolute_import, print_function, division
 
-import unittest
-
 import numpy as np
 
 from theano import gof, tensor, function
@@ -53,8 +51,8 @@ minimal = Minimal()
 # TODO: test that each valid type for A and b works correctly
 
 
-class T_minimal(unittest.TestCase):
-    def setUp(self):
+class Test_minimal():
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed(666))
 
     def test0(self):

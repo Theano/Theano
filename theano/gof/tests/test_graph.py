@@ -1,9 +1,8 @@
 from __future__ import absolute_import, print_function, division
 from itertools import count
 import pickle
-import unittest
 
-from nose.plugins.skip import SkipTest
+import pytest
 import numpy as np
 
 from theano import (
@@ -253,7 +252,7 @@ class TestToposort:
 # is_same_graph #
 #################
 
-class TestIsSameGraph(unittest.TestCase):
+class TestIsSameGraph():
 
     def check(self, expected, debug=True):
         """
@@ -325,20 +324,18 @@ class TestIsSameGraph(unittest.TestCase):
 # eval         #
 ################
 
-class TestEval(unittest.TestCase):
+class TestEval():
 
-    def setUp(self):
+    def setup_method(self):
         self.x, self.y = tensor.scalars('x', 'y')
         self.z = self.x + self.y
         self.w = 2 * self.z
 
     def test_eval(self):
-        self.assertEqual(self.w.eval({self.x: 1., self.y: 2.}), 6.)
-        self.assertEqual(self.w.eval({self.z: 3}), 6.)
-        self.assertTrue(hasattr(self.w, "_fn_cache"),
-                        "variable must have cache after eval")
-        self.assertFalse(hasattr(pickle.loads(pickle.dumps(self.w)), '_fn_cache'),
-                         "temporary functions must not be serialized")
+        assert self.w.eval({self.x: 1., self.y: 2.}) == 6.
+        assert self.w.eval({self.z: 3}) == 6.
+        assert hasattr(self.w, "_fn_cache"), "variable must have cache after eval"
+        assert not hasattr(pickle.loads(pickle.dumps(self.w)), '_fn_cache'), "temporary functions must not be serialized"
 
 
 ################
@@ -391,7 +388,7 @@ class TestAutoName:
     def test_sparsevariable(self):
         # Get counter value
         if not sparse.enable_sparse:
-            raise SkipTest('Optional package SciPy not installed')
+            pytest.skip('Optional package SciPy not installed')
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = sparse.csc_matrix(name='x', dtype='float32')

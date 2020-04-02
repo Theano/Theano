@@ -36,7 +36,7 @@ install:
   - source activate pyenv
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install pydot; else pip install pydot-ng; fi
   - pip install . --no-deps --upgrade
-  - pip install flake8-future-import parameterized sphinx_rtd_theme
+  - pip install flake8-future-import sphinx_rtd_theme
   # nose-exclude plugin allow us to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
   - pip install nose-exclude nose-timer
   - if [[ $NUMPY_VERSION == '1.13.1' ]]; then conda install --yes -q scipy=0.19.1; else conda install --yes -q scipy=0.14; fi  # Try to reinstall it to fix the problem

@@ -19,9 +19,8 @@ import math
 import sys
 from itertools import product, chain
 
-import nose
 import numpy as np
-from nose.plugins.skip import SkipTest
+import pytest
 
 import theano
 import theano.tests.unittest_tools as utt
@@ -973,7 +972,7 @@ def test_true_half_config_support():
     # For cuDNN V5.1 and V6.0:
     # "TRUE_HALF_CONFIG is only supported on architectures with true fp16 support (compute capability 5.3 and 6.0)"
     if not check_dtype_config_support('float16', 'float16'):
-        raise SkipTest('FWD: TRUE_HALF_CONFIG not supported on this GPU.')
+        pytest.skip('FWD: TRUE_HALF_CONFIG not supported on this GPU.')
 
 
 class CheckDnn:
@@ -1040,24 +1039,3 @@ class CheckDnn:
             for tcase in test.test_gradweight_runtime_algorithms():
                 print(tcase[0].__name__, *tcase[1:])
         print(test_true_half_config_support.__name__)
-
-
-if __name__ == '__main__':
-
-    args = sys.argv[1:]
-    if len(args) == 1 and args[0] in ('infos', 'list'):
-        if args[0] == 'infos':
-            CheckDnn.print_infos()
-        if args[0] == 'list':
-            CheckDnn.print_tests()
-    else:
-        # We run all tests with nosetests.
-        module_name = sys.modules[__name__].__file__
-        if len(args) == 0:
-            # No args given: run nosetests -vs
-            args = ['--verbose', '--nocapture']
-        # Else, use given args.
-        argv = [sys.argv[0], module_name] + args
-
-        CheckDnn.print_infos()
-        nose.main(argv=argv)

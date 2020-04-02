@@ -1,13 +1,13 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 import theano
+import pytest
 from theano import tensor, function, Variable, Generic
 import numpy as np
 import os
 
 
-class T_load_tensor(unittest.TestCase):
-    def setUp(self):
+class Test_load_tensor():
+    def setup_method(self):
         self.data = np.arange(5, dtype=np.int32)
         self.filename = os.path.join(
             theano.config.compiledir,
@@ -29,8 +29,8 @@ class T_load_tensor(unittest.TestCase):
         # modify the original file.
         path = Variable(Generic())
         for mmap_mode in ('r+', 'r', 'w+', 'toto'):
-            self.assertRaises(ValueError,
-                    tensor.load, path, 'int32', (False,), mmap_mode)
+            with pytest.raises(ValueError):
+                tensor.load(path, 'int32', (False,), mmap_mode)
 
     def test1(self):
         path = Variable(Generic())
@@ -51,7 +51,7 @@ class T_load_tensor(unittest.TestCase):
         fn = function([path], x)
         assert type(fn(self.filename)) == np.core.memmap
 
-    def tearDown(self):
+    def teardown_method(self):
         os.remove(os.path.join(
             theano.config.compiledir,
             "_test.npy"))

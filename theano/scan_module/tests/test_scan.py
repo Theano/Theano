@@ -5,17 +5,13 @@ import shutil
 import sys
 from tempfile import mkdtemp
 import time
-import unittest
 import copy
 from collections import OrderedDict
 
 import six.moves.cPickle as pickle
 from six.moves import xrange
 import numpy as np
-from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises
-from nose.tools import raises
-from numpy.testing import dec
+import pytest
 
 import theano
 import theano.sandbox.rng_mrg
@@ -25,7 +21,6 @@ from theano.tests import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
 from theano.compat import PY3
-from theano.tests.unittest_tools import attr
 
 
 '''
@@ -216,18 +211,17 @@ def scan_nodes_from_fct(fct):
     return scan_nodes
 
 
-class T_Scan(unittest.TestCase):
+class Test_Scan():
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
-        super(T_Scan, self).setUp()
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
-    @dec.skipif(
+    @pytest.mark.skipif(
         isinstance(theano.compile.mode.get_default_mode(),
                    theano.compile.debugmode.DebugMode),
-        ("This test fails in DebugMode, because it is not yet picklable."))
+        reason="This test fails in DebugMode, because it is not yet picklable.")
     def test_pickling(self):
         def f_pow2(x_tm1):
             return 2 * x_tm1
@@ -376,7 +370,7 @@ class T_Scan(unittest.TestCase):
              4,
              np.int64([2, 2, 3]))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_only_nonseq_inputs(self):
         # Compile the Theano function
         n_steps = 2
@@ -1525,7 +1519,7 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_grad_multiple_outs_taps(self):
         l = 5
         rng = np.random.RandomState(utt.fetch_seed())
@@ -1797,7 +1791,7 @@ for{cpu,scan_fn}.2 [id H] ''
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_grad_multiple_outs_taps_backwards(self):
         l = 5
         rng = np.random.RandomState(utt.fetch_seed())
@@ -2788,17 +2782,17 @@ for{cpu,scan_fn}.2 [id H] ''
         go1 = theano.tensor.grad(o1.mean(), wrt=x)
         f = theano.function([x], go1, updates=updates,
                             allow_input_downcast=True, mode=mode_with_opt)
-        self.assertTrue(np.allclose(f([1, 2, 3]), 2. / 3))
+        assert np.allclose(f([1, 2, 3]), 2. / 3)
 
         topo = f.maker.fgraph.toposort()
         # this new assert is here to test if scan_merging works ..
         nb_scan = len([n for n in topo
             if isinstance(n.op, theano.scan_module.scan_op.Scan)])
-        self.assertTrue(nb_scan == 1)
+        assert nb_scan == 1
         nb_shape_i = len([n for n in topo
             if isinstance(n.op, theano.tensor.opt.Shape_i)])
         if theano.config.mode != 'FAST_COMPILE':
-            self.assertTrue(nb_shape_i == 1)
+            assert nb_shape_i == 1
 
     def test_merge(self):
         x = theano.tensor.vector()
@@ -2815,7 +2809,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 2)
+        assert len(scans) == 2
 
         sx, upx = theano.scan(sum, sequences=[x], n_steps=2)
         sy, upy = theano.scan(sum, sequences=[y], n_steps=3)
@@ -2825,7 +2819,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 2)
+        assert len(scans) == 2
 
         sx, upx = theano.scan(sum, sequences=[x], n_steps=4)
         sy, upy = theano.scan(sum, sequences=[y], n_steps=4)
@@ -2835,7 +2829,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 1)
+        assert len(scans) == 1
 
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x])
@@ -2845,7 +2839,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 1)
+        assert len(scans) == 1
 
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x], mode='FAST_COMPILE')
@@ -2855,7 +2849,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 1)
+        assert len(scans) == 1
 
         sx, upx = theano.scan(sum, sequences=[x])
         sy, upy = theano.scan(sum, sequences=[x], truncate_gradient=1)
@@ -2865,7 +2859,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 2)
+        assert len(scans) == 2
 
     def test_merge_3scans(self):
         # This test checks a case where we have 3 scans, two of them
@@ -2889,7 +2883,7 @@ for{cpu,scan_fn}.2 [id H] ''
         topo = f.maker.fgraph.toposort()
         scans = [n for n in topo if isinstance(
             n.op, theano.scan_module.scan_op.Scan)]
-        self.assertTrue(len(scans) == 2)
+        assert len(scans) == 2
 
         rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.uniform(size=(4,)).astype(theano.config.floatX)
@@ -3154,7 +3148,7 @@ for{cpu,scan_fn}.2 [id H] ''
         f2 = theano.function([], gx)
         utt.assert_allclose(f2(), np.ones((10,)))
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_rop2(self):
         seed = utt.fetch_seed()
         rng = np.random.RandomState(seed)
@@ -3455,7 +3449,7 @@ for{cpu,scan_fn}.2 [id H] ''
                     if isinstance(x.op, theano.tensor.Elemwise)]) == 0
 
     def test_alloc_inputs2(self):
-        raise SkipTest("This tests depends on an optimization for "
+        pytest.skip("This tests depends on an optimization for "
                        "scan that has not been implemented yet.")
         W1 = tensor.matrix()
         W2 = tensor.matrix()
@@ -3534,10 +3528,10 @@ for{cpu,scan_fn}.2 [id H] ''
         # One scan node gets optimnized out
         assert len(lssc) == 1
 
-    @dec.skipif(True,
-                        ("This test fails because not typed outputs_info "
+    @pytest.mark.skipif(True,
+                        reason="This test fails because not typed outputs_info "
                          "are always gived the smallest dtype. There is "
-                         "no upcast of outputs_info in scan for now."))
+                         "no upcast of outputs_info in scan for now.")
     def test_outputs_info_not_typed(self):
         # This was ticket 766
 
@@ -3620,8 +3614,8 @@ for{cpu,scan_fn}.2 [id H] ''
         out, updates_outer = theano.scan(unit_dropout,
                                      sequences=[tensor.arange(inp.shape[0])])
 
-        assert_raises(theano.gradient.NullTypeGradError,
-                      tensor.grad, out.sum(), inp)
+        with pytest.raises(theano.gradient.NullTypeGradError):
+            tensor.grad(out.sum(), inp)
 
     def test_bugFunctioProvidesIntermediateNodesAsInputs(self):
         # This is a bug recently reported by Ilya
@@ -3683,7 +3677,7 @@ for{cpu,scan_fn}.2 [id H] ''
         assert out == 24
 
     def test_infershape_seq_shorter_nsteps(self):
-        raise SkipTest("This is a generic problem with "
+        pytest.skip("This is a generic problem with "
                        "infershape that has to be discussed "
                        "and figured out")
         x = tensor.vector('x')
@@ -4278,9 +4272,11 @@ for{cpu,scan_fn}.2 [id H] ''
 
         gx0 = tensor.grad(cost, x0)  # defined
         gy0 = tensor.grad(cost, y0)  # defined
-        self.assertRaises(ValueError, tensor.grad, cost, z0)
+        with pytest.raises(ValueError):
+            tensor.grad(cost, z0)
         cost = x.sum()
-        self.assertRaises(ValueError, tensor.grad, cost, y0)
+        with pytest.raises(ValueError):
+            tensor.grad(cost, y0)
 
     def test_disconnected_gradient(self):
         v = tensor.vector('v')
@@ -4574,7 +4570,7 @@ for{cpu,scan_fn}.2 [id H] ''
             inp = scan_node.op.outer_non_seqs(scan_node)
             assert len(inp) == 1
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_hessian_bug_grad_grad_two_scans(self):
         # Bug reported by Bitton Tenessi
         # NOTE : The test to reproduce the bug reported by Bitton Tenessi
@@ -4649,7 +4645,6 @@ for{cpu,scan_fn}.2 [id H] ''
 
         assert diff <= type_eps[theano.config.floatX]
 
-    @raises(theano.gof.fg.MissingInputError)
     def test_strict_mode_ex(self):
         n = 10
 
@@ -4661,11 +4656,12 @@ for{cpu,scan_fn}.2 [id H] ''
         def _scan_loose(x):
             return tensor.dot(x, w_)
 
-        ret_strict = theano.scan(_scan_loose,
-                                 sequences=[],
-                                 outputs_info=[x0_],
-                                 n_steps=n,
-                                 strict=True)
+        with pytest.raises(theano.gof.fg.MissingInputError):
+            ret_strict = theano.scan(_scan_loose,
+                                    sequences=[],
+                                    outputs_info=[x0_],
+                                    n_steps=n,
+                                    strict=True)
 
     def test_monitor_mode(self):
         # Test that it is possible to pass an instance of MonitorMode
@@ -5049,7 +5045,7 @@ class ScanGpuTests:
         utt.assert_allclose(output, expected_output)
 
 
-class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
+class Test_Scan_Gpuarray(ScanGpuTests):
     """
     This class takes the gpu tests for scan that are defined in
     class ScanGpuTests and runs them using the gpuarray backend.
@@ -5066,18 +5062,16 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
 
         self.mode_with_gpu = mode_with_opt.including('gpuarray', 'scan')
         self.mode_with_gpu_nodebug = mode_nodebug.including('gpuarray', 'scan')
-        super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
 
-    def setUp(self):
+    def setup_method(self):
         # Make sure to activate the new backend, if possible otherwise
         # tesing this class directly will always skip.
         import theano.gpuarray.tests.config
         # Skip the test if pygpu is not available
         if not self.gpu_backend.pygpu_activated:
-            raise SkipTest('Optional package pygpu disabled')
+            pytest.skip('Optional package pygpu disabled')
 
         utt.seed_rng()
-        super(T_Scan_Gpuarray, self).setUp()
 
     def is_scan_on_gpu(self, node):
         return node.op.info.get('gpua', False)
@@ -5099,7 +5093,7 @@ def test_speed():
     #
     # We need the CVM for this speed test
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
 
     r = np.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
 
@@ -5186,7 +5180,7 @@ def test_speed_rnn():
 
     # We need the CVM for this speed test
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
 
     L = 10000
     N = 50
@@ -5265,7 +5259,7 @@ def test_speed_batchrnn():
 
     # We need the CVM for this speed test
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     L = 100
     B = 50
     N = 400
@@ -5581,10 +5575,11 @@ def test_outputs_taps_check():
     y = tensor.fvector('y')
     f = lambda x, y: [x]
     outputs_info = {'initial': y, 'taps': [0]}
-    assert_raises(ValueError, theano.scan, f, x, outputs_info)
+    with pytest.raises(ValueError):
+        theano.scan(f, x, outputs_info)
     outputs_info = {'initial': y, 'taps': [-1, -1]}
-    assert_raises(ValueError, theano.scan, f, x, outputs_info)
-    print('done')
+    with pytest.raises(ValueError):
+        theano.scan(f, x, outputs_info)
 
 
 def test_default_value_broadcasted():
@@ -5613,7 +5608,7 @@ def test_default_value_broadcasted():
     f(np.random.rand(10, in_size).astype(X.dtype))
 
 
-class TestInconsistentBroadcast(unittest.TestCase):
+class TestInconsistentBroadcast():
 
     def test_raise_error(self):
         x = tensor.tensor3()
@@ -5622,7 +5617,7 @@ class TestInconsistentBroadcast(unittest.TestCase):
                                  sequences=x,
                                  outputs_info=[dict(initial=initial_x)])
         # Error, because the broadcast patterns are inconsistent.
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             gs = tensor.grad(y.sum(), x)
 
         # No error here, because the broadcast patterns are consistent.
@@ -5633,9 +5628,9 @@ class TestInconsistentBroadcast(unittest.TestCase):
         gs = tensor.grad(y.sum(), x)
 
 
-class TestMissingInputError(unittest.TestCase):
+class TestMissingInputError():
 
-    @raises(theano.gof.fg.MissingInputError)
+    @pytest.mark.xfail(raises=theano.gof.fg.MissingInputError)
     def test_raise_error(self):
         c = theano.shared(0.)
         inc = tensor.scalar('inc')
@@ -5647,9 +5642,9 @@ class TestMissingInputError(unittest.TestCase):
         func = theano.function(inputs=[inc], outputs=[], updates=updates)
 
 
-class TestGradUntil(unittest.TestCase):
+class TestGradUntil():
 
-    def setUp(self):
+    def setup_method(self):
         self.x = tensor.vector(name='x')
         self.threshold = tensor.scalar(name='threshold', dtype='int64')
         self.seq = np.arange(15, dtype=theano.config.floatX)

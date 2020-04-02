@@ -1,9 +1,8 @@
 from __future__ import absolute_import, print_function, division
 import sys
-import unittest
 
-from nose.plugins.skip import SkipTest
 import numpy as np
+import pytest
 from six import reraise
 
 from theano import config
@@ -205,7 +204,7 @@ def test_badthunkoutput():
     # this should evaluate with no error
     f_good([1.0, 2.0, 3.0], [2, 3, 4])
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
 
     try:
         f_inconsistent([1.0, 2.0, 3.0], [2, 3, 4])
@@ -343,7 +342,7 @@ def test_stochasticoptimization():
 
 def test_just_c_code():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     x = theano.tensor.dvector()
     f = theano.function([x], wb2(x),
                         mode=debugmode.DebugMode(check_py_code=False))
@@ -375,7 +374,7 @@ def test_baddestroymap():
 
 def test_baddestroymap_c():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     x = theano.tensor.dvector()
     f = theano.function([x], wb2i(x),
                         mode=debugmode.DebugMode(check_py_code=False))
@@ -386,7 +385,7 @@ def test_baddestroymap_c():
         pass
 
 
-class Test_ViewMap(unittest.TestCase):
+class Test_ViewMap():
 
     class BadAddRef(gof.Op):
         def make_node(self, a, b):
@@ -443,7 +442,7 @@ class Test_ViewMap(unittest.TestCase):
 
     def test_badviewmap_c(self):
         if not theano.config.cxx:
-            raise SkipTest("G++ not available, so we need to skip this test.")
+            pytest.skip("G++ not available, so we need to skip this test.")
         x = theano.tensor.dvector()
         f = theano.function([x], wb1i(x),
                             mode=debugmode.DebugMode(check_py_code=False))
@@ -569,13 +568,13 @@ class Test_ViewMap(unittest.TestCase):
         # f([1,2,3,4],[5,6,7,8])
 
 
-class Test_check_isfinite(unittest.TestCase):
-    def setUp(self):
+class Test_check_isfinite():
+    def setup_method(self):
         self.old_ts = theano.tensor.TensorType.filter_checks_isfinite
         self.old_dm = theano.compile.mode.predefined_modes[
             'DEBUG_MODE'].check_isfinite
 
-    def tearDown(self):
+    def teardown_method(self):
         theano.tensor.TensorType.filter_checks_isfinite = self.old_ts
         theano.compile.mode.predefined_modes[
             'DEBUG_MODE'].check_isfinite = self.old_dm
@@ -592,17 +591,17 @@ class Test_check_isfinite(unittest.TestCase):
         # ValueError
         # if not, DebugMode will check internally, and raise InvalidValueError
         # passing an invalid value as an input should trigger ValueError
-        self.assertRaises(debugmode.InvalidValueError, f,
-                          np.log([3, -4, 5]).astype(config.floatX))
-        self.assertRaises(debugmode.InvalidValueError, f,
-                          (np.asarray([0, 1.0, 0]) / 0).astype(config.floatX))
-        self.assertRaises(debugmode.InvalidValueError, f,
-                          (np.asarray([1.0, 1.0, 1.0]) / 0).astype(config.floatX))
+        with pytest.raises(debugmode.InvalidValueError):
+            f(np.log([3, -4, 5]).astype(config.floatX))
+        with pytest.raises(debugmode.InvalidValueError):
+            f((np.asarray([0, 1.0, 0]) / 0).astype(config.floatX))
+        with pytest.raises(debugmode.InvalidValueError):
+            f((np.asarray([1.0, 1.0, 1.0]) / 0).astype(config.floatX))
 
         # generating an invalid value internally should trigger
         # InvalidValueError
-        self.assertRaises(debugmode.InvalidValueError, g,
-                          np.asarray([3, -4, 5], dtype=config.floatX))
+        with pytest.raises(debugmode.InvalidValueError):
+            g(np.asarray([3, -4, 5], dtype=config.floatX))
 
         # this should disable the exception
         theano.tensor.TensorType.filter_checks_isfinite = False
@@ -749,8 +748,8 @@ class VecAsRowAndCol(gof.Op):
             c[0][i, 0] = v[i]
 
 
-class Test_preallocated_output(unittest.TestCase):
-    def setUp(self):
+class Test_preallocated_output():
+    def setup_method(self):
         self.rng = np.random.RandomState(seed=utt.fetch_seed())
 
     def test_f_contiguous(self):
@@ -780,7 +779,8 @@ class Test_preallocated_output(unittest.TestCase):
         f = theano.function([a, b], out, mode=mode)
 
         if theano.config.cxx:
-            self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
+            with pytest.raises(debugmode.BadThunkOutput):
+                f(a_val, b_val)
         else:
             # The python code of this op is good.
             f(a_val, b_val)
@@ -812,7 +812,8 @@ class Test_preallocated_output(unittest.TestCase):
         f = theano.function([a, b], out, mode=mode)
 
         if theano.config.cxx:
-            self.assertRaises(debugmode.BadThunkOutput, f, a_val, b_val)
+            with pytest.raises(debugmode.BadThunkOutput):
+                f(a_val, b_val)
         else:
             # The python code of this op is good.
             f(a_val, b_val)

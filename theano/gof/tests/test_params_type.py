@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import theano
 import numpy as np
-from unittest import TestCase
+import pytest
 from theano.gof import Op, COp, Apply
 from theano import Generic
 from theano.scalar import Scalar
@@ -114,7 +114,7 @@ class QuadraticCOpFunc(COp):
         y[0] = coefficients.a * (x**2) + coefficients.b * x + coefficients.c
 
 
-class TestParamsType(TestCase):
+class TestParamsType():
 
     def test_hash_and_eq_params(self):
         wp1 = ParamsType(a=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
@@ -180,9 +180,11 @@ class TestParamsType(TestCase):
                    a2=random_tensor.astype('float32'),
                    a3=2000)
         # should fail (o.a1 is not int32, o.a2 is not float64)
-        self.assertRaises(TypeError, w.filter, o, True)
+        with pytest.raises(TypeError):
+            w.filter(o, True)
         # should fail (o.a1 is not int32, o.a2 is not float64, and downcast is disallowed)
-        self.assertRaises(TypeError, w.filter, o, False, False)
+        with pytest.raises(TypeError):
+            w.filter(o, False, False)
         # Should pass.
         w.filter(o, strict=False, allow_downcast=True)
 

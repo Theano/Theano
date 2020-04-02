@@ -1,10 +1,9 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
 import numpy as np
 import numpy.linalg
 from numpy.testing import assert_array_almost_equal
-from numpy.testing import dec, assert_array_equal, assert_allclose
+from numpy.testing import assert_array_equal, assert_allclose
 from numpy import inf
 
 import itertools
@@ -18,10 +17,8 @@ from theano import config
 from theano.tensor.slinalg import (
     Cholesky, cholesky, CholeskyGrad, Solve, solve,
     Eigvalsh, EigvalshGrad, eigvalsh, expm, kron)
-from theano.tests.unittest_tools import attr
 
-from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises
+import pytest
 
 try:
     import scipy.linalg
@@ -49,7 +46,7 @@ def check_upper_triangular(pd, ch_f):
 
 def test_cholesky():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the Cholesky op.")
+        pytest.skip("Scipy needed for the Cholesky op.")
 
     rng = np.random.RandomState(utt.fetch_seed())
     r = rng.randn(5, 5).astype(config.floatX)
@@ -74,12 +71,12 @@ def test_cholesky():
 
 def test_cholesky_indef():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the Cholesky op.")
+        pytest.skip("Scipy needed for the Cholesky op.")
     x = tensor.matrix()
     matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
     cholesky = Cholesky(lower=True, on_error='raise')
     chol_f = function([x], cholesky(x))
-    with assert_raises(scipy.linalg.LinAlgError):
+    with pytest.raises(scipy.linalg.LinAlgError):
         chol_f(matrix)
     cholesky = Cholesky(lower=True, on_error='nan')
     chol_f = function([x], cholesky(x))
@@ -88,7 +85,7 @@ def test_cholesky_indef():
 
 def test_cholesky_grad():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the Cholesky op.")
+        pytest.skip("Scipy needed for the Cholesky op.")
     rng = np.random.RandomState(utt.fetch_seed())
     r = rng.randn(5, 5).astype(config.floatX)
 
@@ -107,22 +104,22 @@ def test_cholesky_grad():
 
 def test_cholesky_grad_indef():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the Cholesky op.")
+        pytest.skip("Scipy needed for the Cholesky op.")
     x = tensor.matrix()
     matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
     cholesky = Cholesky(lower=True, on_error='raise')
     chol_f = function([x], grad(cholesky(x).sum(), [x]))
-    with assert_raises(scipy.linalg.LinAlgError):
+    with pytest.raises(scipy.linalg.LinAlgError):
         chol_f(matrix)
     cholesky = Cholesky(lower=True, on_error='nan')
     chol_f = function([x], grad(cholesky(x).sum(), [x]))
     assert np.all(np.isnan(chol_f(matrix)))
 
 
-@attr('slow')
+@pytest.mark.slow
 def test_cholesky_and_cholesky_grad_shape():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the Cholesky op.")
+        pytest.skip("Scipy needed for the Cholesky op.")
 
     rng = np.random.RandomState(utt.fetch_seed())
     x = tensor.matrix()
@@ -145,7 +142,7 @@ def test_cholesky_and_cholesky_grad_shape():
 
 def test_eigvalsh():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the geigvalsh op.")
+        pytest.skip("Scipy needed for the geigvalsh op.")
     import scipy.linalg
 
     A = theano.tensor.dmatrix('a')
@@ -172,7 +169,7 @@ def test_eigvalsh():
 
 def test_eigvalsh_grad():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the geigvalsh op.")
+        pytest.skip("Scipy needed for the geigvalsh op.")
     import scipy.linalg
 
     rng = np.random.RandomState(utt.fetch_seed())
@@ -184,14 +181,14 @@ def test_eigvalsh_grad():
 
 
 class test_Solve(utt.InferShapeTester):
-    def setUp(self):
-        super(test_Solve, self).setUp()
+    def setup_method(self):
+        super(test_Solve, self).setup_method()
         self.op_class = Solve
         self.op = Solve()
 
     def test_infer_shape(self):
         if not imported_scipy:
-            raise SkipTest("Scipy needed for the Solve op.")
+            pytest.skip("Scipy needed for the Solve op.")
         rng = np.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
@@ -219,7 +216,7 @@ class test_Solve(utt.InferShapeTester):
 
     def test_solve_correctness(self):
         if not imported_scipy:
-            raise SkipTest("Scipy needed for the Cholesky and Solve ops.")
+            pytest.skip("Scipy needed for the Cholesky and Solve ops.")
         rng = np.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
@@ -257,7 +254,7 @@ class test_Solve(utt.InferShapeTester):
 
     def test_solve_dtype(self):
         if not imported_scipy:
-            raise SkipTest("Scipy needed for the Solve op.")
+            pytest.skip("Scipy needed for the Solve op.")
 
         dtypes = ['uint8', 'uint16', 'uint32', 'uint64',
                   'int8', 'int16', 'int32', 'int64',
@@ -297,7 +294,7 @@ class test_Solve(utt.InferShapeTester):
 
     def test_solve_grad(self):
         if not imported_scipy:
-            raise SkipTest("Scipy needed for the Solve op.")
+            pytest.skip("Scipy needed for the Solve op.")
         rng = np.random.RandomState(utt.fetch_seed())
         structures = ['general', 'lower_triangular', 'upper_triangular']
         for A_structure in structures:
@@ -312,7 +309,7 @@ class test_Solve(utt.InferShapeTester):
 
 def test_expm():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the expm op.")
+        pytest.skip("Scipy needed for the expm op.")
     rng = np.random.RandomState(utt.fetch_seed())
     A = rng.randn(5, 5).astype(config.floatX)
 
@@ -329,7 +326,7 @@ def test_expm():
 def test_expm_grad_1():
     # with symmetric matrix (real eigenvectors)
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the expm op.")
+        pytest.skip("Scipy needed for the expm op.")
     rng = np.random.RandomState(utt.fetch_seed())
     # Always test in float64 for better numerical stability.
     A = rng.randn(5, 5)
@@ -341,7 +338,7 @@ def test_expm_grad_1():
 def test_expm_grad_2():
     # with non-symmetric matrix with real eigenspecta
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the expm op.")
+        pytest.skip("Scipy needed for the expm op.")
     rng = np.random.RandomState(utt.fetch_seed())
     # Always test in float64 for better numerical stability.
     A = rng.randn(5, 5)
@@ -355,7 +352,7 @@ def test_expm_grad_2():
 def test_expm_grad_3():
     # with non-symmetric matrix (complex eigenvectors)
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the expm op.")
+        pytest.skip("Scipy needed for the expm op.")
     rng = np.random.RandomState(utt.fetch_seed())
     # Always test in float64 for better numerical stability.
     A = rng.randn(5, 5)
@@ -367,13 +364,13 @@ class TestKron(utt.InferShapeTester):
 
     rng = np.random.RandomState(43)
 
-    def setUp(self):
-        super(TestKron, self).setUp()
+    def setup_method(self):
+        super(TestKron, self).setup_method()
         self.op = kron
 
     def test_perform(self):
         if not imported_scipy:
-            raise SkipTest('kron tests need the scipy package to be installed')
+            pytest.skip('kron tests need the scipy package to be installed')
 
         for shp0 in [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)]:
             x = tensor.tensor(dtype='floatX',

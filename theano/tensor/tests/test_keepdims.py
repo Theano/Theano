@@ -1,17 +1,16 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
 import numpy as np
+import pytest
 from six import integer_types
 
 import theano
 from theano import tensor, function
-from theano.tests.unittest_tools import attr
 
 
 # this tests other ops to ensure they keep the dimensions of their
 # inputs correctly
-class TestKeepDims(unittest.TestCase):
+class TestKeepDims():
 
     def makeKeepDims_local(self, x, y, axis):
         if axis is None:
@@ -38,7 +37,7 @@ class TestKeepDims(unittest.TestCase):
 
         return tensor.DimShuffle(y.type.broadcastable, new_dims)(y)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_keepdims(self):
 
         x = tensor.dtensor3()

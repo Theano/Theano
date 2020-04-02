@@ -2,8 +2,8 @@ from __future__ import absolute_import, print_function, division
 import os
 import subprocess
 
-from nose.plugins.skip import SkipTest
 
+import pytest
 import theano
 from theano import change_flags
 from theano.compat import PY3
@@ -44,7 +44,7 @@ def test_can_make_function():
 
 def test_mpi_roundtrip():
     if not mpi_enabled:
-        raise SkipTest('MPI not enabled')
+        pytest.skip('MPI not enabled')
     theano_root = theano.__file__.split('__init__')[0]
     env = os.environ.copy()
     flags = env.get('THEANO_FLAGS', '')

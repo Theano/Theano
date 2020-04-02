@@ -1,8 +1,6 @@
 # Test of memory profiling
 from __future__ import absolute_import, print_function, division
 
-import unittest
-
 import numpy as np
 
 import theano
@@ -11,7 +9,7 @@ import theano.tensor as T
 from theano.ifelse import ifelse
 
 
-class Test_profiling(unittest.TestCase):
+class Test_profiling():
     # Test of Theano profiling with min_peak_memory=True
 
     def test_profiling(self):
@@ -103,6 +101,3 @@ class Test_profiling(unittest.TestCase):
             theano.config.profile = config1
             theano.config.profile_memory = config2
 
-
-if __name__ == '__main__':
-    unittest.main()

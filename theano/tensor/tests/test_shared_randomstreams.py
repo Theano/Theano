@@ -2,8 +2,8 @@ from __future__ import absolute_import, print_function, division
 __docformat__ = "restructuredtext en"
 
 import sys
-import unittest
 import numpy as np
+import pytest
 
 from theano.tensor import raw_random
 from theano.tensor.shared_randomstreams import RandomStreams
@@ -15,8 +15,8 @@ from theano import compile, config, gof
 from theano.tests import unittest_tools as utt
 
 
-class T_SharedRandomStreams(unittest.TestCase):
-    def setUp(self):
+class Test_SharedRandomStreams():
+    def setup_method(self):
         utt.seed_rng()
 
     def test_tutorial(self):
@@ -134,7 +134,8 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # ndim specified, inconsistent with shape, should raise ValueError
         random3 = RandomStreams(utt.fetch_seed())
-        self.assertRaises(ValueError, random3.uniform, (2, 2), ndim=1)
+        with pytest.raises(ValueError):
+            random3.uniform((2, 2), ndim=1)
 
     def test_uniform(self):
         # Test that RandomStreams.uniform generates the same results as numpy
@@ -310,8 +311,10 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # Trying to shuffle a vector with function that should shuffle
         # matrices, or vice versa, raises a TypeError
-        self.assertRaises(TypeError, f1, in_mval)
-        self.assertRaises(TypeError, f, in_vval)
+        with pytest.raises(TypeError):
+            f1(in_mval)
+        with pytest.raises(TypeError):
+            f(in_vval)
 
     def test_default_updates(self):
         # Basic case: default_updates
@@ -368,8 +371,10 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         assert f([2, 3]).shape == (2, 3)
         assert f([4, 8]).shape == (4, 8)
-        self.assertRaises(ValueError, f, [4])
-        self.assertRaises(ValueError, f, [4, 3, 4, 5])
+        with pytest.raises(ValueError):
+            f([4])
+        with pytest.raises(ValueError):
+            f([4, 3, 4, 5])
 
     def test_mixed_shape(self):
         # Test when the provided shape is a tuple of ints and scalar vars
@@ -451,9 +456,11 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_val1b = numpy_rng.uniform(low=[-4.], high=[-1])
         assert np.all(val0b == numpy_val0b)
         assert np.all(val1b == numpy_val1b)
-        self.assertRaises(ValueError, fb, [-4., -2], [-1, 0, 1])
+        with pytest.raises(ValueError):
+            fb([-4., -2], [-1, 0, 1])
         # TODO: do we want that?
-        #self.assertRaises(ValueError, fb, [-4., -2], [-1])
+        # with pytest.raises(ValueError):
+        #    fb([-4., -2], [-1])
 
         size = tensor.lvector()
         outc = random.uniform(low=low, high=high, size=size, ndim=1)
@@ -466,12 +473,16 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_val1c = numpy_rng.uniform(low=[-4.], high=[-1])
         assert np.all(val0c == numpy_val0c)
         assert np.all(val1c == numpy_val1c)
-        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1])
-        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1, 2])
-        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [2, 1])
-        self.assertRaises(ValueError, fc, [-4., -2], [-1], [1])
+        with pytest.raises(ValueError):
+            fc([-4., -2], [-1, 0], [1, 2])
+        with pytest.raises(ValueError):
+            fc([-4., -2], [-1, 0], [2, 1])
+        # TODO: These two used to fail with ValueError before November 2019 refactor:
+        fc([-4., -2], [-1, 0], [1])
+        fc([-4., -2], [-1], [1])
         # TODO: do we want that?
-        #self.assertRaises(ValueError, fc, [-4., -2], [-1], [2])
+        # with pytest.raises(ValueError):
+        #     fc([-4., -2], [-1], [2])
 
     def test_broadcast_arguments(self):
         random = RandomStreams(utt.fetch_seed())
@@ -528,7 +539,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_rng = np.random.RandomState(int(seed_gen.randint(2**30)))
         numpy_val2 = numpy_rng.uniform(low=low_val, high=high_val, size=(3,))
         assert np.all(val2 == numpy_val2)
-        self.assertRaises(ValueError, g, low_val[:-1], high_val[:-1])
+        with pytest.raises(ValueError):
+            g(low_val[:-1], high_val[:-1])
 
     def test_binomial_vector(self):
         random = RandomStreams(utt.fetch_seed())
@@ -559,7 +571,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_rng = np.random.RandomState(int(seed_gen.randint(2**30)))
         numpy_val2 = numpy_rng.binomial(n=n_val, p=prob_val, size=(3,))
         assert np.all(val2 == numpy_val2)
-        self.assertRaises(ValueError, g, n_val[:-1], prob_val[:-1])
+        with pytest.raises(ValueError):
+            g(n_val[:-1], prob_val[:-1])
 
     def test_normal_vector(self):
         random = RandomStreams(utt.fetch_seed())
@@ -590,7 +603,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_rng = np.random.RandomState(int(seed_gen.randint(2**30)))
         numpy_val2 = numpy_rng.normal(loc=avg_val, scale=std_val, size=(3,))
         assert np.allclose(val2, numpy_val2)
-        self.assertRaises(ValueError, g, avg_val[:-1], std_val[:-1])
+        with pytest.raises(ValueError):
+            g(avg_val[:-1], std_val[:-1])
 
     def test_random_integers_vector(self):
         random = RandomStreams(utt.fetch_seed())
@@ -624,7 +638,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_val2 = np.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val, high_val)])
         assert np.all(val2 == numpy_val2)
-        self.assertRaises(ValueError, g, low_val[:-1], high_val[:-1])
+        with pytest.raises(ValueError):
+            g(low_val[:-1], high_val[:-1])
 
     # Vectorized permutation don't make sense: the only parameter, n,
     # controls one dimension of the returned tensor.
@@ -662,7 +677,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_val2 = np.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
             for nv, pv in zip(n_val, pvals_val)])
         assert np.all(val2 == numpy_val2)
-        self.assertRaises(ValueError, g, n_val[:-1], pvals_val[:-1])
+        with pytest.raises(ValueError):
+            g(n_val[:-1], pvals_val[:-1])
 
     def test_dtype(self):
         random = RandomStreams(utt.fetch_seed())

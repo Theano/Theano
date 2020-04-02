@@ -11,7 +11,6 @@ the docstring of the functions: check_mat_rop_lop, check_rop_lop,
 check_nondiff_rop,
 """
 from __future__ import absolute_import, print_function, division
-import unittest
 from theano.tests import unittest_tools as utt
 from theano import function
 import theano
@@ -20,7 +19,7 @@ import itertools
 import numpy as np
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
-from theano.tests.unittest_tools import SkipTest
+import pytest
 from theano.tensor.signal.pool import Pool
 from theano.tensor.nnet import conv, conv2d
 
@@ -53,12 +52,12 @@ class BreakRop(Op):
 break_op = BreakRop()
 
 
-class RopLop_checker(unittest.TestCase):
+class RopLop_checker():
     """
     Don't peform any test, but provide the function to test the
     Rop to class that inherit from it.
     """
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
         # Using vectors make things a lot simpler for generating the same
         # computations using scan
@@ -186,7 +185,7 @@ class RopLop_checker(unittest.TestCase):
         assert np.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
         if known_fail:
-            raise SkipTest('Rop does not handle non-differentiable inputs '
+            pytest.skip('Rop does not handle non-differentiable inputs '
                            'correctly. Bug exposed by fixing Add.grad method.')
 
 

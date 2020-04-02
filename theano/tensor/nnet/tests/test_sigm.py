@@ -1,6 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import unittest
-
 import numpy as np
 
 from theano.compat import imap
@@ -21,8 +19,8 @@ from theano.tensor.tests.test_basic import (makeBroadcastTester, copymod,
                                             _good_broadcast_unary_normal_no_complex)
 
 
-class T_sigmoid(unittest.TestCase):
-    def setUp(self):
+class Test_sigmoid():
+    def setup_method(self):
         utt.seed_rng()
 
     def test_elemwise(self):
@@ -76,15 +74,15 @@ SoftplusTester = makeBroadcastTester(
 )
 
 
-class T_softplus(unittest.TestCase):
-    def setUp(self):
+class Test_softplus():
+    def setup_method(self):
         utt.seed_rng()
 
     def test_elemwise(self):
         utt.verify_grad(softplus, [np.random.rand(3, 4)])
 
 
-class T_sigmoid_opts(unittest.TestCase):
+class Test_sigmoid_opts():
 
     def get_mode(self, excluding=None):
         """
@@ -359,11 +357,11 @@ class T_sigmoid_opts(unittest.TestCase):
 
         mode2 = mode.excluding('fusion').excluding('inplace')
         f2 = theano.function([x], s, mode=mode2)
-        self.assertTrue(check_stack_trace(f2, ops_to_check=theano.tensor.clip))
+        assert check_stack_trace(f2, ops_to_check=theano.tensor.clip)
 
 
-class T_softplus_opts(unittest.TestCase):
-    def setUp(self):
+class Test_softplus_opts():
+    def setup_method(self):
         if theano.config.mode == 'FAST_COMPILE':
             m = theano.compile.mode.get_mode('FAST_RUN').excluding(
                 'local_elemwise_fusion')
@@ -447,7 +445,7 @@ class T_softplus_opts(unittest.TestCase):
         f(np.random.rand(54).astype(config.floatX))
 
 
-class T_sigmoid_utils(unittest.TestCase):
+class Test_sigmoid_utils():
     """
     Test utility functions found in 'sigm.py'.
     """

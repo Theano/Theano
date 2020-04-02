@@ -1,21 +1,20 @@
 from __future__ import absolute_import, print_function, division
 
 import numpy as np
-import unittest
 
 import theano as th
 from theano.d3viz.formatting import PyDotFormatter
 from theano.d3viz.tests import models
 
-from nose.plugins.skip import SkipTest
+import pytest
 from theano.d3viz.formatting import pydot_imported, pydot_imported_msg
 if not pydot_imported:
-    raise SkipTest('pydot not available: ' + pydot_imported_msg)
+    pytest.skip('pydot not available: ' + pydot_imported_msg, allow_module_level=True)
 
 
-class TestPyDotFormatter(unittest.TestCase):
+class TestPyDotFormatter():
 
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(0)
 
     def node_counts(self, graph):
@@ -33,7 +32,7 @@ class TestPyDotFormatter(unittest.TestCase):
         expected = 11
         if th.config.mode == "FAST_COMPILE":
             expected = 12
-        self.assertEqual(len(graph.get_nodes()), expected)
+        assert len(graph.get_nodes()) == expected
         nc = self.node_counts(graph)
 
         if th.config.mode == "FAST_COMPILE":

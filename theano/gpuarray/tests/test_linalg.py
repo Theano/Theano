@@ -1,9 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import unittest
-
 import numpy as np
 from numpy.linalg.linalg import LinAlgError
+import pytest
 
 import theano
 from theano import config
@@ -23,12 +22,11 @@ from theano.tests import unittest_tools as utt
 from .. import gpuarray_shared_constructor
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
-from nose.tools import assert_raises
 
 
-class TestCusolver(unittest.TestCase):
+class TestCusolver():
 
-    def setUp(self):
+    def setup_method(self):
         if not cusolver_available:
             self.skipTest('Optional package scikits.cuda.cusolver not available')
 
@@ -109,7 +107,8 @@ class TestCusolver(unittest.TestCase):
         solver = gpu_solve(A, b, 'symmetric')
 
         fn = theano.function([A, b], [solver], mode=mode_with_gpu)
-        self.assertRaises(LinAlgError, fn, A_val, x_val)
+        with pytest.raises(LinAlgError):
+            fn(A_val, x_val)
 
     def test_linalgerr_solve(self):
         np.random.seed(1)
@@ -124,7 +123,8 @@ class TestCusolver(unittest.TestCase):
         solver = gpu_solve(A, b, trans='T')
 
         fn = theano.function([A, b], [solver], mode=mode_with_gpu)
-        self.assertRaises(LinAlgError, fn, A_val, x_val)
+        with pytest.raises(LinAlgError):
+            fn(A_val, x_val)
 
     def verify_solve_grad(self, m, n, A_structure, lower, rng):
         # ensure diagonal elements of A relatively large to avoid numerical
@@ -162,9 +162,9 @@ class TestCusolver(unittest.TestCase):
         self.verify_solve_grad(4, 3, 'general', lower=True, rng=rng)
 
 
-class TestGpuCholesky(unittest.TestCase):
+class TestGpuCholesky():
 
-    def setUp(self):
+    def setup_method(self):
         if not cusolver_available:
             self.skipTest('Optional package scikits.cuda.cusolver not available')
         utt.seed_rng()
@@ -199,21 +199,24 @@ class TestGpuCholesky(unittest.TestCase):
         # Invalid Cholesky input test with non-square matrix as input.
         A_val = np.random.normal(size=(3, 2)).astype("float32")
         fn = self.get_gpu_cholesky_func(True, False)
-        self.assertRaises(ValueError, fn, A_val)
+        with pytest.raises(ValueError):
+            fn(A_val)
 
     def test_invalid_input_fail_vector(self):
         # Invalid Cholesky input test with vector as input.
         def invalid_input_func():
             A = theano.tensor.vector("A", dtype="float32")
             GpuCholesky(lower=True, inplace=False)(A)
-        self.assertRaises(AssertionError, invalid_input_func)
+        with pytest.raises(AssertionError):
+            invalid_input_func()
 
     def test_invalid_input_fail_tensor3(self):
         # Invalid Cholesky input test with 3D tensor as input.
         def invalid_input_func():
             A = theano.tensor.tensor3("A", dtype="float32")
             GpuCholesky(lower=True, inplace=False)(A)
-        self.assertRaises(AssertionError, invalid_input_func)
+        with pytest.raises(AssertionError):
+            invalid_input_func()
 
     @utt.assertFailure_fast
     def test_diag_chol(self):
@@ -243,7 +246,8 @@ class TestGpuCholesky(unittest.TestCase):
             if not np.allclose(A_val, A_val.T):
                 break
         fn = self.get_gpu_cholesky_func(True, False)
-        self.assertRaises(LinAlgError, fn, A_val)
+        with pytest.raises(LinAlgError):
+            fn(A_val)
 
     def test_invalid_input_fail_negative_definite(self):
         # Invalid Cholesky input test with negative-definite input.
@@ -251,12 +255,13 @@ class TestGpuCholesky(unittest.TestCase):
         # A = -M.dot(M) will be negative definite for all non-singular M
         A_val = -M_val.dot(M_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
-        self.assertRaises(LinAlgError, fn, A_val)
+        with pytest.raises(LinAlgError):
+            fn(A_val)
 
 
-class TestGpuCholesky64(unittest.TestCase):
+class TestGpuCholesky64():
 
-    def setUp(self):
+    def setup_method(self):
         if not cusolver_available:
             self.skipTest('Optional package scikits.cuda.cusolver not available')
         utt.seed_rng()
@@ -291,21 +296,24 @@ class TestGpuCholesky64(unittest.TestCase):
         # Invalid Cholesky input test with non-square matrix as input.
         A_val = np.random.normal(size=(3, 2)).astype("float64")
         fn = self.get_gpu_cholesky_func(True, False)
-        self.assertRaises(ValueError, fn, A_val)
+        with pytest.raises(ValueError):
+            fn(A_val)
 
     def test_invalid_input_fail_vector(self):
         # Invalid Cholesky input test with vector as input.
         def invalid_input_func():
             A = theano.tensor.vector("A", dtype="float64")
             GpuCholesky(lower=True, inplace=False)(A)
-        self.assertRaises(AssertionError, invalid_input_func)
+        with pytest.raises(AssertionError):
+            invalid_input_func()
 
     def test_invalid_input_fail_tensor3(self):
         # Invalid Cholesky input test with 3D tensor as input.
         def invalid_input_func():
             A = theano.tensor.tensor3("A", dtype="float64")
             GpuCholesky(lower=True, inplace=False)(A)
-        self.assertRaises(AssertionError, invalid_input_func)
+        with pytest.raises(AssertionError):
+            invalid_input_func()
 
     @utt.assertFailure_fast
     def test_diag_chol(self):
@@ -335,7 +343,8 @@ class TestGpuCholesky64(unittest.TestCase):
             if not np.allclose(A_val, A_val.T):
                 break
         fn = self.get_gpu_cholesky_func(True, False)
-        self.assertRaises(LinAlgError, fn, A_val)
+        with pytest.raises(LinAlgError):
+            fn(A_val)
 
     def test_invalid_input_fail_negative_definite(self):
         # Invalid Cholesky input test with negative-definite input.
@@ -343,12 +352,13 @@ class TestGpuCholesky64(unittest.TestCase):
         # A = -M.dot(M) will be negative definite for all non-singular M
         A_val = -M_val.dot(M_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
-        self.assertRaises(LinAlgError, fn, A_val)
+        with pytest.raises(LinAlgError):
+            fn(A_val)
 
 
-class TestMagma(unittest.TestCase):
+class TestMagma():
 
-    def setUp(self):
+    def setup_method(self):
         if not config.magma.enabled:
             self.skipTest('Magma is not enabled, skipping test')
 
@@ -429,9 +439,9 @@ class TestMagma(unittest.TestCase):
         self.check_svd(A, U, S, VT)
 
         U, S, VT = self.run_gpu_svd(A, full_matrices=False)
-        self.assertEqual(U.shape[1], min(M, N))
+        assert U.shape[1], min(M, N)
         self.assert_column_orthonormal(U)
-        self.assertEqual(VT.shape[0], min(M, N))
+        assert VT.shape[0], min(M, N)
         self.assert_column_orthonormal(VT.T)
 
     def test_gpu_svd_tall(self):
@@ -444,9 +454,9 @@ class TestMagma(unittest.TestCase):
         self.check_svd(A, U, S, VT)
 
         U, S, VT = self.run_gpu_svd(A, full_matrices=False)
-        self.assertEqual(U.shape[1], min(M, N))
+        assert U.shape[1], min(M, N)
         self.assert_column_orthonormal(U)
-        self.assertEqual(VT.shape[0], min(M, N))
+        assert VT.shape[0], min(M, N)
         self.assert_column_orthonormal(VT.T)
 
     def test_gpu_singular_values(self):
@@ -623,7 +633,7 @@ def test_cholesky_grad_indef():
     matrix = np.array([[1, 0.2], [0.2, -2]]).astype(config.floatX)
     cholesky = GpuCholesky(lower=True)
     chol_f = theano.function([x], theano.tensor.grad(cholesky(x).sum(), [x]))
-    with assert_raises(LinAlgError):
+    with pytest.raises(LinAlgError):
         chol_f(matrix)
     # cholesky = GpuCholesky(lower=True, on_error='nan')
     # chol_f = function([x], grad(gpu_cholesky(x).sum(), [x]))

@@ -1,10 +1,9 @@
 from __future__ import absolute_import, print_function, division
 from itertools import product
 import time
-import unittest
 
-from nose.plugins.skip import SkipTest
 import numpy as np
+import pytest
 from six.moves import xrange
 try:
     import scipy.sparse as sp
@@ -19,10 +18,9 @@ from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.tensor.basic import _allclose
-from theano.tests.unittest_tools import attr
 
 if not enable_sparse:
-    raise SkipTest('Optional package SciPy not installed')
+    pytest.skip('Optional package SciPy not installed', allow_module_level=True)
 
 from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
@@ -260,7 +258,7 @@ def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
 verify_grad_sparse.E_grad = utt.verify_grad.E_grad
 
 
-class T_verify_grad_sparse(unittest.TestCase):
+class Test_verify_grad_sparse():
     class FailOp(gof.op.Op):
         def __init__(self, structured):
             self.structured = structured
@@ -295,53 +293,47 @@ class T_verify_grad_sparse(unittest.TestCase):
             return [shapes[0]]
 
     def test_grad_fail(self):
-        self.assertRaises(verify_grad_sparse.E_grad,
-                          verify_grad_sparse,
-                          self.FailOp(structured=False),
-                          [sp.csr_matrix(random_lil((10, 40),
-                                                    config.floatX, 3))])
+        with pytest.raises(verify_grad_sparse.E_grad):
+            verify_grad_sparse(self.FailOp(structured=False), [sp.csr_matrix(random_lil((10, 40), config.floatX, 3))])
 
-        self.assertRaises(verify_grad_sparse.E_grad,
-                          verify_grad_sparse,
-                          self.FailOp(structured=True),
-                          [sp.csr_matrix(random_lil((10, 40),
-                                                    config.floatX, 3))])
+        with pytest.raises(verify_grad_sparse.E_grad):
+            verify_grad_sparse(self.FailOp(structured=True), [sp.csr_matrix(random_lil((10, 40), config.floatX, 3))])
 
 
-class T_transpose(unittest.TestCase):
-    def setUp(self):
+class Test_transpose():
+    def setup_method(self):
         utt.seed_rng()
 
     def test_transpose_csc(self):
         sp = scipy.sparse.csc_matrix(scipy.sparse.eye(5, 3))
         a = as_sparse_variable(sp)
-        self.assertFalse(a.data is sp)
-        self.assertTrue(a.data.shape == (5, 3))
-        self.assertTrue(a.type.dtype == 'float64', a.type.dtype)
-        self.assertTrue(a.type.format == 'csc', a.type.format)
+        assert a.data is not sp
+        assert a.data.shape == (5, 3)
+        assert a.type.dtype == 'float64', a.type.dtype
+        assert a.type.format == 'csc', a.type.format
         ta = transpose(a)
-        self.assertTrue(ta.type.dtype == 'float64', ta.type.dtype)
-        self.assertTrue(ta.type.format == 'csr', ta.type.format)
+        assert ta.type.dtype == 'float64', ta.type.dtype
+        assert ta.type.format == 'csr', ta.type.format
 
         vta = eval_outputs([ta])
-        self.assertTrue(vta.shape == (3, 5))
+        assert vta.shape == (3, 5)
 
     def test_transpose_csr(self):
         a = as_sparse_variable(scipy.sparse.csr_matrix(scipy.sparse.eye(5, 3)))
-        self.assertTrue(a.data.shape == (5, 3))
-        self.assertTrue(a.type.dtype == 'float64')
-        self.assertTrue(a.type.format == 'csr')
+        assert a.data.shape == (5, 3)
+        assert a.type.dtype == 'float64'
+        assert a.type.format == 'csr'
         ta = transpose(a)
-        self.assertTrue(ta.type.dtype == 'float64', ta.type.dtype)
-        self.assertTrue(ta.type.format == 'csc', ta.type.format)
+        assert ta.type.dtype == 'float64', ta.type.dtype
+        assert ta.type.format == 'csc', ta.type.format
 
         vta = eval_outputs([ta])
-        self.assertTrue(vta.shape == (3, 5))
+        assert vta.shape == (3, 5)
 
 
 class SparseInferShapeTester(utt.InferShapeTester):
     def test_getitem_2d(self):
-        raise SkipTest('infer_shape not implemented for GetItem2d yet')
+        pytest.skip('infer_shape not implemented for GetItem2d yet')
 
     def test_getitem_scalar(self):
         x = SparseType('csr', dtype=config.floatX)()
@@ -495,7 +487,7 @@ class SparseInferShapeTester(utt.InferShapeTester):
 
     def test_structured_dot_grad(self):
         # We also need the grad of CSM to be implemetned.
-        raise SkipTest('infer_shape not implemented for the grad'
+        pytest.skip('infer_shape not implemented for the grad'
                        ' of structured_dot')
         for format, op in [('csc', StructuredDotGradCSC),
                            ('csr', StructuredDotGradCSR)]:
@@ -552,7 +544,7 @@ class SparseInferShapeTester(utt.InferShapeTester):
                 )
 
 
-class TestConstructSparseFromList(unittest.TestCase):
+class TestConstructSparseFromList():
     def test_adv_sub1_sparse_grad(self):
         v = theano.tensor.ivector()
 
@@ -602,10 +594,11 @@ class TestConstructSparseFromList(unittest.TestCase):
             # Test that we raise an error, as we can't create a sparse
             # grad from tensors that don't have 2 dimensions.
             sub = theano.sparse_grad(sub)
-            self.assertRaises(TypeError, theano.grad, sub.sum(), t)
+            with pytest.raises(TypeError):
+                theano.grad(sub.sum(), t)
 
 
-class T_AddMul(unittest.TestCase):
+class Test_AddMul():
     def testAddSS(self):
         self._testSS(add)
 
@@ -639,30 +632,29 @@ class T_AddMul(unittest.TestCase):
                                ]:
                 a = mtype1(array1).astype(dtype1)
                 aR = as_sparse_variable(a)
-                self.assertFalse(aR.data is a)
-                self.assertTrue(_is_sparse(a))
-                self.assertTrue(_is_sparse_variable(aR))
+                assert aR.data is not a
+                assert _is_sparse(a)
+                assert _is_sparse_variable(aR)
 
                 b = mtype2(array2).astype(dtype2)
                 bR = as_sparse_variable(b)
-                self.assertFalse(bR.data is b)
-                self.assertTrue(_is_sparse(b))
-                self.assertTrue(_is_sparse_variable(bR))
+                assert bR.data is not b
+                assert _is_sparse(b)
+                assert _is_sparse_variable(bR)
 
                 apb = op(aR, bR)
-                self.assertTrue(_is_sparse_variable(apb))
+                assert _is_sparse_variable(apb)
 
-                self.assertTrue(apb.type.format == aR.type.format, apb.type.format)
+                assert apb.type.format == aR.type.format, apb.type.format
 
                 val = eval_outputs([apb])
-                self.assertTrue(val.shape == (3, 2))
+                assert val.shape == (3, 2)
                 if op is add:
-                    self.assertTrue(np.all(val.todense() == (array1 + array2)))
+                    assert np.all(val.todense() == (array1 + array2))
                     if dtype1.startswith('float') and dtype2.startswith('float'):
                         verify_grad_sparse(op, [a, b], structured=False)
                 elif op is mul:
-                    self.assertTrue(np.all(val.todense()
-                                              == (array1 * array2)))
+                    assert np.all(val.todense() == (array1 * array2))
                     if dtype1.startswith('float') and dtype2.startswith('float'):
                         verify_grad_sparse(op, [a, b], structured=False)
 
@@ -679,19 +671,19 @@ class T_AddMul(unittest.TestCase):
                     a = a.astype(dtype1)
                     b = mtype(array2).astype(dtype2)
                     bR = as_sparse_variable(b)
-                    self.assertFalse(bR.data is b)  # constants are copied
-                    self.assertTrue(_is_sparse(b))
-                    self.assertTrue(_is_sparse_variable(bR))
+                    assert bR.data is not b  # constants are copied
+                    assert _is_sparse(b)
+                    assert _is_sparse_variable(bR)
 
                     apb = op(a, bR)
 
                     val = eval_outputs([apb])
-                    self.assertTrue(val.shape == (3, 2))
+                    assert val.shape == (3, 2)
                     if op is add:
-                        self.assertTrue(_is_dense_variable(apb))
-                        self.assertTrue(np.all(val == (array1 + b)))
+                        assert _is_dense_variable(apb)
+                        assert np.all(val == (array1 + b))
                         ans = np.array([[1., 2], [3, 4], [5, 6]])
-                        self.assertTrue(np.all(val == ans))
+                        assert np.all(val == ans)
                         if isinstance(a, theano.Constant):
                             a = a.data
                         if getattr(a, 'owner', None):
@@ -699,10 +691,9 @@ class T_AddMul(unittest.TestCase):
                         if dtype1.startswith('float') and dtype2.startswith('float'):
                             verify_grad_sparse(op, [a, b], structured=True)
                     elif op is mul:
-                        self.assertTrue(_is_sparse_variable(apb))
-                        self.assertTrue(np.all(val.todense() == (b.multiply(array1))))
-                        self.assertTrue(np.all(val.todense() == np.array(
-                            [[1, 0], [9, 0], [0, 36]])))
+                        assert _is_sparse_variable(apb)
+                        assert np.all(val.todense() == (b.multiply(array1)))
+                        assert np.all(val.todense() == np.array([[1, 0], [9, 0], [0, 36]]))
                         if isinstance(a, theano.Constant):
                             a = a.data
                         if getattr(a, 'owner', None):
@@ -721,37 +712,37 @@ class T_AddMul(unittest.TestCase):
                                    ]:
                     a = mtype(array1).astype(dtype1)
                     aR = as_sparse_variable(a)
-                    self.assertFalse(aR.data is a)
-                    self.assertTrue(_is_sparse(a))
-                    self.assertTrue(_is_sparse_variable(aR))
+                    assert aR.data is not a
+                    assert _is_sparse(a)
+                    assert _is_sparse_variable(aR)
                     b = b.astype(dtype2)
 
                     apb = op(aR, b)
 
                     val = eval_outputs([apb])
-                    self.assertTrue(val.shape == (3, 2))
+                    assert val.shape == (3, 2)
                     if op is add:
-                        self.assertTrue(_is_dense_variable(apb))
-                        self.assertTrue(np.all(val == (a + array2)))
+                        assert _is_dense_variable(apb)
+                        assert np.all(val == (a + array2))
                         ans = np.array([[1., 2], [3, 4], [5, 6]])
-                        self.assertTrue(np.all(val == ans))
+                        assert np.all(val == ans)
                         if isinstance(b, theano.Constant):
                             b = b.data
                         if dtype1.startswith('float') and dtype2.startswith('float'):
                             verify_grad_sparse(op, [a, b], structured=True)
                     elif op is mul:
-                        self.assertTrue(_is_sparse_variable(apb))
+                        assert _is_sparse_variable(apb)
                         ans = np.array([[1, 0], [9, 0], [0, 36]])
-                        self.assertTrue(np.all(val.todense() == (a.multiply(array2))))
-                        self.assertTrue(np.all(val.todense() == ans))
+                        assert np.all(val.todense() == (a.multiply(array2)))
+                        assert np.all(val.todense() == ans)
                         if isinstance(b, theano.Constant):
                             b = b.data
                         if dtype1.startswith('float') and dtype2.startswith('float'):
                             verify_grad_sparse(op, [a, b], structured=False)
 
 
-class test_comparison(unittest.TestCase):
-    def setUp(self):
+class test_comparison():
+    def setup_method(self):
         utt.seed_rng()
 
     # took from tensor basic_test.py
@@ -770,7 +761,7 @@ class test_comparison(unittest.TestCase):
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
         if (bool(scipy_ver < [0, 13])):
-            raise SkipTest("comparison operators need newer release of scipy")
+            pytest.skip("comparison operators need newer release of scipy")
 
         x = symbolicType()
         y = symbolicType()
@@ -782,14 +773,14 @@ class test_comparison(unittest.TestCase):
         m1 = scipyType(random_lil((10, 40), config.floatX, 3))
         m2 = scipyType(random_lil((10, 40), config.floatX, 3))
 
-        self.assertTrue(np.array_equal(f(m1, m2).data, testOp(m1, m2).data))
+        assert np.array_equal(f(m1, m2).data, testOp(m1, m2).data)
 
     def __generalized_sd_test(self, theanop, symbolicType, testOp, scipyType):
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
         if (bool(scipy_ver < [0, 13])):
-            raise SkipTest("comparison operators need newer release of scipy")
+            pytest.skip("comparison operators need newer release of scipy")
 
         x = symbolicType()
         y = theano.tensor.matrix()
@@ -801,14 +792,14 @@ class test_comparison(unittest.TestCase):
         m1 = scipyType(random_lil((10, 40), config.floatX, 3))
         m2 = self._rand_ranged(1000, -1000, [10, 40])
 
-        self.assertTrue(np.array_equal(f(m1, m2).data, testOp(m1, m2).data))
+        assert np.array_equal(f(m1, m2).data, testOp(m1, m2).data)
 
     def __generalized_ds_test(self, theanop, symbolicType, testOp, scipyType):
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
         if (bool(scipy_ver < [0, 13])):
-            raise SkipTest("comparison operators need newer release of scipy")
+            pytest.skip("comparison operators need newer release of scipy")
 
         x = symbolicType()
         y = theano.tensor.matrix()
@@ -820,7 +811,7 @@ class test_comparison(unittest.TestCase):
         m1 = scipyType(random_lil((10, 40), config.floatX, 3))
         m2 = self._rand_ranged(1000, -1000, [10, 40])
 
-        self.assertTrue(np.array_equal(f(m2, m1).data, testOp(m2, m1).data))
+        assert np.array_equal(f(m2, m1).data, testOp(m2, m1).data)
 
     def test_ss_csr_comparison(self):
 
@@ -865,7 +856,7 @@ class test_comparison(unittest.TestCase):
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
         if (bool(scipy_ver < [0, 13])):
-            raise SkipTest("comparison operators need newer release of scipy")
+            pytest.skip("comparison operators need newer release of scipy")
 
         x = sparse.csc_matrix()
         y = theano.tensor.matrix()
@@ -878,12 +869,11 @@ class test_comparison(unittest.TestCase):
             op = func(y, x)
             f = theano.function([y, x], op)
 
-            self.assertTrue(np.array_equal(f(m2, m1),
-                                              self.testsDic[func](m2, m1)))
+            assert np.array_equal(f(m2, m1), self.testsDic[func](m2, m1))
 
 
-class T_conversion(unittest.TestCase):
-    def setUp(self):
+class Test_conversion():
+    def setup_method(self):
         utt.seed_rng()
 
     if 0:
@@ -891,16 +881,16 @@ class T_conversion(unittest.TestCase):
             a = tensor.as_tensor_variable(np.random.rand(5))
             s = csc_from_dense(a)
             val = eval_outputs([s])
-            self.assertTrue(str(val.dtype) == 'float64')
-            self.assertTrue(val.format == 'csc')
+            assert str(val.dtype) == 'float64'
+            assert val.format == 'csc'
 
     if 0:
         def test1(self):
             a = tensor.as_tensor_variable(np.random.rand(5))
             s = csr_from_dense(a)
             val = eval_outputs([s])
-            self.assertTrue(str(val.dtype) == 'float64')
-            self.assertTrue(val.format == 'csr')
+            assert str(val.dtype) == 'float64'
+            assert val.format == 'csr'
 
     def test_dense_from_sparse(self):
         # call dense_from_sparse
@@ -909,8 +899,8 @@ class T_conversion(unittest.TestCase):
             s = as_sparse_variable(s)
             d = dense_from_sparse(s)
             val = eval_outputs([d])
-            self.assertTrue(str(val.dtype) == s.dtype)
-            self.assertTrue(np.all(val[0] == [1, 0, 0, 0, 0]))
+            assert str(val.dtype) == s.dtype
+            assert np.all(val[0] == [1, 0, 0, 0, 0])
 
     def test_todense(self):
         # call sparse_var.todense()
@@ -919,8 +909,8 @@ class T_conversion(unittest.TestCase):
             s = as_sparse_variable(s)
             d = s.toarray()
             val = eval_outputs([d])
-            self.assertTrue(str(val.dtype) == s.dtype)
-            self.assertTrue(np.all(val[0] == [1, 0, 0, 0, 0]))
+            assert str(val.dtype) == s.dtype
+            assert np.all(val[0] == [1, 0, 0, 0, 0])
 
     @staticmethod
     def check_format_ndim(format, ndim):
@@ -943,12 +933,14 @@ class T_conversion(unittest.TestCase):
             for ndim in 0, 1, 2:
                 self.check_format_ndim(format, ndim)
 
-            self.assertRaises(TypeError, self.check_format_ndim, format, 3)
-            self.assertRaises(TypeError, self.check_format_ndim, format, 4)
+            with pytest.raises(TypeError):
+                self.check_format_ndim(format, 3)
+            with pytest.raises(TypeError):
+                self.check_format_ndim(format, 4)
 
 
-class test_csm_properties(unittest.TestCase):
-    def setUp(self):
+class test_csm_properties():
+    def setup_method(self):
         utt.seed_rng()
 
     def test_csm_properties_grad(self):
@@ -990,8 +982,8 @@ class test_csm_properties(unittest.TestCase):
                 assert np.all(shape == spmat.shape)
 
 
-class test_csm(unittest.TestCase):
-    def setUp(self):
+class test_csm():
+    def setup_method(self):
         utt.seed_rng()
 
     def test_csm_grad(self):
@@ -1081,8 +1073,8 @@ class test_csm(unittest.TestCase):
                 assert np.all(res.shape == spmat.shape)
 
 
-class test_structureddot(unittest.TestCase):
-    def setUp(self):
+class test_structureddot():
+    def setup_method(self):
         utt.seed_rng()
 
     def test_structureddot_csc_grad(self):
@@ -1268,8 +1260,7 @@ class test_structureddot(unittest.TestCase):
             utt.assert_allclose(scipy_result, theano_result)
             if (theano.config.mode == "FAST_RUN" and
                 theano.config.cxx):
-                self.assertFalse(theano_time > overhead_rtol * scipy_time +
-                                 overhead_tol)
+                assert theano_time <= overhead_rtol * scipy_time + overhead_tol
 
     def test_csr_correct_output_faster_than_scipy(self):
 
@@ -1305,16 +1296,12 @@ class test_structureddot(unittest.TestCase):
             utt.assert_allclose(scipy_result, theano_result)
             if (theano.config.mode == "FAST_RUN" and
                 theano.config.cxx):
-                    self.assertFalse(
-                        theano_time > overhead_rtol * scipy_time + overhead_tol,
-                        (theano_time,
-                         overhead_rtol * scipy_time + overhead_tol,
-                         scipy_time, overhead_rtol, overhead_tol))
+                    assert theano_time <= overhead_rtol * scipy_time + overhead_tol, (theano_time, overhead_rtol * scipy_time + overhead_tol, scipy_time, overhead_rtol, overhead_tol)
 
 
 class DotTests(utt.InferShapeTester):
-    def setUp(self):
-        super(DotTests, self).setUp()
+    def setup_method(self):
+        super(DotTests, self).setup_method()
         x_size = (10, 100)
         y_size = (100, 1000)
         utt.seed_rng()
@@ -1444,11 +1431,11 @@ class DotTests(utt.InferShapeTester):
         theano.tests.unittest_tools.verify_grad(buildgraph_T, [mat])
 
 
-class UsmmTests(unittest.TestCase):
+class TestUsmm():
     """
     Test the Usmm and UsmmCscDense class and related optimization
     """
-    def setUp(self):
+    def setup_method(self):
         x_size = (10, 100)
         y_size = (100, 200)
         z_size = (x_size[0], y_size[1])
@@ -1635,7 +1622,7 @@ class UsmmTests(unittest.TestCase):
                         for node in topo]) == nb
 
 
-class test_zeros_like(unittest.TestCase):
+class test_zeros_like():
     def test(self):
         x = theano.sparse.csr_matrix()
         f = theano.function([x], theano.sparse.sp_zeros_like(x))
@@ -1754,8 +1741,8 @@ def test_size():
 
 
 class ColScaleCSCTester(utt.InferShapeTester):
-    def setUp(self):
-        super(ColScaleCSCTester, self).setUp()
+    def setup_method(self):
+        super(ColScaleCSCTester, self).setup_method()
         self.op = sparse.col_scale
 
     def test_op(self):
@@ -1795,8 +1782,8 @@ class ColScaleCSCTester(utt.InferShapeTester):
 
 
 class RowScaleCSCTester(utt.InferShapeTester):
-    def setUp(self):
-        super(RowScaleCSCTester, self).setUp()
+    def setup_method(self):
+        super(RowScaleCSCTester, self).setup_method()
         self.op = sparse.row_scale
 
     def test_op(self):
@@ -1838,8 +1825,8 @@ class RowScaleCSCTester(utt.InferShapeTester):
 class SpSumTester(utt.InferShapeTester):
     possible_axis = [None, 0, 1]
 
-    def setUp(self):
-        super(SpSumTester, self).setUp()
+    def setup_method(self):
+        super(SpSumTester, self).setup_method()
         self.op_class = sparse.SpSum
         self.op = sparse.sp_sum
 
@@ -1883,8 +1870,8 @@ class SpSumTester(utt.InferShapeTester):
 
 
 class DiagTester(utt.InferShapeTester):
-    def setUp(self):
-        super(DiagTester, self).setUp()
+    def setup_method(self):
+        super(DiagTester, self).setup_method()
         self.op_class = Diag
         self.op = diag
 
@@ -1923,8 +1910,8 @@ class DiagTester(utt.InferShapeTester):
 
 
 class SquareDiagonalTester(utt.InferShapeTester):
-    def setUp(self):
-        super(SquareDiagonalTester, self).setUp()
+    def setup_method(self):
+        super(SquareDiagonalTester, self).setup_method()
         self.op_class = SquareDiagonal
         self.op = square_diagonal
 
@@ -1966,8 +1953,8 @@ class SquareDiagonalTester(utt.InferShapeTester):
 
 
 class EnsureSortedIndicesTester(utt.InferShapeTester):
-    def setUp(self):
-        super(EnsureSortedIndicesTester, self).setUp()
+    def setup_method(self):
+        super(EnsureSortedIndicesTester, self).setup_method()
         self.op_class = EnsureSortedIndices
         self.op = ensure_sorted_indices
 
@@ -2002,8 +1989,8 @@ class EnsureSortedIndicesTester(utt.InferShapeTester):
 
 
 class CleanTester(utt.InferShapeTester):
-    def setUp(self):
-        super(CleanTester, self).setUp()
+    def setup_method(self):
+        super(CleanTester, self).setup_method()
         self.op = clean
 
     def test_op(self):
@@ -2036,8 +2023,8 @@ class CleanTester(utt.InferShapeTester):
 
 
 class Remove0Tester(utt.InferShapeTester):
-    def setUp(self):
-        super(Remove0Tester, self).setUp()
+    def setup_method(self):
+        super(Remove0Tester, self).setup_method()
         self.op_class = Remove0
 
     def test_remove0(self):
@@ -2116,8 +2103,8 @@ class Remove0Tester(utt.InferShapeTester):
         verify_grad_sparse(Remove0(), [mat_csr])
 
 
-class Test_getitem(unittest.TestCase):
-    def setUp(self):
+class Test_getitem():
+    def setup_method(self):
         self.rng = np.random.RandomState(utt.fetch_seed())
 
     def test_GetItemList(self):
@@ -2144,7 +2131,8 @@ class Test_getitem(unittest.TestCase):
         y = a[0][[0, 4]]
         f = theano.function([a[0]], y)
 
-        self.assertRaises(IndexError, f, A[0])
+        with pytest.raises(IndexError):
+            f(A[0])
 
     def test_get_item_list_grad(self):
         op = theano.sparse.basic.GetItemList()
@@ -2185,8 +2173,10 @@ class Test_getitem(unittest.TestCase):
         f1 = theano.function([a[0]], y1)
         f2 = theano.function([a[0]], y2)
 
-        self.assertRaises(IndexError, f1, A[0])
-        self.assertRaises(IndexError, f2, A[0])
+        with pytest.raises(IndexError):
+            f1(A[0])
+        with pytest.raises(IndexError):
+            f2(A[0])
 
     def test_get_item_2lists_grad(self):
         op = theano.sparse.basic.GetItem2Lists()
@@ -2336,30 +2326,28 @@ class Test_getitem(unittest.TestCase):
             # The syntax is a bit awkward because assertRaises forbids
             # the [] shortcut for getitem.
             # x[a:b] is not accepted because we don't have sparse vectors
-            self.assertRaises(NotImplementedError,
-                              x.__getitem__, (slice(a, b), c))
+            with pytest.raises(NotImplementedError):
+                x.__getitem__((slice(a, b), c))
 
             # x[a:b:step, c:d] is not accepted because scipy silently drops
             # the step (!)
             if not is_supported_version:
-                self.assertRaises(ValueError,
-                                  x.__getitem__, (slice(a, b, -1), slice(c, d)))
-                self.assertRaises(ValueError,
-                                  x.__getitem__, (slice(a, b), slice(c, d, 2)))
+                with pytest.raises(ValueError):
+                    x.__getitem__((slice(a, b, -1), slice(c, d)))
+                with pytest.raises(ValueError):
+                    x.__getitem__((slice(a, b), slice(c, d, 2)))
             else:
-                raise SkipTest("Slicing with step is supported.")
+                pytest.skip("Slicing with step is supported.")
 
             # Advanced indexing is not supported
-            self.assertRaises(ValueError,
-                              x.__getitem__,
-                              (tensor.ivector('l'), slice(a, b)))
+            with pytest.raises(ValueError):
+                x.__getitem__((tensor.ivector('l'), slice(a, b)))
 
             # Indexing with random things is not supported either
-            self.assertRaises(ValueError,
-                              x.__getitem__, slice(tensor.fscalar('f'), None))
-            self.assertRaises(ValueError,
-                              x.__getitem__,
-                              (slice(None), slice([1, 3, 4], None)))
+            with pytest.raises(ValueError):
+                x.__getitem__(slice(tensor.fscalar('f'), None))
+            with pytest.raises(ValueError):
+                x.__getitem__((slice(None), slice([1, 3, 4], None)))
 
     def test_GetItemScalar(self):
         sparse_formats = ('csc', 'csr')
@@ -2408,8 +2396,8 @@ class Test_getitem(unittest.TestCase):
 
 
 class CastTester(utt.InferShapeTester):
-    def setUp(self):
-        super(CastTester, self).setUp()
+    def setup_method(self):
+        super(CastTester, self).setup_method()
 
     # slow but only test
     def test_cast(self):
@@ -2442,7 +2430,7 @@ class CastTester(utt.InferShapeTester):
                     utt.assert_allclose(expected, t_cls)
                     utt.assert_allclose(expected, t_prop)
 
-    @attr('slow')
+    @pytest.mark.slow
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
             for i_dtype in sparse.all_dtypes:
@@ -2564,8 +2552,8 @@ class AddSSDataTester(utt.InferShapeTester):
     x = {}
     a = {}
 
-    def setUp(self):
-        super(AddSSDataTester, self).setUp()
+    def setup_method(self):
+        super(AddSSDataTester, self).setup_method()
         self.op_class = AddSSData
 
         for format in sparse.sparse_formats:
@@ -2636,10 +2624,10 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
     if test_dtypes is None:
         test_dtypes = sparse.all_dtypes
 
-    class Tester(unittest.TestCase):
+    class Tester():
 
-        def setUp(self):
-            super(Tester, self).setUp()
+        def setup_method(self):
+            super(Tester, self).setup_method()
             self.op = op
             self.expected_f = expected_f
             self.gap = gap
@@ -2982,8 +2970,8 @@ ConjTester = elemwise_checker(
     grad_test=False)
 
 
-class MulSVTester(unittest.TestCase):
-    def setUp(self):
+class TestMulSV():
+    def setup_method(self):
         utt.seed_rng()
 
     def test_mul_s_v_grad(self):
@@ -3017,8 +3005,8 @@ class MulSVTester(unittest.TestCase):
                 utt.assert_allclose(spmat.toarray() * mat, out.toarray())
 
 
-class StructuredAddSVTester(unittest.TestCase):
-    def setUp(self):
+class TestStructuredAddSV():
+    def setup_method(self):
         utt.seed_rng()
 
     def test_structured_add_s_v_grad(self):
@@ -3056,8 +3044,8 @@ class StructuredAddSVTester(unittest.TestCase):
 
 
 class TrueDotTester(utt.InferShapeTester):
-    def setUp(self):
-        super(TrueDotTester, self).setUp()
+    def setup_method(self):
+        super(TrueDotTester, self).setup_method()
         self.op = true_dot
         self.op_class = TrueDot
 
@@ -3154,8 +3142,8 @@ class SamplingDotTester(utt.InferShapeTester):
          ]
     a[2] = sp.csr_matrix(a[2])
 
-    def setUp(self):
-        super(SamplingDotTester, self).setUp()
+    def setup_method(self):
+        super(SamplingDotTester, self).setup_method()
         self.op_class = SamplingDot
 
     def test_op(self):
@@ -3218,6 +3206,3 @@ import theano.tensor.tests.test_sharedvar
 class test_shared_options(object):
     pass
 
-
-if __name__ == '__main__':
-    unittest.main()

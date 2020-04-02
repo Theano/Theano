@@ -1,6 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import unittest
-
 import numpy as np
 
 import theano
@@ -16,9 +14,9 @@ def rand_ranged_matrix(minimum, maximum, shape):
                       minimum, dtype=theano.config.floatX)
 
 
-class test_typed_list_type(unittest.TestCase):
+class test_typed_list_type():
 
-    def setUp(self):
+    def setup_method(self):
         utt.seed_rng()
 
     def test_wrong_input_on_creation(self):
@@ -26,7 +24,8 @@ class test_typed_list_type(unittest.TestCase):
         # error if the argument passed for
         # type is not a valid theano type
 
-        self.assertRaises(TypeError, TypedListType, None)
+        with pytest.raises(TypeError):
+            TypedListType(None)
 
     def test_wrong_input_on_filter(self):
         # Typed list type should raises an
@@ -38,7 +37,8 @@ class test_typed_list_type(unittest.TestCase):
         myType = TypedListType(T.TensorType(theano.config.floatX,
                                             (False, False)))
 
-        self.assertRaises(TypeError, myType.filter, [4])
+        with pytest.raises(TypeError):
+            myType.filter([4])
 
     def test_not_a_list_on_filter(self):
         # Typed List Value should raises an error
@@ -48,7 +48,8 @@ class test_typed_list_type(unittest.TestCase):
         myType = TypedListType(T.TensorType(theano.config.floatX,
                                             (False, False)))
 
-        self.assertRaises(TypeError, myType.filter, 4)
+        with pytest.raises(TypeError):
+            myType.filter(4)
 
     def test_type_equality(self):
         # Typed list types should only be equal
@@ -65,8 +66,8 @@ class test_typed_list_type(unittest.TestCase):
         myType3 = TypedListType(T.TensorType(theano.config.floatX,
                                              ()))
 
-        self.assertTrue(myType2 == myType1)
-        self.assertFalse(myType3 == myType1)
+        assert myType2 == myType1
+        assert myType3 != myType1
 
     def test_filter_sanity_check(self):
         # Simple test on typed list type filter
@@ -76,7 +77,7 @@ class test_typed_list_type(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 100])
 
-        self.assertTrue(np.array_equal(myType.filter([x]), [x]))
+        assert np.array_equal(myType.filter([x]), [x])
 
     def test_intern_filter(self):
         # Test checking if values contained are themselves
@@ -88,7 +89,7 @@ class test_typed_list_type(unittest.TestCase):
 
         x = np.asarray([[4, 5], [4, 5]], dtype='float32')
 
-        self.assertTrue(np.array_equal(myType.filter([x]), [x]))
+        assert np.array_equal(myType.filter([x]), [x])
 
     # Will fail for unknown reasons
     # under search
@@ -102,7 +103,7 @@ class test_typed_list_type(unittest.TestCase):
         for i in range(10000):
             testList.append(x)
 
-        self.assertTrue(numpy.array_equal(myType.filter(testList), testList))
+        assert numpy.array_equal(myType.filter(testList), testList)
     '''
 
     def test_basic_nested_list(self):
@@ -115,7 +116,7 @@ class test_typed_list_type(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 100])
 
-        self.assertTrue(np.array_equal(myType.filter([[x]]), [[x]]))
+        assert np.array_equal(myType.filter([[x]]), [[x]])
 
     def test_comparison_different_depth(self):
         # Nested list with different depth aren't the same
@@ -127,7 +128,7 @@ class test_typed_list_type(unittest.TestCase):
 
         myNestedType3 = TypedListType(myNestedType2)
 
-        self.assertFalse(myNestedType2 == myNestedType3)
+        assert myNestedType2 != myNestedType3
 
     def test_nested_list_arg(self):
         # test for the 'depth' optionnal argument
@@ -141,7 +142,7 @@ class test_typed_list_type(unittest.TestCase):
         myManualNestedType = TypedListType(TypedListType(
                                            TypedListType(myType)))
 
-        self.assertTrue(myNestedType == myManualNestedType)
+        assert myNestedType == myManualNestedType
 
     def test_get_depth(self):
         # test case for get_depth utilitary function
@@ -152,7 +153,7 @@ class test_typed_list_type(unittest.TestCase):
         myManualNestedType = TypedListType(TypedListType(
                                            TypedListType(myType)))
 
-        self.assertTrue(myManualNestedType.get_depth() == 3)
+        assert myManualNestedType.get_depth() == 3
 
     def test_comparison_uneven_nested(self):
         # test for comparison between uneven nested list
@@ -165,12 +166,11 @@ class test_typed_list_type(unittest.TestCase):
 
         myManualNestedType2 = TypedListType(TypedListType(myType))
 
-        self.assertFalse(myManualNestedType1 == myManualNestedType2)
-        self.assertFalse(myManualNestedType2 == myManualNestedType1)
+        assert myManualNestedType1 != myManualNestedType2
+        assert myManualNestedType2 != myManualNestedType1
 
     def test_variable_is_Typed_List_variable(self):
         mySymbolicVariable = TypedListType(T.TensorType(theano.config.floatX,
                                            (False, False)))()
 
-        self.assertTrue(isinstance(mySymbolicVariable,
-                                   theano.typed_list.TypedListVariable))
+        assert isinstance(mySymbolicVariable, theano.typed_list.TypedListVariable)

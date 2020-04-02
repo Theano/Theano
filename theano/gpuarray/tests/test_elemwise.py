@@ -1,13 +1,12 @@
 from __future__ import absolute_import, print_function, division
 from copy import copy
-from unittest import TestCase
 
 import numpy as np
 
 import theano
 from theano import scalar, gof, tensor
 from theano.compile import DebugMode, Mode
-from theano.tests.unittest_tools import SkipTest, assert_allclose
+from theano.tests.unittest_tools import assert_allclose
 
 from theano.tensor.tests import test_elemwise
 
@@ -70,16 +69,16 @@ def test_elemwise_pow():
             assert_allclose(out, expected_out)
 
 
-class TestMathErrorFunctions(TestCase):
+class TestMathErrorFunctions():
     dtypes = ["float64", "float32", "float16"]
     default_arrays = {}
     expected_erfinv_outputs = {}
     expected_erfcinv_outputs = {}
 
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         if not imported_scipy_special:
-            raise SkipTest("scipy.special needed")
+            pytest.skip("scipy.special needed")
         # NB: erfinv is defined in ]-1;1[, and erfcinv is defined in ]0;2[,
         # so we just take some values in an interval that covers both domains
         # (this will also allow to test some values outside the domains).
@@ -358,13 +357,13 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     def test_perform_nan(self):
         return
 
-    def setUp(self):
-        super(test_GpuCAReduceCuda, self).setUp()
+    def setup_method(self):
+        super(test_GpuCAReduceCuda, self).setup_method()
         if get_context(test_ctx_name).kind != b'cuda':
-            raise SkipTest("Cuda specific tests")
+            pytest.skip("Cuda specific tests")
 
 
-class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
+class Test_gpureduce_dtype(test_elemwise.T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
 
     # GpuDnnReduction doesn't cover all cases, but should cover some
@@ -376,9 +375,9 @@ class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
               'uint8', 'uint16', 'uint32', 'uint64',
               'float32', 'float64']
 
-    def setUp(self):
+    def setup_method(self):
         if get_context(test_ctx_name).kind != b'cuda':
-            raise SkipTest("Cuda specific tests")
+            pytest.skip("Cuda specific tests")
 
 
 def speed_reduce10():

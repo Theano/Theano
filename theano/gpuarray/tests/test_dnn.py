@@ -2,10 +2,8 @@ from __future__ import absolute_import, print_function, division
 import logging
 from collections import OrderedDict
 
-from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises
-from parameterized import parameterized
 import numpy as np
+import pytest
 from itertools import product, chain
 
 import theano
@@ -64,7 +62,7 @@ def set_precision(floatX):
 
 def test_dnn_conv_desc_merge():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     kern_shp = T.as_tensor_variable(
         np.asarray([3, 1, 2, 2]).astype('int64'))
     desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2), dilation=(1, 1),
@@ -86,7 +84,7 @@ def test_dnn_conv_desc_merge():
 def test_dnn_conv_merge():
     # This test that we merge correctly multiple dnn_conv.
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     img_shp = [2, 5, 6, 8]
     kern_shp = [3, 5, 5, 6]
     img = T.tensor4('img')
@@ -123,7 +121,7 @@ def test_dnn_conv_inplace():
     # GpuAllocEmpty get merged together.
 
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     img_shp = [2, 5, 6, 8]
@@ -197,11 +195,13 @@ def run_dnn_conv_invalid_precision(ndim):
 
     dnn_gradw('float64')
     dnn_gradw('float32')
-    assert_raises(TypeError, dnn_gradw, 'float16')
+    with pytest.raises(TypeError):
+        dnn_gradw('float16')
 
     dnn_gradi('float64')
     dnn_gradi('float32')
-    assert_raises(TypeError, dnn_gradi, 'float16')
+    with pytest.raises(TypeError):
+        dnn_gradi('float16')
 
     for precision in ('float64', 'float32'):
         dnn_conv(precision, 'valid', None)
@@ -210,8 +210,10 @@ def run_dnn_conv_invalid_precision(ndim):
         dnn_conv(precision, 'full', 'forward!')
 
     dnn_conv('float16', 'valid', None)
-    assert_raises(TypeError, dnn_conv, 'float16', 'valid', 'bprop weights')
-    assert_raises(TypeError, dnn_conv, 'float16', 'full', None)
+    with pytest.raises(TypeError):
+        dnn_conv('float16', 'valid', 'bprop weights')
+    with pytest.raises(TypeError):
+        dnn_conv('float16', 'full', None)
     dnn_conv('float16', 'full', 'forward!')
 
 
@@ -264,7 +266,7 @@ def test_dnn_conv3d_mixed_dtype():
 
 def test_pooling():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     modes = get_dnn_pool_modes()
@@ -354,7 +356,7 @@ def test_pooling():
 # (see next test below).
 def run_pooling_with_tensor_vars(mode):
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     x = T.tensor4()
@@ -415,7 +417,7 @@ def test_pooling_with_tensor_vars():
 def test_pooling3d():
     # 3d pooling requires version 3 or newer.
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 3000:
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     # We force the FAST_RUN as we don't want the reference to run in DebugMode.
@@ -500,7 +502,7 @@ def test_pooling3d():
 
 def test_pooling_opt():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     # 2D pooling
@@ -575,7 +577,7 @@ def test_pooling_opt_arbitrary_dimensions():
     # is correctly reshaped to run on the GPU
 
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     modes = get_dnn_pool_modes()
@@ -620,7 +622,7 @@ def test_pooling_opt_arbitrary_dimensions():
 
 def test_pooling_empty_batch():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     img_shp = (0, 5, 6, 8)
     img = T.ftensor4('img')
 
@@ -674,15 +676,14 @@ class TestDnnInferShapes(utt.InferShapeTester):
     border_modes = ['valid', 'full', 'half']
     conv_modes = ['conv', 'cross']
 
-    def setUp(self):
+    def setup_method(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
-        super(TestDnnInferShapes, self).setUp()
+            pytest.skip(dnn.dnn_available.msg)
         self.mode = mode_with_gpu
 
     def test_softmax(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
         t = T.tensor4('t')
         rand_tensor = np.asarray(
             np.random.rand(5, 4, 3, 2),
@@ -712,7 +713,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def _test_conv(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsamples, dilations, algo):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
 
         img_val = np.asarray(img_val, dtype=theano.config.floatX)
         kern_vals = np.asarray(kern_vals, dtype=theano.config.floatX)
@@ -740,13 +741,13 @@ class TestDnnInferShapes(utt.InferShapeTester):
                     dnn.GpuDnnConv
                 )
 
-    @parameterized.expand(chain(product([SUPPORTED_DNN_CONV_ALGO_FWD[0]],
+    @pytest.mark.parametrize("algo, border_mode, conv_mode",
+                             chain(product([SUPPORTED_DNN_CONV_ALGO_FWD[0]],
                                         border_modes,
                                         conv_modes),
-                                product(SUPPORTED_DNN_CONV_ALGO_FWD[1:],
+                             product(SUPPORTED_DNN_CONV_ALGO_FWD[1:],
                                         [border_modes[0]],
-                                        [conv_modes[0]])),
-                          testcase_func_name=utt.custom_name_func)
+                                        [conv_modes[0]])))
     def test_conv(self, algo, border_mode, conv_mode):
         # Currently only CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM (algo 'none')
         # supports dilation > 1. 'time*' and 'guess*' should fallback to it.
@@ -765,7 +766,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                         dilations,
                         algo)
 
-    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    @pytest.mark.parametrize("border_mode, conv_mode", product(border_modes, conv_modes))
     def test_conv3d_none(self, border_mode, conv_mode):
         dilations = [(1, 1, 1), (2, 2, 2)] if dnn.version() >= 6000 else [(1, 1, 1)]
 
@@ -782,7 +783,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsamples, dilations):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
 
         kerns_vals = np.zeros(kerns_shape, dtype=theano.config.floatX)
         kerns_shape_shared = theano.shared(np.asarray(kerns_shape))
@@ -821,7 +822,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                     dnn.GpuDnnConvGradW
                 )
 
-    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    @pytest.mark.parametrize("border_mode, conv_mode", product(border_modes, conv_modes))
     def test_conv_gradw(self, border_mode, conv_mode):
         dilations = [(1, 1), (2, 2)] if dnn.version() >= 6000 else [(1, 1)]
 
@@ -837,7 +838,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def test_conv_gradi(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
         img = T.tensor4('img')
         kerns = T.tensor4('kerns')
         out = T.tensor4('out')
@@ -881,7 +882,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def test_pool(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
         img = T.tensor4('img')
         img_val = np.asarray(
             np.random.rand(2, 3, 4, 5),
@@ -904,7 +905,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def test_pool_3d(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
         img = T.tensor5('img')
         img_val = np.asarray(
             np.random.rand(2, 3, 4, 5, 6),
@@ -927,7 +928,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def test_pool_grad(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
         img = T.tensor4('img')
         img_grad = T.tensor4('img_grad')
         out = T.tensor4('out')
@@ -967,7 +968,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def test_pool_3d_grad(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
         img = T.tensor5('img')
         img_grad = T.tensor5('img_grad')
         out = T.tensor5('out')
@@ -1009,7 +1010,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 # this has been a problem in the past
 def test_dnn_conv_border_mode():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     img = T.tensor4()
     kern = T.tensor4()
 
@@ -1022,7 +1023,7 @@ def test_dnn_conv_border_mode():
 
 def test_dnn_conv_alpha_output_merge():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     img = T.tensor4()
@@ -1087,7 +1088,7 @@ def test_dnn_conv_alpha_output_merge():
 
 def test_dnn_conv_grad():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     b = 1
@@ -1126,7 +1127,7 @@ def test_dnn_conv_grad():
 
 def get_conv3d_test_cases():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     # Every element of test_shapes follows the format
     # [input_shape, filter_shape, subsample, dilation]
     test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1), (1, 1, 1)],
@@ -1213,7 +1214,7 @@ def run_conv_small_batched_vs_multicall(inputs_shape, filters_shape, batch_sub):
 
 def test_batched_conv_small():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2), (1, 2, 2, 2), 5)
     # Should fail with cuDNN < V6020, but there's currently a workaround in `dnn_fwd.c` for that case.
@@ -1222,7 +1223,7 @@ def test_batched_conv_small():
 
 def test_batched_conv3d_small():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     yield (run_conv_small_batched_vs_multicall, (65536, 2, 2, 2, 2), (1, 2, 2, 2, 2), 5)
     # Should fail with cuDNN < V6020, but there's currently a workaround in `dnn_fwd.c` for that case.
@@ -1232,7 +1233,7 @@ def test_batched_conv3d_small():
 def test_conv3d_fwd():
 
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
@@ -1289,7 +1290,7 @@ def test_conv3d_fwd():
 def test_conv3d_bwd():
 
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
@@ -1351,7 +1352,7 @@ def test_conv3d_bwd():
 
 def test_version():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     assert isinstance(dnn.version(), int)
 
 
@@ -1360,9 +1361,9 @@ class test_SoftMax(test_nnet.test_SoftMax):
     gpu_grad_op = dnn.GpuDnnSoftmaxGrad
     mode = mode_with_gpu
 
-    def setUp(self):
+    def setup_method(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
 
     def test_softmax_shape_0(self):
         dims = (2, 0, 4, 5)
@@ -1517,7 +1518,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         # This is a test for an optimization that depends on cuDNN v3 or
         # more recent. Don't test if the cuDNN version is too old.
         if dnn.version(raises=False) < 3000:
-            raise SkipTest("Log-softmax is only in cudnn v3+")
+            pytest.skip("Log-softmax is only in cudnn v3+")
 
         x = T.tensor4()
         softmax_out = dnn.GpuDnnSoftmax('accurate', 'channel')(x)
@@ -1558,7 +1559,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         # This is a test for an optimization that depends on cuDNN v3 or
         # more recent. Don't test if the cuDNN version is too old.
         if dnn.version(raises=False) < 3000:
-            raise SkipTest("Log-softmax is only in cudnn v3+")
+            pytest.skip("Log-softmax is only in cudnn v3+")
 
         # Compile a reference function, on the CPU, to be used to validate the
         # results of the other function.
@@ -1602,7 +1603,7 @@ def dnn_reduction(nd, idtype, acc_dtype, odtype):
 
 def test_dnn_reduction_opt():
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     for nd in range(1, 9):
         yield dnn_reduction, nd, 'float32', 'float32', 'float32'
@@ -1615,7 +1616,7 @@ def test_dnn_reduction_opt():
 
 def test_dnn_reduction_sum_squares():
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     M = T.matrix()
     for axis in (None, 0, 1):
@@ -1629,7 +1630,7 @@ def test_dnn_reduction_sum_squares():
 
 def test_dnn_reduction_sum_abs():
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     M = T.matrix()
     for axis in (None, 0, 1):
@@ -1643,7 +1644,7 @@ def test_dnn_reduction_sum_abs():
 
 def test_dnn_reduction_absmax():
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     M = T.matrix()
     for axis in (None, 0, 1):
@@ -1657,7 +1658,7 @@ def test_dnn_reduction_absmax():
 
 def test_dnn_reduction_axis_size_one():
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     for dtype in ('float16', 'float32', 'float64'):
         for shape, axis in [[(1, 2, 3), 0],
@@ -1720,14 +1721,14 @@ def dnn_reduction_strides(shp, shuffle, slice):
 
 def test_dnn_reduction_strides():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     yield dnn_reduction_strides, (2, 3, 2), (1, 0, 2), slice(None, None, None)
     yield dnn_reduction_strides, (2, 3, 2), (0, 1, 2), slice(None, None, -1)
 
 
 def test_dnn_reduction_error():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     nLoops = 5
     vec = np.arange(0, 10, dtype=np.float32)
     slow_output = np.zeros((5, 10))
@@ -1755,7 +1756,7 @@ def dnn_maxargmax(nd, idtype, axis):
 
 def test_dnn_maxandargmax_opt():
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 6000:
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     for nd in range(1, 9):
         yield dnn_maxargmax, nd, 'float32', None
@@ -1775,7 +1776,7 @@ def test_dnn_maxandargmax_opt():
 
 def test_dnn_batchnorm_train():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     for mode in ('per-activation', 'spatial'):
@@ -1884,7 +1885,7 @@ def test_dnn_batchnorm_train():
 def test_dnn_batchnorm_train_without_running_averages():
     # compile and run batch_normalization_train without running averages
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     x, scale, bias, dy = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias'), T.tensor4('dy')
@@ -1968,7 +1969,7 @@ def test_without_dnn_batchnorm_train_without_running_averages():
 def test_dnn_batchnorm_train_inplace():
     # test inplace_running_mean and inplace_running_var
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     x, scale, bias = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias')
@@ -2011,7 +2012,7 @@ def test_dnn_batchnorm_train_inplace():
 
 def test_batchnorm_inference():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     for mode in ('per-activation', 'spatial'):
@@ -2089,7 +2090,7 @@ def test_batchnorm_inference():
 def test_batchnorm_inference_inplace():
     # test inplace
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     x, scale, bias, mean, var = (T.tensor4(n) for n in ('x', 'scale', 'bias', 'mean', 'var'))
@@ -2116,7 +2117,7 @@ def test_batchnorm_inference_inplace():
 
 def test_dnn_batchnorm_valid_and_invalid_axes():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix):
         x, scale, bias, mean, var, dy = (vartype(n)
@@ -2167,7 +2168,7 @@ def test_dnn_batchnorm_valid_and_invalid_axes():
 
 def test_dnn_rnn_gru():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     # test params
@@ -2270,7 +2271,7 @@ def test_dnn_rnn_gru():
 
 def test_dnn_rnn_gru_bidi():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     # test params
@@ -2323,7 +2324,7 @@ def test_dnn_rnn_gru_bidi():
 
 def test_dnn_rnn_lstm():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     # test params
@@ -2402,7 +2403,7 @@ def test_dnn_rnn_lstm():
 
 def test_dnn_rnn_lstm_grad_c():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
 
     # test params
@@ -2484,7 +2485,7 @@ class Cudnn_grouped_conv(Grouped_conv_noOptim):
 
     def __init__(self, *args, **kwargs):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
         super(Cudnn_grouped_conv, self).__init__(*args, **kwargs)
 
 
@@ -2496,13 +2497,13 @@ class Cudnn_grouped_conv3d(Grouped_conv3d_noOptim):
 
     def __init__(self, *args, **kwargs):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
         super(Cudnn_grouped_conv3d, self).__init__(*args, **kwargs)
 
 
 def test_dnn_spatialtf():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     utt.seed_rng()
 
@@ -2675,7 +2676,7 @@ def test_dnn_spatialtf():
 
 def test_dnn_spatialtf_invalid_shapes():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     inputs = T.tensor4('inputs')
     theta = T.tensor3('theta')
@@ -2693,17 +2694,21 @@ def test_dnn_spatialtf_invalid_shapes():
     try_theta_shp((3, 2, 3))
 
     # incorrect parameter dimensions
-    assert_raises(RuntimeError, try_theta_shp, (3, 1, 3))
-    assert_raises(RuntimeError, try_theta_shp, (3, 2, 1))
+    with pytest.raises(RuntimeError):
+        try_theta_shp((3, 1, 3))
+    with pytest.raises(RuntimeError):
+        try_theta_shp((3, 2, 1))
 
     # number of rows does not match the number of input rows
-    assert_raises(RuntimeError, try_theta_shp, (1, 2, 3))
-    assert_raises(RuntimeError, try_theta_shp, (4, 2, 3))
+    with pytest.raises(RuntimeError):
+        try_theta_shp((1, 2, 3))
+    with pytest.raises(RuntimeError):
+        try_theta_shp((4, 2, 3))
 
 
 def test_dnn_spatialtf_grad():
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
 
     utt.seed_rng()
 
@@ -2767,7 +2772,7 @@ class TestDnnConv2DRuntimeAlgorithms(object):
 
     def __init__(self):
         if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
+            pytest.skip(dnn.dnn_available.msg)
         utt.seed_rng()
         self.runtime_algorithms = ('time_once', 'guess_once', 'time_on_shape_change', 'guess_on_shape_change')
 
@@ -2906,7 +2911,7 @@ def test_conv_guess_once_with_dtypes():
     # This test checks that runtime conv algorithm selection does not raise any exception
     # when consecutive functions with different dtypes and precisions are executed.
     if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+        pytest.skip(dnn.dnn_available.msg)
     utt.seed_rng()
     inputs_shape = (2, 3, 5, 5)
     filters_shape = (2, 3, 40, 4)

@@ -1,7 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
 import numpy as np
-import unittest
 
 import theano
 import theano.tensor as T
@@ -240,7 +239,7 @@ def softmax_unittest_template(dtypeInput):
     cmp(128, 64 * 1024)
 
 
-class test_SoftMax(unittest.TestCase):
+class test_SoftMax():
     gpu_op = GpuSoftmax
     mode = mode_wo_cudnn
 

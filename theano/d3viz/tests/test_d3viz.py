@@ -3,22 +3,21 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 import os.path as pt
 import tempfile
-import unittest
 import filecmp
 
 import theano as th
 import theano.d3viz as d3v
 from theano.d3viz.tests import models
 
-from nose.plugins.skip import SkipTest
+import pytest
 from theano.d3viz.formatting import pydot_imported, pydot_imported_msg
 if not pydot_imported:
-    raise SkipTest('pydot not available: ' + pydot_imported_msg)
+    pytest.skip('pydot not available: ' + pydot_imported_msg, allow_module_level=True)
 
 
-class TestD3Viz(unittest.TestCase):
+class TestD3Viz():
 
-    def setUp(self):
+    def setup_method(self):
         self.rng = np.random.RandomState(0)
         self.data_dir = pt.join('data', 'test_d3viz')
 
@@ -39,7 +38,7 @@ class TestD3Viz(unittest.TestCase):
 
     def test_mlp_profiled(self):
         if th.config.mode in ("DebugMode", "DEBUG_MODE"):
-            raise SkipTest("Can't profile in DebugMode")
+            pytest.skip("Can't profile in DebugMode")
         m = models.Mlp()
         profile = th.compile.profiling.ProfileStats(False)
         f = th.function(m.inputs, m.outputs, profile=profile)

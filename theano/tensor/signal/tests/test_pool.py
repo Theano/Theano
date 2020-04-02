@@ -1,16 +1,14 @@
 from __future__ import absolute_import, print_function, division
 
-from nose.plugins.skip import SkipTest
-from parameterized import parameterized
 from itertools import product
 import os
-import unittest
 from six import reraise
 from six.moves import cPickle
 import six.moves.builtins as builtins
 import sys
 
 import numpy as np
+import pytest
 
 import theano
 import theano.tensor as tensor
@@ -582,13 +580,13 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         ((9, 9), (1, 1), (1, 2, 8, 5)),
     )
 
-    @parameterized.expand(product(pool_grad_stride_examples,
-                                  [True, False],
-                                  ['max',
-                                   'sum',
-                                   'average_inc_pad',
-                                   'average_exc_pad']),
-                          testcase_func_name=utt.custom_name_func)
+    @pytest.mark.parametrize("example, ignore_border, mode",
+                             product(pool_grad_stride_examples,
+                                    [True, False],
+                                    ['max',
+                                     'sum',
+                                     'average_inc_pad',
+                                     'average_exc_pad']))
     def test_DownsampleFactorMax_grad_stride(self, example, ignore_border, mode):
         # checks the gradient for the case that stride is used
         rng = np.random.RandomState(utt.fetch_seed())
@@ -674,9 +672,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
                     utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
-    @parameterized.expand(product(pool_grad_stride_examples,
-                                  [True, False]),
-                          testcase_func_name=utt.custom_name_func)
+    @pytest.mark.parametrize("example, ignore_border",
+                             product(pool_grad_stride_examples, [True, False]))
     def test_DownsampleFactorMaxGrad_grad_stride(self, example, ignore_border):
         # checks the gradient of the gradient for
         # the case that stride is used
@@ -702,12 +699,12 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
-    @parameterized.expand(product(pool_grad_stride_examples,
-                                  [True, False],
-                                  ['sum',
-                                   'average_inc_pad',
-                                   'average_exc_pad']),
-                          testcase_func_name=utt.custom_name_func)
+    @pytest.mark.parametrize("example, ignore_border, mode",
+                             product(pool_grad_stride_examples,
+                                    [True, False],
+                                    ['sum',
+                                     'average_inc_pad',
+                                     'average_exc_pad']))
     def test_AveragePoolGrad_grad_stride(self, example, ignore_border, mode):
         # checks the gradient of the gradient for
         # the case that stride is used
@@ -1128,7 +1125,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
     def test_old_pool_interface(self):
         if sys.version_info[0] != 3:
             # Only tested with python 3 because of pickling issues.
-            raise SkipTest('Skip old pool interface with python 2.x')
+            pytest.skip('Skip old pool interface with python 2.x')
         # 1. Load the old version
         testfile_dir = os.path.dirname(os.path.realpath(__file__))
         fname = 'old_pool_interface.pkl'
@@ -1142,7 +1139,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 # when "type" and "copy_reg" are builtin modules.
                 if sys.platform == 'win32':
                     exc_type, exc_value, exc_trace = sys.exc_info()
-                    reraise(SkipTest, exc_value, exc_trace)
+                    raise
                 raise
         # 2. Create the new version
         x = theano.tensor.ftensor4()
@@ -1159,6 +1156,3 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
 
-
-if __name__ == '__main__':
-    unittest.main()

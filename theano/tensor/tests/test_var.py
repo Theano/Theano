@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
 from numpy.testing import assert_equal, assert_string_equal
+import pytest
 
 import theano
 import theano.tensor as tt
@@ -10,20 +11,22 @@ from theano.tensor import (Subtensor, AdvancedSubtensor, AdvancedSubtensor1,
                            AdvancedIncSubtensor1)
 
 
-def test_numpy_method():
+@pytest.mark.parametrize("fct", [np.arccos, np.arccosh, np.arcsin, np.arcsinh,
+                np.arctan, np.arctanh,
+                # np.ceil, np.floor, np.trunc,
+                np.cos, np.cosh, np.deg2rad,
+                np.exp, np.exp2, np.expm1, np.log,
+                np.log10, np.log1p, np.log2, np.rad2deg,
+                np.sin, np.sinh, np.sqrt, np.tan, np.tanh])
+def test_numpy_method(fct):
     # This type of code is used frequently by PyMC3 users
     x = tt.dmatrix('x')
     data = np.random.rand(5, 5)
     x.tag.test_value = data
-    for fct in [np.arccos, np.arccosh, np.arcsin, np.arcsinh,
-                np.arctan, np.arctanh, np.ceil, np.cos, np.cosh, np.deg2rad,
-                np.exp, np.exp2, np.expm1, np.floor, np.log,
-                np.log10, np.log1p, np.log2, np.rad2deg,
-                np.sin, np.sinh, np.sqrt, np.tan, np.tanh, np.trunc]:
-        y = fct(x)
-        f = theano.function([x], y)
-        utt.assert_allclose(np.nan_to_num(f(data)),
-                            np.nan_to_num(fct(data)))
+    y = fct(x)
+    f = theano.function([x], y)
+    utt.assert_allclose(np.nan_to_num(f(data)),
+                        np.nan_to_num(fct(data)))
 
 
 def test_empty_list_indexing():

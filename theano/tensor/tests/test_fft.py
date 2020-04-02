@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-import unittest
+import pytest
 
 import theano
 from theano import tensor as T
@@ -10,7 +10,7 @@ from theano.tensor import fft
 N = 16
 
 
-class TestFFT(unittest.TestCase):
+class TestFFT():
 
     def test_rfft_float(self):
         # Test that numpy's default float64 output is cast to theano input type
@@ -152,13 +152,16 @@ class TestFFT(unittest.TestCase):
         inputs_val = np.random.random((1, N)).astype(theano.config.floatX)
         inputs = theano.shared(inputs_val)
 
-        self.assertRaises(ValueError, fft.rfft, inputs, norm=123)
+        with pytest.raises(ValueError):
+            fft.rfft(inputs, norm=123)
 
         inputs_val = np.random.random((1, N // 2 + 1, 2)).astype(theano.config.floatX)
         inputs = theano.shared(inputs_val)
 
-        self.assertRaises(ValueError, fft.irfft, inputs, norm=123)
-        self.assertRaises(ValueError, fft.irfft, inputs, is_odd=123)
+        with pytest.raises(ValueError):
+            fft.irfft(inputs, norm=123)
+        with pytest.raises(ValueError):
+            fft.irfft(inputs, is_odd=123)
 
     def test_grad_rfft(self):
         # The numerical gradient of the FFT is sensitive, must set large

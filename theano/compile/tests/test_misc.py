@@ -1,7 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
 import numpy as np
-import unittest
 
 from theano.compile.pfunc import pfunc
 from theano.compile.sharedvalue import shared
@@ -42,7 +41,7 @@ class NNet(object):
         self.output_from_hidden = pfunc([self.hidden], self.output)
 
 
-class TestNnet(unittest.TestCase):
+class TestNnet():
 
     def test_nnet(self):
         rng = np.random.RandomState(1827)
@@ -57,7 +56,7 @@ class TestNnet(unittest.TestCase):
                 mean_cost += cost
             mean_cost /= float(len(data))
             # print 'Mean cost at epoch %s: %s' % (epoch, mean_cost)
-        self.assertTrue(abs(mean_cost - 0.20588975452) < 1e-6)
+        assert abs(mean_cost - 0.20588975452) < 1e-6
         # Just call functions to make sure they do not crash.
         nnet.compute_output(input)
         nnet.output_from_hidden(np.ones(10))

@@ -1,14 +1,13 @@
 from __future__ import absolute_import, print_function, division
 import os
 import numpy as np
+import pytest
 
 import theano
 from theano import Op, Apply, scalar
 from theano.tensor import TensorType
 from theano.gof.type import CDataType, EnumType, EnumList, CEnumType
-from unittest import TestCase
 
-from nose.plugins.skip import SkipTest
 
 # todo: test generic
 
@@ -63,7 +62,7 @@ Py_INCREF(%(out)s);
 
 def test_cdata():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     i = TensorType('float32', (False,))()
     c = ProdOp()(i)
     i2 = GetOp()(c)
@@ -181,7 +180,7 @@ class MyOpCEnumType(Op):
                    val=sub['params'])
 
 
-class TestEnumTypes(TestCase):
+class TestEnumTypes():
 
     def test_enum_class(self):
         # Check that invalid enum name raises exception.
@@ -250,7 +249,7 @@ class TestEnumTypes(TestCase):
 
     def test_op_with_cenumtype(self):
         if theano.config.cxx == '':
-            raise SkipTest('need c++')
+            pytest.skip('need c++')
         million = MyOpCEnumType('million')()
         billion = MyOpCEnumType('billion')()
         two_billions = MyOpCEnumType('two_billions')()

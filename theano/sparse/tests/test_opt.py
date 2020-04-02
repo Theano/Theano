@@ -1,18 +1,18 @@
 from __future__ import absolute_import, print_function, division
-from nose.plugins.skip import SkipTest
 import numpy as np
 try:
     import scipy.sparse as sp
     import scipy.sparse
 except ImportError:
     pass  # The variable enable_sparse will be used to disable the test file.
+import pytest
 
 import theano
 from theano import sparse, config, tensor
 from theano.sparse import enable_sparse
 from theano.tests import unittest_tools as utt
 if not enable_sparse:
-    raise SkipTest('Optional package sparse disabled')
+    pytest.skip('Optional package sparse disabled')
 
 from theano.sparse.tests.test_basic import random_lil
 
@@ -38,9 +38,9 @@ def test_local_csm_properties_csm():
 
 
 def test_local_csm_grad_c():
-    raise SkipTest("Opt disabled as it don't support unsorted indices")
+    pytest.skip("Opt disabled as it don't support unsorted indices")
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     data = tensor.vector()
     indices, indptr, shape = (tensor.ivector(), tensor.ivector(),
                               tensor.ivector())
@@ -65,7 +65,7 @@ def test_local_csm_grad_c():
 
 def test_local_mul_s_d():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including("specialize", "local_mul_s_d")
 
@@ -83,7 +83,7 @@ def test_local_mul_s_d():
 
 def test_local_mul_s_v():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including("specialize", "local_mul_s_v")
 
@@ -101,7 +101,7 @@ def test_local_mul_s_v():
 
 def test_local_structured_add_s_v():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including("specialize", "local_structured_add_s_v")
 
@@ -119,7 +119,7 @@ def test_local_structured_add_s_v():
 
 def test_local_sampling_dot_csr():
     if not theano.config.cxx:
-        raise SkipTest("G++ not available, so we need to skip this test.")
+        pytest.skip("G++ not available, so we need to skip this test.")
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including("specialize", "local_sampling_dot_csr")
 
@@ -160,14 +160,14 @@ def test_sd_csc():
     A = sp.rand(4, 5, density=0.60, format='csc', dtype=np.float32)
     b = np.random.rand(5,2).astype(np.float32)
     target = A*b
-    
+
     a_val = theano.tensor.as_tensor_variable(A.data)
     a_ind = theano.tensor.as_tensor_variable(A.indices)
     a_ptr = theano.tensor.as_tensor_variable(A.indptr)
     nrows = theano.tensor.as_tensor_variable(np.int32(A.shape[0]))
     b = theano.tensor.as_tensor_variable(b)
-    
+
     res = theano.sparse.opt.sd_csc(a_val, a_ind, a_ptr, nrows, b).eval()
-    
+
     utt.assert_allclose(res, target)
 

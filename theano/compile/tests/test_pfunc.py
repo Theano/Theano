@@ -1,7 +1,6 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 
-from nose.plugins.skip import SkipTest
+import pytest
 import numpy as np
 
 import theano
@@ -19,7 +18,7 @@ def data_of(s):
     return s.container.storage[0]
 
 
-class Test_pfunc(unittest.TestCase):
+class Test_pfunc():
 
     def test_doc(self):
         # Ensure the code given in pfunc.txt works as expected
@@ -29,23 +28,23 @@ class Test_pfunc(unittest.TestCase):
         b = shared(1)
         f1 = pfunc([a], (a + b))
         f2 = pfunc([In(a, value=44)], a + b, updates={b: b + 1})
-        self.assertTrue(b.get_value() == 1)
-        self.assertTrue(f1(3) == 4)
-        self.assertTrue(f2(3) == 4)
-        self.assertTrue(b.get_value() == 2)
-        self.assertTrue(f1(3) == 5)
+        assert b.get_value() == 1
+        assert f1(3) == 4
+        assert f2(3) == 4
+        assert b.get_value() == 2
+        assert f1(3) == 5
         b.set_value(0)
-        self.assertTrue(f1(3) == 3)
+        assert f1(3) == 3
 
         # Example #2.
         a = tensor.lscalar()
         b = shared(7)
         f1 = pfunc([a], a + b)
         f2 = pfunc([a], a * b)
-        self.assertTrue(f1(5) == 12)
+        assert f1(5) == 12
         b.set_value(8)
-        self.assertTrue(f1(5) == 13)
-        self.assertTrue(f2(4) == 32)
+        assert f1(5) == 13
+        assert f2(4) == 32
 
     def test_shared(self):
 
@@ -197,17 +196,19 @@ class Test_pfunc(unittest.TestCase):
         # Values are in range, but a dtype too large has explicitly been given
         # For performance reasons, no check of the data is explicitly performed
         # (It might be OK to change this in the future.)
-        self.assertRaises(TypeError, f,
-                          [3], np.array([6], dtype='int16'), 1)
+        with pytest.raises(TypeError):
+            f([3], np.array([6], dtype='int16'), 1)
 
         # Value too big for a, silently ignored
         assert np.all(f([2 ** 20], np.ones(1, dtype='int8'), 1) == 2)
 
         # Value too big for b, raises TypeError
-        self.assertRaises(TypeError, f, [3], [312], 1)
+        with pytest.raises(TypeError):
+            f([3], [312], 1)
 
         # Value too big for c, raises TypeError
-        self.assertRaises(TypeError, f, [3], [6], 806)
+        with pytest.raises(TypeError):
+            f([3], [6], 806)
 
     def test_param_allow_downcast_floatX(self):
         a = tensor.fscalar('a')
@@ -226,13 +227,15 @@ class Test_pfunc(unittest.TestCase):
         assert np.allclose(f(0.1, 0, 0), 0.1)
 
         # If allow_downcast is False, nope
-        self.assertRaises(TypeError, f, 0, 0.1, 0)
+        with pytest.raises(TypeError):
+            f(0, 0.1, 0)
 
         # If allow_downcast is None, it should work iff floatX=float32
         if config.floatX == 'float32':
             assert np.allclose(f(0, 0, 0.1), 0.1)
         else:
-            self.assertRaises(TypeError, f, 0, 0, 0.1)
+            with pytest.raises(TypeError):
+                f(0, 0, 0.1)
 
     def test_param_allow_downcast_vector_floatX(self):
         a = tensor.fvector('a')
@@ -252,10 +255,12 @@ class Test_pfunc(unittest.TestCase):
         assert np.allclose(f([0.1], z, z), 0.1)
 
         # If allow_downcast is False, nope
-        self.assertRaises(TypeError, f, z, [0.1], z)
+        with pytest.raises(TypeError):
+            f(z, [0.1], z)
 
         # If allow_downcast is None, like False
-        self.assertRaises(TypeError, f, z, z, [0.1])
+        with pytest.raises(TypeError):
+            f(z, z, [0.1])
 
     def test_allow_input_downcast_int(self):
         a = tensor.wvector('a')  # int16
@@ -276,18 +281,20 @@ class Test_pfunc(unittest.TestCase):
         # Values are in range, but a dtype too large has explicitly been given
         # For performance reasons, no check of the data is explicitly performed
         # (It might be OK to change this in the future.)
-        self.assertRaises(TypeError, g,
-                          [3], np.array([6], dtype='int16'), 0)
+        with pytest.raises(TypeError):
+            g([3], np.array([6], dtype='int16'), 0)
 
         # Value too big for b, raises TypeError
-        self.assertRaises(TypeError, g, [3], [312], 0)
+        with pytest.raises(TypeError):
+            g([3], [312], 0)
 
         h = pfunc([a, b, c], (a + b + c))  # Default: allow_input_downcast=None
         # Everything here should behave like with False
         assert np.all(h([3], [6], 0) == 9)
-        self.assertRaises(TypeError, h,
-                          [3], np.array([6], dtype='int16'), 0)
-        self.assertRaises(TypeError, h, [3], [312], 0)
+        with pytest.raises(TypeError):
+            h([3], np.array([6], dtype='int16'), 0)
+        with pytest.raises(TypeError):
+            h([3], [312], 0)
 
     def test_allow_downcast_floatX(self):
         a = tensor.fscalar('a')
@@ -304,17 +311,21 @@ class Test_pfunc(unittest.TestCase):
 
         # For the vector: OK iff allow_input_downcast is True
         assert np.allclose(f(0, [0.1]), 0.1)
-        self.assertRaises(TypeError, g, 0, [0.1])
-        self.assertRaises(TypeError, h, 0, [0.1])
+        with pytest.raises(TypeError):
+            g(0, [0.1])
+        with pytest.raises(TypeError):
+            h(0, [0.1])
 
         # For the scalar: OK if allow_input_downcast is True,
         # or None and floatX==float32
         assert np.allclose(f(0.1, [0]), 0.1)
-        self.assertRaises(TypeError, g, 0.1, [0])
+        with pytest.raises(TypeError):
+            g(0.1, [0])
         if config.floatX == 'float32':
             assert np.allclose(h(0.1, [0]), 0.1)
         else:
-            self.assertRaises(TypeError, h, 0.1, [0])
+            with pytest.raises(TypeError):
+                h(0.1, [0])
 
     def test_update(self):
         # Test update mechanism in different settings.
@@ -323,20 +334,20 @@ class Test_pfunc(unittest.TestCase):
         x = shared(0)
         assign = pfunc([], [], updates={x: 3})
         assign()
-        self.assertTrue(x.get_value() == 3)
+        assert x.get_value() == 3
 
         # Basic increment function.
         x.set_value(0)
         inc = pfunc([], [], updates={x: x + 1})
         inc()
-        self.assertTrue(x.get_value() == 1)
+        assert x.get_value() == 1
 
         # Increment by a constant value.
         x.set_value(-1)
         y = shared(2)
         inc_by_y = pfunc([], [], updates={x: x + y})
         inc_by_y()
-        self.assertTrue(x.get_value() == 1)
+        assert x.get_value() == 1
 
     def test_update_err_broadcast(self):
         # Test that broadcastable dimensions raise error
@@ -345,14 +356,14 @@ class Test_pfunc(unittest.TestCase):
 
         # the update_var has type matrix, and the update expression
         # is a broadcasted scalar, and that should be allowed.
-        self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
-                          updates={output_var: output_var.sum().dimshuffle('x', 'x')})
+        with pytest.raises(TypeError):
+            theano.function(inputs=[], outputs=[], updates={output_var: output_var.sum().dimshuffle('x', 'x')})
 
     def test_duplicate_updates(self):
         x, y = dmatrices('x', 'y')
         z = shared(np.ones((2, 3)))
-        self.assertRaises(ValueError, theano.function, [x, y], [z],
-                          updates=[(z, (z + x + y)), (z, (z - x))])
+        with pytest.raises(ValueError):
+            theano.function([x, y], [z], updates=[(z, (z + x + y)), (z, (z - x))])
 
     def test_givens(self):
         x = shared(0)
@@ -432,10 +443,12 @@ class Test_pfunc(unittest.TestCase):
         f5()
         assert x.get_value() == 6
 
-        self.assertRaises(TypeError, pfunc, [], [x], no_default_updates=(x))
-        self.assertRaises(TypeError, pfunc, [], [x], no_default_updates=x)
-        self.assertRaises(TypeError, pfunc, [], [x],
-                          no_default_updates='canard')
+        with pytest.raises(TypeError):
+            pfunc([], [x], no_default_updates=(x))
+        with pytest.raises(TypeError):
+            pfunc([], [x], no_default_updates=x)
+        with pytest.raises(TypeError):
+            pfunc([], [x], no_default_updates='canard')
 
         # Mix explicit updates and no_default_updates
         g1 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=True)
@@ -585,7 +598,8 @@ class Test_pfunc(unittest.TestCase):
         assert y.get_value() == 2
 
         # a is needed as input if y.default_update is used
-        self.assertRaises(theano.gof.MissingInputError, pfunc, [], x)
+        with pytest.raises(theano.gof.MissingInputError):
+            pfunc([], x)
 
     def test_default_updates_partial_graph(self):
         a = shared(0)
@@ -618,8 +632,8 @@ class Test_pfunc(unittest.TestCase):
 
     def test_duplicate_inputs(self):
         x = theano.tensor.lscalar('x')
-        self.assertRaises(theano.compile.UnusedInputError,
-                          theano.function, [x, x, x], x)
+        with pytest.raises(theano.compile.UnusedInputError):
+            theano.function([x, x, x], x)
 
     def test_update_same(self):
         # There was a bug in CVM, triggered when a shared variable
@@ -665,7 +679,7 @@ class Test_pfunc(unittest.TestCase):
         assert b.get_value(borrow=True).shape == (2, 3), b.get_value()
 
 
-class Test_aliasing_rules(unittest.TestCase):
+class Test_aliasing_rules():
     # 1. Theano manages its own memory space, which typically does not overlap
     # with the memory of normal python variables that the user uses.
     #
@@ -713,7 +727,7 @@ class Test_aliasing_rules(unittest.TestCase):
 
         from theano.sparse import enable_sparse
         if not enable_sparse:
-            raise SkipTest('Optional package sparse disabled')
+            pytest.skip('Optional package sparse disabled')
 
         from theano import sparse
 
@@ -985,7 +999,7 @@ class Test_aliasing_rules(unittest.TestCase):
             # objects forming a chain to the underlying data.
 
 
-class Test_rebuild_strict(unittest.TestCase):
+class Test_rebuild_strict():
     def test1(self):
         # Test fix for error reported at
         # https://groups.google.com/d/topic/theano-users/BRK0UEB72XA/discussion

@@ -95,8 +95,7 @@ class TestProdOp(utt.InferShapeTester):
 
     rng = np.random.RandomState(43)
 
-    def setUp(self):
-        super(TestProdOp, self).setUp()
+    def setup_method(self):
         self.op_class = ProdOp  # case 1
 
     def test_perform(self):
@@ -127,8 +126,7 @@ class TestSumDiffOp(utt.InferShapeTester):
 
     rng = np.random.RandomState(43)
 
-    def setUp(self):
-        super(TestSumDiffOp, self).setUp()
+    def setup_method(self):
         self.op_class = SumDiffOp
 
     def test_perform(self):

@@ -32,12 +32,6 @@ Install requirements and optional packages
     * ``m2w64-toolchain`` package provides a fully-compatible version of GCC and is then highly recommended.
     * ``git`` package installs git source control through conda, which is required for the development versions of Theano and libgpuarray
 
-Package ``parameterized`` is also optional but may be required for unit testing. It is available via ``pip``.
-
-.. code-block:: bash
-
-    pip install parameterized
-
 .. _gpu_windows:
 
 Install and configure the GPU drivers (recommended)

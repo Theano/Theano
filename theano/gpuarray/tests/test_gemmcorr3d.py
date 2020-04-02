@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import unittest
 import numpy as np
 
 import theano
@@ -14,7 +13,7 @@ from .config import mode_with_gpu, mode_without_gpu, ref_cast
 from theano.tensor.nnet.tests.test_abstract_conv import Grouped_conv3d_noOptim
 
 
-class TestCorr3dMM(unittest.TestCase):
+class TestCorr3dMM():
 
     def run_conv_valid(self, inputs_shape, filters_shape,
                        border_mode='valid',

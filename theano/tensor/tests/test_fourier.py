@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-from numpy.testing import dec
+import pytest
 
 import theano
 from theano import tensor
@@ -12,8 +12,8 @@ class TestFourier(utt.InferShapeTester):
 
     rng = np.random.RandomState(43)
 
-    def setUp(self):
-        super(TestFourier, self).setUp()
+    def setup_method(self):
+        super(TestFourier, self).setup_method()
         self.op_class = Fourier
         self.op = fft
 
@@ -40,7 +40,7 @@ class TestFourier(utt.InferShapeTester):
                                     [np.random.rand(12, 4), 0],
                                     self.op_class)
 
-    @dec.skipif(True, "Complex grads not enabled, see #178")
+    @pytest.mark.skipif(True, reason="Complex grads not enabled, see #178")
     def test_gradient(self):
         def fft_test1(a):
             return self.op(a, None, None)
@@ -67,7 +67,7 @@ class TestFourier(utt.InferShapeTester):
 
 if __name__ == "__main__":
     t = TestFourier('setUp')
-    t.setUp()
+    t.setup_method()
     t.test_perform()
     t.test_infer_shape()
     t.test_gradient()
