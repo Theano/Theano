@@ -70,7 +70,14 @@ if __name__ == '__main__':
         inopt = [docpath, workdir]
         if files is not None:
             inopt.extend(files)
-        ret = sphinx.build_main(['', '-b', builder] + extraopts + inopt)
+        try:
+            import sphinx.cmd.build
+            ret = sphinx.cmd.build.build_main(
+                ['-b', builder] + extraopts + inopt)
+        except ImportError:
+            # Sphinx < 1.7 - build_main drops first argument
+            ret = sphinx.build_main(
+                ['', '-b', builder] + extraopts + inopt)
         if ret != 0:
             sys.exit(ret)
 
