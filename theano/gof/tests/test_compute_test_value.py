@@ -288,9 +288,10 @@ class TestComputeTestValue(unittest.TestCase):
                 frame_infos = traceback.extract_tb(tb)
                 # We should be in the "fx" function defined above
                 expected = 'test_compute_test_value.py'
-                assert any((os.path.split(frame_info[0])[1] == expected
-                            and frame_info[2] == 'fx') for frame_info
-                            in frame_infos), frame_infos
+                assert any((os.path.split(
+                    frame_info[0])[1] == expected and
+                    frame_info[2] == 'fx') for frame_info in
+                    frame_infos), frame_infos
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value
