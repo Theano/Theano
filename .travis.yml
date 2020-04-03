@@ -52,9 +52,9 @@ jobs:
     - <<: *doctest
       python: "2.7"
       env: NUMPY_VERSION=1.13.1 DOC=1 PART="theano/tests/test_flake8.py"
-    - <<: *doctest
-      python: "3.4"
-      env: NUMPY_VERSION=1.9.1 DOC=1 PART="theano/tests/test_flake8.py"
+#    - <<: *doctest
+#      python: "3.4"
+#      env: NUMPY_VERSION=1.9.1 DOC=1 PART="theano/tests/test_flake8.py"
     - <<: *doctest
       python: "3.6"
       env: NUMPY_VERSION=1.13.1 DOC=1 PART="theano/tests/test_flake8.py"
