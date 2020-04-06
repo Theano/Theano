@@ -596,7 +596,7 @@ class GammaIncC(BinaryScalarOp):
         if node.inputs[0].type in float_types:
             dtype = 'npy_' + node.outputs[0].dtype
             return """%(z)s =
-                (%(dtype)s) gammaQ(%(k)s, %(x)s);""" % locals()
+                (%(dtype)s) GammaQ(%(k)s, %(x)s);""" % locals()
         raise NotImplementedError('only floatingpoint is implemented')
 
     def __eq__(self, other):
