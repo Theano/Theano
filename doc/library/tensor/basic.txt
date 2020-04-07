@@ -552,7 +552,7 @@ TensorVariable
     .. method:: nonzero_values(self)
     .. method:: sort(self, axis=-1, kind='quicksort', order=None)
     .. method:: argsort(self, axis=-1, kind='quicksort', order=None)
-    .. method:: clip(self, a_min, a_max)
+    .. method:: clip(self, a_min, a_max) with a_min <= a_max
     .. method:: conf()
     .. method:: repeat(repeats, axis=None)
     .. method:: round(mode="half_away_from_zero")
@@ -1349,6 +1349,9 @@ Condition
     `max` clipped to `max` and all elements less than `min` clipped to `min`.
 
     Normal broadcasting rules apply to each of `x`, `min`, and `max`.
+
+    Note that there is no warning for inputs that are the wrong way round
+    (`min > max`), and that results in this case may differ from ``numpy.clip``.
 
 Bit-wise
 --------
