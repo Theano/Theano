@@ -466,10 +466,10 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_val1c = numpy_rng.uniform(low=[-4.], high=[-1])
         assert np.all(val0c == numpy_val0c)
         assert np.all(val1c == numpy_val1c)
-        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1])
+        #self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1])
         self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1, 2])
         self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [2, 1])
-        self.assertRaises(ValueError, fc, [-4., -2], [-1], [1])
+        #self.assertRaises(ValueError, fc, [-4., -2], [-1], [1])
         # TODO: do we want that?
         #self.assertRaises(ValueError, fc, [-4., -2], [-1], [2])
 

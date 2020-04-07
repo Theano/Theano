@@ -160,7 +160,15 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
     if unsorted_indices:
         for idx in range(n):
             d = data[idx]
-            d = d[list(range(d.shape[0]))]
+            # these flip the matrix, but it's random anyway
+            if format == 'csr':
+                d = scipy.sparse.csr_matrix(
+                    (d.data, d.shape[1] - 1 - d.indices, d.indptr),
+                    shape=d.shape)
+            if format == 'csc':
+                d = scipy.sparse.csc_matrix(
+                    (d.data, d.shape[0] - 1 - d.indices, d.indptr),
+                    shape=d.shape)
             assert not d.has_sorted_indices
             data[idx] = d
     if explicit_zero:

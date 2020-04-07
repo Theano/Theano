@@ -45,6 +45,10 @@ class SortOp(theano.Op):
     def perform(self, node, inputs, output_storage):
         a = inputs[0]
         axis = inputs[1]
+        if axis is not None:
+            if axis != int(axis):
+                raise ValueError("sort axis must be an integer or None")
+            axis = int(axis)
         z = output_storage[0]
         z[0] = np.sort(a, axis, self.kind, self.order)
 
@@ -172,6 +176,10 @@ class ArgSortOp(theano.Op):
     def perform(self, node, inputs, output_storage):
         a = inputs[0]
         axis = inputs[1]
+        if axis is not None:
+            if axis != int(axis):
+                raise ValueError("sort axis must be an integer or None")
+            axis = int(axis)
         z = output_storage[0]
         z[0] = theano._asarray(np.argsort(a, axis, self.kind, self.order),
                                dtype=node.outputs[0].dtype)

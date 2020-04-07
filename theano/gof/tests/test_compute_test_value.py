@@ -285,12 +285,13 @@ class TestComputeTestValue(unittest.TestCase):
             except ValueError:
                 # Get traceback
                 tb = sys.exc_info()[2]
-                # Get frame info 4 layers up
-                frame_info = traceback.extract_tb(tb)[-5]
+                frame_infos = traceback.extract_tb(tb)
                 # We should be in the "fx" function defined above
                 expected = 'test_compute_test_value.py'
-                assert os.path.split(frame_info[0])[1] == expected, frame_info
-                assert frame_info[2] == 'fx'
+                assert any((os.path.split(
+                    frame_info[0])[1] == expected and
+                    frame_info[2] == 'fx') for frame_info in
+                    frame_infos), frame_infos
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value
