@@ -2835,7 +2835,7 @@ ClipTester = makeTester(
               correct6=(randint(5, 5).astype('int64'),
                         np.array(-1, dtype='int64'),
                         np.array(1, dtype='int64')),
-              # min > max case removed as numpy has changed
+              # min > max case moved below as numpy has changed
               correct8=(randint(0, 5).astype('uint8'),
                         np.array(2, dtype='uint8'),
                         np.array(4, dtype='uint8')),
@@ -2843,6 +2843,18 @@ ClipTester = makeTester(
                         np.array(2, dtype='uint16'),
                         np.array(4, dtype='uint16')),)
     # I can't think of any way to make this fail at runtime
+    )
+
+
+# min > max case - numpy.clip has changed but we haven't
+# https://github.com/Theano/Theano/issues/6715
+BackwardsClipTester = makeTester(
+    name='BackwardsClipTester',
+    op=clip,
+    expected=lambda x, y, z: np.where(x < y, y, np.minimum(x, z)),
+    good=dict(correct7=((5 * rand(5, 5)).astype('float64'),
+                        np.array(1, dtype='float64'),
+                        np.array(-1, dtype='float64')),)
     )
 
 
