@@ -289,7 +289,7 @@ class SoftmaxWithBias(gof.Op):
 softmax_with_bias = SoftmaxWithBias()
 
 
-class SoftmaxGrad(gof.Op):
+class SoftmaxGrad(gof.OpenMPOp):
     """
     Gradient wrt x of the Softmax Op.
 
@@ -384,6 +384,7 @@ class SoftmaxGrad(gof.Op):
             }
         }
 
+        #pragma omp parallel for if(PyArray_DIMS(%(dx)s)[0] > 256 && PyArray_DIMS(%(dx)s)[1] > 25600) schedule(static, 32)
         for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
         {
             const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (PyArray_BYTES(%(dy)s) + PyArray_STRIDES(%(dy)s)[0] * i);
@@ -408,7 +409,7 @@ class SoftmaxGrad(gof.Op):
 softmax_grad = SoftmaxGrad()
 
 
-class Softmax(gof.Op):
+class Softmax(gof.OpenMPOp):
     """
     Softmax activation function
     :math:`\\varphi(\\mathbf{x})_j =
@@ -507,6 +508,7 @@ class Softmax(gof.Op):
         """
 
         begin_row_loop = """
+        #pragma omp parallel for if(Nx[0] > 256 && Nx[1] > 25600) schedule(static, 32)
         for (size_t i = 0; i < Nx[0]; ++i)
         {
             size_t j;
