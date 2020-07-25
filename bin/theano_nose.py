@@ -23,6 +23,7 @@ import os
 import nose
 import textwrap
 import sys
+import warnings
 from nose.plugins import Plugin
 
 def main_function():
@@ -59,7 +60,7 @@ def main_function():
     batch_size = None
     if len(batch_args):
         if len(batch_args) > 1:
-            _logger.warn(
+            _logger.warning(
                 'Multiple --batch arguments detected, using the last one '
                 'and ignoring the first ones.')
 
@@ -103,7 +104,7 @@ def main_function():
             from numpy.testing.noseclasses import KnownFailure
             addplugins.append(KnownFailure())
         except ImportError:
-            _logger.warn(
+            _logger.warning(
                 'KnownFailure plugin from NumPy could not be imported. '
                 'Use --without-knownfailure to disable this warning.')
     else:
@@ -125,7 +126,7 @@ def main_function():
     except TypeError as e:
         if "got an unexpected keyword argument 'addplugins'" in e.message:
             # This means nose is too old and does not support plugins
-            _logger.warn(
+            _logger.warning(
                 'KnownFailure plugin from NumPy can\'t'
                 ' be used as nosetests is too old. '
                 'Use --without-knownfailure to disable this warning.')
@@ -204,6 +205,8 @@ def main():
     if '--help' in sys.argv or '-h' in sys.argv:
         help()
     else:
+        warnings.simplefilter("default")  # Enable warnings before importing theano
+        os.environ["PYTHONWARNINGS"] = "default"  # Also affect subprocesses
         result = main_function()
         sys.exit(result)
 

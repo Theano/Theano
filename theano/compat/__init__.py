@@ -11,13 +11,13 @@ try:
     from collections.abc import (Callable, Iterable, Mapping, ValuesView,
                                  MutableMapping as DictMixin)
 except ImportError:
-    # this raises an DeprecationWarning on py37 and will become
-    # and Exception in py39. Importing from collections.abc
-    # won't work on py27
+    # This raises a DeprecationWarning in py3.7 that will become an Exception in
+    # py3.10 although the scary warning still says "in 3.9 it will stop working".
+    # Importing from collections.abc won't work on py2.7.
     from collections import (Callable, Iterable, Mapping, ValuesView,
                              MutableMapping as DictMixin)
 
-__all__ = ['PY3', 'b', 'BytesIO', 'next', 'configparser', 'reload']
+__all__ = ['PY3', 'b', 'BytesIO', 'Callable', 'next', 'configparser', 'reload']
 
 if PY3:
     from operator import truediv as operator_div
