@@ -4613,9 +4613,9 @@ class Canonizer(gof.LocalOptimizer):
     --------
     >>> import theano.tensor as T
     >>> from theano.tensor.opt import Canonizer
-    >>> add_canonizer = Canonizer(T.add, T.sub, T.neg, \\
+    >>> add_canonizer = Canonizer(T.add, T.sub, T.neg, \
     ...                           lambda n, d: sum(n) - sum(d))
-    >>> mul_canonizer = Canonizer(T.mul, T.true_div, T.inv, \\
+    >>> mul_canonizer = Canonizer(T.mul, T.true_div, T.inv, \
     ...                           lambda n, d: prod(n) / prod(d))
 
     Examples of optimizations mul_canonizer can perform:
