@@ -2393,8 +2393,8 @@ class GCC_compiler(Compiler):
             not_found_libraries = re.findall('-l["."-_a-zA-Z0-9]*', compile_stderr)
             for nf_lib in not_found_libraries:
                 print('library ' + nf_lib[2:] + ' is not found.')
-                if re.search('-lPYTHON["."0-9]*', nf_lib, re.IGNORECASE):
-                    py_string = re.search('-lpython["."0-9]*', nf_lib, re.IGNORECASE).group()[8:]
+                if re.search('-lPYTHON[".0-9]*', nf_lib, re.IGNORECASE):
+                    py_string = re.search('-lpython[".0-9]*', nf_lib, re.IGNORECASE).group()[8:]
                     if py_string != '':
                         print(
                             'Check if package python-dev ' + py_string + ' or python-devel ' + py_string + ' is installed.'

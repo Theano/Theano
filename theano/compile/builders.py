@@ -15,7 +15,7 @@ from theano.gradient import DisconnectedType
 
 
 class OpFromGraph(gof.Op):
-    """
+    r"""
     This creates an ``Op`` from inputs and outputs lists of variables.
     The signature is similar to :func:`theano.function <theano.function>`
     and the resulting ``Op``'s perform will do the same operation as::

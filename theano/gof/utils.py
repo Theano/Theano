@@ -307,7 +307,7 @@ def uniq(seq):
 
 
 def difference(seq1, seq2):
-    """
+    r"""
     Returns all elements in seq1 which are not in seq2: i.e ``seq1\seq2``.
 
     """

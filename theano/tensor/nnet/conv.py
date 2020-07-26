@@ -157,7 +157,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
 
 class ConvOp(OpenMPOp):
-    """
+    r"""
     This Op serves a dual purpose: it can implement a vanilla 2D convolution
     (as taught in any signal processing class) or implement the
     convolutional layers found in Convolutional Neural Networks.

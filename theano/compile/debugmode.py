@@ -1910,6 +1910,7 @@ class _Linker(gof.link.LocalLinker):
                         if thunk_py:
                             dmap = getattr(node.op, 'destroy_map', {})
                             vmap = getattr(node.op, 'view_map', {})
+                            # FIXME: This overwrites the outer loop variable `i`.
                             for i, r in enumerate(node.inputs):
                                 # if thunk_py ran, and we still got
                                 # this far, it means that the

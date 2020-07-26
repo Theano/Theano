@@ -4582,7 +4582,7 @@ register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 
 
 class Canonizer(gof.LocalOptimizer):
-    """
+    r"""
     Simplification tool. The variable is a local_optimizer. It is best used
     with a TopoOptimizer in in_to_out order.
 
@@ -4650,7 +4650,7 @@ class Canonizer(gof.LocalOptimizer):
         return [self.main, self.inverse, self.reciprocal]
 
     def get_num_denum(self, input):
-        """
+        r"""
         This extract two lists, num and denum, such that the input is:
         self.inverse(self.main(\*num), self.main(\*denum)). It returns
         the two lists in a (num, denum) pair.
@@ -4751,7 +4751,7 @@ class Canonizer(gof.LocalOptimizer):
         return num, denum
 
     def merge_num_denum(self, num, denum):
-        """
+        r"""
         Utility function which takes two lists, num and denum, and
         returns something which is equivalent to inverse(main(\*num),
         main(\*denum)), but depends on the length of num and the length
