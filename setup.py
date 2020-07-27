@@ -40,8 +40,8 @@ Programming Language :: Python :: 3.7
 Programming Language :: Python :: 3.8
 """
 NAME                = 'Theano'
-MAINTAINER          = "LISA laboratory, University of Montreal"
-MAINTAINER_EMAIL    = "theano-dev@googlegroups.com"
+MAINTAINER          = "PyMC devs"
+MAINTAINER_EMAIL    = "pymc-devs@gmail.com"
 DESCRIPTION         = ('Optimizing compiler for evaluating mathematical ' +
                        'expressions on CPUs and GPUs.')
 LONG_DESCRIPTION    = (codecs.open("DESCRIPTION.txt", encoding='utf-8').read() +
