@@ -5,6 +5,31 @@
 Old Release Notes
 =================
 
+Theano 1.0.4 (16th of January 2019)
+=====================================
+
+This is a maintenance release of Theano, version ``1.0.4``, with no
+new features, but some important bug fixes.
+
+We recommend that everybody update to this version.
+
+Highlights (since 1.0.3):
+
+ - Theano is now compatible with NumPy 1.16.
+
+A total of 10 people contributed to this release since ``1.0.3``:
+
+ - wonghang
+ - Frederic Bastien
+ - Arnaud Bergeron
+ - Duc Nguyen
+ - Andrew Nelson
+ - Björn Linse
+ - Luis Mario Domenzain
+ - Rebecca N. Palmer
+ - Luciano Paz
+ - Dan Foreman-Mackey
+
 Theano 1.0.3 (20th of September 2018)
 =====================================
 
