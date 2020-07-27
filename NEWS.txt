@@ -15,7 +15,7 @@ Highlights (since 1.0.4):
  - Theano is now compatible with Python 3.9
  - Fixed many deprecation warnings
 
-A total of 12 people contributed to this release since ``1.0.4``:
+A total of 13 people contributed to this release since ``1.0.4``:
 
  - 1fish2
  - Frederic Bastien
@@ -29,3 +29,4 @@ A total of 12 people contributed to this release since ``1.0.4``:
  - Robert P. Goldman
  - Duc Nguyen
  - Igor Varfolomeev
+ - Thomas Wiecki
