@@ -80,7 +80,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.fast_compile = theano.config.mode == 'FAST_COMPILE'
         self.ops = (sub, inc_sub, adv_sub1, adv_incsub1,
                     adv_bool_sub, adv_bool_inc_sub)
-        return super(T_subtensor, self).__init__(name)
+        super(T_subtensor, self).__init__(name)
 
     def function(self, inputs, outputs, accept_inplace=False,
                  op=None, mode=None, N=1, N_fast=None):

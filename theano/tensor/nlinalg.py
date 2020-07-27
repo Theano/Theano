@@ -75,7 +75,7 @@ pinv = MatrixPinv()
 
 
 class MatrixInverse(Op):
-    """Computes the inverse of a matrix :math:`A`.
+    r"""Computes the inverse of a matrix :math:`A`.
 
     Given a square matrix :math:`A`, ``matrix_inverse`` returns a square
     matrix :math:`A_{inv}` such that the dot product :math:`A \cdot A_{inv}`
@@ -149,7 +149,7 @@ matrix_inverse = MatrixInverse()
 
 
 def matrix_dot(*args):
-    """ Shorthand for product between several dots.
+    r""" Shorthand for product between several dots.
 
     Given :math:`N` matrices :math:`A_0, A_1, .., A_N`, ``matrix_dot`` will
     generate the matrix product between all in the given order, namely

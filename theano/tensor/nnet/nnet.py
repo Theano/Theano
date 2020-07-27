@@ -409,7 +409,7 @@ softmax_grad = SoftmaxGrad()
 
 
 class Softmax(gof.Op):
-    """
+    r"""
     Softmax activation function
     :math:`\\varphi(\\mathbf{x})_j =
     \\frac{e^{\mathbf{x}_j}}{\sum_{k=1}^K e^{\mathbf{x}_k}}`
@@ -600,7 +600,7 @@ softmax_op = Softmax()
 
 
 class LogSoftmax(gof.Op):
-    """
+    r"""
     LogSoftmax activation function
     :math:`\\varphi(\\mathbf{x})_j =
     \\e^{(\mathbf{x}_j - log{\sum_{k=1}^K e^{\mathbf{x}_k})}}
@@ -1412,7 +1412,7 @@ crossentropy_categorical_1hot_grad = CrossentropyCategorical1HotGrad()
 
 
 class CrossentropyCategorical1Hot(gof.Op):
-    """
+    r"""
     Compute the cross entropy between a coding distribution and
     a true distribution of the form [0, 0, ... 0, 1, 0, ..., 0].
 
@@ -2051,7 +2051,7 @@ def sigmoid_binary_crossentropy(output, target):
 
 
 def categorical_crossentropy(coding_dist, true_dist):
-    """
+    r"""
     Return the cross-entropy between an approximating distribution and a true
     distribution.
 

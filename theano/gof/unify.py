@@ -322,7 +322,7 @@ def unify_walk(a, b, U):
 
 @comm_guard(OrVariable, NotVariable)  # noqa
 def unify_walk(o, n, U):
-    """
+    r"""
     OrV(list1) == NV(list2) == OrV(list1 \ list2)
 
     """

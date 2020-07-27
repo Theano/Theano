@@ -1596,6 +1596,7 @@ class COp(Op):
 
                 def_macros, undef_macros = self.get_c_macros(node, name)
                 def_sub, undef_sub = self.get_sub_macros(sub)
+                # FIXME: get_io_macros() doesn't return anything. Unpacking will raise a TypeError.
                 def_io, undef_io = self.get_io_macros(inp, out)
 
                 return '\n'.join([def_macros, def_sub, def_io,
@@ -1614,6 +1615,7 @@ class COp(Op):
 
             def_macros, undef_macros = self.get_c_macros(node, name)
             def_sub, undef_sub = self.get_sub_macros(sub)
+            # FIXME: get_io_macros() doesn't return anything. Unpacking will raise a TypeError.
             def_io, undef_io = self.get_io_macros(inputs, outputs)
 
             return '\n'.join([def_macros, def_sub, def_io,

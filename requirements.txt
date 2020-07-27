@@ -1,0 +1,13 @@
+# pip install --upgrade pip setuptools virtualenv virtualenvwrapper virtualenv-clone wheel
+# pip install -r requirements.txt && pyenv rehash
+
+cython
+# mpi4py
+nose
+numpy
+parameterized
+reindent
+requests
+scipy
+six
+sympy

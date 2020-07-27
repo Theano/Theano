@@ -321,7 +321,7 @@ class test_gpuextractdiag(unittest.TestCase):
 
 class TestGpuAllocDiag(test_basic.TestAllocDiag):
     def __init__(self, name):
-        return test_basic.TestAllocDiag.__init__(
+        test_basic.TestAllocDiag.__init__(
             self, name,
             alloc_diag=GpuAllocDiag,
             mode=mode_with_gpu

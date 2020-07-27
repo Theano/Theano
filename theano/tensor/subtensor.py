@@ -1932,7 +1932,7 @@ class AdvancedIncSubtensor1(Op):
             raise TypeError(
                 'cannot %s x subtensor with ndim=%s'
                 ' by y with ndim=%s to x subtensor with ndim=%s ' % (
-                    opname, x_.type.ndim, y_.type.ndim))
+                    opname, x_.type.ndim, y_.type.ndim, '?'))  # FIXME: too few args for format string
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 

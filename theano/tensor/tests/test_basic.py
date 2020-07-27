@@ -7605,7 +7605,7 @@ class TestAllocDiag(unittest.TestCase):
             mode = theano.compile.mode.get_default_mode()
         self.mode = mode
 
-        return super(TestAllocDiag, self).__init__(name)
+        super(TestAllocDiag, self).__init__(name)
 
     def _generator(self):
         dims = 4
