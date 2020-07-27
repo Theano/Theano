@@ -206,7 +206,8 @@ def main():
         help()
     else:
         warnings.simplefilter("default")  # Enable warnings before importing theano
-        os.environ["PYTHONWARNINGS"] = "default"  # Also affect subprocesses
+        if os.environ.get("PYTHONWARNINGS") is not None:
+            os.environ["PYTHONWARNINGS"] = "default"  # Also affect subprocesses
         result = main_function()
         sys.exit(result)
 
