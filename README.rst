@@ -1,5 +1,7 @@
 ============================================================================================================
 `MILA will stop developing Theano <https://groups.google.com/d/msg/theano-users/7Poq8BZutbY/rNCIfvAEAwAJ>`_.
+
+The PyMC developers are continuing Theano development in a `fork <https://github.com/pymc-devs/theano-pymc>`_.
 ============================================================================================================
 
 
