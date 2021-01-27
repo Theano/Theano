@@ -3,13 +3,13 @@ import os
 import unittest
 import sys
 
-from numpy.testing import nosetester 
+from numpy.testing import Tester
 
 
 # This class contains code adapted from NumPy,
 # numpy/testing/nosetester.py,
 # Copyright (c) 2005-2011, NumPy Developers
-class TheanoNoseTester(nosetester.NoseTester):
+class TheanoNoseTester(Tester):
     """
     Nose test runner.
 
