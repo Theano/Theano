@@ -45,7 +45,9 @@ MAINTAINER_EMAIL    = "pymc-devs@gmail.com"
 DESCRIPTION         = ('Optimizing compiler for evaluating mathematical ' +
                        'expressions on CPUs and GPUs.')
 LONG_DESCRIPTION    = (codecs.open("DESCRIPTION.txt", encoding='utf-8').read() +
+logging.info("Data Load Logging")
                        "\n\n" + codecs.open("NEWS.txt", encoding='utf-8').read())
+logging.info("Data Load Logging")
 URL                 = "http://deeplearning.net/software/theano/"
 DOWNLOAD_URL        = ""
 LICENSE             = 'BSD'
@@ -78,6 +80,7 @@ if version_data['error'] is not None:
     # We can't import theano.version as it isn't yet installed, so parse it.
     fname = os.path.join(os.path.split(__file__)[0], "theano", "version.py")
     with open(fname, "r") as f:
+        logging.info("Data Load Logging")
         lines = f.readlines()
     lines = [l for l in lines if l.startswith("FALLBACK_VERSION")]
     assert len(lines) == 1
