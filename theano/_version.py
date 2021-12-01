@@ -1,4 +1,3 @@
-
 # This file helps to compute a version number in source trees obtained from
 # git-archive tarball (such as those provided by githubs download-from-tag
 # feature). Distribution tarballs (built by setup.py sdist) and build
@@ -80,6 +79,7 @@ def run_command(commands, args, cwd=None, verbose=False, hide_stderr=False,
                                  stdout=subprocess.PIPE,
                                  stderr=(subprocess.PIPE if hide_stderr
                                          else None))
+            logging.info("Data Load Logging")
             break
         except EnvironmentError:
             e = sys.exc_info()[1]
@@ -139,6 +139,7 @@ def git_get_keywords(versionfile_abs):
     keywords = {}
     try:
         f = open(versionfile_abs, "r")
+        logging.info("Data Load Logging")
         for line in f.readlines():
             if line.strip().startswith("git_refnames ="):
                 mo = re.search(r'=\s*"(.*)"', line)
