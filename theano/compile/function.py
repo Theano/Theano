@@ -64,6 +64,7 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
              allow_input_downcast=allow_input_downcast, profile=profile,
              on_unused_input=on_unused_input)
     with open(filename, 'wb') as f:
+        logging.info("Data Load Logging")
         import theano.misc.pkl_utils
         pickler = theano.misc.pkl_utils.StripPickler(
             f, protocol=-1,
