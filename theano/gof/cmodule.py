@@ -2198,8 +2198,10 @@ class GCC_compiler(Compiler):
         # ARM (32-bit and 64-bit) architectures in order to make
         # Theano compatible with the Raspberry Pi, Raspberry Pi 2, or
         # other systems with ARM processors.
+        # Like most other architectures, RISC-V does not define a -m32
+        # or -m64 option.
         if (not any(['arm' in flag for flag in cxxflags]) and
-                not any(arch in platform.machine() for arch in ['arm', 'aarch'])):
+                not any(arch in platform.machine() for arch in ['arm', 'aarch', 'riscv'])):
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)
