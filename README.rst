@@ -6,10 +6,10 @@ The PyMC developers have forked Theano to a new project called Aesara that is be
 
 
 To install the package, see this page:
-   http://deeplearning.net/software/theano/install.html
+   https://theano-pymc.readthedocs.io/en/latest/install.html
 
 For the documentation, see the project website:
-   http://deeplearning.net/software/theano/
+   https://theano-pymc.readthedocs.io/en/latest/
 
 Related Projects:
    https://github.com/Theano/Theano/wiki/Related-projects
