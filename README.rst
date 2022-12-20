@@ -6,7 +6,7 @@ The PyMC developers have forked Theano to a new project called Aesara that is be
 
 
 To install the package, see this page:
-   https://theano-pymc.readthedocs.io/en/latest/install_windows.html
+   https://theano-pymc.readthedocs.io/en/latest/install.html
 
 For the documentation, see the project website:
    https://theano-pymc.readthedocs.io/en/latest/
