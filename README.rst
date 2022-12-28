@@ -3,7 +3,8 @@ MILA will stop developing Theano: https://groups.google.com/d/msg/theano-users/7
 
 The PyMC developers have forked Theano to a new project called Aesara that is being actively developed: https://github.com/aesara-devs/aesara
 ============================================================================================================
-
+THEANO:
+Theano is a Python library and optimizing compiler for manipulating and evaluating mathematical expressions, especially matrix-valued ones. In Theano, computations are expressed using a NumPy-esque syntax and compiled to run efficiently on either CPU or GPU architectures.Let's learn more!
 
 To install the package, see this page:
    https://theano-pymc.readthedocs.io/en/latest/install.html
