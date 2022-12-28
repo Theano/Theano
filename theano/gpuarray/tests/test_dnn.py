@@ -1591,6 +1591,35 @@ class test_SoftMax(test_nnet.test_SoftMax):
         inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
         utt.assert_allclose(f(inp), f_ref(inp))
 
+    def test_instance_softmax_to_cudnn_optimization(self):
+        # Compile a reference function, on the CPU, to be used to validate the
+        # results of the other function.
+        x = T.tensor4('x')
+        f = theano.function([x], T.nnet.Instance_Softmax()(x), mode=mode_with_gpu)
+
+        # Build the first graph and ensure that the optimization is applied
+        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                             isinstance(n.op, dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.mode == "instance"
+
+        # Same test with logsoftmax
+        f_log = theano.function([x], T.nnet.Instance_LogSoftmax()(x), mode=mode_with_gpu)
+        dnn_softmax_nodes = [n for n in f_log.maker.fgraph.toposort() if
+                             isinstance(n.op, dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.algo == "log"
+        assert dnn_softmax_nodes[0].op.mode == "instance"
+
+        # Same test with Gradsoftmax
+        sm = T.tensor4('sm')
+        y = T.tensor4('y')
+        f_grad = theano.function([y, sm], T.nnet.Instance_SoftmaxGrad()(y, sm), mode=mode_with_gpu)
+        dnn_softmax_nodes = [n for n in f_grad.maker.fgraph.toposort() if
+                             isinstance(n.op, dnn.GpuDnnSoftmaxGrad)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.mode == "instance"
+
 
 def dnn_reduction(nd, idtype, acc_dtype, odtype):
     inp = T.TensorType(idtype, (False,) * nd)()

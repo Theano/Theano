@@ -599,6 +599,134 @@ class Softmax(gof.Op):
 softmax_op = Softmax()
 
 
+class InstanceSoftmaxGrad(gof.Op):
+    """
+    Gradient wrt x of the InstanceSoftmax Op.
+    """
+
+    nin = 2
+    nout = 1
+
+    def make_node(self, dy, sm):
+        dy = tensor.as_tensor_variable(dy)
+        sm = tensor.as_tensor_variable(sm)
+        if dy.type.dtype not in tensor.float_dtypes:
+            raise ValueError('dy must be tensor of floats. Got ', dy.type)
+        if sm.type.ndim != 4:
+            raise ValueError('sm must be a 4d tensor. Got ', sm.type.ndinm)
+        return Apply(self, [dy, sm], [sm.type()])
+
+    def perform(self, node, input_storage, output_storage):
+        dy, sm = input_storage
+        axis = (3, 2, 1)
+        if (dy.shape != sm.shape):
+            raise ValueError('dy and the softmax output should have the same shape.')
+        dx = np.zeros_like(sm)
+        # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
+        dy_times_sm = dy * sm
+        dx = dy_times_sm - (np.sum(dy_times_sm, axis=axis, keepdims=True) * sm)
+        output_storage[0][0] = dx
+
+    def grad(self, inp, grads):
+        dy, sm = inp
+        g, = grads
+        axis = (3, 2, 1)
+        tmp = g + tensor.neg(tensor.sum(g * sm, axis=axis, keepdims=True))
+        g_dy = tmp * sm
+        tmp2 = tensor.sum(dy * sm, axis=axis, keepdims=True)
+        g_sm = tmp * dy - g * tmp2
+        return g_dy, g_sm
+
+    def infer_shape(self, node, shape):
+        return [shape[1]]
+
+
+class InstanceSoftmax(gof.Op):
+    """
+    Softmax op that match the instance mode of cuDNN Softmax
+    This op manages only the case where the input is a 4d tensor
+    and when the softmax is apllied on the last three axes such that
+    in case of 4d tensor represented as 'bc01', softmax will be applied
+    over 'c01'.
+    """
+
+    nin = 1
+    nout = 1
+    __props__ = ()
+
+    def make_node(self, x):
+        x = tensor.as_tensor_variable(x)
+        if x.type.dtype not in tensor.float_dtypes:
+            raise ValueError('x must be tensor of floats. Got ', x.type)
+        if x.type.ndim != 4:
+            raise ValueError('x must be a 4d tensor. Got ', x.type.ndinm)
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, input_storage, output_storage):
+        x, = input_storage
+        axis = (3, 2, 1)
+        # Apply softmax on the specified dimension
+        e_x = np.exp(x - x.max(axis=axis, keepdims=True))
+        sm = e_x / e_x.sum(axis=axis, keepdims=True)
+        output_storage[0][0] = sm
+
+    def L_op(self, inp, outputs, grads):
+        x, = inp
+        g_sm, = grads
+        return [InstanceSoftmaxGrad()(g_sm, outputs[0])]
+
+    def R_op(self, inputs, eval_points):
+        # The Jacobian is symmetric so the R_op is the same as the grad
+        if None in eval_points:
+            return [None]
+        return self.L_op(inputs, [self(*inputs)], eval_points)
+
+    def infer_shape(self, node, shape):
+        return shape
+
+
+class InstanceLogSoftmax(gof.Op):
+    """
+    LogSoftmax op that match the instance mode of cuDNN Softmax
+    This op manages only the case where the input is a 4d tensor
+    and when the log softmax is applied on the last three axes such that
+    in case of 4d tensor represented as 'bc01', log softmax will be apllied
+    over 'c01'.
+    """
+    nin = 1
+    nout = 1
+
+    def make_node(self, x):
+        x = tensor.as_tensor_variable(x)
+        if x.type.dtype not in tensor.float_dtypes:
+            raise ValueError('x must be tensor of floats. Got %s' % x.type)
+        if x.type.ndim != 4:
+            raise ValueError('x must be a 4d tensor. Got ', x.type.ndinm)
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, input_storage, output_storage):
+        x, = input_storage
+        axis = (3, 2, 1)
+        # Apply logsoftmax on the specified dimension
+        xdev = x - x.max(axis=axis, keepdims=True)
+        lsm = xdev - np.log(np.sum(np.exp(xdev), axis=axis, keepdims=True))
+        output_storage[0][0] = lsm
+
+    def L_op(self, inp, outputs, grads):
+        x, = inp
+        lsm, = outputs
+        axis = (3, 2, 1)
+        return [grads[0] - tensor.sum(grads[0], axis=axis, keepdims=True) * np.exp(lsm)]
+
+    def R_op(self, inputs, eval_points):
+        if None in eval_points:
+            return [None]
+        return self.grad(inputs, eval_points)
+
+    def infer_shape(self, node, shape):
+        return shape
+
+
 class LogSoftmax(gof.Op):
     r"""
     LogSoftmax activation function
@@ -744,6 +872,47 @@ class LogSoftmax(gof.Op):
 logsoftmax_op = LogSoftmax()
 
 
+@gof.local_optimizer([InstanceSoftmax])
+def local_instancesoftmax(node):
+    if node.inputs[0].type.ndim == 4:
+        old_shape = node.inputs[0].shape
+        new_input = node.inputs[0].flatten(ndim=2)
+        new_op = Softmax()
+        ret = new_op(new_input).reshape(old_shape)
+        ret.tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+        return [ret]
+
+
+@gof.local_optimizer([InstanceSoftmaxGrad])
+def local_instancesoftmax_grad(node):
+    if node.inputs[0].type.ndim == 4:
+        old_shape = node.inputs[0].shape
+        # get parameters from unoptimized op
+        sm = node.inputs[1]
+        grads = node.inputs[0]
+        old_shape = node.inputs[0].shape
+        new_sm = sm.flatten(ndim=2)
+        new_grads = grads.flatten(ndim=2)
+        new_op = softmax_grad
+        ret = new_op(new_grads, new_sm).reshape(old_shape)
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+        return [ret]
+
+
+@gof.local_optimizer([InstanceLogSoftmax])
+def local_instancelogsoftmax(node):
+    if node.inputs[0].type.ndim == 4:
+        old_shape = node.inputs[0].shape
+        new_input = node.inputs[0].flatten(ndim=2)
+        new_op = LogSoftmax()
+        ret = new_op(new_input).reshape(old_shape)
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
+        return [ret]
+
+
 # This is not registered in stabilize, as it cause some crossentropy
 # optimization to not be inserted.
 @opt.register_specialize('stabilize', 'fast_compile')
@@ -808,15 +977,28 @@ def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
 
-def softmax(c):
+def softmax(c, mode='channel'):
     c = as_tensor_variable(c)
     if c.broadcastable[-1]:
         warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
-    return softmax_op(c)
+    if mode == 'channel':
+        return softmax_op(c)
+    elif mode == 'instance':
+        return InstanceSoftmax()(c)
+    else:
+        raise ValueError('Only two modes supported: channel and instance Got ', mode)
 
 
-def logsoftmax(c):
-    return logsoftmax_op(c)
+def logsoftmax(c, mode='channel'):
+    c = as_tensor_variable(c)
+    if c.broadcastable[-1]:
+        warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
+    if mode == 'channel':
+        return logsoftmax_op(c)
+    elif mode == 'instance':
+        return InstanceLogSoftmax()(c)
+    else:
+        raise ValueError('Only two modes supported: channel and instance Got ', mode)
 
 
 @opt.register_specialize('fast_compile_gpu')
