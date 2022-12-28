@@ -694,6 +694,20 @@ class PushOutScanOutput(gof.Optimizer):
                          op.inputs, op.outputs, op.info)
 
         new_scan_node = None
+
+        # If truncate_gradient is used, then some sequences won't have the
+        # same length as args.n_steps. Thus, it causes a shape mismatch in the
+        # dot product pushed outside of scan. Simply cutting the sequences
+        # breaks scanOp_save_mem. Since saving memory is the main reason for
+        # using truncate_gradient, we don't apply the push when
+        # truncate_gradient is used.
+        if op.truncate_gradient != -1:
+            # This is a hacky way to detect if the current scan is computing
+            # a gradient:
+            if (len(args.inner_out_mit_mot) or len(args.inner_in_mit_mot) or
+                    len(args.outer_in_mit_mot) or len(args.outer_out_mit_mot)):
+                return new_scan_node
+
         clients = {}
         local_fgraph_topo = theano.gof.graph.io_toposort(args.inner_inputs,
                                                          args.inner_outputs,
