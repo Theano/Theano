@@ -22,3 +22,4 @@ and ops which are particular to neural networks and deep learning.
     bn
     blocksparse
     ctc
+    spatialtf
