@@ -230,13 +230,17 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         y = op_matmul(x, W)
         du = T.vector()
         dv = T.Rop(y, x, du)
-        fn = function([x, W, du], dv)
+        # Fails because of the issue with OpFromGrad
+        # has been resolved. See https://github.com/Theano/Theano/pull/6400
+        dv2 = T.Rop_via_Lop(y, x, du)
+        fn = function([x, W, du], [dv, dv2])
         xval = np.random.rand(16).astype(config.floatX)
         Wval = np.random.rand(16, 16).astype(config.floatX)
         duval = np.random.rand(16).astype(config.floatX)
         dvval = np.dot(duval, Wval)
-        dvval2 = fn(xval, Wval, duval)
+        dvval2, dvval3 = fn(xval, Wval, duval)
         assert np.allclose(dvval2, dvval)
+        assert np.allclose(dvval3, dvval)
 
     @test_params
     def test_rop_override(self, cls_ofg):

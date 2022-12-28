@@ -37,7 +37,7 @@ from theano.tensor.io import *
 
 from theano.tensor import nnet  # used for softmax, sigmoid, etc.
 
-from theano.gradient import Rop, Lop, grad, numeric_grad, verify_grad, \
+from theano.gradient import Rop, Rop_via_Lop, Lop, grad, numeric_grad, verify_grad, \
     jacobian, hessian, consider_constant
 
 from theano.tensor.sort import sort, argsort, topk, argtopk, topk_and_argtopk
