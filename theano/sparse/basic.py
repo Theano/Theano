@@ -4069,6 +4069,17 @@ class Dot(gof.op.Op):
             rval.append(dot(x.T, gz))
 
         return rval
+
+    def R_op(self, inputs, eval_points):
+        if None in eval_points:
+            return [None]
+        (x, y) = inputs
+        (dx, dy) = eval_points
+
+        gout = _dot(x, dy) + _dot(dx, y)
+
+        return [gout]
+
 _dot = Dot()
 
 
