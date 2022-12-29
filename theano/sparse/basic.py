@@ -1268,6 +1268,23 @@ class GetItem2d(gof.op.Op):
         assert _is_sparse(x)
         out[0] = x[start1:stop1:step1, start2:stop2:step2]
 
+    def grad(self, inputs, grads):
+        x = inputs[0]
+        rest = inputs[1:]
+        gz, = grads
+
+        assert _is_sparse_variable(x) == True
+
+        return [x.zeros_like() + gz] + [DisconnectedType()()] * len(rest)
+
+    def connection_pattern(self, node):
+        rval = [[True]]
+
+        for ipt in node.inputs[1:]:
+            rval.append([False])
+
+        return rval
+
 get_item_2d = GetItem2d()
 """
 Implement a subtensor of sparse variable, returning a sparse matrix.
