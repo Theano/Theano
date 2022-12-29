@@ -7129,6 +7129,15 @@ class test_broadcast(unittest.TestCase):
 
         assert unbroadcast(addbroadcast(x, 0), 0) is x
         assert addbroadcast(unbroadcast(x, 0), 0) is not x
+        
+        #test for negative indices
+        assert addbroadcast(x, -1) is not x
+        assert addbroadcast(x, -2) is not x
+        assert addbroadcast(x, -3) is x
+        
+        assert unbroadcast(x, -1) is x
+        assert unbroadcast(x, -2) is x
+        
         x = row()
         assert unbroadcast(x, 0) is not x
         assert unbroadcast(x, 1) is x
