@@ -9,5 +9,5 @@ parameterized
 reindent
 requests
 scipy
-six
+six>=1.9.0,<=1.16.0
 sympy
