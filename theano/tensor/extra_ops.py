@@ -455,20 +455,17 @@ class DiffOp(theano.Op):
 
     def grad(self, inputs, outputs_gradients):
         inputs = inputs[0]
-
-        if inputs.ndim != 1:
-            raise NotImplementedError("Grad is not implemented for inputs with"
-                                      "number of dimension other than 1.")
-
         z = outputs_gradients[0]
 
-        def _grad_helper(z):
-            pre = basic.concatenate([[0.], z])
-            app = basic.concatenate([z, [0.]])
+        def _grad_helper(z, axis):
+            shape = [z.shape[k] if k != axis else 1 for k in range(z.ndim)]
+            pad = basic.alloc(0., *shape)
+            pre = basic.concatenate([pad, z], axis=axis)
+            app = basic.concatenate([z, pad], axis=axis)
             return pre - app
 
         for k in range(self.n):
-            z = _grad_helper(z)
+            z = _grad_helper(z, axis=self.axis)
         return [z]
 
     def infer_shape(self, node, ins_shapes):
