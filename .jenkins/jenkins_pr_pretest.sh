@@ -4,6 +4,7 @@
 
 # Print commands as they are executed
 set -x
+exit 1
 
 export MKL_THREADING_LAYER=GNU
 

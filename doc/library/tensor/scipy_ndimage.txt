@@ -1,0 +1,11 @@
+===================================================================
+:mod:`tensor.scipy_ndimage` --  Image Processing Using Scipy
+===================================================================
+
+.. module:: tensor.scipy_ndimage
+   :platform: Unix, Windows
+   :synopsis: Image Processing Using Scipy
+.. moduleauthor:: LISA
+
+.. automodule:: theano.tensor.scipy_ndimage
+    :members:

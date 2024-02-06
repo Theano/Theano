@@ -19,6 +19,7 @@ from theano.tensor import blas_scipy
 from theano.tensor import blas_c
 from theano.tensor import xlogx
 from theano.tensor import nlinalg
+from theano.tensor import scipy_ndimage
 
 # These imports cannot be performed here because the modules depend on tensor.  This is done at the
 # end of theano.__init__.py instead.

@@ -13,6 +13,6 @@ BASECOMPILEDIR=$HOME/.theano/pr_theano_mac
 export PATH="/Users/jenkins/miniconda2/bin:/usr/local/bin:$PATH"
 
 # Testing theano
-THEANO_PARAM="theano -e gpuarray --with-timer --timer-top-n 10 --with-xunit --xunit-file=theano_mac_pr_tests.xml"
+THEANO_PARAM="theano -v -s -e gpuarray --with-timer --timer-top-n 10 --with-xunit --xunit-file=theano_mac_pr_tests.xml theano/tensor/tests/test_scipy_ndimage.py"
 FLAGS=mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800,base_compiledir=$BASECOMPILEDIR
-THEANO_FLAGS=${FLAGS} python bin/theano-nose ${THEANO_PARAM}
+THEANO_FLAGS=${FLAGS} python -u bin/theano-nose ${THEANO_PARAM}

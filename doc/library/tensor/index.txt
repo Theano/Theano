@@ -27,6 +27,7 @@ They are grouped into the following sections:
     extra_ops
     io
     opt
+    scipy_ndimage
     slinalg
     nlinalg
     fft
