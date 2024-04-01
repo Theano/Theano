@@ -155,6 +155,8 @@ def test_pool2d():
 
                 gr = theano.function([], tensor.Rop(a_pooled, a, ea), mode=gpu_mode)
                 gr2 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=ref_mode)
+                gr3 = theano.function([], tensor.Rop_via_Lop(a_pooled, a, ea), mode=gpu_mode)
+                gr4 = theano.function([], tensor.Rop_via_Lop(a_pooled, a, ea), mode=ref_mode)
 
                 assert any([
                     isinstance(node.op, GpuDownsampleFactorMaxGradGrad)
@@ -164,7 +166,17 @@ def test_pool2d():
                     isinstance(node.op, DownsampleFactorMaxGradGrad)
                     for node in gr2.maker.fgraph.toposort()
                 ])
+                assert any([
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
+                    for node in gr3.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
+                    for node in gr4.maker.fgraph.toposort()
+                ])
                 assert np.allclose(gr(), gr2()), (shp, ws, st, pad, mode, ignore_border)
+                assert np.allclose(gr(), gr3()), (shp, ws, st, pad, mode, ignore_border)
+                assert np.allclose(gr(), gr4()), (shp, ws, st, pad, mode, ignore_border)
 
                 ggf = gradient.Lop(tensor.grad((a_pooled**2).sum(), a), a, a)
 
@@ -265,6 +277,8 @@ def test_pool3d():
 
                 gr = theano.function([], tensor.Rop(a_pooled, a, ea), mode=gpu_mode)
                 gr2 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=ref_mode)
+                gr3 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=gpu_mode)
+                gr4 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=ref_mode)
 
                 assert any([
                     isinstance(node.op, GpuDownsampleFactorMaxGradGrad)
@@ -274,7 +288,17 @@ def test_pool3d():
                     isinstance(node.op, DownsampleFactorMaxGradGrad)
                     for node in gr2.maker.fgraph.toposort()
                 ])
+                assert any([
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
+                    for node in gr3.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
+                    for node in gr4.maker.fgraph.toposort()
+                ])
                 assert np.allclose(gr(), gr2()), (shp, ws, st, pad, mode, ignore_border)
+                assert np.allclose(gr(), gr3()), (shp, ws, st, pad, mode, ignore_border)
+                assert np.allclose(gr(), gr4()), (shp, ws, st, pad, mode, ignore_border)
 
                 ggf = gradient.Lop(tensor.grad((a_pooled**2).sum(), a), a, a)
 

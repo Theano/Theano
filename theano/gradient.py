@@ -352,6 +352,99 @@ def Rop(f, wrt, eval_points, disconnected_outputs="raise",
     return format_as(using_list, using_tuple, rval)
 
 
+def Rop_via_Lop(f, wrt, eval_points,
+                disconnected_outputs="raise",
+                return_disconnected="zero"):
+    """
+    Computes the R operation on `f` wrt to `wrt` at `eval_points`.
+
+    Mathematically this stands for the jacobian of `f` wrt
+    to `wrt` right muliplied by the eval points.
+
+    This implementation is different from the standard Rop, because it
+    uses double application of the Lop as discussed in here:
+    https://github.com/Theano/Theano/issues/6035
+
+    !IMPORTANT! This will give a wrong result if you have an `OpFromGraph`
+    operator in the computation which has `rop_overrides`.
+
+    Parameters
+    ----------
+    f : :class:`~theano.gof.graph.Variable` or list of Variables
+        `f` stands for the output of the computational graph to which you
+        want to apply the R operator
+    wrt : :class:`~theano.gof.graph.Variable` or list of Variables
+        variables for which you compute the R operator of the expression
+        described by `f`
+    eval_points : :class:`~theano.gof.graph.Variable` or list of Variables
+        evalutation points for each of the variables in `wrt`
+    disconnected_outputs : str
+        Defines the behaviour if some of the variables in `f`
+        have no dependency on any of the variable in `wrt` (or if
+        all links are non-differentiable). The possible values are:
+
+        - 'ignore': considers that the gradient on these parameters is zero.
+        - 'warn': consider the gradient zero, and print a warning.
+        - 'raise': raise DisconnectedInputError.
+
+    return_disconnected : {'zero', 'None', 'Disconnected'}
+        - 'zero' : If wrt[i] is disconnected, return value i will be
+          wrt[i].zeros_like()
+        - 'None' : If wrt[i] is disconnected, return value i will be
+          None
+        - 'Disconnected' : returns variables of type DisconnectedType
+
+    Returns
+    -------
+    :class:`~theano.gof.graph.Variable` or list/tuple of Variables depending on type of f
+        Symbolic expression such that
+        R_op[i] = sum_j (d f[i] / d wrt[j]) eval_point[j]
+        where the indices in that expression are magic multidimensional
+        indices that specify both the position within a list and all
+        coordinates of the tensor element in the last.
+        If `wrt` is a list/tuple, then return a list/tuple with the results.
+    """
+    global tensor
+    if tensor is None:
+        from theano import tensor
+
+    using_list = isinstance(f, list)
+    using_tuple = isinstance(f, tuple)
+    if not isinstance(wrt, (list, tuple)):
+        wrt = [wrt]
+
+    if not isinstance(eval_points, (list, tuple)):
+        eval_points = [eval_points]
+
+    if not isinstance(f, (list, tuple)):
+        f = [f]
+
+    assert len(wrt) == len(eval_points)
+
+    # Need explicit copy Op to prevent interference of the grads
+    f = [fi.copy() for fi in f]
+
+    # Dummy variable which will be discarded via dead node elimination by the optimizer
+    u = [tensor.zeros_like(fi, dtype=theano.config.floatX) for fi in f]
+
+    # This is standard Lop(f, wrt, u)
+    known = OrderedDict(zip(f, u))
+    jacobian_transposed_u = tensor.grad(cost=None, known_grads=known, wrt=wrt,
+                                        return_disconnected=return_disconnected,
+                                        disconnected_inputs=disconnected_outputs)
+
+    # Again need explicit copy Op
+    jtu = [j.copy() for j in jacobian_transposed_u]
+
+    # This is standard Lop(f, u, eval_points)
+    known = OrderedDict(zip(jtu, eval_points))
+    rval = tensor.grad(cost=None, known_grads=known, wrt=u,
+                       return_disconnected=return_disconnected,
+                       disconnected_inputs=disconnected_outputs)
+
+    return format_as(using_list, using_tuple, rval)
+
+
 def Lop(f, wrt, eval_points, consider_constant=None,
         disconnected_inputs='raise'):
     """

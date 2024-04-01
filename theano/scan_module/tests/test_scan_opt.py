@@ -82,6 +82,7 @@ class TestGaussNewton(unittest.TestCase):
         # Create Gauss-Newton-Matrix object. Not really of any use here, but I
         # need it for Hessian-Free optimization.
         gn = GaussNewtonMatrix(y)
+        gn2 = GaussNewtonMatrix(y, True)
 
         # compute MSE
         cost = ((t - y) ** 2).sum(axis=1).mean()
@@ -98,9 +99,10 @@ class TestGaussNewton(unittest.TestCase):
         # but for simplicity, I just take the parameters vector because it's
         # already there.
         Gv = gn(v=params, cost=cost, parameters=params, damp=T.constant(1.0))
+        Gv2 = gn2(v=params, cost=cost, parameters=params, damp=T.constant(1.0))
 
         # compile Theano function
-        f = theano.function([], [cost_] + Gv, givens={x: inputs, t: targets},
+        f = theano.function([], [cost_] + Gv + Gv2, givens={x: inputs, t: targets},
                             mode=mode)
         # execute
         f()
@@ -117,14 +119,18 @@ class TestGaussNewton(unittest.TestCase):
 
 
 class GaussNewtonMatrix(object):
-    def __init__(self, s):
+    def __init__(self, s, use_rop_via_lop=False):
         # `s` is the linear network outputs, i.e. the network output
         # without having applied the activation function
         self._s = s
+        self.use_rop_via_lop = use_rop_via_lop
 
     def __call__(self, v, cost, parameters, damp):
         # compute Gauss-Newton Matrix right-multiplied by `v`
-        Jv = T.Rop(self._s, parameters, v)
+        if self.use_rop_via_lop:
+            Jv = T.Rop_via_Lop(self._s, parameters, v)
+        else:
+            Jv = T.Rop(self._s, parameters, v)
         HJv = T.grad(T.sum(T.grad(cost, self._s) * Jv), self._s,
                      consider_constant=[Jv])
         JHJv = T.grad(T.sum(HJv * self._s), parameters,
