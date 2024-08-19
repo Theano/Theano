@@ -22,7 +22,7 @@ from theano.gof.opt import inherit_stack_trace
 from theano.tensor.opt import Assert
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
-from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
+from theano.tensor.nnet import LogSoftmax, SoftmaxGrad, Instance_Softmax, Instance_LogSoftmax, Instance_SoftmaxGrad
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs,
@@ -3703,6 +3703,56 @@ def local_softmax_dnn(node):
         out = GpuDnnSoftmax('accurate', 'channel')(ins)
         out = as_gpuarray_variable(out.dimshuffle(0, 1), out.type.context_name)
         return [out]
+
+
+@op_lifter([Instance_Softmax])
+def local_gpua_instancesoftmax_to_dnn(op, ctx_name, inputs, outputs):
+    # Check we got a 4d tensor as input
+    inp = inputs[0]
+    if inp.ndim != 4:
+        return
+    if not dnn_available(ctx_name):
+        return
+
+    inp.tag.context_name = ctx_name
+    # Apply GpuDnnSoftmax and return the result
+    out = GpuDnnSoftmax('accurate', 'instance')(gpu_contiguous(inp))
+    return [out]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([Instance_SoftmaxGrad])
+@register_opt2([Instance_SoftmaxGrad], 'fast_compile', 'cudnn')
+def local_gpua_instancesoftmaxgrad_to_dnn(op, ctx_name, inputs, outputs):
+    # Check we got a 4d tensor as input
+    inp = inputs
+    if inp[0].ndim != 4:
+        return
+    if not dnn_available(ctx_name):
+        return
+
+    inp[0].tag.context_name = ctx_name
+    inp[1].tag.context_name = ctx_name
+    # Apply GpuDnnSoftmax and return the result
+    out = GpuDnnSoftmaxGrad('accurate', 'instance')(gpu_contiguous(inp[0]), gpu_contiguous(inp[1]))
+    return [out]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([Instance_LogSoftmax])
+@register_opt2([Instance_LogSoftmax], 'fast_compile', 'cudnn')
+def local_gpua_instancelogsoftmax_to_dnn(op, ctx_name, inputs, outputs):
+    # Check we got a 4d tensor as input
+    inp = inputs[0]
+    if inp.ndim != 4:
+        return
+    if not dnn_available(ctx_name):
+        return
+
+    inp.tag.context_name = ctx_name
+    # Apply GpuDnnSoftmax and return the result
+    out = GpuDnnSoftmax('log', 'instance')(gpu_contiguous(inp))
+    return [out]
 
 
 @register_opt('cudnn', 'stabilize')

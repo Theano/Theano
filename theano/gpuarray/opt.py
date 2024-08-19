@@ -67,7 +67,7 @@ from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
                           gpu_sparse_block_gemv, gpu_sparse_block_gemv_inplace)
 from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_crossentropy_softmax_argmax_1hot_with_bias,
-                   gpu_softmax_with_bias, gpu_softmax)
+                   gpu_softmax_with_bias, gpu_softmax, GpuSoftmax)
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
                        GpuCAReduceCPY, gpu_erfinv, gpu_erfcinv,
                        max_inputs_to_GpuElemwise)
@@ -1438,7 +1438,19 @@ def local_gpua_crossentropysoftmax1hotwithbiasdx(op, context_name, inputs, outpu
 @op_lifter([tensor.nnet.Softmax])
 @register_opt2([tensor.nnet.Softmax], 'fast_compile')
 def local_gpua_softmax(op, context_name, inputs, outputs):
-    return gpu_softmax
+    if inputs[0].type.ndim != 2:
+        return
+    else:
+        return gpu_softmax
+
+
+@op_lifter([tensor.nnet.InstanceSoftmax])
+def local_gpua_instancesoftmax(op, context_name, inputs, outputs):
+    if inputs[0].type.ndim == 4:
+        old_shape = inputs[0].shape
+        new_input = inputs[0].flatten(ndim=2)
+        gpu_op = GpuSoftmax(new_input)
+        return [gpu_op.reshape(old_shape)]
 
 
 @register_opt('fast_compile')
@@ -2944,3 +2956,47 @@ for op, fct, cpu in [(bn.AbstractBatchNormTrain,
     abstract_batch_norm_db.register(cpu.__name__, cpu,
                                     'gpuarray', 'fast_compile', 'fast_run',
                                     position='last')
+
+
+# Register cuDnn Instance Softmax omplementation
+from .dnn import (local_gpua_instancesoftmax_to_dnn, local_gpua_instancesoftmaxgrad_to_dnn, local_gpua_instancelogsoftmax_to_dnn)    # noqa: 402
+
+instanceSoftmax_groupopt = theano.gof.optdb.LocalGroupDB()
+instanceSoftmax_groupopt.__name__ = "InstanceSoftmax GroupOp"
+register_opt('fast_compile')(instanceSoftmax_groupopt)
+instanceSoftmax_groupopt.register('local_gpua_instancesoftmax_to_dnn',
+                                  local_gpua_instancesoftmax_to_dnn, 20,
+                                  'instance_softmax',
+                                  'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
+instanceSoftmax_groupopt.register('local_gpua_instancesoftmax',
+                                  local_gpua_instancesoftmax, 30,
+                                  'instance_softmax',
+                                  'gpuarray', 'fast_compile', 'fast_run')
+instanceSoftmax_groupopt.register('local_instancesoftmax',
+                                  tensor.nnet.nnet.local_instancesoftmax, 40,
+                                  'instance_softmax',
+                                  'fast_compile', 'fast_run')
+
+instanceSoftmaxGrad_groupopt = theano.gof.optdb.LocalGroupDB()
+instanceSoftmaxGrad_groupopt.__name__ = "InstanceSoftmaxGrad GroupOp"
+register_opt('fast_compile')(instanceSoftmaxGrad_groupopt)
+instanceSoftmaxGrad_groupopt.register('local_gpua_instancesoftmaxgrad_to_dnn',
+                                      local_gpua_instancesoftmaxgrad_to_dnn, 20,
+                                      'instance_softmaxGrad',
+                                      'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
+instanceSoftmaxGrad_groupopt.register('local_instancesoftmaxGrad',
+                                      tensor.nnet.nnet.local_instancesoftmax_grad, 30,
+                                      'instance_softmaxgrad',
+                                      'fast_compile', 'fast_run')
+
+instanceLogSoftmax_groupopt = theano.gof.optdb.LocalGroupDB()
+instanceLogSoftmax_groupopt.__name__ = "InstanceLogSoftmax GroupOp"
+register_opt('fast_compile')(instanceLogSoftmax_groupopt)
+instanceLogSoftmax_groupopt.register('local_gpua_instanceLogsoftmax_to_dnn',
+                                     local_gpua_instancelogsoftmax_to_dnn, 20,
+                                     'instance_logsoftmax',
+                                     'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
+instanceLogSoftmax_groupopt.register('local_instanceLogsoftmax',
+                                     tensor.nnet.nnet.local_instancelogsoftmax, 30,
+                                     'instance_logsoftmax',
+                                     'fast_compile', 'fast_run')
