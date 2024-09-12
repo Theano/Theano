@@ -16,6 +16,8 @@ from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape, get_conv_gradinputs_shape
 from theano.tensor.nnet import bn
+from theano.tensor.nnet.spatialtf import (spatialtf, TransformerGrid, TransformerSampler, TransformerGradI)
+from theano.tensor.nnet.tests.test_spatialtf import TestTransformer, DOUT_DINPUT, DOUT_DGRID, DOUT_DTHETA, DGRID_DTHETA
 
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
@@ -2500,255 +2502,133 @@ class Cudnn_grouped_conv3d(Grouped_conv3d_noOptim):
         super(Cudnn_grouped_conv3d, self).__init__(*args, **kwargs)
 
 
-def test_dnn_spatialtf():
-    if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
+class TestDnnTransformer(TestTransformer):
+    mode = mode_with_gpu
+    transformer_grid_op = dnn.GpuDnnTransformerGrid
+    transformer_sampler_op = dnn.GpuDnnTransformerSampler
+    transformer_grad_i_op = dnn.GpuDnnTransformerGradI
+    transformer_grad_t_op = dnn.GpuDnnTransformerGradT
 
-    utt.seed_rng()
+    def setUp(self):
+        super(TestDnnTransformer, self).setUp()
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
 
-    """
-    Spatial Transformer implementation using Theano from Lasagne
-    Original author: skaae (https://github.com/skaae)
-    """
-    def spatialtf_cpu(inp, theta, scale_height, scale_width, border_mode='nearest'):
-        num_batch, num_channels, height, width = inp.shape
-        theta = T.reshape(theta, (-1, 2, 3))
+    def function_contains_once(self, theano_function, op_class):
+        count = 0
+        for node in theano_function.maker.fgraph.apply_nodes:
+            if isinstance(node.op, op_class):
+                count += 1
+        return count == 1
 
-        # grid of (x_t, y_t, 1), eq (1) in ref [1]
-        out_height = T.cast(T.ceil(height * scale_height), 'int64')
-        out_width = T.cast(T.ceil(width * scale_width), 'int64')
-        grid = _meshgrid(out_height, out_width)
-        # transform a x (x_t, y_t, 1)^t -> (x_s, y_s)
-        t_g = T.dot(theta, grid)
-        x_s = t_g[:, 0]
-        y_s = t_g[:, 1]
-        x_s_flat = x_s.flatten()
-        y_s_flat = y_s.flatten()
+    def count_ops(self, theano_function):
+        count_cpu_ops = 0
+        count_gpu_ops = 0
+        for node in theano_function.maker.fgraph.apply_nodes:
+            if isinstance(node.op, (TransformerGradI, TransformerGrid, TransformerSampler)):
+                count_cpu_ops += 1
+            elif isinstance(node.op, (dnn.GpuDnnTransformerGradI, dnn.GpuDnnTransformerGrid, dnn.GpuDnnTransformerSampler)):
+                count_gpu_ops += 1
+        return count_cpu_ops, count_gpu_ops
 
-        # dimshuffle input to  (bs, height, width, channels)
-        input_dim = inp.dimshuffle(0, 2, 3, 1)
-        input_transformed = _interpolate(
-            input_dim, x_s_flat, y_s_flat,
-            out_height, out_width, border_mode)
+    def assert_gpu_function(self, gpu_function):
+        count_cpu_ops, count_gpu_ops = self.count_ops(gpu_function)
+        assert count_cpu_ops == 0 and count_gpu_ops > 0
 
-        output = T.reshape(
-            input_transformed, (num_batch, out_height, out_width, num_channels))
-        output = output.dimshuffle(0, 3, 1, 2)  # dimshuffle to conv format
-        return output
+    def assert_cpu_function(self, cpu_function):
+        count_cpu_ops, count_gpu_ops = self.count_ops(cpu_function)
+        assert count_cpu_ops > 0 and count_gpu_ops == 0
 
-    def _interpolate(im, x, y, out_height, out_width, border_mode):
-        # *_f are floats
-        num_batch, height, width, channels = im.shape
-        height_f = T.cast(height, theano.config.floatX)
-        width_f = T.cast(width, theano.config.floatX)
+    def run_gpu_vs_cpu(self, case_index, for_grad):
+        t_inp = T.tensor4('inp')
+        t_theta = T.tensor3('theta')
+        t_scale_height = T.scalar('scale_height')
+        t_scale_width = T.scalar('scalar_width')
+        t_out_dims = [T.cast(v, 'int64') for v in (t_inp.shape[0], t_inp.shape[1],
+                                                   t_inp.shape[2] * t_scale_height,
+                                                   t_inp.shape[3] * t_scale_width)]
+        if for_grad is None:
+            # Setup spatial transformer on the GPU using cuDNN
+            t_out = spatialtf(t_inp, t_theta, t_scale_width, t_scale_height)
+            fn_gpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_out, mode=mode_with_gpu)
+            fn_cpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_out, mode=mode_without_gpu)
+        elif for_grad == DOUT_DINPUT:
+            t_out = spatialtf(t_inp, t_theta, t_scale_width, t_scale_height)
+            t_scalar = T.sum(t_out)
+            t_grad_scalar = T.grad(t_scalar, t_inp)
 
-        # scale coordinates from [-1, 1] to [0, dimension - 1], where dimension
-        # can be the width or height
-        x = (x + 1) / 2 * (width_f - 1)
-        y = (y + 1) / 2 * (height_f - 1)
+            fn_gpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_grad_scalar, mode=mode_with_gpu)
+            fn_cpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_grad_scalar, mode=mode_without_gpu)
+        elif for_grad == DOUT_DTHETA:
+            t_out = spatialtf(t_inp, t_theta, t_scale_width, t_scale_height)
+            t_scalar = T.sum(t_out)
+            t_grad_scalar = T.grad(t_scalar, t_theta)
 
-        # obtain indices of the 2x2 pixel neighborhood surrounding the coordinates;
-        # we need those in floatX for interpolation and in int64 for indexing.
-        x0_f = T.floor(x)
-        y0_f = T.floor(y)
-        x1_f = x0_f + 1
-        y1_f = y0_f + 1
-
-        # for indexing, we need to take care of the border mode for outside pixels.
-        if border_mode == 'nearest':
-            x0 = T.clip(x0_f, 0, width_f - 1)
-            x1 = T.clip(x1_f, 0, width_f - 1)
-            y0 = T.clip(y0_f, 0, height_f - 1)
-            y1 = T.clip(y1_f, 0, height_f - 1)
-        elif border_mode == 'mirror':
-            w = 2 * (width_f - 1)
-            x0 = T.minimum(x0_f % w, -x0_f % w)
-            x1 = T.minimum(x1_f % w, -x1_f % w)
-            h = 2 * (height_f - 1)
-            y0 = T.minimum(y0_f % h, -y0_f % h)
-            y1 = T.minimum(y1_f % h, -y1_f % h)
-        elif border_mode == 'wrap':
-            x0 = T.mod(x0_f, width_f)
-            x1 = T.mod(x1_f, width_f)
-            y0 = T.mod(y0_f, height_f)
-            y1 = T.mod(y1_f, height_f)
+            fn_gpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_grad_scalar, mode=mode_with_gpu)
+            fn_cpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_grad_scalar, mode=mode_without_gpu)
+        elif for_grad == DOUT_DGRID:
+            t_grid = TransformerGrid()(t_theta, t_out_dims)
+            t_out = TransformerSampler()(t_inp, t_grid)
+            t_scalar = T.sum(t_out)
+            t_grad_scalar = T.grad(t_scalar, t_grid)
+            fn_gpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_grad_scalar, mode=mode_with_gpu)
+            fn_cpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_grad_scalar, mode=mode_without_gpu)
+        elif for_grad == DGRID_DTHETA:
+            t_grid = TransformerGrid()(t_theta, t_out_dims)
+            t_scalar = T.sum(t_grid)
+            t_grad_scalar = T.grad(t_scalar, t_grid)
+            fn_gpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_grad_scalar, mode=mode_with_gpu)
+            fn_cpu = theano.function([t_inp, t_theta, t_scale_width, t_scale_height],
+                                     t_grad_scalar, mode=mode_without_gpu)
         else:
-            raise ValueError("border_mode must be one of "
-                             "'nearest', 'mirror', 'wrap'")
-        x0, x1, y0, y1 = (T.cast(v, 'int64') for v in (x0, x1, y0, y1))
+            raise NotImplementedError('Unknown operation for spatial transformation %s' % for_grad)
+        self.assert_cpu_function(fn_cpu)
+        self.assert_gpu_function(fn_gpu)
+        inp_shape = self.inp_cases[case_index]
+        transform = self.transform_cases[case_index]
+        inp, theta, scale_width, scale_height = self.getInputs(inp_shape, transform)
+        out_cpu = fn_cpu(inp, theta, scale_width, scale_height)
+        out_gpu = np.asarray(fn_gpu(inp, theta, scale_width, scale_height))
+        try:
+            utt.assert_allclose(out_gpu, out_cpu)
+        except Exception as e:
+            more_exception_infos = """
+Failing case %d (grad: %s):
+Input shape: %s
+Transform: %s
+""" % (case_index, for_grad, str(inp_shape), str(transform.flatten()))
+            raise Exception(more_exception_infos + str(e))
 
-        # The input is [num_batch, height, width, channels]. We do the lookup in
-        # the flattened input, i.e [num_batch*height*width, channels]. We need
-        # to offset all indices to match the flat version
-        dim2 = width
-        dim1 = width * height
-        base = T.repeat(
-            T.arange(num_batch, dtype='int64') * dim1, out_height * out_width)
-        base_y0 = base + y0 * dim2
-        base_y1 = base + y1 * dim2
-        idx_a = base_y0 + x0
-        idx_b = base_y1 + x0
-        idx_c = base_y0 + x1
-        idx_d = base_y1 + x1
+    def test_gpu_vs_cpu(self):
+        for case_index in range(len(self.inp_cases)):
+            yield (self.run_gpu_vs_cpu, case_index, None)
 
-        # use indices to lookup pixels for all samples
-        im_flat = im.reshape((-1, channels))
-        Ia = im_flat[idx_a]
-        Ib = im_flat[idx_b]
-        Ic = im_flat[idx_c]
-        Id = im_flat[idx_d]
+    def test_gpu_vs_cpu_grad_dout_dinput(self):
+        for case_index in range(len(self.inp_cases)):
+            yield (self.run_gpu_vs_cpu, case_index, DOUT_DINPUT)
 
-        # calculate interpolated values
-        wa = ((x1_f - x) * (y1_f - y)).dimshuffle(0, 'x')
-        wb = ((x1_f - x) * (y - y0_f)).dimshuffle(0, 'x')
-        wc = ((x - x0_f) * (y1_f - y)).dimshuffle(0, 'x')
-        wd = ((x - x0_f) * (y - y0_f)).dimshuffle(0, 'x')
-        output = T.sum([wa * Ia, wb * Ib, wc * Ic, wd * Id], axis=0)
-        return output
+    def test_gpu_vs_cpu_grad_dout_dtheta(self):
+        self._skip_dgrid('dout/dtheta depends on dout/dgrid.')
+        for case_index in range(len(self.inp_cases)):
+            yield (self.run_gpu_vs_cpu, case_index, DOUT_DTHETA)
 
-    def _linspace(start, stop, num):
-        # Theano linspace. Behaves similar to np.linspace
-        start = T.cast(start, theano.config.floatX)
-        stop = T.cast(stop, theano.config.floatX)
-        num = T.cast(num, theano.config.floatX)
-        step = (stop - start) / (num - 1)
-        return T.arange(num, dtype=theano.config.floatX) * step + start
+    def test_gpu_vs_cpu_grad_dout_dgrid(self):
+        self._skip_dgrid()
+        for case_index in range(len(self.inp_cases)):
+            yield (self.run_gpu_vs_cpu, case_index, DOUT_DGRID)
 
-    def _meshgrid(height, width):
-        # This function is the grid generator from eq. (1) in reference [1].
-        # It is equivalent to the following numpy code:
-        #  x_t, y_t = np.meshgrid(np.linspace(-1, 1, width),
-        #                         np.linspace(-1, 1, height))
-        #  ones = np.ones(np.prod(x_t.shape))
-        #  grid = np.vstack([x_t.flatten(), y_t.flatten(), ones])
-        # It is implemented in Theano instead to support symbolic grid sizes.
-        # Note: If the image size is known at layer construction time, we could
-        # compute the meshgrid offline in numpy instead of doing it dynamically
-        # in Theano. However, it hardly affected performance when we tried.
-        x_t = T.dot(T.ones((height, 1)),
-                    _linspace(-1.0, 1.0, width).dimshuffle('x', 0))
-        y_t = T.dot(_linspace(-1.0, 1.0, height).dimshuffle(0, 'x'),
-                    T.ones((1, width)))
-
-        x_t_flat = x_t.reshape((1, -1))
-        y_t_flat = y_t.reshape((1, -1))
-        ones = T.ones_like(x_t_flat)
-        grid = T.concatenate([x_t_flat, y_t_flat, ones], axis=0)
-        return grid
-
-    img_dims = (5, 3, 16, 16)
-    img = np.random.random(size=img_dims).astype(theano.config.floatX)
-
-    scale_height = 0.25
-    scale_width = 0.75
-
-    # Transformation matrix
-    transform = [[-1, 0, 0],
-                 [0, -1, 0]]
-    theta = np.asarray(img_dims[0] * [transform], dtype=theano.config.floatX)
-
-    # Create symbolic variables for inputs and transformations
-    t_img = T.tensor4('img')
-    t_theta = T.tensor3('theta')
-
-    st_dnn = dnn.dnn_spatialtf(t_img, t_theta, scale_height=scale_height, scale_width=scale_width)
-    st_dnn_func = theano.function([t_img, t_theta], st_dnn, mode=mode_with_gpu)
-    # Check if function graph contains the spatial transformer's grid and sampler Ops
-    apply_nodes = st_dnn_func.maker.fgraph.apply_nodes
-    assert any([isinstance(node.op, dnn.GpuDnnTransformerGrid) for node in apply_nodes])
-    assert any([isinstance(node.op, dnn.GpuDnnTransformerSampler) for node in apply_nodes])
-
-    img_out_gpu = st_dnn_func(img, theta)
-    img_out_gpu = np.asarray(img_out_gpu)
-
-    # Setup CPU Op
-    st_cpu = spatialtf_cpu(t_img, t_theta, scale_height, scale_width, 'nearest')
-    st_cpu_func = theano.function([t_img, t_theta], st_cpu, mode=mode_without_gpu)
-    img_out_cpu = st_cpu_func(img, theta)
-
-    atol, rtol = None, None
-    if theano.config.floatX == 'float16':
-        # Raise relative error tolerance when using float16
-        rtol = 5e-2
-    utt.assert_allclose(img_out_cpu, img_out_gpu, atol=atol, rtol=rtol)
-
-
-def test_dnn_spatialtf_invalid_shapes():
-    if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
-
-    inputs = T.tensor4('inputs')
-    theta = T.tensor3('theta')
-
-    st_dnn = dnn.dnn_spatialtf(inputs, theta)
-    st_dnn_func = theano.function([inputs, theta], st_dnn, mode=mode_with_gpu)
-
-    inputs_val = np.ones((3, 5, 7, 7), dtype=theano.config.floatX)
-
-    def try_theta_shp(theta_shp):
-        theta_val = np.ones(theta_shp, dtype=theano.config.floatX)
-        return st_dnn_func(inputs_val, theta_val)
-
-    # the theta shape for this input should be (3, 2, 3)
-    try_theta_shp((3, 2, 3))
-
-    # incorrect parameter dimensions
-    assert_raises(RuntimeError, try_theta_shp, (3, 1, 3))
-    assert_raises(RuntimeError, try_theta_shp, (3, 2, 1))
-
-    # number of rows does not match the number of input rows
-    assert_raises(RuntimeError, try_theta_shp, (1, 2, 3))
-    assert_raises(RuntimeError, try_theta_shp, (4, 2, 3))
-
-
-def test_dnn_spatialtf_grad():
-    if not dnn.dnn_available(test_ctx_name):
-        raise SkipTest(dnn.dnn_available.msg)
-
-    utt.seed_rng()
-
-    inputs = T.tensor4('inputs')
-    theta = T.tensor3('theta')
-
-    out = dnn.dnn_spatialtf(inputs, theta, scale_height=0.25, scale_width=0.75)
-    out_mean = T.mean(out)
-    mean_gi = T.grad(out_mean, [inputs])
-    mean_gt = T.grad(out_mean, [theta])
-
-    f_gi = theano.function([inputs, theta], mean_gi, mode=mode_with_gpu)
-    assert any([isinstance(node.op, dnn.GpuDnnTransformerGradI)
-                for node in f_gi.maker.fgraph.apply_nodes])
-
-    f_gt = theano.function([inputs, theta], mean_gt, mode=mode_with_gpu)
-    assert any([isinstance(node.op, dnn.GpuDnnTransformerGradT)
-                for node in f_gt.maker.fgraph.apply_nodes])
-
-    input_dims = (5, 3, 16, 16)
-    inputs_val = np.random.random(size=input_dims).astype(theano.config.floatX)
-
-    # Tensor with transformations
-    theta_val = np.random.random((input_dims[0], 2, 3)).astype(theano.config.floatX)
-    # Using smaller values for theta, increases the precision of gradients
-    # when using lower precision. Tests might fail for lower precision data
-    # types if the values of theta or the inputs are very high.
-    theta /= 100
-
-    # Check that the gradients are computed
-    f_gi(inputs_val, theta_val)
-    f_gt(inputs_val, theta_val)
-
-    def grad_functor(inputs, theta):
-        out = dnn.dnn_spatialtf(inputs, theta)
-        return out
-
-    atol, rtol = None, None
-    if theano.config.floatX == 'float32':
-        rtol = 5e-2
-    elif theano.config.floatX == 'float16':
-        rtol = 1e-0
-
-    utt.verify_grad(grad_functor, [inputs_val, theta_val], mode=mode_with_gpu,
-                    abs_tol=atol, rel_tol=rtol)
+    def test_gpu_vs_cpu_grad_dgrid_dtheta(self):
+        for case_index in range(len(self.inp_cases)):
+            yield (self.run_gpu_vs_cpu, case_index, DGRID_DTHETA)
 
 
 class TestDnnConv2DRuntimeAlgorithms(object):
