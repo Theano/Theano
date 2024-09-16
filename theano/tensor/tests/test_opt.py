@@ -933,6 +933,7 @@ class test_fusion(unittest.TestCase):
         verify that the elemwise fusion work
         Test with and without DimShuffle
         """
+        mode = mode.excluding('canonicalize')
         # TODO: disable the canonizer?
         def my_init(shp, dtype='float64', num=0):
             ret = np.zeros(shp, dtype=dtype) + num
@@ -1124,6 +1125,9 @@ class test_fusion(unittest.TestCase):
 
             if shared_fn is None:
                 f = compile.function(list(sym_inputs), g, mode=mode)
+                if not check_stack_trace(f, ops_to_check='all'):
+                    theano.printing.debugprint(f)
+                self.assertTrue(check_stack_trace(f, ops_to_check='all'))
                 for x in xrange(nb_repeat):
                     out = f(*val_inputs)
                 t1 = time.time()
@@ -1131,6 +1135,16 @@ class test_fusion(unittest.TestCase):
                 out = shared_fn(np.zeros(shp, dtype=out_dtype), 'out')
                 assert out.dtype == g.dtype
                 f = function(sym_inputs, [], updates=[(out, g)], mode=mode)
+                # FIXME: remove this after debugging
+                #        stop at problematic case
+                if id == 40:
+                    import ipdb;ipdb.set_trace()
+                if not check_stack_trace(f, ops_to_check='all'):
+                    print('following dbg output is failure case!!!')
+                    theano.printing.debugprint(f)
+                    print([(n, hasattr(n.outputs[0].tag,'trace'), len(n.outputs[0].tag.trace))
+                            for n in f.maker.fgraph.apply_nodes])
+                self.assertTrue(check_stack_trace(f, ops_to_check='all'))
                 t0 = time.time()
                 for x in xrange(nb_repeat):
                     f(*val_inputs)

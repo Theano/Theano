@@ -7285,12 +7285,14 @@ your code will run correctly, but may be slower.""")
 
         # create the composite op.
         C = scalar.Composite(s_inputs, s_new_out)
+        copy_stack_trace(s_inputs, s_new_out)
 
         # create the new node.
         # Do not call make_node to have test_value
         n = maker(node, C)(*inputs).owner
         assert len(n.outputs) == 1
         assert node.outputs[0].dtype == n.outputs[0].dtype
+        copy_stack_trace(node.outputs[0], n)
 
         if len(n.inputs) > max_nb_input:
             _logger.info('loop fusion failed because Op would exceed'
@@ -7306,9 +7308,11 @@ your code will run correctly, but may be slower.""")
                 assert len(ret) == len(n.outputs)
                 assert len(ret) == 1
                 n = ret[0].owner
+                copy_stack_trace(ret[0], n)
             else:
                 break
 
+        copy_stack_trace(n, n.outputs)
         return n.outputs
     return local_fuse
 
