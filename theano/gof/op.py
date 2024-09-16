@@ -708,7 +708,13 @@ class PureOp(object):
     #########################
 
     def L_op(self, inputs, outputs, output_grads):
-        return self.grad(inputs, output_grads)
+        if hasattr(self, 'grad'):
+            return self.grad(inputs, output_grads)
+        else:
+            raise NotImplementedError(
+                "%s of class %s do not have grad or L_op implementation."
+                "If this is theano Op, mail to theano-dev mailing list for assistance."
+                "If this is your own Op, implement them." % (self, self.__class__.__name__))
 
     def R_op(self, inputs, eval_points):
         """
@@ -733,13 +739,17 @@ class PureOp(object):
                                   wrt=inputs,
                                   eval_points=eval_points)
 
+        Notes
+        -----
+        It's possible to do Rop with only Lop implemented.
+        By default, Rop performs twice reverse mode grad (Lop) to
+        obtain forward grad (Rop).
+
         """
-        raise NotImplementedError(
-            "%s of class %s does not "
-            "implement R_op. If this is a theano op, write to the "
-            "theano-dev mailing list for assistance. If it is your "
-            "own op, implement the R_op method." %
-            (self, self.__class__.__name__))
+        outputs = self.make_node(inputs).outputs
+        lop_inputs = [o.type() for o in outputs]
+        lop_outputs = self.L_op(inputs, outputs, lop_inputs)
+        return theano.Lop(lop_outputs, lop_inputs, eval_points)
 
     def perform(self, node, inputs, output_storage, params=None):
         """
