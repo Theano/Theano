@@ -407,3 +407,30 @@ class TestPushOutSumOfDot():
         output_no_opt = f_no_opt(input1_value, input2_value, input3_value)
 
         utt.assert_allclose(output_opt, output_no_opt)
+
+
+class TestPushOutputTruncatedGradient(unittest.TestCase):
+
+    def test_truncated_gradient(self):
+        theano.config.compute_test_value = 'warn'
+        nin = 2
+        nhu = 5
+
+        x = theano.tensor.tensor3('x')
+        x.tag.test_value = np.random.randn(10, 4, nin)
+        Wxh = theano.shared(np.random.randn(nin, nhu).astype(config.floatX),
+                            name='Wxh')
+        Whh = theano.shared(np.random.randn(nhu, nhu).astype(config.floatX),
+                            name='Whh')
+        h0 = theano.shared(np.zeros((4, nhu), config.floatX), name='h0')
+        seq = T.dot(x, Wxh)
+
+        y, _ = theano.scan(fn=lambda i, h: i + T.dot(h, Whh),
+                           sequences=[seq],
+                           outputs_info=h0,
+                           truncate_gradient=3)
+        grad = theano.grad(y.sum(), Whh)
+        fn = theano.function([x], grad)
+        g1 = grad.tag.test_value
+        g2 = fn(x.tag.test_value)
+        np.testing.assert_allclose(g1, g2)
