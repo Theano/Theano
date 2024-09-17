@@ -249,15 +249,13 @@ def clone(output,
     return outs
 
 
-def map_variables(replacer, graphs, additional_inputs=[]):
+def map_variables(replacer, graphs):
     """Construct new graphs based on 'graphs' with some variables replaced
     according to 'replacer'.
 
     :param replacer: function that takes a variable and returns its
          replacement.
     :param graphs: an iterable of graphs in which to replace variables
-    :param additional_inputs: an iterable of graph inputs not used in any
-         of 'graphs' but possibly used in the graphs returned by `replacer`
     :return: the new graphs, in the same order as 'graphs'
 
     Example:
@@ -280,45 +278,76 @@ def map_variables(replacer, graphs, additional_inputs=[]):
 
         # v is now equal to a * b + c
     """
+    rval = _map_variables(replacer, graphs)
+    # clear cache after every call because the keys are mutable
+    _without_cached_constants_cache.clear()
+    return rval
 
-    # wrap replacer to avoid replacing things we just put there.
-    graphs_seen = set()
-    def wrapped_replacer(graph):
-        if graph in graphs_seen:
-            return graph
-        else:
-            new_graph = replacer(graph)
-            graphs_seen.add(new_graph)
-            return new_graph
 
-    graphs = list(graphs)
-    inputs_ = list(set(gof.graph.inputs(graphs) + list(additional_inputs)))
+_without_cached_constants_cache = dict()
+def without_cached_constants(graphs):
+    try:
+        # cache results of cloning for performance and to preserve
+        # object identity
+        return list(_without_cached_constants_cache[tuple(graphs)])
+    except KeyError:
+        inputs_ = list(set(gof.graph.inputs(graphs)))
+        cached_constants = [x for x in inputs_ if getattr(x, "cached", False)]
+        if not cached_constants:
+            return graphs
+        copied_constants = clone(cached_constants, share_inputs=False)
+        new_graphs = clone(
+            graphs, share_inputs=True,
+            replace=list(zip(cached_constants, copied_constants)))
+        _without_cached_constants_cache[tuple(graphs)] = tuple(new_graphs)
+        return list(new_graphs)
 
+
+def _map_variables(replacer, graphs):
     # perform any desired replacement of input variables.  these
     # aren't replaced by the local optimizer approach because they are
     # not outputs of any Apply node.
-    new_inputs = list(map(wrapped_replacer, inputs_))
-    replacements = [(input_, new_input)
-                    for input_, new_input
-                    in zip(inputs_, new_inputs)
-                    if new_input is not input_]
-    graphs = clone(graphs, share_inputs=True, replace=replacements)
-    inputs_ = list(set(gof.graph.inputs(graphs) + list(additional_inputs)))
+    inputs_ = list(set(gof.graph.inputs(graphs)))
+    new_inputs = list(map(replacer, inputs_))
+    graphs = clone(graphs, share_inputs=True,
+                   replace=[(input_, new_input)
+                            for input_, new_input
+                            in zip(inputs_, new_inputs)
+                            if new_input is not input_])
 
     # clone cached constants or FunctionGraph will complain.  this has
     # to occur in a separate pass from the replacement above because
     # both may suggest different replacements for the same variables.
     # since the replacements introduced above may involve cached
     # constants, the replacement of said constants has to come after.
-    cached_constants = [x for x in inputs_ if getattr(x, "cached", False)]
-    copied_constants = clone(cached_constants, share_inputs=False)
-    replacements = list(zip(cached_constants, copied_constants))
-    inputs_ = list(set(inputs_) - set(cached_constants)) + list(copied_constants)
-    graphs = clone(graphs, share_inputs=True, replace=replacements)
+    graphs = without_cached_constants(graphs)
 
+    inputs_ = list(set(gof.graph.inputs(graphs)))
     fg = gof.fg.FunctionGraph(inputs_, graphs, clone=False)
 
     nodes_seen = set()
+    graphs_seen = set()
+
+    def wrapped_replacer(graph):
+        # avoid replacing things we just put there
+        if graph in graphs_seen:
+            return graph
+        new_graph = replacer(graph)
+        # deal with cached constants and new inputs in the replacement
+        if new_graph is not graph:
+            [new_graph] = without_cached_constants([new_graph])
+            for input_ in gof.graph.inputs([new_graph]):
+                # if the input is already owned by one of the outer
+                # fgraphs, that's fine too.
+                # note that we don't strictly need to explicitly add
+                # constants as inputs to the fgraph, and not doing so
+                # is significantly faster.
+                if (not getattr(input_, "fgraph", None)
+                    and graph.owner
+                    and not isinstance(input_, gof.graph.Constant)):
+                    graph.owner.fgraph.add_input(input_)
+        graphs_seen.add(new_graph)
+        return new_graph
 
     @gof.opt.local_optimizer(None)
     def local_transform(node):
@@ -352,6 +381,13 @@ def map_variables(replacer, graphs, additional_inputs=[]):
                                      **node.op.kwargs)
             # make a new node to replace the old one
             new_node = new_op.make_node(*new_outer_inputs)
+
+            # new_outer_inputs may contain new inputs; inform fg
+            for input_ in gof.graph.inputs(new_outer_inputs):
+                if (not getattr(input_, "fgraph", None)
+                    and not isinstance(input_, gof.graph.Constant)):
+                    fg.add_input(input_)
+
             nodes_seen.add(new_node)
             return new_node.outputs
         else:
@@ -388,6 +424,9 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs,
 
     def inner_replacer(graph):
         new_graph = replacer(graph)
+
+        if graph is new_graph:
+            return new_graph
 
         other_inputs = []
         constants = []
@@ -438,10 +477,6 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs,
                 outer_to_inner[outer_input] = inner_input
                 extra_inner_inputs.append(inner_input)
                 extra_outer_inputs.append(outer_input)
-                # the inner FunctionGraph wants to know its inputs
-                # beforehand, but we don't always know.  so add them
-                # as we discover them.
-                graph.owner.fgraph.add_input(inner_input)
 
         replacements.extend(outer_to_inner.items())
 
@@ -450,7 +485,7 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs,
                                   replace=replacements)
         return new_graph
 
-    new_inner_outputs = map_variables(inner_replacer, inner_outputs)
+    new_inner_outputs = _map_variables(inner_replacer, inner_outputs)
     new_inner_inputs = list(chain(inner_inputs, extra_inner_inputs))
     new_outer_inputs = list(chain(outer_inputs, extra_outer_inputs))
 
