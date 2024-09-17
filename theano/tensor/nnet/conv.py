@@ -957,7 +957,7 @@ class ConvOp(OpenMPOp):
         return [din, dw]
 
     def c_headers(self):
-        return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
+        return ['<numpy/noprefix.h>', '<iostream>', '<sstream>', '<complex.h>']
 
     def c_code_cache_version(self):
         return (15, self.openmp, blas.blas_header_version())
@@ -1247,12 +1247,16 @@ if(kerns_dim[1] != img2d_dim[1]){
             d["type"] = "float"
         elif node.inputs[0].type.dtype == "float64":
             d["type"] = "double"
+        elif node.inputs[0].type.dtype == "complex64":
+            d["type"] = "float complex"
         else:
             raise Exception("Type %s not implemented" %
                             node.inputs[0].type.dtype)
         d["gemm"] = 'dgemm_'
-        if not d["type"] == "double":
+        if d["type"] == "float":
             d["gemm"] = 'sgemm_'
+        if d["type"] == "float complex":
+            d["gemm"] = "scgemm_"
 
         if self.imshp != self.imshp_logical or self.kshp != self.kshp_logical:
             if self.verbose:
