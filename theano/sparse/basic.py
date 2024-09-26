@@ -309,6 +309,16 @@ class _sparse_py_operators:
             ret = get_item_2d(self, args)
         return ret
 
+    # COPYING
+    def copy(self, name=None):
+        """Return a symbolic copy and optionally assign a name.
+
+        Does not copy the tags.
+        """
+        copied_variable = CSM(self.format)(*csm_properties(self))
+        copied_variable.name = name
+        return copied_variable
+
 
 class SparseVariable(_sparse_py_operators, gof.Variable):
     dtype = property(lambda self: self.type.dtype)
