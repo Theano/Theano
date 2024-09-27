@@ -1364,6 +1364,107 @@ class test_SoftMax(test_nnet.test_SoftMax):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
+    def _test_softmax_nd(self, x, f_z, cmp):
+        # This is basic test for GpuDnnSoftmax
+        #
+        # We check that we loop when there is too much block
+        # We use slower code when there isn't enough shared memory
+
+        f_z_out = f_z(x)
+        f_gpu_z_out = f_z(x)
+
+        # Cpu op
+        f = theano.function([x], f_z_out, mode=mode_without_gpu)
+        # Optimization with cudnn
+        f_gpu = theano.function([x], f_gpu_z_out, mode=mode_with_gpu)
+        sorted_f_gpu = f_gpu.maker.fgraph.toposort()
+        assert(len([i for i in sorted_f_gpu if isinstance(i.op, self.gpu_op)]) == 1)
+
+        self._check_types(f, f_gpu, T.nnet.Softmax, self.gpu_op)
+        if x.type.ndim == 1:
+            # we need to test n>32*1024 to check that we make the block loop.
+            cmp((5,), f, f_gpu)
+            cmp((10,), f, f_gpu)
+            cmp((50,), f, f_gpu)
+            cmp((500,), f, f_gpu)
+            cmp((5000,), f, f_gpu)
+            cmp((50000,), f, f_gpu)
+            cmp((4074 * 20 * 20,), f, f_gpu)
+            # cudnn permits no more than 2^15 - 1 rows
+            cmp(((2 << 15,)), f, f_gpu)
+        elif x.type.ndim == 2:
+            # we need to test n>32*1024 to check that we make the block loop.
+            cmp((1, 5), f, f_gpu)
+            cmp((2, 5), f, f_gpu)
+            cmp((10, 5), f, f_gpu)
+            cmp((100, 5), f, f_gpu)
+            cmp((1000, 5), f, f_gpu)
+            cmp((10000, 5), f, f_gpu)
+            cmp((4074, 400), f, f_gpu)
+            cmp((784, 784), f, f_gpu)
+            cmp((4, 1000), f, f_gpu)
+            cmp((4, 1024), f, f_gpu)
+            cmp((4, 2000), f, f_gpu)
+            cmp((4, 2024), f, f_gpu)
+            # The GTX285 don't have enough shared memory.
+            cmp((4, 4074), f, f_gpu)
+            # The GTX580, 680 and kepler don't have enough shared memory.
+            cmp((2, 10000), f, f_gpu)
+            cmp((128, 16 * 1024), f, f_gpu)
+            cmp((128, 64 * 1024), f, f_gpu)
+            # cudnn permits no more than 2^15 - 1 rows
+            cmp(((2 << 15) - 1, 5), f, f_gpu)
+            cmp((5, 2 << 15), f, f_gpu)
+        elif x.type.ndim == 3:
+            # we need to test n>32*1024 to check that we make the block loop.
+            cmp((1, 1, 5), f, f_gpu)
+            # cmp((1, 2, 5), f, f_gpu)
+            cmp((5, 5, 5), f, f_gpu)
+            cmp((10, 10, 5), f, f_gpu)
+            cmp((100, 10, 5), f, f_gpu)
+            cmp((100, 100, 5), f, f_gpu)
+            cmp((4074, 20, 20), f, f_gpu)
+            cmp((784, 28, 28), f, f_gpu)
+            cmp((4, 10, 100), f, f_gpu)
+            cmp((4, 4, 256), f, f_gpu)
+            cmp((4, 4, 500), f, f_gpu)
+            cmp((4, 2, 1024), f, f_gpu)
+            # The GTX285 don't have enough shared memory.
+            cmp((4, 4, 2048), f, f_gpu)
+            # The GTX580, 680 and kepler don't have enough shared memory.
+            cmp((2, 100, 100), f, f_gpu)
+            cmp((128, 1, 16 * 1024), f, f_gpu)
+            cmp((128, 1, 64 * 1024), f, f_gpu)
+            # cudnn permits no more than 2^15 - 1 rows
+            cmp((1, 5, (2 << 15) - 1), f, f_gpu)
+            cmp((2 << 15, 1, 5), f, f_gpu)
+        elif x.type.ndim == 4:
+            # we need to test n>32*1024 to check that we make the block loop.
+            cmp((2, 1, 5, 1), f, f_gpu)
+            cmp((1, 1, 2, 5), f, f_gpu)
+            cmp((1, 5, 5, 5), f, f_gpu)
+            cmp((1, 10, 10, 5), f, f_gpu)
+            cmp((10, 10, 10, 5), f, f_gpu)
+            cmp((10, 10, 100, 5), f, f_gpu)
+            cmp((2048, 2, 20, 20), f, f_gpu)
+            cmp((28, 28, 28, 28), f, f_gpu)
+            cmp((2, 2, 10, 100), f, f_gpu)
+            cmp((4, 2, 2, 256), f, f_gpu)
+            cmp((1, 1, 8, 500), f, f_gpu)
+            cmp((2, 2, 2, 1024), f, f_gpu)
+            # The GTX285 don't have enough shared memory.
+            cmp((8, 1, 1, 2048), f, f_gpu)
+            # The GTX580, 680 and kepler don't have enough shared memory.
+            cmp((2, 10, 10, 100), f, f_gpu)
+            cmp((128, 1, 1, 16 * 1024), f, f_gpu)
+            cmp((1, 128, 1, 64 * 1024), f, f_gpu)
+            # cudnn permits no more than 2^15 - 1 rows
+            cmp((1, 1, 5, (2 << 15) - 1), f, f_gpu)
+            cmp((1, 2 << 15, 1, 5), f, f_gpu)
+        else:
+            raise ValueError("TensorDim should be between 1 and 4, got %d" % x.type.ndim)
+        return f, f_gpu
+
     def test_softmax_shape_0(self):
         dims = (2, 0, 4, 5)
         data = np.arange(
@@ -1387,7 +1488,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
     def test_softmax_f16(self):
         x = T.matrix('x', 'float16')
         x_gpu = T.tensor4('x_gpu', 'float16')
-        f_z = T.nnet.softmax_op
+        f_z = T.nnet.softmax
         f_gpu = dnn.GpuDnnSoftmax(
             'accurate',
             'channel'
@@ -1403,6 +1504,80 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         self._test_softmax(x, x_gpu, f_z, f_gpu, cmp)
 
+    def test_forward_optimization_softmax_to_cudnn_nd(self):
+        def cmp(shape, f, f_gpu):
+            data = np.random.random(shape).astype(theano.config.floatX)
+            out = f(data)
+            gout = np.asarray(f_gpu(data))
+            utt.assert_allclose(out, gout)
+
+        dims = 4
+        # Check for differents dimensions
+        for d in range(1, dims + 1):
+            # Check for different axis
+            for ax in range(0, d):
+                f_z = T.nnet.Softmax(ax)
+                x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
+                self._test_softmax_nd(
+                    x,
+                    f_z,
+                    cmp
+                )
+
+    def test_optimization_softmaxGrad_to_cudnnGrad_nd(self):
+        dims = 4
+        # Check for differents dimensions
+        for d in range(1, dims + 1):
+            # Check for different axis
+            for ax in range(0, d):
+                shape = (5,) * d
+                val = np.random.rand(*shape).astype(theano.config.floatX)
+                # First, we chack that SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
+                # optimization is applied when cudnn is required
+                x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
+                f = theano.function(
+                    [x],
+                    T.grad(T.nnet.Softmax(ax)(x).mean(), x),
+                    mode=mode_with_gpu
+                )
+                out_dnn = f(val)
+                sorted_f = f.maker.fgraph.toposort()
+                assert(len([i for i in sorted_f if isinstance(i.op, self.gpu_grad_op)]) == 1)
+                assert(len([i for i in sorted_f if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 0)
+                # Then, verify that the gradients values are correct
+
+                def f_grad(a):
+                    return T.nnet.Softmax(ax)(a)
+                T.verify_grad(f_grad, [val], rng=np.random, mode=mode_with_gpu)
+
+                # Second, we verify that grad(Log(CudnnSoftmax)) give a
+                # correct grad
+                T.verify_grad(f_grad, [val], rng=np.random, mode=mode_with_gpu)
+
+                # Second, we verify that the SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
+                # optimization is not applied when cudnn is excluded or not
+                # available and we check that the values of the cpu op
+                # are the same than the cudnn op
+                mode_wo_cudnn = mode_with_gpu.excluding("cudnn")
+                f = theano.function(
+                    [x],
+                    T.grad(T.nnet.Softmax(ax)(x).mean(), x),
+                    mode=mode_wo_cudnn
+                )
+                sorted_f = f.maker.fgraph.toposort()
+                out_cpu = f(val)
+                utt.assert_allclose(out_dnn, out_cpu)
+                assert(len([i for i in sorted_f if isinstance(i.op, self.gpu_grad_op)]) == 0)
+                assert(len([i for i in sorted_f if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 1)
+
+                # Third, we verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad do not
+                # crash with manual graph
+                o = theano.tensor.nnet.SoftmaxGrad(ax)(x, x * 2)
+                f = theano.function([x], o, mode=mode_with_gpu)
+                sorted_f = f.maker.fgraph.toposort()
+                assert(len([i for i in sorted_f if isinstance(i.op, self.gpu_grad_op)]) == 1)
+                assert(len([i for i in sorted_f if isinstance(i.op, theano.tensor.nnet.SoftmaxGrad)]) == 0)
+
     def test_softmax_grad(self):
         def cmp(n, m, f, f_gpu):
             data = np.arange(n * m, dtype=theano.config.floatX).reshape(n, m)
@@ -1414,7 +1589,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         x = T.matrix('x')
         x_gpu = T.tensor4('x_gpu')
-        f_z = T.nnet.softmax_op
+        f_z = T.nnet.softmax
         f_gpu = dnn.GpuDnnSoftmax(
             'accurate',
             'channel'
@@ -1560,36 +1735,40 @@ class test_SoftMax(test_nnet.test_SoftMax):
         if dnn.version(raises=False) < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
-        # Compile a reference function, on the CPU, to be used to validate the
-        # results of the other function.
-        x = T.matrix()
-        f_ref = theano.function([x], T.nnet.LogSoftmax()(x))
+        dims = 4
+        # Check for differents dimensions
+        for d in range(1, dims + 1):
+            # Check for different axis
+            for ax in range(0, d):
+                shape = (5,) * d
+                x = T.TensorType(dtype=theano.config.floatX, broadcastable=(False,) * d)('x')
+                # Compile a reference function, on the CPU, to be used to validate the
+                # results of the other function.
+                f_ref = theano.function([x], T.nnet.LogSoftmax(ax)(x))
 
-        # Build the first graph and ensure that the optimization is applied
-        log_softmax_out = T.nnet.LogSoftmax()(x)
-        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+                # Build the graph with LogSoftmax and ensure that the optimization is applied
+                log_softmax_out = T.nnet.LogSoftmax(ax)(x)
+                f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
 
-        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
-                             isinstance(n.op, dnn.GpuDnnSoftmax)]
-        assert len(dnn_softmax_nodes) == 1
-        assert dnn_softmax_nodes[0].op.algo == "log"
+                dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if isinstance(n.op, dnn.GpuDnnSoftmax)]
+                assert len(dnn_softmax_nodes) == 1
+                assert dnn_softmax_nodes[0].op.algo == "log"
 
-        # Compare the output of the function with the reference function
-        inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
-        utt.assert_allclose(f(inp), f_ref(inp))
+                # Compare the output of the function with the reference function
+                inp = np.random.normal(0, 1, shape).astype(theano.config.floatX)
+                utt.assert_allclose(f(inp), f_ref(inp))
 
-        # Build the first graph and ensure that the optimization is applied
-        log_softmax_out = T.log(T.nnet.Softmax()(x))
-        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+                # Build the graph with Log(Softmax) and ensure that the optimization is applied
+                log_softmax_out = T.log(T.nnet.Softmax(ax)(x))
+                f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
 
-        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
-                             isinstance(n.op, dnn.GpuDnnSoftmax)]
-        assert len(dnn_softmax_nodes) == 1
-        assert dnn_softmax_nodes[0].op.algo == "log"
+                dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if isinstance(n.op, dnn.GpuDnnSoftmax)]
+                assert len(dnn_softmax_nodes) == 1
+                assert dnn_softmax_nodes[0].op.algo == "log"
 
-        # Compare the output of the function with the reference function
-        inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
-        utt.assert_allclose(f(inp), f_ref(inp))
+                # Compare the output of the function with the reference function
+                inp = np.random.normal(0, 1, shape).astype(theano.config.floatX)
+                utt.assert_allclose(f(inp), f_ref(inp))
 
 
 def dnn_reduction(nd, idtype, acc_dtype, odtype):
