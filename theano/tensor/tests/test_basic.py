@@ -53,6 +53,7 @@ from theano.tensor import (
     stacklists, DimShuffle, hessian, ptp, power,
     swapaxes, choose, Choose, NoneConst, AllocEmpty,
     isclose, allclose, mgrid, ogrid, extract_constant,
+    pad
     )
 
 from theano.tests import unittest_tools as utt
@@ -8794,3 +8795,47 @@ def test_symbolic_slice():
     a, b = x.shape[:2]
     output = a.eval({x: np.zeros((5, 4, 3, 2), dtype=theano.config.floatX)})
     assert output == np.array(5)
+
+
+class T_Pad():
+    def test_numpy_compare(self):
+        a = tensor.vector()
+        b = tensor.matrix()
+
+        A = np.random.rand(5)
+        B = np.random.rand(5, 6)
+
+        modes = ['constant', 'edge', 'linear_ramp', 'maximum', 'mean',
+                 'median', 'minimum', 'reflect', 'symmetric', 'wrap']
+        vas = [a, b]
+        vs = [A, B]
+
+        for m in modes:
+            fa = function([a], pad(a, (3, 4), m))
+            fb = function([b], pad(b, (3, 4), m))
+            t_pa = fa(A)
+            t_pb = fb(B)
+            n_pa = np.pad(A, (3, 4), m)
+            n_pb = np.pad(B, (3, 4), m)
+            assert np.allclose(t_pa, n_pa)
+            assert np.allclose(t_pb, n_pb)
+
+        for var, v in zip(vas, vs):
+            for mode, k, t in [
+                ('constant', 'constant_values', (3, 4)),
+                ('linear_ramp', 'end_values', (3, 4)),
+                ('reflect', 'reflect_type', 'odd'),
+                ('symmetric', 'reflect_type', 'even')
+            ]:
+                fc = function([var], pad(var, (3, 4), mode, **{k: t}))
+                t_pc = fc(v)
+                n_pc = np.pad(v, (3, 4), mode, **{k: t})
+
+                assert np.allclose(t_pc, n_pc)
+
+                if var.ndim == 2:
+                    fd = function([var], pad(var, [(3, 4), (5, 6)], mode, **{k: t}))
+                    t_pd = fd(v)
+                    n_pd = np.pad(v, [(3, 4), (5, 6)], mode, **{k: t})
+
+                    assert np.allclose(t_pd, n_pd)

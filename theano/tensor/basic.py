@@ -7007,3 +7007,54 @@ class AllocEmpty(gof.Op):
 
     def R_op(self, inputs, eval_points):
         return [zeros(inputs, self.dtype)]
+
+
+def pad(array, pad_width, mode=None, **kwargs):
+
+    if len(kwargs) != 0:
+        assert len(kwargs) == 1
+        return Pad(mode, kwargs.keys()[0])(array,
+            pad_width, kwargs.values()[0])
+    else:
+        return Pad(mode, None)(array, pad_width)
+
+
+class Pad(Op):
+
+    def __init__(self, mode, kwargs):
+        self.mode = mode
+        self.kwargs = kwargs
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.props() == other.props()
+
+    def props(self):
+        return self.mode, self.kwargs
+
+    def make_node(self, array, pad_width, values=None):
+        array = as_tensor_variable(array)
+
+        assert isinstance(pad_width, (list, tuple, int))
+        pad_width = theano.gof.Constant(theano.gof.generic, pad_width)
+
+        if values is None:
+            value = theano.tensor.type_other.NoneConst
+        else:
+            value = theano.gof.Constant(theano.gof.generic, values)
+
+        return Apply(self, [array, pad_width, value], [array.type()])
+
+    def perform(self, node, inputs, (z,)):
+        array = inputs[0]
+        pad_width = inputs[1]
+        val = inputs[2]
+        if val == None:
+            z[0] = np.pad(array, pad_width, self.mode)
+        else:
+            z[0] = np.pad(array, pad_width, self.mode, **{self.kwargs:val})
+
+    def __str__(self):
+        return self.__class__.__name__
